@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Agent Frontend
 
-## Getting Started
+This package contains the Next.js 15 UI that talks to the FastAPI backend. It relies on generated API clients from [@hey-api/openapi-ts](https://github.com/hey-api/openapi-ts) to stay in sync with the backend contract.
 
-First, run the development server:
+## Prerequisites
+
+- Node.js 20+
+- A running backend on `http://localhost:8000` (the OpenAPI document is fetched from `/openapi.json`).
+
+## Install & Dev Server
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# or use pnpm / yarn / bun if you prefer
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The app runs at [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Regenerating the API Client
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Whenever backend endpoints or schemas change, regenerate the HeyAPI client before building or committing UI code:
 
-## Learn More
+```bash
+npm run generate
+```
 
-To learn more about Next.js, take a look at the following resources:
+This executes `openapi-ts` with the configuration in `openapi-ts.config.ts` and refreshes the contents of `lib/api/client/`. Because that directory is ignored by git, each clone (or CI environment) must run the command at least once.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+If the backend is hosted at a different URL, update `input` in `openapi-ts.config.ts` accordingly.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Production Builds
 
-## Deploy on Vercel
+```bash
+npm run build
+npm run start
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Follow [the Next.js deployment guide](https://nextjs.org/docs/app/building-your-application/deploying) for platform-specific instructions.

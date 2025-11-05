@@ -35,10 +35,15 @@ User → Triage Agent → Code Assistant
 ```
 anything-agents/
 ├── app/
+│   ├── api/
+│   │   ├── models/     # Public request/response schemas
+│   │   ├── dependencies/ # Shared FastAPI dependencies
+│   │   ├── errors.py   # Global exception handlers
+│   │   └── v1/         # Versioned REST surface (`/api/v1/...`)
 │   ├── core/           # Configuration and security
-│   ├── schemas/        # Pydantic models
-│   ├── services/       # Business logic (Agent Service)
-│   ├── routers/        # API endpoints
+│   ├── domain/         # Domain objects and repository contracts
+│   ├── infrastructure/ # External adapters (OpenAI runner, persistence)
+│   ├── services/       # Business logic (Agent orchestration)
 │   ├── middleware/     # Custom middleware
 │   └── utils/          # Utility functions
 ├── tests/              # Test suite
@@ -104,7 +109,7 @@ The API will be available at `http://localhost:8000`
 
 ```bash
 # Basic chat
-POST /api/v1/agents/chat
+POST /api/v1/chat
 {
   "message": "Hello, how can you help me?",
   "agent_type": "triage",
@@ -112,7 +117,7 @@ POST /api/v1/agents/chat
 }
 
 # Streaming chat
-POST /api/v1/agents/chat/stream
+POST /api/v1/chat/stream
 # Returns Server-Sent Events stream
 ```
 
@@ -120,23 +125,23 @@ POST /api/v1/agents/chat/stream
 
 ```bash
 # List conversations
-GET /api/v1/agents/conversations
+GET /api/v1/conversations
 
 # Get conversation history
-GET /api/v1/agents/conversations/{conversation_id}
+GET /api/v1/conversations/{conversation_id}
 
 # Clear conversation
-POST /api/v1/agents/conversations/{conversation_id}/clear
+DELETE /api/v1/conversations/{conversation_id}
 ```
 
 ### Agent Management
 
 ```bash
 # List available agents
-GET /api/v1/agents/agents
+GET /api/v1/agents
 
 # Get agent status
-GET /api/v1/agents/agents/{agent_name}/status
+GET /api/v1/agents/{agent_name}/status
 ```
 
 ## 🔧 Extending to Multiagent System
