@@ -1,0 +1,157 @@
+[build-system]
+requires = ["hatchling>=1.25.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "anything-agents"
+version = "0.1.0"
+description = "FastAPI-based AI agent service powered by the OpenAI Agents SDK."
+readme = "anything-agents/README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [
+  { name = "OpenAI Agents Starter Team" }
+]
+keywords = ["fastapi", "openai", "agents", "ai", "starter"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Framework :: FastAPI",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Internet :: WWW/HTTP",
+  "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+dependencies = [
+  "fastapi>=0.115.12,<0.116.0",
+  "uvicorn[standard]>=0.32.1,<0.33.0",
+  "httpx>=0.28.1,<0.29.0",
+  "aiofiles>=23.2.1,<24.0.0",
+  "pydantic>=2.12.3,<2.13.0",
+  "pydantic-settings>=2.6.1,<2.7.0",
+  "email-validator>=2.1.0,<2.2.0",
+  "redis>=5.0.1,<6.0.0",
+  "python-jose[cryptography]>=3.3.0,<3.4.0",
+  "python-multipart>=0.0.20,<0.1.0",
+  "passlib[bcrypt]>=1.7.4,<1.8.0",
+  "python-dotenv>=1.0.0,<1.1.0",
+  "openai-agents==0.5.0",
+  "tavily-python>=0.3.3,<0.4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "coverage[toml]>=7.6.0,<8.0.0",
+  "mypy>=1.11.0,<1.13.0",
+  "pre-commit>=3.7.0,<4.0.0",
+  "pytest>=7.4.3,<9.0.0",
+  "pytest-asyncio>=0.21.1,<0.25.0",
+  "ruff>=0.7.0,<0.8.0",
+  "types-python-jose>=3.3.4.0,<3.4.0",
+  "types-passlib>=1.7.7.16,<1.8.0",
+  "types-redis>=4.6.0.12,<4.7.0",
+]
+
+[project.urls]
+homepage = "https://github.com/openai/openai-agents-starter"
+repository = "https://github.com/openai/openai-agents-starter"
+documentation = "https://github.com/openai/openai-agents-starter/tree/main/docs/openai-agents-sdk"
+issues = "https://github.com/openai/openai-agents-starter/issues"
+
+[project.scripts]
+anything-agents = "run:main"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.sources]
+app = "anything-agents/app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+include = [
+  "run.py",
+  "anything-agents/main.py",
+]
+exclude = [
+  "**/__pycache__",
+  "**/*.pyc",
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "anything-agents/**",
+  "docs/**",
+  "run.py",
+  "README.md",
+  "LICENSE",
+]
+exclude = [
+  "**/__pycache__",
+  "**/*.pyc",
+]
+
+[tool.hatch.envs.default]
+features = ["dev"]
+python = "3.11"
+env-vars = { PYTHONPATH = "anything-agents" }
+
+[tool.hatch.envs.default.scripts]
+serve = "uvicorn main:app --reload --app-dir anything-agents --host 127.0.0.1 --port 8000"
+test = "pytest"
+lint = "ruff check anything-agents"
+format = "ruff format anything-agents"
+typecheck = "mypy anything-agents"
+coverage = "python -m coverage run -m pytest && python -m coverage report"
+
+[tool.ruff]
+line-length = 100
+src = ["anything-agents"]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+  "E",
+  "F",
+  "I",
+  "B",
+  "C4",
+  "UP",
+  "RUF",
+]
+ignore = [
+  "B008",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.11"
+plugins = ["pydantic.mypy"]
+warn_unused_configs = true
+warn_unused_ignores = true
+strict_equality = true
+disallow_any_generics = true
+disallow_subclassing_any = true
+ignore_missing_imports = false
+namespace_packages = true
+mypy_path = ["anything-agents"]
+
+[tool.pytest.ini_options]
+pythonpath = ["anything-agents"]
+testpaths = ["anything-agents/tests"]
+asyncio_mode = "auto"
+addopts = "--strict-markers --disable-warnings"
+
+[tool.coverage.run]
+branch = true
+source = ["anything-agents/app"]
+omit = ["*/__init__.py"]
+
+[tool.coverage.report]
+skip_covered = true
+show_missing = true
+fail_under = 80

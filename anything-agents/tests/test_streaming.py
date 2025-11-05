@@ -4,8 +4,26 @@
 # Used by: Manual testing of streaming endpoints
 
 import asyncio
-import httpx
 import json
+import socket
+
+import httpx
+import pytest
+
+
+def _api_server_available(host: str = "localhost", port: int = 8000, timeout: float = 0.5) -> bool:
+    """Return True if the agent API server is reachable."""
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+pytestmark = pytest.mark.skipif(
+    not _api_server_available(),
+    reason="Streaming smoke test requires a running agent API server on localhost:8000.",
+)
 
 async def test_streaming_chat():
     """Test the streaming chat endpoint."""

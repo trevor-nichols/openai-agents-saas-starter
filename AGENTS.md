@@ -8,7 +8,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 
 # Codebase Patterns
 openai-agents-starter/
-├── requirements.txt
+├── pyproject.toml
 ├── run.py
 ├── agent-next-15-frontend/
 │   ├── app/

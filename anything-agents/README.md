@@ -52,13 +52,23 @@ anything-agents/
 
 ## 🛠️ Setup
 
-### 1. Install Dependencies
+### 1. Install Tooling
+
+We use [Hatch](https://hatch.pypa.io/) to manage virtual environments and scripts.
 
 ```bash
-pip install -r requirements.txt
+pipx install hatch  # or: pip install --user hatch
 ```
 
-### 2. Environment Configuration
+### 2. Create the Development Environment
+
+```bash
+hatch env create
+```
+
+This provisions a local virtualenv with all runtime and developer dependencies defined in `pyproject.toml`.
+
+### 3. Environment Configuration
 
 Copy `.env.example` to `.env.local` and configure:
 
@@ -75,10 +85,10 @@ DEBUG=True
 SECRET_KEY=your_secret_key
 ```
 
-### 3. Run the Application
+### 4. Run the Application
 
 ```bash
-python run.py
+hatch run serve
 ```
 
 The API will be available at `http://localhost:8000`
@@ -263,10 +273,20 @@ response2 = requests.post("http://localhost:8000/api/v1/agents/chat", json={
 ```dockerfile
 FROM python:3.11-slim
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-CMD ["python", "run.py"]
+
+# Install runtime dependencies and the service package
+COPY pyproject.toml .
+COPY LICENSE .
+COPY run.py .
+COPY anything-agents ./anything-agents
+RUN pip install --upgrade pip && pip install --no-cache-dir .
+
+# Provide application defaults (optional)
+ENV HOST=0.0.0.0 \
+    PORT=8000 \
+    RELOAD=false
+
+CMD ["anything-agents"]
 ```
 
 ### Production Considerations
