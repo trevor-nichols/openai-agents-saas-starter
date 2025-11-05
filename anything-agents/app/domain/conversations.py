@@ -5,14 +5,14 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Protocol
+from typing import Literal, Protocol
 
 
 @dataclass(slots=True)
 class ConversationMessage:
     """Domain representation of a single conversational message."""
 
-    role: str
+    role: Literal["user", "assistant", "system"]
     content: str
     timestamp: datetime = field(default_factory=datetime.utcnow)
 

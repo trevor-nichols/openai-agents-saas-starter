@@ -93,6 +93,17 @@ hatch run serve
 
 The API will be available at `http://localhost:8000`
 
+### 5. Quality Checks
+
+Run the standard backend quality gates before opening a PR:
+
+```bash
+hatch run lint
+hatch run typecheck
+hatch run pyright
+hatch run test
+```
+
 ## 🤖 Agent Types
 
 ### Current Agents

@@ -4,7 +4,7 @@
 # Used by: Agent service for web search functionality
 
 import asyncio
-from typing import Any
+from typing import Any, Literal
 
 from agents import function_tool
 from tavily import TavilyClient
@@ -36,13 +36,17 @@ def get_tavily_client() -> TavilyClient | None:
 # WEB SEARCH TOOLS
 # =============================================================================
 
+SearchDepth = Literal["basic", "advanced"]
+Topic = Literal["general", "news"]
+
+
 @function_tool
 async def tavily_search_tool(
     query: str,
     max_results: int = 5,
-    search_depth: str = "basic",
+    search_depth: SearchDepth = "basic",
     include_answer: bool = True,
-    topic: str = "general"
+    topic: Topic = "general",
 ) -> str:
     """
     Search the web using Tavily API for current information.
@@ -69,17 +73,17 @@ async def tavily_search_tool(
     try:
         # Validate parameters
         max_results = max(1, min(20, max_results))
-        search_depth = search_depth if search_depth in ["basic", "advanced"] else "basic"
-        topic = topic if topic in ["general", "news"] else "general"
+        search_depth_value: SearchDepth = search_depth
+        topic_value: Topic = topic
         
         # Execute search
         response = await asyncio.to_thread(
             client.search,
             query=query,
             max_results=max_results,
-            search_depth=search_depth,
+            search_depth=search_depth_value,
             include_answer=include_answer,
-            topic=topic,
+            topic=topic_value,
             include_raw_content=False,
             include_images=False
         )

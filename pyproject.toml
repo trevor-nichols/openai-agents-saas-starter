@@ -47,6 +47,7 @@ dev = [
   "pre-commit>=3.7.0,<4.0.0",
   "pytest>=7.4.3,<9.0.0",
   "pytest-asyncio>=0.21.1,<0.25.0",
+  "pyright>=1.1.375,<1.2.0",
   "ruff>=0.7.0,<0.8.0",
   "types-python-jose>=3.3.4.0,<3.4.0",
   "types-passlib>=1.7.7.16,<1.8.0",
@@ -104,6 +105,7 @@ lint = "ruff check anything-agents"
 format = "ruff format anything-agents"
 typecheck = "mypy anything-agents"
 coverage = "python -m coverage run -m pytest && python -m coverage report"
+pyright = "python -m pyright"
 
 [tool.ruff]
 line-length = 100
@@ -143,6 +145,12 @@ mypy_path = ["anything-agents"]
 [[tool.mypy.overrides]]
 module = ["tavily", "tavily.*"]
 ignore_missing_imports = true
+
+[tool.pyright]
+include = ["anything-agents"]
+typeCheckingMode = "basic"
+pythonVersion = "3.11"
+extraPaths = ["anything-agents"]
 
 [tool.pytest.ini_options]
 pythonpath = ["anything-agents"]

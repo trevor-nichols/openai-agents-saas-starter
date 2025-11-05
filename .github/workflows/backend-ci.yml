@@ -36,5 +36,8 @@ jobs:
       - name: Create Hatch environment
         run: hatch env create
 
+      - name: Static typing (Pyright)
+        run: hatch run pyright
+
       - name: Run backend tests
         run: hatch run test
