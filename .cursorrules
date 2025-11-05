@@ -1,0 +1,1397 @@
+<system_prompt>
+You are an intelligent senior software developer and AI code generator responsible for the project shown in the XML tags.
+
+Your Requirements:
+- Maintain a clean, organized and modular codebase by separating code logically into appropriate files, directories, sub-directories.
+- Do not let any file exceed ~250 lines of code.
+- Always use the latest libraries and tools as of 2025.
+- Take a modular approach by creating new files where needed, sectioning out code into logical files.
+- When encountering syntax errors or bugs, carefully examine the full file content before making changes.
+- Leave beginner-friendly comments logically sectioning out each file with headers describing what each section does.
+</system_prompt>
+<environment_variables>
+There are 2 files that set environment variables:
+- .env.local
+- .env.example
+
+The environment variable names are the same in all files, and are:
+
+````
+ACCESS_TOKEN_EXPIRE_MINUTES
+ALLOWED_HEADERS
+ALLOWED_METHODS
+ALLOWED_ORIGINS
+ANTHROPIC_API_KEY
+APP_DESCRIPTION
+APP_NAME
+APP_VERSION
+DEBUG
+GEMINI_API_KEY
+JWT_ALGORITHM
+LOG_LEVEL
+OPENAI_API_KEY
+PORT
+REDIS_URL
+SECRET_KEY
+TAVILY_API_KEY
+XAI_API_KEY
+````
+</environment_variables>
+<dependencies>
+The Python packages in 'requirements.txt' are:
+
+````
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+httpx==0.25.2
+aiofiles==23.2.1
+pydantic==2.5.0
+pydantic-settings==2.1.0
+email-validator==2.1.0
+redis==5.0.1
+python-jose[cryptography]==3.3.0
+python-multipart==0.0.6
+passlib[bcrypt]==1.7.4
+pytest==7.4.3
+pytest-asyncio==0.21.1
+httpx==0.25.2  # For testing async HTTP calls
+python-dotenv==1.0.0
+openai-agents==0.1.0  # OpenAI Agents SDK for multiagent systems
+tavily-python==0.3.3  # Tavily web search API client
+````
+</dependencies>
+<project_overview>
+You are developing a monorepo project with a FastAPI backend AI agent using the OpenAI Agents SDK (pip install openai-agents) and a Next.js 15 frontend.
+
+- Backend: anything-agents/ (running on port **8000**) 
+- Frontend: agent-next-15-frontend/ (running on port **3000**)
+</project_overview>
+
+<backend_rules>
+# Backend Rules
+- Focus on the below documentaiton and examples to fully understand the openai-agents sdk.
+- The openai-agents library has been installed and the .env.local file has been setup.
+- If you run into errors, do not simple implement a work around, fix the core issue appropriately.
+- Use the openai-agents library to its fullest extent.
+- IMPORTANT: You are restricted from accessing .env files directly. In order to workaround this, you can use terminal and run `cat .env.local` to check the .env file.
+
+Maintain the codebase with a clean and organized structure so it is always easy to maintain and extend in the future:
+  - Core configuration in app/core/
+  - Schemas in app/schemas/
+  - API endpoints in app/api/endpoints/
+  - Helper functions in app/utils/
+
+Follow best practices for code organization by:
+- Keeping all schemas in the schemas directory
+- Maintaining separation of concerns (endpoints vs. data models)
+- Making the schemas more reusable across different parts of the application
+- Reducing duplication and improving maintainability
+</backend_rules>
+
+<frontend_rules>
+# Frontend Rules
+Frontend Notes:
+    - The frontend is a modern, type-safe Next.js 15 frontend running in port 3000, that connects to the Anything agents API hosted on port 8000.
+    - The types for the API are generated to types/generated using the OpenAPI schema.
+
+Frontend Rules:
+    - Follow and maintain the separation of concerns (components, hooks, API types, etc.) and the use of tools like Tailwind CSS and Shadcn/ui will help you build a clean and maintainable codebase.
+    - Maintain a clean, organized, and modular codebase.
+    - Keep page components thin and focused on layout/composition only
+    - Extract all business logic, UI components, and data fetching into separate modules
+    - Page files (page.tsx) should only import and compose components, not contain implementation details
+    - Address linter errors as they arrise to maintain code quality
+    - Use Shadcn/ui for components, so instead of npm install shadcn-ui, you run commands like npx shadcn-ui@latest add button which copies the component code directly into your project, giving you full control to modify it as needed.
+    - Keep shared ui components in the components/ui/ directory.
+    - If new ui components are needed, install them with shadcn-ui.
+</frontend_rules>
+
+<backend_overview>
+## Backend Overview
+
+# Backend Walk Through
+- This project walk through explains each file's role and how they all connect in the project. This should give you a solid understanding of the project structure and where to find or implement different functionalities.
+
+Let's break it down file by file:
+
+### 1. Root Level Files
+
+*   **`run.py`**:
+    *   **Purpose**: This is the main entry point when you want to run the application locally for development.
+    *   **How it works**:
+        *   It configures the Python path to ensure the `anything-agents` module can be imported correctly.
+        *   It loads environment variables from the `.env.local` file using `python-dotenv`. This is where you'd store API keys and other sensitive configurations for local development.
+        *   It reads server configuration (host, port, reload settings, log level, number of workers) from environment variables.
+        *   Finally, it uses `uvicorn.run()` to start the FastAPI application defined in `anything-agents/main.py`. Uvicorn is an ASGI server that runs your FastAPI app.
+    *   **Dependencies**: `uvicorn`, `python-dotenv`, `anything-agents/main.py`.
+    *   **Key for you**: If you need to change how the development server starts (e.g., default port, enabling/disabling reload), you'd look here or in your `.env.local` file.
+
+*   **`requirements.txt`**:
+    *   **Purpose**: This file lists all the Python packages your project depends on, along with their specific versions.
+    *   **How it works**: You use `pip install -r requirements.txt` to install all necessary dependencies into your environment.
+    *   **Key Dependencies (and what they do)**:
+        *   `fastapi`: The core web framework for building APIs.
+        *   `uvicorn`: The ASGI server to run FastAPI.
+        *   `pydantic`, `pydantic-settings`: For data validation, serialization, and settings management. Your API request and response bodies will be defined using Pydantic models.
+        *   `python-jose[cryptography]`, `passlib[bcrypt]`: For JWT authentication and password hashing.
+        *   `openai-agents`: The SDK for building and managing AI agents. This is central to the agent logic.
+        *   `tavily-python`: Client library for the Tavily web search API, used by one of the agent tools.
+        *   `python-dotenv`: For loading environment variables from `.env` files.
+    *   **Key for you**: When adding a new library, you'll add it here (preferably with a version) and then install it. If you encounter import errors for a package, check if it's listed here.
+
+### 2. `anything-agents/` Directory (The Main Application)
+
+*   **`main.py`**:
+    *   **Purpose**: This is the heart of your FastAPI application. It creates and configures the main `FastAPI` app instance.
+    *   **How it works**:
+        *   `create_application()`: This factory function initializes the `FastAPI` app.
+            *   It sets app metadata like title, description, and version, often pulling these from `app.core.config.get_settings()`.
+            *   It configures **middleware**:
+                *   `TrustedHostMiddleware`: For security, restricting which hosts can access the app.
+                *   `CORSMiddleware`: Handles Cross-Origin Resource Sharing, essential if your frontend is on a different domain/port. Settings for allowed origins, methods, and headers are pulled from `config.py`.
+                *   `LoggingMiddleware`: Custom middleware (from `app.middleware.logging`) to log incoming requests and outgoing responses.
+            *   It includes **routers**:
+                *   `health.router`: For health check endpoints (`/health`, `/health/ready`).
+                *   `auth.router`: For authentication endpoints like login/token generation (`/auth/token`).
+                *   `api.router`: For general API endpoints (e.g., the demo `/api/v1/items`).
+                *   `agents.router`: For all agent-related interactions (`/api/v1/agents/chat`, `/api/v1/agents/chat/stream`, etc.).
+        *   `lifespan`: An `asynccontextmanager` to handle application startup and shutdown events (currently empty but can be used for things like initializing database connections or cleaning up resources).
+        *   A root endpoint (`@app.get("/")`) provides basic service information.
+    *   **Dependencies**: `fastapi`, `app.core.config`, `app.middleware.logging`, all routers in `app.routers`.
+    *   **Key for you**: If you need to add new global middleware or register a new top-level router (e.g., for a completely new section of your API), you'd do it here.
+
+### 3. `anything-agents/app/core/` (Core Application Logic)
+
+*   **`config.py`**:
+    *   **Purpose**: Manages all application settings and configurations.
+    *   **How it works**:
+        *   It defines a `Settings` class that inherits from Pydantic's `BaseSettings`.
+        *   Each attribute in the `Settings` class (e.g., `app_name`, `openai_api_key`, `redis_url`) corresponds to an environment variable. Pydantic automatically tries to load these values from environment variables.
+        *   Default values are provided for most settings.
+        *   It includes helper methods like `get_allowed_origins_list()` to parse comma-separated string settings into lists.
+        *   `get_settings()`: A function decorated with `@lru_cache()` ensures that the settings are loaded only once and then cached for performance.
+    *   **Dependencies**: `pydantic-settings`, `functools.lru_cache`.
+    *   **Key for you**: When you need to add a new configuration parameter (e.g., an API key for a new service, a timeout value), you'll add it to the `Settings` class here. You'll also need to add it to your `.env.example` and `.env.local` files. Access these settings anywhere in the app by calling `get_settings()`.
+
+*   **`security.py`**:
+    *   **Purpose**: Handles authentication and security-related functionalities, primarily JWT (JSON Web Token) generation and verification.
+    *   **How it works**:
+        *   `pwd_context`: Configures `passlib` for password hashing (using bcrypt).
+        *   `verify_password()`: Compares a plain password with a hashed one.
+        *   `get_password_hash()`: Hashes a new password.
+        *   `create_access_token()`: Generates a JWT. It takes a data dictionary (usually containing user ID or other claims) and an optional expiration delta. It signs the token using `SECRET_KEY` and `JWT_ALGORITHM` from `config.py`.
+        *   `verify_token()`: Decodes and validates a JWT. It checks the signature and expiration.
+        *   `get_current_user()`: A FastAPI dependency function. When used in a route (e.g., `Depends(get_current_user)`), it expects a Bearer token in the `Authorization` header, verifies it, and returns the token payload (typically containing user information). This is how you protect routes.
+        *   `get_current_active_user()`: Another dependency that builds on `get_current_user` (though in the current code, it doesn't add extra active status checks beyond what `get_current_user` does).
+    *   **Dependencies**: `fastapi`, `python-jose`, `passlib`, `app.core.config`.
+    *   **Key for you**: If you need to modify token expiration times, change JWT algorithms, or adjust password hashing, this is the place. When creating protected API endpoints, you'll use `Depends(get_current_user)`.
+
+### 4. `anything-agents/app/middleware/`
+
+*   **`logging.py`**:
+    *   **Purpose**: Provides custom middleware to log details about incoming requests and their corresponding responses.
+    *   **How it works**:
+        *   `LoggingMiddleware` inherits from `BaseHTTPMiddleware`.
+        *   The `dispatch` method is called for every request.
+        *   It generates a unique `correlation_id` for each request to help trace a single request-response cycle through logs.
+        *   It logs basic request information (method, URL).
+        *   It calls `await call_next(request)` to pass the request to the next middleware or the route handler.
+        *   After the response is generated, it logs response status code and processing time.
+        *   It adds `X-Correlation-ID` and `X-Process-Time` headers to the response.
+    *   **Dependencies**: `fastapi`, `starlette`, `logging`, `time`, `uuid`.
+    *   **Key for you**: If you want to customize what's logged for each request/response (e.g., add request headers, log response bodies for certain paths), you'd modify this middleware.
+
+### 5. `anything-agents/app/schemas/` (Data Models)
+
+This directory contains Pydantic models that define the structure and validation rules for your API's request and response data, as well as internal data structures.
+
+*   **`common.py`**:
+    *   **Purpose**: Defines common, reusable Pydantic schemas used across various parts of the application.
+    *   **Models**:
+        *   `SuccessResponse`: A standard structure for successful API responses (includes `success: bool`, `message: str`, `data: Optional[Any]`).
+        *   `ErrorResponse`: A standard structure for error API responses.
+        *   `HealthResponse`: Schema for health check endpoints.
+        *   `PaginationParams`: For API endpoints that support pagination, defining `page` and `limit`.
+        *   `PaginatedResponse`: Standard structure for responses that return a paginated list of items.
+    *   **Key for you**: When designing new API endpoints, you'll often reuse `SuccessResponse` or `PaginatedResponse`.
+
+*   **`auth.py`**:
+    *   **Purpose**: Defines Pydantic models specifically for authentication-related requests and responses.
+    *   **Models**:
+        *   `Token`: Response schema when a JWT is issued (contains `access_token`, `token_type`, `expires_in`).
+        *   `TokenData`: Internal schema representing the decoded content of a token (e.g., `user_id`).
+        *   `UserLogin`: Request schema for user login (expects `username`, `password`).
+        *   `UserCreate`: Schema for user creation (example, not fully implemented in auth logic).
+        *   `UserResponse`: Schema for returning user information (example).
+    *   **Key for you**: If you modify the login process or the data returned upon successful authentication, you'll update these schemas.
+
+*   **`agents.py`**:
+    *   **Purpose**: Defines Pydantic models for agent interactions, chat messages, and conversation management.
+    *   **Models**:
+        *   `ChatMessage`: Represents a single message in a conversation (`role`, `content`, `timestamp`).
+        *   `AgentChatRequest`: Request schema for sending a message to an agent (`message`, `conversation_id`, `agent_type`, `context`).
+        *   `AgentChatResponse`: Response schema for a non-streaming chat response from an agent.
+        *   `StreamingChatResponse`: Schema for each chunk in a streaming chat response.
+        *   `ConversationHistory`: Schema for returning the full history of a conversation.
+        *   `ConversationSummary`: (Defined but not actively used in current endpoints) For a brief overview of a conversation.
+        *   `AgentConfig`: (Defined but not actively used in current endpoints) For configuring agent properties.
+        *   `AgentStatus`: Schema for returning the status of an agent.
+    *   **Key for you**: This is crucial for understanding the data flow for agent interactions. When you change what information is sent to or received from the agent endpoints, you'll modify these schemas.
+
+*   **`__init__.py`** (in `schemas/`): Standard Python file to make the `schemas` directory a package.
+
+### 6. `anything-agents/app/utils/tools/` (Agent Tools)
+
+This directory is for implementing and managing tools that your AI agents can use.
+
+*   **`web_search.py`**:
+    *   **Purpose**: Implements a web search tool using the Tavily API.
+    *   **How it works**:
+        *   `get_tavily_client()`: Initializes the `TavilyClient` using the API key from settings.
+        *   `tavily_search_tool()`:
+            *   This function is decorated with `@function_tool` from the `openai-agents` SDK. This makes it discoverable and callable by an agent.
+            *   It takes a `query` and other optional parameters (`max_results`, `search_depth`, etc.).
+            *   It calls the Tavily API to perform the search.
+            *   `_format_search_results()`: A helper to format the Tavily API response into a human-readable string for the agent.
+    *   **Dependencies**: `tavily-python`, `agents` (SDK), `app.core.config`.
+    *   **Key for you**: This is a good example of how to create a custom tool for your agents. If you want to add another tool that calls an external API, you'd follow a similar pattern.
+
+*   **`registry.py`**:
+    *   **Purpose**: Provides a `ToolRegistry` class to manage and organize all available agent tools.
+    *   **How it works**:
+        *   `ToolRegistry` class:
+            *   `_tools`: A dictionary to store tool functions/objects by name.
+            *   `_tool_categories`: Organizes tools into categories.
+            *   `register_tool()`: Adds a tool (which can be a Python function or an `FunctionTool` object from the SDK) to the registry.
+            *   `get_tool()`, `get_tools_by_category()`, `get_all_tools()`: Methods to retrieve tools.
+            *   `get_core_tools()`: Intended to get tools available to all agents (currently returns all tools).
+        *   `get_tool_registry()`: A cached function to get a singleton instance of `ToolRegistry`.
+        *   `initialize_tools()`: This function is called during application startup (specifically, by `AgentFactory` in `agent_service.py`). It gets the registry instance and registers tools. Currently, it registers `tavily_search_tool`.
+    *   **Dependencies**: `typing`, `functools`.
+    *   **Key for you**: When you create new tools (like new functions in `web_search.py` or in new tool files), you need to register them in the `initialize_tools()` function within this file so the `AgentFactory` can make them available to agents.
+
+*   **`__init__.py`** (in `utils/tools/`): Exports key components like `ToolRegistry`, `get_tool_registry`, `initialize_tools`, and `tavily_search_tool` for easier importing.
+
+*   **`__init__.py`** (in `utils/`): Standard Python file to make the `utils` directory a package.
+
+### 7. `anything-agents/app/services/` (Business Logic)
+
+*   **`agent_service.py`**:
+    *   **Purpose**: This is a critical file containing the core logic for managing and interacting with AI agents. It implements the "extensible triage pattern."
+    *   **How it works**:
+        *   **`ConversationStore`**: A simple in-memory dictionary to store conversation histories. For production, you'd replace this with a persistent store like Redis or a database.
+        *   **Local Agent Tools**:
+            *   `get_current_time()`: A simple `@function_tool` that returns the current date and time.
+            *   `search_conversations()`: A `@function_tool` to search through the in-memory conversation store.
+        *   **`AgentFactory`**:
+            *   Responsible for creating and managing agent instances.
+            *   `_initialize_tools()`: Calls `initialize_tools()` from `app.utils.tools.registry` and also registers the local tools (`get_current_time`, `search_conversations`) into the tool registry.
+            *   `_get_agent_tools()`: Retrieves tools from the registry (core and specialized, though specialization isn't heavily used yet).
+            *   `_initialize_agents()`: This is where different agents are defined using the `Agent` class from the `openai-agents` SDK.
+                *   It creates a main `"triage"` agent (currently `gpt-4.1-2025-04-14`) with general instructions and access to tools from the registry. This is the primary agent users interact with.
+                *   It also defines example specialized agents (`"code_assistant"`, `"data_analyst"`) but they are not actively used in a handoff chain yet.
+            *   `get_agent()`: Retrieves a pre-configured agent by name.
+        *   **`AgentService`**:
+            *   The main service class that uses `AgentFactory` and `ConversationStore`.
+            *   `chat(request: AgentChatRequest)`:
+                *   Handles non-streaming chat requests.
+                *   Retrieves or creates a conversation ID.
+                *   Loads conversation history.
+                *   Adds the new user message to history.
+                *   Selects an agent (defaults to "triage").
+                *   Prepares input for the agent, including recent conversation history using `_prepare_agent_input()`.
+                *   Uses `Runner.run(agent, agent_input)` from the SDK to get the agent's response.
+                *   Adds the agent's response to history.
+                *   Returns an `AgentChatResponse`.
+            *   `chat_stream(request: AgentChatRequest)`:
+                *   Handles streaming chat requests.
+                *   Similar setup to `chat()`, but uses `Runner.run_streamed(agent, agent_input)`.
+                *   It iterates through events from `result.stream_events()`:
+                    *   If it's a `ResponseTextDeltaEvent` (a token chunk), it yields a `StreamingChatResponse`.
+                    *   It accumulates the full response to save to history.
+            *   `_prepare_agent_input()`: Formats the current message and recent history into a single string prompt for the agent.
+            *   `get_conversation_history()`, `list_conversations()`, `list_available_agents()`, `get_tool_information()`: Helper methods to manage conversations and provide agent/tool metadata.
+    *   **Dependencies**: `openai-agents` SDK, `app.core.config`, `app.schemas.agents`, `app.utils.tools`.
+    *   **Key for you**: This is where you'll define new agents, modify existing agent instructions or models, manage how agents use tools, and change how conversation history is handled or passed to agents. If you want to implement agent handoffs (triage agent passing control to a specialist), the logic would go in/around the `AgentFactory` and `AgentService.chat` methods.
+
+*   **`__init__.py`** (in `services/`): Standard Python file to make the `services` directory a package.
+
+### 8. `anything-agents/app/routers/` (API Endpoints)
+
+This directory defines the actual HTTP API endpoints. Routers group related endpoints.
+
+*   **`health.py`**:
+    *   **Purpose**: Defines health check endpoints.
+    *   **Endpoints**:
+        *   `/health`: Basic health check.
+        *   `/health/ready`: Readiness check (often used in Kubernetes).
+    *   **Key for you**: Useful for monitoring and deployment.
+
+*   **`auth.py`**:
+    *   **Purpose**: Defines authentication-related endpoints.
+    *   **Endpoints**:
+        *   `/token` (POST): Takes `UserLogin` schema (username, password), authenticates (currently a demo check), and returns a JWT (`Token` schema).
+        *   `/refresh` (POST): (Intended for refreshing tokens, but needs a refresh token mechanism to be fully implemented). Requires authentication.
+        *   `/me` (GET): Returns information about the currently authenticated user. Requires authentication.
+    *   **Dependencies**: `fastapi`, `app.schemas.auth`, `app.schemas.common`, `app.core.security`, `app.core.config`.
+    *   **Key for you**: If you're implementing actual user database authentication, you'll modify the `/token` endpoint.
+
+*   **`api.py`**:
+    *   **Purpose**: Defines general-purpose API endpoints. Currently, it contains demo CRUD-like operations for "items."
+    *   **Endpoints**:
+        *   `/items` (GET): Paginated list of demo items, supports search.
+        *   `/items/{item_id}` (GET): Get a specific demo item.
+        *   `/items` (POST): Create a new demo item (requires authentication).
+    *   **Dependencies**: `fastapi`, `app.schemas.common`, `app.core.security`.
+    *   **Key for you**: This is an example of how to build standard REST API endpoints. You might remove or replace this with your application's actual non-agent-related API resources.
+
+*   **`agents.py`**:
+    *   **Purpose**: Defines all API endpoints for interacting with the AI agents.
+    *   **Endpoints**:
+        *   `/chat` (POST): Handles non-streaming chat requests. Takes `AgentChatRequest`, calls `agent_service.chat()`, and returns `AgentChatResponse`.
+        *   `/chat/stream` (POST): Handles streaming chat requests. Takes `AgentChatRequest`, calls `agent_service.chat_stream()`, and returns a `StreamingResponse` (Server-Sent Events). The `generate_stream` async generator formats the `StreamingChatResponse` chunks into SSE format.
+        *   `/conversations` (GET): Lists all conversation IDs.
+        *   `/conversations/{conversation_id}` (GET): Gets the history for a specific conversation.
+        *   `/agents` (GET): Lists available agents.
+        *   `/agents/{agent_name}/status` (GET): Gets the status of a specific agent.
+        *   `/tools` (GET): Lists available tools and their categories.
+        *   `/conversations/{conversation_id}/clear` (POST): (Placeholder for clearing conversation history).
+    *   **Dependencies**: `fastapi`, `fastapi.responses.StreamingResponse`, `app.services.agent_service`, `app.schemas.agents`, `app.schemas.common`.
+    *   **Key for you**: This is the primary interface for your frontend or other services to communicate with the agent system. If you add new agent capabilities that need API exposure (e.g., configuring an agent), you'll add new endpoints here.
+
+*   **`__init__.py`** (in `routers/`): Standard Python file to make the `routers` directory a package.
+
+### 9. `__init__.py` Files (General)
+
+*   `anything-agents/app/clients/__init__.py`
+*   `anything-agents/app/__init__.py`
+    *   **Purpose**: These files are standard Python practice. Their presence makes Python treat the directories (`clients`, `app`) as packages, allowing you to import modules from them using dot notation (e.g., `from app.core import config`). They can also contain package-level initialization code if needed, but these are currently empty except for comments.
+
+### High-Level Architecture & Flow:
+
+1.  **Request Entry**: A request comes in (e.g., to `/api/v1/agents/chat`).
+2.  **Uvicorn & FastAPI**: `uvicorn` passes the request to your FastAPI app (`main.py`).
+3.  **Middleware**: The request goes through configured middleware (logging, CORS).
+4.  **Routing**: FastAPI routes the request to the correct path operation function in one of your router files (e.g., `chat_with_agent` in `app.routers.agents.py`).
+5.  **Schema Validation (Request)**: If the endpoint expects a request body, FastAPI uses the Pydantic model specified (e.g., `AgentChatRequest`) to validate and parse the incoming JSON.
+6.  **Dependency Injection**: FastAPI resolves dependencies like `Depends(get_current_user)` or service instances.
+7.  **Service Layer**: The router function calls a method in a service (e.g., `agent_service.chat()`). This is where the core business logic resides.
+    *   The `AgentService` might interact with the `AgentFactory` to get an agent, use `ConversationStore` for history, and use the `ToolRegistry` (via `AgentFactory`) to equip agents with tools.
+    *   Agents (from `openai-agents` SDK) process input, potentially use tools (like `tavily_search_tool`), and generate a response.
+8.  **Schema Validation (Response)**: The data returned by the service/router is validated against the response Pydantic model (e.g., `AgentChatResponse`).
+9.  **Response**: FastAPI sends the formatted JSON response (or stream) back through the middleware and to the client.
+
+This is a well-structured FastAPI application using the OpenAI Agents SDK. The separation of concerns (routers for API definition, services for business logic, schemas for data contracts, core for configuration/security, utils for helpers/tools) makes it quite maintainable and extensible.
+
+If you're implementing something new:
+
+*   **New API endpoint?** Start in the relevant `app/routers/` file.
+*   **New business logic for that endpoint?** Create/update a method in an `app/services/` file.
+*   **Data structure for request/response?** Define it in `app/schemas/`.
+*   **New AI agent or modifying agent behavior?** Look at `app/services/agent_service.py` (specifically `AgentFactory`).
+*   **New tool for agents?** Create it in `app/utils/tools/` and register it in `app/utils/tools/registry.py`.
+*   **Configuration change?** `app/core/config.py` and your `.env` files.
+*   **Authentication/Authorization logic?** `app/core/security.py`.
+
+</backend_overview>
+
+<openai_agents_sdk_documentation>
+# OpenAI Agents SDK
+
+## Agents
+
+The most common properties of an agent you willll configure are:
+
+- `instructions`: also known as a developer message or system prompt.
+- `model`: which LLM to use, and optional model_settings to configure model tuning parameters like temperature, top_p, etc.
+- `tools`: Tools that the agent can use to achieve its tasks.
+
+```python
+from agents import Agent, ModelSettings, function_tool
+
+@function_tool
+def get_weather(city: str) -> str: 
+    return f"The weather in {city} is sunny" # function to use
+
+agent = Agent(
+    name="Haiku agent", # name of the agent
+    instructions="Always respond in haiku form", # instructions for the agent
+    model="o3-mini", # model to use
+    tools=[get_weather], # tools to use
+)
+```
+
+### Create your first agent
+Agents are defined with instructions, a name, and optional config (such as model_config)
+
+```python
+import asyncio
+
+from openai.types.responses import ResponseTextDeltaEvent
+
+from agents import Agent, Runner
+
+
+async def main():
+    agent = Agent(
+        name="Joker",
+        instructions="You are a helpful assistant.",
+    )
+
+    result = Runner.run_streamed(agent, input="Please tell me 5 jokes.")
+    async for event in result.stream_events():
+        if event.type == "raw_response_event" and isinstance(event.data, ResponseTextDeltaEvent):
+            print(event.data.delta, end="", flush=True)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### Types of Agents
+
+#### Worker Agent
+
+```python
+history_tutor_agent = Agent(
+    name="History Tutor",
+    handoff_description="Specialist agent for historical questions",
+    instructions="You provide assistance with historical queries. Explain important events and context clearly.",
+)
+```
+#### Triage (orchestration) Agent
+
+```python
+triage_agent = Agent(
+    name="Triage Agent",
+    instructions="You determine which agent to use based on the user's homework question",
+    handoffs=[history_tutor_agent, math_tutor_agent]
+)
+```
+**Note**: For each agent type mentioned above, you can define an inventory of outgoing handoff options that the agent can choose from to decide how to make progress on their task.
+
+
+### Run the agent
+
+```python
+from agents import Runner
+
+async def main():
+    result = await Runner.run(triage_agent, "What is the capital of France?")
+    print(result.final_output)
+```
+
+You can run agents via the Runner class. You have 3 options:
+
+- `Runner.run()`, which runs async and returns a `RunResult`.
+- `Runner.run_sync()`, which is a sync method and just runs `.run()` under the hood.
+- `Runner.run_streamed()`, which runs async and returns a `RunResultStreaming`. It calls the LLM in streaming mode, and streams those events to you as they are received.
+
+```python
+from agents import Agent, Runner
+
+async def main():
+    agent = Agent(name="Assistant", instructions="You are a helpful assistant")
+
+    result = await Runner.run(agent, "Write a haiku about recursion in programming.")
+    print(result.final_output)
+```
+
+
+### Context
+Agents are generic on their context type. Context is a dependency-injection tool: it iss an object you create and pass to Runner.run(), that is passed to every agent, tool, handoff etc, and it serves as a grab bag of dependencies and state for the agent run. You can provide any Python object as the context.
+
+```python
+@dataclass
+class UserContext:
+    uid: str
+    is_pro_user: bool
+
+    async def fetch_purchases() -> list[Purchase]:
+        return ...
+
+agent = Agent[UserContext](
+    ...,
+)
+```
+
+At the end of the agent run, you can choose what to show to the user. For example, you might show the user every new item generated by the agents, or just the final output. Either way, the user might then ask a followup question, in which case you can call the run method again.
+
+You can use the base RunResultBase.to_input_list() method to get the inputs for the next turn.
+
+```python
+async def main():
+    agent = Agent(name="Assistant", instructions="Reply very concisely.")
+
+    with trace(workflow_name="Conversation", group_id=thread_id):
+        # First turn
+        result = await Runner.run(agent, "What city is the Golden Gate Bridge in?")
+        print(result.final_output)
+        # San Francisco
+
+        # Second turn
+        new_input = result.to_input_list() + [{"role": "user", "content": "What state is it in?"}]
+        result = await Runner.run(agent, new_input)
+        print(result.final_output)
+        # California
+```
+
+### Output types
+By default, agents produce plain text (i.e. str) outputs. If you want the agent to produce a particular type of output, you can use the output_type parameter. A common choice is to use Pydantic objects, but we support any type that can be wrapped in a Pydantic TypeAdapter - dataclasses, lists, TypedDict, etc.
+
+```python
+from pydantic import BaseModel
+from agents import Agent
+
+
+class CalendarEvent(BaseModel):
+    name: str
+    date: str
+    participants: list[str]
+
+agent = Agent(
+    name="Calendar extractor",
+    instructions="Extract calendar events from text",
+    output_type=CalendarEvent,
+)
+```
+
+### Handoffs
+
+Handoffs are sub-agents that the agent can delegate to. You provide a list of handoffs, and the agent can choose to delegate to them if relevant. 
+
+```python
+from agents import Agent
+
+booking_agent = Agent(...)
+refund_agent = Agent(...)
+
+triage_agent = Agent(
+    name="Triage agent",
+    instructions=(
+        "Help the user with their questions."
+        "If they ask about booking, handoff to the booking agent."
+        "If they ask about refunds, handoff to the refund agent."
+    ),
+    handoffs=[booking_agent, refund_agent],
+)
+```
+
+#### Customizing handoffs via the handoff() function
+The handoff() function lets you customize things.
+
+- `agent`: This is the agent to which things will be handed off.
+- `tool_name_override`: By default, the Handoff.default_tool_name() function is used, which resolves to transfer_to_<agent_name>. You can override this.
+- `tool_description_override`: Override the default tool description from Handoff.default_tool_description()
+- `on_handoff`: A callback function executed when the handoff is invoked. This is useful for things like kicking off some data fetching as soon as you know a handoff is being invoked. This function receives the agent context, and can optionally also receive LLM generated input. The input data is controlled by the input_type param.
+- `input_type`: The type of input expected by the handoff (optional).
+- `input_filter`: This lets you filter the input received by the next agent. See below for more.
+
+```python
+from agents import Agent, handoff, RunContextWrapper
+
+def on_handoff(ctx: RunContextWrapper[None]):
+    print("Handoff called")
+
+agent = Agent(name="My agent")
+
+handoff_obj = handoff(
+    agent=agent,
+    on_handoff=on_handoff,
+    tool_name_override="custom_handoff_tool",
+    tool_description_override="Custom description",
+)
+```
+
+#### Handoff inputs
+In certain situations, you want the LLM to provide some data when it calls a handoff. For example, imagine a handoff to an "Escalation agent". You might want a reason to be provided, so you can log it.
+
+```python
+from pydantic import BaseModel
+
+from agents import Agent, handoff, RunContextWrapper
+
+class EscalationData(BaseModel):
+    reason: str
+
+async def on_handoff(ctx: RunContextWrapper[None], input_data: EscalationData):
+    print(f"Escalation agent called with reason: {input_data.reason}")
+
+agent = Agent(name="Escalation agent")
+
+handoff_obj = handoff(
+    agent=agent,
+    on_handoff=on_handoff,
+    input_type=EscalationData,
+)
+```
+
+### Tools
+
+#### Hosted tools: these run on LLM servers alongside the AI models. OpenAI offers retrieval, web search and computer use as hosted tools.
+Function calling: these allow you to use any Python function as a tool.
+Agents as tools: this allows you to use an agent as a tool, allowing Agents to call other agents without handing off to them.
+Hosted tools
+OpenAI offers a few built-in tools when using the OpenAIResponsesModel:
+
+The WebSearchTool lets an agent search the web.
+The FileSearchTool allows retrieving information from your OpenAI Vector Stores.
+The ComputerTool allows automating computer use tasks.
+
+```python
+from agents import Agent, FileSearchTool, Runner, WebSearchTool
+
+agent = Agent(
+    name="Assistant",
+    tools=[
+        WebSearchTool(),
+        FileSearchTool(
+            max_num_results=3,
+            vector_store_ids=["VECTOR_STORE_ID"],
+        ),
+    ],
+)
+
+async def main():
+    result = await Runner.run(agent, "Which coffee shop should I go to, taking into account my preferences and the weather today in SF?")
+    print(result.final_output)
+```
+
+#### Function tools
+You can use any Python function as a tool. The Agents SDK will setup the tool automatically:
+
+The name of the tool will be the name of the Python function (or you can provide a name)
+Tool description will be taken from the docstring of the function (or you can provide a description)
+The schema for the function inputs is automatically created from the function's arguments
+Descriptions for each input are taken from the docstring of the function, unless disabled
+We use Python's inspect module to extract the function signature, along with griffe to parse docstrings and pydantic for schema creation.
+
+```python
+import json
+
+from typing_extensions import TypedDict, Any
+
+from agents import Agent, FunctionTool, RunContextWrapper, function_tool
+
+
+class Location(TypedDict):
+    lat: float
+    long: float
+
+@function_tool  
+async def fetch_weather(location: Location) -> str:
+    
+    """Fetch the weather for a given location.
+
+    Args:
+        location: The location to fetch the weather for.
+    """
+    # In real life, we'd fetch the weather from a weather API
+    return "sunny"
+
+
+@function_tool(name_override="fetch_data")  
+def read_file(ctx: RunContextWrapper[Any], path: str, directory: str | None = None) -> str:
+    """Read the contents of a file.
+
+    Args:
+        path: The path to the file to read.
+        directory: The directory to read the file from.
+    """
+    # In real life, we'd read the file from the file system
+    return "<file contents>"
+
+
+agent = Agent(
+    name="Assistant",
+    tools=[fetch_weather, read_file],  
+)
+
+for tool in agent.tools:
+    if isinstance(tool, FunctionTool):
+        print(tool.name)
+        print(tool.description)
+        print(json.dumps(tool.params_json_schema, indent=2))
+        print()
+```
+
+#### Custom function tools
+Sometimes, you don't want to use a Python function as a tool. You can directly create a FunctionTool if you prefer. You'll need to provide:
+
+- `name`
+- `description`
+- `params_json_schema`, which is the JSON schema for the arguments
+- `on_invoke_tool`, which is an async function that receives the context and the arguments as a JSON string, and must return the tool output as a string.
+
+```python
+from typing import Any
+
+from pydantic import BaseModel
+
+from agents import RunContextWrapper, FunctionTool
+
+
+
+def do_some_work(data: str) -> str:
+    return "done"
+
+
+class FunctionArgs(BaseModel):
+    username: str
+    age: int
+
+
+async def run_function(ctx: RunContextWrapper[Any], args: str) -> str:
+    parsed = FunctionArgs.model_validate_json(args)
+    return do_some_work(data=f"{parsed.username} is {parsed.age} years old")
+
+
+tool = FunctionTool(
+    name="process_user",
+    description="Processes extracted user data",
+    params_json_schema=FunctionArgs.model_json_schema(),
+    on_invoke_tool=run_function,
+)
+```
+
+#### Automatic argument and docstring parsing
+As mentioned before, we automatically parse the function signature to extract the schema for the tool, and we parse the docstring to extract descriptions for the tool and for individual arguments. Some notes on that:
+
+The signature parsing is done via the inspect module. We use type annotations to understand the types for the arguments, and dynamically build a Pydantic model to represent the overall schema. It supports most types, including Python primitives, Pydantic models, TypedDicts, and more.
+We use griffe to parse docstrings. Supported docstring formats are google, sphinx and numpy. We attempt to automatically detect the docstring format, but this is best-effort and you can explicitly set it when calling function_tool. You can also disable docstring parsing by setting use_docstring_info to False.
+The code for the schema extraction lives in agents.function_schema.
+
+#### Agents as tools
+In some workflows, you may want a central agent to orchestrate a network of specialized agents, instead of handing off control. You can do this by modeling agents as tools.
+
+```python
+from agents import Agent, Runner
+import asyncio
+
+spanish_agent = Agent(
+    name="Spanish agent",
+    instructions="You translate the user's message to Spanish",
+)
+
+french_agent = Agent(
+    name="French agent",
+    instructions="You translate the user's message to French",
+)
+
+orchestrator_agent = Agent(
+    name="orchestrator_agent",
+    instructions=(
+        "You are a translation agent. You use the tools given to you to translate."
+        "If asked for multiple translations, you call the relevant tools."
+    ),
+    tools=[
+        spanish_agent.as_tool(
+            tool_name="translate_to_spanish",
+            tool_description="Translate the user's message to Spanish",
+        ),
+        french_agent.as_tool(
+            tool_name="translate_to_french",
+            tool_description="Translate the user's message to French",
+        ),
+    ],
+)
+
+async def main():
+    result = await Runner.run(orchestrator_agent, input="Say 'Hello, how are you?' in Spanish.")
+    print(result.final_output)
+```
+
+#### Customizing tool-agents
+The agent.as_tool function is a convenience method to make it easy to turn an agent into a tool. It doesn't support all configuration though; for example, you can't set max_turns. For advanced use cases, use Runner.run directly in your tool implementation:
+
+```python
+@function_tool
+async def run_my_agent() -> str:
+  """A tool that runs the agent with custom configs".
+
+    agent = Agent(name="My agent", instructions="...")
+
+    result = await Runner.run(
+        agent,
+        input="...",
+        max_turns=5,
+        run_config=...
+    )
+
+    return str(result.final_output)
+```
+
+#### Forcing tool use
+If you want to force tool use, you can set ModelSettings.tool_choice. Valid values are:
+
+- `auto`, which allows the LLM to decide whether or not to use a tool.
+- `required`, which requires the LLM to use a tool (but it can intelligently decide which tool).
+- `none`, which requires the LLM to not use a tool.
+- Setting a specific string e.g. `my_tool`, which requires the LLM to use that specific tool.
+
+### Using any model via LiteLLM
+
+#### Example
+This is a fully working example. When you run it, you will be prompted for a model name and API key. For example, you could enter:
+
+- `openai/gpt-4.1` for the model, and your OpenAI API key
+- `anthropic/claude-3-7-sonnet0` for the model, and your Anthropic API key
+
+```python
+from __future__ import annotations
+
+import asyncio
+
+from agents import Agent, Runner, function_tool, set_tracing_disabled
+from agents.extensions.models.litellm_model import LitellmModel
+
+"""This example uses the LitellmModel directly, to hit any model provider.
+You can run it like this:
+uv run examples/model_providers/litellm_provider.py --model anthropic/claude-3-7-sonnet
+or
+uv run examples/model_providers/litellm_provider.py --model gemini/gemini-2.5-pro-preview
+"""
+
+set_tracing_disabled(disabled=True)
+
+
+@function_tool
+def get_weather(city: str):
+    print(f"[debug] getting weather for {city}")
+    return f"The weather in {city} is sunny."
+
+
+async def main(model: str, api_key: str):
+    agent = Agent(
+        name="Assistant",
+        instructions="You only respond in haikus.",
+        model=LitellmModel(model=model, api_key=api_key),
+        tools=[get_weather],
+    )
+
+    result = await Runner.run(agent, "What's the weather in Tokyo?")
+    print(result.final_output)
+
+
+if __name__ == "__main__":
+    # First try to get model/api key from args
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", type=str, required=False)
+    parser.add_argument("--api-key", type=str, required=False)
+    args = parser.parse_args()
+
+    model = args.model
+    if not model:
+        model = input("Enter a model name for Litellm: ")
+
+    api_key = args.api_key
+    if not api_key:
+        api_key = input("Enter an API key for Litellm: ")
+
+    asyncio.run(main(model, api_key))
+```
+
+### Streaming
+To stream, you can call Runner.run_streamed(), which will give you a RunResultStreaming. Calling result.stream_events() gives you an async stream of StreamEvent objects, which are described below.
+
+#### Raw response events
+RawResponsesStreamEvent are raw events passed directly from the LLM. They are in OpenAI Responses API format, which means each event has a type (like response.created, response.output_text.delta, etc) and data. These events are useful if you want to stream response messages to the user as soon as they are generated.
+
+For example, this will output the text generated by the LLM token-by-token.
+
+```python
+import asyncio
+from openai.types.responses import ResponseTextDeltaEvent
+from agents import Agent, Runner
+
+async def main():
+    agent = Agent(
+        name="Joker",
+        instructions="You are a helpful assistant.",
+    )
+
+    result = Runner.run_streamed(agent, input="Please tell me 5 jokes.")
+    async for event in result.stream_events():
+        if event.type == "raw_response_event" and isinstance(event.data, ResponseTextDeltaEvent):
+            print(event.data.delta, end="", flush=True)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+#### Run item events and agent events
+RunItemStreamEvents are higher level events. They inform you when an item has been fully generated. This allows you to push progress updates at the level of "message generated", "tool ran", etc, instead of each token. Similarly, AgentUpdatedStreamEvent gives you updates when the current agent changes (e.g. as the result of a handoff).
+
+For example, this will ignore raw events and stream updates to the user.
+
+```python
+import asyncio
+import random
+from agents import Agent, ItemHelpers, Runner, function_tool
+
+@function_tool
+def how_many_jokes() -> int:
+    return random.randint(1, 10)
+
+
+async def main():
+    agent = Agent(
+        name="Joker",
+        instructions="First call the `how_many_jokes` tool, then tell that many jokes.",
+        tools=[how_many_jokes],
+    )
+
+    result = Runner.run_streamed(
+        agent,
+        input="Hello",
+    )
+    print("=== Run starting ===")
+
+    async for event in result.stream_events():
+        # We'll ignore the raw responses event deltas
+        if event.type == "raw_response_event":
+            continue
+        # When the agent updates, print that
+        elif event.type == "agent_updated_stream_event":
+            print(f"Agent updated: {event.new_agent.name}")
+            continue
+        # When items are generated, print them
+        elif event.type == "run_item_stream_event":
+            if event.item.type == "tool_call_item":
+                print("-- Tool was called")
+            elif event.item.type == "tool_call_output_item":
+                print(f"-- Tool output: {event.item.output}")
+            elif event.item.type == "message_output_item":
+                print(f"-- Message output:\n {ItemHelpers.text_message_output(event.item)}")
+            else:
+                pass  # Ignore other event types
+
+    print("=== Run complete ===")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### Generating a Graph
+You can generate an agent visualization using the draw_graph function. This function creates a directed graph where:
+
+- Agents are represented as yellow boxes.
+- Tools are represented as green ellipses.
+- Handoffs are directed edges from one agent to another.
+
+Example Usage
+
+```python
+from agents import Agent, function_tool
+from agents.extensions.visualization import draw_graph
+
+@function_tool
+def get_weather(city: str) -> str:
+    return f"The weather in {city} is sunny."
+
+spanish_agent = Agent(
+    name="Spanish agent",
+    instructions="You only speak Spanish.",
+)
+
+english_agent = Agent(
+    name="English agent",
+    instructions="You only speak English",
+)
+
+triage_agent = Agent(
+    name="Triage agent",
+    instructions="Handoff to the appropriate agent based on the language of the request.",
+    handoffs=[spanish_agent, english_agent],
+    tools=[get_weather],
+)
+
+draw_graph(triage_agent)
+```
+
+This generates a graph that visually represents the structure of the triage agent and its connections to sub-agents and tools.
+
+Understanding the Visualization
+The generated graph includes:
+
+A start node (__start__) indicating the entry point.
+Agents represented as rectangles with yellow fill.
+Tools represented as ellipses with green fill.
+Directed edges indicating interactions:
+Solid arrows for agent-to-agent handoffs.
+Dotted arrows for tool invocations.
+An end node (__end__) indicating where execution terminates.
+Customizing the Graph
+Showing the Graph
+By default, draw_graph displays the graph inline. To show the graph in a separate window, write the following:
+
+```python
+draw_graph(triage_agent).view()
+```
+
+#### Saving the Graph
+By default, draw_graph displays the graph inline. To save it as a file, specify a filename:
+
+```python
+draw_graph(triage_agent, filename="agent_graph")
+```
+
+This will generate agent_graph.png in the working directory.
+### Tracing
+
+Tracing
+The Agents SDK includes built-in tracing, collecting a comprehensive record of events during an agent run: LLM generations, tool calls, handoffs, guardrails, and even custom events that occur. Using the Traces dashboard, you can debug, visualize, and monitor your workflows during development and in production.
+
+**Tracing is enabled by default.** 
+
+There are two ways to disable tracing:
+
+- You can globally disable tracing by setting the env var 'OPENAI_AGENTS_DISABLE_TRACING=1'
+- You can disable tracing for a single run by setting agents.run.RunConfig.tracing_disabled to True
+
+**Traces and spans**
+Traces represent a single end-to-end operation of a "workflow". They're composed of Spans. Traces have the following properties:
+
+- workflow_name: This is the logical workflow or app. For example "Code generation" or "Customer service".
+- trace_id: A unique ID for the trace. Automatically generated if you don't pass one. Must have the format trace_<32_alphanumeric>.
+- group_id: Optional group ID, to link multiple traces from the same conversation. For example, you might use a chat thread ID.
+- disabled: If True, the trace will not be recorded.
+- metadata: Optional metadata for the trace.
+
+Spans represent operations that have a start and end time. Spans have:
+- started_at and ended_at timestamps.
+- trace_id, to represent the trace they belong to
+- parent_id, which points to the parent Span of this Span (if any)
+- span_data, which is information about the Span. For example, AgentSpanData contains information about the Agent, GenerationSpanData contains information about the LLM generation, etc.
+
+**Default tracing**
+By default, the SDK traces the following:
+
+- The entire Runner.{run, run_sync, run_streamed}() is wrapped in a trace().
+- Each time an agent runs, it is wrapped in agent_span()
+- LLM generations are wrapped in generation_span()
+- Function tool calls are each wrapped in function_span()
+- Guardrails are wrapped in guardrail_span()
+- Handoffs are wrapped in handoff_span()
+- Audio inputs (speech-to-text) are wrapped in a transcription_span()
+- Audio outputs (text-to-speech) are wrapped in a speech_span()
+- Related audio spans may be parented under a speech_group_span()
+
+By default, the trace is named "Agent trace". You can set this name if you use trace, or you can can configure the name and other properties with the RunConfig.
+
+In addition, you can set up custom trace processors to push traces to other destinations (as a replacement, or secondary destination).
+
+**Higher level traces**
+Sometimes, you might want multiple calls to run() to be part of a single trace. You can do this by wrapping the entire code in a trace().
+
+```python
+from agents import Agent, Runner, trace
+
+async def main():
+    agent = Agent(name="Joke generator", instructions="Tell funny jokes.")
+
+    with trace("Joke workflow"): 
+        first_result = await Runner.run(agent, "Tell me a joke")
+        second_result = await Runner.run(agent, f"Rate this joke: {first_result.final_output}")
+        print(f"Joke: {first_result.final_output}")
+        print(f"Rating: {second_result.final_output}")
+```
+
+**Creating traces**
+You can use the trace() function to create a trace. Traces need to be started and finished. You have two options to do so:
+
+- Recommended: use the trace as a context manager, i.e. with trace(...) as my_trace. This will automatically start and end the trace at the right time.
+- You can also manually call trace.start() and trace.finish().
+- The current trace is tracked via a Python contextvar. This means that it works with concurrency automatically. If you manually start/end a trace, you'll need to pass mark_as_current and reset_current to start()/finish() to update the current trace.
+
+**Creating spans**
+You can use the various *_span() methods to create a span. In general, you don't need to manually create spans. A custom_span() function is available for tracking custom span information.
+
+Spans are automatically part of the current trace, and are nested under the nearest current span, which is tracked via a Python contextvar.
+Model context protocol (MCP)
+The Model context protocol (aka MCP) is a way to provide tools and context to the LLM. From the MCP docs:
+
+MCP is an open protocol that standardizes how applications provide context to LLMs. Think of MCP like a USB-C port for AI applications. Just as USB-C provides a standardized way to connect your devices to various peripherals and accessories, MCP provides a standardized way to connect AI models to different data sources and tools.
+
+The Agents SDK has support for MCP. This enables you to use a wide range of MCP servers to provide tools to your Agents.
+
+MCP servers
+Currently, the MCP spec defines two kinds of servers, based on the transport mechanism they use:
+
+stdio servers run as a subprocess of your application. You can think of them as running "locally".
+HTTP over SSE servers run remotely. You connect to them via a URL.
+You can use the MCPServerStdio and MCPServerSse classes to connect to these servers.
+
+For example, this is how you'd use the official MCP filesystem server.
+
+
+async with MCPServerStdio(
+    params={
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem", samples_dir],
+    }
+) as server:
+    tools = await server.list_tools()
+Using MCP servers
+MCP servers can be added to Agents. The Agents SDK will call list_tools() on the MCP servers each time the Agent is run. This makes the LLM aware of the MCP server's tools. When the LLM calls a tool from an MCP server, the SDK calls call_tool() on that server.
+
+
+agent=Agent(
+    name="Assistant",
+    instructions="Use the tools to achieve the task",
+    mcp_servers=[mcp_server_1, mcp_server_2]
+)
+Caching
+Every time an Agent runs, it calls list_tools() on the MCP server. This can be a latency hit, especially if the server is a remote server. To automatically cache the list of tools, you can pass cache_tools_list=True to both MCPServerStdio and MCPServerSse. You should only do this if you're certain the tool list will not change.
+
+If you want to invalidate the cache, you can call invalidate_tools_cache() on the servers.
+</openai_agents_sdk_documentation>
+
+<frontend_overview>
+# Frontend Architecture
+
+### Core Application Logic (`app` directory)
+
+The `app` directory is the heart of a Next.js application using the App Router (which is the modern way to build Next.js apps).
+
+*   **`app/(agent)/`**: This is a **Route Group**. The `(agent)` part means it's for organization and won't affect the URL path. So, pages inside here will still be accessed directly (e.g., if there's a `page.tsx` inside `app/(agent)/dashboard/`, the URL would be `/dashboard`). This group seems designated for all features related to the "agent" functionality of your application – perhaps a chat interface or agent management tools.
+    *   **`app/(agent)/actions.ts`**: This file is likely intended for **Server Actions**. Server Actions are a Next.js feature that allows you to run server-side code directly from your client-side components, often for handling form submissions or data mutations. So, any actions like "send message to agent" or "update agent settings" might be defined here.
+    *   **`app/(agent)/api/`**: This directory could be used in a couple of ways:
+        1.  For **Route Handlers**: If you need to create specific API endpoints that your frontend (or even external services) can call, you'd define them here. These are like creating a mini-backend within your Next.js app.
+        2.  For **API client logic**: It might also house functions that are responsible for making calls *to* your backend API (the one running on port 8000). This helps keep your API call logic organized.
+    *   **`app/(agent)/layout.tsx`**: This file defines the UI layout specifically for the routes within the `(agent)` group. For example, if all agent-related pages need a specific sidebar or header, that would be defined here. It wraps around the `page.tsx` files in this group.
+    *   **`app/(agent)/page.tsx`**: This is the main page for the `/` route *within the `(agent)` group*. Given the project structure, this would likely correspond to the primary entry point for your agent-related interface. For instance, if your domain is `example.com`, this page might be what users see when they navigate to a path primarily focused on agent interactions (the exact path depends on how your overall routing is structured, but if `(agent)` is at the root, this would be the main page for that section).
+
+*   **`app/globals.css`**: This file contains global CSS styles that apply to your entire application. You've got Tailwind CSS directives here (`@tailwind base; @tailwind components; @tailwind utilities;`) and some CSS variables for `background` and `foreground` colors, including dark mode support. This is where you'd put styles that need to be universally available.
+
+*   **`app/layout.tsx`** (Root Layout): This is the main layout for your *entire application*. Every page will be wrapped by this layout. It's where you typically define the overall HTML structure, including `<html>` and `<body>` tags, and load global styles or fonts.
+
+### Reusable Components (`components` directory)
+
+*   **`components/ui/`**: This directory is conventionally used for storing reusable UI components. Since you're planning to use **Shadcn/ui**, when you add components using the `npx shadcn-ui@latest add <component-name>` command, the component files will be placed here. These are pre-built, stylable components (like buttons, dialogs, cards) that you can easily integrate and customize.
+
+### Custom Logic and Utilities
+
+*   **`hooks/`**: This directory is for **custom React Hooks**. Hooks are functions that let you "hook into" React state and lifecycle features from function components. If you find yourself writing the same stateful logic in multiple components (e.g., fetching data, managing form state), you can extract it into a custom hook here to keep your code DRY (Don't Repeat Yourself).
+
+*   **`lib/`**: This is a general-purpose directory for **library code** or utility functions that don't fit neatly into other categories. This could include things like date formatting functions, helper functions for API interactions, or any other shared logic that isn't a React component or hook.
+
+### Public Assets (`public/` directory)
+
+*   **`public/`**: Any static assets placed in this directory (like images, fonts, or `robots.txt`) are served directly from the root of your application. For example, an image `public/my-image.png` can be accessed at `yourdomain.com/my-image.png`. The `next.svg`, `vercel.svg`, etc. in the current `app/(agent)/page.tsx` are likely served from here.
+
+### Type Definitions (`types` directory)
+
+*   **`types/generated/`**: This is a very important directory for working with your backend API in a type-safe way.
+    *   **`types/generated/api.ts`**: This file contains TypeScript type definitions that are **auto-generated** from your backend's OpenAPI schema (which is located at `http://localhost:8000/openapi.json`). The `generate:types` script in your `package.json` handles this generation using `openapi-typescript`. This means you'll have types for all your API requests and responses, which significantly reduces the chance of runtime errors when interacting with the backend and provides great autocompletion in your editor.
+
+### Project Configuration Files
+
+*   **`package.json`**: This is the manifest file for your Node.js project.
+    *   It lists your project's **dependencies** (like `react`, `next`) and **devDependencies** (like `typescript`, `tailwindcss`, `eslint`).
+    *   It defines **scripts** you can run, such as:
+        *   `dev`: Starts the Next.js development server (with Turbopack for speed).
+        *   `build`: Builds your application for production.
+        *   `start`: Starts the production server.
+        *   `lint`: Runs ESLint to check your code for style and potential errors.
+        *   `generate:types`: Manually generates the API client types from your backend's OpenAPI schema.
+        *   `generate:types:watch`: Does the same but also watches for changes to the schema and regenerates types automatically.
+
+*   **`tailwind.config.ts`**: This file configures **Tailwind CSS**. Tailwind is a utility-first CSS framework that allows you to build custom designs rapidly by applying utility classes directly in your HTML (or JSX in this case). Here you can customize your theme (colors, fonts, spacing), add plugins, and specify which files Tailwind should scan for class names. The current configuration sets up `background` and `foreground` color variables.
+
+*   **`tsconfig.json`**: This file configures the TypeScript compiler (`tsc`). It specifies how TypeScript should check and compile your `.ts` and `.tsx` files, including compiler options like target JavaScript version, module system, and strictness settings.
+
+*   **`next.config.ts`**: This file is for configuring Next.js itself. You can enable experimental features, set up redirects or rewrites, define environment variables, and more.
+
+*   **`postcss.config.mjs`**: PostCSS is a tool for transforming CSS with JavaScript plugins. Tailwind CSS itself is a PostCSS plugin. This file configures which PostCSS plugins are used (typically, `tailwindcss` and `autoprefixer`).
+
+*   **`eslint.config.mjs`**: This file configures ESLint, a tool for identifying and reporting on patterns found in ECMAScript/JavaScript code, with the goal of making code more consistent and avoiding bugs.
+
+### How It All Connects (The Plan)
+
+Based on this structure:
+
+1.  **UI Development**: You'll build your user interface using React components, likely placed in `components/ui/` (especially Shadcn/ui components) and within the `app/(agent)/` directory for specific page structures.
+2.  **Styling**: Tailwind CSS will be your primary tool for styling, configured in `tailwind.config.ts` and with global styles/variables in `app/globals.css`.
+3.  **Client-Side Logic**: React hooks in the `hooks/` directory will manage component-level state and side effects.
+4.  **API Interaction**:
+    *   The types for your backend API are generated into `types/generated/api.ts`. You'll use these types when making API calls to ensure correctness.
+    *   Functions to actually make these API calls (e.g., using `fetch` or a library like `axios` or `ky`) might reside in `lib/` or potentially `app/(agent)/api/` if you structure it that way.
+5.  **Server-Side Logic (Next.js specific)**:
+    *   Server Actions in `app/(agent)/actions.ts` will handle form submissions and data mutations securely on the server.
+    *   Route Handlers in `app/(agent)/api/` (if you choose to use them) can create backend endpoints within your Next.js app.
+6.  **Routing**: Next.js uses a file-system based router within the `app` directory. Folders create URL segments, and `page.tsx` files define the UI for those segments. `layout.tsx` files define shared UI for segments.
+
+### What You Need to Know as a Newcomer Developer Taking Over:
+
+*   **Understand Next.js App Router**: Get familiar with how routing, layouts, pages, and Server Actions work in the Next.js App Router. The official Next.js documentation is excellent for this.
+*   **Embrace TypeScript**: Leverage the generated types in `types/generated/api.ts` when interacting with the backend. This will be a huge help.
+*   **Tailwind CSS**: If you're new to Tailwind, spend some time learning its utility-first approach. It's very powerful for rapid UI development.
+*   **Shadcn/ui**: Familiarize yourself with how to add and customize Shadcn/ui components. Their documentation is also very good.
+*   **Backend API**: You have a separate backend API (described in the initial context) running on `http://localhost:8000`. Your frontend will primarily interact with this API for data and agent functionality. The `openapi.json` from this backend is crucial for your `generate:types` script.
+*   **Scripts**: Pay attention to the scripts in `package.json`, especially `dev` for running the app and `generate:types` (or `generate:types:watch`) for keeping your API types synchronized.
+*   **Authentication**: The backend API uses JWT tokens for some endpoints. Your frontend will eventually need to handle logging in (e.g., via `POST /auth/token` using "demo"/"demo123" for now) and sending the token with requests to protected backend routes.
+
+---
+
+# Overview of anything-agents api
+
+### 1. Authentication: JWT Tokens
+
+*   **How it works**: The API uses JWT (JSON Web Tokens) for securing certain endpoints.
+*   **Getting a Token**:
+    *   To get an access token, the frontend needs to make a `POST` request to the `/auth/token` endpoint.
+    *   The request body should be JSON with `username` and `password`.
+    *   Currently, for demonstration purposes, the credentials are hardcoded in `app/routers/auth.py`:
+        *   Username: `"demo"`
+        *   Password: `"demo123"`
+    *   A successful request will return a JSON response containing an `access_token`, `token_type` ("bearer"), and `expires_in` (in seconds).
+        ```json
+        {
+          "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "token_type": "bearer",
+          "expires_in": 1800
+        }
+        ```
+*   **Using the Token**:
+    *   For any endpoint that requires authentication, the frontend must include the `access_token` in the `Authorization` header with the `Bearer` scheme.
+    *   Example: `Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
+
+### 2. API Endpoints and Protection
+
+*   **Public Endpoints (No Token Required)**:
+    *   **Agent Interactions**:
+        *   `POST /api/v1/agents/chat`
+        *   `POST /api/v1/agents/chat/stream`
+        *   `GET /api/v1/agents/conversations`
+        *   `GET /api/v1/agents/conversations/{conversation_id}`
+        *   `GET /api/v1/agents/agents`
+        *   `GET /api/v1/agents/agents/{agent_name}/status`
+        *   `GET /api/v1/agents/tools`
+        *   `POST /api/v1/agents/conversations/{conversation_id}/clear` (Note: this is a placeholder)
+    *   **General API (Demo Items)**:
+        *   `GET /api/v1/items`
+        *   `GET /api/v1/items/{item_id}`
+    *   **Health Checks**:
+        *   `GET /health`
+        *   `GET /health/ready`
+    *   **Root**:
+        *   `GET /`
+
+*   **Protected Endpoints (Token Required)**:
+    *   **Authentication Related**:
+        *   `POST /auth/refresh` (to refresh an existing token)
+        *   `GET /auth/me` (to get current authenticated user's info)
+    *   **General API (Demo Items)**:
+        *   `POST /api/v1/items` (to create a new item)
+
+    **Important Note for Frontend Team**: As of now, the core agent interaction endpoints (`/api/v1/agents/...`) are **public** and do not require a JWT token. If you intend to protect these in the future, you'll need to add `Depends(get_current_user)` to those route functions in `app/routers/agents.py`.
+
+### 3. API Keys (OpenAI, Tavily, etc.)
+
+*   The frontend team **does NOT need direct access to any of the API keys** listed in your `.env.local` file (like `OPENAI_API_KEY`, `TAVILY_API_KEY`, etc.).
+*   These keys are used exclusively by the backend server to communicate with those third-party services. The backend acts as an intermediary.
+*   The frontend only needs to worry about potentially authenticating with *your* API (using JWTs as described above), not the underlying AI services.
+
+### 4. CORS (Cross-Origin Resource Sharing)
+
+*   Your backend is configured to allow requests from specific origins. According to your `.env.local`:
+    `ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080,http://127.0.0.1:8000`
+*   The frontend team needs to ensure that their development server is running on one of these origins (e.g., `http://localhost:3000`). If they are using a different port or domain for development, you'll need to add it to the `ALLOWED_ORIGINS` in your `.env.local` (and likely `.env.example` for consistency) and restart the backend.
+*   Allowed HTTP methods (`GET,POST,PUT,DELETE,OPTIONS`) and headers (`*`) are quite permissive, which is usually fine for development.
+
+### 5. Automatically Generated Types (OpenAPI)
+
+*   FastAPI automatically generates an OpenAPI schema for your API.
+*   The frontend team can access this schema at `http://localhost:8000/openapi.json`.
+*   They can use this URL with tools like OpenAPI Generator, Swagger Codegen, or type-generation features in libraries like `oazapfts` (for TypeScript) to create typed client libraries or interfaces. This will help them interact with the API in a type-safe way and catch errors at compile-time.
+*   The interactive API documentation at `http://localhost:8000/docs` is also built from this schema and is a great place for them to explore and test the endpoints.
+
+### Summary:
+
+1.  **Authentication**: For now, only `/auth/refresh`, `/auth/me`, and `POST /api/v1/items` require a JWT. Obtain it from `POST /auth/token` using demo credentials (`demo`/`demo123`). Send the token as `Authorization: Bearer <token>`.
+2.  **Agent Endpoints**: All agent interaction endpoints under `/api/v1/agents/` are currently public.
+3.  **No External API Keys**: You don't need to handle any OpenAI, Tavily, or other third-party API keys.
+4.  **CORS**: Make sure your frontend app is served from an origin listed in `ALLOWED_ORIGINS` (e.g., `http://localhost:3000`).
+5.  **Type Generation**: Use `http://localhost:8000/openapi.json` to generate your client-side types. Explore endpoints at `http://localhost:8000/docs`.
+<frontend_overview>
+<project_structure>
+.
+├── .env.example
+├── .env.local
+├── agent-next-15-frontend
+│   ├── README.md
+│   ├── app
+│   │   ├── (agent)
+│   │   │   ├── actions.ts
+│   │   │   ├── api
+│   │   │   ├── layout.tsx
+│   │   │   ├── page.tsx
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   ├── components
+│   │   ├── agent
+│   │   │   ├── ChatInterface.tsx
+│   │   │   ├── ConversationSidebar.tsx
+│   │   ├── ui
+│   ├── eslint.config.mjs
+│   ├── hooks
+│   │   ├── useConversations.ts
+│   ├── lib
+│   │   ├── api-client.ts
+│   ├── next-env.d.ts
+│   ├── next.config.ts
+│   ├── package.json
+│   ├── postcss.config.mjs
+│   ├── tailwind.config.ts
+│   ├── tsconfig.json
+│   ├── types
+│   │   ├── generated
+│   │   │   ├── api.ts
+├── anything-agents
+│   ├── README.md
+│   ├── app
+│   │   ├── __init__.py
+│   │   ├── clients
+│   │   │   ├── __init__.py
+│   │   ├── core
+│   │   │   ├── __init__.py
+│   │   │   ├── config.py
+│   │   │   ├── security.py
+│   │   ├── middleware
+│   │   │   ├── __init__.py
+│   │   │   ├── logging.py
+│   │   ├── routers
+│   │   │   ├── __init__.py
+│   │   │   ├── agents.py
+│   │   │   ├── api.py
+│   │   │   ├── auth.py
+│   │   │   ├── health.py
+│   │   ├── schemas
+│   │   │   ├── __init__.py
+│   │   │   ├── agents.py
+│   │   │   ├── auth.py
+│   │   │   ├── common.py
+│   │   ├── services
+│   │   │   ├── __init__.py
+│   │   │   ├── agent_service.py
+│   │   ├── utils
+│   │   │   ├── __init__.py
+│   │   │   ├── tools
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── registry.py
+│   │   │   │   ├── web_search.py
+│   ├── main.py
+│   ├── tests
+│   │   ├── __init__.py
+│   │   ├── test_agents.py
+│   │   ├── test_health.py
+│   │   ├── test_streaming.py
+│   │   ├── test_tools.py
+├── requirements.txt
+├── run.py
+</project_structure>
