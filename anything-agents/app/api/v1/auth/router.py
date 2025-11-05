@@ -49,7 +49,9 @@ async def refresh_access_token(current_user: dict = Depends(require_current_user
 
 
 @router.get("/me", response_model=SuccessResponse)
-async def get_current_user_info(current_user: dict = Depends(require_current_user)) -> SuccessResponse:
+async def get_current_user_info(
+    current_user: dict = Depends(require_current_user),
+) -> SuccessResponse:
     """Return metadata about the current authenticated user."""
 
     return SuccessResponse(

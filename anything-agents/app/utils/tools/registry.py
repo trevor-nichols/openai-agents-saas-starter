@@ -3,8 +3,9 @@
 # Dependencies: typing, functools
 # Used by: Agent service for centralized tool management
 
-from typing import List, Dict, Any, Callable, Optional, Union
+from collections.abc import Callable
 from functools import lru_cache
+from typing import Any
 
 # =============================================================================
 # TOOL REGISTRY CLASS
@@ -19,15 +20,15 @@ class ToolRegistry:
     """
     
     def __init__(self):
-        self._tools: Dict[str, Any] = {}  # Changed to Any to handle FunctionTool objects
-        self._tool_categories: Dict[str, List[str]] = {}
-        self._tool_metadata: Dict[str, Dict[str, Any]] = {}
+        self._tools: dict[str, Any] = {}  # Changed to Any to handle FunctionTool objects
+        self._tool_categories: dict[str, list[str]] = {}
+        self._tool_metadata: dict[str, dict[str, Any]] = {}
     
     def register_tool(
         self,
-        tool_func: Union[Callable, Any],  # Accept both functions and FunctionTool objects
+        tool_func: Callable | Any,  # Accept both functions and FunctionTool objects
         category: str = "general",
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: dict[str, Any] | None = None
     ) -> None:
         """
         Register a tool function.
@@ -58,20 +59,20 @@ class ToolRegistry:
         # Store metadata
         self._tool_metadata[tool_name] = metadata or {}
     
-    def get_tool(self, tool_name: str) -> Optional[Any]:
+    def get_tool(self, tool_name: str) -> Any | None:
         """Get a specific tool by name."""
         return self._tools.get(tool_name)
     
-    def get_tools_by_category(self, category: str) -> List[Any]:
+    def get_tools_by_category(self, category: str) -> list[Any]:
         """Get all tools in a specific category."""
         tool_names = self._tool_categories.get(category, [])
         return [self._tools[name] for name in tool_names if name in self._tools]
     
-    def get_all_tools(self) -> List[Any]:
+    def get_all_tools(self) -> list[Any]:
         """Get all registered tools."""
         return list(self._tools.values())
     
-    def get_core_tools(self) -> List[Any]:
+    def get_core_tools(self) -> list[Any]:
         """
         Get core tools that should be available to all agents.
         
@@ -81,7 +82,7 @@ class ToolRegistry:
         # For now, return all tools. In the future, you could filter by metadata
         return self.get_all_tools()
     
-    def get_specialized_tools(self, agent_type: str) -> List[Any]:
+    def get_specialized_tools(self, agent_type: str) -> list[Any]:
         """
         Get specialized tools for a specific agent type.
         
@@ -95,15 +96,15 @@ class ToolRegistry:
         # For now, return empty list since we only have core tools
         return []
     
-    def list_tool_names(self) -> List[str]:
+    def list_tool_names(self) -> list[str]:
         """Get list of all registered tool names."""
         return list(self._tools.keys())
     
-    def list_categories(self) -> List[str]:
+    def list_categories(self) -> list[str]:
         """Get list of all tool categories."""
         return list(self._tool_categories.keys())
     
-    def get_tool_info(self, tool_name: str) -> Optional[Dict[str, Any]]:
+    def get_tool_info(self, tool_name: str) -> dict[str, Any] | None:
         """
         Get information about a specific tool.
         
@@ -137,7 +138,7 @@ class ToolRegistry:
             "category": self._get_tool_category(tool_name)
         }
     
-    def _get_tool_category(self, tool_name: str) -> Optional[str]:
+    def _get_tool_category(self, tool_name: str) -> str | None:
         """Get the category of a specific tool."""
         for category, tools in self._tool_categories.items():
             if tool_name in tools:
@@ -148,7 +149,7 @@ class ToolRegistry:
 # GLOBAL REGISTRY INSTANCE
 # =============================================================================
 
-@lru_cache()
+@lru_cache
 def get_tool_registry() -> ToolRegistry:
     """
     Get the global tool registry instance.

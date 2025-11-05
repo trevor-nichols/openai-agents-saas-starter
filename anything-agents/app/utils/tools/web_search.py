@@ -4,16 +4,18 @@
 # Used by: Agent service for web search functionality
 
 import asyncio
-from typing import Optional, List, Dict, Any
-from tavily import TavilyClient
+from typing import Any
+
 from agents import function_tool
+from tavily import TavilyClient
+
 from app.core.config import get_settings
 
 # =============================================================================
 # TAVILY CLIENT INITIALIZATION
 # =============================================================================
 
-def get_tavily_client() -> Optional[TavilyClient]:
+def get_tavily_client() -> TavilyClient | None:
     """
     Get Tavily client instance.
     
@@ -84,13 +86,13 @@ async def tavily_search_tool(
         return formatted_results
         
     except Exception as e:
-        return f"Web search failed: {str(e)}"
+        return f"Web search failed: {e!s}"
 
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
 
-def _format_search_results(response: Dict[str, Any], query: str) -> str:
+def _format_search_results(response: dict[str, Any], query: str) -> str:
     """
     Format Tavily search results into a readable string.
     

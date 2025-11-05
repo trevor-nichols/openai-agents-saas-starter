@@ -4,7 +4,6 @@
 # Used by: main.py and other modules requiring configuration
 
 from functools import lru_cache
-from typing import List, Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
@@ -37,16 +36,16 @@ class Settings(BaseSettings):
     # AI API KEYS
     # =============================================================================
     
-    openai_api_key: Optional[str] = Field(default=None, description="OpenAI API key")
-    anthropic_api_key: Optional[str] = Field(default=None, description="Anthropic API key")
-    gemini_api_key: Optional[str] = Field(default=None, description="Google Gemini API key")
-    xai_api_key: Optional[str] = Field(default=None, description="xAI API key")
+    openai_api_key: str | None = Field(default=None, description="OpenAI API key")
+    anthropic_api_key: str | None = Field(default=None, description="Anthropic API key")
+    gemini_api_key: str | None = Field(default=None, description="Google Gemini API key")
+    xai_api_key: str | None = Field(default=None, description="xAI API key")
     
     # =============================================================================
     # AI TOOLS API KEYS
     # =============================================================================
     
-    tavily_api_key: Optional[str] = Field(default=None, description="Tavily web search API key")
+    tavily_api_key: str | None = Field(default=None, description="Tavily web search API key")
     
     # =============================================================================
     # SECURITY SETTINGS
@@ -98,15 +97,15 @@ class Settings(BaseSettings):
     # HELPER METHODS
     # =============================================================================
     
-    def get_allowed_origins_list(self) -> List[str]:
+    def get_allowed_origins_list(self) -> list[str]:
         """Get allowed origins as a list."""
         return [origin.strip() for origin in self.allowed_origins.split(',') if origin.strip()]
     
-    def get_allowed_methods_list(self) -> List[str]:
+    def get_allowed_methods_list(self) -> list[str]:
         """Get allowed methods as a list."""
         return [method.strip() for method in self.allowed_methods.split(',') if method.strip()]
     
-    def get_allowed_headers_list(self) -> List[str]:
+    def get_allowed_headers_list(self) -> list[str]:
         """Get allowed headers as a list."""
         return [header.strip() for header in self.allowed_headers.split(',') if header.strip()]
     
@@ -124,7 +123,7 @@ class Settings(BaseSettings):
 # SETTINGS INSTANCE
 # =============================================================================
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     """
     Get application settings instance.

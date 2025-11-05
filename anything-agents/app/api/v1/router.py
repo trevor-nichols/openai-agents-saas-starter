@@ -8,7 +8,6 @@ from app.api.v1.chat.router import router as chat_router
 from app.api.v1.conversations.router import router as conversations_router
 from app.api.v1.tools.router import router as tools_router
 
-
 router = APIRouter()
 router.include_router(auth_router)
 router.include_router(chat_router)

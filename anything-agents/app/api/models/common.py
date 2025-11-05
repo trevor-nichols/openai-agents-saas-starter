@@ -1,6 +1,6 @@
 """Common API response and pagination models."""
 
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -13,7 +13,7 @@ class SuccessResponse(BaseModel):
         description="Operation success status flag.",
     )
     message: str = Field(description="Human-readable summary of the result.")
-    data: Optional[Any] = Field(
+    data: Any | None = Field(
         default=None,
         description="Optional payload containing the result.",
     )
@@ -28,7 +28,7 @@ class ErrorResponse(BaseModel):
     )
     error: str = Field(description="Short machine-readable error name.")
     message: str = Field(description="Human-readable error description.")
-    details: Optional[Any] = Field(
+    details: Any | None = Field(
         default=None,
         description="Additional error context for debugging.",
     )
@@ -40,7 +40,7 @@ class HealthResponse(BaseModel):
     status: str = Field(description="Service health status.")
     timestamp: str = Field(description="ISO-8601 timestamp of the probe.")
     version: str = Field(description="Semantic version of the service.")
-    uptime: Optional[float] = Field(
+    uptime: float | None = Field(
         default=None,
         description="Process uptime in seconds when available.",
     )

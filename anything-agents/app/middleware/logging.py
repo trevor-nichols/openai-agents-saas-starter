@@ -6,7 +6,8 @@
 import logging
 import time
 import uuid
-from typing import Callable
+from collections.abc import Callable
+
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -39,7 +40,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         except Exception as e:
             process_time = time.time() - start_time
             logger.error(
-                f"Error: {str(e)} [{correlation_id}] ({round(process_time, 4)}s)",
+                f"Error: {e!s} [{correlation_id}] ({round(process_time, 4)}s)",
                 exc_info=True
             )
             raise e 

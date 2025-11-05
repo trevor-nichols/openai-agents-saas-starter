@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Iterable, List, Protocol
+from typing import Protocol
 
 
 @dataclass(slots=True)
@@ -21,7 +22,7 @@ class ConversationRecord:
     """Aggregate containing an identifier and its message history."""
 
     conversation_id: str
-    messages: List[ConversationMessage]
+    messages: list[ConversationMessage]
 
     @property
     def created_at(self) -> datetime:
@@ -38,10 +39,10 @@ class ConversationRepository(Protocol):
     def add_message(self, conversation_id: str, message: ConversationMessage) -> None:
         ...
 
-    def get_messages(self, conversation_id: str) -> List[ConversationMessage]:
+    def get_messages(self, conversation_id: str) -> list[ConversationMessage]:
         ...
 
-    def list_conversation_ids(self) -> List[str]:
+    def list_conversation_ids(self) -> list[str]:
         ...
 
     def iter_conversations(self) -> Iterable[ConversationRecord]:

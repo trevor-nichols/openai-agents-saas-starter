@@ -3,10 +3,10 @@
 # Dependencies: pytest, app/utils/tools
 # Used by: Test suite for validating tool integration
 
-import pytest
 from unittest.mock import Mock, patch
+
 from app.utils.tools import get_tool_registry, initialize_tools
-from app.utils.tools.web_search import tavily_search_tool, get_tavily_client
+from app.utils.tools.web_search import get_tavily_client, tavily_search_tool
 
 # =============================================================================
 # TOOL REGISTRY TESTS
@@ -40,8 +40,11 @@ def test_tool_registry_get_core_tools():
     
     assert len(core_tools) > 0
     # Check that we have the tavily search tool
-    tool_names = [getattr(tool, 'name', getattr(tool, '__name__', str(tool))) for tool in core_tools]
-    assert 'tavily_search_tool' in tool_names
+    tool_names = [
+        getattr(tool, "name", getattr(tool, "__name__", str(tool)))
+        for tool in core_tools
+    ]
+    assert "tavily_search_tool" in tool_names
 
 # =============================================================================
 # WEB SEARCH TOOL TESTS
@@ -95,8 +98,11 @@ def test_tool_registry_integration():
     web_tools = registry.get_tools_by_category('web_search')
     assert len(web_tools) > 0
     # Check that we have the tavily search tool in web tools
-    tool_names = [getattr(tool, 'name', getattr(tool, '__name__', str(tool))) for tool in web_tools]
-    assert 'tavily_search_tool' in tool_names
+    tool_names = [
+        getattr(tool, "name", getattr(tool, "__name__", str(tool)))
+        for tool in web_tools
+    ]
+    assert "tavily_search_tool" in tool_names
     
     # Test tool info
     tool_info = registry.get_tool_info('tavily_search_tool')

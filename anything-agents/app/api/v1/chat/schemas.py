@@ -1,6 +1,6 @@
 """Schemas describing chat interactions with agents."""
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -9,15 +9,15 @@ class AgentChatRequest(BaseModel):
     """Request body for initiating or continuing a chat session."""
 
     message: str = Field(description="User input message for the agent.")
-    conversation_id: Optional[str] = Field(
+    conversation_id: str | None = Field(
         default=None,
         description="Existing conversation identifier to maintain context.",
     )
-    agent_type: Optional[str] = Field(
+    agent_type: str | None = Field(
         default="triage",
         description="Optional explicit agent to handle the message.",
     )
-    context: Optional[Dict[str, Any]] = Field(
+    context: dict[str, Any] | None = Field(
         default=None,
         description="Optional, structured context to pass through.",
     )
@@ -33,7 +33,7 @@ class AgentChatResponse(BaseModel):
         default=False,
         description="Indicates whether a handoff happened mid-conversation.",
     )
-    metadata: Optional[Dict[str, Any]] = Field(
+    metadata: dict[str, Any] | None = Field(
         default=None,
         description="Arbitrary metadata returned by the agent pipeline.",
     )
@@ -48,7 +48,7 @@ class StreamingChatResponse(BaseModel):
         default=False,
         description="Signals completion when True.",
     )
-    agent_used: Optional[str] = Field(
+    agent_used: str | None = Field(
         default=None,
         description="Agent instance that produced the chunk.",
     )

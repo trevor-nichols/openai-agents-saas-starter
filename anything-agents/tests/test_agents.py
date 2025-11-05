@@ -2,11 +2,12 @@
 
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
+
 from fastapi.testclient import TestClient
 
-from main import app
 from app.domain.conversations import ConversationMessage
 from app.services.agent_service import agent_service
+from main import app
 
 client = TestClient(app)
 

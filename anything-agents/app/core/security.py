@@ -4,11 +4,11 @@
 # Used by: auth routers and middleware for token validation
 
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
+from typing import Any
 
-from fastapi import HTTPException, status, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt, JWTError
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from app.core.config import get_settings
@@ -56,7 +56,7 @@ def get_password_hash(password: str) -> str:
 # JWT TOKEN UTILITIES
 # =============================================================================
 
-def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
     """
     Create a JWT access token.
     
@@ -79,7 +79,7 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
     encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=settings.jwt_algorithm)
     return encoded_jwt
 
-def verify_token(token: str) -> Dict[str, Any]:
+def verify_token(token: str) -> dict[str, Any]:
     """
     Verify and decode a JWT token.
     
@@ -97,18 +97,20 @@ def verify_token(token: str) -> Dict[str, Any]:
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
         return payload
-    except JWTError:
+    except JWTError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from exc
 
 # =============================================================================
 # DEPENDENCY FUNCTIONS
 # =============================================================================
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict[str, Any]:
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> dict[str, Any]:
     """
     Get current user from JWT token.
     
@@ -137,7 +139,9 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     
     return {"user_id": user_id, "payload": payload}
 
-async def get_current_active_user(current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
+async def get_current_active_user(
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
     """
     Get current active user.
     

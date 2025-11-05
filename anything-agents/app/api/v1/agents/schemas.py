@@ -1,6 +1,6 @@
 """Schemas for agent catalog endpoints."""
 
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -12,7 +12,7 @@ class AgentSummary(BaseModel):
     status: Literal["active", "inactive", "error"] = Field(
         description="Health status of the agent.",
     )
-    description: Optional[str] = Field(
+    description: str | None = Field(
         default=None,
         description="Short human-readable description.",
     )
@@ -25,7 +25,7 @@ class AgentStatus(BaseModel):
     status: Literal["active", "inactive", "error"] = Field(
         description="Operational status.",
     )
-    last_used: Optional[str] = Field(
+    last_used: str | None = Field(
         default=None,
         description="Last time the agent was invoked.",
     )

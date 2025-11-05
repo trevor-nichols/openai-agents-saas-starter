@@ -4,7 +4,6 @@ from fastapi import APIRouter
 
 from app.services.agent_service import agent_service
 
-
 router = APIRouter(prefix="/tools", tags=["tools"])
 
 

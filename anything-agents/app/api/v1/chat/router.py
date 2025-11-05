@@ -1,14 +1,13 @@
 """Chat-related API endpoints."""
 
 import json
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import StreamingResponse
 
 from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse, StreamingChatResponse
 from app.services.agent_service import agent_service
-
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -19,7 +18,7 @@ async def chat_with_agent(request: AgentChatRequest) -> AgentChatResponse:
 
     try:
         return await agent_service.chat(request)
-    except Exception as exc:  # noqa: BLE001 - map to HTTP
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error processing chat request: {exc}",
@@ -43,7 +42,7 @@ async def stream_chat_with_agent(request: AgentChatRequest) -> StreamingResponse
 
                 if payload.is_complete:
                     break
-        except Exception as exc:  # noqa: BLE001 - map to structured SSE error
+        except Exception as exc:
             error_payload = {
                 "error": str(exc),
                 "conversation_id": request.conversation_id or "unknown",

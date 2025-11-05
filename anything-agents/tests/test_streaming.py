@@ -71,7 +71,7 @@ async def test_streaming_chat():
                         
                         if is_complete:
                             print("\n" + "-" * 50)
-                            print(f"✅ Stream complete!")
+                            print("✅ Stream complete!")
                             print(f"🤖 Agent used: {agent_used}")
                             print(f"💬 Conversation ID: {conversation_id}")
                             print(f"📊 Total characters: {len(complete_response)}")

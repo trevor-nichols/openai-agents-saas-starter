@@ -5,7 +5,6 @@ from fastapi import APIRouter, HTTPException, Response, status
 from app.api.v1.conversations.schemas import ConversationHistory, ConversationSummary
 from app.services.agent_service import agent_service
 
-
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
 

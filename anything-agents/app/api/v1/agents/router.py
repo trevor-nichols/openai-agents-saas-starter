@@ -5,7 +5,6 @@ from fastapi import APIRouter, HTTPException, status
 from app.api.v1.agents.schemas import AgentStatus, AgentSummary
 from app.services.agent_service import agent_service
 
-
 router = APIRouter(prefix="/agents", tags=["agents"])
 
 

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import AsyncGenerator, Iterable
 from datetime import datetime
-from typing import Any, AsyncGenerator, Dict, Iterable, List, Optional
+from typing import Any
 
 from agents import Agent, function_tool, trace
 from openai.types.responses import ResponseTextDeltaEvent
@@ -18,8 +19,7 @@ from app.infrastructure.openai import runner as agent_runner
 from app.infrastructure.persistence.conversations.in_memory import InMemoryConversationRepository
 from app.utils.tools import ToolRegistry, initialize_tools
 
-
-_CONVERSATION_REPOSITORY: Optional[ConversationRepository] = None
+_CONVERSATION_REPOSITORY: ConversationRepository | None = None
 
 
 def _set_conversation_repository(repository: ConversationRepository) -> None:
@@ -43,7 +43,7 @@ async def search_conversations(query: str) -> str:
         return "Conversation storage is not initialised."
 
     query_lower = query.lower()
-    results: List[str] = []
+    results: list[str] = []
 
     for record in repository.iter_conversations():
         for message in record.messages:
@@ -66,7 +66,7 @@ class AgentRegistry:
     def __init__(self, tool_registry: ToolRegistry):
         self._settings = get_settings()
         self._tool_registry = tool_registry
-        self._agents: Dict[str, Agent] = {}
+        self._agents: dict[str, Agent] = {}
         self._register_builtin_tools()
         self._build_default_agents()
 
@@ -118,13 +118,13 @@ class AgentRegistry:
             tools=triage_tools,
         )
 
-    def get_agent(self, agent_name: str) -> Optional[Agent]:
+    def get_agent(self, agent_name: str) -> Agent | None:
         return self._agents.get(agent_name)
 
-    def list_agents(self) -> List[str]:
+    def list_agents(self) -> list[str]:
         return sorted(self._agents.keys())
 
-    def tool_overview(self) -> Dict[str, Any]:
+    def tool_overview(self) -> dict[str, Any]:
         return {
             "total_tools": len(self._tool_registry.list_tool_names()),
             "tool_names": self._tool_registry.list_tool_names(),
@@ -135,7 +135,7 @@ class AgentRegistry:
 class AgentService:
     """Core façade that orchestrates agent interactions."""
 
-    def __init__(self, conversation_repo: Optional[ConversationRepository] = None):
+    def __init__(self, conversation_repo: ConversationRepository | None = None):
         self._conversation_repo = conversation_repo or InMemoryConversationRepository()
         _set_conversation_repository(self._conversation_repo)
 
@@ -174,7 +174,9 @@ class AgentService:
             },
         )
 
-    async def chat_stream(self, request: AgentChatRequest) -> AsyncGenerator[StreamingChatResponse, None]:
+    async def chat_stream(
+        self, request: AgentChatRequest
+    ) -> AsyncGenerator[StreamingChatResponse, None]:
         conversation_id = request.conversation_id or str(uuid.uuid4())
         history = self._conversation_repo.get_messages(conversation_id)
 
@@ -191,7 +193,9 @@ class AgentService:
             stream = agent_runner.run_streamed(agent, agent_input)
 
             async for event in stream.stream_events():
-                if event.type == "raw_response_event" and isinstance(event.data, ResponseTextDeltaEvent):
+                if event.type == "raw_response_event" and isinstance(
+                    event.data, ResponseTextDeltaEvent
+                ):
                     chunk = event.data.delta
                     complete_response += chunk
                     yield StreamingChatResponse(
@@ -200,7 +204,9 @@ class AgentService:
                         is_complete=False,
                         agent_used=agent_name,
                     )
-                elif event.type == "run_item_stream_event" and event.item.type == "message_output_item":
+                elif event.type == "run_item_stream_event" and (
+                    event.item.type == "message_output_item"
+                ):
                     yield StreamingChatResponse(
                         chunk="",
                         conversation_id=conversation_id,
@@ -227,8 +233,8 @@ class AgentService:
             updated_at=messages[-1].timestamp.isoformat(),
         )
 
-    def list_conversations(self) -> List[ConversationSummary]:
-        summaries: List[ConversationSummary] = []
+    def list_conversations(self) -> list[ConversationSummary]:
+        summaries: list[ConversationSummary] = []
 
         for record in self._conversation_repo.iter_conversations():
             if not record.messages:
@@ -257,7 +263,7 @@ class AgentService:
 
         return self._conversation_repo
 
-    def list_available_agents(self) -> List[AgentSummary]:
+    def list_available_agents(self) -> list[AgentSummary]:
         return [
             AgentSummary(
                 name=name,
@@ -279,7 +285,7 @@ class AgentService:
             total_conversations=0,
         )
 
-    def get_tool_information(self) -> Dict[str, Any]:
+    def get_tool_information(self) -> dict[str, Any]:
         return self._agent_registry.tool_overview()
 
     def _resolve_agent(self, preferred_name: str) -> tuple[str, Agent]:
@@ -292,7 +298,9 @@ class AgentService:
             raise RuntimeError("No triage agent configured.")
         return "triage", fallback
 
-    def _prepare_agent_input(self, current_message: str, history: Iterable[ConversationMessage]) -> str:
+    def _prepare_agent_input(
+        self, current_message: str, history: Iterable[ConversationMessage]
+    ) -> str:
         history_list = list(history)[-5:]
         if not history_list:
             return current_message
