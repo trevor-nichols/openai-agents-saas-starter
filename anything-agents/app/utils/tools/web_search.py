@@ -9,6 +9,9 @@ from typing import Any
 from agents import function_tool
 from tavily import TavilyClient
 
+# Ruff/browsers: allow missing type info from third-party package until stubs are provided
+
+
 from app.core.config import get_settings
 
 # =============================================================================

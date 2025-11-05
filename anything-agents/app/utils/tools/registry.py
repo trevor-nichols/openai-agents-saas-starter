@@ -26,7 +26,7 @@ class ToolRegistry:
     
     def register_tool(
         self,
-        tool_func: Callable | Any,  # Accept both functions and FunctionTool objects
+        tool_func: Callable[..., Any] | Any,  # Accept both functions and FunctionTool objects
         category: str = "general",
         metadata: dict[str, Any] | None = None
     ) -> None:

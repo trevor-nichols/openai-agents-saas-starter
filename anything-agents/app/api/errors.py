@@ -1,10 +1,15 @@
 """Centralised exception handling for the API layer."""
 
+from collections.abc import Awaitable
+from typing import Callable, cast
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from app.api.models.common import ErrorResponse
+
+ExceptionHandler = Callable[[Request, Exception], Response | Awaitable[Response]]
 
 
 def _http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
@@ -32,5 +37,8 @@ def _validation_exception_handler(_: Request, exc: RequestValidationError) -> JS
 def register_exception_handlers(app: FastAPI) -> None:
     """Attach global exception handlers to the FastAPI application."""
 
-    app.add_exception_handler(HTTPException, _http_exception_handler)
-    app.add_exception_handler(RequestValidationError, _validation_exception_handler)
+    http_handler = cast(ExceptionHandler, _http_exception_handler)
+    validation_handler = cast(ExceptionHandler, _validation_exception_handler)
+
+    app.add_exception_handler(HTTPException, http_handler)
+    app.add_exception_handler(RequestValidationError, validation_handler)
