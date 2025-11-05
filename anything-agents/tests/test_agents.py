@@ -1,95 +1,111 @@
-# File: tests/test_agents.py
-# Purpose: Test cases for agent functionality
-# Dependencies: pytest, fastapi.testclient, app modules
-# Used by: pytest for testing agent interactions
+"""Test suite covering agent-facing endpoints and services."""
 
-import pytest
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
 from fastapi.testclient import TestClient
-from unittest.mock import patch, AsyncMock
+
 from main import app
-from app.schemas.agents import AgentChatRequest, AgentChatResponse
+from app.domain.conversations import ConversationMessage
+from app.services.agent_service import agent_service
 
 client = TestClient(app)
 
-# =============================================================================
-# AGENT ENDPOINT TESTS
-# =============================================================================
 
-def test_list_available_agents():
-    """Test listing available agents."""
-    response = client.get("/api/v1/agents/agents")
+def test_list_available_agents() -> None:
+    response = client.get("/api/v1/agents")
     assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert "agents" in data["data"]
-    assert len(data["data"]["agents"]) > 0
 
-def test_get_agent_status():
-    """Test getting agent status."""
-    response = client.get("/api/v1/agents/agents/triage/status")
+    payload = response.json()
+    assert isinstance(payload, list)
+    assert any(agent["name"] == "triage" for agent in payload)
+
+
+def test_get_agent_status() -> None:
+    response = client.get("/api/v1/agents/triage/status")
     assert response.status_code == 200
-    data = response.json()
-    assert data["name"] == "triage"
-    assert data["status"] == "active"
 
-def test_get_nonexistent_agent_status():
-    """Test getting status of non-existent agent."""
-    response = client.get("/api/v1/agents/agents/nonexistent/status")
+    payload = response.json()
+    assert payload["name"] == "triage"
+    assert payload["status"] == "active"
+
+
+def test_get_nonexistent_agent_status() -> None:
+    response = client.get("/api/v1/agents/nonexistent/status")
     assert response.status_code == 404
 
-@patch('app.services.agent_service.Runner.run')
-async def test_chat_with_agent(mock_runner):
-    """Test chatting with an agent."""
-    # Mock the agent response
-    mock_result = AsyncMock()
-    mock_result.final_output = "Hello! I'm here to help you."
-    mock_runner.return_value = mock_result
-    
-    chat_request = {
-        "message": "Hello, how are you?",
-        "agent_type": "triage"
-    }
-    
-    response = client.post("/api/v1/agents/chat", json=chat_request)
+
+@patch("app.infrastructure.openai.runner.run", new_callable=AsyncMock)
+def test_chat_with_agent(mock_run: AsyncMock) -> None:
+    mock_run.return_value = SimpleNamespace(final_output="Hello! I'm here to help you.")
+
+    chat_request = {"message": "Hello, how are you?", "agent_type": "triage"}
+
+    response = client.post("/api/v1/chat", json=chat_request)
     assert response.status_code == 200
-    data = response.json()
-    assert "response" in data
-    assert "conversation_id" in data
-    assert data["agent_used"] == "triage"
 
-def test_list_conversations():
-    """Test listing conversations."""
-    response = client.get("/api/v1/agents/conversations")
+    payload = response.json()
+    assert payload["response"] == "Hello! I'm here to help you."
+    assert payload["agent_used"] == "triage"
+    assert payload["conversation_id"]
+
+
+@patch("app.infrastructure.openai.runner.run", new_callable=AsyncMock)
+def test_chat_falls_back_to_triage(mock_run: AsyncMock) -> None:
+    mock_run.return_value = SimpleNamespace(final_output="Fallback engaged.")
+
+    chat_request = {"message": "Route me", "agent_type": "nonexistent"}
+
+    response = client.post("/api/v1/chat", json=chat_request)
     assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert "conversation_ids" in data["data"]
 
-# =============================================================================
-# INTEGRATION TESTS
-# =============================================================================
+    payload = response.json()
+    assert payload["response"] == "Fallback engaged."
+    assert payload["agent_used"] == "triage"
 
-def test_agent_service_initialization():
-    """Test that agent service initializes correctly."""
-    from app.services.agent_service import agent_service
-    
-    # Check that agents are available
+
+@patch("app.infrastructure.openai.runner.run", new_callable=AsyncMock)
+def test_conversation_lifecycle(mock_run: AsyncMock) -> None:
+    mock_run.return_value = SimpleNamespace(final_output="Sure, let's get started.")
+
+    chat_request = {"message": "Start a new plan", "agent_type": "triage"}
+    chat_response = client.post("/api/v1/chat", json=chat_request)
+    assert chat_response.status_code == 200
+    conversation_id = chat_response.json()["conversation_id"]
+
+    history_response = client.get(f"/api/v1/conversations/{conversation_id}")
+    assert history_response.status_code == 200
+    history = history_response.json()
+    assert history["conversation_id"] == conversation_id
+    assert len(history["messages"]) >= 2
+
+    list_response = client.get("/api/v1/conversations")
+    assert list_response.status_code == 200
+    conversations = list_response.json()
+    assert any(item["conversation_id"] == conversation_id for item in conversations)
+
+    delete_response = client.delete(f"/api/v1/conversations/{conversation_id}")
+    assert delete_response.status_code == 204
+
+
+def test_agent_service_initialization() -> None:
     agents = agent_service.list_available_agents()
-    assert "triage" in agents
-    assert "code_assistant" in agents
-    assert "data_analyst" in agents
+    names = {agent.name for agent in agents}
 
-def test_conversation_store():
-    """Test conversation storage functionality."""
-    from app.services.agent_service import conversation_store
-    from app.schemas.agents import ChatMessage
-    
-    # Test adding and retrieving messages
-    conv_id = "test_conversation"
-    message = ChatMessage(role="user", content="Test message")
-    
-    conversation_store.add_message(conv_id, message)
-    retrieved = conversation_store.get_conversation(conv_id)
-    
-    assert len(retrieved) == 1
-    assert retrieved[0].content == "Test message" 
+    assert {"triage", "code_assistant", "data_analyst"}.issubset(names)
+
+
+def test_conversation_repository_roundtrip() -> None:
+    repository = agent_service.conversation_repository
+    repository.clear_conversation("integration-test")
+
+    repository.add_message(
+        "integration-test",
+        ConversationMessage(role="user", content="Test message"),
+    )
+
+    messages = repository.get_messages("integration-test")
+    assert len(messages) == 1
+    assert messages[0].content == "Test message"
+
+    repository.clear_conversation("integration-test")
+    assert repository.get_messages("integration-test") == []

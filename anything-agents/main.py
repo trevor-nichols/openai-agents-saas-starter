@@ -1,6 +1,6 @@
 # File: main.py
 # Purpose: FastAPI application entry point for anything-agents
-# Dependencies: app/core/config.py, app/routers/*
+# Dependencies: app/core/config.py, app/api, app/presentation
 # Used by: uvicorn server to run the application
 
 from contextlib import asynccontextmanager
@@ -8,9 +8,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
+from app.api.errors import register_exception_handlers
+from app.api.router import api_router
 from app.core.config import get_settings
 from app.middleware.logging import LoggingMiddleware
-from app.routers import health, auth, api, agents
+from app.presentation import health as health_routes
 
 # =============================================================================
 # LIFESPAN EVENTS
@@ -73,22 +75,18 @@ def create_application() -> FastAPI:
     
     # Custom logging middleware
     app.add_middleware(LoggingMiddleware)
-    
+
     # =============================================================================
     # ROUTER REGISTRATION
     # =============================================================================
-    
-    # Health check endpoints
-    app.include_router(health.router, tags=["health"])
-    
-    # Authentication endpoints
-    app.include_router(auth.router, prefix="/auth", tags=["auth"])
-    
-    # API endpoints
-    app.include_router(api.router, prefix="/api/v1", tags=["api"])
-    
-    # Agent interaction endpoints
-    app.include_router(agents.router, prefix="/api/v1/agents", tags=["agents"])
+
+    register_exception_handlers(app)
+
+    # Health check endpoints (non-versioned)
+    app.include_router(health_routes.router, tags=["health"])
+
+    # Versioned API surface
+    app.include_router(api_router, prefix="/api", tags=["api"])
     
     return app
 
@@ -117,5 +115,7 @@ async def root():
         "description": settings.app_description,
         "docs": "/docs",
         "health": "/health",
+        "api": "/api/v1",
+        "chat": "/api/v1/chat",
         "agents": "/api/v1/agents"
-    } 
+    }
