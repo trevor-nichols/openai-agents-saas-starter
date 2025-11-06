@@ -81,3 +81,4 @@
 - _2025-11-06_: Vault Transit signing plan documented (`docs/security/vault-transit-signing.md`); refresh-token reuse strategy aligned with upcoming revocation store implementation.
 - _2025-11-06_: Key lifecycle module (`app/core/keys.py`), `auth keys rotate` CLI command, JWKS stub, and Vault KV secret-manager adapter published; tracker + blueprint updated to reflect new storage adapters and public key surface.
 - _2025-11-06_: Refresh-token repository (`app/domain/auth.py`, `app/infrastructure/persistence/auth/…`) + Alembic migration landed; AuthService now reuses cached tokens (Postgres + Redis) when `force=False` and persists revocations via the new store.
+- _2025-11-06_: `service_account_tokens.refresh_token_hash` now stores bcrypt(+pepper) digests; migration `20251106_230500` truncates legacy plaintext rows and `AUTH_REFRESH_TOKEN_PEPPER` setting shipped to satisfy threat-model requirement R10.

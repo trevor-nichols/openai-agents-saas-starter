@@ -9,6 +9,7 @@
 │   └── versions/              # Directory for individual database migration scripts
 │       ├── 20251106_120000_create_conversation_and_billing_tables.py # Initial migration to create core application tables
 │       ├── 20251106_220000_add_service_account_tokens.py # Migration to add a table for service account refresh tokens
+│       ├── 20251106_230500_hash_refresh_token_column.py # Renames refresh_token column to *_hash and truncates plaintext rows
 │       └── __init__.py          # Makes the `versions` directory a Python package
 ├── alembic.ini                # Configuration file for Alembic database migrations
 ├── app/                       # Main application source code directory
@@ -128,6 +129,7 @@
     │   ├── __init__.py        # Initializes the `integration` test package
     │   └── test_postgres_migrations.py # Integration tests for Alembic migrations and Postgres repositories
     └── unit/                  # Fast unit tests with no external dependencies
+        ├── test_auth_domain.py # Unit tests for refresh-token hashing helpers
         ├── test_auth_service.py # Unit tests for the authentication service logic
         ├── test_billing_service.py # Unit tests for the billing service logic
         ├── test_config.py     # Unit tests for application settings validation

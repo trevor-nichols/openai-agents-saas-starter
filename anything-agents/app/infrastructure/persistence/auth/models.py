@@ -37,7 +37,7 @@ class ServiceAccountToken(Base):
     )
     scope_key: Mapped[str] = mapped_column(String(256), nullable=False)
     scopes: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
-    refresh_token: Mapped[str] = mapped_column(Text, nullable=False)
+    refresh_token_hash: Mapped[str] = mapped_column(Text, nullable=False)
     refresh_jti: Mapped[str] = mapped_column(String(64), nullable=False)
     fingerprint: Mapped[str | None] = mapped_column(String(128))
     issued_at: Mapped[datetime] = mapped_column(

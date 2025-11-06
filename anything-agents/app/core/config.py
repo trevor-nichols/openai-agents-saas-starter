@@ -126,6 +126,11 @@ class Settings(BaseSettings):
         default=1440,
         description="Maximum minutes between active and next key creation timestamps.",
     )
+    auth_refresh_token_pepper: str = Field(
+        default="local-dev-refresh-pepper",
+        description="Server-side pepper prepended when hashing refresh tokens.",
+        alias="AUTH_REFRESH_TOKEN_PEPPER",
+    )
     
     # =============================================================================
     # LOGGING SETTINGS

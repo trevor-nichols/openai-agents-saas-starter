@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol, Sequence
 
+from passlib.context import CryptContext
+
 
 def make_scope_key(scopes: Sequence[str]) -> str:
     """Normalize scopes into a deterministic lookup key."""
@@ -44,3 +46,26 @@ class RefreshTokenRepository(Protocol):
 
     async def revoke(self, jti: str, *, reason: str | None = None) -> None:
         ...
+
+
+_REFRESH_TOKEN_CONTEXT = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def _pepperize(raw_token: str, pepper: str) -> str:
+    if not pepper:
+        raise ValueError("Refresh-token pepper must be configured.")
+    return f"{pepper}:{raw_token}"
+
+
+def hash_refresh_token(raw_token: str, *, pepper: str) -> str:
+    """Hash a refresh token using bcrypt with an additional server-side pepper."""
+
+    material = _pepperize(raw_token, pepper)
+    return _REFRESH_TOKEN_CONTEXT.hash(material)
+
+
+def verify_refresh_token(raw_token: str, hashed_token: str, *, pepper: str) -> bool:
+    """Verify a raw refresh token against the stored hash."""
+
+    material = _pepperize(raw_token, pepper)
+    return _REFRESH_TOKEN_CONTEXT.verify(material, hashed_token)

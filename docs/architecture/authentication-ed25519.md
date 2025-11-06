@@ -79,10 +79,11 @@
 - `auth_key_secret_name: str` — secret-manager entry name/path (e.g., `kv/data/auth/keyset`) for environments storing the keyset outside the filesystem. Used by the Vault KV adapter to read/write the serialized KeySet document.
 - `auth_jwks_cache_seconds: int` — cache-control max-age for the JWKS endpoint responses.
 - `auth_rotation_overlap_minutes: int` — guardrail ensuring `active` and `next` keys do not diverge beyond the approved overlap window.
+- `auth_refresh_token_pepper: str` — server-side secret concatenated with refresh tokens before hashing; must be unique per environment and rotated when compromise is suspected.
 - Additional knobs (`auth_issuer`, TTLs, dual signing flag) will land with the AUTH-003 service refactor.
 
 ### Persistence Schema (AUTH-002/AUTH-003)
-- `service_account_tokens` — captures issued refresh tokens for service-account tuples with columns `(account, tenant_id, scope_key, scopes JSON, refresh_token, refresh_jti, fingerprint, issued_at, expires_at, revoked_at, revoked_reason)`. Partial unique index enforces a single active token per `(account, tenant_id, scope_key)` tuple, while Redis (`auth:refresh:*`) mirrors the latest active row for low-latency reuse.
+- `service_account_tokens` — captures issued refresh tokens for service-account tuples with columns `(account, tenant_id, scope_key, scopes JSON, refresh_token_hash, refresh_jti, fingerprint, issued_at, expires_at, revoked_at, revoked_reason)`. `refresh_token_hash` stores the bcrypt(+pepper) digest; partial unique index enforces a single active token per `(account, tenant_id, scope_key)` tuple, while Redis (`auth:refresh:*`) mirrors the latest active row (plaintext, TTL-scoped) for low-latency reuse.
 
 ## 5. Token Flow Sequences
 

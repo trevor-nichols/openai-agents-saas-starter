@@ -105,6 +105,7 @@
 
 ### 5.4 Refresh & Revocation
 - R10. Persist refresh tokens hashed with salted one-way function; store metadata (`jti`, tenant, device hash, expiry) in Postgres and cache in Redis.  
+  - Implemented via `ServiceAccountToken.refresh_token_hash` (bcrypt + per-token salt + `AUTH_REFRESH_TOKEN_PEPPER`); plaintext rows truncated during migration `20251106_230500`.  
 - R11. Rotate refresh tokens on every use; previous `jti` marked revoked atomically.  
 - R12. Implement reconciliation job comparing Redis cache with Postgres authoritative store; alert on drift or stale entries beyond TTL.  
 - R13. Provide administrative API/CLI to revoke tokens by `jti`, `sub`, or tenant and propagate to cache immediately.
