@@ -10,6 +10,7 @@
 │       ├── 20251106_120000_create_conversation_and_billing_tables.py # Initial migration to create core application tables
 │       ├── 20251106_220000_add_service_account_tokens.py # Migration to add a table for service account refresh tokens
 │       ├── 20251106_230500_hash_refresh_token_column.py # Renames refresh_token column to *_hash and truncates plaintext rows
+│       ├── 20251106_235500_add_signing_kid_column.py # Adds signing_kid column so repositories can track which key signed each refresh token
 │       └── __init__.py          # Makes the `versions` directory a Python package
 ├── alembic.ini                # Configuration file for Alembic database migrations
 ├── app/                       # Main application source code directory

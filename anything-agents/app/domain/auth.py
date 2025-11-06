@@ -27,6 +27,7 @@ class RefreshTokenRecord:
     expires_at: datetime
     issued_at: datetime
     fingerprint: str | None = None
+    signing_kid: str | None = None
 
     @property
     def scope_key(self) -> str:

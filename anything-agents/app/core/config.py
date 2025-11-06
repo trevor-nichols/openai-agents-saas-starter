@@ -126,6 +126,16 @@ class Settings(BaseSettings):
         default=1440,
         description="Maximum minutes between active and next key creation timestamps.",
     )
+    auth_dual_signing_enabled: bool = Field(
+        default=False,
+        description="When true, sign tokens with both the active and next Ed25519 keys.",
+        alias="AUTH_DUAL_SIGNING_ENABLED",
+    )
+    auth_dual_signing_overlap_minutes: int = Field(
+        default=60,
+        description="Maximum overlap window allowed when dual-signing is enabled.",
+        alias="AUTH_DUAL_SIGNING_OVERLAP_MINUTES",
+    )
     auth_refresh_token_pepper: str = Field(
         default="local-dev-refresh-pepper",
         description="Server-side pepper prepended when hashing refresh tokens.",
@@ -230,9 +240,10 @@ class Settings(BaseSettings):
     # =============================================================================
     
     model_config = {
+        "env_file": (".env.local", ".env"),
         "env_file_encoding": "utf-8",
         "case_sensitive": False,
-        "extra": "ignore"
+        "extra": "ignore",
     }
 
     @field_validator("auth_audience", mode="before")

@@ -62,6 +62,7 @@ class RedisRefreshTokenCache:
             expires_at=expires_at,
             issued_at=datetime.fromisoformat(data["issued_at"]),
             fingerprint=data.get("fingerprint"),
+            signing_kid=data.get("signing_kid"),
         )
 
     async def set(self, record: RefreshTokenRecord) -> None:
@@ -79,6 +80,7 @@ class RedisRefreshTokenCache:
                 "expires_at": record.expires_at.isoformat(),
                 "issued_at": record.issued_at.isoformat(),
                 "fingerprint": record.fingerprint,
+                "signing_kid": record.signing_kid,
             }
         )
         await self._client.set(key, payload, ex=ttl)

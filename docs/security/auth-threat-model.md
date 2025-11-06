@@ -96,7 +96,7 @@
 ### 5.2 Token Issuance
 - R4. Centralize issuance within `AuthService`; prohibit direct calls to signer outside service layer.  
 - R5. Include mandatory claims per architecture blueprint (`iss`, `aud`, `sub`, `tenant_id`, `scope`, `token_use`, `jti`, `iat`, `nbf`, `exp`); reject issuance missing required attributes.  
-- R6. Sign access and refresh tokens with Ed25519 using the active `kid`; enable dual-signing only when `auth_dual_signing_enabled` flag is true and rotation overlap window is valid.
+- R6. Sign access and refresh tokens with Ed25519 using the active `kid`; enable dual-signing only when `auth_dual_signing_enabled` flag is true and the `auth_dual_signing_overlap_minutes` guardrail is satisfied. `TokenSigner`/`TokenVerifier` (in `app/core/security.py`) enforce `alg=EdDSA`, header `kid` presence, and reject unknown material.
 
 ### 5.3 Verification & Consumption
 - R7. Verification pipeline (`TokenVerifier`) must enforce `alg=EdDSA` and validate `kid` against cached JWKS; tokens with unknown or retired `kid` fail closed.  
@@ -105,7 +105,7 @@
 
 ### 5.4 Refresh & Revocation
 - R10. Persist refresh tokens hashed with salted one-way function; store metadata (`jti`, tenant, device hash, expiry) in Postgres and cache in Redis.  
-  - Implemented via `ServiceAccountToken.refresh_token_hash` (bcrypt + per-token salt + `AUTH_REFRESH_TOKEN_PEPPER`); plaintext rows truncated during migration `20251106_230500`.  
+  - Implemented via `ServiceAccountToken.refresh_token_hash` (bcrypt + per-token salt + `AUTH_REFRESH_TOKEN_PEPPER`) and `signing_kid` (migration `20251106_235500`) so deterministic rehydration can re-sign with the original Ed25519 key; plaintext rows truncated during migration `20251106_230500`.  
 - R11. Rotate refresh tokens on every use; previous `jti` marked revoked atomically.  
 - R12. Implement reconciliation job comparing Redis cache with Postgres authoritative store; alert on drift or stale entries beyond TTL.  
 - R13. Provide administrative API/CLI to revoke tokens by `jti`, `sub`, or tenant and propagate to cache immediately.

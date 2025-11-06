@@ -39,6 +39,7 @@ class ServiceAccountToken(Base):
     scopes: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
     refresh_token_hash: Mapped[str] = mapped_column(Text, nullable=False)
     refresh_jti: Mapped[str] = mapped_column(String(64), nullable=False)
+    signing_kid: Mapped[str] = mapped_column(String(64), nullable=False, default="legacy-hs256")
     fingerprint: Mapped[str | None] = mapped_column(String(128))
     issued_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=UTC_NOW

@@ -5,13 +5,14 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Sequence
+from typing import Any, Sequence
 
-from jose import jwt
+import jwt
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.config import Settings, get_settings
+from app.core.keys import KeyMaterial, load_keyset
 from app.domain.auth import (
     RefreshTokenRecord,
     RefreshTokenRepository,
@@ -96,6 +97,7 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
                 scopes=record.scopes,
                 refresh_token_hash=hashed_token,
                 refresh_jti=record.jti,
+                signing_kid=record.signing_kid or "unknown",
                 fingerprint=record.fingerprint,
                 issued_at=record.issued_at,
                 expires_at=record.expires_at,
@@ -158,6 +160,7 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
             expires_at=row.expires_at,
             issued_at=row.issued_at,
             fingerprint=row.fingerprint,
+            signing_kid=row.signing_kid,
         )
 
     def _rehydrate_token(self, row: ServiceAccountToken) -> str | None:
@@ -174,7 +177,16 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
             payload["tenant_id"] = str(row.tenant_id)
         if row.fingerprint:
             payload["fingerprint"] = row.fingerprint
-        token = jwt.encode(payload, self._settings.secret_key, algorithm=self._settings.jwt_algorithm)
+        try:
+            token = self._encode_with_signing_kid(payload, row.signing_kid)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "Unable to reconstruct refresh token for account=%s kid=%s: %s",
+                row.account,
+                row.signing_kid,
+                exc,
+            )
+            return None
         if verify_refresh_token(token, row.refresh_token_hash, pepper=self._pepper):
             return token
         logger.warning(
@@ -183,6 +195,28 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
             str(row.tenant_id) if row.tenant_id else "global",
             row.scope_key,
         )
+        return None
+
+    def _encode_with_signing_kid(self, payload: dict[str, Any], signing_kid: str) -> str:
+        if signing_kid == "legacy-hs256":
+            return jwt.encode(payload, self._settings.secret_key, algorithm=self._settings.jwt_algorithm)
+        material = self._find_key_material(signing_kid)
+        if not material or not material.private_key:
+            raise RuntimeError(f"Missing key material for kid '{signing_kid}'.")
+        headers = {"kid": material.kid, "alg": "EdDSA", "typ": "JWT"}
+        return jwt.encode(payload, material.private_key, algorithm="EdDSA", headers=headers)
+
+    def _find_key_material(self, kid: str) -> KeyMaterial | None:
+        keyset = load_keyset(self._settings)
+        candidates: list[KeyMaterial] = []
+        if keyset.active:
+            candidates.append(keyset.active)
+        if keyset.next:
+            candidates.append(keyset.next)
+        candidates.extend(keyset.retired or [])
+        for material in candidates:
+            if material.kid == kid:
+                return material
         return None
 
 

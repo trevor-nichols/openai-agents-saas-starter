@@ -6,13 +6,10 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from jose import jwt
-
-from datetime import datetime, timezone
 
 from app.domain.auth import RefreshTokenRecord, make_scope_key
 from app.core.service_accounts import load_service_account_registry
-from app.core.config import get_settings
+from app.core.security import get_token_verifier
 from app.services.auth_service import (
     AuthService,
     ServiceAccountRateLimitError,
@@ -74,17 +71,13 @@ async def test_issue_service_account_refresh_token_success() -> None:
     assert result["scopes"] == ["conversations:read"]
     assert result["token_use"] == "refresh"
 
-    settings = get_settings()
-    claims = jwt.decode(
-        result["refresh_token"],
-        settings.secret_key,
-        algorithms=[settings.jwt_algorithm],
-    )
+    claims = get_token_verifier().verify(result["refresh_token"])
 
     assert claims["tenant_id"] == tenant_id
     assert claims["scope"] == "conversations:read"
     assert claims["token_use"] == "refresh"
     assert claims["account"] == "analytics-batch"
+    assert result["kid"] == "ed25519-active-test"
 
 
 @pytest.mark.asyncio
@@ -164,6 +157,7 @@ async def test_existing_token_reused_when_available() -> None:
         issued_at=datetime.now(timezone.utc) - timedelta(minutes=1),
         expires_at=datetime.now(timezone.utc) + timedelta(minutes=10),
         fingerprint=None,
+        signing_kid="ed25519-active-test",
     )
     repo.prefetched = record
     service = _make_service(repo)
@@ -193,6 +187,7 @@ async def test_force_override_mints_new_token() -> None:
         issued_at=datetime.now(timezone.utc) - timedelta(minutes=1),
         expires_at=datetime.now(timezone.utc) + timedelta(minutes=10),
         fingerprint=None,
+        signing_kid="ed25519-active-test",
     )
     repo.prefetched = record
     service = _make_service(repo)
@@ -230,3 +225,4 @@ async def test_new_token_persisted_to_repository() -> None:
     assert saved_record.token == result["refresh_token"]
     assert saved_record.tenant_id == tenant_id
     assert saved_record.scopes == ["conversations:read"]
+    assert saved_record.signing_kid == result["kid"]

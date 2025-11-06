@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from app.cli.auth_cli import build_parser, handle_issue_service_account
 from app.infrastructure.security.nonce_store import InMemoryNonceStore
 from app.core import config as config_module
+from app.core.security import get_token_verifier
 from main import app
 
 
@@ -121,3 +122,36 @@ def test_cli_roundtrip_enforces_nonce_reuse(monkeypatch: pytest.MonkeyPatch, cap
 
     config_module.get_settings.cache_clear()
     test_client.close()
+
+
+def test_service_account_issue_returns_eddsa_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("VAULT_VERIFY_ENABLED", "false")
+    config_module.get_settings.cache_clear()
+    client = TestClient(app)
+
+    payload = {
+        "account": "analytics-batch",
+        "scopes": ["conversations:read"],
+        "tenant_id": "11111111-2222-3333-4444-555555555555",
+        "lifetime_minutes": 30,
+        "fingerprint": "contract-test",
+        "force": True,
+    }
+    response = client.post(
+        "/api/v1/auth/service-accounts/issue",
+        json=payload,
+        headers={"Authorization": "Bearer dev-local"},
+    )
+
+    assert response.status_code == 201, response.text
+    body = response.json()
+    verifier = get_token_verifier()
+    claims = verifier.verify(body["refresh_token"])
+
+    assert body["kid"] == "ed25519-active-test"
+    assert claims["token_use"] == "refresh"
+    assert claims["account"] == "analytics-batch"
+    assert claims["tenant_id"] == payload["tenant_id"]
+
+    client.close()
+    config_module.get_settings.cache_clear()

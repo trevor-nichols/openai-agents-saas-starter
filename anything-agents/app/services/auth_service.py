@@ -8,9 +8,10 @@ from datetime import datetime, timedelta, timezone
 from typing import Sequence
 from uuid import uuid4
 
-from jose import jwt
+import jwt
 
 from app.core.config import get_settings
+from app.core.security import get_token_signer, TokenSignerError
 from app.domain.auth import RefreshTokenRecord, RefreshTokenRepository
 from app.core.service_accounts import (
     ServiceAccountDefinition,
@@ -93,6 +94,7 @@ class AuthService:
 
         issued_at = now
         expires_at = issued_at + timedelta(minutes=ttl_minutes)
+        settings = get_settings()
 
         payload = {
             "sub": f"service-account:{account}",
@@ -101,7 +103,9 @@ class AuthService:
             "jti": str(uuid4()),
             "scope": " ".join(sanitized_scopes),
             "iat": int(issued_at.timestamp()),
+            "nbf": int(issued_at.timestamp()),
             "exp": int(expires_at.timestamp()),
+            "iss": settings.app_name,
         }
 
         if tenant_id and definition.requires_tenant:
@@ -110,8 +114,13 @@ class AuthService:
         if fingerprint:
             payload["fingerprint"] = fingerprint
 
-        settings = get_settings()
-        token = jwt.encode(payload, settings.secret_key, algorithm=settings.jwt_algorithm)
+        signer = get_token_signer(settings)
+        try:
+            signed = signer.sign(payload)
+        except TokenSignerError as exc:
+            raise ServiceAccountError(f"Failed to sign refresh token: {exc}") from exc
+        token = signed.primary.token
+        signing_kid = signed.primary.kid
 
         response = {
             "refresh_token": token,
@@ -119,7 +128,7 @@ class AuthService:
             "issued_at": issued_at.isoformat(),
             "scopes": sanitized_scopes,
             "tenant_id": tenant_id if definition.requires_tenant else None,
-            "kid": "legacy-hs256",  # Placeholder until EdDSA key management lands.
+            "kid": signing_kid,
             "account": account,
             "token_use": "refresh",
         }
@@ -131,6 +140,7 @@ class AuthService:
             issued_at=issued_at,
             expires_at=expires_at,
             fingerprint=fingerprint,
+            signing_kid=signing_kid,
         )
         return response
 
@@ -234,6 +244,7 @@ class AuthService:
         issued_at: datetime,
         expires_at: datetime,
         fingerprint: str | None,
+        signing_kid: str,
     ) -> None:
         if not self._refresh_repo:
             return
@@ -246,6 +257,7 @@ class AuthService:
             expires_at=expires_at,
             issued_at=issued_at,
             fingerprint=fingerprint,
+            signing_kid=signing_kid,
         )
         await self._refresh_repo.save(record)
 
@@ -259,24 +271,33 @@ class AuthService:
     def _record_to_response(
         self, record: RefreshTokenRecord
     ) -> dict[str, str | int | None]:
+        kid = record.signing_kid or self._extract_kid(record.token)
         return {
             "refresh_token": record.token,
             "expires_at": record.expires_at.isoformat(),
             "issued_at": record.issued_at.isoformat(),
             "scopes": record.scopes,
             "tenant_id": record.tenant_id,
-            "kid": "legacy-hs256",
+            "kid": kid,
             "account": record.account,
             "token_use": "refresh",
         }
 
     def _extract_jti(self, token: str) -> str:
         try:
-            payload = jwt.get_unverified_claims(token)
+            payload = jwt.decode(token, options={"verify_signature": False, "verify_exp": False})
         except Exception:  # noqa: BLE001
             return str(uuid4())
         value = payload.get("jti")
         return str(value) if value else str(uuid4())
+
+    def _extract_kid(self, token: str) -> str:
+        try:
+            header = jwt.get_unverified_header(token)
+        except Exception:  # noqa: BLE001
+            return "unknown"
+        kid = header.get("kid")
+        return str(kid) if kid else "unknown"
 
 
 auth_service = AuthService()
