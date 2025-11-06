@@ -17,7 +17,7 @@ if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
 from app.core.config import get_settings  # noqa: E402
-from app.infrastructure.persistence.conversations.models import Base  # noqa: E402
+from app.infrastructure.persistence.models.base import Base  # noqa: E402
 
 config = context.config
 

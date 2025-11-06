@@ -13,37 +13,14 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
-    MetaData,
     String,
     Text,
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
-from sqlalchemy.ext.asyncio import AsyncAttrs
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-NAMING_CONVENTION = {
-    "ix": "ix_%(column_0_label)s",
-    "uq": "uq_%(table_name)s_%(column_0_name)s",
-    "ck": "ck_%(table_name)s_%(constraint_name)s",
-    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
-    "pk": "pk_%(table_name)s",
-}
-
-
-class Base(AsyncAttrs, DeclarativeBase):
-    """Declarative base with async support and naming conventions."""
-
-    metadata = MetaData(naming_convention=NAMING_CONVENTION)
-
-
-UTC_NOW = datetime.utcnow
-
-
-def uuid_pk() -> uuid.UUID:
-    """Factory for UUID primary keys."""
-
-    return uuid.uuid4()
+from app.infrastructure.persistence.models.base import Base, UTC_NOW, uuid_pk
 
 
 class TenantAccount(Base):

@@ -11,12 +11,16 @@ from uuid import uuid4
 from jose import jwt
 
 from app.core.config import get_settings
+from app.domain.auth import RefreshTokenRecord, RefreshTokenRepository
 from app.core.service_accounts import (
     ServiceAccountDefinition,
     ServiceAccountRegistry,
     ServiceAccountCatalogError,
     ServiceAccountNotFoundError,
     get_default_service_account_registry,
+)
+from app.infrastructure.persistence.auth.repository import (
+    get_refresh_token_repository,
 )
 
 
@@ -39,7 +43,11 @@ class ServiceAccountCatalogUnavailable(ServiceAccountError):
 class AuthService:
     """Core authentication helper providing service-account token issuance."""
 
-    def __init__(self, registry: ServiceAccountRegistry | None = None) -> None:
+    def __init__(
+        self,
+        registry: ServiceAccountRegistry | None = None,
+        refresh_repository: RefreshTokenRepository | None = None,
+    ) -> None:
         if registry is None:
             try:
                 registry = get_default_service_account_registry()
@@ -49,6 +57,7 @@ class AuthService:
         self._lock = asyncio.Lock()
         self._per_account_window: dict[str, deque[datetime]] = {}
         self._global_window: deque[datetime] = deque()
+        self._refresh_repo = refresh_repository or get_refresh_token_repository()
 
     async def issue_service_account_refresh_token(
         self,
@@ -104,7 +113,7 @@ class AuthService:
         settings = get_settings()
         token = jwt.encode(payload, settings.secret_key, algorithm=settings.jwt_algorithm)
 
-        return {
+        response = {
             "refresh_token": token,
             "expires_at": expires_at.isoformat(),
             "issued_at": issued_at.isoformat(),
@@ -114,6 +123,16 @@ class AuthService:
             "account": account,
             "token_use": "refresh",
         }
+        await self._persist_refresh_token(
+            token=token,
+            account=account,
+            tenant_id=tenant_id if definition.requires_tenant else None,
+            scopes=sanitized_scopes,
+            issued_at=issued_at,
+            expires_at=expires_at,
+            fingerprint=fingerprint,
+        )
+        return response
 
     def _validate_tenant(
         self, definition: ServiceAccountDefinition, tenant_id: str | None
@@ -175,16 +194,12 @@ class AuthService:
         tenant_id: str | None,
         scopes: list[str],
     ) -> dict[str, str | int | None] | None:
-        """
-        Placeholder for refresh-token reuse.
-
-        Once the unified refresh-token store is implemented (AUTH-003),
-        this method will query the store for an active token matching
-        the account/tenant/scope tuple and return it when available.
-        """
-
-        # TODO: integrate with refresh-token repository once available.
-        return None
+        if not self._refresh_repo:
+            return None
+        record = await self._refresh_repo.find_active(account, tenant_id, scopes)
+        if not record:
+            return None
+        return self._record_to_response(record)
 
     def _enforce_rate_limits(self, account: str, now: datetime) -> None:
         cutoff = now - timedelta(minutes=1)
@@ -208,6 +223,60 @@ class AuthService:
 
         queue.append(now)
         self._global_window.append(now)
+
+    async def _persist_refresh_token(
+        self,
+        *,
+        token: str,
+        account: str,
+        tenant_id: str | None,
+        scopes: list[str],
+        issued_at: datetime,
+        expires_at: datetime,
+        fingerprint: str | None,
+    ) -> None:
+        if not self._refresh_repo:
+            return
+        record = RefreshTokenRecord(
+            token=token,
+            jti=self._extract_jti(token),
+            account=account,
+            tenant_id=tenant_id,
+            scopes=scopes,
+            expires_at=expires_at,
+            issued_at=issued_at,
+            fingerprint=fingerprint,
+        )
+        await self._refresh_repo.save(record)
+
+    async def revoke_service_account_token(
+        self, jti: str, *, reason: str | None = None
+    ) -> None:
+        if not self._refresh_repo:
+            return
+        await self._refresh_repo.revoke(jti, reason=reason)
+
+    def _record_to_response(
+        self, record: RefreshTokenRecord
+    ) -> dict[str, str | int | None]:
+        return {
+            "refresh_token": record.token,
+            "expires_at": record.expires_at.isoformat(),
+            "issued_at": record.issued_at.isoformat(),
+            "scopes": record.scopes,
+            "tenant_id": record.tenant_id,
+            "kid": "legacy-hs256",
+            "account": record.account,
+            "token_use": "refresh",
+        }
+
+    def _extract_jti(self, token: str) -> str:
+        try:
+            payload = jwt.get_unverified_claims(token)
+        except Exception:  # noqa: BLE001
+            return str(uuid4())
+        value = payload.get("jti")
+        return str(value) if value else str(uuid4())
 
 
 auth_service = AuthService()

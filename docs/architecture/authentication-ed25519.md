@@ -54,6 +54,7 @@
 
 - **AuthService (new)**: Lives under `app/services/auth_service.py`. Coordinates token issuance, refresh, revocation, and introspection. Depends on domain abstractions, not concrete crypto.
 - **Key Management Module (`app/core/keys.py`)**: Loads active and next Ed25519 keys, exposes rotation window semantics, materializes JWK payloads, and validates key age policies. Supports both filesystem persistence and the Vault KV-backed secret manager adapter (`app/infrastructure/security/vault_kv.py`) so production environments can store private material outside the container image.
+- **Refresh Token Store (`app/infrastructure/persistence/auth/`)**: Postgres + Redis repository for refresh-token reuse and revocation. `ServiceAccountToken` rows capture tenant/account/scope tuples, while `RedisRefreshTokenCache` accelerates lookups for `force=False` reuse from `AuthService`.
 - **Signer/Verifier Interfaces**: `app/core/security.py` refactored into light façade delegating to injected `TokenSigner`/`TokenVerifier` implementations. This keeps dependency injection trivial for tests while locking algorithms.
 - **Revocation Store**: Postgres-backed repository under `app/infrastructure/persistence/auth/postgres.py` to track refresh tokens and revoked `jti` values, leveraging existing async engine.
 - **JWKS Endpoint**: Router `app/presentation/well_known.py` exposes `/.well-known/jwks.json`, pulling from `KeySet.to_jwks()` and attaching cache headers so downstream verifiers can poll on a fixed cadence.
@@ -79,6 +80,9 @@
 - `auth_jwks_cache_seconds: int` — cache-control max-age for the JWKS endpoint responses.
 - `auth_rotation_overlap_minutes: int` — guardrail ensuring `active` and `next` keys do not diverge beyond the approved overlap window.
 - Additional knobs (`auth_issuer`, TTLs, dual signing flag) will land with the AUTH-003 service refactor.
+
+### Persistence Schema (AUTH-002/AUTH-003)
+- `service_account_tokens` — captures issued refresh tokens for service-account tuples with columns `(account, tenant_id, scope_key, scopes JSON, refresh_token, refresh_jti, fingerprint, issued_at, expires_at, revoked_at, revoked_reason)`. Partial unique index enforces a single active token per `(account, tenant_id, scope_key)` tuple, while Redis (`auth:refresh:*`) mirrors the latest active row for low-latency reuse.
 
 ## 5. Token Flow Sequences
 
