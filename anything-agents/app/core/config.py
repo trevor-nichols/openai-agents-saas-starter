@@ -121,6 +121,17 @@ class Settings(BaseSettings):
     auth_jwks_cache_seconds: int = Field(
         default=300,
         description="Cache max-age for /.well-known/jwks.json responses.",
+        alias="AUTH_JWKS_CACHE_SECONDS",
+    )
+    auth_jwks_max_age_seconds: int = Field(
+        default=300,
+        description="Preferred Cache-Control max-age for JWKS responses.",
+        alias="AUTH_JWKS_MAX_AGE_SECONDS",
+    )
+    auth_jwks_etag_salt: str = Field(
+        default="local-jwks-salt",
+        description="Salt mixed into JWKS ETag derivation to avoid predictable hashes.",
+        alias="AUTH_JWKS_ETAG_SALT",
     )
     auth_rotation_overlap_minutes: int = Field(
         default=1440,
@@ -222,6 +233,12 @@ class Settings(BaseSettings):
     # =============================================================================
     # HELPER METHODS
     # =============================================================================
+    
+    @property
+    def jwks_max_age_seconds(self) -> int:
+        """Return preferred JWKS max-age in seconds."""
+
+        return self.auth_jwks_max_age_seconds or self.auth_jwks_cache_seconds
     
     def get_allowed_origins_list(self) -> list[str]:
         """Get allowed origins as a list."""

@@ -57,8 +57,8 @@
 - **Refresh Token Store (`app/infrastructure/persistence/auth/`)**: Postgres + Redis repository for refresh-token reuse and revocation. `ServiceAccountToken` rows capture tenant/account/scope tuples, while `RedisRefreshTokenCache` accelerates lookups for `force=False` reuse from `AuthService`.
 - **Signer/Verifier Interfaces**: `app/core/security.py` now exposes `TokenSigner`/`TokenVerifier` abstractions backed by Ed25519 key material from `KeySet`, enforcing `alg=EdDSA` and wiring in optional dual signing based on `auth_dual_signing_enabled`.
 - **Revocation Store**: Postgres-backed repository under `app/infrastructure/persistence/auth/postgres.py` to track refresh tokens and revoked `jti` values, leveraging existing async engine.
-- **JWKS Endpoint**: Router `app/presentation/well_known.py` exposes `/.well-known/jwks.json`, pulling from `KeySet.to_jwks()` and attaching cache headers so downstream verifiers can poll on a fixed cadence.
-- **Rotation CLI (`auth keys rotate`)**: Lives alongside the service-account helper in `app/cli/auth_cli.py`; generates Ed25519 keypairs, persists them via the configured storage backend, and prints the public JWK for distribution workflows.
+- **JWKS Endpoint**: Router `app/presentation/well_known.py` exposes `/.well-known/jwks.json`, pulling from `KeySet.materialize_jwks()` and serving only the active + next keys. Responses include `Cache-Control`, strong `ETag`, and `Last-Modified` headers so downstream verifiers can rely on conditional GETs (`If-None-Match`) to avoid unnecessary downloads.
+- **Rotation & JWKS CLI (`auth keys rotate`, `auth jwks print`)**: Lives alongside the service-account helper in `app/cli/auth_cli.py`; `keys rotate` generates Ed25519 keypairs and persists them via the configured storage backend, while `jwks print` dumps the current JWKS payload (active + next keys only) for audits or runbooks without hitting the HTTP endpoint.
 
 ## 4. Data & Configuration
 
@@ -77,7 +77,9 @@
 - `auth_key_storage_backend: str` — `file` (default) or `secret-manager`.
 - `auth_key_storage_path: str` — filesystem location for keyset JSON when using the file backend.
 - `auth_key_secret_name: str` — secret-manager entry name/path (e.g., `kv/data/auth/keyset`) for environments storing the keyset outside the filesystem. Used by the Vault KV adapter to read/write the serialized KeySet document.
-- `auth_jwks_cache_seconds: int` — cache-control max-age for the JWKS endpoint responses.
+- `auth_jwks_cache_seconds: int` — legacy cache-control knob retained for backwards compatibility.
+- `auth_jwks_max_age_seconds: int` — preferred cache-control max-age for JWKS responses (defaults to 300 seconds; override via `AUTH_JWKS_MAX_AGE_SECONDS`).
+- `auth_jwks_etag_salt: str` — salt mixed into JWKS ETag derivation so hashes remain unpredictable; configure via `AUTH_JWKS_ETAG_SALT`.
 - `auth_rotation_overlap_minutes: int` — guardrail ensuring `active` and `next` keys do not diverge beyond the approved overlap window.
 - `auth_dual_signing_enabled: bool` — feature flag enabling dual signing with the active + next keys during staged rotations.
 - `auth_dual_signing_overlap_minutes: int` — maximum window dual signing is allowed before raising, keeping overlap bounded.
@@ -101,7 +103,7 @@
 3. **Rotation**
    - Ops pre-load next key material (same KeySet contract).
    - Dual-signing optional: TokenSigner signs with both old/new keys while verifiers trust both `kid`s.
-   - Once overlap window expires, retire old key; JWKS updates automatically.
+   - Once overlap window expires, retire old key; JWKS updates automatically. Consumers poll `/.well-known/jwks.json` no less frequently than the published `Cache-Control` max-age and issue conditional GETs (`If-None-Match`) so the service can return `304 Not Modified` when the keyset is unchanged.
 
 4. **Revocation**
    - On refresh misuse or manual kill, revoke `jti` via repository + optional cache (Redis).

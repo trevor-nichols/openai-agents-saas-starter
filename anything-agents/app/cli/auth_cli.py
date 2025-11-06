@@ -99,6 +99,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Promote the generated key to active immediately (previous active retires).",
     )
 
+    jwks_parser = subparsers.add_parser("jwks", help="JWKS utilities.")
+    jwks_subparsers = jwks_parser.add_subparsers(dest="jwks_command")
+    jwks_subparsers.add_parser("print", help="Print the current JWKS payload.")
+
     return parser
 
 
@@ -289,6 +293,20 @@ def handle_keys_rotate(args: argparse.Namespace) -> int:
     return 0
 
 
+def handle_jwks_print(_: argparse.Namespace) -> int:
+    try:
+        settings = get_settings()
+        configure_vault_secret_manager(settings)
+        keyset = load_keyset(settings)
+    except KeyStorageError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
+    document = keyset.materialize_jwks()
+    print(json.dumps(document.payload, indent=2))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -297,6 +315,8 @@ def main(argv: list[str] | None = None) -> int:
         return handle_issue_service_account(args)
     if args.command == "keys" and args.keys_command == "rotate":
         return handle_keys_rotate(args)
+    if args.command == "jwks" and args.jwks_command == "print":
+        return handle_jwks_print(args)
 
     parser.print_help()
     return 0

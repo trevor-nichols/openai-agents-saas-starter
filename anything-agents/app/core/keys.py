@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
+from copy import deepcopy
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from enum import Enum
@@ -81,6 +83,15 @@ class KeyMaterial:
         return replace(self, status=status)
 
 
+@dataclass(frozen=True)
+class JWKSDocument:
+    """Materialized JWKS payload and metadata."""
+
+    payload: dict[str, Any]
+    fingerprint: str
+    last_modified: datetime
+
+
 class KeySet:
     """Container tracking active/next/retired keys with rotation rules."""
 
@@ -94,6 +105,7 @@ class KeySet:
         self.active = active
         self.next = next_key
         self.retired = retired or []
+        self._cached_jwks: JWKSDocument | None = None
         self._validate_uniqueness()
 
     @classmethod
@@ -147,12 +159,28 @@ class KeySet:
                 f"Active/next key overlap window exceeded ({delta:.1f} min > {max_minutes} min)."
             )
 
+    def materialize_jwks(self) -> JWKSDocument:
+        """Return cached JWKS payload until the fingerprint changes."""
+
+        fingerprint = self._jwks_fingerprint()
+        if self._cached_jwks and self._cached_jwks.fingerprint == fingerprint:
+            return self._cached_jwks
+
+        materials = [material for material in (self.active, self.next) if material and material.public_jwk]
+        keys = [deepcopy(material.public_jwk) for material in materials]
+        last_modified = (
+            max((material.created_at for material in materials), default=datetime.now(UTC))
+            if materials
+            else datetime.now(UTC)
+        )
+        doc = JWKSDocument(payload={"keys": keys}, fingerprint=fingerprint, last_modified=last_modified)
+        self._cached_jwks = doc
+        return doc
+
     def to_jwks(self) -> dict[str, Any]:
-        keys: list[dict[str, Any]] = []
-        for material in [self.active, self.next]:
-            if material and material.public_jwk:
-                keys.append(material.public_jwk)
-        return {"keys": keys}
+        """Backward-compatible helper returning only the JWKS payload."""
+
+        return deepcopy(self.materialize_jwks().payload)
 
     def _validate_uniqueness(self) -> None:
         seen: set[str] = set()
@@ -162,6 +190,17 @@ class KeySet:
             if material.kid in seen:
                 raise KeyRotationError(f"Duplicate kid detected: {material.kid}")
             seen.add(material.kid)
+
+    def _jwks_fingerprint(self) -> str:
+        parts = [str(KEYSET_SCHEMA_VERSION)]
+        for material in (self.active, self.next):
+            if not material or not material.public_jwk:
+                continue
+            parts.append(material.kid)
+            parts.append(json.dumps(material.public_jwk, sort_keys=True))
+            parts.append(material.created_at.isoformat())
+        serialized = "|".join(parts).encode("utf-8")
+        return hashlib.sha256(serialized).hexdigest()
 
 
 class KeyStorageAdapter(Protocol):

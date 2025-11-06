@@ -117,7 +117,7 @@
 
 ### 5.6 Observability & Governance
 - R17. Emit structured logs (`event`, `result`, `kid`, `jti`, `issuer`, `tenant_id`, `client_id`, timing) for sign/verify operations; ship to centralized SIEM with immutable retention ≥90 days.  
-- R18. Provide Prometheus metrics (`jwt_verifications_total`, `jwt_failures_total`, `jwt_revocations_total`, `active_key_age_seconds`, `revocation_cache_latency_ms`); alert thresholds defined per Ops runbook.  
+- R18. Provide Prometheus metrics (`jwt_verifications_total`, `jwt_failures_total`, `jwt_revocations_total`, `active_key_age_seconds`, `revocation_cache_latency_ms`) plus JWKS-specific counters (`jwks_requests_total`, `jwks_not_modified_total`); alert thresholds defined per Ops runbook.  
 - R19. Integrate trace propagation so token lifecycle can be followed end-to-end across services.  
 - R20. Establish incident response playbook covering key compromise, replay attacks, and revocation failures with RTO/RPO targets.
 

@@ -20,3 +20,4 @@
 - Scope taxonomy applied per surface: billing (`billing:read`/`billing:manage`), conversations/chat (`conversations:*`), tools catalog (`tools:read`), internal console (`support:*`).  
 - Non-interactive consumers receive tenant-scoped refresh tokens from AuthService using managed service-account credentials in Vault; helper CLI/CI workflow issues tokens without STS exchange.  
 - Stripe webhook verification stays HMAC-based; JWT usage confined to internal API calls by billing workers.
+- All verifiers must obey JWKS cache headers: fetch `/.well-known/jwks.json` no less frequently than `Cache-Control: max-age`, send `If-None-Match` with the prior ETag to leverage 304s, and fall back to `auth jwks print` for manual inspection when debugging outside the network perimeter.

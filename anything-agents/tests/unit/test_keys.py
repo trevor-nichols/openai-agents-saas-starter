@@ -102,3 +102,41 @@ def test_secret_manager_storage_roundtrip() -> None:
     assert loaded.active.kid == keyset.active.kid
 
     reset_secret_manager_client()
+
+
+def test_materialize_jwks_caches_until_fingerprint_changes() -> None:
+    keyset = KeySet.empty()
+    active = generate_ed25519_keypair(status=KeyStatus.ACTIVE)
+    keyset.insert(active)
+
+    first = keyset.materialize_jwks()
+    second = keyset.materialize_jwks()
+    assert first is second
+
+    nxt = generate_ed25519_keypair(status=KeyStatus.NEXT)
+    keyset.insert(nxt)
+
+    refreshed = keyset.materialize_jwks()
+    assert refreshed is not first
+    assert {entry["kid"] for entry in refreshed.payload["keys"]} == {active.kid, nxt.kid}
+
+
+def test_materialize_jwks_excludes_retired_keys() -> None:
+    keyset = KeySet.empty()
+    first_active = generate_ed25519_keypair(status=KeyStatus.ACTIVE)
+    keyset.insert(first_active)
+    first_next = generate_ed25519_keypair(status=KeyStatus.NEXT)
+    keyset.insert(first_next)
+
+    new_active = generate_ed25519_keypair(status=KeyStatus.ACTIVE)
+    keyset.insert(new_active)
+    new_next = generate_ed25519_keypair(status=KeyStatus.NEXT)
+    keyset.insert(new_next)
+
+    doc = keyset.materialize_jwks()
+    kids = {entry["kid"] for entry in doc.payload["keys"]}
+
+    assert new_active.kid in kids
+    assert new_next.kid in kids
+    assert first_active.kid not in kids
+    assert first_next.kid not in kids

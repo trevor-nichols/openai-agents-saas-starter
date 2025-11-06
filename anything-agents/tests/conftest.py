@@ -19,6 +19,8 @@ def _configure_auth_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AUTH_KEY_STORAGE_PATH", str(TEST_KEYSET_PATH))
     monkeypatch.setenv("AUTH_REFRESH_TOKEN_PEPPER", "test-refresh-pepper")
     monkeypatch.setenv("AUTH_DUAL_SIGNING_ENABLED", "false")
+    monkeypatch.setenv("AUTH_JWKS_ETAG_SALT", "test-jwks-salt")
+    monkeypatch.setenv("AUTH_JWKS_MAX_AGE_SECONDS", "120")
     config_module.get_settings.cache_clear()
     try:
         yield
