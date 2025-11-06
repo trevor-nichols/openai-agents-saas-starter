@@ -64,9 +64,9 @@
 3. Document consumption guidelines for internal services.
 
 ### AUTH-005 — Observability & Alerts
-1. Emit structured logging for sign/verify events (success/failure reasons, `kid`).
-2. Instrument Prometheus/Grafana dashboards for error rates, key age, rotation countdown.
-3. Establish alert thresholds and runbooks for auth incidents.
+1. Emit structured JSON logs for TokenSigner/Verifier, service-account issuance, rate-limit enforcement, Vault verification, and nonce enforcement via `auth.observability`.
+2. Instrument Prometheus counters/histograms for JWT signing/verifying, JWKS traffic, nonce cache hits/misses, and service-account issuance latency (exposed at `/metrics`) to back Grafana dashboards.
+3. Establish alert thresholds (verification failure rate >1% over 5m → PagerDuty, issuance latency p95 >2s → Slack, nonce hits ≥5/5m → Slack) and link them to runbooks.
 
 ### AUTH-006 — Staged Rollout & Postmortem
 1. Enable dual-signing in staging, monitor metrics, and gather QA sign-off.
@@ -84,3 +84,4 @@
 - _2025-11-06_: `service_account_tokens.refresh_token_hash` now stores bcrypt(+pepper) digests; migration `20251106_230500` truncates legacy plaintext rows and `AUTH_REFRESH_TOKEN_PEPPER` setting shipped to satisfy threat-model requirement R10.
 - _2025-11-06_: JWKS endpoint hardened (active/next only, Cache-Control/ETag/Last-Modified headers, 304 handling), KeySet introduced `materialize_jwks()` caching + fingerprints, new settings (`AUTH_JWKS_MAX_AGE_SECONDS`, `AUTH_JWKS_ETAG_SALT`), CLI helper `auth jwks print`, and Prometheus counters (`jwks_requests_total`, `jwks_not_modified_total`) added alongside contract/unit coverage and updated consumer guidance.
 - _2025-11-06_: EdDSA signer/validator interfaces replace HS256 helpers, `AUTH_DUAL_SIGNING_ENABLED`/`AUTH_DUAL_SIGNING_OVERLAP_MINUTES` landed, `service_account_tokens.signing_kid` added via migration `20251106_235500`, and auth contract/unit tests cover tampering, unknown kid, and expiry flows.
+- _2025-11-06_: AUTH-005 instrumentation shipped — TokenSigner/Verifier emit structured logs + metrics, service-account issuance now tracked via counters/histograms, nonce cache hit/miss metrics surfaced, `/metrics` endpoint added, and docs list alert thresholds + runbooks.

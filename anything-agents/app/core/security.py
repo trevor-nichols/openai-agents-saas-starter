@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from time import perf_counter
 from typing import Any, Protocol, Sequence
 
 from fastapi import Depends, HTTPException, status
@@ -17,6 +18,8 @@ from cryptography.hazmat.primitives.asymmetric import ed25519
 
 from app.core.config import Settings, get_settings
 from app.core.keys import KeyMaterial, KeySet, load_keyset
+from app.observability.logging import log_event
+from app.observability.metrics import observe_jwt_signing, observe_jwt_verification
 
 UTC = timezone.utc
 
@@ -114,22 +117,79 @@ class EdDSATokenSigner(TokenSigner):
         self._settings = settings
 
     def sign(self, payload: dict[str, Any], *, dual_sign: bool | None = None) -> SignedTokenBundle:
-        keyset = load_keyset(self._settings)
-        active = keyset.active
-        if not active or not active.private_key:
-            raise TokenSignerError("Active Ed25519 key is unavailable.")
+        token_use = payload.get("token_use")
+        started = perf_counter()
+        failure_logged = False
+        try:
+            keyset = load_keyset(self._settings)
+            active = keyset.active
+            if not active or not active.private_key:
+                failure_logged = True
+                duration = perf_counter() - started
+                observe_jwt_signing(result="failure", token_use=token_use, duration_seconds=duration)
+                log_event(
+                    "token_sign",
+                    level="error",
+                    result="failure",
+                    reason="missing_active_key",
+                    token_use=token_use or "unknown",
+                )
+                raise TokenSignerError("Active Ed25519 key is unavailable.")
 
-        primary = self._encode(payload, active)
+            primary = self._encode(payload, active)
 
-        should_dual = dual_sign if dual_sign is not None else self._settings.auth_dual_signing_enabled
-        secondary = None
-        if should_dual:
-            next_key = keyset.next
-            if not next_key or not next_key.private_key:
-                raise TokenSignerError("Dual signing requested but next key is unavailable.")
-            keyset.ensure_overlap_within(self._settings.auth_dual_signing_overlap_minutes)
-            secondary = self._encode(payload, next_key)
-        return SignedTokenBundle(primary=primary, secondary=secondary)
+            should_dual = dual_sign if dual_sign is not None else self._settings.auth_dual_signing_enabled
+            secondary = None
+            if should_dual:
+                next_key = keyset.next
+                if not next_key or not next_key.private_key:
+                    failure_logged = True
+                    duration = perf_counter() - started
+                    observe_jwt_signing(result="failure", token_use=token_use, duration_seconds=duration)
+                    log_event(
+                        "token_sign",
+                        level="error",
+                        result="failure",
+                        reason="missing_next_key",
+                        token_use=token_use or "unknown",
+                    )
+                    raise TokenSignerError("Dual signing requested but next key is unavailable.")
+                keyset.ensure_overlap_within(self._settings.auth_dual_signing_overlap_minutes)
+                secondary = self._encode(payload, next_key)
+            duration = perf_counter() - started
+            observe_jwt_signing(result="success", token_use=token_use, duration_seconds=duration)
+            log_event(
+                "token_sign",
+                result="success",
+                kids=[primary.kid, secondary.kid if secondary else None],
+                dual_signing=bool(secondary),
+                token_use=token_use or "unknown",
+            )
+            return SignedTokenBundle(primary=primary, secondary=secondary)
+        except TokenSignerError as exc:
+            if not failure_logged:
+                observe_jwt_signing(result="failure", token_use=token_use, duration_seconds=perf_counter() - started)
+                log_event(
+                    "token_sign",
+                    level="error",
+                    result="failure",
+                    reason="signer_error",
+                    detail=str(exc),
+                    token_use=token_use or "unknown",
+                )
+            raise
+        except Exception as exc:  # noqa: BLE001
+            if not failure_logged:
+                observe_jwt_signing(result="failure", token_use=token_use, duration_seconds=perf_counter() - started)
+                log_event(
+                    "token_sign",
+                    level="error",
+                    result="failure",
+                    reason="unexpected_error",
+                    detail=str(exc),
+                    token_use=token_use or "unknown",
+                )
+            raise
 
     def _encode(self, payload: dict[str, Any], material: KeyMaterial) -> SignedToken:
         headers = {"kid": material.kid, "alg": "EdDSA", "typ": "JWT"}
@@ -144,34 +204,102 @@ class EdDSATokenVerifier(TokenVerifier):
         self._settings = settings
 
     def verify(self, token: str, *, audience: Sequence[str] | None = None) -> dict[str, Any]:
-        keyset = load_keyset(self._settings)
+        started = perf_counter()
+        token_use: str | None = None
+        failure_logged = False
         try:
-            header = jwt.get_unverified_header(token)
-        except PyJWTError as exc:  # noqa: BLE001
-            raise TokenVerifierError(f"Token header parse failed: {exc}") from exc
+            keyset = load_keyset(self._settings)
+            try:
+                header = jwt.get_unverified_header(token)
+            except PyJWTError as exc:  # noqa: BLE001
+                failure_logged = True
+                observe_jwt_verification(
+                    result="failure", token_use=token_use, duration_seconds=perf_counter() - started
+                )
+                log_event(
+                    "token_verify",
+                    level="error",
+                    result="failure",
+                    reason="header_parse_error",
+                    detail=str(exc),
+                    token_use="unknown",
+                )
+                raise TokenVerifierError(f"Token header parse failed: {exc}") from exc
 
-        alg = header.get("alg")
-        if alg != "EdDSA":
-            raise TokenVerifierError(f"Unsupported token alg '{alg}'.")
-        kid = header.get("kid")
-        material = _find_key_material(keyset, kid)
-        public_pem = _public_pem_from_jwk(material.public_jwk)
+            alg = header.get("alg")
+            if alg != "EdDSA":
+                failure_logged = True
+                observe_jwt_verification(
+                    result="failure", token_use=token_use, duration_seconds=perf_counter() - started
+                )
+                log_event(
+                    "token_verify",
+                    level="error",
+                    result="failure",
+                    reason="unsupported_alg",
+                    alg=alg,
+                    token_use="unknown",
+                )
+                raise TokenVerifierError(f"Unsupported token alg '{alg}'.")
+            kid = header.get("kid")
+            material = _find_key_material(keyset, kid)
+            public_pem = _public_pem_from_jwk(material.public_jwk)
 
-        options = {
-            "require_exp": True,
-            "require_iat": True,
-            "verify_aud": audience is not None,
-        }
-        try:
-            return jwt.decode(
-                token,
-                public_pem,
-                algorithms=["EdDSA"],
-                audience=list(audience) if audience else None,
-                options=options,
+            options = {
+                "require_exp": True,
+                "require_iat": True,
+                "verify_aud": audience is not None,
+            }
+            try:
+                decoded = jwt.decode(
+                    token,
+                    public_pem,
+                    algorithms=["EdDSA"],
+                    audience=list(audience) if audience else None,
+                    options=options,
+                )
+            except PyJWTError as exc:
+                failure_logged = True
+                observe_jwt_verification(
+                    result="failure", token_use=token_use, duration_seconds=perf_counter() - started
+                )
+                log_event(
+                    "token_verify",
+                    level="error",
+                    result="failure",
+                    reason="verification_error",
+                    detail=str(exc),
+                    kid=material.kid,
+                    token_use=token_use or "unknown",
+                )
+                raise TokenVerifierError(f"Token verification failed: {exc}") from exc
+
+            token_use = decoded.get("token_use")
+            observe_jwt_verification(
+                result="success", token_use=token_use, duration_seconds=perf_counter() - started
             )
-        except PyJWTError as exc:
-            raise TokenVerifierError(f"Token verification failed: {exc}") from exc
+            log_event(
+                "token_verify",
+                result="success",
+                kid=material.kid,
+                token_use=token_use or "unknown",
+                audience=list(audience) if audience else [],
+            )
+            return decoded
+        except TokenVerifierError as exc:
+            if not failure_logged:
+                observe_jwt_verification(
+                    result="failure", token_use=token_use, duration_seconds=perf_counter() - started
+                )
+                log_event(
+                    "token_verify",
+                    level="error",
+                    result="failure",
+                    reason="verifier_error",
+                    detail=str(exc),
+                    token_use=token_use or "unknown",
+                )
+            raise
 
 
 def _find_key_material(keyset: KeySet, kid: str | None) -> KeyMaterial:

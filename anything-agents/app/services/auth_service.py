@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections import deque
 from datetime import datetime, timedelta, timezone
+from time import perf_counter
 from typing import Sequence
 from uuid import uuid4
 
@@ -23,6 +24,8 @@ from app.core.service_accounts import (
 from app.infrastructure.persistence.auth.repository import (
     get_refresh_token_repository,
 )
+from app.observability.logging import log_event
+from app.observability.metrics import observe_service_account_issuance
 
 
 class ServiceAccountError(RuntimeError):
@@ -70,79 +73,162 @@ class AuthService:
         fingerprint: str | None,
         force: bool = False,
     ) -> dict[str, str | int | None]:
+        started = perf_counter()
+        failure_recorded = False
         try:
-            definition = self._registry.get(account)
-        except ServiceAccountNotFoundError as exc:
-            raise ServiceAccountValidationError(str(exc)) from exc
+            try:
+                definition = self._registry.get(account)
+            except ServiceAccountNotFoundError as exc:
+                raise ServiceAccountValidationError(str(exc)) from exc
 
-        now = datetime.now(timezone.utc)
-        async with self._lock:
-            self._enforce_rate_limits(account, now)
+            now = datetime.now(timezone.utc)
+            async with self._lock:
+                self._enforce_rate_limits(account, now)
 
-        self._validate_tenant(definition, tenant_id)
-        sanitized_scopes = self._validate_scopes(definition, scopes)
-        ttl_minutes = self._determine_ttl(definition, requested_ttl_minutes)
+            self._validate_tenant(definition, tenant_id)
+            sanitized_scopes = self._validate_scopes(definition, scopes)
+            ttl_minutes = self._determine_ttl(definition, requested_ttl_minutes)
 
-        if not force:
-            existing = await self._find_active_token(
+            if not force:
+                existing = await self._find_active_token(
+                    account=account,
+                    tenant_id=tenant_id,
+                    scopes=sanitized_scopes,
+                )
+                if existing is not None:
+                    self._record_issuance_event(
+                        account=account,
+                        tenant_id=tenant_id,
+                        result="success",
+                        reason="success_reused",
+                        reused=True,
+                        started=started,
+                        detail="returned_cached_token",
+                    )
+                    return existing
+
+            issued_at = now
+            expires_at = issued_at + timedelta(minutes=ttl_minutes)
+            settings = get_settings()
+
+            payload = {
+                "sub": f"service-account:{account}",
+                "account": account,
+                "token_use": "refresh",
+                "jti": str(uuid4()),
+                "scope": " ".join(sanitized_scopes),
+                "iat": int(issued_at.timestamp()),
+                "nbf": int(issued_at.timestamp()),
+                "exp": int(expires_at.timestamp()),
+                "iss": settings.app_name,
+            }
+
+            if tenant_id and definition.requires_tenant:
+                payload["tenant_id"] = tenant_id
+
+            if fingerprint:
+                payload["fingerprint"] = fingerprint
+
+            signer = get_token_signer(settings)
+            try:
+                signed = signer.sign(payload)
+            except TokenSignerError as exc:
+                failure_recorded = True
+                self._record_issuance_event(
+                    account=account,
+                    tenant_id=tenant_id,
+                    result="failure",
+                    reason="signer_error",
+                    reused=False,
+                    started=started,
+                    detail=str(exc),
+                    level="error",
+                )
+                raise ServiceAccountError(f"Failed to sign refresh token: {exc}") from exc
+            token = signed.primary.token
+            signing_kid = signed.primary.kid
+
+            response = {
+                "refresh_token": token,
+                "expires_at": expires_at.isoformat(),
+                "issued_at": issued_at.isoformat(),
+                "scopes": sanitized_scopes,
+                "tenant_id": tenant_id if definition.requires_tenant else None,
+                "kid": signing_kid,
+                "account": account,
+                "token_use": "refresh",
+            }
+            await self._persist_refresh_token(
+                token=token,
                 account=account,
-                tenant_id=tenant_id,
+                tenant_id=tenant_id if definition.requires_tenant else None,
                 scopes=sanitized_scopes,
+                issued_at=issued_at,
+                expires_at=expires_at,
+                fingerprint=fingerprint,
+                signing_kid=signing_kid,
             )
-            if existing is not None:
-                return existing
-
-        issued_at = now
-        expires_at = issued_at + timedelta(minutes=ttl_minutes)
-        settings = get_settings()
-
-        payload = {
-            "sub": f"service-account:{account}",
-            "account": account,
-            "token_use": "refresh",
-            "jti": str(uuid4()),
-            "scope": " ".join(sanitized_scopes),
-            "iat": int(issued_at.timestamp()),
-            "nbf": int(issued_at.timestamp()),
-            "exp": int(expires_at.timestamp()),
-            "iss": settings.app_name,
-        }
-
-        if tenant_id and definition.requires_tenant:
-            payload["tenant_id"] = tenant_id
-
-        if fingerprint:
-            payload["fingerprint"] = fingerprint
-
-        signer = get_token_signer(settings)
-        try:
-            signed = signer.sign(payload)
-        except TokenSignerError as exc:
-            raise ServiceAccountError(f"Failed to sign refresh token: {exc}") from exc
-        token = signed.primary.token
-        signing_kid = signed.primary.kid
-
-        response = {
-            "refresh_token": token,
-            "expires_at": expires_at.isoformat(),
-            "issued_at": issued_at.isoformat(),
-            "scopes": sanitized_scopes,
-            "tenant_id": tenant_id if definition.requires_tenant else None,
-            "kid": signing_kid,
-            "account": account,
-            "token_use": "refresh",
-        }
-        await self._persist_refresh_token(
-            token=token,
-            account=account,
-            tenant_id=tenant_id if definition.requires_tenant else None,
-            scopes=sanitized_scopes,
-            issued_at=issued_at,
-            expires_at=expires_at,
-            fingerprint=fingerprint,
-            signing_kid=signing_kid,
-        )
-        return response
+            self._record_issuance_event(
+                account=account,
+                tenant_id=tenant_id if definition.requires_tenant else None,
+                result="success",
+                reason="success_new",
+                reused=False,
+                started=started,
+            )
+            return response
+        except ServiceAccountValidationError as exc:
+            if not failure_recorded:
+                self._record_issuance_event(
+                    account=account,
+                    tenant_id=tenant_id,
+                    result="failure",
+                    reason="validation_error",
+                    reused=False,
+                    started=started,
+                    detail=str(exc),
+                    level="warning",
+                )
+            raise
+        except ServiceAccountRateLimitError as exc:
+            if not failure_recorded:
+                self._record_issuance_event(
+                    account=account,
+                    tenant_id=tenant_id,
+                    result="failure",
+                    reason="rate_limited",
+                    reused=False,
+                    started=started,
+                    detail=str(exc),
+                    level="warning",
+                )
+            raise
+        except ServiceAccountCatalogUnavailable as exc:
+            if not failure_recorded:
+                self._record_issuance_event(
+                    account=account,
+                    tenant_id=tenant_id,
+                    result="failure",
+                    reason="catalog_unavailable",
+                    reused=False,
+                    started=started,
+                    detail=str(exc),
+                    level="error",
+                )
+            raise
+        except ServiceAccountError as exc:
+            if not failure_recorded:
+                self._record_issuance_event(
+                    account=account,
+                    tenant_id=tenant_id,
+                    result="failure",
+                    reason="service_error",
+                    reused=False,
+                    started=started,
+                    detail=str(exc),
+                    level="error",
+                )
+            raise
 
     def _validate_tenant(
         self, definition: ServiceAccountDefinition, tenant_id: str | None
@@ -222,11 +308,25 @@ class AuthService:
             self._global_window.popleft()
 
         if len(queue) >= 5:
+            log_event(
+                "service_account_rate_limit",
+                level="warning",
+                account=account,
+                limit_type="per_account",
+                in_flight=len(queue),
+            )
             raise ServiceAccountRateLimitError(
                 f"Issuance rate limit exceeded for account '{account}'. Retry later."
             )
 
         if len(self._global_window) >= 30:
+            log_event(
+                "service_account_rate_limit",
+                level="warning",
+                account=account,
+                limit_type="global",
+                in_flight=len(self._global_window),
+            )
             raise ServiceAccountRateLimitError(
                 "Global service-account issuance rate limit exceeded. Retry later."
             )
@@ -298,6 +398,38 @@ class AuthService:
             return "unknown"
         kid = header.get("kid")
         return str(kid) if kid else "unknown"
+
+    def _record_issuance_event(
+        self,
+        *,
+        account: str,
+        tenant_id: str | None,
+        result: str,
+        reason: str,
+        reused: bool,
+        started: float,
+        detail: str | None = None,
+        level: str = "info",
+    ) -> None:
+        duration = perf_counter() - started
+        observe_service_account_issuance(
+            account=account,
+            result=result,
+            reason=reason,
+            reused=reused,
+            duration_seconds=duration,
+        )
+        log_event(
+            "service_account_issuance",
+            level=level,
+            account=account,
+            tenant_id=tenant_id,
+            result=result,
+            reason=reason,
+            reused=reused,
+            duration_seconds=duration,
+            detail=detail,
+        )
 
 
 auth_service = AuthService()

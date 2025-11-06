@@ -59,6 +59,7 @@
 - **Revocation Store**: Postgres-backed repository under `app/infrastructure/persistence/auth/postgres.py` to track refresh tokens and revoked `jti` values, leveraging existing async engine.
 - **JWKS Endpoint**: Router `app/presentation/well_known.py` exposes `/.well-known/jwks.json`, pulling from `KeySet.materialize_jwks()` and serving only the active + next keys. Responses include `Cache-Control`, strong `ETag`, and `Last-Modified` headers so downstream verifiers can rely on conditional GETs (`If-None-Match`) to avoid unnecessary downloads.
 - **Rotation & JWKS CLI (`auth keys rotate`, `auth jwks print`)**: Lives alongside the service-account helper in `app/cli/auth_cli.py`; `keys rotate` generates Ed25519 keypairs and persists them via the configured storage backend, while `jwks print` dumps the current JWKS payload (active + next keys only) for audits or runbooks without hitting the HTTP endpoint.
+- **Observability Surface (`app/observability/*`, `/metrics`)**: Dedicated `metrics.py` registers Prometheus counters/histograms for signing, verification, JWKS, nonce cache, and service-account issuance, while `logging.py` centralizes structured JSON log emission. FastAPI exposes `GET /metrics` for scrapes and `auth.observability` logger streams to the SIEM.
 
 ## 4. Data & Configuration
 
@@ -120,12 +121,27 @@
 - **Coverage**: Enable `pytest --cov=app --cov-report=xml` in CI; fail if coverage for `app/core/security.py`, `app/core/keys.py`, and `app/services/auth_service.py` < 90%.
 - **Static Analysis**: Update Ruff profile to flag insecure JWT usage (`flake8-bandit` rule S320 equivalent) and ensure `algorithms` arg enforced.
 
-## 7. Observability & Ops
+## 7. Observability & Alerts
 
-- **Logging**: Structured JSON logs via existing middleware, including fields `event=jwt.verify`, `kid`, `issuer`, `result`.
-- **Metrics**: Add Prometheus counters (`jwt_verifications_total`, `jwt_failures_total`), gauges for `active_key_age_seconds`, and alerts on sustained failure rate >1% over 5 minutes.
-- **Runbooks**: Document rotation SOP, emergency revoke procedure, and how to regenerate JWKS.
-- **Security Audits**: Schedule quarterly key rotation tests and dependency scanning (SCA) for cryptography libraries.
+### Metrics Surface
+- `jwks_requests_total`, `jwks_not_modified_total` — JWKS responder traffic counters.
+- `jwt_signings_total{result,token_use}` / `jwt_signing_duration_seconds{result,token_use}` — emitted by `TokenSigner`.
+- `jwt_verifications_total{result,token_use}` / `jwt_verification_duration_seconds{result,token_use}` — emitted by `TokenVerifier`.
+- `service_account_issuance_total{account,result,reason,reused}` / `service_account_issuance_latency_seconds{account,result,reason,reused}` — emitted by `AuthService` (success, cached reuse, validation errors, rate limits, signer issues, catalog outages).
+- `nonce_cache_hits_total`, `nonce_cache_misses_total` — emitted from Vault nonce enforcement to spot replay attempts.
+- All series live inside `app/observability/metrics.py`, registered against a dedicated registry scraped via `GET /metrics` (new FastAPI route in `app/presentation/metrics.py`).
+
+### Structured Logging
+- Centralized helper `app/observability/logging.py` writes single-line JSON (`auth.observability` logger) with shared schema.
+- Events include: `token_sign`, `token_verify`, `service_account_issuance`, `service_account_rate_limit`, `vault_signature_verify`, and `vault_nonce_cache`.
+- Each event carries contextual fields (e.g., `{result, token_use, kid, duration_seconds, account, limit_type, reason}`) so SIEM queries/alerts can pivot without regexing free-form text.
+
+### Alerting Targets
+1. **JWT Verification Failure Rate**: `increase(jwt_verifications_total{result="failure"}[5m]) / increase(jwt_verifications_total[5m]) > 0.01` → PagerDuty (Sev2). Runbook: confirm JWKS freshness, inspect signer health, roll keyset back if necessary.
+2. **Service-Account Issuance Latency**: `histogram_quantile(0.95, rate(service_account_issuance_latency_seconds_bucket{result="success"}[5m])) > 2` seconds → #auth-runtime Slack. Runbook covers Redis/Vault latency checks plus signer saturation review.
+3. **Nonce Replay Spike**: `rate(nonce_cache_hits_total[5m]) ≥ 5` → #security-ops Slack to investigate potential credential replay. Runbook pulls Vault audit logs + client metadata.
+
+Dashboards should pin these metrics, annotate alert firings, and link back to this section plus the incident SOP so AUTH-005 assurances remain auditable.
 
 ## 8. Implementation Alignment with Milestones
 

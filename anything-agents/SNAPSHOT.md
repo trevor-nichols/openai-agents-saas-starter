@@ -102,10 +102,12 @@
 │   │   └── logging.py                            # Middleware for request/response logging
 │   ├── observability/                            # Code for monitoring and observability
 │   │   ├── __init__.py                           # Initializes the 'observability' package
-│   │   └── metrics.py                            # Prometheus metric definitions
+│   │   ├── logging.py                            # Structured logging helper for auth-specific events
+│   │   └── metrics.py                            # Prometheus metric definitions & helper functions
 │   ├── presentation/                             # Non-API, user-facing HTTP endpoints
 │   │   ├── __init__.py                           # Initializes the 'presentation' package
 │   │   ├── health.py                             # Implements /health and /ready endpoints
+│   │   ├── metrics.py                            # Implements the /metrics Prometheus scrape endpoint
 │   │   └── well_known.py                         # Implements /.well-known/jwks.json endpoint for JWT keys
 │   ├── services/                                 # High-level business services orchestrating domain logic
 │   │   ├── __init__.py                           # Initializes the 'services' package
@@ -128,6 +130,7 @@
     │   ├── test_agents_api.py                    # Tests for the /agents and /chat API endpoints
     │   ├── test_auth_service_accounts.py         # Tests for the service account issuance flow
     │   ├── test_health_endpoints.py              # Tests for the /health and /ready endpoints
+    │   ├── test_metrics_endpoint.py              # Tests for the Prometheus /metrics endpoint
     │   ├── test_streaming_manual.py              # Manual test script for verifying SSE streaming
     │   └── test_well_known.py                    # Tests for the /.well-known/jwks.json endpoint
     ├── fixtures/                                 # Contains test data and fixtures
@@ -142,6 +145,7 @@
         ├── test_config.py                        # Unit tests for application settings validation
         ├── test_keys.py                          # Unit tests for cryptographic key management logic
         ├── test_keys_cli.py                      # Unit tests for the key management CLI
+        ├── test_metrics.py                       # Unit tests for metric helper functions
         ├── test_nonce_store.py                   # Unit tests for the nonce store replay protection
         ├── test_security.py                      # Unit tests for token signing and verification
         ├── test_tools.py                         # Unit tests for the agent tool registry

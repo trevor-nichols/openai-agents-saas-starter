@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -27,6 +28,8 @@ from app.infrastructure.security.vault import (
     get_vault_transit_client,
     VaultVerificationError,
 )
+from app.observability.logging import log_event
+from app.observability.metrics import record_nonce_cache_result
 from app.services.auth_service import (
     ServiceAccountCatalogUnavailable,
     ServiceAccountRateLimitError,
@@ -200,6 +203,13 @@ async def _verify_vault_signature(authorization: str, vault_payload: str) -> Non
     try:
         client = get_vault_transit_client()
     except VaultClientUnavailable as exc:
+        log_event(
+            "vault_signature_verify",
+            level="error",
+            result="error",
+            reason="client_unavailable",
+            detail=str(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Vault client not configured.",
@@ -208,16 +218,34 @@ async def _verify_vault_signature(authorization: str, vault_payload: str) -> Non
     try:
         valid = await run_in_threadpool(client.verify_signature, vault_payload, signature)
     except VaultVerificationError as exc:
+        log_event(
+            "vault_signature_verify",
+            level="error",
+            result="error",
+            reason="verification_exception",
+            detail=str(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Vault verification failed: {exc}",
         ) from exc
 
     if not valid:
+        log_event(
+            "vault_signature_verify",
+            level="warning",
+            result="failure",
+            reason="invalid_signature",
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid Vault signature.",
         )
+    log_event(
+        "vault_signature_verify",
+        result="success",
+        reason="validated",
+    )
 
 
 async def _enforce_nonce(claims: dict[str, Any]) -> None:
@@ -246,11 +274,26 @@ async def _enforce_nonce(claims: dict[str, Any]) -> None:
     ttl_seconds = min(ttl_seconds, 300)  # constrain TTL to 5 minutes
 
     nonce_store = get_nonce_store()
-    if not await nonce_store.check_and_store(nonce, ttl_seconds):
+    is_new = await nonce_store.check_and_store(nonce, ttl_seconds)
+    record_nonce_cache_result(hit=not is_new)
+    if not is_new:
+        log_event(
+            "vault_nonce_cache",
+            level="warning",
+            result="hit",
+            reason="nonce_reuse",
+            nonce_digest=_digest_nonce(nonce),
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Vault payload nonce already used.",
         )
+    log_event(
+        "vault_nonce_cache",
+        result="miss",
+        reason="nonce_accepted",
+        nonce_digest=_digest_nonce(nonce),
+    )
 
 
 def _enforce_timestamps(claims: dict[str, Any]) -> None:
@@ -336,6 +379,10 @@ def _decode_vault_payload(vault_payload: str) -> dict[str, Any]:
             detail="Unexpected Vault payload shape.",
         )
     return data
+
+
+def _digest_nonce(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()[:16]
 
 
 def _validate_claims_shape(claims: dict[str, Any]) -> None:

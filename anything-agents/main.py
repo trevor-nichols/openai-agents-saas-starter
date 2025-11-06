@@ -18,6 +18,7 @@ from app.infrastructure.persistence.conversations.postgres import PostgresConver
 from app.infrastructure.security.vault_kv import configure_vault_secret_manager
 from app.middleware.logging import LoggingMiddleware
 from app.presentation import health as health_routes
+from app.presentation import metrics as metrics_routes
 from app.presentation import well_known as well_known_routes
 from app.services.billing_service import billing_service
 from app.services.conversation_service import conversation_service
@@ -111,6 +112,7 @@ def create_application() -> FastAPI:
     # Health check endpoints (non-versioned)
     app.include_router(health_routes.router, tags=["health"])
     app.include_router(well_known_routes.router)
+    app.include_router(metrics_routes.router)
 
     # Versioned API surface
     app.include_router(api_router, prefix="/api", tags=["api"])
