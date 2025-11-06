@@ -69,3 +69,4 @@
 ## Progress Log
 - _2025-11-06_: Milestone initiated; issues AUTH-001 through AUTH-006 added to `ISSUE_TRACKER.md`.
 - _2025-11-06_: Draft architecture blueprint published at `docs/architecture/authentication-ed25519.md` pending AUTH-001 review.
+- _2025-11-06_: Test suite reorganized into `tests/unit`, `tests/contract`, and `tests/integration` to unblock upcoming auth work.

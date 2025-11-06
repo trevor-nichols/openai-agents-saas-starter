@@ -97,12 +97,14 @@
 │           └── web_search.py  # Implements a web search tool using the Tavily API
 ├── main.py                    # Main entry point for the FastAPI application
 └── tests                      # Contains all automated tests for the application
-    ├── __init__.py            # Initializes the 'tests' package
+    ├── __init__.py            # Documents suite layout (unit/contract/integration)
+    ├── contract               # HTTP boundary tests and manual smoke suites
+    │   ├── test_agents_api.py # Contract tests for agent endpoints and services
+    │   ├── test_health_endpoints.py # Contract tests for health/readiness endpoints
+    │   └── test_streaming_manual.py # Manual/skipped streaming smoke test requiring live API
     ├── integration            # Integration tests requiring external services
     │   ├── __init__.py        # Initializes the 'integration' tests package
     │   └── test_postgres_migrations.py # Tests database migrations and Postgres repositories
-    ├── test_agents.py         # Tests for agent-related endpoints and services
-    ├── test_billing.py        # Tests for the billing service and related components
-    ├── test_health.py         # Tests for the health and readiness check endpoints
-    ├── test_streaming.py      # Manual/smoke test for the streaming chat endpoint
-    └── test_tools.py          # Tests for the tool registry and tool implementations
+    └── unit                   # Pure unit tests with in-memory fakes
+        ├── test_billing_service.py # Unit tests for billing service behaviour
+        └── test_tools.py      # Unit tests for tool registry and tool helpers
