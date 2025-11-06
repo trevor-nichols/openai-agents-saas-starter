@@ -33,6 +33,9 @@
 - JWKS endpoint remains public with edge rate limiting and audit logging; reject mTLS for now.
 - Redis provides primary revocation cache with Postgres fallback; cache TTL matches refresh token lifetime.
 - Test suite refactor to `tests/unit`, `tests/contract`, `tests/integration` precedes AUTH-003 implementation and coverage gates enforced in CI.
+- Secret manager (Ops-managed Vault HA cluster) guarantees ≥99.95% monthly availability with 15-minute RTO; sealed volume mounts refresh within 5 minutes after failover. Schedule key rotations outside the weekly Sunday 02:00–03:00 UTC maintenance window to avoid transient read errors.
+- Risk: vault failover can impose up to 60-second read latency spikes; mitigation: token service caches active/next keypair in memory and alerts if refresh exceeds 30 seconds so on-call can verify vault health.
+- Sealed key volume (EFS-backed read-only mount) inherits 99.9% regional availability; cross-region replication completes within 10 minutes. Mitigation for prolonged regional outage is documented failover promoting standby region’s `next` key after audit sign-off.
 
 ## Execution Plan
 
