@@ -97,22 +97,24 @@ hatch run serve
 
 The API will be available at `http://localhost:8000`
 
+> **Compose vs. application env files**
+> - `.env.compose` (tracked) holds the non-sensitive defaults that Docker Compose needs (ports, default credentials, project name). You should not edit this file.
+> - `.env.local` (gitignored) contains your secrets and any overrides. The Make targets below source **both** files, so you never have to `export` variables manually.
+
 ### 5. Database & Migrations
 
-1. Start the infrastructure stack (Postgres + Redis) via Docker Compose. If you already
-   have something bound to port 5432 or 6379, set `POSTGRES_PORT` / `REDIS_PORT` in your
-   `.env.local` before running this command.
+1. Start the infrastructure stack (Postgres + Redis) via the helper, which automatically sources `.env.compose` and your `.env.local`:
    ```bash
-   docker compose up -d postgres redis
+   make dev-up
    ```
-   *(To stop later: `docker compose down` — data persists in the named volumes `postgres-data` / `redis-data`.)*
+   *(Stop later with `make dev-down`. Data persists inside the `postgres-data` / `redis-data` volumes.)*
 2. Apply the baseline migration:
    ```bash
    make migrate
    ```
 3. Generate new migrations as the schema evolves:
    ```bash
-   hatch run migration-revision "add widget table"
+   make migration-revision MESSAGE="add widget table"
    ```
 
 ### 6. Quality Checks
