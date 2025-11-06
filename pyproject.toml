@@ -30,6 +30,7 @@ dependencies = [
   "aiofiles>=23.2.1,<24.0.0",
   "pydantic>=2.12.3,<2.13.0",
   "pydantic-settings>=2.6.1,<2.7.0",
+  "pyyaml>=6.0.2,<7.0.0",
   "email-validator>=2.1.0,<2.2.0",
   "redis>=5.0.1,<6.0.0",
   "python-jose[cryptography]>=3.5.0,<3.6.0",
@@ -67,6 +68,7 @@ issues = "https://github.com/openai/openai-agents-starter/issues"
 
 [project.scripts]
 anything-agents = "run:main"
+auth-cli = "app.cli.auth_cli:main"
 
 [tool.hatch.metadata]
 allow-direct-references = true

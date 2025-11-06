@@ -114,6 +114,31 @@ class Settings(BaseSettings):
     log_level: str = Field(default="INFO", description="Logging level")
 
     # =============================================================================
+    # VAULT SETTINGS
+    # =============================================================================
+
+    vault_addr: str | None = Field(
+        default=None,
+        description="HashiCorp Vault address for Transit verification.",
+        alias="VAULT_ADDR",
+    )
+    vault_token: str | None = Field(
+        default=None,
+        description="Vault token/AppRole secret with transit:verify capability.",
+        alias="VAULT_TOKEN",
+    )
+    vault_transit_key: str = Field(
+        default="auth-service",
+        description="Transit key name used for signing/verification.",
+        alias="VAULT_TRANSIT_KEY",
+    )
+    vault_verify_enabled: bool = Field(
+        default=False,
+        description="When true, enforce Vault Transit verification for service-account issuance.",
+        alias="VAULT_VERIFY_ENABLED",
+    )
+
+    # =============================================================================
     # DATABASE SETTINGS
     # =============================================================================
 

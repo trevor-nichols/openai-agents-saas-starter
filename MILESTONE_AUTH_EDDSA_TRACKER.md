@@ -38,6 +38,8 @@
 - Sealed key volume (EFS-backed read-only mount) inherits 99.9% regional availability; cross-region replication completes within 10 minutes. Mitigation for prolonged regional outage is documented failover promoting standby region’s `next` key after audit sign-off.
 - Scope taxonomy locked for v1: `billing:read`, `billing:manage`, `conversations:read`, `conversations:write`, `conversations:delete`, `tools:read`, `support:*`; enforce read-only vs. mutate semantics accordingly.
 - Service-account issuance: non-interactive consumers receive tenant-scoped refresh tokens through AuthService using Vault-managed service credentials and CLI/CI helper; no STS exchange required in v1.
+- Refresh-token persistence: service-account refresh tokens will reuse the unified revocation store (Redis + Postgres) planned in AUTH-003. `force=false` will return existing active tokens per account/tenant/scope tuple; issuance endpoint will check the store before minting new tokens and the CLI will support revocation hooks once exposed.
+- Vault Transit payloads include nonce/iat/exp claims; AuthService persists nonce fingerprints through a Redis-backed (in-memory fallback) cache to block replay within the 5-minute signing window.
 
 ## Execution Plan
 
@@ -76,3 +78,4 @@
 - _2025-11-06_: Draft architecture blueprint published at `docs/architecture/authentication-ed25519.md` pending AUTH-001 review.
 - _2025-11-06_: Test suite reorganized into `tests/unit`, `tests/contract`, and `tests/integration` to unblock upcoming auth work.
 - _2025-11-06_: Cross-team review approved scope taxonomy, audience identifiers, frontend refresh-token strategy, and service-account issuance approach; SLA findings added to Notes & Assumptions.
+- _2025-11-06_: Vault Transit signing plan documented (`docs/security/vault-transit-signing.md`); refresh-token reuse strategy aligned with upcoming revocation store implementation.

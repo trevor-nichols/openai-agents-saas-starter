@@ -117,6 +117,7 @@ Operator / CI Job
 - Minimum refresh TTL: 15 minutes; maximum TTL: 30 days unless override approved.  
 - Duplicate issuance within active window returns existing token unless `--force` flag provided.  
 - Rate limiting: 5 issuance requests per minute per account and global cap of 30/minute; alerts fire when limits trip.
+- Replay protection: CLI payloads include nonce/iat/exp; server enforces single-use via Redis-backed nonce cache (in-memory fallback for dev) with ≤5 minute TTL.
 - Multi-tenant accounts (e.g., support console) receive a single global refresh token with `tenant_id` omitted; auditing relies on scopes and operational logging.
 - Version 1 issues refresh tokens only; CLI will not mint direct access tokens.
 

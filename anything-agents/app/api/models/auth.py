@@ -52,3 +52,42 @@ class UserResponse(BaseModel):
     email: str = Field(description="User email address.")
     is_active: bool = Field(description="Whether the user is active.")
     created_at: str = Field(description="Creation timestamp.")
+
+
+class ServiceAccountIssueRequest(BaseModel):
+    """Request payload for service-account refresh token issuance."""
+
+    account: str = Field(description="Service-account identifier.")
+    scopes: list[str] = Field(description="Scopes requested for the service account.")
+    tenant_id: str | None = Field(
+        default=None,
+        description="Tenant UUID when required by the service account.",
+    )
+    lifetime_minutes: int | None = Field(
+        default=None,
+        description="Optional refresh token lifetime in minutes.",
+    )
+    fingerprint: str | None = Field(
+        default=None,
+        description="Optional machine or pipeline identifier for auditing.",
+    )
+    force: bool = Field(
+        default=False,
+        description="Force new token creation even when an active token exists.",
+    )
+
+
+class ServiceAccountTokenResponse(BaseModel):
+    """Response returned after issuing a service-account refresh token."""
+
+    refresh_token: str = Field(description="Minted refresh token for the service account.")
+    expires_at: str = Field(description="ISO-8601 expiration timestamp.")
+    issued_at: str = Field(description="ISO-8601 issuance timestamp.")
+    scopes: list[str] = Field(description="Authorized scopes.")
+    tenant_id: str | None = Field(
+        default=None,
+        description="Tenant UUID if the account is tenant-scoped.",
+    )
+    kid: str = Field(description="Key identifier used to sign the token.")
+    account: str = Field(description="Service-account identifier.")
+    token_use: str = Field(description="Token classification (refresh, access, etc.).")

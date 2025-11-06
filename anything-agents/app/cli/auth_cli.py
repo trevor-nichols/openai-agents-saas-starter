@@ -1,0 +1,248 @@
+"""Command-line helper for service-account token issuance."""
+
+from __future__ import annotations
+
+import argparse
+import base64
+import json
+import os
+import sys
+import time
+import uuid
+from typing import Any
+
+import httpx
+
+from app.core.config import get_settings
+
+
+class CLIError(RuntimeError):
+    """Base class for CLI failures."""
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="auth",
+        description="Authentication utilities for anything-agents.",
+    )
+    subparsers = parser.add_subparsers(dest="command")
+
+    tokens_parser = subparsers.add_parser("tokens", help="Token management commands.")
+    tokens_subparsers = tokens_parser.add_subparsers(dest="tokens_command")
+
+    issue_parser = tokens_subparsers.add_parser(
+        "issue-service-account",
+        help="Issue a refresh token for a service account.",
+    )
+    issue_parser.add_argument("--account", "-a", required=True, help="Service-account slug.")
+    issue_parser.add_argument(
+        "--scopes",
+        "-s",
+        required=True,
+        help="Comma-separated list of scopes.",
+    )
+    issue_parser.add_argument(
+        "--tenant",
+        "-t",
+        help="Tenant UUID when the service account requires one.",
+    )
+    issue_parser.add_argument(
+        "--lifetime",
+        type=int,
+        help="Optional refresh token lifetime in minutes.",
+    )
+    issue_parser.add_argument(
+        "--fingerprint",
+        help="Optional machine or pipeline identifier for auditing.",
+    )
+    issue_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force minting a new token even if an active token exists.",
+    )
+    issue_parser.add_argument(
+        "--output",
+        "-o",
+        choices={"json", "text", "env"},
+        default=os.getenv("AUTH_CLI_OUTPUT", "json"),
+        help="Output format (json, text, env). Defaults to json.",
+    )
+    issue_parser.add_argument(
+        "--base-url",
+        default=os.getenv("AUTH_CLI_BASE_URL", "http://127.0.0.1:8000"),
+        help="AuthService base URL.",
+    )
+
+    return parser
+
+
+def _load_settings():
+    try:
+        return get_settings()
+    except Exception:
+        # CLI may run outside app context; rely on env defaults.
+        return None
+
+
+def _vault_headers(request_payload: dict[str, Any], settings) -> tuple[str, dict[str, str]]:
+    dev_mode = os.getenv("AUTH_CLI_DEV_AUTH_MODE", "vault").lower() == "local"
+
+    if dev_mode or not settings or not settings.vault_addr or not settings.vault_token:
+        return "Bearer dev-local", {}
+
+    envelope = _build_vault_envelope(request_payload)
+    payload_json = json.dumps(envelope, separators=(",", ":")).encode("utf-8")
+    payload_b64 = base64.urlsafe_b64encode(payload_json).decode("utf-8").rstrip("=")
+
+    signature = _vault_sign_payload(
+        base_url=settings.vault_addr,
+        token=settings.vault_token,
+        key_name=settings.vault_transit_key,
+        payload_b64=payload_b64,
+    )
+
+    headers = {"X-Vault-Payload": payload_b64}
+    return f"Bearer vault:{signature}", headers
+
+
+def _build_vault_envelope(request_payload: dict[str, Any]) -> dict[str, Any]:
+    now = int(time.time())
+    envelope: dict[str, Any] = {
+        "iss": "vault-transit",
+        "aud": ["auth-service"],
+        "sub": "service-account-cli",
+        "account": request_payload.get("account"),
+        "tenant_id": request_payload.get("tenant_id"),
+        "scopes": request_payload.get("scopes", []),
+        "nonce": uuid.uuid4().hex,
+        "iat": now,
+        "exp": now + 300,
+    }
+
+    fingerprint = request_payload.get("fingerprint")
+    if fingerprint:
+        envelope["fingerprint"] = fingerprint
+
+    return envelope
+
+
+def _vault_sign_payload(
+    *,
+    base_url: str,
+    token: str,
+    key_name: str,
+    payload_b64: str,
+) -> str:
+    url = f"{base_url.rstrip('/')}/v1/transit/sign/{key_name}"
+    headers = {"X-Vault-Token": token}
+    body = {"input": payload_b64, "signature_algorithm": "sha2-256"}
+
+    with httpx.Client(timeout=5.0) as client:
+        response = client.post(url, json=body, headers=headers)
+
+    if response.status_code >= 400:
+        raise CLIError(f"Vault sign failed ({response.status_code}): {response.text}")
+
+    data = response.json()
+    signature = data.get("data", {}).get("signature")
+    if not signature:
+        raise CLIError("Vault sign response missing signature.")
+
+    if signature.startswith("vault:v1:"):
+        signature = signature.split(":", 2)[-1]
+    return signature
+
+
+def _parse_scopes(raw_scopes: str) -> list[str]:
+    scopes = [scope.strip() for scope in raw_scopes.split(",") if scope.strip()]
+    if not scopes:
+        raise CLIError("At least one scope must be provided via --scopes.")
+    return scopes
+
+
+def _post_issue_service_account(
+    *,
+    base_url: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    url = f"{base_url.rstrip('/')}/api/v1/auth/service-accounts/issue"
+    settings = _load_settings()
+    auth_header, extra_headers = _vault_headers(payload, settings)
+    headers = {"Authorization": auth_header, **extra_headers}
+
+    with httpx.Client(timeout=10.0) as client:
+        response = client.post(url, json=payload, headers=headers)
+
+    if response.status_code >= 400:
+        try:
+            body = response.json()
+            detail = body.get("detail") or body.get("error") or body.get("message")
+        except Exception:
+            detail = response.text
+        raise CLIError(f"Issuance failed ({response.status_code}): {detail}")
+
+    return response.json()
+
+
+def _render_output(data: dict[str, Any], fmt: str) -> str:
+    if fmt == "json":
+        return json.dumps(data, indent=2)
+    if fmt == "env":
+        return "\n".join([f"AUTH_REFRESH_TOKEN={data['refresh_token']}"])
+
+    # text format
+    lines = [
+        f"Account: {data.get('account')}",
+        f"Scopes: {', '.join(data.get('scopes', []))}",
+        f"Issued At: {data.get('issued_at')}",
+        f"Expires At: {data.get('expires_at')}",
+        f"Tenant ID: {data.get('tenant_id') or 'global'}",
+        f"Token Use: {data.get('token_use')}",
+        f"Key ID: {data.get('kid')}",
+        "",
+        "Refresh Token:",
+        data.get("refresh_token", ""),
+    ]
+    return "\n".join(lines)
+
+
+def handle_issue_service_account(args: argparse.Namespace) -> int:
+    try:
+        scopes = _parse_scopes(args.scopes)
+    except CLIError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
+    payload: dict[str, Any] = {
+        "account": args.account,
+        "scopes": scopes,
+        "tenant_id": args.tenant,
+        "lifetime_minutes": args.lifetime,
+        "fingerprint": args.fingerprint,
+        "force": args.force,
+    }
+
+    try:
+        response = _post_issue_service_account(base_url=args.base_url, payload=payload)
+    except CLIError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
+    output = _render_output(response, args.output)
+    print(output)
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+
+    if args.command == "tokens" and args.tokens_command == "issue-service-account":
+        return handle_issue_service_account(args)
+
+    parser.print_help()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
