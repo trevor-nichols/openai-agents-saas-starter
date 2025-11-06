@@ -36,6 +36,8 @@
 - Secret manager (Ops-managed Vault HA cluster) guarantees ≥99.95% monthly availability with 15-minute RTO; sealed volume mounts refresh within 5 minutes after failover. Schedule key rotations outside the weekly Sunday 02:00–03:00 UTC maintenance window to avoid transient read errors.
 - Risk: vault failover can impose up to 60-second read latency spikes; mitigation: token service caches active/next keypair in memory and alerts if refresh exceeds 30 seconds so on-call can verify vault health.
 - Sealed key volume (EFS-backed read-only mount) inherits 99.9% regional availability; cross-region replication completes within 10 minutes. Mitigation for prolonged regional outage is documented failover promoting standby region’s `next` key after audit sign-off.
+- Scope taxonomy locked for v1: `billing:read`, `billing:manage`, `conversations:read`, `conversations:write`, `conversations:delete`, `tools:read`, `support:*`; enforce read-only vs. mutate semantics accordingly.
+- Service-account issuance: non-interactive consumers receive tenant-scoped refresh tokens through AuthService using Vault-managed service credentials and CLI/CI helper; no STS exchange required in v1.
 
 ## Execution Plan
 
@@ -73,3 +75,4 @@
 - _2025-11-06_: Milestone initiated; issues AUTH-001 through AUTH-006 added to `ISSUE_TRACKER.md`.
 - _2025-11-06_: Draft architecture blueprint published at `docs/architecture/authentication-ed25519.md` pending AUTH-001 review.
 - _2025-11-06_: Test suite reorganized into `tests/unit`, `tests/contract`, and `tests/integration` to unblock upcoming auth work.
+- _2025-11-06_: Cross-team review approved scope taxonomy, audience identifiers, frontend refresh-token strategy, and service-account issuance approach; SLA findings added to Notes & Assumptions.

@@ -129,15 +129,17 @@
 ## 6. Open Questions & Next Actions
 
 ### 6.1 Resolved Decisions
-- **Multi-region signer policy:** Primary region runs the active signer; secondary regions load the `next` key in standby and promote only via documented failover SOP (`docs/architecture/authentication-ed25519.md`, §9).  
-- **Device fingerprint binding:** Refresh tokens persist a hashed device fingerprint; mismatches trigger rejection unless a future trusted-device flow overrides (same doc, §9).  
-- **JWKS access posture:** Endpoint remains publicly readable with edge rate limiting and audit logging; mTLS intentionally deferred per current blueprint (§9).  
-- **Revocation cache strategy:** Redis is the primary revocation cache with TTL aligned to refresh lifetime and Postgres authoritative fallback (`docs/architecture/authentication-ed25519.md`, §9).
+- **Multi-region signer policy:** Primary region runs the active signer; secondary regions load the `next` key in standby and promote only via documented failover SOP (`docs/architecture/authentication-ed25519.md`, §9).
+- **Device fingerprint binding:** Refresh tokens persist a hashed device fingerprint; mismatches trigger rejection unless a future trusted-device flow overrides (same doc, §9).
+- **JWKS access posture:** Endpoint remains publicly readable with edge rate limiting and audit logging; mTLS intentionally deferred per current blueprint (§9).
+- **Revocation cache strategy:** Redis is the primary revocation cache with TTL aligned to refresh token lifetime and Postgres authoritative fallback (`docs/architecture/authentication-ed25519.md`, §9).
+- **Scope taxonomy:** Scopes standardized to `billing:read`, `billing:manage`, `conversations:read`, `conversations:write`, `conversations:delete`, `tools:read`, `support:*`; read-only surfaces require the relevant `*:read` scope, mutations require `*:write`/`billing:manage`/`conversations:delete`.
+- **Service-account issuance:** Non-interactive consumers receive tenant-scoped refresh tokens through AuthService using Vault-managed service-account credentials and a CLI/CI helper; no STS exchange in v1.
+- **Frontend refresh tokens:** SPA stores access tokens in memory; refresh tokens are delivered solely via secure, HTTP-only, SameSite=Strict cookies with no client-side JWKS introspection in the initial rollout.
 
 ### 6.2 Outstanding Actions
-- Confirm inventory of downstream services that rely on JWTs (analytics, scheduled jobs, support tooling).  
-- Validate availability and SLAs of secret manager / sealed volume for key storage.  
-- Schedule cross-team review (Platform Security Guild, backend, frontend) to approve the threat model and feed updates back into `docs/architecture/authentication-ed25519.md`.  
-- Prepare meeting brief highlighting required decisions, success metrics, and implementation sequencing for AUTH-002 → AUTH-006.
+- Finalize `auth_audience` default configuration reflecting approved identifiers (`agent-api`, `analytics-service`, `billing-worker`, `support-console`, `synthetic-monitor`).
+- Define AuthService CLI/CI helper specification and workflow for service-account token issuance ahead of AUTH-002 delivery.
+- Implement scope enforcement hooks in routers during AUTH-003, aligning with the standardized taxonomy.
 
 > **Next Step:** Circulate this document, collect stakeholder sign-off, and baseline controls before committing to implementation tasks.

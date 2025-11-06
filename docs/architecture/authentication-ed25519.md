@@ -72,7 +72,7 @@
 
 ### Settings Additions (`app/core/config.py`)
 - `auth_issuer: str`
-- `auth_audience: list[str]`
+- `auth_audience: list[str]` — defaults to `["agent-api", "analytics-service", "billing-worker", "support-console", "synthetic-monitor"]`; override with a JSON array via `AUTH_AUDIENCE` and keep ordering stable across services.
 - `auth_access_ttl_minutes: int`
 - `auth_refresh_ttl_minutes: int`
 - `auth_key_storage_path: Path` (or secret manager URI)
@@ -134,5 +134,7 @@
 - **JWKS access control**: JWKS remains publicly readable with edge rate limiting (5 req/sec/IP) and audit logging rather than mTLS.
 - **Revocation cache backend**: Redis serves as primary revocation cache with TTL equal to refresh token lifetime; Postgres fallback if Redis unavailable.
 - **Test suite layout**: Restructure tests into `tests/unit`, `tests/contract`, and `tests/integration` prior to auth implementation; enforce coverage gates in CI accordingly.
+- **Scope taxonomy**: Version 1 scopes standardized to `billing:read`, `billing:manage`, `conversations:read`, `conversations:write`, `conversations:delete`, `tools:read`, `support:*`; read-only endpoints gate on `* :read` scopes, mutations on `* :write`/`billing:manage` and `conversations:delete`.
+- **Service-account issuance**: Non-interactive consumers obtain tenant-scoped refresh tokens via AuthService using managed Vault credentials and a CLI/CI helper; no STS exchange required in v1.
 
 > **Next Action:** Review in AUTH-001 workshop, assign owners to answer open questions, and update this blueprint before implementation sprints begin.

@@ -5,7 +5,9 @@
 
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
+
+
 from pydantic_settings import BaseSettings
 
 # =============================================================================
@@ -86,6 +88,24 @@ class Settings(BaseSettings):
         default="*",
         description="CORS allowed headers (comma-separated)"
     )
+
+    # =============================================================================
+    # AUTHENTICATION SETTINGS
+    # =============================================================================
+
+    auth_audience: list[str] = Field(
+        default_factory=lambda: [
+            "agent-api",
+            "analytics-service",
+            "billing-worker",
+            "support-console",
+            "synthetic-monitor",
+        ],
+        description=(
+            "Ordered list of permitted JWT audiences. "
+            "Provide as JSON array via AUTH_AUDIENCE environment variable; comma-separated strings are accepted when instantiating Settings directly."
+        ),
+    )
     
     # =============================================================================
     # LOGGING SETTINGS
@@ -164,6 +184,29 @@ class Settings(BaseSettings):
         "case_sensitive": False,
         "extra": "ignore"
     }
+
+    @field_validator("auth_audience", mode="before")
+    @classmethod
+    def _parse_auth_audience(cls, value: str | list[str] | None) -> list[str] | None:
+        """
+        Normalize auth audience configuration to a list of non-empty strings.
+
+        Supports comma-separated strings for environment-variable overrides.
+        """
+        if value is None:
+            return None
+
+        if isinstance(value, str):
+            items = [item.strip() for item in value.split(",") if item.strip()]
+        elif isinstance(value, (list, tuple, set)):
+            items = [str(item).strip() for item in value if str(item).strip()]
+        else:
+            raise ValueError("auth_audience must be a list or comma-separated string.")
+
+        if not items:
+            raise ValueError("auth_audience must include at least one audience identifier.")
+
+        return list(dict.fromkeys(items))  # preserve order while deduplicating
 
 # =============================================================================
 # SETTINGS INSTANCE
