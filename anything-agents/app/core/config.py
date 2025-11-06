@@ -106,6 +106,26 @@ class Settings(BaseSettings):
             "Provide as JSON array via AUTH_AUDIENCE environment variable; comma-separated strings are accepted when instantiating Settings directly."
         ),
     )
+    auth_key_storage_backend: str = Field(
+        default="file",
+        description="Key storage backend (file or secret-manager).",
+    )
+    auth_key_storage_path: str = Field(
+        default="var/keys/keyset.json",
+        description="Filesystem path for keyset JSON when using file backend.",
+    )
+    auth_key_secret_name: str | None = Field(
+        default=None,
+        description="Secret-manager key/path storing keyset JSON when backend=secret-manager.",
+    )
+    auth_jwks_cache_seconds: int = Field(
+        default=300,
+        description="Cache max-age for /.well-known/jwks.json responses.",
+    )
+    auth_rotation_overlap_minutes: int = Field(
+        default=1440,
+        description="Maximum minutes between active and next key creation timestamps.",
+    )
     
     # =============================================================================
     # LOGGING SETTINGS
@@ -232,6 +252,22 @@ class Settings(BaseSettings):
             raise ValueError("auth_audience must include at least one audience identifier.")
 
         return list(dict.fromkeys(items))  # preserve order while deduplicating
+
+    @field_validator("auth_key_storage_backend")
+    @classmethod
+    def _validate_key_storage_backend(cls, value: str) -> str:
+        allowed = {"file", "secret-manager"}
+        lowered = value.strip().lower()
+        if lowered not in allowed:
+            raise ValueError(f"auth_key_storage_backend must be one of {sorted(allowed)}")
+        return lowered
+
+    @field_validator("auth_jwks_cache_seconds", "auth_rotation_overlap_minutes")
+    @classmethod
+    def _positive_int(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("Configuration value must be greater than zero.")
+        return value
 
 # =============================================================================
 # SETTINGS INSTANCE

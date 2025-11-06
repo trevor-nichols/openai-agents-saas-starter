@@ -53,10 +53,11 @@
 ### Key Components
 
 - **AuthService (new)**: Lives under `app/services/auth_service.py`. Coordinates token issuance, refresh, revocation, and introspection. Depends on domain abstractions, not concrete crypto.
-- **Key Management Module (`app/core/keys.py`)**: Loads active and next Ed25519 keys, exposes rotation window semantics, materializes JWK payloads, and validates key age policies.
+- **Key Management Module (`app/core/keys.py`)**: Loads active and next Ed25519 keys, exposes rotation window semantics, materializes JWK payloads, and validates key age policies. Supports both filesystem persistence and the Vault KV-backed secret manager adapter (`app/infrastructure/security/vault_kv.py`) so production environments can store private material outside the container image.
 - **Signer/Verifier Interfaces**: `app/core/security.py` refactored into light façade delegating to injected `TokenSigner`/`TokenVerifier` implementations. This keeps dependency injection trivial for tests while locking algorithms.
 - **Revocation Store**: Postgres-backed repository under `app/infrastructure/persistence/auth/postgres.py` to track refresh tokens and revoked `jti` values, leveraging existing async engine.
-- **JWKS Endpoint**: New router `app/presentation/jwks.py` (mounted at `/.well-known/jwks.json`) serving public keys with caching. Paired with CLI task to regenerate bundles.
+- **JWKS Endpoint**: Router `app/presentation/well_known.py` exposes `/.well-known/jwks.json`, pulling from `KeySet.to_jwks()` and attaching cache headers so downstream verifiers can poll on a fixed cadence.
+- **Rotation CLI (`auth keys rotate`)**: Lives alongside the service-account helper in `app/cli/auth_cli.py`; generates Ed25519 keypairs, persists them via the configured storage backend, and prints the public JWK for distribution workflows.
 
 ## 4. Data & Configuration
 
@@ -71,13 +72,13 @@
 - `iat`, `exp`, `nbf` — standard temporal claims.
 
 ### Settings Additions (`app/core/config.py`)
-- `auth_issuer: str`
 - `auth_audience: list[str]` — defaults to `["agent-api", "analytics-service", "billing-worker", "support-console", "synthetic-monitor"]`; override with a JSON array via `AUTH_AUDIENCE` and keep ordering stable across services.
-- `auth_access_ttl_minutes: int`
-- `auth_refresh_ttl_minutes: int`
-- `auth_key_storage_path: Path` (or secret manager URI)
-- `auth_rotation_overlap_minutes: int`
-- Feature flag `auth_dual_signing_enabled: bool`
+- `auth_key_storage_backend: str` — `file` (default) or `secret-manager`.
+- `auth_key_storage_path: str` — filesystem location for keyset JSON when using the file backend.
+- `auth_key_secret_name: str` — secret-manager entry name/path (e.g., `kv/data/auth/keyset`) for environments storing the keyset outside the filesystem. Used by the Vault KV adapter to read/write the serialized KeySet document.
+- `auth_jwks_cache_seconds: int` — cache-control max-age for the JWKS endpoint responses.
+- `auth_rotation_overlap_minutes: int` — guardrail ensuring `active` and `next` keys do not diverge beyond the approved overlap window.
+- Additional knobs (`auth_issuer`, TTLs, dual signing flag) will land with the AUTH-003 service refactor.
 
 ## 5. Token Flow Sequences
 

@@ -15,8 +15,10 @@ from app.core.config import get_settings
 from app.infrastructure.db import dispose_engine, get_async_sessionmaker, init_engine
 from app.infrastructure.persistence.billing import PostgresBillingRepository
 from app.infrastructure.persistence.conversations.postgres import PostgresConversationRepository
+from app.infrastructure.security.vault_kv import configure_vault_secret_manager
 from app.middleware.logging import LoggingMiddleware
 from app.presentation import health as health_routes
+from app.presentation import well_known as well_known_routes
 from app.services.billing_service import billing_service
 from app.services.conversation_service import conversation_service
 
@@ -28,6 +30,7 @@ from app.services.conversation_service import conversation_service
 async def lifespan(app: FastAPI):
     """Handle application lifespan events."""
     settings = get_settings()
+    configure_vault_secret_manager(settings)
 
     if not settings.use_in_memory_repo:
         await init_engine(run_migrations=settings.auto_run_migrations)
@@ -107,6 +110,7 @@ def create_application() -> FastAPI:
 
     # Health check endpoints (non-versioned)
     app.include_router(health_routes.router, tags=["health"])
+    app.include_router(well_known_routes.router)
 
     # Versioned API surface
     app.include_router(api_router, prefix="/api", tags=["api"])

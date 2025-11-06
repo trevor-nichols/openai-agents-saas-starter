@@ -79,3 +79,4 @@
 - _2025-11-06_: Test suite reorganized into `tests/unit`, `tests/contract`, and `tests/integration` to unblock upcoming auth work.
 - _2025-11-06_: Cross-team review approved scope taxonomy, audience identifiers, frontend refresh-token strategy, and service-account issuance approach; SLA findings added to Notes & Assumptions.
 - _2025-11-06_: Vault Transit signing plan documented (`docs/security/vault-transit-signing.md`); refresh-token reuse strategy aligned with upcoming revocation store implementation.
+- _2025-11-06_: Key lifecycle module (`app/core/keys.py`), `auth keys rotate` CLI command, JWKS stub, and Vault KV secret-manager adapter published; tracker + blueprint updated to reflect new storage adapters and public key surface.
