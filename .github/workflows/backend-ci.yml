@@ -18,6 +18,20 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: anything_agents_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Check out repository
@@ -41,3 +55,9 @@ jobs:
 
       - name: Run backend tests
         run: hatch run test
+
+      - name: Postgres integration smoke tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents_ci
+        run: |
+          hatch run pytest anything-agents/tests/integration --maxfail=1 -m postgres

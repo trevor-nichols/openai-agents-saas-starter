@@ -12,8 +12,13 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from app.api.errors import register_exception_handlers
 from app.api.router import api_router
 from app.core.config import get_settings
+from app.infrastructure.db import dispose_engine, get_async_sessionmaker, init_engine
+from app.infrastructure.persistence.billing import PostgresBillingRepository
+from app.infrastructure.persistence.conversations.postgres import PostgresConversationRepository
 from app.middleware.logging import LoggingMiddleware
 from app.presentation import health as health_routes
+from app.services.billing_service import billing_service
+from app.services.conversation_service import conversation_service
 
 # =============================================================================
 # LIFESPAN EVENTS
@@ -22,9 +27,26 @@ from app.presentation import health as health_routes
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Handle application lifespan events."""
-    # Startup
-    yield
-    # Shutdown
+    settings = get_settings()
+
+    if not settings.use_in_memory_repo:
+        await init_engine(run_migrations=settings.auto_run_migrations)
+        session_factory = get_async_sessionmaker()
+        postgres_repository = PostgresConversationRepository(session_factory)
+        conversation_service.set_repository(postgres_repository)
+
+    if settings.enable_billing:
+        if settings.use_in_memory_repo:
+            raise RuntimeError(
+                "ENABLE_BILLING requires Postgres persistence. Set USE_IN_MEMORY_REPO=false."
+            )
+        session_factory = get_async_sessionmaker()
+        billing_service.set_repository(PostgresBillingRepository(session_factory))
+    try:
+        yield
+    finally:
+        if not settings.use_in_memory_repo:
+            await dispose_engine()
 
 # =============================================================================
 # APPLICATION FACTORY

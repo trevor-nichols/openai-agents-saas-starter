@@ -92,6 +92,52 @@ class Settings(BaseSettings):
     # =============================================================================
     
     log_level: str = Field(default="INFO", description="Logging level")
+
+    # =============================================================================
+    # DATABASE SETTINGS
+    # =============================================================================
+
+    database_url: str | None = Field(
+        default=None,
+        description="Async SQLAlchemy URL for the primary Postgres database",
+        alias="DATABASE_URL",
+    )
+    database_pool_size: int = Field(
+        default=5,
+        description="SQLAlchemy async pool size",
+    )
+    database_max_overflow: int = Field(
+        default=10,
+        description="Maximum overflow connections for the SQLAlchemy pool",
+    )
+    database_pool_recycle: int = Field(
+        default=1800,
+        description="Seconds before recycling idle connections",
+    )
+    database_pool_timeout: float = Field(
+        default=30.0,
+        description="Seconds to wait for a connection from the pool",
+    )
+    database_health_timeout: float = Field(
+        default=5.0,
+        description="Timeout for database health checks (seconds)",
+    )
+    database_echo: bool = Field(
+        default=False,
+        description="Enable SQLAlchemy engine echo for debugging",
+    )
+    use_in_memory_repo: bool = Field(
+        default=True,
+        description="Use in-memory repositories instead of Postgres (development defaults)",
+    )
+    enable_billing: bool = Field(
+        default=False,
+        description="Expose billing features and APIs once subscriptions are implemented",
+    )
+    auto_run_migrations: bool = Field(
+        default=False,
+        description="Automatically run Alembic migrations on startup (dev convenience)",
+    )
     
     # =============================================================================
     # HELPER METHODS

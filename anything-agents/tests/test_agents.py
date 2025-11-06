@@ -5,7 +5,9 @@ from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
 
-from app.domain.conversations import ConversationMessage
+import pytest
+
+from app.domain.conversations import ConversationMessage, ConversationMetadata
 from app.services.agent_service import agent_service
 from main import app
 
@@ -95,18 +97,20 @@ def test_agent_service_initialization() -> None:
     assert {"triage", "code_assistant", "data_analyst"}.issubset(names)
 
 
-def test_conversation_repository_roundtrip() -> None:
+@pytest.mark.asyncio
+async def test_conversation_repository_roundtrip() -> None:
     repository = agent_service.conversation_repository
-    repository.clear_conversation("integration-test")
+    await repository.clear_conversation("integration-test")
 
-    repository.add_message(
+    await repository.add_message(
         "integration-test",
         ConversationMessage(role="user", content="Test message"),
+        metadata=ConversationMetadata(agent_entrypoint="triage"),
     )
 
-    messages = repository.get_messages("integration-test")
+    messages = await repository.get_messages("integration-test")
     assert len(messages) == 1
     assert messages[0].content == "Test message"
 
-    repository.clear_conversation("integration-test")
-    assert repository.get_messages("integration-test") == []
+    await repository.clear_conversation("integration-test")
+    assert await repository.get_messages("integration-test") == []

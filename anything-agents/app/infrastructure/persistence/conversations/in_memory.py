@@ -5,7 +5,12 @@ from __future__ import annotations
 from collections.abc import Iterable
 from threading import RLock
 
-from app.domain.conversations import ConversationMessage, ConversationRecord, ConversationRepository
+from app.domain.conversations import (
+    ConversationMetadata,
+    ConversationMessage,
+    ConversationRecord,
+    ConversationRepository,
+)
 
 
 class InMemoryConversationRepository(ConversationRepository):
@@ -14,28 +19,36 @@ class InMemoryConversationRepository(ConversationRepository):
     def __init__(self) -> None:
         self._lock = RLock()
         self._store: dict[str, list[ConversationMessage]] = {}
+        self._metadata: dict[str, ConversationMetadata] = {}
 
-    def add_message(self, conversation_id: str, message: ConversationMessage) -> None:
+    async def add_message(
+        self,
+        conversation_id: str,
+        message: ConversationMessage,
+        *,
+        metadata: ConversationMetadata,
+    ) -> None:
         with self._lock:
             history = self._store.setdefault(conversation_id, [])
             history.append(message)
+            self._metadata[conversation_id] = metadata
 
-    def get_messages(self, conversation_id: str) -> list[ConversationMessage]:
+    async def get_messages(self, conversation_id: str) -> list[ConversationMessage]:
         with self._lock:
             return list(self._store.get(conversation_id, []))
 
-    def list_conversation_ids(self) -> list[str]:
+    async def list_conversation_ids(self) -> list[str]:
         with self._lock:
             return list(self._store.keys())
 
-    def iter_conversations(self) -> Iterable[ConversationRecord]:
+    async def iter_conversations(self) -> list[ConversationRecord]:
         with self._lock:
-            for conversation_id, messages in self._store.items():
-                yield ConversationRecord(
-                    conversation_id=conversation_id,
-                    messages=list(messages),
-                )
+            return [
+                ConversationRecord(conversation_id=conversation_id, messages=list(messages))
+                for conversation_id, messages in self._store.items()
+            ]
 
-    def clear_conversation(self, conversation_id: str) -> None:
+    async def clear_conversation(self, conversation_id: str) -> None:
         with self._lock:
             self._store.pop(conversation_id, None)
+            self._metadata.pop(conversation_id, None)

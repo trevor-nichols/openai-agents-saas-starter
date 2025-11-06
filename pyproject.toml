@@ -32,10 +32,12 @@ dependencies = [
   "pydantic-settings>=2.6.1,<2.7.0",
   "email-validator>=2.1.0,<2.2.0",
   "redis>=5.0.1,<6.0.0",
-  "python-jose[cryptography]>=3.3.0,<3.4.0",
+  "python-jose[cryptography]>=3.5.0,<3.6.0",
   "python-multipart>=0.0.20,<0.1.0",
   "passlib[bcrypt]>=1.7.4,<1.8.0",
   "python-dotenv>=1.0.0,<1.1.0",
+  "SQLAlchemy>=2.0.35,<2.1.0",
+  "asyncpg>=0.30.0,<0.31.0",
   "openai-agents==0.5.0",
   "tavily-python>=0.3.3,<0.4.0",
 ]
@@ -49,9 +51,11 @@ dev = [
   "pytest-asyncio>=0.21.1,<0.25.0",
   "pyright>=1.1.375,<1.2.0",
   "ruff>=0.7.0,<0.8.0",
+  "alembic>=1.13.3,<2.0.0",
   "types-python-jose>=3.3.4.0,<3.4.0",
   "types-passlib>=1.7.7.16,<1.8.0",
   "types-redis>=4.6.0.12,<4.7.0",
+  "stripe>=10.11.0,<11.0.0",
 ]
 
 [project.urls]
@@ -106,6 +110,8 @@ format = "ruff format anything-agents"
 typecheck = "mypy anything-agents"
 coverage = "python -m coverage run -m pytest && python -m coverage report"
 pyright = "python -m pyright"
+migrate = "alembic -c anything-agents/alembic.ini upgrade head"
+migration-revision = "alembic -c anything-agents/alembic.ini revision -m \"{args}\""
 
 [tool.ruff]
 line-length = 100
@@ -157,6 +163,9 @@ pythonpath = ["anything-agents"]
 testpaths = ["anything-agents/tests"]
 asyncio_mode = "auto"
 addopts = "--strict-markers --disable-warnings"
+markers = [
+  "postgres: marks tests that require a running Postgres instance",
+]
 
 [tool.coverage.run]
 branch = true

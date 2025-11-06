@@ -31,7 +31,7 @@ export async function* streamChat(
 ): AsyncGenerator<StreamChunk, void, unknown> {
   const { message, conversationId, agentType = 'triage' } = params;
 
-  const response = await fetch(`${API_BASE_URL}/api/v1/agents/chat/stream`, {
+  const response = await fetch(`${API_BASE_URL}/api/v1/chat/stream`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

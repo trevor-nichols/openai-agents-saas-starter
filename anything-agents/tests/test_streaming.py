@@ -28,7 +28,7 @@ pytestmark = pytest.mark.skipif(
 async def test_streaming_chat():
     """Test the streaming chat endpoint."""
     
-    url = "http://localhost:8000/api/v1/agents/chat/stream"
+    url = "http://localhost:8000/api/v1/chat/stream"
     
     chat_request = {
         "message": "Tell me a detailed story about a robot learning to paint",
@@ -84,7 +84,7 @@ async def test_streaming_chat():
 async def test_regular_chat():
     """Test the regular (non-streaming) chat endpoint for comparison."""
     
-    url = "http://localhost:8000/api/v1/agents/chat"
+    url = "http://localhost:8000/api/v1/chat"
     
     chat_request = {
         "message": "What's the weather like today?",

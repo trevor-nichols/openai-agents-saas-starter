@@ -83,6 +83,10 @@ XAI_API_KEY=your_xai_key
 PORT=8000
 DEBUG=True
 SECRET_KEY=your_secret_key
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents
+USE_IN_MEMORY_REPO=false  # set true to skip Postgres locally
+AUTO_RUN_MIGRATIONS=true  # dev convenience (requires Alembic dependency)
+ENABLE_BILLING=false      # flip to true once Postgres persistence is ready
 ```
 
 ### 4. Run the Application
@@ -93,7 +97,23 @@ hatch run serve
 
 The API will be available at `http://localhost:8000`
 
-### 5. Quality Checks
+### 5. Database & Migrations
+
+1. Start the infrastructure stack (Postgres + Redis) via Docker Compose:
+   ```bash
+   docker compose up -d postgres redis
+   ```
+   *(To stop later: `docker compose down` — data persists in the named volumes `postgres-data` / `redis-data`.)*
+2. Apply the baseline migration:
+   ```bash
+   hatch run migrate
+   ```
+3. Generate new migrations as the schema evolves:
+   ```bash
+   hatch run migration-revision "add widget table"
+   ```
+
+### 6. Quality Checks
 
 Run the standard backend quality gates before opening a PR:
 
@@ -102,6 +122,48 @@ hatch run lint
 hatch run typecheck
 hatch run pyright
 hatch run test
+```
+
+### 7. Postgres Integration Smoke Tests
+
+Provision a Postgres instance (see step 5), then run:
+
+```bash
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents \
+hatch run pytest anything-agents/tests/integration -m postgres
+```
+
+The test suite creates a throwaway database, applies Alembic migrations, and verifies the Postgres conversation and billing repositories.
+
+> **Note:** Billing endpoints require Postgres. Set `USE_IN_MEMORY_REPO=false`, configure `DATABASE_URL`, and then flip `ENABLE_BILLING=true`; the app will fail fast if billing is enabled without a durable store.
+
+### 8. Billing API (Postgres Only)
+
+Billing routes expect two headers on every request:
+
+- `X-Tenant-Id`: tenant identifier (UUID recommended)
+- `X-Tenant-Role`: one of `owner`, `admin`, `viewer`
+
+Example: start a subscription (requires role `owner` or `admin`):
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/billing/tenants/tenant-123/subscription" \
+     -H "Authorization: Bearer <token>" \
+     -H "X-Tenant-Id: tenant-123" \
+     -H "X-Tenant-Role: owner" \
+     -H "Content-Type: application/json" \
+     -d '{"plan_code": "starter", "billing_email": "owner@example.com", "auto_renew": true}'
+```
+
+Report usage (idempotent when `idempotency_key` repeated):
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/billing/tenants/tenant-123/usage" \
+     -H "Authorization: Bearer <token>" \
+     -H "X-Tenant-Id: tenant-123" \
+     -H "X-Tenant-Role: admin" \
+     -H "Content-Type: application/json" \
+     -d '{"feature_key": "messages", "quantity": 120, "idempotency_key": "messages-2025-11-06"}'
 ```
 
 ## 🤖 Agent Types

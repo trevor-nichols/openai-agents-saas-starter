@@ -1,0 +1,246 @@
+"""Postgres-backed billing repository implementation."""
+
+from __future__ import annotations
+
+import logging
+import uuid
+from datetime import datetime, timezone
+from typing import Optional
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.orm import selectinload
+
+from app.domain.billing import (
+    BillingPlan,
+    BillingRepository,
+    PlanFeature,
+    TenantSubscription,
+)
+from app.infrastructure.persistence.conversations.models import (
+    BillingPlan as ORMPlan,
+    PlanFeature as ORMPlanFeature,
+    SubscriptionUsage as ORMSubscriptionUsage,
+    TenantSubscription as ORMTenantSubscription,
+)
+
+logger = logging.getLogger("anything-agents.persistence.billing")
+
+
+class PostgresBillingRepository(BillingRepository):
+    """Persist and fetch billing data using SQLAlchemy models."""
+
+    def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
+        self._session_factory = session_factory
+
+    async def list_plans(self) -> list[BillingPlan]:
+        async with self._session_factory() as session:
+            result = await session.execute(
+                select(ORMPlan).options(selectinload(ORMPlan.features))
+            )
+            plans = [self._to_domain_plan(row) for row in result.scalars()]
+            logger.debug("Fetched %s billing plans from Postgres.", len(plans))
+            return plans
+
+    async def get_subscription(self, tenant_id: str) -> Optional[TenantSubscription]:
+        async with self._session_factory() as session:
+            try:
+                tenant_uuid = self._parse_tenant_uuid(tenant_id)
+            except ValueError:
+                logger.debug(
+                    "Ignoring non-UUID tenant identifier '%s' for subscription lookup.",
+                    tenant_id,
+                )
+                return None
+            result = await session.execute(
+                select(ORMTenantSubscription)
+                .options(selectinload(ORMTenantSubscription.plan))
+                .where(ORMTenantSubscription.tenant_id == tenant_uuid)
+            )
+            row = result.scalar_one_or_none()
+            if row is None:
+                return None
+            return self._to_domain_subscription(row)
+
+    async def upsert_subscription(self, subscription: TenantSubscription) -> None:
+        async with self._session_factory() as session:
+            plan_row = await session.scalar(select(ORMPlan).where(ORMPlan.code == subscription.plan_code))
+            if plan_row is None:
+                raise ValueError(f"Billing plan '{subscription.plan_code}' not found.")
+
+            tenant_uuid = self._parse_tenant_uuid(subscription.tenant_id)
+            existing = await session.scalar(
+                select(ORMTenantSubscription).where(ORMTenantSubscription.tenant_id == tenant_uuid)
+            )
+
+            if existing is None:
+                entity = ORMTenantSubscription(
+                    id=uuid.uuid4(),
+                    tenant_id=tenant_uuid,
+                    plan_id=plan_row.id,
+                    status=subscription.status,
+                    auto_renew=subscription.auto_renew,
+                    billing_email=subscription.billing_email,
+                    processor=subscription.processor,
+                    processor_customer_id=subscription.processor_customer_id,
+                    processor_subscription_id=subscription.processor_subscription_id,
+                    starts_at=subscription.starts_at,
+                    current_period_start=subscription.current_period_start,
+                    current_period_end=subscription.current_period_end,
+                    trial_ends_at=subscription.trial_ends_at,
+                    cancel_at=subscription.cancel_at,
+                    seat_count=subscription.seat_count,
+                    metadata_json=subscription.metadata or {},
+                )
+                session.add(entity)
+            else:
+                existing.plan_id = plan_row.id
+                existing.status = subscription.status
+                existing.auto_renew = subscription.auto_renew
+                existing.billing_email = subscription.billing_email
+                existing.processor = subscription.processor
+                existing.processor_customer_id = subscription.processor_customer_id
+                existing.processor_subscription_id = subscription.processor_subscription_id
+                existing.starts_at = subscription.starts_at
+                existing.current_period_start = subscription.current_period_start
+                existing.current_period_end = subscription.current_period_end
+                existing.trial_ends_at = subscription.trial_ends_at
+                existing.cancel_at = subscription.cancel_at
+                existing.seat_count = subscription.seat_count
+                existing.metadata_json = subscription.metadata or {}
+                existing.updated_at = datetime.now(timezone.utc)
+
+            await session.commit()
+
+    async def update_subscription(
+        self,
+        tenant_id: str,
+        *,
+        auto_renew: bool | None = None,
+        billing_email: str | None = None,
+        seat_count: int | None = None,
+    ) -> TenantSubscription:
+        async with self._session_factory() as session:
+            tenant_uuid = self._parse_tenant_uuid(tenant_id)
+            subscription = await session.scalar(
+                select(ORMTenantSubscription)
+                .options(selectinload(ORMTenantSubscription.plan))
+                .where(ORMTenantSubscription.tenant_id == tenant_uuid)
+            )
+            if subscription is None:
+                raise ValueError(f"Tenant '{tenant_id}' does not have a subscription.")
+
+            if auto_renew is not None:
+                subscription.auto_renew = auto_renew
+            if billing_email is not None:
+                subscription.billing_email = billing_email
+            if seat_count is not None:
+                subscription.seat_count = seat_count
+
+            subscription.updated_at = datetime.now(timezone.utc)
+            await session.commit()
+            await session.refresh(subscription)
+            return self._to_domain_subscription(subscription)
+
+    async def record_usage(
+        self,
+        tenant_id: str,
+        *,
+        feature_key: str,
+        quantity: int,
+        period_start: datetime,
+        period_end: datetime,
+        idempotency_key: str | None = None,
+    ) -> None:
+        async with self._session_factory() as session:
+            tenant_uuid = self._parse_tenant_uuid(tenant_id)
+            subscription = await session.scalar(
+                select(ORMTenantSubscription).where(ORMTenantSubscription.tenant_id == tenant_uuid)
+            )
+            if subscription is None:
+                raise ValueError(f"Tenant '{tenant_id}' does not have a subscription.")
+
+            if idempotency_key:
+                existing = await session.scalar(
+                    select(ORMSubscriptionUsage).where(
+                        ORMSubscriptionUsage.subscription_id == subscription.id,
+                        ORMSubscriptionUsage.feature_key == feature_key,
+                        ORMSubscriptionUsage.external_event_id == idempotency_key,
+                    )
+                )
+                if existing is not None:
+                    return
+
+            usage = ORMSubscriptionUsage(
+                id=uuid.uuid4(),
+                subscription_id=subscription.id,
+                feature_key=feature_key,
+                unit="units",
+                period_start=period_start,
+                period_end=period_end,
+                quantity=quantity,
+                reported_at=datetime.now(timezone.utc),
+                external_event_id=idempotency_key,
+            )
+            session.add(usage)
+            await session.commit()
+
+    @staticmethod
+    def _to_domain_plan(plan: ORMPlan) -> BillingPlan:
+        return BillingPlan(
+            code=plan.code,
+            name=plan.name,
+            interval=plan.interval,
+            interval_count=plan.interval_count,
+            price_cents=plan.price_cents,
+            currency=plan.currency,
+            trial_days=plan.trial_days,
+            seat_included=plan.seat_included,
+            feature_toggles=plan.feature_toggles or {},
+            features=[PostgresBillingRepository._to_domain_feature(feature) for feature in plan.features],
+            is_active=plan.is_active,
+        )
+
+    @staticmethod
+    def _to_domain_feature(feature: ORMPlanFeature) -> PlanFeature:
+        return PlanFeature(
+            key=feature.feature_key,
+            display_name=feature.display_name or feature.feature_key,
+            description=feature.description,
+            hard_limit=feature.hard_limit,
+            soft_limit=feature.soft_limit,
+            is_metered=feature.is_metered,
+        )
+
+    @staticmethod
+    def _to_domain_subscription(subscription: ORMTenantSubscription) -> TenantSubscription:
+        return TenantSubscription(
+            tenant_id=str(subscription.tenant_id),
+            plan_code=_safe_plan_code(subscription),
+            status=subscription.status,
+            auto_renew=subscription.auto_renew,
+            billing_email=subscription.billing_email,
+            starts_at=subscription.starts_at,
+            current_period_start=subscription.current_period_start,
+            current_period_end=subscription.current_period_end,
+            trial_ends_at=subscription.trial_ends_at,
+            cancel_at=subscription.cancel_at,
+            seat_count=subscription.seat_count,
+            metadata=subscription.metadata_json or {},
+            processor=subscription.processor,
+            processor_customer_id=subscription.processor_customer_id,
+            processor_subscription_id=subscription.processor_subscription_id,
+        )
+
+    @staticmethod
+    def _parse_tenant_uuid(tenant_id: str) -> uuid.UUID:
+        try:
+            return uuid.UUID(str(tenant_id))
+        except (ValueError, TypeError) as exc:
+            raise ValueError("Tenant identifier must be a valid UUID.") from exc
+
+
+def _safe_plan_code(subscription: ORMTenantSubscription) -> str:
+    if subscription.plan:
+        return subscription.plan.code
+    return str(subscription.plan_id)

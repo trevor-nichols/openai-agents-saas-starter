@@ -5,26 +5,24 @@ from __future__ import annotations
 import uuid
 from collections.abc import AsyncGenerator, Iterable
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
-from agents import Agent, function_tool, trace
+from agents import Agent, function_tool, handoff, trace
+from agents.extensions.handoff_prompt import prompt_with_handoff_instructions
 from openai.types.responses import ResponseTextDeltaEvent
 
 from app.api.v1.agents.schemas import AgentStatus, AgentSummary
 from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse, StreamingChatResponse
 from app.api.v1.conversations.schemas import ChatMessage, ConversationHistory, ConversationSummary
 from app.core.config import get_settings
-from app.domain.conversations import ConversationMessage, ConversationRepository
+from app.domain.conversations import (
+    ConversationMetadata,
+    ConversationMessage,
+    ConversationRepository,
+)
 from app.infrastructure.openai import runner as agent_runner
-from app.infrastructure.persistence.conversations.in_memory import InMemoryConversationRepository
 from app.utils.tools import ToolRegistry, initialize_tools
-
-_CONVERSATION_REPOSITORY: ConversationRepository | None = None
-
-
-def _set_conversation_repository(repository: ConversationRepository) -> None:
-    global _CONVERSATION_REPOSITORY
-    _CONVERSATION_REPOSITORY = repository
+from .conversation_service import conversation_service
 
 
 @function_tool
@@ -38,25 +36,13 @@ async def get_current_time() -> str:
 async def search_conversations(query: str) -> str:
     """Search cached conversations for a query string."""
 
-    repository = _CONVERSATION_REPOSITORY
-    if repository is None:
-        return "Conversation storage is not initialised."
-
-    query_lower = query.lower()
-    results: list[str] = []
-
-    for record in repository.iter_conversations():
-        for message in record.messages:
-            if query_lower in message.content.lower():
-                preview = message.content[:120]
-                suffix = "..." if len(message.content) > 120 else ""
-                results.append(f"{record.conversation_id}: {preview}{suffix}")
-                break
-
+    results = await conversation_service.search(query)
     if not results:
         return "No conversations contained the requested text."
 
-    top_matches = "\n".join(results[:5])
+    top_matches = "\n".join(
+        f"{result.conversation_id}: {result.preview}" for result in results[:5]
+    )
     return f"Found {len(results)} matching conversations:\n{top_matches}"
 
 
@@ -85,38 +71,51 @@ class AgentRegistry:
     def _build_default_agents(self) -> None:
         triage_tools = self._tool_registry.get_core_tools()
 
-        self._agents["triage"] = Agent(
-            name="Triage Assistant",
-            instructions="""
-            You are the primary triage assistant. Handle general inquiries
-            with a helpful, professional tone and decide when to leverage
-            available tools. Provide concise, actionable answers.
-            """,
-            model="gpt-4.1-2025-04-14",
-            tools=triage_tools,
-        )
-
-        self._agents["code_assistant"] = Agent(
+        code_assistant = Agent(
             name="Code Assistant",
             instructions="""
             You specialise in software engineering guidance. Focus on code
             quality, architecture, and modern best practices. Provide
             step-by-step reasoning when helpful.
             """,
+            handoff_description="Handles software engineering questions and code reviews.",
             model="gpt-4.1-2025-04-14",
             tools=triage_tools,
         )
 
-        self._agents["data_analyst"] = Agent(
+        data_analyst = Agent(
             name="Data Analyst",
             instructions="""
             You specialise in data interpretation, statistical analysis, and
             communicating insights clearly. When applicable, propose visual
             summaries or sanity checks.
             """,
+            handoff_description="Supports analytical and quantitative queries.",
             model="gpt-4.1-2025-04-14",
             tools=triage_tools,
         )
+
+        triage_instructions = prompt_with_handoff_instructions(
+            """
+            You are the primary triage assistant. Handle general inquiries
+            with a helpful, professional tone and decide when to leverage
+            specialised teammates. Provide concise, actionable answers, and
+            hand off to the code or data analyst agents when they are better
+            suited to respond.
+            """
+        )
+
+        triage_agent = Agent(
+            name="Triage Assistant",
+            instructions=triage_instructions,
+            model="gpt-4.1-2025-04-14",
+            tools=triage_tools,
+            handoffs=[handoff(code_assistant), handoff(data_analyst)],
+        )
+
+        self._agents["code_assistant"] = code_assistant
+        self._agents["data_analyst"] = data_analyst
+        self._agents["triage"] = triage_agent
 
     def get_agent(self, agent_name: str) -> Agent | None:
         return self._agents.get(agent_name)
@@ -135,22 +134,29 @@ class AgentRegistry:
 class AgentService:
     """Core façade that orchestrates agent interactions."""
 
-    def __init__(self, conversation_repo: ConversationRepository | None = None):
-        self._conversation_repo = conversation_repo or InMemoryConversationRepository()
-        _set_conversation_repository(self._conversation_repo)
+    def __init__(self, conversation_repo: Optional[ConversationRepository] = None):
+        if conversation_repo is not None:
+            conversation_service.set_repository(conversation_repo)
 
         self._tool_registry = initialize_tools()
         self._agent_registry = AgentRegistry(self._tool_registry)
 
     async def chat(self, request: AgentChatRequest) -> AgentChatResponse:
         conversation_id = request.conversation_id or str(uuid.uuid4())
-        history = self._conversation_repo.get_messages(conversation_id)
-
-        user_message = ConversationMessage(role="user", content=request.message)
-        self._conversation_repo.add_message(conversation_id, user_message)
+        history = await conversation_service.get_messages(conversation_id)
 
         preferred_agent = request.agent_type or "triage"
         agent_name, agent = self._resolve_agent(preferred_agent)
+
+        user_message = ConversationMessage(role="user", content=request.message)
+        await conversation_service.append_message(
+            conversation_id,
+            user_message,
+            metadata=ConversationMetadata(
+                agent_entrypoint=preferred_agent,
+                active_agent=None,
+            ),
+        )
 
         agent_input = self._prepare_agent_input(request.message, history)
 
@@ -161,7 +167,14 @@ class AgentService:
             role="assistant",
             content=str(result.final_output),
         )
-        self._conversation_repo.add_message(conversation_id, assistant_message)
+        await conversation_service.append_message(
+            conversation_id,
+            assistant_message,
+            metadata=ConversationMetadata(
+                agent_entrypoint=preferred_agent,
+                active_agent=agent_name,
+            ),
+        )
 
         return AgentChatResponse(
             response=str(result.final_output),
@@ -178,13 +191,20 @@ class AgentService:
         self, request: AgentChatRequest
     ) -> AsyncGenerator[StreamingChatResponse, None]:
         conversation_id = request.conversation_id or str(uuid.uuid4())
-        history = self._conversation_repo.get_messages(conversation_id)
-
-        user_message = ConversationMessage(role="user", content=request.message)
-        self._conversation_repo.add_message(conversation_id, user_message)
+        history = await conversation_service.get_messages(conversation_id)
 
         preferred_agent = request.agent_type or "triage"
         agent_name, agent = self._resolve_agent(preferred_agent)
+
+        user_message = ConversationMessage(role="user", content=request.message)
+        await conversation_service.append_message(
+            conversation_id,
+            user_message,
+            metadata=ConversationMetadata(
+                agent_entrypoint=preferred_agent,
+                active_agent=None,
+            ),
+        )
 
         agent_input = self._prepare_agent_input(request.message, history)
         complete_response = ""
@@ -218,10 +238,17 @@ class AgentService:
             role="assistant",
             content=complete_response,
         )
-        self._conversation_repo.add_message(conversation_id, assistant_message)
+        await conversation_service.append_message(
+            conversation_id,
+            assistant_message,
+            metadata=ConversationMetadata(
+                agent_entrypoint=preferred_agent,
+                active_agent=agent_name,
+            ),
+        )
 
     async def get_conversation_history(self, conversation_id: str) -> ConversationHistory:
-        messages = self._conversation_repo.get_messages(conversation_id)
+        messages = await conversation_service.get_messages(conversation_id)
         if not messages:
             raise ValueError(f"Conversation {conversation_id} not found")
 
@@ -233,10 +260,10 @@ class AgentService:
             updated_at=messages[-1].timestamp.isoformat(),
         )
 
-    def list_conversations(self) -> list[ConversationSummary]:
+    async def list_conversations(self) -> list[ConversationSummary]:
         summaries: list[ConversationSummary] = []
 
-        for record in self._conversation_repo.iter_conversations():
+        for record in await conversation_service.iterate_conversations():
             if not record.messages:
                 continue
 
@@ -254,14 +281,14 @@ class AgentService:
         summaries.sort(key=lambda item: item.updated_at, reverse=True)
         return summaries
 
-    def clear_conversation(self, conversation_id: str) -> None:
-        self._conversation_repo.clear_conversation(conversation_id)
+    async def clear_conversation(self, conversation_id: str) -> None:
+        await conversation_service.clear_conversation(conversation_id)
 
     @property
-    def conversation_repository(self) -> ConversationRepository:
+    def conversation_repository(self):
         """Expose the underlying repository for integration/testing scenarios."""
 
-        return self._conversation_repo
+        return conversation_service.repository
 
     def list_available_agents(self) -> list[AgentSummary]:
         return [

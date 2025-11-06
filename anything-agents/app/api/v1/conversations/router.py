@@ -12,7 +12,7 @@ router = APIRouter(prefix="/conversations", tags=["conversations"])
 async def list_conversations() -> list[ConversationSummary]:
     """List stored conversations ordered by recency."""
 
-    return agent_service.list_conversations()
+    return await agent_service.list_conversations()
 
 
 @router.get("/{conversation_id}", response_model=ConversationHistory)
@@ -32,5 +32,5 @@ async def get_conversation(conversation_id: str) -> ConversationHistory:
 async def delete_conversation(conversation_id: str) -> Response:
     """Remove all stored messages for the given conversation."""
 
-    agent_service.clear_conversation(conversation_id)
+    await agent_service.clear_conversation(conversation_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
