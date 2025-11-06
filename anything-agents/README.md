@@ -99,14 +99,16 @@ The API will be available at `http://localhost:8000`
 
 ### 5. Database & Migrations
 
-1. Start the infrastructure stack (Postgres + Redis) via Docker Compose:
+1. Start the infrastructure stack (Postgres + Redis) via Docker Compose. If you already
+   have something bound to port 5432 or 6379, set `POSTGRES_PORT` / `REDIS_PORT` in your
+   `.env.local` before running this command.
    ```bash
    docker compose up -d postgres redis
    ```
    *(To stop later: `docker compose down` — data persists in the named volumes `postgres-data` / `redis-data`.)*
 2. Apply the baseline migration:
    ```bash
-   hatch run migrate
+   make migrate
    ```
 3. Generate new migrations as the schema evolves:
    ```bash
