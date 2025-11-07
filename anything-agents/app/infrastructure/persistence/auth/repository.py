@@ -233,9 +233,13 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
         candidates: list[KeyMaterial] = []
         if keyset.active:
             candidates.append(keyset.active)
-        if keyset.next:
-            candidates.append(keyset.next)
-        candidates.extend(keyset.retired or [])
+
+        next_material = getattr(keyset, "next", None)
+        if next_material:
+            candidates.append(next_material)
+
+        retired_materials = getattr(keyset, "retired", None) or []
+        candidates.extend(retired_materials)
         for material in candidates:
             if material.kid == kid:
                 return material
