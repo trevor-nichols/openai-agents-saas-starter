@@ -7,7 +7,7 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "types": ["node"],
-    "strict": false
+    "strict": true
   },
   "include": ["scripts/**/*.ts"]
 }

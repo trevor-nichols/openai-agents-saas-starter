@@ -308,6 +308,50 @@ class Settings(BaseSettings):
     def get_allowed_headers_list(self) -> list[str]:
         """Get allowed headers as a list."""
         return [header.strip() for header in self.allowed_headers.split(',') if header.strip()]
+
+    def required_stripe_envs_missing(self) -> list[str]:
+        """Return the list of Stripe environment variables missing when billing is enabled."""
+        missing: list[str] = []
+        if not (self.stripe_secret_key and self.stripe_secret_key.strip()):
+            missing.append("STRIPE_SECRET_KEY")
+        if not (self.stripe_webhook_secret and self.stripe_webhook_secret.strip()):
+            missing.append("STRIPE_WEBHOOK_SECRET")
+        if not self.stripe_product_price_map:
+            missing.append("STRIPE_PRODUCT_PRICE_MAP")
+        return missing
+
+    def stripe_configuration_summary(self) -> dict[str, object]:
+        """Return a masked summary of the active Stripe configuration for logging."""
+        price_map = self.stripe_product_price_map or {}
+        plan_codes = sorted(price_map.keys())
+        redis_source = (
+            "BILLING_EVENTS_REDIS_URL"
+            if self.billing_events_redis_url
+            else ("REDIS_URL" if self.redis_url else "<unset>")
+        )
+        return {
+            "stripe_secret_key": self._mask_secret(self.stripe_secret_key),
+            "stripe_webhook_secret": self._mask_secret(self.stripe_webhook_secret),
+            "plans_configured": plan_codes,
+            "plan_count": len(plan_codes),
+            "billing_stream_enabled": self.enable_billing_stream,
+            "billing_stream_backend": redis_source if self.enable_billing_stream else "disabled",
+        }
+
+    @staticmethod
+    def _mask_secret(value: str | None) -> str:
+        """Mask sensitive tokens while preserving enough characters for debugging."""
+        if value is None:
+            return "<missing>"
+        cleaned = value.strip()
+        if not cleaned:
+            return "<missing>"
+        if len(cleaned) <= 4:
+            return "*" * len(cleaned)
+        prefix = cleaned[:2]
+        suffix = cleaned[-4:]
+        middle_length = max(len(cleaned) - len(prefix) - len(suffix), 3)
+        return f"{prefix}{'*' * middle_length}{suffix}"
     
     # =============================================================================
     # CONFIGURATION

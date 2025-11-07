@@ -191,7 +191,7 @@ curl -X POST "http://localhost:8000/api/v1/billing/tenants/tenant-123/usage" \
 
 #### Stripe configuration
 
-Billing routes now require Stripe credentials whenever `ENABLE_BILLING=true`. Set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PRODUCT_PRICE_MAP` (JSON or comma-separated `plan=price` pairs) inside `.env.local`, then restart the API. The guard fails fast if any variable is missing. See `docs/billing/stripe-setup.md` for the checklist or run `pnpm stripe:setup` (documented in `docs/scripts/stripe-setup.md`) to capture the values interactively.
+Billing routes now require Stripe credentials whenever `ENABLE_BILLING=true`. The quickest path is to run `pnpm stripe:setup`, which prompts for your Stripe secret/webhook secrets, asks how much to charge for the Starter + Pro plans, and then creates/reuses the corresponding Stripe products/prices (7-day trial included). The script writes `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PRODUCT_PRICE_MAP` into `.env.local` and flips `ENABLE_BILLING=true` for you. Prefer manual edits? You can still populate those keys yourself—just keep the JSON map in sync with your real Stripe price IDs. See `docs/billing/stripe-setup.md` for the full checklist.
 
 ## 🤖 Agent Types
 

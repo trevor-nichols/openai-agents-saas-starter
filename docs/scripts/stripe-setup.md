@@ -1,47 +1,59 @@
 # Stripe Developer Setup Script (STRIPE-02)
 
-The `scripts/stripe/setup.ts` helper guides developers through the minimum tasks required before enabling billing. It does **not** talk to Stripe APIs yet—it orchestrates local tooling (Stripe CLI, Docker/Postgres, env files) so the STRIPE-01 startup guard can succeed without manual file edits.
+`scripts/stripe/setup.py` is the interactive helper that bootstraps billing end-to-end for local development. It wraps the Stripe CLI, Docker/Postgres helpers, and the official Stripe Python SDK so you only need to provide your Stripe secrets and pick the monthly price for each plan (Starter + Pro). The script creates or reuses the corresponding Stripe products/prices with a 7-day trial and writes the resulting configuration into `.env.local`.
 
 ## Prerequisites
 
-- Node.js 18+ with [pnpm](https://pnpm.io/installation) (Corepack-enabled on macOS/Linux by default).
-- Stripe CLI installed locally (`stripe --version` should work). The script can launch the guided auth page and run `stripe login --interactive` for you.
-- Docker + `make` if you want it to bootstrap the local Postgres stack (`make dev-up`).
-- A Stripe account with permission to create API keys, webhook endpoints, and price IDs.
+- Python 3.11+ with access to the repository’s virtual environment (install with `pip install '.[dev]'` or `pip install stripe` at minimum).
+- Stripe CLI installed (`stripe --version`). The assistant can open the guided auth page and run `stripe login --interactive` for you.
+- Docker + `make` if you want the helper to launch the local Postgres stack via `make dev-up`.
+- A Stripe account that can create API keys, webhook endpoints, products, and prices.
 
 ## Running the script
 
 ```bash
-pnpm install         # one-time, installs tsx/types
-pnpm stripe:setup
+pnpm stripe:setup   # invokes python scripts/stripe/setup.py
 ```
 
-The assistant walks through three phases:
+### What happens during the run?
 
-1. **Stripe CLI check** – Verifies install + auth. If auth is missing it can
-   - open <https://dashboard.stripe.com/stripe-cli/auth> in your browser, and
-   - launch `stripe login --interactive` directly inside the terminal.
-2. **Postgres helper** – Optionally runs `make dev-up` (Docker Compose) and can attempt a `psql` connection against `DATABASE_URL` (parsed from `.env.local`, `.env`, or `.env.compose`).
-3. **Env writer** – Prompts for `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and plan-to-price mappings. Existing values are detected; you can keep them or overwrite. Results are written to `.env.local` and `ENABLE_BILLING` is flipped to `true` so the STRIPE-01 guard can succeed.
+1. **Stripe CLI check** – Verifies installation/auth. If auth is missing it can open <https://dashboard.stripe.com/stripe-cli/auth> and run `stripe login --interactive` inline.
+2. **Postgres helper** – Offers to run `make dev-up` and (optionally) executes a `psql` smoke test against your `DATABASE_URL` (discovered from `.env.local`, `.env`, `.env.compose`, or manual input).
+3. **Stripe provisioning** – Prompts for `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and the monthly price for each plan. Using the official Stripe SDK it:
+   - creates (or updates) the `starter` and `pro` products,
+   - ensures each product has a monthly price with a 7-day trial, and
+   - records the resulting price IDs in `STRIPE_PRODUCT_PRICE_MAP`.
+4. **Env writer** – Stores the secrets + JSON map inside `.env.local` and flips `ENABLE_BILLING=true`. Existing values are detected so you can opt to keep them.
 
-Sample (truncated) output:
+Sample output (abbreviated):
 
 ```
-[2025-11-07T21:12:52.483Z] [INFO] Welcome to the Stripe setup assistant.
-[2025-11-07T21:12:52.732Z] [SUCCESS] Stripe CLI detected (stripe version 1.18.1).
-[2025-11-07T21:12:56.410Z] [INFO] Start/refresh the local Postgres stack via `make dev-up`? (Y/n)
+[INFO] Stripe SaaS setup assistant starting…
+[SUCCESS] stripe version 1.18.3
+[INFO] Start or refresh the local Postgres stack via `make dev-up`? (Y/n)
 ...
-[2025-11-07T21:13:47.022Z] [SUCCESS] Stripe configuration saved to .env.local
+[SUCCESS] Configured Starter (USD 29.00) → price_1Qabcd...
+[SUCCESS] Configured Pro (USD 79.00) → price_1Qefgh...
+[SUCCESS] Stripe configuration captured in .env.local
+{
+  "STRIPE_SECRET_KEY": "sk_test…1234",
+  "STRIPE_WEBHOOK_SECRET": "whsec…abcd",
+  "STRIPE_PRODUCT_PRICE_MAP": {
+    "starter": "price_1Qabcd…",
+    "pro": "price_1Qefgh…"
+  },
+  "ENABLE_BILLING": true
+}
 ```
 
-If a step fails (missing CLI, Docker unavailable, `psql` not installed) the script will warn and continue so you can resolve the issue manually.
+If a step fails (missing CLI, Docker unavailable, `psql` not installed, or Stripe API errors) the script prints a descriptive warning so you can resolve the issue before retrying.
 
 ## Relationship to STRIPE-01
 
-The FastAPI startup guard (STRIPE-01) now refuses to boot with `ENABLE_BILLING=true` unless `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PRODUCT_PRICE_MAP` are populated. Running `pnpm stripe:setup` ensures those values land in `.env.local` and keeps existing values unless you explicitly overwrite them.
+The FastAPI startup guard (STRIPE-01) still requires `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PRODUCT_PRICE_MAP` whenever `ENABLE_BILLING=true`. Running `pnpm stripe:setup` guarantees those values are present, validated, and tied to real Stripe products/prices.
 
-## Next steps
+## Extending the helper
 
-- **Webhook + gateway work (STRIPE-03/04/05)** will reuse the env values captured here.
-- The script currently avoids real Stripe API calls; once STRIPE-03 lands we can extend it to verify price IDs via the official API if desired.
-- Contributions welcome—see `scripts/stripe/setup.ts` for implementation details.
+- STRIPE-03/04/05 build on the same configuration; no additional Stripe setup is required once this script completes successfully.
+- The script is intentionally idempotent: rerunning it reuses products/prices tagged with `metadata["anything_agents_plan_code"]` so you won’t accumulate duplicates.
+- Contributions welcome—see `scripts/stripe/setup.py` for implementation details or to add additional plan types in the future.

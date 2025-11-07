@@ -4,6 +4,7 @@
 # Used by: uvicorn server to run the application
 
 from contextlib import asynccontextmanager
+import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -39,24 +40,38 @@ from app.services.conversation_service import conversation_service
 from app.services.payment_gateway import stripe_gateway
 
 # =============================================================================
+# MODULE CONSTANTS
+# =============================================================================
+
+logger = logging.getLogger(__name__)
+_STRIPE_TROUBLESHOOTING_DOC = "docs/billing/stripe-setup.md#startup-validation--troubleshooting"
+
+# =============================================================================
 # LIFESPAN EVENTS
 # =============================================================================
 
 def _ensure_billing_prerequisites(settings: Settings) -> None:
-    missing: list[str] = []
-    if not settings.stripe_secret_key:
-        missing.append("STRIPE_SECRET_KEY")
-    if not settings.stripe_webhook_secret:
-        missing.append("STRIPE_WEBHOOK_SECRET")
-    if not settings.stripe_product_price_map:
-        missing.append("STRIPE_PRODUCT_PRICE_MAP")
+    missing = settings.required_stripe_envs_missing()
 
     if missing:
         missing_envs = ", ".join(missing)
         raise RuntimeError(
             "ENABLE_BILLING=true requires Stripe configuration. "
-            f"Set {missing_envs} (see docs/billing/stripe-setup.md)."
+            f"Set {missing_envs} (see {_STRIPE_TROUBLESHOOTING_DOC})."
         )
+
+    _log_billing_configuration(settings)
+
+
+def _log_billing_configuration(settings: Settings) -> None:
+    """Emit a masked summary of billing configuration state for observability."""
+    summary = settings.stripe_configuration_summary()
+    plan_count = summary.get("plan_count", 0)
+    logger.info(
+        "Stripe billing configuration validated; %s plan(s) mapped.",
+        plan_count,
+        extra={"stripe_config": summary},
+    )
 
 
 @asynccontextmanager

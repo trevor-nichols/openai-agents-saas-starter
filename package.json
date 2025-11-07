@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "stripe:setup": "tsx --tsconfig tsconfig.scripts.json scripts/stripe/setup.ts"
+    "stripe:setup": "python scripts/stripe/setup.py"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",
