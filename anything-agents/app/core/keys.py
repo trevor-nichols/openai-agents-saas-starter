@@ -1,14 +1,12 @@
-"""Key lifecycle management helpers for Ed25519 signing keys."""
+"""Minimal Ed25519 key storage helpers for the auth stack."""
 
 from __future__ import annotations
 
 import base64
 import hashlib
 import json
-from copy import deepcopy
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Protocol
 from uuid import uuid4
@@ -23,29 +21,18 @@ KEYSET_SCHEMA_VERSION = 1
 
 
 class KeySetError(RuntimeError):
-    """Base class for key lifecycle errors."""
-
-
-class KeyRotationError(KeySetError):
-    """Raised when rotation invariants are violated."""
+    """Base class for key lifecycle failures."""
 
 
 class KeyStorageError(KeySetError):
-    """Raised when key storage cannot be accessed."""
-
-
-class KeyStatus(str, Enum):
-    ACTIVE = "active"
-    NEXT = "next"
-    RETIRED = "retired"
+    """Raised when keys cannot be read/written from the configured backend."""
 
 
 @dataclass(frozen=True)
 class KeyMaterial:
-    """Represents a single Ed25519 keypair with metadata."""
+    """Serialized Ed25519 keypair metadata."""
 
     kid: str
-    status: KeyStatus
     private_key: str | None
     public_jwk: dict[str, Any]
     created_at: datetime
@@ -55,7 +42,6 @@ class KeyMaterial:
     def to_dict(self, *, include_private: bool = True) -> dict[str, Any]:
         payload = {
             "kid": self.kid,
-            "status": self.status.value,
             "public_jwk": self.public_jwk,
             "created_at": self.created_at.isoformat(),
             "not_before": self.not_before.isoformat(),
@@ -69,138 +55,78 @@ class KeyMaterial:
     def from_dict(cls, data: dict[str, Any]) -> "KeyMaterial":
         return cls(
             kid=data["kid"],
-            status=KeyStatus(data["status"]),
             private_key=data.get("private_key"),
             public_jwk=data["public_jwk"],
             created_at=datetime.fromisoformat(data["created_at"]),
             not_before=datetime.fromisoformat(data["not_before"]),
-            not_after=datetime.fromisoformat(data["not_after"])
-            if data.get("not_after")
-            else None,
+            not_after=datetime.fromisoformat(data["not_after"]) if data.get("not_after") else None,
         )
-
-    def as_status(self, status: KeyStatus) -> "KeyMaterial":
-        return replace(self, status=status)
 
 
 @dataclass(frozen=True)
 class JWKSDocument:
-    """Materialized JWKS payload and metadata."""
-
     payload: dict[str, Any]
     fingerprint: str
     last_modified: datetime
 
 
 class KeySet:
-    """Container tracking active/next/retired keys with rotation rules."""
+    """Container that holds a single active Ed25519 key."""
 
-    def __init__(
-        self,
-        *,
-        active: KeyMaterial | None,
-        next_key: KeyMaterial | None,
-        retired: list[KeyMaterial] | None = None,
-    ) -> None:
+    def __init__(self, *, active: KeyMaterial | None) -> None:
         self.active = active
-        self.next = next_key
-        self.retired = retired or []
         self._cached_jwks: JWKSDocument | None = None
-        self._validate_uniqueness()
 
     @classmethod
     def empty(cls) -> "KeySet":
-        return cls(active=None, next_key=None, retired=[])
+        return cls(active=None)
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "schema_version": KEYSET_SCHEMA_VERSION,
             "active": self.active.to_dict() if self.active else None,
-            "next": self.next.to_dict() if self.next else None,
-            "retired": [item.to_dict() for item in self.retired],
         }
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "KeySet":
         active = KeyMaterial.from_dict(payload["active"]) if payload.get("active") else None
-        next_key = KeyMaterial.from_dict(payload["next"]) if payload.get("next") else None
-        retired = [KeyMaterial.from_dict(item) for item in payload.get("retired", [])]
-        return cls(active=active, next_key=next_key, retired=retired)
+        return cls(active=active)
 
-    def insert(self, material: KeyMaterial) -> None:
-        if material.status == KeyStatus.ACTIVE:
-            if self.active:
-                self.retired.append(self.active.as_status(KeyStatus.RETIRED))
-            self.active = material
-        elif material.status == KeyStatus.NEXT:
-            if self.next:
-                self.retired.append(self.next.as_status(KeyStatus.RETIRED))
-            self.next = material
-        else:
-            self.retired.append(material.as_status(KeyStatus.RETIRED))
-        self._validate_uniqueness()
+    def set_active(self, material: KeyMaterial) -> None:
+        """Replace the active key with new material."""
 
-    def promote_next_to_active(self) -> None:
-        if not self.next:
-            raise KeyRotationError("No 'next' key available to promote.")
-        promoted = self.next.as_status(KeyStatus.ACTIVE)
-        if self.active:
-            self.retired.append(self.active.as_status(KeyStatus.RETIRED))
-        self.active = promoted
-        self.next = None
-        self._validate_uniqueness()
-
-    def ensure_overlap_within(self, max_minutes: int) -> None:
-        if not self.active or not self.next:
-            return
-        delta = (self.next.created_at - self.active.created_at).total_seconds() / 60
-        if delta > max_minutes:
-            raise KeyRotationError(
-                f"Active/next key overlap window exceeded ({delta:.1f} min > {max_minutes} min)."
-            )
+        self.active = material
+        self._cached_jwks = None
 
     def materialize_jwks(self) -> JWKSDocument:
-        """Return cached JWKS payload until the fingerprint changes."""
-
         fingerprint = self._jwks_fingerprint()
         if self._cached_jwks and self._cached_jwks.fingerprint == fingerprint:
             return self._cached_jwks
 
-        materials = [material for material in (self.active, self.next) if material and material.public_jwk]
-        keys = [deepcopy(material.public_jwk) for material in materials]
-        last_modified = (
-            max((material.created_at for material in materials), default=datetime.now(UTC))
-            if materials
-            else datetime.now(UTC)
-        )
+        if not self.active or not self.active.public_jwk:
+            keys: list[dict[str, Any]] = []
+            last_modified = datetime.now(UTC)
+        else:
+            keys = [json.loads(json.dumps(self.active.public_jwk))]
+            last_modified = self.active.created_at
+
         doc = JWKSDocument(payload={"keys": keys}, fingerprint=fingerprint, last_modified=last_modified)
         self._cached_jwks = doc
         return doc
 
     def to_jwks(self) -> dict[str, Any]:
-        """Backward-compatible helper returning only the JWKS payload."""
-
-        return deepcopy(self.materialize_jwks().payload)
-
-    def _validate_uniqueness(self) -> None:
-        seen: set[str] = set()
-        for material in [self.active, self.next, *(self.retired or [])]:
-            if not material:
-                continue
-            if material.kid in seen:
-                raise KeyRotationError(f"Duplicate kid detected: {material.kid}")
-            seen.add(material.kid)
+        return json.loads(json.dumps(self.materialize_jwks().payload))
 
     def _jwks_fingerprint(self) -> str:
-        parts = [str(KEYSET_SCHEMA_VERSION)]
-        for material in (self.active, self.next):
-            if not material or not material.public_jwk:
-                continue
-            parts.append(material.kid)
-            parts.append(json.dumps(material.public_jwk, sort_keys=True))
-            parts.append(material.created_at.isoformat())
-        serialized = "|".join(parts).encode("utf-8")
-        return hashlib.sha256(serialized).hexdigest()
+        if not self.active or not self.active.public_jwk:
+            return "empty"
+        parts = [
+            str(KEYSET_SCHEMA_VERSION),
+            self.active.kid,
+            json.dumps(self.active.public_jwk, sort_keys=True),
+            self.active.created_at.isoformat(),
+        ]
+        return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
 
 
 class KeyStorageAdapter(Protocol):
@@ -212,8 +138,6 @@ class KeyStorageAdapter(Protocol):
 
 
 class FileKeyStorage(KeyStorageAdapter):
-    """Stores keyset data on the filesystem."""
-
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path)
 
@@ -235,8 +159,6 @@ class FileKeyStorage(KeyStorageAdapter):
 
 
 class SecretManagerClient(Protocol):
-    """Minimal secret-manager client interface."""
-
     def read_secret(self, name: str) -> str | None:
         ...
 
@@ -248,15 +170,11 @@ _secret_manager_client_factory: Callable[[], SecretManagerClient] | None = None
 
 
 def register_secret_manager_client(factory: Callable[[], SecretManagerClient]) -> None:
-    """Register a factory returning a concrete secret-manager client."""
-
     global _secret_manager_client_factory
     _secret_manager_client_factory = factory
 
 
 def reset_secret_manager_client() -> None:
-    """Reset the registered secret-manager client (useful for tests)."""
-
     global _secret_manager_client_factory
     _secret_manager_client_factory = None
 
@@ -268,8 +186,6 @@ def _get_secret_manager_client() -> SecretManagerClient:
 
 
 class SecretManagerKeyStorage(KeyStorageAdapter):
-    """Persists keyset JSON inside a secret-manager backend."""
-
     def __init__(self, secret_name: str) -> None:
         self.secret_name = secret_name
 
@@ -311,12 +227,7 @@ def save_keyset(keyset: KeySet, settings: Settings | None = None) -> None:
     storage.save_keyset(keyset)
 
 
-def generate_ed25519_keypair(
-    *,
-    status: KeyStatus,
-    kid: str | None = None,
-    not_before: datetime | None = None,
-) -> KeyMaterial:
+def generate_ed25519_keypair(*, kid: str | None = None) -> KeyMaterial:
     kid = kid or f"ed25519-{uuid4().hex[:12]}"
     private_key = ed25519.Ed25519PrivateKey.generate()
     public_key = private_key.public_key()
@@ -343,14 +254,26 @@ def generate_ed25519_keypair(
     }
 
     created = datetime.now(UTC)
-    not_before = not_before or created
-
     return KeyMaterial(
         kid=kid,
-        status=status,
         private_key=private_pem,
         public_jwk=jwk,
         created_at=created,
-        not_before=not_before,
+        not_before=created,
         not_after=None,
     )
+
+
+__all__ = [
+    "KeyMaterial",
+    "KeySet",
+    "KeySetError",
+    "KeyStorageError",
+    "FileKeyStorage",
+    "SecretManagerKeyStorage",
+    "generate_ed25519_keypair",
+    "load_keyset",
+    "save_keyset",
+    "register_secret_manager_client",
+    "reset_secret_manager_client",
+]

@@ -10,7 +10,7 @@
 - **Token Service**: Refactor `app/core/security.py` to use signer/validator interfaces, strict claim validation (iss/aud/sub/jti/exp/nbf), and refresh token rotation with revocation tracking.
 - **Public Distribution**: Expose an authenticated-optional JWKS endpoint under `/.well-known/jwks.json` with cache headers, ETag support, and signature coverage for keyset integrity.
 - **Observability & Governance**: Emit structured audit logs, Prometheus counters, and alert thresholds for token validation failures, rotation drift, and key age; embed SOPs into runbooks.
-- **Rollout Strategy**: Support dual-signing canary in staging, progressive rollout, and post-cutover validation before retiring legacy algorithms.
+- **Rollout Strategy**: Generate/replace the single active Ed25519 key via the CLI when needed; no staged dual-signing required for the starter scope.
 
 ## Work Breakdown
 
@@ -69,9 +69,7 @@
 3. Establish alert thresholds (verification failure rate >1% over 5m → PagerDuty, issuance latency p95 >2s → Slack, nonce hits ≥5/5m → Slack) and link them to runbooks.
 
 ### AUTH-006 — Staged Rollout & Postmortem
-1. Enable dual-signing in staging, monitor metrics, and gather QA sign-off.
-2. Schedule production cutover, enforce EdDSA-only verification, and retire legacy path.
-3. Conduct retrospective capturing lessons, update documentation, and archive artifacts.
+(Removed for starter scope; revisit if a future production rollout requires staged rotations.)
 
 ## Progress Log
 - _2025-11-06_: Milestone initiated; issues AUTH-001 through AUTH-006 added to `ISSUE_TRACKER.md`.
@@ -85,3 +83,4 @@
 - _2025-11-06_: JWKS endpoint hardened (active/next only, Cache-Control/ETag/Last-Modified headers, 304 handling), KeySet introduced `materialize_jwks()` caching + fingerprints, new settings (`AUTH_JWKS_MAX_AGE_SECONDS`, `AUTH_JWKS_ETAG_SALT`), CLI helper `auth jwks print`, and Prometheus counters (`jwks_requests_total`, `jwks_not_modified_total`) added alongside contract/unit coverage and updated consumer guidance.
 - _2025-11-06_: EdDSA signer/validator interfaces replace HS256 helpers, `AUTH_DUAL_SIGNING_ENABLED`/`AUTH_DUAL_SIGNING_OVERLAP_MINUTES` landed, `service_account_tokens.signing_kid` added via migration `20251106_235500`, and auth contract/unit tests cover tampering, unknown kid, and expiry flows.
 - _2025-11-06_: AUTH-005 instrumentation shipped — TokenSigner/Verifier emit structured logs + metrics, service-account issuance now tracked via counters/histograms, nonce cache hit/miss metrics surfaced, `/metrics` endpoint added, and docs list alert thresholds + runbooks.
+- _2025-11-07_: Finalized AUTH-002 with simplified single-key storage + `auth keys rotate` helper (active key replacement) and JWKS verification workflow; removed staged rotation artifacts to keep the starter lightweight.

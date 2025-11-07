@@ -9,7 +9,7 @@
 ### Goals
 - Replace demo authentication with a production-grade JWT system signed with Ed25519 (EdDSA).
 - Retain clean architecture boundaries (presentation → application → domain → infrastructure) while isolating crypto concerns.
-- Enable deterministic key rotation and public verification without third-party authorization services.
+- Enable Ed25519 signing with a simple key-management story (single active key, easy replacement) and public verification without third-party authorization services.
 - Provide predictable, auditable behaviour with first-class observability and testing.
 
 ### Non-Goals
@@ -53,12 +53,12 @@
 ### Key Components
 
 - **AuthService (new)**: Lives under `app/services/auth_service.py`. Coordinates token issuance, refresh, revocation, and introspection. Depends on domain abstractions, not concrete crypto.
-- **Key Management Module (`app/core/keys.py`)**: Loads active and next Ed25519 keys, exposes rotation window semantics, materializes JWK payloads, and validates key age policies. Supports both filesystem persistence and the Vault KV-backed secret manager adapter (`app/infrastructure/security/vault_kv.py`) so production environments can store private material outside the container image.
+- **Key Management Module (`app/core/keys.py`)**: Loads the single active Ed25519 key, materializes JWK payloads, and persists material to either the filesystem or the Vault KV-backed secret manager adapter (`app/infrastructure/security/vault_kv.py`).
 - **Refresh Token Store (`app/infrastructure/persistence/auth/`)**: Postgres + Redis repository for refresh-token reuse and revocation. `ServiceAccountToken` rows capture tenant/account/scope tuples, while `RedisRefreshTokenCache` accelerates lookups for `force=False` reuse from `AuthService`.
-- **Signer/Verifier Interfaces**: `app/core/security.py` now exposes `TokenSigner`/`TokenVerifier` abstractions backed by Ed25519 key material from `KeySet`, enforcing `alg=EdDSA` and wiring in optional dual signing based on `auth_dual_signing_enabled`.
+- **Signer/Verifier Interfaces**: `app/core/security.py` exposes `TokenSigner`/`TokenVerifier` abstractions backed by Ed25519 key material from `KeySet`, enforcing `alg=EdDSA` while always using the lone active signing key.
 - **Revocation Store**: Postgres-backed repository under `app/infrastructure/persistence/auth/postgres.py` to track refresh tokens and revoked `jti` values, leveraging existing async engine.
-- **JWKS Endpoint**: Router `app/presentation/well_known.py` exposes `/.well-known/jwks.json`, pulling from `KeySet.materialize_jwks()` and serving only the active + next keys. Responses include `Cache-Control`, strong `ETag`, and `Last-Modified` headers so downstream verifiers can rely on conditional GETs (`If-None-Match`) to avoid unnecessary downloads.
-- **Rotation & JWKS CLI (`auth keys rotate`, `auth jwks print`)**: Lives alongside the service-account helper in `app/cli/auth_cli.py`; `keys rotate` generates Ed25519 keypairs and persists them via the configured storage backend, while `jwks print` dumps the current JWKS payload (active + next keys only) for audits or runbooks without hitting the HTTP endpoint.
+- **JWKS Endpoint**: Router `app/presentation/well_known.py` exposes `/.well-known/jwks.json`, pulling from `KeySet.materialize_jwks()` and serving the active key. Responses include `Cache-Control`, strong `ETag`, and `Last-Modified` headers so downstream verifiers can rely on conditional GETs (`If-None-Match`) to avoid unnecessary downloads.
+- **Key CLI (`auth keys rotate`, `auth jwks print`)**: Lives alongside the service-account helper in `app/cli/auth_cli.py`; `keys rotate` generates a fresh Ed25519 keypair and immediately replaces the active key in the configured storage backend, while `jwks print` dumps the current JWKS payload for audits or runbooks without hitting the HTTP endpoint.
 - **Observability Surface (`app/observability/*`, `/metrics`)**: Dedicated `metrics.py` registers Prometheus counters/histograms for signing, verification, JWKS, nonce cache, and service-account issuance, while `logging.py` centralizes structured JSON log emission. FastAPI exposes `GET /metrics` for scrapes and `auth.observability` logger streams to the SIEM.
 
 ## 4. Data & Configuration
@@ -81,11 +81,8 @@
 - `auth_jwks_cache_seconds: int` — legacy cache-control knob retained for backwards compatibility.
 - `auth_jwks_max_age_seconds: int` — preferred cache-control max-age for JWKS responses (defaults to 300 seconds; override via `AUTH_JWKS_MAX_AGE_SECONDS`).
 - `auth_jwks_etag_salt: str` — salt mixed into JWKS ETag derivation so hashes remain unpredictable; configure via `AUTH_JWKS_ETAG_SALT`.
-- `auth_rotation_overlap_minutes: int` — guardrail ensuring `active` and `next` keys do not diverge beyond the approved overlap window.
-- `auth_dual_signing_enabled: bool` — feature flag enabling dual signing with the active + next keys during staged rotations.
-- `auth_dual_signing_overlap_minutes: int` — maximum window dual signing is allowed before raising, keeping overlap bounded.
 - `auth_refresh_token_pepper: str` — server-side secret concatenated with refresh tokens before hashing; must be unique per environment and rotated when compromise is suspected.
-- Additional knobs (`auth_issuer`, TTLs, dual signing flag) will land with the AUTH-003 service refactor.
+- Additional knobs (`auth_issuer`, TTLs) will land with the AUTH-003 service refactor.
 
 ### Persistence Schema (AUTH-002/AUTH-003)
 - `service_account_tokens` — captures issued refresh tokens for service-account tuples with columns `(account, tenant_id, scope_key, scopes JSON, refresh_token_hash, refresh_jti, signing_kid, fingerprint, issued_at, expires_at, revoked_at, revoked_reason)`. `refresh_token_hash` stores the bcrypt(+pepper) digest; `signing_kid` records which Ed25519 key produced the token so reuse logic can deterministically reconstruct the same JWS even after rotations. The partial unique index enforces a single active token per `(account, tenant_id, scope_key)` tuple, while Redis (`auth:refresh:*`) mirrors the latest active row (plaintext, TTL-scoped) for low-latency reuse.
@@ -101,10 +98,9 @@
    - HTTPBearer dependency extracts token → TokenVerifier checks signature (`alg=EdDSA`, `kid` lookup).
    - Claims validated (issuer, audience, expiry, revocation) → user context returned to route.
 
-3. **Rotation**
-   - Ops pre-load next key material (same KeySet contract).
-   - Dual-signing optional: TokenSigner signs with both old/new keys while verifiers trust both `kid`s.
-   - Once overlap window expires, retire old key; JWKS updates automatically. Consumers poll `/.well-known/jwks.json` no less frequently than the published `Cache-Control` max-age and issue conditional GETs (`If-None-Match`) so the service can return `304 Not Modified` when the keyset is unchanged.
+3. **Manual Key Replacement**
+   - When needed, operators run `auth keys rotate` to generate a new Ed25519 keypair and replace the active key in storage (file or Vault).
+   - JWKS payload updates automatically because `KeySet.materialize_jwks()` always reflects the single active key; consumers poll `/.well-known/jwks.json` according to the published `Cache-Control` headers and honor `ETag` to avoid stale caches.
 
 4. **Revocation**
    - On refresh misuse or manual kill, revoke `jti` via repository + optional cache (Redis).

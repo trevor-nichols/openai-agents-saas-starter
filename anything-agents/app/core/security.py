@@ -126,7 +126,7 @@ class SignedTokenBundle:
 class TokenSigner(Protocol):
     """Interface for producing signed JWTs."""
 
-    def sign(self, payload: dict[str, Any], *, dual_sign: bool | None = None) -> SignedTokenBundle:
+    def sign(self, payload: dict[str, Any]) -> SignedTokenBundle:
         ...
 
 
@@ -143,7 +143,7 @@ class EdDSATokenSigner(TokenSigner):
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
 
-    def sign(self, payload: dict[str, Any], *, dual_sign: bool | None = None) -> SignedTokenBundle:
+    def sign(self, payload: dict[str, Any]) -> SignedTokenBundle:
         token_use = payload.get("token_use")
         started = perf_counter()
         failure_logged = False
@@ -164,35 +164,16 @@ class EdDSATokenSigner(TokenSigner):
                 raise TokenSignerError("Active Ed25519 key is unavailable.")
 
             primary = self._encode(payload, active)
-
-            should_dual = dual_sign if dual_sign is not None else self._settings.auth_dual_signing_enabled
-            secondary = None
-            if should_dual:
-                next_key = keyset.next
-                if not next_key or not next_key.private_key:
-                    failure_logged = True
-                    duration = perf_counter() - started
-                    observe_jwt_signing(result="failure", token_use=token_use, duration_seconds=duration)
-                    log_event(
-                        "token_sign",
-                        level="error",
-                        result="failure",
-                        reason="missing_next_key",
-                        token_use=token_use or "unknown",
-                    )
-                    raise TokenSignerError("Dual signing requested but next key is unavailable.")
-                keyset.ensure_overlap_within(self._settings.auth_dual_signing_overlap_minutes)
-                secondary = self._encode(payload, next_key)
             duration = perf_counter() - started
             observe_jwt_signing(result="success", token_use=token_use, duration_seconds=duration)
             log_event(
                 "token_sign",
                 result="success",
-                kids=[primary.kid, secondary.kid if secondary else None],
-                dual_signing=bool(secondary),
+                kids=[primary.kid],
+                dual_signing=False,
                 token_use=token_use or "unknown",
             )
-            return SignedTokenBundle(primary=primary, secondary=secondary)
+            return SignedTokenBundle(primary=primary)
         except TokenSignerError as exc:
             if not failure_logged:
                 observe_jwt_signing(result="failure", token_use=token_use, duration_seconds=perf_counter() - started)
@@ -337,9 +318,6 @@ def _find_key_material(keyset: KeySet, kid: str | None) -> KeyMaterial:
         materials: list[KeyMaterial] = []
         if keyset.active:
             materials.append(keyset.active)
-        if keyset.next:
-            materials.append(keyset.next)
-        materials.extend(keyset.retired or [])
         return materials
 
     for material in _iter():

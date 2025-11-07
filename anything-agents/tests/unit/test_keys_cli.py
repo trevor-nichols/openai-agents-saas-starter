@@ -27,23 +27,22 @@ def test_keys_rotate_command(tmp_path, monkeypatch, capsys) -> None:
     assert exit_code == 0
     payload = json.loads(output.out)
     assert payload["kid"] == "test-kid"
-    assert payload["status"] == "active"
 
-    # Rotate again to ensure "next" assignment works.
-    args_second = parser.parse_args(["keys", "rotate"])
+    # Rotate again to ensure active key is replaced.
+    args_second = parser.parse_args(["keys", "rotate", "--kid", "second-kid"])
     exit_code_second = handle_keys_rotate(args_second)
     assert exit_code_second == 0
 
     storage = FileKeyStorage(storage_path)
     keyset = storage.load_keyset()
     assert keyset.active
-    assert keyset.next
+    assert keyset.active.kid == "second-kid"
 
     config_module.get_settings.cache_clear()
 
 
-def test_key_rotation_smoke_sign_and_verify(tmp_path, monkeypatch) -> None:
-    """Ensure rotated keys can immediately issue and verify JWTs."""
+def test_key_cli_sign_and_verify(tmp_path, monkeypatch) -> None:
+    """Ensure generated keys can immediately issue and verify JWTs."""
 
     storage_path = tmp_path / "keys.json"
     monkeypatch.setenv("AUTH_KEY_STORAGE_BACKEND", "file")
@@ -51,7 +50,7 @@ def test_key_rotation_smoke_sign_and_verify(tmp_path, monkeypatch) -> None:
     config_module.get_settings.cache_clear()
 
     parser = build_parser()
-    args = parser.parse_args(["keys", "rotate", "--activate-now"])
+    args = parser.parse_args(["keys", "rotate"])
     assert handle_keys_rotate(args) == 0
 
     settings = config_module.get_settings()

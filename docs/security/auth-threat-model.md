@@ -29,7 +29,7 @@
 - FastAPI routers under `anything-agents/app/api/v1/` (agents, chat, billing, conversations) are expected to depend on `require_current_user` after AUTH-003, enforcing per-tenant authorization.  
 - The Next.js frontend (`agent-next-15-frontend`) will consume the access token for API calls and fetch JWKS (`/.well-known/jwks.json`) for client-side introspection as needed.  
 - Internal services (analytics, billing pipelines) will verify tokens against the published JWKS; requirements captured in `docs/architecture/authentication-ed25519.md`.  
-- Operational tooling (rotation CLI, observability jobs) will call into the forthcoming KeySet and revocation stores to manage key lifecycle.
+- Operational tooling (key-generation CLI, observability jobs) will call into the forthcoming KeySet and revocation stores to manage key lifecycle.
 
 ## 3. Assets & Trust Boundaries
 
@@ -41,24 +41,24 @@
 - **Refresh Tokens:** Long-lived credentials persisted by AuthService with `jti`, tenant, device fingerprint. Stored hashed-at-rest in Postgres with Redis cache for quick revoke checks.  
 - **Revocation Registry:** Redis primary cache plus Postgres fallback mapping `jti` to revocation state. Unavailability or corruption undermines refresh rotation guarantees.  
 - **Audit & Metrics Streams:** Structured logs, Prometheus counters, trace IDs that document sign/verify decisions. Required for incident response and repudiation protection.  
-- **Configuration & Feature Flags:** `auth_issuer`, `auth_audience`, rotation overlap, dual-signing toggles (via `app/core/config.py`). Incorrect values break verification or weaken protections.
+- **Configuration & Feature Flags:** `auth_issuer`, `auth_audience`, JWKS caching knobs (via `app/core/config.py`). Incorrect values break verification or weaken protections.
 
 ### 3.2 Supporting Components
 
 - **FastAPI Application Tier:** Hosts issuance endpoints (`/api/v1/auth/token`, `/auth/refresh`), JWKS responder (`/.well-known/jwks.json`), and verification dependencies (`require_current_user`, tenant context). Runs inside the application VPC with access to secret mounts, Redis, and Postgres.  
 - **Next.js Frontend:** Receives access/refresh tokens, stores access token in memory (or secure cookie once hardened), and invokes backend APIs. Will trigger JWKS refresh through shared client utilities.  
 - **Internal Services & Jobs:** Billing, analytics, and streaming workers that will validate JWTs using JWKS and call revocation APIs for break-glass operations.  
-- **Secret Manager / Sealed Volume:** Authoritative store for private key material; rotation CLI writes here, runtime reads read-only.  
+- **Secret Manager / Sealed Volume:** Authoritative store for private key material; the key-generation CLI writes here, runtime reads read-only.  
 - **Postgres (Primary DB):** Persists refresh tokens, revocation history, and audit trails requiring durability.  
 - **Redis (Cache Layer):** Low-latency revocation lookups and rotation coordination. Treated as non-authoritative but security-sensitive.  
-- **CI/CD & Ops Tooling:** Handles key rotation scripts, deployment automation, and environment configuration; requires strict access controls.
+- **CI/CD & Ops Tooling:** Handles key management scripts, deployment automation, and environment configuration; requires strict access controls.
 
 ### 3.3 Trust Boundaries
 
 - **B1 – Public Client Boundary:** Browser, mobile, and third-party service requests into the API. Inputs are untrusted; rate limiting and token verification occur upon crossing.  
 - **B2 – Application Runtime Boundary:** FastAPI service with access to key material, Redis, and Postgres. Attackers gaining execution here can mint tokens; hardening focuses on least privilege and secret isolation.  
 - **B3 – Persistence Boundary:** Secrets and revocation state stored in managed services (secret manager, Redis, Postgres). Requires encrypted transport, scoped credentials, and tamper detection.  
-- **B4 – Observability & Operations Boundary:** Logging/metrics pipelines, rotation CLIs, and dashboards. Needs authentication and integrity to avoid repudiation or alert fatigue.  
+- **B4 – Observability & Operations Boundary:** Logging/metrics pipelines, key-management CLIs, and dashboards. Needs authentication and integrity to avoid repudiation or alert fatigue.  
 - **B5 – Deployment & Supply Chain Boundary:** Build pipeline, container registry, and dependency management. Malicious artifacts could bypass runtime controls.
 
 ### 3.4 Assumptions
@@ -73,12 +73,12 @@
 
 | STRIDE | Threat Scenario | Target Assets | Consequence | Mitigations (Planned / Required) |
 | --- | --- | --- | --- | --- |
-| **Spoofing** | Attacker forges JWTs using stolen/semi-trusted key | Ed25519 private keys, access tokens | Full impersonation of any user/tenant | Keys stored in sealed volume; audited rotation CLI generates Ed25519 keypairs and writes directly to secret manager; strict `alg=EdDSA` verification; optional dual-signing only within defined overlap; ops audit of key access logs. |
+| **Spoofing** | Attacker forges JWTs using stolen/semi-trusted key | Ed25519 private keys, access tokens | Full impersonation of any user/tenant | Keys stored in sealed volume; CLI generates Ed25519 keypairs and writes directly to secret manager; strict `alg=EdDSA` verification; ops audit of key access logs. |
 | **Spoofing** | Replay of intercepted access/refresh tokens | Access/refresh tokens, revocation registry | Session hijack until expiry | Short access TTL (≤15 min); `jti` per token; refresh token rotation with immediate revocation of prior `jti`; device fingerprint binding and anomaly alerts; Vault CLI payloads carry nonce with 5-minute TTL enforced via Redis-backed nonce store (in-memory fallback for dev) to block replay of issuance requests. |
 | **Tampering** | Man-in-the-middle swaps `alg` header to HS256 or injects alternate `kid` | JWKS, verification pipeline | Bypass signature validation | Verifier enforces allowed algorithms list (`["EdDSA"]`); reject tokens missing recognized `kid`; JWKS served with ETag + integrity check; config forbids legacy fallback in prod. |
 | **Tampering** | Unauthorized modification of revocation cache/store | Revocation registry | Revoked tokens regain validity | Redis access scoped via ACLs; Postgres revocation table write-ahead logs monitored; AuthService compares cache result with signed digest recorded in audit log; periodic reconciliation job. |
 | **Repudiation** | User denies activity due to missing audit trail | Audit logs, metrics | Incident response blocked; compliance gaps | Structured JSON logs with trace IDs, `kid`, `jti`, client metadata; logs shipped immutably to central SIEM; access to modify logs restricted; retention meets compliance. |
-| **Information Disclosure** | JWKS endpoint leaks inactive/retired keys with metadata revealing rotation cadence | JWKS payloads | Predictable rotation timing aiding attackers | Publish only active & next `kid`; omit private metadata; apply cache-control with short max-age; monitor access via rate-limits and logging. |
+| **Information Disclosure** | JWKS endpoint leaks inactive keys with metadata revealing cadence | JWKS payloads | Predictable key timing aiding attackers | Publish only the active `kid`; omit private metadata; apply cache-control with short max-age; monitor access via rate-limits and logging. |
 | **Information Disclosure** | Secret manager misconfiguration exposes private keys to other services | Ed25519 private keys | Compromise of signing authority | Enforce IAM policies restricting mount to auth service; secrets encrypted at rest; rotation audit; regular access review. |
 | **Information Disclosure** | Application logs/metrics capture bearer tokens or key material | Access tokens, refresh tokens, Ed25519 keys | Credential leakage enabling replay or offline attacks | Logging middleware scrubs `Authorization` headers and token payloads; observability schema restricts sensitive fields; CI secret-scanning and linting enforce instrumentation hygiene; privacy reviews before shipping telemetry changes. |
 | **Denial of Service** | Redis outage prevents revocation checks | Revocation registry | Refresh token rotation fails open/closed | Implement circuit breaker: fallback to Postgres with timeout; if both unavailable, fail safe (deny refresh) and alert; autoscaling and health probes for cache. |
@@ -95,13 +95,13 @@
 
 ### 5.1 Key Management
 - R1. Generate Ed25519 key pairs via audited CLI that writes directly to secret manager; prohibit manual key creation.  
-- R2. Maintain `KeySet` with `active`, `next`, `retired` states; enforce rotation cadence ≤30 days with overlap ≤24 hours.  
+- R2. Maintain `KeySet` with a single active key; document a lightweight CLI workflow for replacing it when compromise is suspected.  
 - R3. Restrict filesystem/secret manager mounts to read-only within the FastAPI container; monitor access via IAM logs and trigger alerts on anomalous reads.
 
 ### 5.2 Token Issuance
 - R4. Centralize issuance within `AuthService`; prohibit direct calls to signer outside service layer.  
 - R5. Include mandatory claims per architecture blueprint (`iss`, `aud`, `sub`, `tenant_id`, `scope`, `token_use`, `jti`, `iat`, `nbf`, `exp`); reject issuance missing required attributes.  
-- R6. Sign access and refresh tokens with Ed25519 using the active `kid`; enable dual-signing only when `auth_dual_signing_enabled` flag is true and the `auth_dual_signing_overlap_minutes` guardrail is satisfied. `TokenSigner`/`TokenVerifier` (in `app/core/security.py`) enforce `alg=EdDSA`, header `kid` presence, and reject unknown material.
+- R6. Sign access and refresh tokens with Ed25519 using the active `kid`. `TokenSigner`/`TokenVerifier` (in `app/core/security.py`) enforce `alg=EdDSA`, header `kid` presence, and reject unknown material.
 
 ### 5.3 Verification & Consumption
 - R7. Verification pipeline (`TokenVerifier`) must enforce `alg=EdDSA` and validate `kid` against cached JWKS; tokens with unknown or retired `kid` fail closed.  
@@ -128,8 +128,8 @@
 
 ### 5.7 Operational Controls
 - R21. Require signed container images and supply-chain attestations before deployment; enforce runtime admission policies.  
-- R22. Limit rotation CLI access to a break-glass group with MFA and session recording.  
-- R23. Run quarterly rotation/fire-drill exercises validating the ability to revoke and rotate keys within SLA.  
+- R22. Limit key-generation CLI access to a break-glass group with MFA and session recording.  
+- R23. Run periodic fire-drill exercises validating the ability to revoke and replace keys within SLA.  
 - R24. Include auth pipeline in continuous vulnerability scanning (dependencies and base images) and apply patches within defined timelines.
 
 ## 6. Open Questions & Next Actions

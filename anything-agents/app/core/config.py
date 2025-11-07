@@ -133,20 +133,6 @@ class Settings(BaseSettings):
         description="Salt mixed into JWKS ETag derivation to avoid predictable hashes.",
         alias="AUTH_JWKS_ETAG_SALT",
     )
-    auth_rotation_overlap_minutes: int = Field(
-        default=1440,
-        description="Maximum minutes between active and next key creation timestamps.",
-    )
-    auth_dual_signing_enabled: bool = Field(
-        default=False,
-        description="When true, sign tokens with both the active and next Ed25519 keys.",
-        alias="AUTH_DUAL_SIGNING_ENABLED",
-    )
-    auth_dual_signing_overlap_minutes: int = Field(
-        default=60,
-        description="Maximum overlap window allowed when dual-signing is enabled.",
-        alias="AUTH_DUAL_SIGNING_OVERLAP_MINUTES",
-    )
     auth_refresh_token_pepper: str = Field(
         default="local-dev-refresh-pepper",
         description="Server-side pepper prepended when hashing refresh tokens.",
@@ -335,7 +321,7 @@ class Settings(BaseSettings):
             raise ValueError(f"auth_key_storage_backend must be one of {sorted(allowed)}")
         return lowered
 
-    @field_validator("auth_jwks_cache_seconds", "auth_rotation_overlap_minutes")
+    @field_validator("auth_jwks_cache_seconds")
     @classmethod
     def _positive_int(cls, value: int) -> int:
         if value <= 0:

@@ -6,6 +6,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 
 # Notes
 - Throughout the codebase, you will see `SNAPSHOT.md` files. `SNAPSHOT.md` files contain the full structure of the codebase at a given point in time. Refer to these files when you need understand the architecture or need help navigating the codebase.
+- Refer to `docs/trackers/` for the latest status of the codebase. Keep these trackers up to date with the latest changes and status of the codebase.
 - When applying database migrations or generating new ones, always use the Makefile targets (`make migrate`, `make migration-revision`) so your `.env.local`/`.env` secrets and `.env.compose` values are loaded consistently. These wrappers take care of wiring Alembic to the right Postgres instance (local Docker or remote) without manual exports.
 - The frontend uses the HeyAPI SDK to generate the API client. The API client is generated into the `lib/api/client` directory.
 
