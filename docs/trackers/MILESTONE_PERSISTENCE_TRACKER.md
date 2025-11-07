@@ -21,8 +21,8 @@
 | DB-002 | Engine Bootstrap | Implement async engine/session factory, settings, and startup validation (with Docker compose profile). | – | Completed |
 | DB-003 | Conversation Repository | Create PostgreSQL-backed repository + service adapter, wire into `AgentService`, update tests. | – | Completed |
 | DB-004 | SDK Session Integration | Align chat flows with Agents SDK session memory to leverage persistent history. | – | Planned |
-| DB-005 | Billing Service Scaffold | Implement plan catalog, subscription service, usage recording stubs, and unit tests. | – | Planned |
-| DB-006 | API & Health | Add health probes for storage, document new endpoints/config, update README. | – | Planned |
+| DB-005 | Billing Service Scaffold | Implement plan catalog, subscription service, usage recording stubs, and unit tests. | – | Completed |
+| DB-006 | API & Health | Add health probes for storage, document new endpoints/config, update README. | – | Completed |
 
 ## Notes & Assumptions
 - PostgreSQL 15+ is the reference target; leverage UUID primary keys and JSONB columns.
@@ -71,6 +71,21 @@ BillingPlan (1) ────< TenantSubscription (many)
 4. Provide Docker Compose profile for Postgres (and Redis) plus `.env.example` guidance.
 5. Backfill health checks (`/health/storage`) and observability hooks (structured logs, metrics) for database availability.
 
+### DB-004 — SDK Session Integration
+1. Replace `AgentService._prepare_agent_input` ad-hoc history stitching with Agents SDK session constructs.
+2. Persist session identifiers per conversation and reuse them for streamed + non-streamed chats.
+3. Add regression tests proving that SDK-managed memory trims correctly and survives service restarts.
+
+### DB-005 — Billing Service Scaffold
+1. Wire `BillingService` to the Postgres repository + gateway stubs for plan catalog and subscription lifecycle.
+2. Ensure `/api/v1/billing` routes exercise the service layer end-to-end (list/start/update/cancel/usage).
+3. Provide unit + integration coverage for subscription persistence and gateway failure scenarios.
+
+### DB-006 — API & Health
+1. Expose database-aware readiness checks (503 on failure) and document them in README/docs.
+2. Ship `.env*` defaults with `DATABASE_URL`, pool sizing, and instructions for Compose/Postgres profiles.
+3. Add observability around persistence (structured logs, metrics hooks) and validate via CI smoke tests.
+
 ## Progress Log
 - **2025-11-06**: Alembic scaffolded under `anything-agents/alembic`, baseline migration `20251106_120000_create_conversation_and_billing_tables.py` authored with seeded Starter/Pro plans.
 - **2025-11-06**: Async engine bootstrap added (`app/infrastructure/db`), new settings for database configuration, and readiness health check now verifies Postgres connectivity.
@@ -78,8 +93,10 @@ BillingPlan (1) ────< TenantSubscription (many)
 - **2025-11-06**: Added CI-backed Postgres smoke tests (`tests/integration/test_postgres_migrations.py`) and GitHub Actions workflow service wiring to validate migrations on every PR.
 - **2025-11-06**: Replaced billing in-memory adapter with Postgres-backed repository and gated wiring through `ENABLE_BILLING` in `main.py` (follow-up on 2025-11-07 removed the legacy adapter entirely).
 - **2025-11-06**: Delivered tenant-scoped billing endpoints (start/update/cancel/usage), tenant role guards, and unit/integration coverage for updates and usage reporting.
+- **2025-11-07**: Billing service scaffold completed — `BillingService` now fronts the Postgres repository and Stripe gateway stubs, `/api/v1/billing/*` routes exercise it end-to-end, and unit tests cover subscriptions + usage recording.
+- **2025-11-07**: API/health deliverables finished — readiness checks call `verify_database_connection()`, docs/README describe the new probes, and `.env*` defaults ship `DATABASE_URL` + pool settings for Compose.
 
 ## Next Actions
-1. Document Docker Compose workflow and local developer guidance for running Postgres integration suite.
-2. Flesh out billing service scaffolding once repository wiring is complete (DB-005).
-3. Implement retention policies and usage analytics leveraging the new persistence layer.
+1. Deliver DB-004 by wiring the OpenAI Agents SDK session/memory pipeline into `AgentService`.
+2. Finish documenting the Postgres/Redis Compose workflow + developer runbooks leveraging the new readiness probes.
+3. Explore retention policies and usage analytics leveraging the Postgres-backed history.
