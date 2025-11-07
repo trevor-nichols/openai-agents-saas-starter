@@ -70,7 +70,7 @@ async def _seed_user(args: argparse.Namespace) -> None:
             status=UserStatus.ACTIVE if not args.locked else UserStatus.LOCKED,
         )
         session.add(user)
-        session.flush()
+        await session.flush()
 
         profile = None
         if args.display_name:

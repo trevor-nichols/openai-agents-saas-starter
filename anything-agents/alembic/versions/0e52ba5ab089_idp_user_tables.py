@@ -209,6 +209,11 @@ def upgrade() -> None:
         ["tenant_id", "created_at"],
     )
 
+    # Any existing agent_conversations rows would now point to user IDs from the
+    # dropped table; clear those values so the FK can be recreated without integrity
+    # violations. Consumers should backfill user context after this migration.
+    op.execute("UPDATE agent_conversations SET user_id = NULL")
+
     op.create_foreign_key(
         "fk_agent_conversations_user_id_users",
         "agent_conversations",

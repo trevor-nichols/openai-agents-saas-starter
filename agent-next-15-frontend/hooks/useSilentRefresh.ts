@@ -23,12 +23,37 @@ export function useSilentRefresh() {
       timerRef.current = setTimeout(refreshSession, delay);
     };
 
+    const redirectToLogin = () => {
+      window.location.href = '/login';
+    };
+
+    const refreshSession = async (): Promise<boolean> => {
+      try {
+        const response = await fetch('/api/auth/refresh', { method: 'POST' });
+        if (!response.ok) {
+          if (response.status === 401) {
+            redirectToLogin();
+          }
+          return false;
+        }
+        const data = (await response.json()) as SessionResponse;
+        if (!cancelled && data?.expiresAt) {
+          scheduleRefresh(data.expiresAt);
+        }
+        return true;
+      } catch (error) {
+        console.error('[auth] Silent refresh failed', error);
+        redirectToLogin();
+        return false;
+      }
+    };
+
     const bootstrap = async () => {
       try {
         const session = await fetch('/api/auth/session', { cache: 'no-store' });
         if (!session.ok) {
           if (session.status === 401) {
-            window.location.href = '/login';
+            await refreshSession();
           }
           return;
         }
@@ -38,25 +63,6 @@ export function useSilentRefresh() {
         }
       } catch (error) {
         console.error('[auth] Failed to bootstrap session', error);
-      }
-    };
-
-    const refreshSession = async () => {
-      try {
-        const response = await fetch('/api/auth/refresh', { method: 'POST' });
-        if (!response.ok) {
-          if (response.status === 401) {
-            window.location.href = '/login';
-          }
-          return;
-        }
-        const data = (await response.json()) as SessionResponse;
-        if (!cancelled && data?.expiresAt) {
-          scheduleRefresh(data.expiresAt);
-        }
-      } catch (error) {
-        console.error('[auth] Silent refresh failed', error);
-        window.location.href = '/login';
       }
     };
 

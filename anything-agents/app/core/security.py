@@ -434,15 +434,25 @@ async def get_current_user(
     token = credentials.credentials
     payload = verify_token(token)
 
-    user_id = payload.get("sub")
-    if user_id is None:
+    subject = payload.get("sub")
+    if subject is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    return {"user_id": user_id, "payload": payload}
+
+    return {
+        "user_id": _normalize_subject(subject),
+        "subject": subject,
+        "payload": payload,
+    }
+
+
+def _normalize_subject(subject: str) -> str:
+    if subject.startswith("user:"):
+        return subject.split("user:", 1)[1]
+    return subject
 
 async def get_current_active_user(
     current_user: dict[str, Any] = Depends(get_current_user),
