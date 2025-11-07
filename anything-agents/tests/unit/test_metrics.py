@@ -59,3 +59,22 @@ def test_record_nonce_cache_result_increments_counters() -> None:
 
     assert metrics.NONCE_CACHE_MISSES_TOTAL._value.get() == 1  # type: ignore[attr-defined]
     assert metrics.NONCE_CACHE_HITS_TOTAL._value.get() == 1  # type: ignore[attr-defined]
+
+
+def test_observe_stripe_gateway_operation_records_labels() -> None:
+    _reset_metric(metrics.STRIPE_GATEWAY_OPERATIONS_TOTAL)
+    _reset_metric(metrics.STRIPE_GATEWAY_OPERATION_DURATION_SECONDS)
+
+    metrics.observe_stripe_gateway_operation(
+        operation="start_subscription",
+        plan_code="Starter",
+        result="success",
+        duration_seconds=0.1,
+    )
+
+    counter_child = metrics.STRIPE_GATEWAY_OPERATIONS_TOTAL.labels(
+        operation="start_subscription",
+        plan_code="starter",
+        result="success",
+    )
+    assert counter_child._value.get() == 1  # type: ignore[attr-defined]

@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 import pytest
 
 from app.infrastructure.stripe import (
+    StripeClientError,
     StripeCustomer,
     StripeSubscription,
     StripeSubscriptionItem,
@@ -150,7 +151,7 @@ async def test_missing_price_mapping_raises_error():
     settings = FakeSettings(stripe_product_price_map={})
     gateway = StripeGateway(client=client, settings_factory=lambda: settings)
 
-    with pytest.raises(PaymentGatewayError):
+    with pytest.raises(PaymentGatewayError) as exc_info:
         await gateway.start_subscription(
             tenant_id="tenant",
             plan_code="unknown",
@@ -158,3 +159,63 @@ async def test_missing_price_mapping_raises_error():
             auto_renew=True,
             seat_count=1,
         )
+
+    assert exc_info.value.code == "price_mapping_missing"
+
+
+@pytest.mark.asyncio
+async def test_gateway_emits_metrics_on_success(monkeypatch: pytest.MonkeyPatch):
+    calls: list[dict[str, object]] = []
+
+    def fake_observe(**kwargs):
+        calls.append(kwargs)
+
+    monkeypatch.setattr("app.services.payment_gateway.observe_stripe_gateway_operation", fake_observe)
+
+    client = FakeStripeClient()
+    settings = FakeSettings(stripe_product_price_map={"starter": "price_123"})
+    gateway = StripeGateway(client=client, settings_factory=lambda: settings)
+
+    await gateway.start_subscription(
+        tenant_id="tenant",
+        plan_code="starter",
+        billing_email=None,
+        auto_renew=True,
+        seat_count=1,
+    )
+
+    assert calls, "expected gateway metrics to be recorded"
+    success_call = calls[-1]
+    assert success_call["operation"] == "start_subscription"
+    assert success_call["plan_code"] == "starter"
+    assert success_call["result"] == "success"
+
+
+@pytest.mark.asyncio
+async def test_stripe_errors_wrapped_with_gateway_error(monkeypatch: pytest.MonkeyPatch):
+    calls: list[dict[str, object]] = []
+
+    def fake_observe(**kwargs):
+        calls.append(kwargs)
+
+    monkeypatch.setattr("app.services.payment_gateway.observe_stripe_gateway_operation", fake_observe)
+
+    class ExplodingClient(FakeStripeClient):
+        async def create_customer(self, *, email: str | None, tenant_id: str):  # type: ignore[override]
+            raise StripeClientError("customer.create", "boom", code="api_error")
+
+    settings = FakeSettings(stripe_product_price_map={"starter": "price_123"})
+    gateway = StripeGateway(client=ExplodingClient(), settings_factory=lambda: settings)
+
+    with pytest.raises(PaymentGatewayError) as exc_info:
+        await gateway.start_subscription(
+            tenant_id="tenant",
+            plan_code="starter",
+            billing_email=None,
+            auto_renew=True,
+            seat_count=1,
+        )
+
+    assert exc_info.value.code == "api_error"
+    assert calls, "expected metrics to capture Stripe error"
+    assert calls[-1]["result"] == "api_error"

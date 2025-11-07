@@ -32,6 +32,10 @@ def _sanitize_account(value: str | None) -> str:
     return (value or "unknown").lower()
 
 
+def _sanitize_plan_code(value: str | None) -> str:
+    return (value or "unknown").lower()
+
+
 def _bool_label(value: bool) -> str:
     return "true" if value else "false"
 
@@ -127,6 +131,21 @@ STRIPE_WEBHOOK_EVENTS_TOTAL = Counter(
     registry=REGISTRY,
 )
 
+STRIPE_GATEWAY_OPERATIONS_TOTAL = Counter(
+    "stripe_gateway_operations_total",
+    "Count of Stripe gateway operations segmented by operation, plan_code, and result.",
+    ("operation", "plan_code", "result"),
+    registry=REGISTRY,
+)
+
+STRIPE_GATEWAY_OPERATION_DURATION_SECONDS = Histogram(
+    "stripe_gateway_operation_duration_seconds",
+    "Latency histogram for Stripe gateway operations segmented by operation, plan_code, and result.",
+    ("operation", "plan_code", "result"),
+    buckets=_LATENCY_BUCKETS,
+    registry=REGISTRY,
+)
+
 
 def observe_jwt_signing(*, result: str, token_use: str | None, duration_seconds: float) -> None:
     label = _sanitize_token_use(token_use)
@@ -185,3 +204,19 @@ def observe_stripe_api_call(*, operation: str, result: str, duration_seconds: fl
 
 def observe_stripe_webhook_event(*, event_type: str, result: str) -> None:
     STRIPE_WEBHOOK_EVENTS_TOTAL.labels(event_type=event_type or "unknown", result=result).inc()
+
+
+def observe_stripe_gateway_operation(
+    *,
+    operation: str,
+    plan_code: str | None,
+    result: str,
+    duration_seconds: float,
+) -> None:
+    plan_label = _sanitize_plan_code(plan_code)
+    STRIPE_GATEWAY_OPERATIONS_TOTAL.labels(operation=operation, plan_code=plan_label, result=result).inc()
+    STRIPE_GATEWAY_OPERATION_DURATION_SECONDS.labels(
+        operation=operation,
+        plan_code=plan_label,
+        result=result,
+    ).observe(max(duration_seconds, 0.0))

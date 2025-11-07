@@ -5,13 +5,17 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Protocol, Callable
+from time import perf_counter
+from typing import Awaitable, Callable, Protocol, TypeVar
 from uuid import uuid4
 
 from app.core.config import Settings, get_settings
-from app.infrastructure.stripe import StripeClient
+from app.infrastructure.stripe import StripeClient, StripeClientError
+from app.observability.metrics import observe_stripe_gateway_operation
 
 logger = logging.getLogger("anything-agents.services.payment_gateway")
+
+T = TypeVar("T")
 
 
 @dataclass(slots=True)
@@ -101,36 +105,49 @@ class StripeGateway(PaymentGateway):
         auto_renew: bool,
         seat_count: int | None,
     ) -> SubscriptionProvisionResult:
-        client = self._get_client()
-        price_id = self._resolve_price_id(plan_code)
         quantity = seat_count or 1
 
-        logger.info(
-            "Provisioning Stripe subscription",
-            extra={"tenant_id": tenant_id, "plan_code": plan_code, "quantity": quantity},
-        )
+        async def _action() -> SubscriptionProvisionResult:
+            client = self._get_client()
+            price_id = self._resolve_price_id(plan_code)
 
-        customer = await client.create_customer(email=billing_email, tenant_id=tenant_id)
-        subscription = await client.create_subscription(
-            customer_id=customer.id,
-            price_id=price_id,
-            quantity=quantity,
-            auto_renew=auto_renew,
-            metadata={"tenant_id": tenant_id, "plan_code": plan_code},
-        )
+            customer = await client.create_customer(email=billing_email, tenant_id=tenant_id)
+            subscription = await client.create_subscription(
+                customer_id=customer.id,
+                price_id=price_id,
+                quantity=quantity,
+                auto_renew=auto_renew,
+                metadata={"tenant_id": tenant_id, "plan_code": plan_code},
+            )
 
-        return SubscriptionProvisionResult(
-            processor=self.processor_name,
-            customer_id=customer.id,
-            subscription_id=subscription.id,
-            starts_at=subscription.current_period_start or datetime.now(timezone.utc),
-            current_period_start=subscription.current_period_start,
-            current_period_end=subscription.current_period_end,
-            trial_ends_at=subscription.trial_end,
-            metadata={
-                "stripe_price_id": price_id,
-                "stripe_subscription_item_id": (subscription.primary_item.id if subscription.primary_item else ""),
+            return SubscriptionProvisionResult(
+                processor=self.processor_name,
+                customer_id=customer.id,
+                subscription_id=subscription.id,
+                starts_at=subscription.current_period_start or datetime.now(timezone.utc),
+                current_period_start=subscription.current_period_start,
+                current_period_end=subscription.current_period_end,
+                trial_ends_at=subscription.trial_end,
+                metadata={
+                    "stripe_price_id": price_id,
+                    "stripe_subscription_item_id": (
+                        subscription.primary_item.id if subscription.primary_item else ""
+                    ),
+                },
+            )
+
+        return await self._execute_operation(
+            operation="start_subscription",
+            plan_code=plan_code,
+            tenant_id=tenant_id,
+            subscription_id=None,
+            context={
+                "quantity": quantity,
+                "seat_count": seat_count,
+                "auto_renew": auto_renew,
+                "has_billing_email": bool(billing_email),
             },
+            action=_action,
         )
 
     async def cancel_subscription(
@@ -139,12 +156,18 @@ class StripeGateway(PaymentGateway):
         *,
         cancel_at_period_end: bool,
     ) -> None:
-        client = self._get_client()
-        logger.info(
-            "Canceling Stripe subscription",
-            extra={"subscription_id": subscription_id, "cancel_at_period_end": cancel_at_period_end},
+        async def _action() -> None:
+            client = self._get_client()
+            await client.cancel_subscription(subscription_id, cancel_at_period_end=cancel_at_period_end)
+
+        await self._execute_operation(
+            operation="cancel_subscription",
+            plan_code=None,
+            tenant_id=None,
+            subscription_id=subscription_id,
+            context={"cancel_at_period_end": cancel_at_period_end},
+            action=_action,
         )
-        await client.cancel_subscription(subscription_id, cancel_at_period_end=cancel_at_period_end)
 
     async def update_subscription(
         self,
@@ -157,23 +180,29 @@ class StripeGateway(PaymentGateway):
         if auto_renew is None and seat_count is None and billing_email is None:
             return None
 
-        client = self._get_client()
-        subscription = await client.retrieve_subscription(subscription_id)
-        logger.info(
-            "Updating Stripe subscription",
-            extra={
-                "subscription_id": subscription_id,
+        async def _action() -> None:
+            client = self._get_client()
+            subscription = await client.retrieve_subscription(subscription_id)
+            await client.modify_subscription(
+                subscription,
+                auto_renew=auto_renew,
+                seat_count=seat_count,
+            )
+            if billing_email:
+                await client.update_customer_email(subscription.customer_id, billing_email)
+
+        await self._execute_operation(
+            operation="update_subscription",
+            plan_code=None,
+            tenant_id=None,
+            subscription_id=subscription_id,
+            context={
                 "auto_renew": auto_renew,
                 "seat_count": seat_count,
+                "has_billing_email": bool(billing_email),
             },
+            action=_action,
         )
-        await client.modify_subscription(
-            subscription,
-            auto_renew=auto_renew,
-            seat_count=seat_count,
-        )
-        if billing_email:
-            await client.update_customer_email(subscription.customer_id, billing_email)
 
     async def record_usage(
         self,
@@ -185,29 +214,47 @@ class StripeGateway(PaymentGateway):
         period_start: datetime | None = None,
         period_end: datetime | None = None,
     ) -> None:
-        client = self._get_client()
-        subscription = await client.retrieve_subscription(subscription_id)
-        item = subscription.primary_item
-        if item is None:
-            raise PaymentGatewayError("Stripe subscription has no metered items for usage recording.")
+        async def _action() -> None:
+            client = self._get_client()
+            subscription = await client.retrieve_subscription(subscription_id)
+            item = subscription.primary_item
+            if item is None:
+                raise PaymentGatewayError(
+                    "Stripe subscription has no metered items for usage recording.",
+                    code="missing_metered_item",
+                )
 
-        timestamp = _usage_timestamp(period_end=period_end, period_start=period_start)
-        key = idempotency_key or f"usage-{subscription_id}-{timestamp}-{uuid4()}"
-        logger.info(
-            "Recording Stripe usage",
-            extra={
-                "subscription_id": subscription_id,
+            timestamp = _usage_timestamp(period_end=period_end, period_start=period_start)
+            key = idempotency_key or f"usage-{subscription_id}-{timestamp}-{uuid4()}"
+            logger.info(
+                "Preparing Stripe usage record",
+                extra={
+                    "stripe_gateway_operation": "record_usage",
+                    "subscription_id": subscription_id,
+                    "feature": feature_key,
+                    "quantity": quantity,
+                    "idempotency_key": key,
+                },
+            )
+            await client.create_usage_record(
+                item.id,
+                quantity=quantity,
+                timestamp=timestamp,
+                idempotency_key=key,
+                feature_key=feature_key,
+            )
+
+        await self._execute_operation(
+            operation="record_usage",
+            plan_code=None,
+            tenant_id=None,
+            subscription_id=subscription_id,
+            context={
                 "feature": feature_key,
                 "quantity": quantity,
-                "idempotency_key": key,
+                "has_idempotency_key": bool(idempotency_key),
             },
-        )
-        await client.create_usage_record(
-            item.id,
-            quantity=quantity,
-            timestamp=timestamp,
-            idempotency_key=key,
-            feature_key=feature_key,
+            action=_action,
         )
 
     def _get_client(self) -> StripeClient:
@@ -216,7 +263,7 @@ class StripeGateway(PaymentGateway):
         settings = self._settings_factory()
         api_key = settings.stripe_secret_key
         if not api_key:
-            raise PaymentGatewayError("STRIPE_SECRET_KEY is not configured.")
+            raise PaymentGatewayError("STRIPE_SECRET_KEY is not configured.", code="config_missing")
         self._client = StripeClient(api_key=api_key)
         return self._client
 
@@ -225,8 +272,100 @@ class StripeGateway(PaymentGateway):
         mapping = settings.stripe_product_price_map or {}
         price_id = mapping.get(plan_code)
         if not price_id:
-            raise PaymentGatewayError(f"No Stripe price configured for plan '{plan_code}'.")
+            raise PaymentGatewayError(
+                f"No Stripe price configured for plan '{plan_code}'.",
+                code="price_mapping_missing",
+            )
         return price_id
+
+    async def _execute_operation(
+        self,
+        *,
+        operation: str,
+        plan_code: str | None,
+        tenant_id: str | None,
+        subscription_id: str | None,
+        context: dict[str, object] | None,
+        action: Callable[[], Awaitable[T]],
+    ) -> T:
+        base_context: dict[str, object] = {
+            "stripe_gateway_operation": operation,
+        }
+        if plan_code:
+            base_context["plan_code"] = plan_code
+        if tenant_id:
+            base_context["tenant_id"] = tenant_id
+        if subscription_id:
+            base_context["subscription_id"] = subscription_id
+        if context:
+            for key, value in context.items():
+                if value is not None:
+                    base_context[key] = value
+
+        logger.info("Stripe gateway operation started", extra=base_context)
+        start = perf_counter()
+
+        try:
+            result = await action()
+        except PaymentGatewayError as exc:
+            duration = perf_counter() - start
+            observe_stripe_gateway_operation(
+                operation=operation,
+                plan_code=plan_code,
+                result=exc.code or "error",
+                duration_seconds=duration,
+            )
+            failure_context = {
+                **base_context,
+                "duration_ms": int(duration * 1000),
+                "error": str(exc),
+                "error_code": exc.code or "error",
+            }
+            logger.warning("Stripe gateway operation failed", extra=failure_context)
+            raise
+        except StripeClientError as exc:
+            duration = perf_counter() - start
+            error_code = exc.code or "stripe_error"
+            observe_stripe_gateway_operation(
+                operation=operation,
+                plan_code=plan_code,
+                result=error_code,
+                duration_seconds=duration,
+            )
+            failure_context = {
+                **base_context,
+                "duration_ms": int(duration * 1000),
+                "error": str(exc),
+                "error_code": error_code,
+            }
+            logger.error("Stripe API error during gateway operation", extra=failure_context)
+            raise PaymentGatewayError(f"Stripe error during {operation}: {exc}", code=error_code) from exc
+        except Exception:
+            duration = perf_counter() - start
+            observe_stripe_gateway_operation(
+                operation=operation,
+                plan_code=plan_code,
+                result="exception",
+                duration_seconds=duration,
+            )
+            logger.exception(
+                "Unexpected Stripe gateway failure",
+                extra={**base_context, "duration_ms": int(duration * 1000)},
+            )
+            raise
+        else:
+            duration = perf_counter() - start
+            observe_stripe_gateway_operation(
+                operation=operation,
+                plan_code=plan_code,
+                result="success",
+                duration_seconds=duration,
+            )
+            logger.info(
+                "Stripe gateway operation completed",
+                extra={**base_context, "duration_ms": int(duration * 1000)},
+            )
+            return result
 
 
 def _usage_timestamp(*, period_end: datetime | None, period_start: datetime | None) -> int:
