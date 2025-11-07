@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import time
+from pathlib import Path
 
 import pytest
 import stripe
@@ -20,14 +21,19 @@ from app.infrastructure.persistence.stripe.repository import (
     reset_stripe_event_repository,
 )
 from app.presentation.webhooks import stripe as stripe_webhook
+from app.services.billing_events import BillingEventsService, InMemoryBillingEventBackend, billing_events_service
 
 import app.infrastructure.persistence.conversations.models  # noqa: F401
 import app.infrastructure.persistence.auth.models  # noqa: F401
+
+pytestmark = pytest.mark.stripe_replay
 
 
 @pytest.fixture(autouse=True)
 def configure_secret(monkeypatch):
     monkeypatch.setenv("STRIPE_WEBHOOK_SECRET", "whsec_test")
+    monkeypatch.setenv("ENABLE_BILLING", "true")
+    monkeypatch.setenv("ENABLE_BILLING_STREAM", "true")
     get_settings.cache_clear()
     try:
         yield
@@ -57,6 +63,16 @@ def webhook_app():
     return app
 
 
+@pytest.fixture
+def in_memory_billing_events(monkeypatch):
+    service = BillingEventsService()
+    backend = InMemoryBillingEventBackend()
+    service.configure(backend=backend, repository=None)
+    monkeypatch.setattr("app.services.billing_events._billing_events_service", service, raising=False)
+    monkeypatch.setattr("app.services.billing_events.billing_events_service", service, raising=False)
+    return service
+
+
 def _signature(payload: str, secret: str) -> str:
     timestamp = int(time.time())
     signed = f"{timestamp}.{payload}".encode("utf-8")
@@ -67,16 +83,30 @@ def _signature(payload: str, secret: str) -> str:
     return f"t={timestamp},v1={digest}"
 
 
+FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "stripe"
+
+
+def load_fixture(name: str) -> str:
+    return (FIXTURES_DIR / name).read_text(encoding="utf-8")
+
+
 @pytest.mark.asyncio
-async def test_webhook_persists_event(webhook_app: FastAPI, sqlite_stripe_repo: StripeEventRepository):
-    body = json.dumps(
-        {
-            "id": "evt_webhook",
-            "type": "customer.subscription.created",
-            "created": int(time.time()),
-            "data": {"object": {"metadata": {"tenant_id": "tenant-xyz"}}},
-        }
-    )
+@pytest.mark.parametrize(
+    "fixture_name, tenant_id", 
+    [
+        ("customer.subscription.created.json", "11111111-2222-3333-4444-555555555555"),
+        ("invoice.payment_failed.json", "11111111-2222-3333-4444-555555555555"),
+    ],
+)
+async def test_webhook_replays_fixture(
+    fixture_name: str,
+    tenant_id: str,
+    webhook_app: FastAPI,
+    sqlite_stripe_repo: StripeEventRepository,
+    in_memory_billing_events: BillingEventsService,
+):
+    body = load_fixture(fixture_name)
+    payload = json.loads(body)
 
     headers = {
         "stripe-signature": _signature(body, "whsec_test"),
@@ -88,21 +118,25 @@ async def test_webhook_persists_event(webhook_app: FastAPI, sqlite_stripe_repo: 
         resp = await client.post("/webhooks/stripe", content=body, headers=headers)
 
     assert resp.status_code == 202
-    stored = await sqlite_stripe_repo.get_by_event_id("evt_webhook")
+    stored = await sqlite_stripe_repo.get_by_event_id(payload["id"])
     assert stored is not None
     assert stored.processing_outcome == StripeEventStatus.PROCESSED.value
-    assert stored.tenant_hint == "tenant-xyz"
+    assert stored.tenant_hint == tenant_id
+
+    stream = await in_memory_billing_events.subscribe(tenant_id)
+    message = await stream.next_message(timeout=0.2)
+    await stream.close()
+    assert message is not None
+    assert payload["type"] in message
 
 
 @pytest.mark.asyncio
-async def test_duplicate_event_is_acknowledged(webhook_app: FastAPI, sqlite_stripe_repo: StripeEventRepository):
-    payload = {
-        "id": "evt_duplicate",
-        "type": "invoice.paid",
-        "created": int(time.time()),
-        "data": {"object": {"metadata": {}}},
-    }
-    body = json.dumps(payload)
+async def test_duplicate_event_is_acknowledged(
+    webhook_app: FastAPI,
+    sqlite_stripe_repo: StripeEventRepository,
+    in_memory_billing_events: BillingEventsService,
+):
+    body = load_fixture("invoice.payment_failed.json")
     headers = {
         "stripe-signature": _signature(body, "whsec_test"),
         "content-type": "application/json",
@@ -116,7 +150,8 @@ async def test_duplicate_event_is_acknowledged(webhook_app: FastAPI, sqlite_stri
     assert first.status_code == 202
     assert second.status_code == 202
     assert second.json()["duplicate"] is True
-    stored = await sqlite_stripe_repo.get_by_event_id("evt_duplicate")
+    payload = json.loads(body)
+    stored = await sqlite_stripe_repo.get_by_event_id(payload["id"])
     assert stored is not None
     assert stored.processing_attempts >= 1
 

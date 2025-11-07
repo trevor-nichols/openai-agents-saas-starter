@@ -163,8 +163,6 @@ def create_application() -> FastAPI:
     app.include_router(metrics_routes.router)
     if settings.enable_billing:
         app.include_router(stripe_webhook.router)
-    if settings.enable_billing:
-        app.include_router(stripe_webhook.router)
 
     # Versioned API surface
     app.include_router(api_router, prefix="/api", tags=["api"])

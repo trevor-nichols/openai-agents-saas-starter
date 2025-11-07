@@ -165,6 +165,8 @@ class BillingEventsService:
         self._bookmark_key = "billing:events:last_processed_at"
         self._lock = asyncio.Lock()
         self._enabled = False
+        self._publish_retry_attempts = 3
+        self._publish_retry_delay_seconds = 0.25
 
     def configure(
         self,
@@ -228,7 +230,28 @@ class BillingEventsService:
         if message is None:
             return
         channel = self._channel(record.tenant_hint)
-        await self._backend.publish(channel, json.dumps(asdict(message)))
+        attempts = 0
+        while True:
+            try:
+                await self._backend.publish(channel, json.dumps(asdict(message)))
+                break
+            except Exception as exc:
+                attempts += 1
+                logger.warning(
+                    "Failed to publish billing event (attempt %s/%s): %s",
+                    attempts,
+                    self._publish_retry_attempts,
+                    exc,
+                    extra={
+                        "tenant_id": message.tenant_id,
+                        "event_type": message.event_type,
+                    },
+                )
+                observe_stripe_webhook_event(event_type=message.event_type, result="broadcast_failed")
+                if attempts >= self._publish_retry_attempts:
+                    raise
+                await asyncio.sleep(self._publish_retry_delay_seconds)
+
         if record.processed_at:
             await self._backend.store_bookmark(self._bookmark_key, record.processed_at.isoformat())
         observe_stripe_webhook_event(event_type=message.event_type, result="broadcasted")

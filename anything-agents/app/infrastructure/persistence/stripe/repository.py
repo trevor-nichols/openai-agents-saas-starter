@@ -98,6 +98,20 @@ class StripeEventRepository:
             result = await session.execute(stmt)
             return list(result.scalars())
 
+    async def list_events(
+        self,
+        *,
+        status: StripeEventStatus | str | None = None,
+        limit: int = 20,
+    ) -> list[StripeEvent]:
+        async with self._session_factory() as session:
+            stmt = select(StripeEvent).order_by(StripeEvent.received_at.desc()).limit(limit)
+            if status:
+                status_value = status.value if isinstance(status, StripeEventStatus) else str(status)
+                stmt = stmt.where(StripeEvent.processing_outcome == status_value)
+            result = await session.execute(stmt)
+            return list(result.scalars())
+
 
 _stripe_event_repository: StripeEventRepository | None = None
 

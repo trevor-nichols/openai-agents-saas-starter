@@ -13,6 +13,8 @@ from app.api.v1.billing.router import router as billing_router
 from app.core.config import get_settings
 from app.services.billing_events import BillingEventsService, InMemoryBillingEventBackend, billing_events_service
 
+pytestmark = pytest.mark.stripe_replay
+
 
 @pytest.fixture(autouse=True)
 def enable_stream(monkeypatch):

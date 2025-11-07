@@ -18,6 +18,9 @@ help:
 	@echo "  make dev-ps                 # Show running containers"
 	@echo "  make migrate                # Run Alembic migrations with current env"
 	@echo "  make migration-revision MESSAGE=...  # Create a new Alembic revision"
+	@echo "  make test-stripe            # Run fixture-driven Stripe replay tests"
+	@echo "  make stripe-replay ARGS='...' # Invoke the Stripe replay CLI"
+	@echo "  make lint-stripe-fixtures   # Validate Stripe fixture JSON files"
 
 migrate:
 	@echo "Using .env.compose + $(ENV_FILE)"
@@ -45,3 +48,16 @@ dev-logs:
 
 dev-ps:
 	@$(ENV_RUNNER) .env.compose $(ENV_FILE) -- docker compose ps
+
+test-stripe:
+	@$(ENV_RUNNER) .env.compose $(ENV_FILE) -- hatch run pytest -m stripe_replay
+
+stripe-replay:
+	@if [ -z "$(ARGS)" ]; then \
+		echo "Usage: make stripe-replay ARGS='list --status failed'"; \
+		exit 1; \
+	fi
+	@$(ENV_RUNNER) .env.compose $(ENV_FILE) -- python scripts/stripe/replay_events.py $(ARGS)
+
+lint-stripe-fixtures:
+	@python scripts/stripe/replay_events.py validate-fixtures

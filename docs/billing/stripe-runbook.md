@@ -24,7 +24,21 @@ This document outlines the operator workflows for receiving, inspecting, and rep
    where processing_outcome = 'failed'
    order by received_at desc;
    ```
-2. Determine remediation: fix downstream issue (e.g., database constraint, missing tenant), then replay by posting the stored payload back into `/webhooks/stripe` with the original signature removed (set `STRIPE_WEBHOOK_SECRET` in curl and recompute). A future CLI helper will automate this replay.
+2. Determine remediation: fix downstream issue (e.g., database constraint, missing tenant), then use the replay CLI to reprocess the event(s):
+
+   ```bash
+   # List failed events
+   make stripe-replay ARGS="list --status failed"
+
+   # Dry-run a specific replay
+   make stripe-replay ARGS="replay --event-id evt_123 --dry-run"
+
+   # Replay everything currently failed back into the local webhook
+   make stripe-replay ARGS="replay --status failed --limit 10"
+   ```
+
+   The CLI reads `.env.local` for `DATABASE_URL` and `STRIPE_WEBHOOK_SECRET`, signs each stored payload, and POSTs to `/webhooks/stripe`. Use `--webhook-url` to target staging/production.
+
 3. Update status: once the replay succeeds the repository marks the event as `processed`. If manual intervention is required, annotate incident notes and reference the `stripe_event_id` for auditability.
 
 ## Local Testing
@@ -36,9 +50,20 @@ This document outlines the operator workflows for receiving, inspecting, and rep
     --override '{"customer":"{{CUSTOMER_ID}}","metadata":{"tenant_id":"default"}}'
   ```
 - Inspect stored events via `psql` or any SQL client pointed at the Postgres instance started by `make dev-up`.
+- Validate fixture coverage locally:
+  ```bash
+  make lint-stripe-fixtures
+  make test-stripe
+  ```
+
+## Streaming Health Checks
+
+1. **Redis** – `make dev-up` already launches Redis. Inspect `billing:events:last_processed_at` via `redis-cli` to ensure bookmarks advance.
+2. **SSE endpoint** – `curl -H "X-Tenant-Id: <tenant>" -H "X-Tenant-Role: owner" http://localhost:8000/api/v1/billing/stream` should return a continuous event stream (ping comments every 15s).
+3. **Frontend panel** – the Agent dashboard displays the live Billing Activity list. If it stalls, verify cookies include the tenant metadata and inspect browser devtools for SSE disconnects.
+4. **Metrics** – monitor `stripe_webhook_events_total{result="broadcast_failed"}` for spikes.
 
 ## TODOs / Open Items
 
-- Automate event replay via CLI helper (future STRIPE-06 scope).
 - Integrate specific event handlers (subscription sync, invoice state machine) once STRIPE-05+ lands.
 - Expand observability with dashboards/alerts keyed off `stripe_webhook_events_total`.

@@ -36,6 +36,7 @@ dependencies = [
   "PyJWT[crypto]>=2.9.0,<3.0.0",
   "python-multipart>=0.0.20,<0.1.0",
   "passlib[bcrypt]>=1.7.4,<1.8.0",
+  "bcrypt>=4.1.2,<5.0.0",
   "python-dotenv>=1.0.0,<1.1.0",
   "greenlet>=3.0.3,<4.0.0",
   "SQLAlchemy>=2.0.35,<2.1.0",
@@ -170,6 +171,7 @@ asyncio_mode = "auto"
 addopts = "--strict-markers --disable-warnings"
 markers = [
   "postgres: marks tests that require a running Postgres instance",
+  "stripe_replay: fixture-driven Stripe webhook replay tests",
 ]
 
 [tool.coverage.run]

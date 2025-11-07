@@ -312,6 +312,14 @@ pytest tests/test_agents.py
 
 # Run with coverage
 pytest --cov=app tests/
+
+# Replay Stripe fixtures through the webhook + SSE stack
+make test-stripe
+
+# Validate and replay stored Stripe events (examples)
+make lint-stripe-fixtures
+make stripe-replay ARGS="list --status failed"
+make stripe-replay ARGS="replay --event-id evt_123 --dry-run"
 ```
 
 ## 🔄 Migration Path: Single → Multiagent
