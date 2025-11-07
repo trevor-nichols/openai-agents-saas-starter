@@ -115,6 +115,11 @@ async def test_core_tables_exist(migrated_engine: AsyncEngine) -> None:
         "agent_messages",
         "billing_plans",
         "tenant_subscriptions",
+        "users",
+        "user_profiles",
+        "tenant_user_memberships",
+        "password_history",
+        "user_login_events",
     }
 
     async with migrated_engine.connect() as conn:

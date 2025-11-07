@@ -37,7 +37,24 @@ security = HTTPBearer()
 # PASSWORD UTILITIES
 # =============================================================================
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
+def _password_pepper(settings: Settings | None = None, override: str | None = None) -> str:
+    target = override or (settings or get_settings()).auth_password_pepper
+    if not target:
+        raise ValueError("AUTH_PASSWORD_PEPPER must be configured for password hashing.")
+    return target
+
+
+def _pepperize_password(raw: str, *, pepper: str) -> str:
+    return f"{pepper}:{raw}"
+
+
+def verify_password(
+    plain_password: str,
+    hashed_password: str,
+    *,
+    settings: Settings | None = None,
+    pepper: str | None = None,
+) -> bool:
     """
     Verify a password against its hash.
     
@@ -48,9 +65,17 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         bool: True if password matches, False otherwise
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    pepper_value = _password_pepper(settings, override=pepper)
+    material = _pepperize_password(plain_password, pepper=pepper_value)
+    return pwd_context.verify(material, hashed_password)
 
-def get_password_hash(password: str) -> str:
+
+def get_password_hash(
+    password: str,
+    *,
+    settings: Settings | None = None,
+    pepper: str | None = None,
+) -> str:
     """
     Hash a password using bcrypt.
     
@@ -60,7 +85,9 @@ def get_password_hash(password: str) -> str:
     Returns:
         str: Hashed password
     """
-    return pwd_context.hash(password)
+    pepper_value = _password_pepper(settings, override=pepper)
+    material = _pepperize_password(password, pepper=pepper_value)
+    return pwd_context.hash(material)
 
 # =============================================================================
 # TOKEN SIGNER / VERIFIER

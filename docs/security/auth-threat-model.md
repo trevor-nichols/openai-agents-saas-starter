@@ -1,7 +1,7 @@
 # EdDSA Authentication Threat Model (Draft)
 
-**Status:** Draft (awaiting AUTH-001 review)  
-**Last Updated:** 2025-11-06  
+**Status:** In Review (covers AUTH-001 human login scope)  
+**Last Updated:** 2025-11-07  
 **Owners:** Platform Security Guild · Backend Auth Pod
 
 ---
@@ -10,7 +10,7 @@
 
 - Replace the demo HS256 authentication implementation with an enterprise-grade Ed25519 JWT stack.  
 - Define trust boundaries, consumers, and required security controls before implementation work (AUTH-002 → AUTH-006).  
-- Excludes upstream identity provider design, UI auth flows, and secret-storage infrastructure (handled elsewhere).
+- Capture human login threat considerations outlined in `docs/auth/idp.md` while still excluding long-term external IdP procurement and broader secret-storage infrastructure.
 
 ## 2. System Context
 
@@ -63,7 +63,7 @@
 
 ### 3.4 Assumptions
 
-- Upstream identity provider (or local credential store) delivers vetted principal data to AuthService; credential verification itself is out of scope.  
+- Upstream identity provider (or local credential store) delivers vetted principal data to AuthService per `docs/auth/idp.md`; credential verification UX remains out of scope here.  
 - Deployment environments provide TLS termination, WAF, and baseline network segmentation.  
 - Secret manager exposes a read-only mount per region and supports atomic key swap operations.  
 - Redis and Postgres connections are secured with mutual TLS or equivalent and enforce namespace isolation between tenants/environments.  
@@ -85,6 +85,11 @@
 | **Denial of Service** | Flood of JWKS requests or token validation attempts | JWKS endpoint, token service | Resource exhaustion, legitimate requests dropped | Rate limiting at edge (≤5 req/sec/IP for JWKS); CDN caching; async verification with bounded worker pool; metrics-based autoscaling triggers. |
 | **Elevation of Privilege** | Tenant header manipulation to escalate privileges | Tenant context, claims | Cross-tenant data exposure | Tenant ID derived from token claim, not headers, once EdDSA flow lands; until then, enforce server-side validation and anomaly alerts; introduce policy checks in AuthService and routers. |
 | **Elevation of Privilege** | Compromised pipeline deploys backdoored auth service | Build pipeline, container registry | Silent token minting/backdoor | Signed container images; dependency scanning; CI attestation; runtime admission policy verifying signatures before deploy. |
+| **Spoofing** | Credential stuffing against human login endpoint | User credentials, tenant memberships | Unauthorized access to user accounts | Password policy + bcrypt w/ pepper (per `docs/auth/idp.md`), Redis-backed per-user + per-IP rate limits, automatic lockout after 5 failures/hour, SOC alerts on threshold breach, CAPTCHA/mfa hooks flagged for IDP-005. |
+| **Spoofing** | Password reuse with leaked credentials from other services | User credentials | Compromised accounts despite unique tenant | Password history + zxcvbn scoring, haveibeenpwned-style breach-check on reset, forced reset + notification, optional external IdP enforcement via SCIM attributes. |
+| **Denial of Service** | Lockout abuse (attacker repeatedly guesses password to freeze account) | User availability, tenant productivity | Legitimate users blocked, support load | Distinguish soft vs hard lockouts, notify user/admin on lock, provide rate-limited unlock API requiring verified email/MFA, SOC monitoring for repeated IP/Subnet abuse, allow break-glass admin override. |
+| **Elevation of Privilege** | Tenant escalation by replaying refresh token from different tenant context | Refresh tokens, tenant claims | Cross-tenant data access after login | Bind refresh tokens to `tenant_id` + device fingerprint; rotation-on-use with mismatch detection; lock account + alert when mismatch occurs; require explicit tenant selection for multi-tenant users. |
+| **Repudiation** | Audit bypass via log tampering or missing events for human login | Audit logs, compliance evidence | Unable to prove or disprove malicious login | Structured logging mandates for `auth.login`, `auth.lockout`, `auth.unlock`, `auth.policy`; logs shipped to immutable SIEM with retention ≥1 year; daily integrity checks; audit events cross-linked with metrics (`auth_login_attempts_total`). |
 
 ## 5. Security Requirements & Controls
 

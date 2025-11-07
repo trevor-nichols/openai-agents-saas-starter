@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from sqlalchemy import (
     BigInteger,
@@ -22,6 +22,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.persistence.models.base import Base, UTC_NOW, uuid_pk
 
+if TYPE_CHECKING:  # pragma: no cover - typing helpers only
+    from app.infrastructure.persistence.auth.models import (
+        TenantUserMembership,
+        UserAccount,
+    )
+
 
 class TenantAccount(Base):
     """Represents a customer tenant in a multi-tenant deployment."""
@@ -37,40 +43,22 @@ class TenantAccount(Base):
         DateTime(timezone=True), default=UTC_NOW, nullable=False
     )
 
-    users: Mapped[list["User"]] = relationship(
-        back_populates="tenant", cascade="all, delete-orphan"
+    memberships: Mapped[list["TenantUserMembership"]] = relationship(
+        "TenantUserMembership",
+        back_populates="tenant",
+        cascade="all, delete-orphan",
+    )
+    users: Mapped[list["UserAccount"]] = relationship(
+        "UserAccount",
+        secondary="tenant_user_memberships",
+        back_populates="tenants",
+        viewonly=True,
     )
     subscriptions: Mapped[list["TenantSubscription"]] = relationship(
         back_populates="tenant", cascade="all, delete-orphan"
     )
     conversations: Mapped[list["AgentConversation"]] = relationship(
         back_populates="tenant", cascade="all, delete-orphan"
-    )
-
-
-class User(Base):
-    """Represents an authenticated user linked to a tenant."""
-
-    __tablename__ = "users"
-    __table_args__ = (
-        UniqueConstraint("tenant_id", "external_id", name="uq_users_tenant_external"),
-    )
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk
-    )
-    tenant_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("tenant_accounts.id", ondelete="CASCADE"), nullable=False
-    )
-    external_id: Mapped[str] = mapped_column(String(128), nullable=False)
-    display_name: Mapped[str | None] = mapped_column(String(128))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=UTC_NOW, nullable=False
-    )
-
-    tenant: Mapped["TenantAccount"] = relationship(back_populates="users")
-    conversations: Mapped[list["AgentConversation"]] = relationship(
-        back_populates="user"
     )
 
 
@@ -117,7 +105,7 @@ class AgentConversation(Base):
     )
 
     tenant: Mapped["TenantAccount"] = relationship(back_populates="conversations")
-    user: Mapped["User | None"] = relationship(back_populates="conversations")
+    user: Mapped["UserAccount | None"] = relationship(back_populates="conversations")
     messages: Mapped[list["AgentMessage"]] = relationship(
         back_populates="conversation",
         cascade="all, delete-orphan",

@@ -1,0 +1,106 @@
+# Milestone: Human Identity Provider Integration
+
+## Objective
+- Replace the demo-only `/api/v1/auth/token` flow with a production-ready human login pipeline backed by a persistent identity store.
+- Align BE-004 and AUTH-001…AUTH-003 outcomes so FastAPI, Next.js, and downstream services share a single trust contract.
+- Leave room to swap in an external IdP later without reworking the domain or API surface.
+
+## Scope & Guardrails
+- **In Scope**: User schema + migrations, repository/service layers, API/contract updates, frontend login UX, token issuance + refresh, auditing, rollout plan.
+- **Out of Scope**: Observability deep-dive (AUTH-005), production IdP procurement, MFA/UI polish (stubs allowed), billing/tenant policy changes.
+- **Design Tenets**: EdDSA-only tokens, hashed credentials with pepper, tenant-aware claims, clean architecture boundaries, test coverage ≥90% for auth-critical modules.
+
+## Sequence Diagrams
+### Login + Refresh Token Issuance
+```mermaid
+sequenceDiagram
+    participant UI as Next.js UI
+    participant API as FastAPI /auth
+    participant USvc as UserService
+    participant Repo as UserRepository (Postgres)
+    participant Signer as EdDSA TokenSigner
+    participant Store as RefreshTokenRepo (Postgres+Redis)
+    UI->>API: POST /api/v1/auth/token { email, password }
+    API->>USvc: authenticate(email, password)
+    USvc->>Repo: fetch_user_by_email()
+    Repo-->>USvc: User + password_hash + status + tenant
+    USvc->>USvc: verify password + account state
+    USvc->>Signer: sign access payload (sub, tenant_id, roles)
+    Signer-->>USvc: SignedTokenBundle
+    USvc->>Store: persist refresh_token(hash, kid, ttl)
+    Store-->>USvc: record id
+    USvc-->>API: AuthResult(access_token, refresh_token, expires_in, kid)
+    API-->>UI: 200 OK (set httpOnly cookies / return JSON)
+```
+
+### Access Token Refresh
+```mermaid
+sequenceDiagram
+    participant UI as Next.js UI
+    participant API as FastAPI /auth/refresh
+    participant Repo as RefreshTokenRepo
+    participant Signer as EdDSA TokenSigner
+    UI->>API: POST /api/v1/auth/refresh { refresh_token }
+    API->>Repo: validate_refresh_token(refresh_token)
+    Repo-->>API: Refresh record + claims
+    API->>Signer: sign new access token
+    Signer-->>API: SignedToken
+    API-->>UI: 200 OK (new access token)
+```
+
+## Tracker Mapping
+| New ID | Existing Tracker Alignment | Description |
+|--------|----------------------------|-------------|
+| IDP-001 | AUTH-001 | Threat model + requirements for human login, lockout, audit, tenancy. |
+| IDP-002 | BE-004, DB-001 | User data model + Alembic migrations + seed tooling. |
+| IDP-003 | AUTH-003 | Domain/service layer (UserRepository, UserService, AuthService login path). |
+| IDP-004 | BE-004 | FastAPI API updates, JWT claim schema, refresh endpoint contracts. |
+| IDP-005 | AUTH-003 | Frontend login UX, token handling, storage, sign-out. |
+| IDP-006 | AUTH-002/003 | Rollout plan, feature flagging, staging validation, documentation. |
+
+## Work Breakdown & Exit Criteria
+### IDP-001 — Requirements & Threat Model (AUTH-001)
+- **Status:** Completed (2025-11-07) — security reviewed `docs/auth/idp.md` + `docs/security/auth-threat-model.md`; baseline feeds IDP-002…IDP-006 scope.
+- Document user lifecycle states (active, disabled, pending, locked) and tenant scoping in `docs/auth/idp.md`.
+- Define password policy, login attempt limits, auditing fields, and external IdP swap requirements.
+- Capture signed-off acceptance criteria for every downstream ticket.
+- **Exit**: Reviewed/approved doc, tracker updated with decisions.
+
+### IDP-002 — Data Model & Migration (BE-004, DB-001)
+- **Status:** Completed (2025-11-07) — migration `0e52ba5ab089` applied via `make migrate`; ORM/Pydantic models and `scripts/seed_users.py` merged with docs/env guidance.
+- Alembic revision adding `users`, `user_profiles`, `user_login_events`, indexes for email + tenant.
+- Seed utility (`scripts/seed_users.py`) emitting one-time admin credentials.
+- SQLAlchemy models + Pydantic schemas for DTOs.
+- **Exit**: Migration passes `make migrate` + integration tests; seed script documented.
+
+### IDP-003 — Domain & Service Layer (AUTH-003)
+- Implement `UserRepository` (SQLAlchemy) with CRUD + lockout helpers, plus in-memory fake for tests.
+- `UserService` handles registration, credential verification, lockout counters (Redis TTL), and emits audit events.
+- Extend `AuthService` with `login_user` + refresh helpers reusing EdDSA signer + refresh repo.
+- Unit tests covering success/failure paths, bcrypt w/ pepper, lockouts, disabled tenant.
+- **Exit**: Tests ≥90% coverage, lint + type checks clean.
+
+### IDP-004 — API & Contract Updates (BE-004)
+- Replace demo credentials in `app/api/v1/auth/router.py` with service-backed login.
+- Add `/auth/register` (admin-only), `/auth/password/reset/initiate`, `/auth/password/reset/complete` stubs for future work but wired to validation.
+- Ensure responses include `token_type`, `expires_in`, `kid`, `issued_at`, `refresh_expires_in`.
+- Update FastAPI dependencies to inject tenant/roles; add RBAC helper for routers.
+- Contract tests under `tests/contract/test_auth_users.py` for login, bad password, locked account, refresh, revoked refresh token.
+- **Exit**: Contract suite green, OpenAPI regenerated for Next client.
+
+### IDP-005 — Frontend Integration (AUTH-003)
+- Update `agent-next-15-frontend` actions/hooks to call new endpoints, store tokens via secure cookies (`next/headers` middleware) with silent refresh.
+- Add sign-in/out components, error states, and protected-route guard using server actions.
+- Unit tests for hooks, e2e smoke (Playwright) verifying login + token refresh.
+- **Exit**: Frontend build/tests green, UX reviewed with product.
+
+### IDP-006 — Rollout, Docs, & Flagging (AUTH-002/003)
+- Feature flag `AUTH_IDP_MODE` (`demo` vs `internal`) to allow staged rollout.
+- Create runbook: staging validation checklist, dual-mode testing, fallback strategy.
+- Update `ISSUE_TRACKER.md` statuses once staging verified; document final API usage in `docs/auth/idp.md` + `README`.
+- **Exit**: Flag defaulted to `internal` in prod configs, tracker updated, retrospective logged.
+
+## Next Steps
+1. Kick off IDP-003 (repository/service layer + lockout enforcement) using the landed schema and config knobs.
+2. Link forthcoming PRDs/tech specs for IDP-003/004 back to `docs/auth/idp.md` to maintain traceability.
+3. Schedule pairing between backend + frontend owners for IDP-004/IDP-005 so API + UX changes land together once the domain layer is ready.

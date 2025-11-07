@@ -152,6 +152,41 @@ class Settings(BaseSettings):
         description="Server-side pepper prepended when hashing refresh tokens.",
         alias="AUTH_REFRESH_TOKEN_PEPPER",
     )
+    auth_password_pepper: str = Field(
+        default="local-dev-password-pepper",
+        description="Pepper prepended to human passwords prior to hashing.",
+        alias="AUTH_PASSWORD_PEPPER",
+    )
+    auth_password_history_count: int = Field(
+        default=5,
+        description="Number of historical password hashes retained per user.",
+        alias="AUTH_PASSWORD_HISTORY_COUNT",
+    )
+    auth_lockout_threshold: int = Field(
+        default=5,
+        description="Failed login attempts allowed before locking the account.",
+        alias="AUTH_LOCKOUT_THRESHOLD",
+    )
+    auth_lockout_window_minutes: int = Field(
+        default=60,
+        description="Rolling window in minutes for lockout threshold calculations.",
+        alias="AUTH_LOCKOUT_WINDOW_MINUTES",
+    )
+    auth_lockout_duration_minutes: int = Field(
+        default=60,
+        description="Automatic unlock window for locked users (minutes).",
+        alias="AUTH_LOCKOUT_DURATION_MINUTES",
+    )
+    auth_ip_lockout_threshold: int = Field(
+        default=50,
+        description="Failed attempts per IP or /24 subnet per minute before throttling.",
+        alias="AUTH_IP_LOCKOUT_THRESHOLD",
+    )
+    auth_ip_lockout_window_minutes: int = Field(
+        default=10,
+        description="Window in minutes used for IP-based throttling heuristics.",
+        alias="AUTH_IP_LOCKOUT_WINDOW_MINUTES",
+    )
     
     # =============================================================================
     # LOGGING SETTINGS

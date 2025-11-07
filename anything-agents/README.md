@@ -87,6 +87,15 @@ DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agen
 USE_IN_MEMORY_REPO=false  # set true to skip Postgres locally
 AUTO_RUN_MIGRATIONS=true  # dev convenience (requires Alembic dependency)
 ENABLE_BILLING=false      # flip to true once Postgres persistence is ready
+
+# Auth Hardening
+AUTH_PASSWORD_PEPPER=local-dev-password-pepper
+AUTH_PASSWORD_HISTORY_COUNT=5
+AUTH_LOCKOUT_THRESHOLD=5
+AUTH_LOCKOUT_WINDOW_MINUTES=60
+AUTH_LOCKOUT_DURATION_MINUTES=60
+AUTH_IP_LOCKOUT_THRESHOLD=50
+AUTH_IP_LOCKOUT_WINDOW_MINUTES=10
 ```
 
 ### 4. Run the Application
@@ -117,7 +126,17 @@ The API will be available at `http://localhost:8000`
    make migration-revision MESSAGE="add widget table"
    ```
 
-### 6. Quality Checks
+### 6. Seed a Local Admin User
+
+Once Postgres is running and the new auth tables are migrated, create a bootstrap user via the helper script (the Makefile wrappers automatically load both `.env.compose` and `.env.local`):
+
+```bash
+python scripts/seed_users.py --email admin@example.com --tenant-slug default --role admin
+```
+
+You will be prompted for the password unless you pass `--password`. The script ensures the tenant exists, hashes the password with the configured pepper, stores password history, and prints the resulting credentials for quick testing.
+
+### 7. Quality Checks
 
 Run the standard backend quality gates before opening a PR:
 
@@ -128,7 +147,7 @@ hatch run pyright
 hatch run test
 ```
 
-### 7. Postgres Integration Smoke Tests
+### 8. Postgres Integration Smoke Tests
 
 Provision a Postgres instance (see step 5), then run:
 
@@ -141,7 +160,7 @@ The test suite creates a throwaway database, applies Alembic migrations, and ver
 
 > **Note:** Billing endpoints require Postgres. Set `USE_IN_MEMORY_REPO=false`, configure `DATABASE_URL`, and then flip `ENABLE_BILLING=true`; the app will fail fast if billing is enabled without a durable store.
 
-### 8. Billing API (Postgres Only)
+### 9. Billing API (Postgres Only)
 
 Billing routes expect two headers on every request:
 
