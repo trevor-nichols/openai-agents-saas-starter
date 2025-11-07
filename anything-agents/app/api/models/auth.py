@@ -1,57 +1,45 @@
 """Authentication request and response models."""
 
+from datetime import datetime
+
 from pydantic import BaseModel, EmailStr, Field
 
 
-class Token(BaseModel):
-    """JWT access token payload returned to clients."""
+class UserLoginRequest(BaseModel):
+    """Human user login payload."""
+
+    email: EmailStr = Field(description="User email address.")
+    password: str = Field(min_length=8, description="Plaintext password to verify.")
+    tenant_id: str | None = Field(
+        default=None,
+        description="Tenant UUID when the user belongs to multiple tenants.",
+    )
+
+
+class UserRefreshRequest(BaseModel):
+    """Refresh session request payload."""
+
+    refresh_token: str = Field(min_length=16, description="Previously issued refresh token.")
+
+
+class UserSessionResponse(BaseModel):
+    """Bearer credential pair returned after login or refresh."""
 
     access_token: str = Field(description="Signed JWT access token.")
+    refresh_token: str = Field(description="Signed JWT refresh token.")
     token_type: str = Field(
         default="bearer",
         description="Token type hint for the Authorization header.",
     )
-    expires_in: int = Field(
-        description="Token expiration time expressed in seconds.",
+    expires_at: datetime = Field(description="ISO-8601 timestamp when the access token expires.")
+    refresh_expires_at: datetime = Field(
+        description="ISO-8601 timestamp when the refresh token expires."
     )
-
-
-class TokenData(BaseModel):
-    """JWT claims used internally once a token is validated."""
-
+    kid: str = Field(description="Key identifier used to sign the access token.")
+    refresh_kid: str = Field(description="Key identifier used to sign the refresh token.")
+    scopes: list[str] = Field(description="Scopes granted to the session.")
+    tenant_id: str = Field(description="Tenant identifier tied to the session.")
     user_id: str = Field(description="Authenticated user identifier.")
-
-
-class UserLogin(BaseModel):
-    """User login credentials."""
-
-    username: str = Field(description="Username or email.")
-    password: str = Field(description="User password.")
-
-
-class UserCreate(BaseModel):
-    """User registration payload."""
-
-    username: str = Field(
-        min_length=3,
-        max_length=50,
-        description="Desired username.",
-    )
-    email: EmailStr = Field(description="User email address.")
-    password: str = Field(
-        min_length=8,
-        description="Plaintext password to be hashed.",
-    )
-
-
-class UserResponse(BaseModel):
-    """User payload returned by user-related endpoints."""
-
-    id: str = Field(description="User identifier.")
-    username: str = Field(description="Username.")
-    email: str = Field(description="User email address.")
-    is_active: bool = Field(description="Whether the user is active.")
-    created_at: str = Field(description="Creation timestamp.")
 
 
 class ServiceAccountIssueRequest(BaseModel):

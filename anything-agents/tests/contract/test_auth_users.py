@@ -1,0 +1,144 @@
+"""Contract tests for human authentication endpoints."""
+
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
+from uuid import uuid4
+from unittest.mock import AsyncMock
+
+import pytest
+from fastapi.testclient import TestClient
+
+from app.services.auth_service import (
+    UserAuthenticationError,
+    UserRefreshError,
+    UserSessionTokens,
+)
+from app.services.user_service import InvalidCredentialsError, UserLockedError
+from main import app
+
+
+@pytest.fixture
+def client() -> TestClient:
+    with TestClient(app) as test_client:
+        yield test_client
+
+
+def _make_session_tokens() -> UserSessionTokens:
+    now = datetime.now(timezone.utc)
+    return UserSessionTokens(
+        access_token="access-token",
+        refresh_token="refresh-token",
+        expires_at=now + timedelta(minutes=15),
+        refresh_expires_at=now + timedelta(days=7),
+        kid="kid-primary",
+        refresh_kid="kid-refresh",
+        scopes=["conversations:read"],
+        tenant_id=str(uuid4()),
+        user_id=str(uuid4()),
+    )
+
+
+def test_login_success_includes_client_context(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
+    tokens = _make_session_tokens()
+    mock_login = AsyncMock(return_value=tokens)
+    monkeypatch.setattr("app.api.v1.auth.router.auth_service.login_user", mock_login)
+
+    payload = {
+        "email": "owner@example.com",
+        "password": "P@ssword12345!",
+        "tenant_id": str(uuid4()),
+    }
+    headers = {"X-Forwarded-For": "203.0.113.10", "User-Agent": "pytest-agent"}
+
+    response = client.post("/api/v1/auth/token", json=payload, headers=headers)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["access_token"] == tokens.access_token
+    assert body["refresh_token"] == tokens.refresh_token
+    assert body["kid"] == tokens.kid
+    assert body["user_id"] == tokens.user_id
+
+    mock_login.assert_awaited_once()
+    kwargs = mock_login.await_args.kwargs
+    assert kwargs["email"] == payload["email"]
+    assert kwargs["tenant_id"] == payload["tenant_id"]
+    assert kwargs["ip_address"] == "203.0.113.10"
+    assert kwargs["user_agent"] == "pytest-agent"
+
+
+def test_login_invalid_credentials_returns_401(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
+    async def _raise_invalid(**_: object) -> None:
+        raise UserAuthenticationError("Invalid email or password.") from InvalidCredentialsError(
+            "Invalid email or password."
+        )
+
+    monkeypatch.setattr("app.api.v1.auth.router.auth_service.login_user", _raise_invalid)
+
+    response = client.post(
+        "/api/v1/auth/token",
+        json={"email": "owner@example.com", "password": "wrong-password", "tenant_id": None},
+    )
+
+    assert response.status_code == 401
+    body = response.json()
+    assert body["message"] == "Invalid email or password."
+    assert body["error"] == "Invalid email or password."
+
+
+def test_login_locked_account_returns_423(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
+    async def _raise_locked(**_: object) -> None:
+        raise UserAuthenticationError("Account locked.") from UserLockedError("Account locked due to failures.")
+
+    monkeypatch.setattr("app.api.v1.auth.router.auth_service.login_user", _raise_locked)
+
+    response = client.post(
+        "/api/v1/auth/token",
+        json={"email": "owner@example.com", "password": "whatever", "tenant_id": None},
+    )
+
+    assert response.status_code == 423
+    body = response.json()
+    assert body["message"] == "Account locked due to failures."
+    assert body["error"] == "Account locked due to failures."
+
+
+def test_refresh_success_returns_new_tokens(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
+    tokens = _make_session_tokens()
+    mock_refresh = AsyncMock(return_value=tokens)
+    monkeypatch.setattr("app.api.v1.auth.router.auth_service.refresh_user_session", mock_refresh)
+
+    headers = {"User-Agent": "pytest-agent"}
+    response = client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": "refresh-token-value"},
+        headers=headers,
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["refresh_token"] == tokens.refresh_token
+    assert body["refresh_kid"] == tokens.refresh_kid
+    mock_refresh.assert_awaited_once()
+    args = mock_refresh.await_args.args
+    kwargs = mock_refresh.await_args.kwargs
+    assert args[0] == "refresh-token-value"
+    assert kwargs["user_agent"] == "pytest-agent"
+
+
+def test_refresh_revoked_returns_401(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
+    async def _raise_revoked(*_: object, **__: object) -> None:
+        raise UserRefreshError("Refresh token has been revoked or expired.")
+
+    monkeypatch.setattr("app.api.v1.auth.router.auth_service.refresh_user_session", _raise_revoked)
+
+    response = client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": "stale-token-value"},
+    )
+
+    assert response.status_code == 401
+    body = response.json()
+    assert body["message"] == "Refresh token has been revoked or expired."
+    assert body["error"] == "Refresh token has been revoked or expired."

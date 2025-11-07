@@ -5,22 +5,22 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
 
 from app.api.dependencies.auth import require_current_user
 from app.api.models.auth import (
     ServiceAccountIssueRequest,
     ServiceAccountTokenResponse,
-    Token,
-    UserLogin,
+    UserLoginRequest,
+    UserRefreshRequest,
+    UserSessionResponse,
 )
 from app.api.models.common import SuccessResponse
 from app.core.config import get_settings
-from app.core.security import create_access_token
 from app.infrastructure.security.nonce_store import get_nonce_store
 from app.infrastructure.security.vault import (
     VaultClientUnavailable,
@@ -34,47 +34,69 @@ from app.services.auth_service import (
     ServiceAccountCatalogUnavailable,
     ServiceAccountRateLimitError,
     ServiceAccountValidationError,
+    UserAuthenticationError,
+    UserRefreshError,
+    UserSessionTokens,
     auth_service,
+)
+from app.services.user_service import (
+    InvalidCredentialsError,
+    TenantContextRequiredError,
+    UserDisabledError,
+    UserLockedError,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/token", response_model=Token)
-async def login_for_access_token(credentials: UserLogin) -> Token:
-    """Authenticate a demo user and return a bearer token."""
+@router.post("/token", response_model=UserSessionResponse)
+async def login_for_access_token(
+    payload: UserLoginRequest,
+    request: Request,
+) -> UserSessionResponse:
+    """Authenticate a user and mint fresh access/refresh tokens."""
 
-    settings = get_settings()
+    client_ip = _extract_client_ip(request)
+    user_agent = _extract_user_agent(request)
 
-    if credentials.username == "demo" and credentials.password == "demo123":
-        expiry = timedelta(minutes=settings.access_token_expire_minutes)
-        token = create_access_token(
-            data={"sub": "demo_user_id", "username": credentials.username},
-            expires_delta=expiry,
+    try:
+        tokens = await auth_service.login_user(
+            email=payload.email,
+            password=payload.password,
+            tenant_id=payload.tenant_id or None,
+            ip_address=client_ip,
+            user_agent=user_agent,
         )
-        return Token(access_token=token, expires_in=int(expiry.total_seconds()))
+    except UserAuthenticationError as exc:
+        raise _map_user_auth_error(exc) from exc
 
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Incorrect username or password",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+    return _to_user_session_response(tokens)
 
 
-@router.post("/refresh", response_model=Token)
+@router.post("/refresh", response_model=UserSessionResponse)
 async def refresh_access_token(
-    current_user: dict[str, Any] = Depends(require_current_user),
-) -> Token:
-    """Issue a fresh token for the current authenticated user."""
+    payload: UserRefreshRequest,
+    request: Request,
+) -> UserSessionResponse:
+    """Exchange a refresh token for a new access/refresh pair."""
 
-    settings = get_settings()
-    expiry = timedelta(minutes=settings.access_token_expire_minutes)
+    client_ip = _extract_client_ip(request)
+    user_agent = _extract_user_agent(request)
 
-    token = create_access_token(
-        data={"sub": current_user["user_id"]},
-        expires_delta=expiry,
-    )
-    return Token(access_token=token, expires_in=int(expiry.total_seconds()))
+    try:
+        tokens = await auth_service.refresh_user_session(
+            payload.refresh_token,
+            ip_address=client_ip,
+            user_agent=user_agent,
+        )
+    except UserRefreshError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
+    except UserLockedError as exc:
+        raise HTTPException(status_code=status.HTTP_423_LOCKED, detail=str(exc)) from exc
+    except UserDisabledError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+    return _to_user_session_response(tokens)
 
 
 @router.get("/me", response_model=SuccessResponse)
@@ -89,6 +111,56 @@ async def get_current_user_info(
             "user_id": current_user["user_id"],
             "token_payload": current_user["payload"],
         },
+    )
+
+
+def _extract_client_ip(request: Request) -> str | None:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",", 1)[0].strip() or None
+    if request.client and request.client.host:
+        return request.client.host
+    return None
+
+
+def _extract_user_agent(request: Request) -> str | None:
+    header = request.headers.get("user-agent")
+    return header.strip() if header else None
+
+
+def _to_user_session_response(tokens: UserSessionTokens) -> UserSessionResponse:
+    return UserSessionResponse(
+        access_token=tokens.access_token,
+        refresh_token=tokens.refresh_token,
+        token_type=tokens.token_type,
+        expires_at=tokens.expires_at,
+        refresh_expires_at=tokens.refresh_expires_at,
+        kid=tokens.kid,
+        refresh_kid=tokens.refresh_kid,
+        scopes=tokens.scopes,
+        tenant_id=tokens.tenant_id,
+        user_id=tokens.user_id,
+    )
+
+
+def _map_user_auth_error(exc: UserAuthenticationError) -> HTTPException:
+    cause = exc.__cause__
+    if isinstance(cause, InvalidCredentialsError):
+        return HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(cause),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if isinstance(cause, UserLockedError):
+        return HTTPException(status_code=status.HTTP_423_LOCKED, detail=str(cause))
+    if isinstance(cause, UserDisabledError):
+        return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(cause))
+    if isinstance(cause, TenantContextRequiredError):
+        return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(cause))
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail=str(exc),
+        headers={"WWW-Authenticate": "Bearer"},
     )
 
 
