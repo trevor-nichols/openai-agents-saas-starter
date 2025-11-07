@@ -33,13 +33,10 @@ export function useBillingStream() {
 
     async function connect() {
       try {
-        const response = await fetch('/api/v1/billing/stream', {
-          headers: {
-            'X-Tenant-Id': meta.tenantId,
-            'X-Tenant-Role': 'owner',
-          },
+        const response = await fetch('/api/billing/stream', {
           cache: 'no-store',
           signal: controller.signal,
+          credentials: 'include',
         });
         if (!response.ok || !response.body) {
           throw new Error(`Stream failed (${response.status})`);
