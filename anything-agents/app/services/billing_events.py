@@ -210,7 +210,7 @@ class BillingEventsService:
                 await self._publish_from_record(event)
                 replay_after = event.processed_at or datetime.now(timezone.utc)
             if replay_after is not None:
-                await self._backend.store_bookmark(self._bookmark_key, replay_after.isoformat())
+                await self.mark_processed(replay_after)
 
     async def publish_from_event(self, record: StripeEvent, payload: dict) -> None:
         if not self._enabled or not self._backend:
@@ -222,6 +222,7 @@ class BillingEventsService:
 
     async def _publish_from_record(self, record: StripeEvent) -> None:
         await self._publish(record, record.payload)
+        await self.mark_processed(record.processed_at)
 
     async def _publish(self, record: StripeEvent, payload: dict) -> None:
         if not record.tenant_hint or not self._backend:
@@ -252,8 +253,6 @@ class BillingEventsService:
                     raise
                 await asyncio.sleep(self._publish_retry_delay_seconds)
 
-        if record.processed_at:
-            await self._backend.store_bookmark(self._bookmark_key, record.processed_at.isoformat())
         observe_stripe_webhook_event(event_type=message.event_type, result="broadcasted")
         logger.info(
             "Broadcasted billing event",
@@ -263,6 +262,11 @@ class BillingEventsService:
                 "stripe_event_id": message.stripe_event_id,
             },
         )
+
+    async def mark_processed(self, processed_at: datetime | None) -> None:
+        if not processed_at or not self._backend:
+            return
+        await self._backend.store_bookmark(self._bookmark_key, processed_at.isoformat())
 
     async def subscribe(self, tenant_id: str) -> BillingEventStream:
         if not self._backend:

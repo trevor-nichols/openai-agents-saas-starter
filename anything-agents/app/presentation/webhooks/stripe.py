@@ -83,6 +83,9 @@ async def handle_stripe_webhook(request: Request) -> dict[str, bool]:
         )
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to process event.") from exc
 
+    processed_at = await repository.record_outcome(record.id, status=StripeEventStatus.PROCESSED)
+    record.processed_at = processed_at
+    record.processing_outcome = StripeEventStatus.PROCESSED.value
     if settings.enable_billing_stream:
         events_service = get_billing_events_service()
         try:
@@ -104,10 +107,7 @@ async def handle_stripe_webhook(request: Request) -> dict[str, bool]:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to publish billing event.",
             ) from exc
-
-    processed_at = await repository.record_outcome(record.id, status=StripeEventStatus.PROCESSED)
-    record.processed_at = processed_at
-    record.processing_outcome = StripeEventStatus.PROCESSED.value
+        await events_service.mark_processed(processed_at)
     observe_stripe_webhook_event(event_type=event_type, result="processed")
     logger.info(
         "Stored Stripe event",
