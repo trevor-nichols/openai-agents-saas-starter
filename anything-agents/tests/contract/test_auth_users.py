@@ -39,10 +39,16 @@ def _make_session_tokens() -> UserSessionTokens:
     )
 
 
-def test_login_success_includes_client_context(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
+@pytest.fixture
+def fake_auth_service(monkeypatch: pytest.MonkeyPatch):
+    mock_service = AsyncMock()
+    monkeypatch.setattr("app.api.v1.auth.router.auth_service", mock_service)
+    return mock_service
+
+
+def test_login_success_includes_client_context(fake_auth_service, client: TestClient) -> None:
     tokens = _make_session_tokens()
-    mock_login = AsyncMock(return_value=tokens)
-    monkeypatch.setattr("app.api.v1.auth.router.auth_service.login_user", mock_login)
+    fake_auth_service.login_user.return_value = tokens
 
     payload = {
         "email": "owner@example.com",
@@ -60,21 +66,21 @@ def test_login_success_includes_client_context(monkeypatch: pytest.MonkeyPatch, 
     assert body["kid"] == tokens.kid
     assert body["user_id"] == tokens.user_id
 
-    mock_login.assert_awaited_once()
-    kwargs = mock_login.await_args.kwargs
+    fake_auth_service.login_user.assert_awaited_once()
+    kwargs = fake_auth_service.login_user.await_args.kwargs
     assert kwargs["email"] == payload["email"]
     assert kwargs["tenant_id"] == payload["tenant_id"]
     assert kwargs["ip_address"] == "203.0.113.10"
     assert kwargs["user_agent"] == "pytest-agent"
 
 
-def test_login_invalid_credentials_returns_401(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
+def test_login_invalid_credentials_returns_401(fake_auth_service, client: TestClient) -> None:
     async def _raise_invalid(**_: object) -> None:
         raise UserAuthenticationError("Invalid email or password.") from InvalidCredentialsError(
             "Invalid email or password."
         )
 
-    monkeypatch.setattr("app.api.v1.auth.router.auth_service.login_user", _raise_invalid)
+    fake_auth_service.login_user.side_effect = _raise_invalid
 
     response = client.post(
         "/api/v1/auth/token",
@@ -87,11 +93,11 @@ def test_login_invalid_credentials_returns_401(monkeypatch: pytest.MonkeyPatch, 
     assert body["error"] == "Invalid email or password."
 
 
-def test_login_locked_account_returns_423(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
+def test_login_locked_account_returns_423(fake_auth_service, client: TestClient) -> None:
     async def _raise_locked(**_: object) -> None:
         raise UserAuthenticationError("Account locked.") from UserLockedError("Account locked due to failures.")
 
-    monkeypatch.setattr("app.api.v1.auth.router.auth_service.login_user", _raise_locked)
+    fake_auth_service.login_user.side_effect = _raise_locked
 
     response = client.post(
         "/api/v1/auth/token",
@@ -104,10 +110,9 @@ def test_login_locked_account_returns_423(monkeypatch: pytest.MonkeyPatch, clien
     assert body["error"] == "Account locked due to failures."
 
 
-def test_refresh_success_returns_new_tokens(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
+def test_refresh_success_returns_new_tokens(fake_auth_service, client: TestClient) -> None:
     tokens = _make_session_tokens()
-    mock_refresh = AsyncMock(return_value=tokens)
-    monkeypatch.setattr("app.api.v1.auth.router.auth_service.refresh_user_session", mock_refresh)
+    fake_auth_service.refresh_user_session.return_value = tokens
 
     headers = {"User-Agent": "pytest-agent"}
     response = client.post(
@@ -120,18 +125,18 @@ def test_refresh_success_returns_new_tokens(monkeypatch: pytest.MonkeyPatch, cli
     body = response.json()
     assert body["refresh_token"] == tokens.refresh_token
     assert body["refresh_kid"] == tokens.refresh_kid
-    mock_refresh.assert_awaited_once()
-    args = mock_refresh.await_args.args
-    kwargs = mock_refresh.await_args.kwargs
+    fake_auth_service.refresh_user_session.assert_awaited_once()
+    args = fake_auth_service.refresh_user_session.await_args.args
+    kwargs = fake_auth_service.refresh_user_session.await_args.kwargs
     assert args[0] == "refresh-token-value"
     assert kwargs["user_agent"] == "pytest-agent"
 
 
-def test_refresh_revoked_returns_401(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
+def test_refresh_revoked_returns_401(fake_auth_service, client: TestClient) -> None:
     async def _raise_revoked(*_: object, **__: object) -> None:
         raise UserRefreshError("Refresh token has been revoked or expired.")
 
-    monkeypatch.setattr("app.api.v1.auth.router.auth_service.refresh_user_session", _raise_revoked)
+    fake_auth_service.refresh_user_session.side_effect = _raise_revoked
 
     response = client.post(
         "/api/v1/auth/refresh",

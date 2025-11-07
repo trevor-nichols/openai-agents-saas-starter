@@ -71,10 +71,11 @@ class JWKSDocument:
 
 
 class KeySet:
-    """Container that holds a single active Ed25519 key."""
+    """Container that holds active and optional next Ed25519 keys."""
 
-    def __init__(self, *, active: KeyMaterial | None) -> None:
+    def __init__(self, *, active: KeyMaterial | None, next_key: KeyMaterial | None = None) -> None:
         self.active = active
+        self.next = next_key
         self._cached_jwks: JWKSDocument | None = None
 
     @classmethod
@@ -85,12 +86,14 @@ class KeySet:
         return {
             "schema_version": KEYSET_SCHEMA_VERSION,
             "active": self.active.to_dict() if self.active else None,
+            "next": self.next.to_dict() if self.next else None,
         }
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "KeySet":
         active = KeyMaterial.from_dict(payload["active"]) if payload.get("active") else None
-        return cls(active=active)
+        next_key = KeyMaterial.from_dict(payload["next"]) if payload.get("next") else None
+        return cls(active=active, next_key=next_key)
 
     def set_active(self, material: KeyMaterial) -> None:
         """Replace the active key with new material."""
@@ -98,17 +101,27 @@ class KeySet:
         self.active = material
         self._cached_jwks = None
 
+    def set_next(self, material: KeyMaterial | None) -> None:
+        self.next = material
+        self._cached_jwks = None
+
     def materialize_jwks(self) -> JWKSDocument:
         fingerprint = self._jwks_fingerprint()
         if self._cached_jwks and self._cached_jwks.fingerprint == fingerprint:
             return self._cached_jwks
 
-        if not self.active or not self.active.public_jwk:
-            keys: list[dict[str, Any]] = []
-            last_modified = datetime.now(UTC)
-        else:
-            keys = [json.loads(json.dumps(self.active.public_jwk))]
-            last_modified = self.active.created_at
+        keys: list[dict[str, Any]] = []
+        timestamps: list[datetime] = []
+
+        if self.active and self.active.public_jwk:
+            keys.append(json.loads(json.dumps(self.active.public_jwk)))
+            timestamps.append(self.active.created_at)
+
+        if self.next and self.next.public_jwk:
+            keys.append(json.loads(json.dumps(self.next.public_jwk)))
+            timestamps.append(self.next.created_at)
+
+        last_modified = max(timestamps) if timestamps else datetime.now(UTC)
 
         doc = JWKSDocument(payload={"keys": keys}, fingerprint=fingerprint, last_modified=last_modified)
         self._cached_jwks = doc
@@ -118,14 +131,19 @@ class KeySet:
         return json.loads(json.dumps(self.materialize_jwks().payload))
 
     def _jwks_fingerprint(self) -> str:
-        if not self.active or not self.active.public_jwk:
+        parts = [str(KEYSET_SCHEMA_VERSION)]
+        for material in (self.active, self.next):
+            if not material or not material.public_jwk:
+                continue
+            parts.extend(
+                [
+                    material.kid,
+                    json.dumps(material.public_jwk, sort_keys=True),
+                    material.created_at.isoformat(),
+                ]
+            )
+        if len(parts) == 1:
             return "empty"
-        parts = [
-            str(KEYSET_SCHEMA_VERSION),
-            self.active.kid,
-            json.dumps(self.active.public_jwk, sort_keys=True),
-            self.active.created_at.isoformat(),
-        ]
         return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
 
 

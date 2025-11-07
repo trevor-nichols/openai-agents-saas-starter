@@ -5,14 +5,15 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from dataclasses import dataclass, asdict
+from collections import deque
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from typing import AsyncIterator, Protocol
 
 from redis.asyncio import Redis
 
 from app.infrastructure.persistence.stripe.models import StripeEvent
-from app.infrastructure.persistence.stripe.repository import StripeEventRepository, StripeEventStatus
+from app.infrastructure.persistence.stripe.repository import StripeEventRepository
 from app.observability.metrics import observe_stripe_webhook_event
 
 logger = logging.getLogger("anything-agents.services.billing_events")
@@ -54,50 +55,133 @@ class BillingEventBackend(Protocol):
 
 
 class RedisBillingEventStream:
-    def __init__(self, pubsub, channel: str) -> None:
-        self._pubsub = pubsub
-        self._channel = channel
+    def __init__(
+        self,
+        redis: Redis,
+        stream_key: str,
+        *,
+        backlog_batch_size: int = 128,
+        default_block_seconds: float = 1.0,
+    ) -> None:
+        self._redis = redis
+        self._stream_key = stream_key
+        self._backlog_batch_size = backlog_batch_size
+        self._default_block_seconds = default_block_seconds
+        self._buffer: deque[str] = deque()
+        self._last_id = "0-0"
+        self._backlog_exhausted = False
         self._closed = False
 
     async def next_message(self, timeout: float | None = None) -> str | None:
         if self._closed:
             return None
-        poll_timeout = timeout or 1.0
-        elapsed = 0.0
-        interval = min(poll_timeout, 1.0)
-        while not self._closed:
-            message = await self._pubsub.get_message(ignore_subscribe_messages=True, timeout=interval)
-            if message and message.get("type") == "message":
-                data = message.get("data")
-                if isinstance(data, bytes):
-                    return data.decode("utf-8")
-                return str(data)
-            elapsed += interval
-            if timeout and elapsed >= timeout:
-                return None
+
+        if self._buffer:
+            return self._buffer.popleft()
+
+        if not self._backlog_exhausted:
+            await self._load_backlog_batch()
+            if self._buffer:
+                return self._buffer.popleft()
+
+        block_ms = self._to_block_milliseconds(timeout)
+        entries = await self._read_new_entries(block_ms)
+        if not entries:
+            return None
+
+        for entry_id, fields in entries:
+            payload = self._decode_entry(fields)
+            if payload is None:
+                continue
+            self._last_id = entry_id
+            self._buffer.append(payload)
+
+        if self._buffer:
+            return self._buffer.popleft()
         return None
 
-    async def close(self) -> None:
-        if self._closed:
+    async def _load_backlog_batch(self) -> None:
+        if self._backlog_exhausted:
             return
+        start = "-" if self._last_id == "0-0" else f"({self._last_id}"
+        entries = await self._redis.xrange(
+            self._stream_key,
+            min=start,
+            max="+",
+            count=self._backlog_batch_size,
+        )
+        if not entries:
+            self._backlog_exhausted = True
+            return
+        for entry_id, fields in entries:
+            payload = self._decode_entry(fields)
+            if payload is None:
+                continue
+            self._last_id = entry_id
+            self._buffer.append(payload)
+        if len(entries) < self._backlog_batch_size:
+            self._backlog_exhausted = True
+
+    async def _read_new_entries(self, block_ms: int | None) -> list[tuple[str, dict]]:
+        streams = await self._redis.xread(
+            {self._stream_key: self._last_id},
+            count=1,
+            block=block_ms,
+        )
+        if not streams:
+            return []
+        _, entries = streams[0]
+        return entries
+
+    def _decode_entry(self, fields: dict) -> str | None:
+        data = fields.get("data") or fields.get(b"data")
+        if data is None:
+            return None
+        if isinstance(data, bytes):
+            return data.decode("utf-8")
+        return str(data)
+
+    def _to_block_milliseconds(self, timeout: float | None) -> int | None:
+        interval = timeout if timeout is not None else self._default_block_seconds
+        if interval is None:
+            return None
+        interval = max(interval, 0.01)
+        return int(interval * 1000)
+
+    async def close(self) -> None:
         self._closed = True
-        try:
-            await self._pubsub.unsubscribe(self._channel)
-        finally:
-            await self._pubsub.close()
 
 
 class RedisBillingEventBackend:
-    def __init__(self, redis: Redis) -> None:
+    def __init__(
+        self,
+        redis: Redis,
+        *,
+        stream_max_length: int = 1024,
+        stream_ttl_seconds: int = 86400,
+        backlog_batch_size: int = 128,
+    ) -> None:
         self._redis = redis
+        self._stream_max_length = stream_max_length
+        self._stream_ttl_seconds = stream_ttl_seconds
+        self._backlog_batch_size = backlog_batch_size
 
     async def publish(self, channel: str, message: str) -> None:
-        await self._redis.publish(channel, message)
+        await self._redis.xadd(
+            channel,
+            {"data": message},
+            maxlen=self._stream_max_length,
+            approximate=False,
+        )
+        if self._stream_ttl_seconds > 0:
+            await self._redis.expire(channel, self._stream_ttl_seconds)
 
     async def subscribe(self, channel: str) -> BillingEventStream:
-        pubsub = self._redis.pubsub()
-        await pubsub.subscribe(channel)
-        return RedisBillingEventStream(pubsub, channel)
+        return RedisBillingEventStream(
+            self._redis,
+            channel,
+            backlog_batch_size=self._backlog_batch_size,
+        )
 
     async def store_bookmark(self, key: str, value: str) -> None:
         await self._redis.set(key, value)
@@ -112,49 +196,6 @@ class RedisBillingEventBackend:
 
     async def close(self) -> None:
         await self._redis.close()
-
-
-class InMemoryBillingEventStream:
-    def __init__(self, queue: "asyncio.Queue[str]") -> None:
-        self._queue = queue
-        self._closed = False
-
-    async def next_message(self, timeout: float | None = None) -> str | None:
-        if self._closed:
-            return None
-        try:
-            return await asyncio.wait_for(self._queue.get(), timeout=timeout)
-        except asyncio.TimeoutError:
-            return None
-
-    async def close(self) -> None:
-        self._closed = True
-
-
-class InMemoryBillingEventBackend:
-    def __init__(self) -> None:
-        self._queues: dict[str, asyncio.Queue[str]] = {}
-        self._bookmark: str | None = None
-
-    def _queue(self, channel: str) -> asyncio.Queue[str]:
-        if channel not in self._queues:
-            self._queues[channel] = asyncio.Queue()
-        return self._queues[channel]
-
-    async def publish(self, channel: str, message: str) -> None:
-        await self._queue(channel).put(message)
-
-    async def subscribe(self, channel: str) -> BillingEventStream:
-        return InMemoryBillingEventStream(self._queue(channel))
-
-    async def store_bookmark(self, key: str, value: str) -> None:
-        self._bookmark = value
-
-    async def load_bookmark(self, key: str) -> str | None:
-        return self._bookmark
-
-    async def close(self) -> None:
-        self._queues.clear()
 
 
 class BillingEventsService:

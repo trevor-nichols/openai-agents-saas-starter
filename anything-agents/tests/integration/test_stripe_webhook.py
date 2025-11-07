@@ -21,7 +21,8 @@ from app.infrastructure.persistence.stripe.repository import (
     reset_stripe_event_repository,
 )
 from app.presentation.webhooks import stripe as stripe_webhook
-from app.services.billing_events import BillingEventsService, InMemoryBillingEventBackend, billing_events_service
+from app.services.billing_events import BillingEventsService, billing_events_service
+from tests.utils.fake_billing_backend import QueueBillingEventBackend
 
 import app.infrastructure.persistence.conversations.models  # noqa: F401
 import app.infrastructure.persistence.auth.models  # noqa: F401
@@ -64,9 +65,9 @@ def webhook_app():
 
 
 @pytest.fixture
-def in_memory_billing_events(monkeypatch):
+def fake_billing_events(monkeypatch):
     service = BillingEventsService()
-    backend = InMemoryBillingEventBackend()
+    backend = QueueBillingEventBackend()
     service.configure(backend=backend, repository=None)
     monkeypatch.setattr("app.services.billing_events._billing_events_service", service, raising=False)
     monkeypatch.setattr("app.services.billing_events.billing_events_service", service, raising=False)
@@ -103,7 +104,7 @@ async def test_webhook_replays_fixture(
     tenant_id: str,
     webhook_app: FastAPI,
     sqlite_stripe_repo: StripeEventRepository,
-    in_memory_billing_events: BillingEventsService,
+    fake_billing_events: BillingEventsService,
 ):
     body = load_fixture(fixture_name)
     payload = json.loads(body)
@@ -123,7 +124,7 @@ async def test_webhook_replays_fixture(
     assert stored.processing_outcome == StripeEventStatus.PROCESSED.value
     assert stored.tenant_hint == tenant_id
 
-    stream = await in_memory_billing_events.subscribe(tenant_id)
+    stream = await fake_billing_events.subscribe(tenant_id)
     message = await stream.next_message(timeout=0.2)
     await stream.close()
     assert message is not None
@@ -134,7 +135,7 @@ async def test_webhook_replays_fixture(
 async def test_duplicate_event_is_acknowledged(
     webhook_app: FastAPI,
     sqlite_stripe_repo: StripeEventRepository,
-    in_memory_billing_events: BillingEventsService,
+    fake_billing_events: BillingEventsService,
 ):
     body = load_fixture("invoice.payment_failed.json")
     headers = {

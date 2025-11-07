@@ -1,11 +1,11 @@
-"""Unit tests for the PostgresUserRepository using an in-memory SQLite backend."""
+"""Unit tests for the PostgresUserRepository using an ephemeral SQLite backend."""
 
 from __future__ import annotations
 
 from uuid import uuid4
 
 import pytest
-from pydantic import EmailStr
+from fakeredis.aioredis import FakeRedis
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB, UUID as PG_UUID
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.compiler import compiles
@@ -19,8 +19,8 @@ from app.infrastructure.persistence.auth.models import (
     UserProfile,
 )
 from app.infrastructure.persistence.auth.user_repository import (
-    InMemoryLockoutStore,
     PostgresUserRepository,
+    RedisLockoutStore,
 )
 from app.infrastructure.persistence.conversations.models import TenantAccount
 
@@ -72,8 +72,17 @@ async def tenant_id(session_factory: async_sessionmaker[AsyncSession]):
 
 
 @pytest.fixture
-async def repository(session_factory: async_sessionmaker[AsyncSession]) -> PostgresUserRepository:
-    return PostgresUserRepository(session_factory, InMemoryLockoutStore())
+def lockout_redis() -> FakeRedis:
+    return FakeRedis()
+
+
+@pytest.fixture
+async def repository(
+    session_factory: async_sessionmaker[AsyncSession],
+    lockout_redis: FakeRedis,
+) -> PostgresUserRepository:
+    store = RedisLockoutStore(lockout_redis)
+    return PostgresUserRepository(session_factory, store)
 
 
 async def _create_user(repo: PostgresUserRepository, tenant_id, email: str) -> UserRecord:

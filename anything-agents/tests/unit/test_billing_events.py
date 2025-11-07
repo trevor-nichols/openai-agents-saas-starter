@@ -6,15 +6,16 @@ import uuid
 from datetime import datetime, timezone
 
 import pytest
+from fakeredis.aioredis import FakeRedis
 
 from types import SimpleNamespace
 
-from app.services.billing_events import BillingEventsService, InMemoryBillingEventBackend
+from app.services.billing_events import BillingEventsService, RedisBillingEventBackend
 
 
-class FlakyBackend(InMemoryBillingEventBackend):
+class FlakyBackend(RedisBillingEventBackend):
     def __init__(self, fail_count: int) -> None:
-        super().__init__()
+        super().__init__(FakeRedis())
         self.fail_count = fail_count
 
     async def publish(self, channel: str, message: str) -> None:
@@ -26,7 +27,7 @@ class FlakyBackend(InMemoryBillingEventBackend):
 
 @pytest.mark.asyncio
 async def test_publish_from_event_queues_payload():
-    backend = InMemoryBillingEventBackend()
+    backend = RedisBillingEventBackend(FakeRedis())
     service = BillingEventsService()
     service.configure(backend=backend, repository=None)
 

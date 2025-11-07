@@ -39,7 +39,7 @@ def test_file_key_storage_roundtrip(tmp_path) -> None:
     assert loaded.active.kid == "file-test"
 
 
-class InMemorySecretClient:
+class FakeSecretClient:
     def __init__(self) -> None:
         self.store: dict[str, str] = {}
 
@@ -51,7 +51,7 @@ class InMemorySecretClient:
 
 
 def test_secret_manager_storage_roundtrip() -> None:
-    client = InMemorySecretClient()
+    client = FakeSecretClient()
     register_secret_manager_client(lambda: client)
 
     storage = SecretManagerKeyStorage("auth/keyset")

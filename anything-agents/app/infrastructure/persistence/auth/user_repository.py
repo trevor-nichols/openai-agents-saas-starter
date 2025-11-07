@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
-import time
 import uuid
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Protocol
 
@@ -103,61 +100,6 @@ class RedisLockoutStore:
 
     def _lock_key(self, user_id: uuid.UUID) -> str:
         return f"{self._prefix}:state:{user_id}"
-
-
-@dataclass(slots=True)
-class _InMemoryCounter:
-    value: int
-    expires_at: float
-
-
-class InMemoryLockoutStore(LockoutStore):
-    """Deterministic, test-friendly lockout store."""
-
-    def __init__(self, *, time_fn: callable | None = None) -> None:
-        self._counters: dict[uuid.UUID, _InMemoryCounter] = {}
-        self._locks: dict[uuid.UUID, float] = {}
-        self._time = time_fn or time.monotonic
-        self._lock = asyncio.Lock()
-
-    async def increment(self, user_id: uuid.UUID, ttl_seconds: int) -> int:
-        async with self._lock:
-            self._purge_expired(user_id)
-            counter = self._counters.get(user_id)
-            now = self._time()
-            if not counter:
-                counter = _InMemoryCounter(value=0, expires_at=now + ttl_seconds)
-                self._counters[user_id] = counter
-            counter.value += 1
-            counter.expires_at = now + ttl_seconds
-            return counter.value
-
-    async def reset(self, user_id: uuid.UUID) -> None:
-        async with self._lock:
-            self._counters.pop(user_id, None)
-
-    async def lock(self, user_id: uuid.UUID, duration_seconds: int) -> None:
-        async with self._lock:
-            self._locks[user_id] = self._time() + duration_seconds
-
-    async def unlock(self, user_id: uuid.UUID) -> None:
-        async with self._lock:
-            self._locks.pop(user_id, None)
-
-    async def is_locked(self, user_id: uuid.UUID) -> bool:
-        async with self._lock:
-            expiry = self._locks.get(user_id)
-            if expiry is None:
-                return False
-            if expiry <= self._time():
-                self._locks.pop(user_id, None)
-                return False
-            return True
-
-    def _purge_expired(self, user_id: uuid.UUID) -> None:
-        counter = self._counters.get(user_id)
-        if counter and counter.expires_at <= self._time():
-            self._counters.pop(user_id, None)
 
 
 class PostgresUserRepository(UserRepository):
@@ -351,15 +293,15 @@ class PostgresUserRepository(UserRepository):
 
 
 def build_lockout_store(settings: Settings) -> LockoutStore:
-    if settings.redis_url:
-        client = Redis.from_url(settings.redis_url, encoding="utf-8", decode_responses=False)
-        return RedisLockoutStore(client)
-    return InMemoryLockoutStore()
+    if not settings.redis_url:
+        raise RuntimeError("redis_url is required to build the lockout store.")
+    client = Redis.from_url(settings.redis_url, encoding="utf-8", decode_responses=False)
+    return RedisLockoutStore(client)
 
 
 def get_user_repository(settings: Settings | None = None) -> UserRepository | None:
     settings = settings or get_settings()
-    if settings.use_in_memory_repo or not settings.database_url:
+    if not settings.database_url:
         return None
     try:
         session_factory = get_async_sessionmaker()

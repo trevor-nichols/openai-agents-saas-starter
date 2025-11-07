@@ -75,7 +75,7 @@ sequenceDiagram
 
 ### IDP-003 — Domain & Service Layer (AUTH-003)
 - **Status:** Completed (2025-11-07) — repository/service stack merged with Redis-backed lockouts, bcrypt+pepper hashing, and AuthService login/refresh helpers plus unit/contract coverage.
-- Implement `UserRepository` (SQLAlchemy) with CRUD + lockout helpers, plus in-memory fake for tests.
+- Implement `UserRepository` (SQLAlchemy) with CRUD + Redis-backed lockout helpers (tests rely on fakeredis doubles).
 - `UserService` handles registration, credential verification, lockout counters (Redis TTL), and emits audit events.
 - Extend `AuthService` with `login_user` + refresh helpers reusing EdDSA signer + refresh repo.
 - Unit tests covering success/failure paths, bcrypt w/ pepper, lockouts, disabled tenant.

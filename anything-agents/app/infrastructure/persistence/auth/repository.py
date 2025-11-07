@@ -248,7 +248,7 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
 
 def get_refresh_token_repository(settings: Settings | None = None) -> RefreshTokenRepository | None:
     settings = settings or get_settings()
-    if settings.use_in_memory_repo or not settings.database_url:
+    if not settings.database_url:
         return None
     try:
         session_factory = get_async_sessionmaker()

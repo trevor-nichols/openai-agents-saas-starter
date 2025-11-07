@@ -65,21 +65,14 @@ async def lifespan(app: FastAPI):
 
     if settings.enable_billing:
         _ensure_billing_prerequisites(settings)
-        if settings.use_in_memory_repo:
-            raise RuntimeError(
-                "ENABLE_BILLING requires Postgres persistence. Set USE_IN_MEMORY_REPO=false."
-            )
         billing_service.set_gateway(stripe_gateway)
 
-    if not settings.use_in_memory_repo:
-        await init_engine(run_migrations=settings.auto_run_migrations)
-        session_factory = get_async_sessionmaker()
-        postgres_repository = PostgresConversationRepository(session_factory)
-        conversation_service.set_repository(postgres_repository)
+    await init_engine(run_migrations=settings.auto_run_migrations)
+    session_factory = get_async_sessionmaker()
+    postgres_repository = PostgresConversationRepository(session_factory)
+    conversation_service.set_repository(postgres_repository)
 
     if settings.enable_billing:
-        if session_factory is None:
-            session_factory = get_async_sessionmaker()
         billing_service.set_repository(PostgresBillingRepository(session_factory))
         stripe_repo = StripeEventRepository(session_factory)
         configure_stripe_event_repository(stripe_repo)
@@ -97,8 +90,7 @@ async def lifespan(app: FastAPI):
     finally:
         if redis_backend_configured:
             await billing_events_service.shutdown()
-        if not settings.use_in_memory_repo:
-            await dispose_engine()
+        await dispose_engine()
 
 # =============================================================================
 # APPLICATION FACTORY

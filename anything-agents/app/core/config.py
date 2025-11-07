@@ -244,10 +244,6 @@ class Settings(BaseSettings):
         default=False,
         description="Enable SQLAlchemy engine echo for debugging",
     )
-    use_in_memory_repo: bool = Field(
-        default=False,
-        description="Use in-memory repositories instead of Postgres (set true only for lightweight demos)",
-    )
     enable_billing: bool = Field(
         default=False,
         description="Expose billing features and APIs once subscriptions are implemented",

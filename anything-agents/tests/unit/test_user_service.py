@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 from uuid import uuid4
 
 import pytest
-from pydantic import EmailStr
+from fakeredis.aioredis import FakeRedis
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB, UUID as PG_UUID
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.compiler import compiles
@@ -19,7 +20,7 @@ from app.infrastructure.persistence.auth.models import (
     UserLoginEvent,
     UserProfile,
 )
-from app.infrastructure.persistence.auth.user_repository import InMemoryLockoutStore, PostgresUserRepository
+from app.infrastructure.persistence.auth.user_repository import PostgresUserRepository, RedisLockoutStore
 from app.infrastructure.persistence.conversations.models import TenantAccount
 from app.services.user_service import InvalidCredentialsError, UserLockedError, UserService
 
@@ -37,17 +38,6 @@ def _compile_uuid(element, compiler, **kwargs):  # pragma: no cover - dialect sh
 @compiles(JSONB, "sqlite")
 def _compile_jsonb(element, compiler, **kwargs):  # pragma: no cover - dialect shim
     return "TEXT"
-
-
-class _TimeMachine:
-    def __init__(self) -> None:
-        self.current = 0.0
-
-    def advance(self, seconds: float) -> None:
-        self.current += seconds
-
-    def now(self) -> float:
-        return self.current
 
 
 def _create_core_tables(connection) -> None:
@@ -85,23 +75,23 @@ async def tenant_id(session_factory: async_sessionmaker[AsyncSession]):
 def service_settings() -> Settings:
     settings = Settings()
     settings.auth_lockout_threshold = 2
-    settings.auth_lockout_duration_minutes = 1
-    settings.auth_lockout_window_minutes = 1
+    settings.auth_lockout_duration_minutes = 1 / 60  # 1 second
+    settings.auth_lockout_window_minutes = 1 / 60
     return settings
 
 
 @pytest.fixture
-def time_machine() -> _TimeMachine:
-    return _TimeMachine()
+def lockout_redis() -> FakeRedis:
+    return FakeRedis()
 
 
 @pytest.fixture
 async def user_service(
     session_factory: async_sessionmaker[AsyncSession],
     service_settings: Settings,
-    time_machine: _TimeMachine,
+    lockout_redis: FakeRedis,
 ) -> UserService:
-    store = InMemoryLockoutStore(time_fn=time_machine.now)
+    store = RedisLockoutStore(lockout_redis)
     repository = PostgresUserRepository(session_factory, store)
     return UserService(repository, settings=service_settings)
 
@@ -160,7 +150,6 @@ async def test_authenticate_invalid_password_leads_to_lockout(
 async def test_locked_user_unlocks_after_duration(
     user_service: UserService,
     tenant_id,
-    time_machine: _TimeMachine,
 ) -> None:
     await _register_user(user_service, tenant_id, "unlock@example.com", "Password1234!!")
 
@@ -175,7 +164,7 @@ async def test_locked_user_unlocks_after_duration(
                 user_agent="pytest",
             )
 
-    time_machine.advance(120)  # advance two minutes to clear lock and counter
+    await asyncio.sleep(1.1)  # wait just over the 1 second lockout duration
 
     auth_user = await user_service.authenticate(
         email="unlock@example.com",

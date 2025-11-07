@@ -88,7 +88,7 @@ Vault returns `{"data": {"valid": true}}` when verification succeeds.
   - `verify_signature(payload_b64: str, signature: str) -> bool`.  
   - Configurable via settings: `vault_addr`, `vault_token`, path, timeout.
 - `app/infrastructure/security/nonce_store.py`
-  - Provides Redis-backed (staging/prod) and in-memory (dev/test) nonce caches.  
+  - Provides Redis-backed nonce caching (tests rely on fakeredis to avoid external dependencies).  
   - `check_and_store(nonce, ttl_seconds)` ensures each CLI payload nonce is single-use with ≤5 minute TTL.
 - `app/core/config.py`
   - Add settings: `vault_addr`, `vault_token`, `vault_transit_key`, `vault_verify_enabled` (feature flag for local).
@@ -147,7 +147,7 @@ CLI                               Vault                         AuthService
 
 ## 9. Open Questions
 
-- Nonce storage to prevent replay: short-term in-memory cache vs. Redis integration?  
+- Nonce storage to prevent replay: resolved — use Redis everywhere (tests rely on fakeredis to avoid external dependencies).  
 - Should CLI cache Transit signatures per run for retries?  
 - How to rotate Transit key names (include `key_version` header or fetch from settings)?
 

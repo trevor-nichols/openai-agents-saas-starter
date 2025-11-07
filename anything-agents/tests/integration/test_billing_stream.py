@@ -11,7 +11,8 @@ from httpx import ASGITransport, AsyncClient
 from app.api.dependencies.auth import require_current_user
 from app.api.v1.billing.router import router as billing_router
 from app.core.config import get_settings
-from app.services.billing_events import BillingEventsService, InMemoryBillingEventBackend, billing_events_service
+from app.services.billing_events import BillingEventsService, billing_events_service
+from tests.utils.fake_billing_backend import QueueBillingEventBackend
 
 pytestmark = pytest.mark.stripe_replay
 
@@ -28,7 +29,7 @@ def enable_stream(monkeypatch):
 @pytest.mark.asyncio
 async def test_sse_emits_events(monkeypatch):
     service = BillingEventsService()
-    backend = InMemoryBillingEventBackend()
+    backend = QueueBillingEventBackend()
     service.configure(backend=backend, repository=None)
 
     monkeypatch.setattr("app.services.billing_events._billing_events_service", service, raising=False)

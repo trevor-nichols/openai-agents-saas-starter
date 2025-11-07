@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
-import time
 from functools import lru_cache
 from typing import Protocol
 
@@ -17,30 +15,6 @@ class NonceStore(Protocol):
 
     async def check_and_store(self, nonce: str, ttl_seconds: int) -> bool:
         """Return True when nonce is new; False when it already exists."""
-
-
-class InMemoryNonceStore:
-    """Process-local nonce cache for development and tests."""
-
-    def __init__(self) -> None:
-        self._entries: dict[str, float] = {}
-        self._lock = asyncio.Lock()
-
-    async def check_and_store(self, nonce: str, ttl_seconds: int) -> bool:
-        expires_at = time.monotonic() + ttl_seconds
-
-        async with self._lock:
-            self._evict_expired()
-            if nonce in self._entries:
-                return False
-            self._entries[nonce] = expires_at
-        return True
-
-    def _evict_expired(self) -> None:
-        now = time.monotonic()
-        stale = [nonce for nonce, expiry in self._entries.items() if expiry <= now]
-        for nonce in stale:
-            self._entries.pop(nonce, None)
 
 
 class RedisNonceStore:
@@ -58,21 +32,16 @@ class RedisNonceStore:
 
 
 @lru_cache
-def _build_nonce_store(redis_url: str | None) -> NonceStore:
-    if redis_url:
-        client = Redis.from_url(redis_url, encoding="utf-8", decode_responses=False)
-        return RedisNonceStore(client)
-    return InMemoryNonceStore()
+def _build_nonce_store(redis_url: str) -> NonceStore:
+    if not redis_url:
+        raise RuntimeError("redis_url is required for nonce storage.")
+    client = Redis.from_url(redis_url, encoding="utf-8", decode_responses=False)
+    return RedisNonceStore(client)
 
 
 def get_nonce_store(settings: Settings | None = None) -> NonceStore:
-    """
-    Retrieve singleton nonce store instance.
-
-    Defaults to Redis when configured, with in-memory fallback for local dev/tests.
-    """
+    """Retrieve singleton nonce store instance backed by Redis."""
 
     if settings is None:
         settings = get_settings()
     return _build_nonce_store(settings.redis_url)
-

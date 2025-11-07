@@ -84,7 +84,6 @@ PORT=8000
 DEBUG=True
 SECRET_KEY=your_secret_key
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents
-USE_IN_MEMORY_REPO=false  # default via .env.compose; flip to true only for throwaway demos without Postgres
 AUTO_RUN_MIGRATIONS=true  # dev convenience (requires Alembic dependency)
 ENABLE_BILLING=false      # flip to true once Postgres persistence is ready
 
@@ -109,7 +108,7 @@ The API will be available at `http://localhost:8000`
 > **Compose vs. application env files**
 > - `.env.compose` (tracked) holds the non-sensitive defaults that Docker Compose needs (ports, default credentials, project name). You should not edit this file.
 > - `.env.local` (gitignored) contains your secrets and any overrides. The Make targets below source **both** files, so you never have to `export` variables manually.
-> - `.env.compose` now sets `DATABASE_URL` and `USE_IN_MEMORY_REPO=false`, so durable Postgres storage is the out-of-the-box behavior; only flip the flag for intentionally ephemeral demos.
+> - `.env.compose` now sets `DATABASE_URL`, so durable Postgres storage is the out-of-the-box behavior.
 
 ### 5. Database & Migrations
 
@@ -159,7 +158,7 @@ hatch run pytest anything-agents/tests/integration -m postgres
 
 The test suite creates a throwaway database, applies Alembic migrations, and verifies the Postgres conversation and billing repositories.
 
-> **Note:** Billing endpoints require Postgres. Set `USE_IN_MEMORY_REPO=false`, configure `DATABASE_URL`, and then flip `ENABLE_BILLING=true`; the app will fail fast if billing is enabled without a durable store.
+> **Note:** Billing endpoints require Postgres. Configure `DATABASE_URL`, then flip `ENABLE_BILLING=true`; the app fails fast if durable storage or Stripe secrets are missing.
 
 ### 9. Billing API (Postgres Only)
 
@@ -192,7 +191,7 @@ curl -X POST "http://localhost:8000/api/v1/billing/tenants/tenant-123/usage" \
 
 #### Stripe configuration
 
-Billing routes now require Stripe credentials whenever `ENABLE_BILLING=true`. Set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PRODUCT_PRICE_MAP` (JSON or comma-separated `plan=price` pairs) inside `.env.local`, keep `USE_IN_MEMORY_REPO=false`, and restart the API. The guard fails fast if any variable is missing. See `docs/billing/stripe-setup.md` for the checklist or run `pnpm stripe:setup` (documented in `docs/scripts/stripe-setup.md`) to capture the values interactively.
+Billing routes now require Stripe credentials whenever `ENABLE_BILLING=true`. Set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PRODUCT_PRICE_MAP` (JSON or comma-separated `plan=price` pairs) inside `.env.local`, then restart the API. The guard fails fast if any variable is missing. See `docs/billing/stripe-setup.md` for the checklist or run `pnpm stripe:setup` (documented in `docs/scripts/stripe-setup.md`) to capture the values interactively.
 
 ## 🤖 Agent Types
 

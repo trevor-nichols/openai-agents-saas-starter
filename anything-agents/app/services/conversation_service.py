@@ -11,9 +11,6 @@ from app.domain.conversations import (
     ConversationRecord,
     ConversationRepository,
 )
-from app.infrastructure.persistence.conversations.in_memory import (
-    InMemoryConversationRepository,
-)
 
 
 @dataclass(slots=True)
@@ -26,9 +23,7 @@ class ConversationService:
     """High-level façade that coordinates conversation persistence concerns."""
 
     def __init__(self, repository: ConversationRepository | None = None) -> None:
-        self._repository: ConversationRepository = (
-            repository or InMemoryConversationRepository()
-        )
+        self._repository: ConversationRepository | None = repository
 
     def set_repository(self, repository: ConversationRepository) -> None:
         """Swap the underlying conversation store."""
@@ -37,6 +32,11 @@ class ConversationService:
 
     @property
     def repository(self) -> ConversationRepository:
+        return self._require_repository()
+
+    def _require_repository(self) -> ConversationRepository:
+        if self._repository is None:
+            raise RuntimeError("Conversation repository has not been configured yet.")
         return self._repository
 
     async def append_message(
@@ -45,23 +45,24 @@ class ConversationService:
         message: ConversationMessage,
         metadata: ConversationMetadata,
     ) -> None:
-        await self._repository.add_message(
+        repository = self._require_repository()
+        await repository.add_message(
             conversation_id,
             message,
             metadata=metadata,
         )
 
     async def get_messages(self, conversation_id: str) -> list[ConversationMessage]:
-        return await self._repository.get_messages(conversation_id)
+        return await self._require_repository().get_messages(conversation_id)
 
     async def list_conversation_ids(self) -> list[str]:
-        return await self._repository.list_conversation_ids()
+        return await self._require_repository().list_conversation_ids()
 
     async def iterate_conversations(self) -> Iterable[ConversationRecord]:
-        return await self._repository.iter_conversations()
+        return await self._require_repository().iter_conversations()
 
     async def clear_conversation(self, conversation_id: str) -> None:
-        await self._repository.clear_conversation(conversation_id)
+        await self._require_repository().clear_conversation(conversation_id)
 
     async def search(self, query: str) -> list[SearchResult]:
         """Lightweight search for conversation previews matching the query."""
@@ -69,7 +70,7 @@ class ConversationService:
         normalized = query.lower()
         matches: list[SearchResult] = []
 
-        for record in await self._repository.iter_conversations():
+        for record in await self._require_repository().iter_conversations():
             for message in record.messages:
                 if normalized in message.content.lower():
                     preview = message.content[:120]

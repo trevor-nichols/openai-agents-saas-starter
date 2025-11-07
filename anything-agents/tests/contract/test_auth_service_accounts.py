@@ -7,9 +7,10 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+from fakeredis.aioredis import FakeRedis
 
 from app.cli.auth_cli import build_parser, handle_issue_service_account
-from app.infrastructure.security.nonce_store import InMemoryNonceStore
+from app.infrastructure.security.nonce_store import RedisNonceStore
 from app.core import config as config_module
 from app.core.security import get_token_verifier
 from main import app
@@ -60,7 +61,7 @@ def test_cli_roundtrip_enforces_nonce_reuse(monkeypatch: pytest.MonkeyPatch, cap
     config_module.get_settings.cache_clear()
 
     fake_client = FakeVaultClient()
-    nonce_store = InMemoryNonceStore()
+    nonce_store = RedisNonceStore(FakeRedis())
     monkeypatch.setattr("app.api.v1.auth.router.get_vault_transit_client", lambda: fake_client)
     monkeypatch.setattr("app.api.v1.auth.router.get_nonce_store", lambda: nonce_store)
 

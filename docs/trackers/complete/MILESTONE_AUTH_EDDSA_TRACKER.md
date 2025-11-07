@@ -39,7 +39,7 @@
 - Scope taxonomy locked for v1: `billing:read`, `billing:manage`, `conversations:read`, `conversations:write`, `conversations:delete`, `tools:read`, `support:*`; enforce read-only vs. mutate semantics accordingly.
 - Service-account issuance: non-interactive consumers receive tenant-scoped refresh tokens through AuthService using Vault-managed service credentials and CLI/CI helper; no STS exchange required in v1.
 - Refresh-token persistence: service-account refresh tokens will reuse the unified revocation store (Redis + Postgres) planned in AUTH-003. `force=false` will return existing active tokens per account/tenant/scope tuple; issuance endpoint will check the store before minting new tokens and the CLI will support revocation hooks once exposed.
-- Vault Transit payloads include nonce/iat/exp claims; AuthService persists nonce fingerprints through a Redis-backed (in-memory fallback) cache to block replay within the 5-minute signing window.
+- Vault Transit payloads include nonce/iat/exp claims; AuthService persists nonce fingerprints through a Redis-backed cache (fakeredis in tests) to block replay within the 5-minute signing window.
 
 ## Execution Plan
 

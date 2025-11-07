@@ -39,7 +39,7 @@ class ServiceAccountDefinition(BaseModel):
 
 @dataclass(frozen=True)
 class ServiceAccountRegistry:
-    """In-memory registry for service accounts."""
+    """Process-local registry for service accounts."""
 
     definitions: dict[str, ServiceAccountDefinition]
 

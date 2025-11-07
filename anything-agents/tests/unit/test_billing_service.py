@@ -1,14 +1,18 @@
 """Tests covering the billing service scaffolding."""
 
 from datetime import datetime, timezone
+from types import SimpleNamespace
+import uuid
 
 import pytest
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.infrastructure.persistence.billing.in_memory import InMemoryBillingRepository
+from app.infrastructure.persistence.billing.postgres import PostgresBillingRepository
+from app.infrastructure.persistence.conversations import models as persistence_models
 from app.services.billing_service import (
     BillingService,
     PaymentProviderError,
-    billing_service,
 )
 from app.services.payment_gateway import (
     PaymentGateway,
@@ -18,7 +22,7 @@ from app.services.payment_gateway import (
 
 
 class FakeGateway(PaymentGateway):
-    """In-memory gateway used for service tests."""
+    """Stub gateway used for service tests."""
 
     def __init__(self) -> None:
         self.subscription_counter = 0
@@ -91,19 +95,83 @@ class ErrorGateway(FakeGateway):
         raise PaymentGatewayError("boom")
 
 
+@pytest.fixture
+async def billing_context():
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    async with engine.begin() as conn:
+        await conn.run_sync(persistence_models.Base.metadata.create_all)
+
+    session_factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    tenant_id = uuid.uuid4()
+
+    async with session_factory() as session:
+        session.add(
+            persistence_models.TenantAccount(
+                id=tenant_id,
+                slug="tenant",
+                name="Test Tenant",
+            )
+        )
+        session.add_all(_default_plans())
+        await session.commit()
+
+    repository = PostgresBillingRepository(session_factory)
+
+    context = SimpleNamespace(
+        tenant_id=str(tenant_id),
+        repository=repository,
+        session_factory=session_factory,
+    )
+    try:
+        yield context
+    finally:
+        await engine.dispose()
+
+
+def _default_plans():
+    starter = persistence_models.BillingPlan(
+        code="starter",
+        name="Starter",
+        interval="monthly",
+        interval_count=1,
+        price_cents=0,
+        currency="USD",
+        trial_days=14,
+        seat_included=1,
+        feature_toggles={"enable_web_search": False},
+    )
+    pro = persistence_models.BillingPlan(
+        code="pro",
+        name="Pro",
+        interval="monthly",
+        interval_count=1,
+        price_cents=9900,
+        currency="USD",
+        trial_days=14,
+        seat_included=5,
+        feature_toggles={"enable_web_search": True},
+    )
+    return [starter, pro]
+
+
+def _service(context: SimpleNamespace, gateway: PaymentGateway | None = None) -> BillingService:
+    return BillingService(context.repository, gateway or FakeGateway())
+
+
 @pytest.mark.asyncio
-async def test_billing_service_lists_default_plans():
-    plans = await billing_service.list_plans()
+async def test_billing_service_lists_default_plans(billing_context):
+    service = _service(billing_context)
+    plans = await service.list_plans()
     assert len(plans) >= 2
     assert {plan.code for plan in plans} >= {"starter", "pro"}
 
 
 @pytest.mark.asyncio
-async def test_start_subscription_uses_gateway_and_repository():
-    service = BillingService(InMemoryBillingRepository(), FakeGateway())
+async def test_start_subscription_uses_gateway_and_repository(billing_context):
+    service = _service(billing_context)
 
     subscription = await service.start_subscription(
-        tenant_id="test-tenant",
+        tenant_id=billing_context.tenant_id,
         plan_code="starter",
         billing_email="owner@example.com",
         auto_renew=True,
@@ -111,26 +179,25 @@ async def test_start_subscription_uses_gateway_and_repository():
 
     assert subscription.processor_subscription_id is not None
 
-    stored = await service.get_subscription("test-tenant")
+    stored = await service.get_subscription(billing_context.tenant_id)
     assert stored is not None
     assert stored.plan_code == "starter"
 
 
 @pytest.mark.asyncio
-async def test_update_subscription_applies_changes():
-    repository = InMemoryBillingRepository()
+async def test_update_subscription_applies_changes(billing_context):
     gateway = FakeGateway()
-    service = BillingService(repository, gateway)
+    service = BillingService(billing_context.repository, gateway)
 
     await service.start_subscription(
-        tenant_id="tenant-update",
+        tenant_id=billing_context.tenant_id,
         plan_code="starter",
         billing_email="owner@example.com",
         auto_renew=True,
     )
 
     updated = await service.update_subscription(
-        "tenant-update",
+        billing_context.tenant_id,
         auto_renew=False,
         seat_count=3,
         billing_email="billing@example.com",
@@ -142,36 +209,36 @@ async def test_update_subscription_applies_changes():
 
 
 @pytest.mark.asyncio
-async def test_record_usage_logs_entry():
-    repository = InMemoryBillingRepository()
-    service = BillingService(repository, FakeGateway())
+async def test_record_usage_logs_entry(billing_context):
+    service = _service(billing_context)
 
     await service.start_subscription(
-        tenant_id="tenant-usage",
+        tenant_id=billing_context.tenant_id,
         plan_code="starter",
         billing_email="owner@example.com",
         auto_renew=True,
     )
 
     await service.record_usage(
-        "tenant-usage",
+        billing_context.tenant_id,
         feature_key="messages",
         quantity=5,
         idempotency_key="usage-1",
     )
 
-    assert repository._usage_records  # type: ignore[attr-defined]
-    entry = repository._usage_records[0]  # type: ignore[attr-defined]
-    assert entry["quantity"] == 5
+    async with billing_context.session_factory() as session:
+        rows = await session.execute(select(persistence_models.SubscriptionUsage))
+        usage = rows.scalar_one()
+        assert usage.quantity == 5
 
 
 @pytest.mark.asyncio
-async def test_gateway_errors_surface_as_payment_provider_error():
-    service = BillingService(InMemoryBillingRepository(), ErrorGateway())
+async def test_gateway_errors_surface_as_payment_provider_error(billing_context):
+    service = BillingService(billing_context.repository, ErrorGateway())
 
     with pytest.raises(PaymentProviderError):
         await service.start_subscription(
-            tenant_id="boom",
+            tenant_id=billing_context.tenant_id,
             plan_code="starter",
             billing_email=None,
             auto_renew=True,

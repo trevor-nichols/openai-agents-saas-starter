@@ -77,11 +77,9 @@
 │   │   │   │   └── user_repository.py # Postgres implementation of the user repository.
 │   │   │   ├── billing/        # Persistence implementations for billing data.
 │   │   │   │   ├── __init__.py # Exposes billing repository implementations.
-│   │   │   │   ├── in_memory.py # In-memory implementation of the billing repository for tests/dev.
 │   │   │   │   └── postgres.py # Postgres implementation of the billing repository.
 │   │   │   ├── conversations/  # Persistence implementations for conversation data.
 │   │   │   │   ├── __init__.py # Exposes conversation repository implementations.
-│   │   │   │   ├── in_memory.py # In-memory implementation of the conversation repository.
 │   │   │   │   ├── models.py   # SQLAlchemy ORM models for conversations, tenants, and billing.
 │   │   │   │   └── postgres.py # Postgres implementation of the conversation repository.
 │   │   │   ├── models/         # Shared persistence components.

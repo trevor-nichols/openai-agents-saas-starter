@@ -6,7 +6,6 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from app.domain.billing import BillingPlan, BillingRepository, TenantSubscription
-from app.infrastructure.persistence.billing.in_memory import InMemoryBillingRepository
 from app.services.payment_gateway import (
     PaymentGateway,
     PaymentGatewayError,
@@ -46,7 +45,7 @@ class BillingService:
         repository: Optional[BillingRepository] = None,
         gateway: PaymentGateway | None = None,
     ) -> None:
-        self._repository: BillingRepository = repository or InMemoryBillingRepository()
+        self._repository: BillingRepository | None = repository
         self._gateway: PaymentGateway = gateway or stripe_gateway
 
     def set_repository(self, repository: BillingRepository) -> None:
@@ -55,12 +54,17 @@ class BillingService:
     def set_gateway(self, gateway: PaymentGateway) -> None:
         self._gateway = gateway
 
+    def _require_repository(self) -> BillingRepository:
+        if self._repository is None:
+            raise RuntimeError("Billing repository has not been configured.")
+        return self._repository
+
     async def list_plans(self) -> list[BillingPlan]:
-        return await self._repository.list_plans()
+        return await self._require_repository().list_plans()
 
     async def get_subscription(self, tenant_id: str) -> TenantSubscription | None:
         try:
-            return await self._repository.get_subscription(tenant_id)
+            return await self._require_repository().get_subscription(tenant_id)
         except ValueError:
             # Maintain backward compatibility with non-UUID tenant identifiers by
             # treating them as missing records rather than surfacing a 500.
@@ -103,8 +107,10 @@ class BillingService:
             processor_subscription_id=processor_payload.subscription_id,
         )
 
+        repository = self._require_repository()
+
         try:
-            await self._repository.upsert_subscription(subscription)
+            await repository.upsert_subscription(subscription)
         except ValueError as exc:
             raise InvalidTenantIdentifierError(
                 "Tenant identifier is not a valid UUID."
@@ -136,7 +142,7 @@ class BillingService:
             subscription.cancel_at = datetime.now(timezone.utc)
 
         try:
-            await self._repository.upsert_subscription(subscription)
+            await self._require_repository().upsert_subscription(subscription)
         except ValueError as exc:
             raise InvalidTenantIdentifierError(
                 "Tenant identifier is not a valid UUID."
@@ -174,8 +180,10 @@ class BillingService:
         start = _to_utc(period_start) if period_start else utc_now
         end = _to_utc(period_end) if period_end else utc_now
 
+        repository = self._require_repository()
+
         try:
-            await self._repository.record_usage(
+            await repository.record_usage(
                 tenant_id,
                 feature_key=feature_key,
                 quantity=quantity,
@@ -189,7 +197,7 @@ class BillingService:
             ) from exc
 
     async def _ensure_plan_exists(self, plan_code: str) -> BillingPlan:
-        plans = await self._repository.list_plans()
+        plans = await self._require_repository().list_plans()
         for plan in plans:
             if plan.code == plan_code:
                 return plan
@@ -197,7 +205,7 @@ class BillingService:
 
     async def _require_subscription(self, tenant_id: str) -> TenantSubscription:
         try:
-            subscription = await self._repository.get_subscription(tenant_id)
+            subscription = await self._require_repository().get_subscription(tenant_id)
         except ValueError as exc:
             raise InvalidTenantIdentifierError(
                 "Tenant identifier is not a valid UUID."
@@ -230,7 +238,7 @@ class BillingService:
                 raise PaymentProviderError(str(exc)) from exc
 
         try:
-            updated = await self._repository.update_subscription(
+            updated = await self._require_repository().update_subscription(
                 tenant_id,
                 auto_renew=auto_renew,
                 billing_email=billing_email,

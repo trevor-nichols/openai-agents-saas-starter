@@ -111,9 +111,9 @@
 - **Directory Layout** (restructure as part of AUTH-003 prerequisite):
   - `tests/unit/` — pure unit tests (e.g., TokenClaims validation, KeySet rotation logic).
   - `tests/integration/` — existing DB-backed suites (rename/migrate current integration suite here).
-  - `tests/contract/` — FastAPI endpoint tests using TestClient with in-memory dependencies.
+  - `tests/contract/` — FastAPI endpoint tests using TestClient with Redis/Postgres doubles (fakeredis + sqlite).
   - `tests/e2e/` (optional later) — docker-compose driven smoke tests.
-- **Fixtures**: Create shared fixtures under `tests/conftest.py` for fake key storage, in-memory revocation store, and token factories.
+- **Fixtures**: Create shared fixtures under `tests/conftest.py` for fake key storage, Redis-backed revocation store (fakeredis), and token factories.
 - **Coverage**: Enable `pytest --cov=app --cov-report=xml` in CI; fail if coverage for `app/core/security.py`, `app/core/keys.py`, and `app/services/auth_service.py` < 90%.
 - **Static Analysis**: Update Ruff profile to flag insecure JWT usage (`flake8-bandit` rule S320 equivalent) and ensure `algorithms` arg enforced.
 

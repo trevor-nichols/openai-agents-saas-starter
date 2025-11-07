@@ -65,7 +65,7 @@ BillingPlan (1) ────< TenantSubscription (many)
 5. Update developer tooling (Makefile task or hatch script) to run migrations locally and in CI.
 
 ### DB-002 — Engine Bootstrap
-1. Extend `Settings` with `database_url`, pool sizing, and feature toggles (`use_in_memory_repo`, `enable_billing`).
+1. Extend `Settings` with `database_url`, pool sizing, and feature toggles (e.g., `enable_billing`).
 2. Implement async engine/session factory module providing `async_sessionmaker` and dependency-injected Unit of Work helpers.
 3. Add application startup hook to validate connectivity and run pending migrations in development mode (optional toggle).
 4. Provide Docker Compose profile for Postgres (and Redis) plus `.env.example` guidance.
@@ -76,7 +76,7 @@ BillingPlan (1) ────< TenantSubscription (many)
 - **2025-11-06**: Async engine bootstrap added (`app/infrastructure/db`), new settings for database configuration, and readiness health check now verifies Postgres connectivity.
 - **2025-11-06**: Implemented Postgres conversation repository (`app/infrastructure/persistence/conversations/postgres.py`), updated agent service for async persistence, and adjusted tests + routes to await new interfaces.
 - **2025-11-06**: Added CI-backed Postgres smoke tests (`tests/integration/test_postgres_migrations.py`) and GitHub Actions workflow service wiring to validate migrations on every PR.
-- **2025-11-06**: Replaced billing in-memory adapter with Postgres-backed repository and gated wiring through `ENABLE_BILLING` in `main.py`.
+- **2025-11-06**: Replaced billing in-memory adapter with Postgres-backed repository and gated wiring through `ENABLE_BILLING` in `main.py` (follow-up on 2025-11-07 removed the legacy adapter entirely).
 - **2025-11-06**: Delivered tenant-scoped billing endpoints (start/update/cancel/usage), tenant role guards, and unit/integration coverage for updates and usage reporting.
 
 ## Next Actions
