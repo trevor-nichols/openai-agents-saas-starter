@@ -36,6 +36,13 @@ STRIPE_PRODUCT_PRICE_MAP={"starter":"price_starter","pro":"price_pro"}
 3. Flip `ENABLE_BILLING=true` and restart the FastAPI server (`hatch run serve` or your preferred process manager).
 4. On startup the app verifies that Stripe settings are present before wiring the billing repository. Misconfigurations surface immediately with an error that lists the missing env vars.
 
-## Upcoming automation
+## Automation helper
 
-STRIPE-02 introduces `scripts/stripe/setup.ts`, an interactive helper that will walk developers through Stripe CLI auth, test data creation, and `.env.local` updates. That script is **coming soon**; until it lands you must enter the keys manually following the steps above.
+Prefer not to edit env files by hand? Run the STRIPE-02 setup script from the repo root:
+
+```bash
+pnpm install
+pnpm stripe:setup
+```
+
+The assistant guides you through Stripe CLI login, optional `make dev-up`, Postgres connectivity checks, and then writes the required env vars while preserving any existing values. See `docs/scripts/stripe-setup.md` for detailed walkthroughs and sample output.
