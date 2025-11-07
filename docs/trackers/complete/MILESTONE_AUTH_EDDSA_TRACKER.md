@@ -16,12 +16,12 @@
 
 | ID | Area | Description | Owner | Status |
 |----|------|-------------|-------|--------|
-| AUTH-001 | Threat Modeling & Requirements | Document JWT consumers, trust boundaries, risk scenarios, and policy guardrails. | – | Planned |
-| AUTH-002 | Ed25519 Key Infrastructure | Build key lifecycle module, secure storage contract, CLI utilities, and rotation SOP. | – | Planned |
-| AUTH-003 | JWT Service Refactor | Implement EdDSA signer/validator interfaces, strict claim schema, and exhaustive tests. | – | Planned |
-| AUTH-004 | JWKS Distribution Surface | Ship JWKS endpoint, caching strategy, and integration tests with Next.js client. | – | Planned |
-| AUTH-005 | Observability & Alerts | Add structured logging, metrics, dashboards, and alerting around auth pipeline. | – | Planned |
-| AUTH-006 | Staged Rollout & Postmortem | Execute dual-signing canary, production cutover, and retrospective documentation. | – | Planned |
+| AUTH-001 | Threat Modeling & Requirements | Document JWT consumers, trust boundaries, risk scenarios, and policy guardrails. | – | Completed |
+| AUTH-002 | Ed25519 Key Infrastructure | Build key lifecycle module, secure storage contract, CLI utilities, and rotation SOP. | – | Completed |
+| AUTH-003 | JWT Service Refactor | Implement EdDSA signer/validator interfaces, strict claim schema, and exhaustive tests. | – | Completed |
+| AUTH-004 | JWKS Distribution Surface | Ship JWKS endpoint, caching strategy, and integration tests with Next.js client. | – | Completed |
+| AUTH-005 | Observability & Alerts | Add structured logging, metrics, dashboards, and alerting around auth pipeline. | – | Removed as Out of Scope |
+| AUTH-006 | Staged Rollout & Postmortem | Execute dual-signing canary, production cutover, and retrospective documentation. | – | Removed as Out of Scope |
 
 ## Notes & Assumptions
 - PyJWT ≥2.10 with `cryptography` backend satisfies EdDSA support; ensure dependency alignment in `pyproject.toml` and lockfiles.

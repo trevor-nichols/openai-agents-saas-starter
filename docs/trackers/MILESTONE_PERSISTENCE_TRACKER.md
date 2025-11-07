@@ -17,9 +17,9 @@
 
 | ID | Area | Description | Owner | Status |
 |----|------|-------------|-------|--------|
-| DB-001 | Schema & Migrations | Define SQLAlchemy models and Alembic migrations for conversation + billing tables. | – | In Progress |
-| DB-002 | Engine Bootstrap | Implement async engine/session factory, settings, and startup validation (with Docker compose profile). | – | In Progress |
-| DB-003 | Conversation Repository | Create PostgreSQL-backed repository + service adapter, wire into `AgentService`, update tests. | – | In Progress |
+| DB-001 | Schema & Migrations | Define SQLAlchemy models and Alembic migrations for conversation + billing tables. | – | Completed |
+| DB-002 | Engine Bootstrap | Implement async engine/session factory, settings, and startup validation (with Docker compose profile). | – | Completed |
+| DB-003 | Conversation Repository | Create PostgreSQL-backed repository + service adapter, wire into `AgentService`, update tests. | – | Completed |
 | DB-004 | SDK Session Integration | Align chat flows with Agents SDK session memory to leverage persistent history. | – | Planned |
 | DB-005 | Billing Service Scaffold | Implement plan catalog, subscription service, usage recording stubs, and unit tests. | – | Planned |
 | DB-006 | API & Health | Add health probes for storage, document new endpoints/config, update README. | – | Planned |

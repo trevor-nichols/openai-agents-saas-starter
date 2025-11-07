@@ -84,7 +84,7 @@ PORT=8000
 DEBUG=True
 SECRET_KEY=your_secret_key
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents
-USE_IN_MEMORY_REPO=false  # set true to skip Postgres locally
+USE_IN_MEMORY_REPO=false  # default via .env.compose; flip to true only for throwaway demos without Postgres
 AUTO_RUN_MIGRATIONS=true  # dev convenience (requires Alembic dependency)
 ENABLE_BILLING=false      # flip to true once Postgres persistence is ready
 
@@ -109,6 +109,7 @@ The API will be available at `http://localhost:8000`
 > **Compose vs. application env files**
 > - `.env.compose` (tracked) holds the non-sensitive defaults that Docker Compose needs (ports, default credentials, project name). You should not edit this file.
 > - `.env.local` (gitignored) contains your secrets and any overrides. The Make targets below source **both** files, so you never have to `export` variables manually.
+> - `.env.compose` now sets `DATABASE_URL` and `USE_IN_MEMORY_REPO=false`, so durable Postgres storage is the out-of-the-box behavior; only flip the flag for intentionally ephemeral demos.
 
 ### 5. Database & Migrations
 
