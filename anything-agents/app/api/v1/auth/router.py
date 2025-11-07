@@ -41,6 +41,7 @@ from app.services.auth_service import (
 )
 from app.services.user_service import (
     InvalidCredentialsError,
+    MembershipNotFoundError,
     TenantContextRequiredError,
     UserDisabledError,
     UserLockedError,
@@ -89,6 +90,8 @@ async def refresh_access_token(
             ip_address=client_ip,
             user_agent=user_agent,
         )
+    except (InvalidCredentialsError, MembershipNotFoundError) as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
     except UserRefreshError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
     except UserLockedError as exc:
