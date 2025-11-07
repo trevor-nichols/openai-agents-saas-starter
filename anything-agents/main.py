@@ -14,13 +14,19 @@ from app.api.router import api_router
 from app.core.config import Settings, get_settings
 from redis.asyncio import Redis
 
-from app.infrastructure.db import dispose_engine, get_async_sessionmaker, init_engine
+from app.infrastructure.db import (
+    dispose_engine,
+    get_async_sessionmaker,
+    get_engine,
+    init_engine,
+)
 from app.infrastructure.persistence.billing import PostgresBillingRepository
 from app.infrastructure.persistence.conversations.postgres import PostgresConversationRepository
 from app.infrastructure.persistence.stripe.repository import (
     StripeEventRepository,
     configure_stripe_event_repository,
 )
+from app.infrastructure.openai.sessions import configure_sdk_session_store
 from app.infrastructure.security.vault_kv import configure_vault_secret_manager
 from app.middleware.logging import LoggingMiddleware
 from app.presentation import health as health_routes
@@ -68,6 +74,10 @@ async def lifespan(app: FastAPI):
         billing_service.set_gateway(stripe_gateway)
 
     await init_engine(run_migrations=settings.auto_run_migrations)
+    engine = get_engine()
+    if engine is None:
+        raise RuntimeError("Database engine failed to initialise; cannot configure sessions.")
+    configure_sdk_session_store(engine)
     session_factory = get_async_sessionmaker()
     postgres_repository = PostgresConversationRepository(session_factory)
     conversation_service.set_repository(postgres_repository)

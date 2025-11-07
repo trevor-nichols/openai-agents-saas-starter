@@ -18,6 +18,8 @@ from sqlalchemy.engine.url import URL, make_url
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
 from app.domain.billing import TenantSubscription
+from agents.extensions.memory.sqlalchemy_session import SQLAlchemySession
+
 from app.domain.conversations import ConversationMetadata, ConversationMessage
 from app.infrastructure.persistence.billing.postgres import PostgresBillingRepository
 from app.infrastructure.persistence.conversations.models import SubscriptionUsage as ORMSubscriptionUsage
@@ -35,7 +37,12 @@ def _require_database_url() -> URL:
     raw_url = os.getenv("DATABASE_URL")
     if not raw_url:
         pytest.skip("DATABASE_URL not set; skipping Postgres integration tests.")
-    return make_url(raw_url)
+    url = make_url(raw_url)
+    if not url.drivername.startswith("postgresql"):
+        pytest.skip(
+            "DATABASE_URL is not a Postgres URL; skipping Postgres integration tests."
+        )
+    return url
 
 
 @pytest.fixture(scope="session")
@@ -113,6 +120,8 @@ async def test_core_tables_exist(migrated_engine: AsyncEngine) -> None:
         "tenant_accounts",
         "agent_conversations",
         "agent_messages",
+        "sdk_agent_sessions",
+        "sdk_agent_session_messages",
         "billing_plans",
         "tenant_subscriptions",
         "users",
@@ -194,6 +203,39 @@ async def test_repository_preserves_custom_conversation_id(
     await repository.clear_conversation(conversation_id)
     ids_after = await repository.list_conversation_ids()
     assert conversation_id not in ids_after
+
+
+@pytest.mark.asyncio
+async def test_sdk_session_tables_persist_history(migrated_engine: AsyncEngine) -> None:
+    """Ensure SQLAlchemySession reuses history across instances (service restart simulation)."""
+
+    session_id = f"session-{uuid.uuid4()}"
+    first_session = SQLAlchemySession(
+        session_id=session_id,
+        engine=migrated_engine,
+        sessions_table="sdk_agent_sessions",
+        messages_table="sdk_agent_session_messages",
+    )
+
+    await first_session.add_items(
+        [
+            {"role": "user", "content": "Hello durable session."},
+            {"role": "assistant", "content": "Greetings preserved."},
+        ]
+    )
+
+    # Simulate a fresh process by building a new session instance with the same ID.
+    resumed_session = SQLAlchemySession(
+        session_id=session_id,
+        engine=migrated_engine,
+        sessions_table="sdk_agent_sessions",
+        messages_table="sdk_agent_session_messages",
+    )
+    restored_items = await resumed_session.get_items()
+
+    assert len(restored_items) == 2
+    assert restored_items[0]["content"] == "Hello durable session."
+    assert restored_items[1]["role"] == "assistant"
 
 
 @pytest.mark.asyncio

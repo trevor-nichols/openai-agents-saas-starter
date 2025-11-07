@@ -20,7 +20,7 @@
 | DB-001 | Schema & Migrations | Define SQLAlchemy models and Alembic migrations for conversation + billing tables. | – | Completed |
 | DB-002 | Engine Bootstrap | Implement async engine/session factory, settings, and startup validation (with Docker compose profile). | – | Completed |
 | DB-003 | Conversation Repository | Create PostgreSQL-backed repository + service adapter, wire into `AgentService`, update tests. | – | Completed |
-| DB-004 | SDK Session Integration | Align chat flows with Agents SDK session memory to leverage persistent history. | – | Planned |
+| DB-004 | SDK Session Integration | Align chat flows with Agents SDK session memory to leverage persistent history. | – | Completed |
 | DB-005 | Billing Service Scaffold | Implement plan catalog, subscription service, usage recording stubs, and unit tests. | – | Completed |
 | DB-006 | API & Health | Add health probes for storage, document new endpoints/config, update README. | – | Completed |
 
@@ -95,8 +95,8 @@ BillingPlan (1) ────< TenantSubscription (many)
 - **2025-11-06**: Delivered tenant-scoped billing endpoints (start/update/cancel/usage), tenant role guards, and unit/integration coverage for updates and usage reporting.
 - **2025-11-07**: Billing service scaffold completed — `BillingService` now fronts the Postgres repository and Stripe gateway stubs, `/api/v1/billing/*` routes exercise it end-to-end, and unit tests cover subscriptions + usage recording.
 - **2025-11-07**: API/health deliverables finished — readiness checks call `verify_database_connection()`, docs/README describe the new probes, and `.env*` defaults ship `DATABASE_URL` + pool settings for Compose.
+- **2025-11-07**: SDK session integration landed — `agent_conversations` tracks session identifiers/cursors, SDK SQLAlchemy sessions reuse the shared AsyncEngine, AgentService now runs chats with persisted sessions, integration tests verify session history survives service restarts, and `docs/architecture/sdk-session-runbook.md` documents the operational flow.
 
 ## Next Actions
-1. Deliver DB-004 by wiring the OpenAI Agents SDK session/memory pipeline into `AgentService`.
-2. Finish documenting the Postgres/Redis Compose workflow + developer runbooks leveraging the new readiness probes.
-3. Explore retention policies and usage analytics leveraging the Postgres-backed history.
+1. Finish documenting the Postgres/Redis Compose workflow + developer runbooks leveraging the new readiness probes.
+2. Explore retention policies and usage analytics leveraging the Postgres-backed history.

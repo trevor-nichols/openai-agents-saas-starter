@@ -16,6 +16,7 @@ from app.domain.conversations import (
     ConversationMessage,
     ConversationRecord,
     ConversationRepository,
+    ConversationSessionState,
 )
 from app.infrastructure.persistence.conversations.models import (
     AgentConversation,
@@ -102,6 +103,12 @@ class PostgresConversationRepository(ConversationRepository):
                 conversation.total_tokens_completion = metadata.total_tokens_completion
             if metadata.reasoning_tokens is not None:
                 conversation.reasoning_tokens = metadata.reasoning_tokens
+            if metadata.sdk_session_id:
+                conversation.sdk_session_id = metadata.sdk_session_id
+            if metadata.session_cursor:
+                conversation.session_cursor = metadata.session_cursor
+            if metadata.last_session_sync_at:
+                conversation.last_session_sync_at = metadata.last_session_sync_at
 
             db_message = AgentMessage(
                 conversation_id=conversation.id,
@@ -200,6 +207,40 @@ class PostgresConversationRepository(ConversationRepository):
                 await session.delete(conversation)
                 await session.commit()
 
+    async def get_session_state(
+        self, conversation_id: str
+    ) -> ConversationSessionState | None:
+        conversation_uuid = _coerce_conversation_uuid(conversation_id)
+        async with self._session_factory() as session:
+            conversation = await session.get(AgentConversation, conversation_uuid)
+            if conversation is None:
+                return None
+            return ConversationSessionState(
+                sdk_session_id=conversation.sdk_session_id,
+                session_cursor=conversation.session_cursor,
+                last_session_sync_at=conversation.last_session_sync_at,
+            )
+
+    async def upsert_session_state(
+        self, conversation_id: str, state: ConversationSessionState
+    ) -> None:
+        conversation_uuid = _coerce_conversation_uuid(conversation_id)
+        async with self._session_factory() as session:
+            conversation = await session.get(
+                AgentConversation, conversation_uuid, with_for_update=True
+            )
+            if conversation is None:
+                raise ValueError(
+                    f"Conversation {conversation_id} does not exist; "
+                    "session state cannot be updated."
+                )
+
+            conversation.sdk_session_id = state.sdk_session_id
+            conversation.session_cursor = state.session_cursor
+            conversation.last_session_sync_at = state.last_session_sync_at
+
+            await session.commit()
+
     async def _get_or_create_conversation(
         self,
         session: AsyncSession,
@@ -217,6 +258,12 @@ class PostgresConversationRepository(ConversationRepository):
         if conversation:
             if conversation.conversation_key != conversation_key:
                 conversation.conversation_key = conversation_key
+            if metadata.sdk_session_id:
+                conversation.sdk_session_id = metadata.sdk_session_id
+            if metadata.session_cursor:
+                conversation.session_cursor = metadata.session_cursor
+            if metadata.last_session_sync_at:
+                conversation.last_session_sync_at = metadata.last_session_sync_at
             return conversation
 
         conversation = AgentConversation(
@@ -233,6 +280,9 @@ class PostgresConversationRepository(ConversationRepository):
             total_tokens_completion=metadata.total_tokens_completion or 0,
             reasoning_tokens=metadata.reasoning_tokens or 0,
             handoff_count=metadata.handoff_count or 0,
+            sdk_session_id=metadata.sdk_session_id,
+            session_cursor=metadata.session_cursor,
+            last_session_sync_at=metadata.last_session_sync_at,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
         )

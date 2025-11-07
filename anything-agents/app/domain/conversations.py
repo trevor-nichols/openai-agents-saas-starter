@@ -46,6 +46,18 @@ class ConversationMetadata:
     total_tokens_prompt: int | None = None
     total_tokens_completion: int | None = None
     reasoning_tokens: int | None = None
+    sdk_session_id: str | None = None
+    session_cursor: str | None = None
+    last_session_sync_at: datetime | None = None
+
+
+@dataclass(slots=True)
+class ConversationSessionState:
+    """State container describing the SDK session associated with a conversation."""
+
+    sdk_session_id: str | None = None
+    session_cursor: str | None = None
+    last_session_sync_at: datetime | None = None
 
 
 class ConversationRepository(Protocol):
@@ -70,4 +82,14 @@ class ConversationRepository(Protocol):
         ...
 
     async def clear_conversation(self, conversation_id: str) -> None:
+        ...
+
+    async def get_session_state(
+        self, conversation_id: str
+    ) -> ConversationSessionState | None:
+        ...
+
+    async def upsert_session_state(
+        self, conversation_id: str, state: ConversationSessionState
+    ) -> None:
         ...

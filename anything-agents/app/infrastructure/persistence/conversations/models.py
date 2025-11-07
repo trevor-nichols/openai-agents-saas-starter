@@ -97,6 +97,9 @@ class AgentConversation(Base):
     last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_run_id: Mapped[str | None] = mapped_column(String(64))
     client_version: Mapped[str | None] = mapped_column(String(32))
+    sdk_session_id: Mapped[str | None] = mapped_column(String(255))
+    session_cursor: Mapped[str | None] = mapped_column(String(128))
+    last_session_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=UTC_NOW, nullable=False
     )
@@ -222,13 +225,6 @@ class TenantSubscription(Base):
     __tablename__ = "tenant_subscriptions"
     __table_args__ = (
         Index("ix_tenant_subscriptions_tenant_status", "tenant_id", "status"),
-        UniqueConstraint(
-            "tenant_id",
-            "status",
-            name="uq_tenant_subscriptions_active",
-            deferrable=True,
-            initially="IMMEDIATE",
-        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(

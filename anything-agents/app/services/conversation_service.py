@@ -10,6 +10,7 @@ from app.domain.conversations import (
     ConversationMessage,
     ConversationRecord,
     ConversationRepository,
+    ConversationSessionState,
 )
 
 
@@ -84,6 +85,16 @@ class ConversationService:
                     break
 
         return matches
+
+    async def get_session_state(
+        self, conversation_id: str
+    ) -> ConversationSessionState | None:
+        return await self._require_repository().get_session_state(conversation_id)
+
+    async def update_session_state(
+        self, conversation_id: str, state: ConversationSessionState
+    ) -> None:
+        await self._require_repository().upsert_session_state(conversation_id, state)
 
 
 conversation_service = ConversationService()

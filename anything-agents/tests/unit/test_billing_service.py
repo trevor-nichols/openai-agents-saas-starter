@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.infrastructure.persistence.auth import models as auth_models  # noqa: F401
 from app.infrastructure.persistence.billing.postgres import PostgresBillingRepository
 from app.infrastructure.persistence.conversations import models as persistence_models
 from app.services.billing_service import (
@@ -98,8 +99,22 @@ class ErrorGateway(FakeGateway):
 @pytest.fixture
 async def billing_context():
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    tables_to_create = [
+        persistence_models.TenantAccount.__table__,
+        persistence_models.BillingPlan.__table__,
+        persistence_models.PlanFeature.__table__,
+        persistence_models.TenantSubscription.__table__,
+        persistence_models.SubscriptionInvoice.__table__,
+        persistence_models.SubscriptionUsage.__table__,
+    ]
+
     async with engine.begin() as conn:
-        await conn.run_sync(persistence_models.Base.metadata.create_all)
+        await conn.run_sync(
+            lambda connection: persistence_models.Base.metadata.create_all(
+                bind=connection,
+                tables=tables_to_create,
+            )
+        )
 
     session_factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     tenant_id = uuid.uuid4()

@@ -9,6 +9,10 @@ from typing import Iterable
 
 import pytest
 from fakeredis.aioredis import FakeRedis
+import sqlalchemy.ext.asyncio as sqla_async
+import asyncio
+from sqlalchemy.dialects.postgresql import CITEXT, JSONB
+from sqlalchemy.ext.compiler import compiles
 
 from app.core import config as config_module
 from app.domain.conversations import (
@@ -16,8 +20,13 @@ from app.domain.conversations import (
     ConversationMessage,
     ConversationRecord,
     ConversationRepository,
+    ConversationSessionState,
 )
 from app.services.conversation_service import conversation_service
+from app.infrastructure.openai.sessions import (
+    configure_sdk_session_store,
+    reset_sdk_session_store,
+)
 
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 os.environ["REDIS_URL"] = "redis://localhost:6379/0"
@@ -25,6 +34,64 @@ os.environ.setdefault("AUTO_RUN_MIGRATIONS", "false")
 os.environ.setdefault("ENABLE_BILLING", "false")
 
 TEST_KEYSET_PATH = Path(__file__).parent / "fixtures" / "keysets" / "test_keyset.json"
+
+
+@compiles(JSONB, "sqlite")
+def _compile_jsonb_to_text(element, compiler, **kwargs):
+    return "TEXT"
+
+
+@compiles(CITEXT, "sqlite")
+def _compile_citext_to_text(element, compiler, **kwargs):
+    return "TEXT"
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    """Register custom CLI flags."""
+
+    parser.addoption(
+        "--enable-stripe-replay",
+        action="store_true",
+        default=False,
+        help="Run tests marked with @pytest.mark.stripe_replay (requires Postgres + Stripe fixtures).",
+    )
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Ensure markers are known to pytest."""
+
+    config.addinivalue_line(
+        "markers",
+        "stripe_replay: exercises Stripe webhook replay + billing stream flows; "
+        "requires external fixtures.",
+    )
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Skip Stripe replay tests unless explicitly enabled."""
+
+    if config.getoption("--enable-stripe-replay"):
+        return
+
+    skip_marker = pytest.mark.skip(reason="Stripe replay tests require --enable-stripe-replay.")
+    for item in items:
+        if "stripe_replay" in item.keywords:
+            item.add_marker(skip_marker)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _configure_sdk_session() -> None:
+    """Configure the SDK session store for tests using an in-memory SQLite engine."""
+
+    engine = sqla_async.create_async_engine("sqlite+aiosqlite:///:memory:")
+    configure_sdk_session_store(engine, auto_create_tables=True)
+    try:
+        yield
+    finally:
+        reset_sdk_session_store()
+        loop = asyncio.new_event_loop()
+        loop.run_until_complete(engine.dispose())
+        loop.close()
 
 
 @pytest.fixture(autouse=True)
@@ -68,6 +135,7 @@ class EphemeralConversationRepository(ConversationRepository):
     def __init__(self) -> None:
         self._messages: dict[str, list[ConversationMessage]] = defaultdict(list)
         self._metadata: dict[str, ConversationMetadata] = {}
+        self._session_state: dict[str, ConversationSessionState] = {}
 
     async def add_message(
         self,
@@ -78,6 +146,11 @@ class EphemeralConversationRepository(ConversationRepository):
     ) -> None:
         self._messages[conversation_id].append(message)
         self._metadata[conversation_id] = metadata
+        self._session_state[conversation_id] = ConversationSessionState(
+            sdk_session_id=metadata.sdk_session_id,
+            session_cursor=metadata.session_cursor,
+            last_session_sync_at=metadata.last_session_sync_at,
+        )
 
     async def get_messages(self, conversation_id: str) -> list[ConversationMessage]:
         return list(self._messages.get(conversation_id, []))
@@ -94,6 +167,17 @@ class EphemeralConversationRepository(ConversationRepository):
     async def clear_conversation(self, conversation_id: str) -> None:
         self._messages.pop(conversation_id, None)
         self._metadata.pop(conversation_id, None)
+        self._session_state.pop(conversation_id, None)
+
+    async def get_session_state(
+        self, conversation_id: str
+    ) -> ConversationSessionState | None:
+        return self._session_state.get(conversation_id)
+
+    async def upsert_session_state(
+        self, conversation_id: str, state: ConversationSessionState
+    ) -> None:
+        self._session_state[conversation_id] = state
 
 
 @pytest.fixture(autouse=True)

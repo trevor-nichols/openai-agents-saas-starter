@@ -155,14 +155,7 @@ def upgrade() -> None:
             name="fk_tenant_subscriptions_plan_id_billing_plans",
             ondelete="RESTRICT",
         ),
-        sa.UniqueConstraint(
-            "tenant_id",
-            "status",
-            name="uq_tenant_subscriptions_active",
-            deferrable=True,
-            initially="IMMEDIATE",
-        ),
-    )
+)
     op.create_index(
         "ix_tenant_subscriptions_tenant_status",
         "tenant_subscriptions",
