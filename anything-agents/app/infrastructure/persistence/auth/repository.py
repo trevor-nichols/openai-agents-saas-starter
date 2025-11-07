@@ -177,13 +177,16 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
         )
 
     def _rehydrate_token(self, row: ServiceAccountToken) -> str | None:
+        subject = self._subject_from_account(row.account)
         payload = {
-            "sub": f"service-account:{row.account}",
+            "sub": subject,
             "account": row.account,
             "token_use": "refresh",
             "jti": row.refresh_jti,
             "scope": " ".join(row.scopes),
+            "iss": self._settings.app_name,
             "iat": int(row.issued_at.timestamp()),
+            "nbf": int(row.issued_at.timestamp()),
             "exp": int(row.expires_at.timestamp()),
         }
         if row.tenant_id:
@@ -209,6 +212,12 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
             row.scope_key,
         )
         return None
+
+    @staticmethod
+    def _subject_from_account(account: str) -> str:
+        if account.startswith("user:"):
+            return account
+        return f"service-account:{account}"
 
     def _encode_with_signing_kid(self, payload: dict[str, Any], signing_kid: str) -> str:
         if signing_kid == "legacy-hs256":
