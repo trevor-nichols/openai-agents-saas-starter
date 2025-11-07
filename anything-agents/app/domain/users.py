@@ -1,10 +1,11 @@
-"""Domain-level DTOs and enums for human users."""
+"""Domain-level DTOs, records, and contracts for human users."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Literal
+from typing import Literal, Protocol, Sequence
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, validator
@@ -58,10 +59,109 @@ class UserLoginEventDTO(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+@dataclass(slots=True)
+class PasswordHistoryEntry:
+    user_id: UUID
+    password_hash: str
+    password_pepper_version: str
+    created_at: datetime
+
+
+@dataclass(slots=True)
+class UserRecord:
+    id: UUID
+    email: EmailStr
+    status: UserStatus
+    password_hash: str
+    password_pepper_version: str
+    created_at: datetime
+    updated_at: datetime
+    display_name: str | None
+    memberships: list[TenantMembershipDTO]
+
+
+@dataclass(slots=True)
+class UserCreatePayload:
+    email: EmailStr
+    password_hash: str
+    password_pepper_version: str = "v1"
+    status: UserStatus = UserStatus.ACTIVE
+    tenant_id: UUID | None = None
+    role: str = "member"
+    display_name: str | None = None
+    user_id: UUID | None = None
+
+
+@dataclass(slots=True)
+class AuthenticatedUser:
+    user_id: UUID
+    tenant_id: UUID
+    email: EmailStr
+    role: str
+    scopes: list[str]
+
+
+class UserRepository(Protocol):
+    async def create_user(self, payload: UserCreatePayload) -> UserRecord:
+        ...
+
+    async def update_user_status(self, user_id: UUID, status: UserStatus) -> None:
+        ...
+
+    async def get_user_by_email(self, email: str) -> UserRecord | None:
+        ...
+
+    async def get_user_by_id(self, user_id: UUID) -> UserRecord | None:
+        ...
+
+    async def record_login_event(self, event: UserLoginEventDTO) -> None:
+        ...
+
+    async def list_password_history(self, user_id: UUID, limit: int = 5) -> list[PasswordHistoryEntry]:
+        ...
+
+    async def add_password_history(self, entry: PasswordHistoryEntry) -> None:
+        ...
+
+    async def increment_lockout_counter(self, user_id: UUID, *, ttl_seconds: int) -> int:
+        ...
+
+    async def reset_lockout_counter(self, user_id: UUID) -> None:
+        ...
+
+    async def mark_user_locked(self, user_id: UUID, *, duration_seconds: int) -> None:
+        ...
+
+    async def clear_user_lock(self, user_id: UUID) -> None:
+        ...
+
+    async def is_user_locked(self, user_id: UUID) -> bool:
+        ...
+
+
+class UserRepositoryError(RuntimeError):
+    """Base error for user repository operations."""
+
+
+class UserNotFoundError(UserRepositoryError):
+    """Raised when a user lookup fails."""
+
+
+class PasswordReuseError(UserRepositoryError):
+    """Raised when a new password matches recent history."""
+
+
 __all__ = [
+    "AuthenticatedUser",
+    "PasswordHistoryEntry",
+    "PasswordReuseError",
     "TenantMembershipDTO",
     "UserCreate",
+    "UserCreatePayload",
     "UserLoginEventDTO",
     "UserRead",
+    "UserRecord",
+    "UserRepository",
+    "UserRepositoryError",
     "UserStatus",
 ]

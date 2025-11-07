@@ -1,19 +1,26 @@
-"""Authentication service helpers for service-account issuance."""
+"""Authentication service helpers for service and human accounts."""
 
 from __future__ import annotations
 
 import asyncio
 from collections import deque
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from time import perf_counter
 from typing import Sequence
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import jwt
 
 from app.core.config import get_settings
-from app.core.security import get_token_signer, TokenSignerError
+from app.core.security import (
+    TokenSignerError,
+    TokenVerifierError,
+    get_token_signer,
+    get_token_verifier,
+)
 from app.domain.auth import RefreshTokenRecord, RefreshTokenRepository
+from app.domain.users import AuthenticatedUser
 from app.core.service_accounts import (
     ServiceAccountDefinition,
     ServiceAccountRegistry,
@@ -26,6 +33,14 @@ from app.infrastructure.persistence.auth.repository import (
 )
 from app.observability.logging import log_event
 from app.observability.metrics import observe_service_account_issuance
+from app.services.user_service import (
+    InvalidCredentialsError,
+    TenantContextRequiredError,
+    UserDisabledError,
+    UserLockedError,
+    UserService,
+    get_user_service,
+)
 
 
 class ServiceAccountError(RuntimeError):
@@ -44,6 +59,28 @@ class ServiceAccountCatalogUnavailable(ServiceAccountError):
     """Raised when the service-account catalog cannot be loaded."""
 
 
+class UserAuthenticationError(RuntimeError):
+    """Base class for human authentication failures."""
+
+
+class UserRefreshError(UserAuthenticationError):
+    """Raised when refresh tokens fail validation."""
+
+
+@dataclass(slots=True)
+class UserSessionTokens:
+    access_token: str
+    refresh_token: str
+    expires_at: datetime
+    refresh_expires_at: datetime
+    kid: str
+    refresh_kid: str
+    scopes: list[str]
+    tenant_id: str
+    user_id: str
+    token_type: str = "bearer"
+
+
 class AuthService:
     """Core authentication helper providing service-account token issuance."""
 
@@ -51,6 +88,7 @@ class AuthService:
         self,
         registry: ServiceAccountRegistry | None = None,
         refresh_repository: RefreshTokenRepository | None = None,
+        user_service: UserService | None = None,
     ) -> None:
         if registry is None:
             try:
@@ -62,6 +100,7 @@ class AuthService:
         self._per_account_window: dict[str, deque[datetime]] = {}
         self._global_window: deque[datetime] = deque()
         self._refresh_repo = refresh_repository or get_refresh_token_repository()
+        self._user_service = user_service
 
     async def issue_service_account_refresh_token(
         self,
@@ -230,6 +269,72 @@ class AuthService:
                 )
             raise
 
+    async def login_user(
+        self,
+        *,
+        email: str,
+        password: str,
+        tenant_id: str | None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> UserSessionTokens:
+        service = self._require_user_service()
+        tenant_uuid = self._parse_uuid(tenant_id) if tenant_id else None
+        try:
+            auth_user = await service.authenticate(
+                email=email,
+                password=password,
+                tenant_id=tenant_uuid,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+        except (InvalidCredentialsError, UserLockedError, UserDisabledError, TenantContextRequiredError) as exc:
+            raise UserAuthenticationError(str(exc)) from exc
+        return await self._issue_user_tokens(
+            auth_user,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            reason="login",
+        )
+
+    async def refresh_user_session(
+        self,
+        refresh_token: str,
+        *,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> UserSessionTokens:
+        repo = self._ensure_refresh_repository()
+        payload = self._verify_token(refresh_token)
+        if payload.get("token_use") != "refresh":
+            raise UserRefreshError("Token is not a refresh token.")
+        subject = payload.get("sub")
+        user_id = self._parse_user_subject(subject)
+        tenant_id = payload.get("tenant_id")
+        if not tenant_id:
+            raise UserRefreshError("Refresh token missing tenant identifier.")
+        jti = payload.get("jti")
+        if not jti:
+            raise UserRefreshError("Refresh token missing jti claim.")
+        record = await repo.get_by_jti(jti)
+        if not record:
+            raise UserRefreshError("Refresh token has been revoked or expired.")
+        await repo.revoke(jti, reason="rotated")
+        service = self._require_user_service()
+        tenant_uuid = self._parse_uuid(tenant_id)
+        auth_user = await service.load_active_user(
+            user_id=user_id,
+            tenant_id=tenant_uuid,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        return await self._issue_user_tokens(
+            auth_user,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            reason="refresh",
+        )
+
     def _validate_tenant(
         self, definition: ServiceAccountDefinition, tenant_id: str | None
     ) -> None:
@@ -297,6 +402,124 @@ class AuthService:
             return None
         return self._record_to_response(record)
 
+    async def _issue_user_tokens(
+        self,
+        auth_user: AuthenticatedUser,
+        *,
+        ip_address: str | None,
+        user_agent: str | None,
+        reason: str,
+    ) -> UserSessionTokens:
+        settings = get_settings()
+        self._ensure_refresh_repository()
+        signer = get_token_signer(settings)
+        issued_at = datetime.now(timezone.utc)
+        access_expires = issued_at + timedelta(minutes=settings.access_token_expire_minutes)
+        access_payload = {
+            "sub": f"user:{auth_user.user_id}",
+            "tenant_id": str(auth_user.tenant_id),
+            "roles": [auth_user.role],
+            "scope": " ".join(auth_user.scopes),
+            "token_use": "access",
+            "iss": settings.app_name,
+            "aud": [settings.app_name],
+            "jti": str(uuid4()),
+            "iat": int(issued_at.timestamp()),
+            "nbf": int(issued_at.timestamp()),
+            "exp": int(access_expires.timestamp()),
+        }
+        signed_access = signer.sign(access_payload)
+
+        refresh_ttl = getattr(settings, "auth_refresh_token_ttl_minutes", 43200)
+        refresh_expires = issued_at + timedelta(minutes=refresh_ttl)
+        refresh_payload = {
+            "sub": f"user:{auth_user.user_id}",
+            "tenant_id": str(auth_user.tenant_id),
+            "scope": " ".join(auth_user.scopes),
+            "token_use": "refresh",
+            "iss": settings.app_name,
+            "jti": str(uuid4()),
+            "iat": int(issued_at.timestamp()),
+            "nbf": int(issued_at.timestamp()),
+            "exp": int(refresh_expires.timestamp()),
+            "account": self._user_account_key(auth_user.user_id),
+        }
+        signed_refresh = signer.sign(refresh_payload)
+
+        await self._persist_refresh_token(
+            token=signed_refresh.primary.token,
+            account=self._user_account_key(auth_user.user_id),
+            tenant_id=str(auth_user.tenant_id),
+            scopes=auth_user.scopes,
+            issued_at=issued_at,
+            expires_at=refresh_expires,
+            fingerprint=self._fingerprint(ip_address, user_agent),
+            signing_kid=signed_refresh.primary.kid,
+            jti=refresh_payload["jti"],
+        )
+
+        log_event(
+            "auth.user_session",
+            result="success",
+            reason=reason,
+            user_id=str(auth_user.user_id),
+            tenant_id=str(auth_user.tenant_id),
+        )
+
+        return UserSessionTokens(
+            access_token=signed_access.primary.token,
+            refresh_token=signed_refresh.primary.token,
+            expires_at=access_expires,
+            refresh_expires_at=refresh_expires,
+            kid=signed_access.primary.kid,
+            refresh_kid=signed_refresh.primary.kid,
+            scopes=auth_user.scopes,
+            tenant_id=str(auth_user.tenant_id),
+            user_id=str(auth_user.user_id),
+        )
+
+    def _verify_token(self, token: str) -> dict[str, object]:
+        verifier = get_token_verifier()
+        try:
+            return verifier.verify(token)
+        except TokenVerifierError as exc:
+            raise UserRefreshError("Refresh token verification failed.") from exc
+
+    def _parse_user_subject(self, subject: str | None) -> UUID:
+        if not subject or not subject.startswith("user:"):
+            raise UserRefreshError("Refresh token subject is malformed.")
+        try:
+            return UUID(subject.split("user:", 1)[1])
+        except ValueError as exc:  # pragma: no cover - defensive
+            raise UserRefreshError("Refresh token subject is malformed.") from exc
+
+    def _fingerprint(self, ip_address: str | None, user_agent: str | None) -> str | None:
+        if not ip_address and not user_agent:
+            return None
+        material = f"{ip_address or ''}:{user_agent or ''}"
+        return jwt.utils.base64url_encode(material.encode("utf-8")).decode("utf-8")
+
+    def _user_account_key(self, user_id: UUID) -> str:
+        return f"user:{user_id}"
+
+    def _ensure_refresh_repository(self) -> RefreshTokenRepository:
+        repo = self._refresh_repo or get_refresh_token_repository()
+        if repo is None:
+            raise RuntimeError("Refresh-token repository is not configured.")
+        self._refresh_repo = repo
+        return repo
+
+    def _require_user_service(self) -> UserService:
+        if self._user_service is None:
+            self._user_service = get_user_service()
+        return self._user_service
+
+    def _parse_uuid(self, value: str) -> UUID:
+        try:
+            return UUID(value)
+        except ValueError as exc:  # pragma: no cover - defensive
+            raise UserAuthenticationError("Invalid tenant identifier supplied.") from exc
+
     def _enforce_rate_limits(self, account: str, now: datetime) -> None:
         cutoff = now - timedelta(minutes=1)
 
@@ -345,12 +568,13 @@ class AuthService:
         expires_at: datetime,
         fingerprint: str | None,
         signing_kid: str,
+        jti: str | None = None,
     ) -> None:
         if not self._refresh_repo:
             return
         record = RefreshTokenRecord(
             token=token,
-            jti=self._extract_jti(token),
+            jti=jti or self._extract_jti(token),
             account=account,
             tenant_id=tenant_id,
             scopes=scopes,

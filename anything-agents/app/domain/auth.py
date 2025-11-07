@@ -42,6 +42,9 @@ class RefreshTokenRepository(Protocol):
     ) -> RefreshTokenRecord | None:
         ...
 
+    async def get_by_jti(self, jti: str) -> RefreshTokenRecord | None:
+        ...
+
     async def save(self, record: RefreshTokenRecord) -> None:
         ...
 

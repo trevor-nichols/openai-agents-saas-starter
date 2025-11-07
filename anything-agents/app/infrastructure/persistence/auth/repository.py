@@ -83,6 +83,19 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
         await self._cache.set(record)
         return record
 
+    async def get_by_jti(self, jti: str) -> RefreshTokenRecord | None:
+        async with self._session_factory() as session:
+            result = await session.execute(
+                select(ServiceAccountToken).where(ServiceAccountToken.refresh_jti == jti)
+            )
+            row: ServiceAccountToken | None = result.scalar_one_or_none()
+
+        if not row:
+            return None
+        if row.revoked_at is not None or row.expires_at <= datetime.now(timezone.utc):
+            return None
+        return self._row_to_record(row)
+
     async def save(self, record: RefreshTokenRecord) -> None:
         hashed_token = hash_refresh_token(record.token, pepper=self._pepper)
         async with self._session_factory() as session:

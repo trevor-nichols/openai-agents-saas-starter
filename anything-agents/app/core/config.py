@@ -157,6 +157,11 @@ class Settings(BaseSettings):
         description="Pepper prepended to human passwords prior to hashing.",
         alias="AUTH_PASSWORD_PEPPER",
     )
+    auth_refresh_token_ttl_minutes: int = Field(
+        default=43200,
+        description="Default refresh token lifetime for human users (minutes).",
+        alias="AUTH_REFRESH_TOKEN_TTL_MINUTES",
+    )
     auth_password_history_count: int = Field(
         default=5,
         description="Number of historical password hashes retained per user.",
