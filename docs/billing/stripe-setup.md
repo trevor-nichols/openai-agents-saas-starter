@@ -47,6 +47,20 @@ pnpm stripe:setup
 
 The assistant guides you through Stripe CLI login, optional `make dev-up`, Postgres connectivity checks, and then writes the required env vars while preserving any existing values. See `docs/scripts/stripe-setup.md` for detailed walkthroughs and sample output.
 
+## Webhook configuration
+
+1. **Local development** – Start the Stripe listener and forward events into the API:
+
+   ```bash
+   stripe listen --forward-to http://localhost:8000/webhooks/stripe
+   ```
+
+   Copy the printed `whsec_...` secret into `.env.local` (`STRIPE_WEBHOOK_SECRET`). The CLI can rotate secrets at any time, so re-run the helper or update the env file whenever you restart `stripe listen`.
+
+2. **Hosted environments** – Create a webhook endpoint in the Stripe Dashboard that points to `https://<your-domain>/webhooks/stripe` and subscribe to the billing-focused events you care about (`customer.subscription.*`, `invoice.*`, `charge.*`). The backend now persists *every* event to the `stripe_events` table before attempting to process it.
+
+3. **Observability** – Each event is labeled with its processing outcome (`received`, `processed`, `failed`) plus any error message. See `docs/billing/stripe-runbook.md` for replay guidance and operational checklists.
+
 ## Stripe SDK usage
 
 The FastAPI backend now calls Stripe directly from `app/infrastructure/stripe/client.py` using the official `stripe` Python package. Every billing API request (`/start`, `/update`, `/usage`) flows through this client, which:

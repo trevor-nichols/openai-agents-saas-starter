@@ -15,11 +15,16 @@ from app.core.config import Settings, get_settings
 from app.infrastructure.db import dispose_engine, get_async_sessionmaker, init_engine
 from app.infrastructure.persistence.billing import PostgresBillingRepository
 from app.infrastructure.persistence.conversations.postgres import PostgresConversationRepository
+from app.infrastructure.persistence.stripe.repository import (
+    StripeEventRepository,
+    configure_stripe_event_repository,
+)
 from app.infrastructure.security.vault_kv import configure_vault_secret_manager
 from app.middleware.logging import LoggingMiddleware
 from app.presentation import health as health_routes
 from app.presentation import metrics as metrics_routes
 from app.presentation import well_known as well_known_routes
+from app.presentation.webhooks import stripe as stripe_webhook
 from app.services.billing_service import billing_service
 from app.services.payment_gateway import stripe_gateway
 from app.services.conversation_service import conversation_service
@@ -51,6 +56,8 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     configure_vault_secret_manager(settings)
 
+    session_factory = None
+
     if settings.enable_billing:
         _ensure_billing_prerequisites(settings)
         if settings.use_in_memory_repo:
@@ -66,8 +73,10 @@ async def lifespan(app: FastAPI):
         conversation_service.set_repository(postgres_repository)
 
     if settings.enable_billing:
-        session_factory = get_async_sessionmaker()
+        if session_factory is None:
+            session_factory = get_async_sessionmaker()
         billing_service.set_repository(PostgresBillingRepository(session_factory))
+        configure_stripe_event_repository(StripeEventRepository(session_factory))
     try:
         yield
     finally:
@@ -135,6 +144,8 @@ def create_application() -> FastAPI:
     app.include_router(health_routes.router, tags=["health"])
     app.include_router(well_known_routes.router)
     app.include_router(metrics_routes.router)
+    if settings.enable_billing:
+        app.include_router(stripe_webhook.router)
 
     # Versioned API surface
     app.include_router(api_router, prefix="/api", tags=["api"])

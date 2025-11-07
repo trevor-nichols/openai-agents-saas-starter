@@ -120,6 +120,13 @@ STRIPE_API_LATENCY_SECONDS = Histogram(
     registry=REGISTRY,
 )
 
+STRIPE_WEBHOOK_EVENTS_TOTAL = Counter(
+    "stripe_webhook_events_total",
+    "Count of Stripe webhook events segmented by type and result.",
+    ("event_type", "result"),
+    registry=REGISTRY,
+)
+
 
 def observe_jwt_signing(*, result: str, token_use: str | None, duration_seconds: float) -> None:
     label = _sanitize_token_use(token_use)
@@ -174,3 +181,7 @@ def record_nonce_cache_result(*, hit: bool) -> None:
 def observe_stripe_api_call(*, operation: str, result: str, duration_seconds: float) -> None:
     STRIPE_API_REQUESTS_TOTAL.labels(operation=operation, result=result).inc()
     STRIPE_API_LATENCY_SECONDS.labels(operation=operation, result=result).observe(max(duration_seconds, 0.0))
+
+
+def observe_stripe_webhook_event(*, event_type: str, result: str) -> None:
+    STRIPE_WEBHOOK_EVENTS_TOTAL.labels(event_type=event_type or "unknown", result=result).inc()
