@@ -7,6 +7,7 @@ This document outlines the operator workflows for receiving, inspecting, and rep
 - Endpoint: `POST /webhooks/stripe` (non-versioned FastAPI route).
 - Authentication: Stripe signature verification using `STRIPE_WEBHOOK_SECRET`.
 - Storage: Every event (handled or not) is persisted in the `stripe_events` table with its raw payload, tenant hint, timestamps, and processing outcome.
+- Streaming: When `ENABLE_BILLING_STREAM=true`, processed events are normalized and pushed over Redis pub/sub so `/api/v1/billing/stream` (and the frontend dashboard) can reflect status changes in real time.
 
 ### Metrics & Logs
 

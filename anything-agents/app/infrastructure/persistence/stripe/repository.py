@@ -63,19 +63,40 @@ class StripeEventRepository:
         *,
         status: StripeEventStatus,
         error: str | None = None,
-    ) -> None:
+    ) -> datetime:
+        processed_at = datetime.now(timezone.utc)
         async with self._session_factory() as session:
             await session.execute(
                 update(StripeEvent)
                 .where(StripeEvent.id == event_id)
                 .values(
-                    processed_at=datetime.now(timezone.utc),
+                    processed_at=processed_at,
                     processing_outcome=status.value,
                     processing_error=error,
                     processing_attempts=StripeEvent.processing_attempts + 1,
                 )
             )
             await session.commit()
+        return processed_at
+
+    async def list_processed_events_since(
+        self,
+        *,
+        processed_after: datetime | None,
+        limit: int = 500,
+    ) -> list[StripeEvent]:
+        async with self._session_factory() as session:
+            stmt = (
+                select(StripeEvent)
+                .where(StripeEvent.processing_outcome == StripeEventStatus.PROCESSED.value)
+                .where(StripeEvent.processed_at.is_not(None))
+                .order_by(StripeEvent.processed_at)
+                .limit(limit)
+            )
+            if processed_after is not None:
+                stmt = stmt.where(StripeEvent.processed_at > processed_after)
+            result = await session.execute(stmt)
+            return list(result.scalars())
 
 
 _stripe_event_repository: StripeEventRepository | None = None

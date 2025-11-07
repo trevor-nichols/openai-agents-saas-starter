@@ -12,6 +12,8 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from app.api.errors import register_exception_handlers
 from app.api.router import api_router
 from app.core.config import Settings, get_settings
+from redis.asyncio import Redis
+
 from app.infrastructure.db import dispose_engine, get_async_sessionmaker, init_engine
 from app.infrastructure.persistence.billing import PostgresBillingRepository
 from app.infrastructure.persistence.conversations.postgres import PostgresConversationRepository
@@ -26,8 +28,9 @@ from app.presentation import metrics as metrics_routes
 from app.presentation import well_known as well_known_routes
 from app.presentation.webhooks import stripe as stripe_webhook
 from app.services.billing_service import billing_service
-from app.services.payment_gateway import stripe_gateway
+from app.services.billing_events import RedisBillingEventBackend, billing_events_service
 from app.services.conversation_service import conversation_service
+from app.services.payment_gateway import stripe_gateway
 
 # =============================================================================
 # LIFESPAN EVENTS
@@ -57,6 +60,8 @@ async def lifespan(app: FastAPI):
     configure_vault_secret_manager(settings)
 
     session_factory = None
+    stripe_repo: StripeEventRepository | None = None
+    redis_backend_configured = False
 
     if settings.enable_billing:
         _ensure_billing_prerequisites(settings)
@@ -76,10 +81,22 @@ async def lifespan(app: FastAPI):
         if session_factory is None:
             session_factory = get_async_sessionmaker()
         billing_service.set_repository(PostgresBillingRepository(session_factory))
-        configure_stripe_event_repository(StripeEventRepository(session_factory))
+        stripe_repo = StripeEventRepository(session_factory)
+        configure_stripe_event_repository(stripe_repo)
+        if settings.enable_billing_stream:
+            redis_url = settings.billing_events_redis_url or settings.redis_url
+            if not redis_url:
+                raise RuntimeError("ENABLE_BILLING_STREAM requires BILLING_EVENTS_REDIS_URL or REDIS_URL")
+            redis_client = Redis.from_url(redis_url, encoding="utf-8", decode_responses=False)
+            backend = RedisBillingEventBackend(redis_client)
+            billing_events_service.configure(backend=backend, repository=stripe_repo)
+            await billing_events_service.startup()
+            redis_backend_configured = True
     try:
         yield
     finally:
+        if redis_backend_configured:
+            await billing_events_service.shutdown()
         if not settings.use_in_memory_repo:
             await dispose_engine()
 
@@ -144,6 +161,8 @@ def create_application() -> FastAPI:
     app.include_router(health_routes.router, tags=["health"])
     app.include_router(well_known_routes.router)
     app.include_router(metrics_routes.router)
+    if settings.enable_billing:
+        app.include_router(stripe_webhook.router)
     if settings.enable_billing:
         app.include_router(stripe_webhook.router)
 

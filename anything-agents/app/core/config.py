@@ -252,9 +252,20 @@ class Settings(BaseSettings):
         default=False,
         description="Expose billing features and APIs once subscriptions are implemented",
     )
+    enable_billing_stream: bool = Field(
+        default=False,
+        description="Enable real-time billing event streaming endpoints",
+        alias="ENABLE_BILLING_STREAM",
+    )
     auto_run_migrations: bool = Field(
         default=False,
         description="Automatically run Alembic migrations on startup (dev convenience)",
+    )
+
+    billing_events_redis_url: str | None = Field(
+        default=None,
+        description="Redis URL used for billing event pub/sub (defaults to REDIS_URL when unset)",
+        alias="BILLING_EVENTS_REDIS_URL",
     )
 
     # =============================================================================

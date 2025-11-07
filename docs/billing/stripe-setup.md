@@ -16,6 +16,13 @@ This guide explains the minimum configuration required to turn on billing with S
 | `STRIPE_WEBHOOK_SECRET` | Signing secret used to verify Stripe webhooks (starts with `whsec_`). | Stripe Dashboard → Developers → Webhooks (or `stripe listen --print-secret`). |
 | `STRIPE_PRODUCT_PRICE_MAP` | Mapping of billing plan codes (e.g., `starter`, `pro`) to Stripe price IDs. Accepts JSON or comma-delimited `plan=price` pairs. | Create products/prices in Stripe, copy the resulting `price_...` identifiers. |
 
+Optional but recommended for live dashboards:
+
+| Variable | Description |
+| --- | --- |
+| `ENABLE_BILLING_STREAM` | Flip to `true` to expose the `/api/v1/billing/stream` SSE endpoint. Requires Redis. |
+| `BILLING_EVENTS_REDIS_URL` | Redis connection string used for billing pub/sub. Defaults to `REDIS_URL` when omitted. |
+
 Add the variables plus the existing toggles to `.env.local`:
 
 ```env
@@ -60,6 +67,8 @@ The assistant guides you through Stripe CLI login, optional `make dev-up`, Postg
 2. **Hosted environments** – Create a webhook endpoint in the Stripe Dashboard that points to `https://<your-domain>/webhooks/stripe` and subscribe to the billing-focused events you care about (`customer.subscription.*`, `invoice.*`, `charge.*`). The backend now persists *every* event to the `stripe_events` table before attempting to process it.
 
 3. **Observability** – Each event is labeled with its processing outcome (`received`, `processed`, `failed`) plus any error message. See `docs/billing/stripe-runbook.md` for replay guidance and operational checklists.
+
+4. **Real-time streaming** – When `ENABLE_BILLING_STREAM=true`, the backend publishes normalized billing updates to Redis and serves them via `/api/v1/billing/stream` (SSE). The Next.js dashboard consumes this feed to render live status bubbles in the Billing Activity panel.
 
 ## Stripe SDK usage
 
