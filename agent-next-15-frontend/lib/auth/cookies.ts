@@ -1,0 +1,100 @@
+'use server';
+
+import { cookies } from 'next/headers';
+
+import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE, SESSION_META_COOKIE } from '../config';
+import type { UserSessionTokens } from '../types/auth';
+
+const SECURE_COOKIE_BASE = {
+  httpOnly: true,
+  sameSite: 'lax' as const,
+  secure: true,
+  path: '/',
+};
+
+
+const META_COOKIE_BASE = {
+  httpOnly: false,
+  sameSite: 'lax' as const,
+  secure: true,
+  path: '/',
+};
+
+export function persistSessionCookies(tokens: UserSessionTokens): void {
+  const store = cookies();
+
+  store.set({
+    ...SECURE_COOKIE_BASE,
+    name: ACCESS_TOKEN_COOKIE,
+    value: tokens.access_token,
+    expires: new Date(tokens.expires_at),
+  });
+
+  store.set({
+    ...SECURE_COOKIE_BASE,
+    name: REFRESH_TOKEN_COOKIE,
+    value: tokens.refresh_token,
+    expires: new Date(tokens.refresh_expires_at),
+    sameSite: 'strict',
+  });
+
+  const metaPayload = {
+    expiresAt: tokens.expires_at,
+    refreshExpiresAt: tokens.refresh_expires_at,
+    userId: tokens.user_id,
+    tenantId: tokens.tenant_id,
+    scopes: tokens.scopes,
+  };
+
+  store.set({
+    ...META_COOKIE_BASE,
+    name: SESSION_META_COOKIE,
+    value: Buffer.from(JSON.stringify(metaPayload)).toString('base64url'),
+    expires: new Date(tokens.refresh_expires_at),
+  });
+}
+
+export function clearSessionCookies(): void {
+  const store = cookies();
+  const names = [ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE, SESSION_META_COOKIE];
+  names.forEach((name) => {
+    const base =
+      name === SESSION_META_COOKIE
+        ? META_COOKIE_BASE
+        : SECURE_COOKIE_BASE;
+    store.set({
+      name,
+      value: '',
+      ...base,
+      expires: new Date(0),
+    });
+  });
+}
+
+export function getAccessTokenFromCookies(): string | null {
+  const token = cookies().get(ACCESS_TOKEN_COOKIE);
+  return token?.value ?? null;
+}
+
+export function getRefreshTokenFromCookies(): string | null {
+  const token = cookies().get(REFRESH_TOKEN_COOKIE);
+  return token?.value ?? null;
+}
+
+export function getSessionMetaFromCookies(): {
+  expiresAt: string;
+  refreshExpiresAt: string;
+  userId: string;
+  tenantId: string;
+  scopes: string[];
+} | null {
+  const raw = cookies().get(SESSION_META_COOKIE)?.value;
+  if (!raw) return null;
+  try {
+    const decoded = Buffer.from(raw, 'base64url').toString('utf-8');
+    return JSON.parse(decoded);
+  } catch (error) {
+    console.warn('[auth] Failed to parse session meta cookie', error);
+    return null;
+  }
+}
