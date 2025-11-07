@@ -21,6 +21,7 @@ from app.presentation import health as health_routes
 from app.presentation import metrics as metrics_routes
 from app.presentation import well_known as well_known_routes
 from app.services.billing_service import billing_service
+from app.services.payment_gateway import stripe_gateway
 from app.services.conversation_service import conversation_service
 
 # =============================================================================
@@ -56,6 +57,7 @@ async def lifespan(app: FastAPI):
             raise RuntimeError(
                 "ENABLE_BILLING requires Postgres persistence. Set USE_IN_MEMORY_REPO=false."
             )
+        billing_service.set_gateway(stripe_gateway)
 
     if not settings.use_in_memory_repo:
         await init_engine(run_migrations=settings.auto_run_migrations)

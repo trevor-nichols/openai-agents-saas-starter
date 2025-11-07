@@ -105,6 +105,21 @@ NONCE_CACHE_MISSES_TOTAL = Counter(
     registry=REGISTRY,
 )
 
+STRIPE_API_REQUESTS_TOTAL = Counter(
+    "stripe_api_requests_total",
+    "Count of Stripe API requests segmented by operation and result.",
+    ("operation", "result"),
+    registry=REGISTRY,
+)
+
+STRIPE_API_LATENCY_SECONDS = Histogram(
+    "stripe_api_latency_seconds",
+    "Latency histogram for Stripe API calls segmented by operation and result.",
+    ("operation", "result"),
+    buckets=_LATENCY_BUCKETS,
+    registry=REGISTRY,
+)
+
 
 def observe_jwt_signing(*, result: str, token_use: str | None, duration_seconds: float) -> None:
     label = _sanitize_token_use(token_use)
@@ -154,3 +169,8 @@ def record_nonce_cache_result(*, hit: bool) -> None:
         NONCE_CACHE_HITS_TOTAL.inc()
     else:
         NONCE_CACHE_MISSES_TOTAL.inc()
+
+
+def observe_stripe_api_call(*, operation: str, result: str, duration_seconds: float) -> None:
+    STRIPE_API_REQUESTS_TOTAL.labels(operation=operation, result=result).inc()
+    STRIPE_API_LATENCY_SECONDS.labels(operation=operation, result=result).observe(max(duration_seconds, 0.0))

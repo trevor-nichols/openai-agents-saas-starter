@@ -5,7 +5,7 @@ This guide explains the minimum configuration required to turn on billing with S
 ## Prerequisites
 
 1. **Durable storage** – Billing requires Postgres. Ensure `USE_IN_MEMORY_REPO=false` and provide a valid `DATABASE_URL`. The Docker helper `make dev-up` launches Postgres + Redis with the correct defaults sourced from `.env.compose` and your `.env.local`.
-2. **Stripe account access** – You need permission to view the project in the Stripe Dashboard so you can create products/prices and view API/webhook keys.
+2. **Stripe account access** – You need permission to view the project in the Stripe Dashboard so you can create products/prices and view API/webhook keys. The backend talks directly to Stripe via the official Python SDK, so the secret key you provide must have customer/subscription/usage write scope (test mode keys are fine locally).
 3. **Local env files** – Never commit secrets. Copy `.env.example` to `.env.local` and keep your Stripe credentials there (gitignored).
 
 ## Required environment variables
@@ -46,3 +46,13 @@ pnpm stripe:setup
 ```
 
 The assistant guides you through Stripe CLI login, optional `make dev-up`, Postgres connectivity checks, and then writes the required env vars while preserving any existing values. See `docs/scripts/stripe-setup.md` for detailed walkthroughs and sample output.
+
+## Stripe SDK usage
+
+The FastAPI backend now calls Stripe directly from `app/infrastructure/stripe/client.py` using the official `stripe` Python package. Every billing API request (`/start`, `/update`, `/usage`) flows through this client, which:
+
+- Injects `STRIPE_SECRET_KEY` for all calls.
+- Looks up plan codes via `STRIPE_PRODUCT_PRICE_MAP` and provisions real customers/subscriptions.
+- Records metered usage with Stripe’s Usage Records API, reusing any idempotency key you pass to `/usage` (or generating one when omitted).
+
+Because of this, local environments must be able to reach `api.stripe.com`, and the provided key must have permission to manage customers, subscriptions, subscription items, and usage records in the relevant mode (test vs. live).

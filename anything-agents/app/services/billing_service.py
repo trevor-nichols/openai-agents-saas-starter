@@ -7,7 +7,11 @@ from typing import Optional
 
 from app.domain.billing import BillingPlan, BillingRepository, TenantSubscription
 from app.infrastructure.persistence.billing.in_memory import InMemoryBillingRepository
-from app.services.payment_gateway import PaymentGateway, stripe_gateway
+from app.services.payment_gateway import (
+    PaymentGateway,
+    PaymentGatewayError,
+    stripe_gateway,
+)
 
 
 class BillingError(Exception):
@@ -28,6 +32,10 @@ class SubscriptionStateError(BillingError):
 
 class InvalidTenantIdentifierError(BillingError):
     """Raised when the provided tenant identifier is not valid for persistence."""
+
+
+class PaymentProviderError(BillingError):
+    """Raised when the payment gateway rejects a request."""
 
 
 class BillingService:
@@ -67,13 +75,16 @@ class BillingService:
         seat_count: int | None = None,
     ) -> TenantSubscription:
         plan = await self._ensure_plan_exists(plan_code)
-        processor_payload = await self._gateway.start_subscription(
-            tenant_id=tenant_id,
-            plan_code=plan_code,
-            billing_email=billing_email,
-            auto_renew=auto_renew,
-            seat_count=seat_count,
-        )
+        try:
+            processor_payload = await self._gateway.start_subscription(
+                tenant_id=tenant_id,
+                plan_code=plan_code,
+                billing_email=billing_email,
+                auto_renew=auto_renew,
+                seat_count=seat_count,
+            )
+        except PaymentGatewayError as exc:
+            raise PaymentProviderError(str(exc)) from exc
 
         subscription = TenantSubscription(
             tenant_id=tenant_id,
@@ -110,10 +121,13 @@ class BillingService:
         if not subscription.processor_subscription_id:
             raise SubscriptionStateError("Subscription is missing processor identifier.")
 
-        await self._gateway.cancel_subscription(
-            subscription.processor_subscription_id,
-            cancel_at_period_end=cancel_at_period_end,
-        )
+        try:
+            await self._gateway.cancel_subscription(
+                subscription.processor_subscription_id,
+                cancel_at_period_end=cancel_at_period_end,
+            )
+        except PaymentGatewayError as exc:
+            raise PaymentProviderError(str(exc)) from exc
 
         if cancel_at_period_end:
             subscription.cancel_at = subscription.current_period_end
@@ -144,14 +158,17 @@ class BillingService:
         if not subscription.processor_subscription_id:
             raise SubscriptionStateError("Subscription is missing processor identifier.")
 
-        await self._gateway.record_usage(
-            subscription.processor_subscription_id,
-            feature_key=feature_key,
-            quantity=quantity,
-            idempotency_key=idempotency_key,
-            period_start=period_start,
-            period_end=period_end,
-        )
+        try:
+            await self._gateway.record_usage(
+                subscription.processor_subscription_id,
+                feature_key=feature_key,
+                quantity=quantity,
+                idempotency_key=idempotency_key,
+                period_start=period_start,
+                period_end=period_end,
+            )
+        except PaymentGatewayError as exc:
+            raise PaymentProviderError(str(exc)) from exc
 
         utc_now = datetime.now(timezone.utc)
         start = _to_utc(period_start) if period_start else utc_now
@@ -202,12 +219,15 @@ class BillingService:
         subscription = await self._require_subscription(tenant_id)
 
         if subscription.processor_subscription_id:
-            await self._gateway.update_subscription(
-                subscription.processor_subscription_id,
-                auto_renew=auto_renew,
-                seat_count=seat_count,
-                billing_email=billing_email,
-            )
+            try:
+                await self._gateway.update_subscription(
+                    subscription.processor_subscription_id,
+                    auto_renew=auto_renew,
+                    seat_count=seat_count,
+                    billing_email=billing_email,
+                )
+            except PaymentGatewayError as exc:
+                raise PaymentProviderError(str(exc)) from exc
 
         try:
             updated = await self._repository.update_subscription(
