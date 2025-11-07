@@ -407,6 +407,65 @@ def _validate_claims_against_request(
             detail="Vault payload tenant mismatch.",
         )
 
+    signed_scopes = _normalize_scope_list(
+        claims.get("scopes"),
+        field_name="Vault payload scopes",
+        error_status=status.HTTP_401_UNAUTHORIZED,
+    )
+    requested_scopes = _normalize_scope_list(
+        request_payload.scopes,
+        field_name="Request scopes",
+        error_status=status.HTTP_400_BAD_REQUEST,
+    )
+    if set(requested_scopes) != set(signed_scopes):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Vault payload scopes mismatch.",
+        )
+    # Normalize ordering to the signed payload to prevent scope reordering attacks downstream.
+    request_payload.scopes = signed_scopes
+
+    signed_ttl = claims.get("lifetime_minutes")
+    request_ttl = request_payload.lifetime_minutes
+    if request_ttl is not None and signed_ttl is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Vault payload missing lifetime_minutes.",
+        )
+    if signed_ttl is not None:
+        ttl_minutes = _coerce_positive_int(
+            signed_ttl,
+            field_name="Vault payload lifetime_minutes",
+            error_status=status.HTTP_401_UNAUTHORIZED,
+        )
+        if request_ttl is None:
+            request_payload.lifetime_minutes = ttl_minutes
+        elif request_ttl != ttl_minutes:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Vault payload lifetime_minutes mismatch.",
+            )
+
+    signed_fingerprint = claims.get("fingerprint")
+    request_fingerprint = request_payload.fingerprint
+    if request_fingerprint and not signed_fingerprint:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Vault payload missing fingerprint.",
+        )
+    if signed_fingerprint is not None:
+        if not isinstance(signed_fingerprint, str) or not signed_fingerprint.strip():
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Vault payload fingerprint invalid.",
+            )
+        if request_fingerprint and request_fingerprint != signed_fingerprint:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Vault payload fingerprint mismatch.",
+            )
+        request_payload.fingerprint = signed_fingerprint
+
 
 def _validate_request_against_claims(
     claims: dict[str, Any],
@@ -477,3 +536,33 @@ def _validate_claims_shape(claims: dict[str, Any]) -> None:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Vault payload scopes must be a list.",
         )
+
+
+def _normalize_scope_list(
+    scopes: Any,
+    *,
+    field_name: str,
+    error_status: int,
+) -> list[str]:
+    if not isinstance(scopes, list):
+        raise HTTPException(status_code=error_status, detail=f"{field_name} must be an array of strings.")
+
+    normalized: list[str] = []
+    for scope in scopes:
+        if not isinstance(scope, str):
+            raise HTTPException(status_code=error_status, detail=f"{field_name} must contain strings only.")
+        trimmed = scope.strip()
+        if not trimmed:
+            raise HTTPException(status_code=error_status, detail=f"{field_name} cannot contain empty scopes.")
+        if trimmed not in normalized:
+            normalized.append(trimmed)
+
+    if not normalized:
+        raise HTTPException(status_code=error_status, detail=f"{field_name} must include at least one scope.")
+    return normalized
+
+
+def _coerce_positive_int(value: Any, *, field_name: str, error_status: int) -> int:
+    if not isinstance(value, int) or value <= 0:
+        raise HTTPException(status_code=error_status, detail=f"{field_name} must be a positive integer.")
+    return value

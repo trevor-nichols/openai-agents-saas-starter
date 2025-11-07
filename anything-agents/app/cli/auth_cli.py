@@ -146,6 +146,10 @@ def _build_vault_envelope(request_payload: dict[str, Any]) -> dict[str, Any]:
     if fingerprint:
         envelope["fingerprint"] = fingerprint
 
+    lifetime = request_payload.get("lifetime_minutes")
+    if lifetime is not None:
+        envelope["lifetime_minutes"] = lifetime
+
     return envelope
 
 
