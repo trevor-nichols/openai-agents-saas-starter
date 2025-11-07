@@ -11,7 +11,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.errors import register_exception_handlers
 from app.api.router import api_router
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 from app.infrastructure.db import dispose_engine, get_async_sessionmaker, init_engine
 from app.infrastructure.persistence.billing import PostgresBillingRepository
 from app.infrastructure.persistence.conversations.postgres import PostgresConversationRepository
@@ -27,11 +27,35 @@ from app.services.conversation_service import conversation_service
 # LIFESPAN EVENTS
 # =============================================================================
 
+def _ensure_billing_prerequisites(settings: Settings) -> None:
+    missing: list[str] = []
+    if not settings.stripe_secret_key:
+        missing.append("STRIPE_SECRET_KEY")
+    if not settings.stripe_webhook_secret:
+        missing.append("STRIPE_WEBHOOK_SECRET")
+    if not settings.stripe_product_price_map:
+        missing.append("STRIPE_PRODUCT_PRICE_MAP")
+
+    if missing:
+        missing_envs = ", ".join(missing)
+        raise RuntimeError(
+            "ENABLE_BILLING=true requires Stripe configuration. "
+            f"Set {missing_envs} (see docs/billing/stripe-setup.md)."
+        )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Handle application lifespan events."""
     settings = get_settings()
     configure_vault_secret_manager(settings)
+
+    if settings.enable_billing:
+        _ensure_billing_prerequisites(settings)
+        if settings.use_in_memory_repo:
+            raise RuntimeError(
+                "ENABLE_BILLING requires Postgres persistence. Set USE_IN_MEMORY_REPO=false."
+            )
 
     if not settings.use_in_memory_repo:
         await init_engine(run_migrations=settings.auto_run_migrations)
@@ -40,10 +64,6 @@ async def lifespan(app: FastAPI):
         conversation_service.set_repository(postgres_repository)
 
     if settings.enable_billing:
-        if settings.use_in_memory_repo:
-            raise RuntimeError(
-                "ENABLE_BILLING requires Postgres persistence. Set USE_IN_MEMORY_REPO=false."
-            )
         session_factory = get_async_sessionmaker()
         billing_service.set_repository(PostgresBillingRepository(session_factory))
     try:

@@ -190,6 +190,10 @@ curl -X POST "http://localhost:8000/api/v1/billing/tenants/tenant-123/usage" \
      -d '{"feature_key": "messages", "quantity": 120, "idempotency_key": "messages-2025-11-06"}'
 ```
 
+#### Stripe configuration
+
+Billing routes now require Stripe credentials whenever `ENABLE_BILLING=true`. Set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PRODUCT_PRICE_MAP` (JSON or comma-separated `plan=price` pairs) inside `.env.local`, keep `USE_IN_MEMORY_REPO=false`, and restart the API. The guard fails fast if any variable is missing. See `docs/billing/stripe-setup.md` for the full checklist; the interactive helper from STRIPE-02 is coming soon.
+
 ## 🤖 Agent Types
 
 ### Current Agents

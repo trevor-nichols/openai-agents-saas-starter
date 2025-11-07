@@ -3,9 +3,10 @@
 # Dependencies: pydantic-settings, python-dotenv
 # Used by: main.py and other modules requiring configuration
 
+import json
 from functools import lru_cache
 
-from pydantic import Field, field_validator
+from pydantic import Field, ValidationInfo, field_validator
 
 
 from pydantic_settings import BaseSettings
@@ -255,6 +256,29 @@ class Settings(BaseSettings):
         default=False,
         description="Automatically run Alembic migrations on startup (dev convenience)",
     )
+
+    # =============================================================================
+    # BILLING / STRIPE SETTINGS
+    # =============================================================================
+
+    stripe_secret_key: str | None = Field(
+        default=None,
+        description="Stripe secret API key (sk_live_*/sk_test_*).",
+        alias="STRIPE_SECRET_KEY",
+    )
+    stripe_webhook_secret: str | None = Field(
+        default=None,
+        description="Stripe webhook signing secret (whsec_*).",
+        alias="STRIPE_WEBHOOK_SECRET",
+    )
+    stripe_product_price_map: dict[str, str] = Field(
+        default_factory=dict,
+        description=(
+            "Mapping of billing plan codes to Stripe price IDs. Provide as JSON or "
+            "comma-delimited entries such as 'starter=price_123,pro=price_456'."
+        ),
+        alias="STRIPE_PRODUCT_PRICE_MAP",
+    )
     
     # =============================================================================
     # HELPER METHODS
@@ -327,6 +351,61 @@ class Settings(BaseSettings):
         if value <= 0:
             raise ValueError("Configuration value must be greater than zero.")
         return value
+
+    @field_validator("stripe_secret_key", "stripe_webhook_secret")
+    @classmethod
+    def _validate_stripe_keys(cls, value: str | None, info: ValidationInfo):
+        if value is None:
+            return None
+        trimmed = value.strip()
+        if not trimmed:
+            raise ValueError(f"{info.field_name} must be a non-empty string when set.")
+        return trimmed
+
+    @field_validator("stripe_product_price_map", mode="before")
+    @classmethod
+    def _parse_price_map(cls, value):  # type: ignore[override]
+        if value is None or value == {}:
+            return {}
+        if isinstance(value, dict):
+            return value
+
+        if isinstance(value, str):
+            text = value.strip()
+            if not text:
+                return {}
+            try:
+                parsed = json.loads(text)
+            except json.JSONDecodeError:
+                parsed = {}
+                for item in text.split(","):
+                    entry = item.strip()
+                    if not entry:
+                        continue
+                    if "=" in entry:
+                        key, price = entry.split("=", 1)
+                    elif ":" in entry:
+                        key, price = entry.split(":", 1)
+                    else:
+                        raise ValueError(
+                            "Invalid STRIPE_PRODUCT_PRICE_MAP entry. Use key=value or JSON dict."
+                        )
+                    parsed[key] = price
+            return parsed
+
+        raise ValueError("STRIPE_PRODUCT_PRICE_MAP must be a mapping, JSON string, or comma-delimited list.")
+
+    @field_validator("stripe_product_price_map")
+    @classmethod
+    def _validate_price_map(cls, value: dict[str, str]) -> dict[str, str]:
+        cleaned: dict[str, str] = {}
+        for plan_code, price_id in value.items():
+            plan = str(plan_code).strip()
+            price = str(price_id).strip()
+            if not plan or not price:
+                raise ValueError("Stripe product price map entries require non-empty plan codes and price IDs.")
+            cleaned[plan] = price
+        return cleaned
 
 # =============================================================================
 # SETTINGS INSTANCE
