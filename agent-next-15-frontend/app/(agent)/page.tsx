@@ -15,7 +15,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { ConversationListItem } from './actions';
+import type { ConversationListItem } from '@/types/conversations';
 import { streamChat } from '@/lib/api/streaming';
 import ChatInterface, { ChatMessage } from '../../components/agent/ChatInterface';
 import ConversationSidebar from '../../components/agent/ConversationSidebar';

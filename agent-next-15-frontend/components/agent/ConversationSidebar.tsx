@@ -12,8 +12,9 @@
 
 import React from 'react';
 
+import type { ConversationListItem } from '@/types/conversations';
+
 import { LogoutButton } from '../auth/LogoutButton';
-import { ConversationListItem } from '../../app/(agent)/actions'; // Assuming ConversationListItem is exported from actions
 
 interface ConversationSidebarProps {
   conversationList: ConversationListItem[];

@@ -230,8 +230,14 @@ def require_vault_signature(header_value: str, vault_payload: str | None) -> str
         )
 
     credential = header_value[7:].strip()
+    verification_enabled = _vault_verification_enabled()
 
     if credential.startswith("vault:"):
+        if not verification_enabled:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Vault verification disabled; cannot accept vault credentials.",
+            )
         if not vault_payload:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -239,7 +245,7 @@ def require_vault_signature(header_value: str, vault_payload: str | None) -> str
             )
         return "vault"
 
-    if credential == "dev-local" and not _vault_verification_enabled():
+    if credential == "dev-local" and not verification_enabled:
         # Local/testing escape hatch when Vault integration is disabled.
         return "dev-local"
 
@@ -265,8 +271,13 @@ async def _validate_vault_payload(
     _validate_claims_shape(claims)
     _validate_claims_against_request(claims, request_payload)
 
-    if _vault_verification_enabled():
-        await _verify_vault_signature(authorization, vault_payload)
+    if not _vault_verification_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Vault verification disabled; cannot accept vault credentials.",
+        )
+
+    await _verify_vault_signature(authorization, vault_payload)
 
     await _enforce_nonce(claims)
     _enforce_timestamps(claims)

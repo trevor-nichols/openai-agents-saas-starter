@@ -158,3 +158,31 @@ def test_service_account_issue_returns_eddsa_token(monkeypatch: pytest.MonkeyPat
 
     client.close()
     config_module.get_settings.cache_clear()
+
+
+def test_service_account_issue_rejects_vault_credential_when_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("VAULT_VERIFY_ENABLED", "false")
+    config_module.get_settings.cache_clear()
+    client = TestClient(app)
+
+    payload = {
+        "account": "analytics-batch",
+        "scopes": ["conversations:read"],
+        "tenant_id": "11111111-2222-3333-4444-555555555555",
+    }
+    response = client.post(
+        "/api/v1/auth/service-accounts/issue",
+        json=payload,
+        headers={
+            "Authorization": "Bearer vault:forged",
+            "X-Vault-Payload": "Zm9yZ2Vk",
+        },
+    )
+
+    assert response.status_code == 503
+    assert "Vault verification disabled" in response.text
+
+    client.close()
+    config_module.get_settings.cache_clear()
