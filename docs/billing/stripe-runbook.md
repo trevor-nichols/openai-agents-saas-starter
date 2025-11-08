@@ -20,6 +20,7 @@ This document outlines the operator workflows for receiving, inspecting, and rep
 - Structured logs emitted with `stripe_event_id`, `event_type`, and `tenant_hint` for correlation.
 - `stripe_gateway_operation_*` histograms/counters back gateway calls (`start_subscription`, `record_usage`, etc.); dashboard panes group by `operation` + `plan_code`.
 - The Prometheus `/metrics` endpoint exposes counters/histograms for API and webhook calls.
+- Secret rotation bookmarks – document planned maintenance in the alert channel and follow the [Stripe Secret Rotation SOP](#stripe-secret-rotation-sop) so transient errors correlate with the expected cadence.
 
 ## Replay & Recovery
 
@@ -128,6 +129,55 @@ Normalized `BillingEventPayload` messages delivered over `/api/v1/billing/stream
 3. **Frontend panel** – the Agent dashboard displays subscription/invoice/usage cards from the stream payload. If it stalls, verify cookies include the tenant metadata and inspect browser devtools for SSE disconnects.
 4. **Metrics** – monitor `stripe_webhook_events_total{result="dispatch_failed"}` plus `stripe_billing_stream_events_total{result="failed"}`/`stripe_billing_stream_backlog_seconds` to catch stuck fan-out or Redis lag.
 5. **Automated suites** – run `make test-stripe` (fixture-driven webhook + SSE tests) and `make lint-stripe-fixtures` before pushing changes so replay tooling stays in sync.
+6. **Secret rotations** – after updating Stripe credentials, work through the validation checklist in the [Stripe Secret Rotation SOP](#stripe-secret-rotation-sop) to confirm new keys and webhook signatures are live.
+
+## Stripe Secret Rotation SOP
+
+This standard operating procedure covers the two long-lived Stripe credentials used by the backend:
+
+- `STRIPE_SECRET_KEY` (server-side API key)
+- `STRIPE_WEBHOOK_SECRET` (signature validation secret for `/webhooks/stripe`)
+
+### Cadence
+
+- API key: rotate at least every 90 days, or immediately after a suspected compromise or whenever Stripe flags the key.
+- Webhook secret: rotate monthly (Stripe CLI frequently issues new secrets) and whenever the webhook endpoint is recreated or moved.
+
+### Pre-rotation checklist
+
+1. Announce the maintenance window in the ops channel and confirm no ongoing billing incidents.
+2. Ensure you can restart the FastAPI app (or redeploy) within the window.
+3. Have access to the Stripe Dashboard (Developers → API keys / Webhooks) and this repo’s secrets store (`.env`, Vault, or deployment-specific manager).
+4. Open `docs/billing/stripe-setup.md` for reference on required env vars.
+
+### Rotation steps – API key (`STRIPE_SECRET_KEY`)
+
+1. In the Stripe Dashboard, create a **new restricted secret key** with the same permissions as the current one.
+2. Update the key in your secret manager (`.env.local`, Vault, Kubernetes secret, etc.) **without deleting** the previous value yet.
+3. Deploy/restart the FastAPI app so the new key is loaded; verify startup logs show the masked key prefix/suffix you expect.
+4. Run `make test-stripe` against a staging environment to exercise subscription creation and usage recording with the new key.
+5. Once satisfied, delete or revoke the old key in Stripe to prevent reuse.
+
+### Rotation steps – Webhook secret (`STRIPE_WEBHOOK_SECRET`)
+
+1. For local dev, rerun `stripe listen --forward-to http://localhost:8000/webhooks/stripe` to generate a new `whsec_...` secret. For hosted environments, open Stripe Dashboard → Developers → Webhooks → your endpoint → **Reveal secret** and click **Rotate secret**.
+2. Update the secret manager and redeploy/restart the API so the new secret is active.
+3. Send a test webhook (`stripe trigger invoice.payment_succeeded` or use the dashboard) and confirm `/webhooks/stripe` returns HTTP 202.
+4. Watch `stripe_webhook_events_total{result="invalid_signature"}`—spikes after the rotation mean a consumer is still sending the old signature; update all webhook senders before deleting the prior secret in Stripe.
+
+### Validation
+
+- Execute `make test-stripe` (or the CI workflow) and ensure both the webhook ingestion test and SSE test pass.
+- Tail the application logs for `Stripe billing configuration validated` and confirm no `dispatch_failed` or `stream_failed` entries appear within five minutes of the rotation.
+- Check Prometheus: `stripe_gateway_operations_total{result!="success"}` should remain flat, and `stripe_webhook_events_total{result="invalid_signature"}` should be zero.
+- Confirm the frontend Billing Activity panel resumes streaming data for at least one tenant.
+
+### Rollback
+
+1. Keep the previous secrets until validation is complete. If issues arise, revert the env values to the prior key/secret and redeploy.
+2. Re-run `make test-stripe` to confirm the rollback restored functionality.
+3. Investigate the failed rotation (typically a missed redeploy or stale secret store) before attempting again. Document the incident in the ops log.
+
 
 ## Dispatcher Retry Worker
 
