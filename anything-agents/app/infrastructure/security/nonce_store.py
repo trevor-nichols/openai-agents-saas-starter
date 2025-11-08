@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+from threading import Lock
 from typing import Protocol
 
 from redis.asyncio import Redis
@@ -31,7 +33,11 @@ class RedisNonceStore:
         return bool(result)
 
 
-def _build_nonce_store(redis_url: str) -> NonceStore:
+_STORE_CACHE: dict[tuple[str, int], RedisNonceStore] = {}
+_STORE_CACHE_LOCK = Lock()
+
+
+def _build_nonce_store(redis_url: str) -> RedisNonceStore:
     if not redis_url:
         raise RuntimeError("redis_url is required for nonce storage.")
     client = Redis.from_url(redis_url, encoding="utf-8", decode_responses=False)
@@ -43,4 +49,13 @@ def get_nonce_store(settings: Settings | None = None) -> NonceStore:
 
     if settings is None:
         settings = get_settings()
-    return _build_nonce_store(settings.redis_url)
+
+    loop = asyncio.get_running_loop()
+    cache_key = (settings.redis_url, id(loop))
+
+    with _STORE_CACHE_LOCK:
+        store = _STORE_CACHE.get(cache_key)
+        if store is None:
+            store = _build_nonce_store(settings.redis_url)
+            _STORE_CACHE[cache_key] = store
+    return store
