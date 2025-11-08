@@ -52,6 +52,12 @@ async def search_conversations(query: str) -> str:
 class AgentRegistry:
     """Manage lifecycle of agent instances and their tool configuration."""
 
+    _AGENT_CAPABILITIES: dict[str, tuple[str, ...]] = {
+        "triage": ("general", "search", "handoff"),
+        "code_assistant": ("code", "search"),
+        "data_analyst": ("analysis", "search"),
+    }
+
     def __init__(self, tool_registry: ToolRegistry):
         self._settings = get_settings()
         self._tool_registry = tool_registry
@@ -63,16 +69,26 @@ class AgentRegistry:
         self._tool_registry.register_tool(
             get_current_time,
             category="utility",
-            metadata={"description": "Return the current UTC timestamp."},
+            metadata={
+                "description": "Return the current UTC timestamp.",
+                "core": True,
+                "capabilities": ["general"],
+            },
         )
         self._tool_registry.register_tool(
             search_conversations,
             category="conversation",
-            metadata={"description": "Search cached conversation history."},
+            metadata={
+                "description": "Search cached conversation history.",
+                "core": True,
+                "capabilities": ["conversation", "search"],
+            },
         )
 
     def _build_default_agents(self) -> None:
-        triage_tools = self._tool_registry.get_core_tools()
+        triage_tools = self._select_tools("triage")
+        code_tools = self._select_tools("code_assistant")
+        data_tools = self._select_tools("data_analyst")
 
         code_assistant = Agent(
             name="Code Assistant",
@@ -83,7 +99,7 @@ class AgentRegistry:
             """,
             handoff_description="Handles software engineering questions and code reviews.",
             model="gpt-4.1-2025-04-14",
-            tools=triage_tools,
+            tools=code_tools,
         )
 
         data_analyst = Agent(
@@ -95,7 +111,7 @@ class AgentRegistry:
             """,
             handoff_description="Supports analytical and quantitative queries.",
             model="gpt-4.1-2025-04-14",
-            tools=triage_tools,
+            tools=data_tools,
         )
 
         triage_instructions = prompt_with_handoff_instructions(
@@ -119,6 +135,13 @@ class AgentRegistry:
         self._agents["code_assistant"] = code_assistant
         self._agents["data_analyst"] = data_analyst
         self._agents["triage"] = triage_agent
+
+    def _select_tools(self, agent_key: str) -> list[Any]:
+        capabilities = self._AGENT_CAPABILITIES.get(agent_key, ())
+        return self._tool_registry.get_tools_for_agent(
+            agent_key,
+            capabilities=capabilities,
+        )
 
     def get_agent(self, agent_name: str) -> Agent | None:
         return self._agents.get(agent_name)

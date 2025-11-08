@@ -3,9 +3,10 @@
 # Dependencies: pytest, app/utils/tools
 # Used by: Test suite for validating tool integration
 
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, call, create_autospec
 
-from app.utils.tools import get_tool_registry, initialize_tools
+from app.utils.tools import ToolRegistry, get_tool_registry, initialize_tools
+from app.services.agent_service import AgentRegistry
 from app.utils.tools.web_search import get_tavily_client, tavily_search_tool
 
 # =============================================================================
@@ -34,17 +35,26 @@ def test_initialize_tools():
     assert 'web_search' in categories
 
 def test_tool_registry_get_core_tools():
-    """Test getting core tools from registry."""
-    registry = initialize_tools()
+    """Test that only tools flagged as core are returned."""
+
+    registry = ToolRegistry()
+
+    def core_tool():
+        return "core"
+
+    def scoped_tool():
+        return "scoped"
+
+    registry.register_tool(core_tool, metadata={"core": True})
+    registry.register_tool(scoped_tool, metadata={"core": False, "agents": ["triage"]})
+
     core_tools = registry.get_core_tools()
-    
-    assert len(core_tools) > 0
-    # Check that we have the tavily search tool
-    tool_names = [
+
+    tool_names = {
         getattr(tool, "name", getattr(tool, "__name__", str(tool)))
         for tool in core_tools
-    ]
-    assert "tavily_search_tool" in tool_names
+    }
+    assert tool_names == {"core_tool"}
 
 # =============================================================================
 # WEB SEARCH TOOL TESTS
@@ -129,21 +139,93 @@ def test_tool_can_be_used_by_agent():
 def test_tool_registry_provides_tools_for_agents():
     """Test that the tool registry can provide tools for agent creation."""
     registry = initialize_tools()
-    
-    # Get tools for an agent
-    core_tools = registry.get_core_tools()
-    
-    # Verify we can create an agent with these tools
+    AgentRegistry(registry)
+
+    triage_tools = registry.get_tools_for_agent("triage")
+
     from agents import Agent
-    
+
     agent = Agent(
         name="Test Agent",
         instructions="You are a test agent.",
-        tools=core_tools
+        tools=triage_tools,
     )
-    
-    # Verify the agent has tools
+
     assert len(agent.tools) > 0
-    # Verify at least one tool is the tavily search tool
     tool_names = [tool.name for tool in agent.tools]
-    assert 'tavily_search_tool' in tool_names 
+    assert "tavily_search_tool" in tool_names
+    assert "get_current_time" in tool_names
+
+
+def test_get_tools_for_agent_filters_by_metadata():
+    """Registry returns only tools targeted to the requested agent/capabilities."""
+
+    registry = ToolRegistry()
+
+    def core_tool():
+        return "core"
+
+    def code_tool():
+        return "code"
+
+    def data_tool():
+        return "data"
+
+    registry.register_tool(core_tool, metadata={"core": True})
+    registry.register_tool(code_tool, metadata={"core": False, "agents": ["code_assistant"]})
+    registry.register_tool(
+        data_tool,
+        metadata={
+            "core": False,
+            "capabilities": ["analysis"],
+        },
+    )
+
+    code_tools = registry.get_tools_for_agent("code_assistant")
+    data_tools = registry.get_tools_for_agent("data_analyst", capabilities=["analysis"])
+
+    code_names = {
+        getattr(tool, "name", getattr(tool, "__name__", str(tool)))
+        for tool in code_tools
+    }
+    data_names = {
+        getattr(tool, "name", getattr(tool, "__name__", str(tool)))
+        for tool in data_tools
+    }
+
+    assert code_names == {"core_tool", "code_tool"}
+    assert data_names == {"core_tool", "data_tool"}
+
+
+def test_agent_registry_requests_scoped_tools():
+    """AgentRegistry asks the ToolRegistry for scoped tool lists per agent."""
+
+    tool_registry = create_autospec(ToolRegistry, instance=True)
+    tool_registry.list_tool_names.return_value = []
+    tool_registry.list_categories.return_value = []
+    tool_registry.get_tools_for_agent.side_effect = (
+        lambda agent_name, **_: [f"{agent_name}_tool"]
+    )
+
+    with patch("app.services.agent_service.Agent") as agent_cls, patch(
+        "app.services.agent_service.handoff", side_effect=lambda agent: agent
+    ), patch(
+        "app.services.agent_service.prompt_with_handoff_instructions",
+        side_effect=lambda text: text,
+    ):
+        agent_cls.return_value = object()
+        AgentRegistry(tool_registry)
+
+    expected_calls = [
+        call("triage", capabilities=AgentRegistry._AGENT_CAPABILITIES["triage"]),
+        call(
+            "code_assistant",
+            capabilities=AgentRegistry._AGENT_CAPABILITIES["code_assistant"],
+        ),
+        call(
+            "data_analyst",
+            capabilities=AgentRegistry._AGENT_CAPABILITIES["data_analyst"],
+        ),
+    ]
+
+    assert tool_registry.get_tools_for_agent.call_args_list[:3] == expected_calls

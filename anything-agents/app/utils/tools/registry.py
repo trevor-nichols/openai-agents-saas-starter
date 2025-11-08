@@ -3,13 +3,25 @@
 # Dependencies: typing, functools
 # Used by: Agent service for centralized tool management
 
-from collections.abc import Callable
+from __future__ import annotations
+
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any
 
 # =============================================================================
 # TOOL REGISTRY CLASS
 # =============================================================================
+
+@dataclass(slots=True)
+class ToolAudience:
+    """Normalized targeting metadata describing who can use a tool."""
+
+    core: bool = True
+    agents: frozenset[str] = field(default_factory=frozenset)
+    capabilities: frozenset[str] = field(default_factory=frozenset)
+
 
 class ToolRegistry:
     """
@@ -20,15 +32,16 @@ class ToolRegistry:
     """
     
     def __init__(self):
-        self._tools: dict[str, Any] = {}  # Changed to Any to handle FunctionTool objects
+        self._tools: dict[str, Any] = {}  # Store registered tool objects
         self._tool_categories: dict[str, list[str]] = {}
         self._tool_metadata: dict[str, dict[str, Any]] = {}
+        self._tool_audience: dict[str, ToolAudience] = {}
     
     def register_tool(
         self,
         tool_func: Callable[..., Any] | Any,  # Accept both functions and FunctionTool objects
         category: str = "general",
-        metadata: dict[str, Any] | None = None
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """
         Register a tool function.
@@ -50,14 +63,18 @@ class ToolRegistry:
         
         # Register the tool
         self._tools[tool_name] = tool_func
+
+        normalized_metadata = self._normalize_metadata(metadata)
+        self._tool_metadata[tool_name] = normalized_metadata
+        self._tool_audience[tool_name] = self._audience_from_metadata(
+            normalized_metadata
+        )
         
         # Add to category
         if category not in self._tool_categories:
             self._tool_categories[category] = []
-        self._tool_categories[category].append(tool_name)
-        
-        # Store metadata
-        self._tool_metadata[tool_name] = metadata or {}
+        if tool_name not in self._tool_categories[category]:
+            self._tool_categories[category].append(tool_name)
     
     def get_tool(self, tool_name: str) -> Any | None:
         """Get a specific tool by name."""
@@ -73,14 +90,49 @@ class ToolRegistry:
         return list(self._tools.values())
     
     def get_core_tools(self) -> list[Any]:
-        """
-        Get core tools that should be available to all agents.
-        
-        Returns:
-            List[Any]: List of core tool functions/objects
-        """
-        # For now, return all tools. In the future, you could filter by metadata
-        return self.get_all_tools()
+        """Return tools marked as `core` (shared across all agents)."""
+
+        return [
+            self._tools[name]
+            for name, audience in self._tool_audience.items()
+            if audience.core
+        ]
+
+    def get_tools_for_agent(
+        self,
+        agent_name: str,
+        *,
+        capabilities: Iterable[str] | None = None,
+        include_core: bool = True,
+    ) -> list[Any]:
+        """Return the subset of tools that the given agent is allowed to use."""
+
+        normalized_agent = agent_name.strip().lower()
+        capability_set = {
+            value.strip().lower()
+            for value in (capabilities or [])
+            if value and value.strip()
+        }
+
+        selected: list[Any] = []
+        for name, tool in self._tools.items():
+            audience = self._tool_audience.get(name)
+            if audience is None:
+                audience = ToolAudience()
+                self._tool_audience[name] = audience
+
+            if include_core and audience.core:
+                selected.append(tool)
+                continue
+
+            if normalized_agent and normalized_agent in audience.agents:
+                selected.append(tool)
+                continue
+
+            if capability_set and capability_set.intersection(audience.capabilities):
+                selected.append(tool)
+
+        return selected
     
     def get_specialized_tools(self, agent_type: str) -> list[Any]:
         """
@@ -119,6 +171,7 @@ class ToolRegistry:
         
         tool_func = self._tools[tool_name]
         metadata = self._tool_metadata.get(tool_name, {})
+        audience = self._tool_audience.get(tool_name, ToolAudience())
         
         # Handle both regular functions and FunctionTool objects
         if hasattr(tool_func, 'description'):
@@ -134,7 +187,12 @@ class ToolRegistry:
             "name": tool_name,
             "function": tool_func,
             "docstring": docstring,
-            "metadata": metadata,
+            "metadata": {
+                **metadata,
+                "core": audience.core,
+                "agents": sorted(audience.agents),
+                "capabilities": sorted(audience.capabilities),
+            },
             "category": self._get_tool_category(tool_name)
         }
     
@@ -148,6 +206,47 @@ class ToolRegistry:
 # =============================================================================
 # GLOBAL REGISTRY INSTANCE
 # =============================================================================
+
+    def _normalize_metadata(self, metadata: dict[str, Any] | None) -> dict[str, Any]:
+        data = dict(metadata or {})
+
+        agents = data.get("agents")
+        data["agents"] = self._normalize_string_list(agents)
+
+        capabilities = data.get("capabilities")
+        data["capabilities"] = self._normalize_string_list(capabilities)
+
+        if "core" not in data:
+            data["core"] = True
+
+        return data
+
+    def _audience_from_metadata(self, metadata: dict[str, Any]) -> ToolAudience:
+        return ToolAudience(
+            core=bool(metadata.get("core", True)),
+            agents=frozenset(value.lower() for value in metadata.get("agents", [])),
+            capabilities=frozenset(
+                value.lower() for value in metadata.get("capabilities", [])
+            ),
+        )
+
+    @staticmethod
+    def _normalize_string_list(values: Any) -> list[str]:
+        if not values:
+            return []
+        if isinstance(values, str):
+            values_iterable: Iterable[str] = [values]
+        else:
+            values_iterable = values
+        normalized: list[str] = []
+        for item in values_iterable:
+            if item is None:
+                continue
+            text = str(item).strip()
+            if text:
+                normalized.append(text)
+        return sorted(set(normalized))
+
 
 @lru_cache
 def get_tool_registry() -> ToolRegistry:
@@ -180,15 +279,18 @@ def initialize_tools() -> ToolRegistry:
     # Import and register tools
     try:
         from .web_search import tavily_search_tool
-        
+
         registry.register_tool(
             tavily_search_tool,
             category="web_search",
             metadata={
                 "description": "Search the web for current information using Tavily API",
                 "requires_api_key": True,
-                "api_service": "tavily"
-            }
+                "api_service": "tavily",
+                "core": False,
+                "agents": ["triage", "data_analyst"],
+                "capabilities": ["web_search"],
+            },
         )
     except ImportError as e:
         print(f"Warning: Could not import web search tools: {e}")
