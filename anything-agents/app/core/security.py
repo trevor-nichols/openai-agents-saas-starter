@@ -365,8 +365,6 @@ def _find_key_material(keyset: KeySet, kid: str | None) -> KeyMaterial:
         materials: list[KeyMaterial] = []
         if keyset.active:
             materials.append(keyset.active)
-        if getattr(keyset, "next", None):
-            materials.append(keyset.next)  # type: ignore[arg-type]
         retired: Sequence[KeyMaterial] = getattr(keyset, "retired", None) or []
         materials.extend(retired)
         return materials

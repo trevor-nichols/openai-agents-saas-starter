@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
 from typing import Protocol
 
 from redis.asyncio import Redis
@@ -32,7 +31,6 @@ class RedisNonceStore:
         return bool(result)
 
 
-@lru_cache
 def _build_nonce_store(redis_url: str) -> NonceStore:
     if not redis_url:
         raise RuntimeError("redis_url is required for nonce storage.")
