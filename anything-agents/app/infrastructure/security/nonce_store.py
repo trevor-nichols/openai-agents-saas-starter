@@ -15,6 +15,7 @@ class NonceStore(Protocol):
 
     async def check_and_store(self, nonce: str, ttl_seconds: int) -> bool:
         """Return True when nonce is new; False when it already exists."""
+        ...
 
 
 class RedisNonceStore:

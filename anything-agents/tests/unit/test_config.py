@@ -100,11 +100,23 @@ def test_stripe_configuration_summary_masks_tokens() -> None:
 
     secret_mask = summary["stripe_secret_key"]
     webhook_mask = summary["stripe_webhook_secret"]
+    plan_count = summary["plan_count"]
+    plans_configured = summary["plans_configured"]
+    billing_enabled = summary["billing_stream_enabled"]
+    backend = summary["billing_stream_backend"]
+
+    assert isinstance(secret_mask, str)
+    assert isinstance(webhook_mask, str)
+    assert isinstance(plan_count, int)
+    assert isinstance(plans_configured, list)
+    assert all(isinstance(plan, str) for plan in plans_configured)
+    assert isinstance(billing_enabled, bool)
+    assert isinstance(backend, str | type(None))
 
     assert secret_mask.startswith("sk") and secret_mask.endswith("7890")
     assert all(char == "*" for char in secret_mask[2:-4])
     assert webhook_mask.endswith("4321")
-    assert summary["plan_count"] == 2
-    assert summary["plans_configured"] == ["pro", "starter"]
-    assert summary["billing_stream_enabled"] is True
-    assert summary["billing_stream_backend"] == "BILLING_EVENTS_REDIS_URL"
+    assert plan_count == 2
+    assert plans_configured == ["pro", "starter"]
+    assert billing_enabled is True
+    assert backend == "BILLING_EVENTS_REDIS_URL"

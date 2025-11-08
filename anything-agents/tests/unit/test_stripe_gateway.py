@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
 
 import pytest
 
+from app.core.config import Settings
 from app.infrastructure.stripe import (
     StripeClientError,
     StripeCustomer,
@@ -14,16 +15,7 @@ from app.infrastructure.stripe import (
     StripeSubscriptionItem,
     StripeUsageRecord,
 )
-from app.services.payment_gateway import (
-    PaymentGatewayError,
-    StripeGateway,
-)
-
-
-@dataclass
-class FakeSettings:
-    stripe_secret_key: str = "sk_test_key"
-    stripe_product_price_map: dict[str, str] | None = None
+from app.services.payment_gateway import PaymentGatewayError, StripeGateway
 
 
 class FakeStripeClient:
@@ -46,15 +38,31 @@ class FakeStripeClient:
         self.cancelled: list[bool] = []
         self.usage_calls: list[dict[str, object]] = []
 
-    async def create_customer(self, *, email: str | None, tenant_id: str):
-        self.created_customers.append({"email": email, "tenant_id": tenant_id})
+    async def create_customer(self, *, email: str | None, tenant_id: str) -> StripeCustomer:
+        payload = {"email": email, "tenant_id": tenant_id}
+        self.created_customers.append(payload)
         return self._customer(email)
 
-    async def create_subscription(self, **payload):
+    async def create_subscription(
+        self,
+        *,
+        customer_id: str,
+        price_id: str,
+        quantity: int,
+        auto_renew: bool,
+        metadata: dict[str, str] | None = None,
+    ) -> StripeSubscription:
+        payload: dict[str, Any] = {
+            "customer_id": customer_id,
+            "price_id": price_id,
+            "quantity": quantity,
+            "auto_renew": auto_renew,
+            "metadata": metadata or {},
+        }
         self.created_subscriptions.append(payload)
         return self.subscription
 
-    async def retrieve_subscription(self, subscription_id: str):
+    async def retrieve_subscription(self, subscription_id: str) -> StripeSubscription:
         assert subscription_id == self.subscription.id
         return self.subscription
 
@@ -64,35 +72,63 @@ class FakeStripeClient:
         *,
         auto_renew: bool | None = None,
         seat_count: int | None = None,
-    ):
-        self.updated_subscription_calls.append({"auto_renew": auto_renew, "seat_count": seat_count})
+    ) -> StripeSubscription:
+        self.updated_subscription_calls.append(
+            {"auto_renew": auto_renew, "seat_count": seat_count}
+        )
         return subscription
 
-    async def cancel_subscription(self, subscription_id: str, *, cancel_at_period_end: bool):
+    async def cancel_subscription(
+        self, subscription_id: str, *, cancel_at_period_end: bool
+    ) -> StripeSubscription:
         self.cancelled.append(cancel_at_period_end)
         return self.subscription
 
-    async def update_customer_email(self, customer_id: str, email: str):
+    async def update_customer_email(self, customer_id: str, email: str) -> StripeCustomer:
         self.updated_emails.append(email)
         return self._customer(email)
 
-    async def create_usage_record(self, *_, **payload):
+    async def create_usage_record(
+        self,
+        subscription_item_id: str,
+        *,
+        quantity: int,
+        timestamp: int,
+        idempotency_key: str,
+        feature_key: str,
+    ) -> StripeUsageRecord:
+        payload = {
+            "subscription_item_id": subscription_item_id,
+            "quantity": quantity,
+            "timestamp": timestamp,
+            "idempotency_key": idempotency_key,
+            "feature_key": feature_key,
+        }
         self.usage_calls.append(payload)
         return StripeUsageRecord(
             id="usg_123",
-            subscription_item_id="si_123",
-            quantity=payload["quantity"],
+            subscription_item_id=subscription_item_id,
+            quantity=quantity,
             timestamp=datetime.now(UTC),
         )
 
-    def _customer(self, email: str | None):
+    def _customer(self, email: str | None) -> StripeCustomer:
         return StripeCustomer(id="cus_123", email=email)
+
+
+def _settings(price_map: dict[str, str] | None = None) -> Settings:
+    return Settings.model_validate(
+        {
+            "STRIPE_SECRET_KEY": "sk_test_key",
+            "STRIPE_PRODUCT_PRICE_MAP": price_map or {},
+        }
+    )
 
 
 @pytest.mark.asyncio
 async def test_start_subscription_returns_metadata():
     client = FakeStripeClient()
-    settings = FakeSettings(stripe_product_price_map={"starter": "price_123"})
+    settings = _settings({"starter": "price_123"})
     gateway = StripeGateway(client=client, settings_factory=lambda: settings)
 
     result = await gateway.start_subscription(
@@ -103,6 +139,7 @@ async def test_start_subscription_returns_metadata():
         seat_count=2,
     )
 
+    assert result.metadata is not None
     assert result.metadata["stripe_price_id"] == "price_123"
     assert result.metadata["stripe_subscription_item_id"] == "si_123"
     assert client.created_customers
@@ -112,7 +149,7 @@ async def test_start_subscription_returns_metadata():
 @pytest.mark.asyncio
 async def test_update_subscription_updates_quantity_and_email():
     client = FakeStripeClient()
-    settings = FakeSettings(stripe_product_price_map={"starter": "price_123"})
+    settings = _settings({"starter": "price_123"})
     gateway = StripeGateway(client=client, settings_factory=lambda: settings)
 
     await gateway.update_subscription(
@@ -132,7 +169,7 @@ async def test_update_subscription_updates_quantity_and_email():
 @pytest.mark.asyncio
 async def test_record_usage_passes_idempotency_key():
     client = FakeStripeClient()
-    settings = FakeSettings(stripe_product_price_map={"starter": "price_123"})
+    settings = _settings({"starter": "price_123"})
     gateway = StripeGateway(client=client, settings_factory=lambda: settings)
 
     await gateway.record_usage(
@@ -148,7 +185,7 @@ async def test_record_usage_passes_idempotency_key():
 @pytest.mark.asyncio
 async def test_missing_price_mapping_raises_error():
     client = FakeStripeClient()
-    settings = FakeSettings(stripe_product_price_map={})
+    settings = _settings({})
     gateway = StripeGateway(client=client, settings_factory=lambda: settings)
 
     with pytest.raises(PaymentGatewayError) as exc_info:
@@ -175,7 +212,7 @@ async def test_gateway_emits_metrics_on_success(monkeypatch: pytest.MonkeyPatch)
     )
 
     client = FakeStripeClient()
-    settings = FakeSettings(stripe_product_price_map={"starter": "price_123"})
+    settings = _settings({"starter": "price_123"})
     gateway = StripeGateway(client=client, settings_factory=lambda: settings)
 
     await gateway.start_subscription(
@@ -205,10 +242,12 @@ async def test_stripe_errors_wrapped_with_gateway_error(monkeypatch: pytest.Monk
     )
 
     class ExplodingClient(FakeStripeClient):
-        async def create_customer(self, *, email: str | None, tenant_id: str):  # type: ignore[override]
+        async def create_customer(
+            self, *, email: str | None, tenant_id: str
+        ) -> StripeCustomer:
             raise StripeClientError("customer.create", "boom", code="api_error")
 
-    settings = FakeSettings(stripe_product_price_map={"starter": "price_123"})
+    settings = _settings({"starter": "price_123"})
     gateway = StripeGateway(client=ExplodingClient(), settings_factory=lambda: settings)
 
     with pytest.raises(PaymentGatewayError) as exc_info:

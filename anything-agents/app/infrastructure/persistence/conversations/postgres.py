@@ -6,6 +6,7 @@ import logging
 import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime
+from typing import Literal, cast
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -27,6 +28,10 @@ from app.infrastructure.persistence.conversations.models import (
 logger = logging.getLogger("anything-agents.persistence")
 
 _CONVERSATION_NAMESPACE = uuid.uuid5(uuid.NAMESPACE_URL, "anything-agents:conversation")
+_MESSAGE_ROLES: tuple[str, ...] = ("user", "assistant", "system")
+
+
+MessageRole = Literal["user", "assistant", "system"]
 
 
 def _coerce_conversation_uuid(conversation_id: str) -> uuid.UUID:
@@ -145,7 +150,7 @@ class PostgresConversationRepository(ConversationRepository):
             rows: Sequence[AgentMessage] = result.scalars().all()
             return [
                 ConversationMessage(
-                    role=row.role,
+                    role=_coerce_role(row.role),
                     content=_extract_message_content(row.content),
                     timestamp=row.created_at,
                 )
@@ -183,7 +188,7 @@ class PostgresConversationRepository(ConversationRepository):
                 entries = grouped.get(conversation.id, [])
                 messages_list = [
                     ConversationMessage(
-                        role=item.role,
+                        role=_coerce_role(item.role),
                         content=_extract_message_content(item.content),
                         timestamp=item.created_at,
                     )
@@ -334,3 +339,7 @@ def _to_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=UTC)
     return value.astimezone(UTC)
+def _coerce_role(value: str) -> MessageRole:
+    if value not in _MESSAGE_ROLES:
+        raise ValueError(f"Unsupported conversation role '{value}'")
+    return cast(MessageRole, value)

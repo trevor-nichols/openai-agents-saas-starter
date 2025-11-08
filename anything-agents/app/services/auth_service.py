@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 from collections import deque
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -111,7 +112,7 @@ class AuthService:
         requested_ttl_minutes: int | None,
         fingerprint: str | None,
         force: bool = False,
-    ) -> dict[str, str | int | None]:
+    ) -> dict[str, str | int | list[str] | None]:
         started = perf_counter()
         failure_recorded = False
         try:
@@ -313,18 +314,21 @@ class AuthService:
         payload = self._verify_token(refresh_token)
         if payload.get("token_use") != "refresh":
             raise UserRefreshError("Token is not a refresh token.")
-        subject = payload.get("sub")
-        user_id = self._parse_user_subject(subject)
-        tenant_id = payload.get("tenant_id")
-        if not tenant_id:
+        subject_claim = payload.get("sub")
+        if not isinstance(subject_claim, str):
+            raise UserRefreshError("Refresh token subject is malformed.")
+        user_id = self._parse_user_subject(subject_claim)
+        tenant_claim = payload.get("tenant_id")
+        if not isinstance(tenant_claim, str) or not tenant_claim:
             raise UserRefreshError("Refresh token missing tenant identifier.")
-        jti = payload.get("jti")
-        if not jti:
+        tenant_id = tenant_claim
+        jti_claim = payload.get("jti")
+        if not isinstance(jti_claim, str) or not jti_claim:
             raise UserRefreshError("Refresh token missing jti claim.")
-        record = await repo.get_by_jti(jti)
+        record = await repo.get_by_jti(jti_claim)
         if not record:
             raise UserRefreshError("Refresh token has been revoked or expired.")
-        await repo.revoke(jti, reason="rotated")
+        await repo.revoke(jti_claim, reason="rotated")
         service = self._require_user_service()
         tenant_uuid = self._parse_uuid(tenant_id)
         auth_user = await service.load_active_user(
@@ -397,7 +401,7 @@ class AuthService:
         account: str,
         tenant_id: str | None,
         scopes: list[str],
-    ) -> dict[str, str | int | None] | None:
+    ) -> dict[str, str | int | list[str] | None] | None:
         if not self._refresh_repo:
             return None
         record = await self._refresh_repo.find_active(account, tenant_id, scopes)
@@ -500,7 +504,8 @@ class AuthService:
         if not ip_address and not user_agent:
             return None
         material = f"{ip_address or ''}:{user_agent or ''}"
-        return jwt.utils.base64url_encode(material.encode("utf-8")).decode("utf-8")
+        encoded = base64.urlsafe_b64encode(material.encode("utf-8")).rstrip(b"=")
+        return encoded.decode("utf-8")
 
     def _user_account_key(self, user_id: UUID) -> str:
         return f"user:{user_id}"
@@ -593,7 +598,9 @@ class AuthService:
             return
         await self._refresh_repo.revoke(jti, reason=reason)
 
-    def _record_to_response(self, record: RefreshTokenRecord) -> dict[str, str | int | None]:
+    def _record_to_response(
+        self, record: RefreshTokenRecord
+    ) -> dict[str, str | int | list[str] | None]:
         kid = record.signing_kid or self._extract_kid(record.token)
         return {
             "refresh_token": record.token,

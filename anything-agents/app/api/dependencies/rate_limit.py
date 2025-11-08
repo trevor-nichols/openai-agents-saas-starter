@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import NoReturn
+
 from fastapi import HTTPException, status
 
 from app.observability.logging import log_event
@@ -14,7 +16,7 @@ def raise_rate_limit_http_error(
     *,
     tenant_id: str | None,
     user_id: str | None = None,
-) -> None:
+) -> NoReturn:
     """Log + emit metrics before surfacing a 429 response."""
 
     record_rate_limit_hit(quota=exc.quota, scope=exc.scope)

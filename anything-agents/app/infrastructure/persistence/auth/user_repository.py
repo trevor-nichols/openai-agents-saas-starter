@@ -273,10 +273,12 @@ class PostgresUserRepository(UserRepository):
             for membership in user.memberships
         ]
         display_name = user.profile.display_name if user.profile else None
+        raw_status = user.status.value if hasattr(user.status, "value") else str(user.status)
+        status = UserStatus(raw_status)
         return UserRecord(
             id=user.id,
             email=user.email,
-            status=user.status,
+            status=status,
             password_hash=user.password_hash,
             password_pepper_version=user.password_pepper_version,
             created_at=user.created_at,

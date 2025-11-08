@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from types import SimpleNamespace
+from uuid import uuid4
 
 import pytest
 from fastapi import FastAPI, status
@@ -13,6 +13,10 @@ from httpx import ASGITransport, AsyncClient
 from app.api.dependencies.auth import require_current_user
 from app.api.v1.billing.router import router as billing_router
 from app.core.config import get_settings
+from app.infrastructure.persistence.stripe.models import (
+    StripeEvent,
+    StripeEventStatus,
+)
 from app.services.billing_events import BillingEventsService
 from app.services.stripe_event_models import (
     DispatchBroadcastContext,
@@ -102,13 +106,17 @@ async def test_stream_rejects_tenant_mismatch(monkeypatch):
 
 async def _publish_invoice_event(service: BillingEventsService) -> None:
     now = datetime.now(UTC)
-    record = SimpleNamespace(
-        tenant_hint="tenant-123",
-        event_type="invoice.payment_succeeded",
+    record = StripeEvent(
+        id=uuid4(),
         stripe_event_id="evt_stream",
-        processed_at=now,
-        received_at=now,
+        event_type="invoice.payment_succeeded",
         payload={"data": {"object": {"status": "paid"}}},
+        tenant_hint="tenant-123",
+        stripe_created_at=now,
+        received_at=now,
+        processed_at=now,
+        processing_outcome=StripeEventStatus.PROCESSED.value,
+        processing_attempts=1,
     )
     context = DispatchBroadcastContext(
         tenant_id="tenant-123",

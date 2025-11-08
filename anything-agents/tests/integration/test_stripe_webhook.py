@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import AsyncIterator
 from pathlib import Path
+from typing import cast
 
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import Table
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import get_settings
@@ -25,6 +28,7 @@ from app.presentation.webhooks import stripe as stripe_webhook
 from app.services.billing_events import BillingEventsService
 from app.services.stripe_dispatcher import stripe_event_dispatcher
 from tests.utils.fake_billing_backend import QueueBillingEventBackend
+from tests.utils.sqlalchemy import create_tables
 
 _ = (auth_models, conversation_models)
 
@@ -51,12 +55,20 @@ class _FakeBillingService:
         self.snapshot_calls += 1
 
 
+STRIPE_TABLES = cast(
+    tuple[Table, ...],
+    (
+        StripeEvent.__table__,
+        StripeEventDispatch.__table__,
+    ),
+)
+
+
 @pytest.fixture
-async def sqlite_stripe_repo():
+async def sqlite_stripe_repo() -> AsyncIterator[StripeEventRepository]:
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
     async with engine.begin() as conn:
-        await conn.run_sync(StripeEvent.__table__.create)
-        await conn.run_sync(StripeEventDispatch.__table__.create)
+        await conn.run_sync(lambda connection: create_tables(connection, STRIPE_TABLES))
     session_factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     repo = StripeEventRepository(session_factory)
     configure_stripe_event_repository(repo)

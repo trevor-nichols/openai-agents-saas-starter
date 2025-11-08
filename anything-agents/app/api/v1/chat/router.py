@@ -2,6 +2,7 @@
 
 import json
 from collections.abc import AsyncIterator
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -135,7 +136,12 @@ async def _acquire_stream_slot(quota: ConcurrencyQuota, user: CurrentUser) -> Ra
 
 
 def _user_identity(user: CurrentUser) -> tuple[str, str]:
-    payload = user.get("payload") if isinstance(user, dict) else {}
+    payload_obj = user.get("payload") if isinstance(user, dict) else None
+    payload: dict[str, Any] | None
+    if isinstance(payload_obj, dict):
+        payload = payload_obj
+    else:
+        payload = None
     tenant_id = str((payload or {}).get("tenant_id") or "unknown")
     user_id = str(user.get("user_id") or "anonymous")
     return tenant_id, user_id

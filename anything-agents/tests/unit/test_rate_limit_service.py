@@ -63,8 +63,8 @@ async def test_concurrency_lease_refreshes_ttl() -> None:
     assert not await client.exists(key)
 
 
-class _FlakyRedis:
-    async def incr(self, *_args: Any, **_kwargs: Any) -> None:
+class _FlakyRedis(FakeRedis):
+    async def incr(self, *_args: Any, **_kwargs: Any) -> int:
         raise ConnectionError("boom")
 
 

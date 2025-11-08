@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from typing import cast
+
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.inspection import inspect
 
 from app.infrastructure.persistence.auth.models import (
@@ -25,8 +28,10 @@ def test_user_account_schema_contains_expected_columns() -> None:
     }.issubset(column_names)
 
     status_col = mapper.columns["status"]
-    assert getattr(status_col.type, "enums", None) is not None
-    assert set(status_col.type.enums) == {"pending", "active", "disabled", "locked"}
+    assert isinstance(status_col.type, SAEnum)
+    enum_type = cast(SAEnum, status_col.type)
+    assert enum_type.enums is not None
+    assert set(enum_type.enums) == {"pending", "active", "disabled", "locked"}
 
 
 def test_membership_and_login_relationships_configured() -> None:

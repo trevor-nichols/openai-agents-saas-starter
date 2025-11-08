@@ -11,7 +11,13 @@ from typing import Protocol, TypeVar
 from uuid import uuid4
 
 from app.core.config import Settings, get_settings
-from app.infrastructure.stripe import StripeClient, StripeClientError
+from app.infrastructure.stripe import (
+    StripeClient,
+    StripeClientError,
+    StripeCustomer,
+    StripeSubscription,
+    StripeUsageRecord,
+)
 from app.observability.metrics import observe_stripe_gateway_operation
 
 logger = logging.getLogger("anything-agents.services.payment_gateway")
@@ -80,6 +86,46 @@ class PaymentGatewayError(RuntimeError):
         self.code = code
 
 
+class StripeGatewayClient(Protocol):
+    async def create_customer(self, *, email: str | None, tenant_id: str) -> StripeCustomer: ...
+
+    async def create_subscription(
+        self,
+        *,
+        customer_id: str,
+        price_id: str,
+        quantity: int,
+        auto_renew: bool,
+        metadata: dict[str, str] | None = None,
+    ) -> StripeSubscription: ...
+
+    async def retrieve_subscription(self, subscription_id: str) -> StripeSubscription: ...
+
+    async def modify_subscription(
+        self,
+        subscription: StripeSubscription,
+        *,
+        auto_renew: bool | None = None,
+        seat_count: int | None = None,
+    ) -> StripeSubscription: ...
+
+    async def cancel_subscription(
+        self, subscription_id: str, *, cancel_at_period_end: bool
+    ) -> StripeSubscription: ...
+
+    async def update_customer_email(self, customer_id: str, email: str) -> StripeCustomer: ...
+
+    async def create_usage_record(
+        self,
+        subscription_item_id: str,
+        *,
+        quantity: int,
+        timestamp: int,
+        idempotency_key: str,
+        feature_key: str,
+    ) -> StripeUsageRecord: ...
+
+
 class StripeGateway(PaymentGateway):
     """Stripe adapter leveraging the typed Stripe client."""
 
@@ -87,7 +133,7 @@ class StripeGateway(PaymentGateway):
 
     def __init__(
         self,
-        client: StripeClient | None = None,
+        client: StripeGatewayClient | None = None,
         settings_factory: Callable[[], Settings] | None = None,
     ) -> None:
         self._client = client
@@ -256,7 +302,7 @@ class StripeGateway(PaymentGateway):
             action=_action,
         )
 
-    def _get_client(self) -> StripeClient:
+    def _get_client(self) -> StripeGatewayClient:
         if self._client is not None:
             return self._client
         settings = self._settings_factory()

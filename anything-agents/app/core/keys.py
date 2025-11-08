@@ -9,16 +9,25 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Final, Protocol, cast
 from uuid import uuid4
 
-from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
+from cryptography.hazmat.primitives.serialization import (
+    Encoding,
+    NoEncryption,
+    PrivateFormat,
+    PublicFormat,
+)
 
 from app.core.config import Settings, get_settings
 
 UTC = UTC
 KEYSET_SCHEMA_VERSION = 1
+_PEM_ENCODING: Final[Encoding] = cast(Encoding, Encoding.PEM)
+_RAW_ENCODING: Final[Encoding] = cast(Encoding, Encoding.Raw)
+_PKCS8_FORMAT: Final[PrivateFormat] = cast(PrivateFormat, PrivateFormat.PKCS8)
+_RAW_PUBLIC_FORMAT: Final[PublicFormat] = cast(PublicFormat, PublicFormat.Raw)
 
 
 class KeySetError(RuntimeError):
@@ -250,14 +259,14 @@ def generate_ed25519_keypair(*, kid: str | None = None) -> KeyMaterial:
     public_key = private_key.public_key()
 
     private_pem = private_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption(),
+        encoding=_PEM_ENCODING,
+        format=_PKCS8_FORMAT,
+        encryption_algorithm=NoEncryption(),
     ).decode("utf-8")
 
     public_bytes = public_key.public_bytes(
-        encoding=serialization.Encoding.Raw,
-        format=serialization.PublicFormat.Raw,
+        encoding=_RAW_ENCODING,
+        format=_RAW_PUBLIC_FORMAT,
     )
     public_b64 = base64.urlsafe_b64encode(public_bytes).decode("utf-8").rstrip("=")
 

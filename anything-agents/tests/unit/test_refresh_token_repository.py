@@ -1,20 +1,25 @@
 """Regression tests for refresh-token rehydration."""
-
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from types import MethodType, SimpleNamespace
+from types import MethodType
 from uuid import uuid4
 
 from app.core.config import Settings
 from app.infrastructure.persistence.auth import repository as repository_module
+from app.infrastructure.persistence.auth.models import ServiceAccountToken
 from app.infrastructure.persistence.auth.repository import PostgresRefreshTokenRepository
 
 UTC = UTC
 
 
 def _build_repo() -> PostgresRefreshTokenRepository:
-    settings = Settings(app_name="unit-tests", auth_refresh_token_pepper="unit-pepper")
+    settings = Settings.model_validate(
+        {
+            "APP_NAME": "unit-tests",
+            "AUTH_REFRESH_TOKEN_PEPPER": "unit-pepper",
+        }
+    )
 
     # session_factory is never invoked in these unit tests; provide a stub callable.
     repo = PostgresRefreshTokenRepository(lambda: None, settings)  # type: ignore[arg-type]
@@ -41,7 +46,7 @@ def test_rehydrate_service_account_token_includes_original_claims(monkeypatch) -
         "fingerprint": "fp",
     }
 
-    row = SimpleNamespace(
+    row = ServiceAccountToken(
         account="analytics-batch",
         refresh_jti="jti-service",
         scopes=["conversations:read"],
@@ -99,7 +104,7 @@ def test_rehydrate_user_token_preserves_user_subject(monkeypatch) -> None:
         "tenant_id": str(tenant_id),
     }
 
-    row = SimpleNamespace(
+    row = ServiceAccountToken(
         account=account,
         refresh_jti="jti-user",
         scopes=["conversations:write"],

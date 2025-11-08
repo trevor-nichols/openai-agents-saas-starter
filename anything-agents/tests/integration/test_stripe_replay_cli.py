@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import importlib.util
+from collections.abc import AsyncIterator
 from pathlib import Path
+from typing import cast
 
 import pytest
+from sqlalchemy import Table
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.infrastructure.persistence.stripe.models import (
@@ -15,6 +18,7 @@ from app.infrastructure.persistence.stripe.models import (
 )
 from app.infrastructure.persistence.stripe.repository import StripeEventRepository
 from app.services.stripe_dispatcher import stripe_event_dispatcher
+from tests.utils.sqlalchemy import create_tables
 
 _REPLAY_MODULE = Path(__file__).resolve().parents[3] / "scripts" / "stripe" / "replay_events.py"
 _SPEC = importlib.util.spec_from_file_location("replay_events", _REPLAY_MODULE)
@@ -33,12 +37,20 @@ class _FakeBillingService:
         self.subscription_calls += 1
 
 
+STRIPE_TABLES = cast(
+    tuple[Table, ...],
+    (
+        StripeEvent.__table__,
+        StripeEventDispatch.__table__,
+    ),
+)
+
+
 @pytest.fixture
-async def sqlite_repo():
+async def sqlite_repo() -> AsyncIterator[tuple[StripeEventRepository, _FakeBillingService]]:
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
     async with engine.begin() as conn:
-        await conn.run_sync(StripeEvent.__table__.create)
-        await conn.run_sync(StripeEventDispatch.__table__.create)
+        await conn.run_sync(lambda connection: create_tables(connection, STRIPE_TABLES))
     session_factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     repo = StripeEventRepository(session_factory)
     fake_billing = _FakeBillingService()

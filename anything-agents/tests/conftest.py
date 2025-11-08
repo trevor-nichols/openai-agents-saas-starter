@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import os
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Generator, Iterable
 from pathlib import Path
 
 import pytest
@@ -83,7 +83,7 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
 
 
 @pytest.fixture(scope="session", autouse=True)
-def _configure_sdk_session() -> None:
+def _configure_sdk_session() -> Generator[None, None, None]:
     """Configure the SDK session store for tests using an in-memory SQLite engine."""
 
     engine = sqla_async.create_async_engine("sqlite+aiosqlite:///:memory:")
@@ -98,7 +98,7 @@ def _configure_sdk_session() -> None:
 
 
 @pytest.fixture(autouse=True)
-def _configure_auth_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+def _configure_auth_settings(monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
     """Point key storage + auth settings at deterministic test fixtures."""
 
     monkeypatch.setenv("AUTH_KEY_STORAGE_BACKEND", "file")
@@ -115,7 +115,7 @@ def _configure_auth_settings(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(autouse=True)
-def _patch_redis_client(monkeypatch: pytest.MonkeyPatch) -> None:
+def _patch_redis_client(monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
     """Route Redis clients to fakeredis to keep tests hermetic."""
 
     clients: dict[tuple[str, bool], FakeRedis] = {}
@@ -184,7 +184,7 @@ class EphemeralConversationRepository(ConversationRepository):
 
 
 @pytest.fixture(autouse=True)
-def _configure_conversation_repo() -> None:
+def _configure_conversation_repo() -> Generator[None, None, None]:
     """Ensure services/tests share a deterministic conversation repository."""
 
     repository = EphemeralConversationRepository()

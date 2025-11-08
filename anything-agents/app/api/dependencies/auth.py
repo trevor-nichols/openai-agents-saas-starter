@@ -9,7 +9,7 @@ from fastapi import Depends, HTTPException, status
 
 from app.core.security import get_current_user
 
-CurrentUser = dict[str, object]
+CurrentUser = dict[str, Any]
 
 
 class ScopeSet:

@@ -7,11 +7,14 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from time import perf_counter
-from typing import Any, Protocol
+from typing import Any, Final, Protocol, cast
 
 import jwt
-from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
+from cryptography.hazmat.primitives.serialization import (
+    Encoding,
+    PublicFormat,
+)
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import PyJWTError
@@ -23,6 +26,10 @@ from app.observability.logging import log_event
 from app.observability.metrics import observe_jwt_signing, observe_jwt_verification
 
 UTC = UTC
+_PEM_ENCODING: Final[Encoding] = cast(Encoding, Encoding.PEM)
+_SUBJECT_PUBLIC_FORMAT: Final[PublicFormat] = cast(
+    PublicFormat, PublicFormat.SubjectPublicKeyInfo
+)
 
 # =============================================================================
 # SECURITY CONFIGURATION
@@ -226,7 +233,12 @@ class EdDSATokenSigner(TokenSigner):
 
     def _encode(self, payload: dict[str, Any], material: KeyMaterial) -> SignedToken:
         headers = {"kid": material.kid, "alg": "EdDSA", "typ": "JWT"}
-        token = jwt.encode(payload, material.private_key, algorithm="EdDSA", headers=headers)
+        private_key = material.private_key
+        if private_key is None:
+            raise TokenSignerError("Active key material is missing a private key")
+        token = jwt.encode(payload, private_key, algorithm="EdDSA", headers=headers)
+        if isinstance(token, bytes):
+            token = token.decode("utf-8")
         return SignedToken(token=token, kid=material.kid)
 
 
@@ -361,8 +373,8 @@ def _public_pem_from_jwk(jwk_payload: dict[str, Any]) -> bytes:
     public_bytes = base64.urlsafe_b64decode(f"{x}{padding}".encode())
     public_key = ed25519.Ed25519PublicKey.from_public_bytes(public_bytes)
     return public_key.public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        encoding=_PEM_ENCODING,
+        format=_SUBJECT_PUBLIC_FORMAT,
     )
 
 
@@ -440,9 +452,12 @@ async def get_current_user(
     if token_use != ACCESS_TOKEN_USE:
         raise _unauthorized("Access token required.")
 
-    subject = payload.get("sub")
-    if not _is_user_subject(subject):
+    raw_subject = payload.get("sub")
+    if not isinstance(raw_subject, str):
         raise _unauthorized("Token subject must reference a user account.")
+    if not _is_user_subject(raw_subject):
+        raise _unauthorized("Token subject must reference a user account.")
+    subject = raw_subject
 
     return {
         "user_id": _normalize_subject(subject),
@@ -452,9 +467,10 @@ async def get_current_user(
 
 
 def _normalize_subject(subject: str) -> str:
-    if subject.startswith("user:"):
-        return subject.split("user:", 1)[1]
-    return subject
+    sanitized = subject.strip()
+    if sanitized.startswith("user:"):
+        return sanitized.split("user:", 1)[1]
+    return sanitized
 
 
 async def get_current_active_user(

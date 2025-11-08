@@ -6,6 +6,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import lru_cache
 from importlib import resources
+from importlib.abc import Traversable
 from pathlib import Path
 
 import yaml
@@ -55,22 +56,33 @@ class ServiceAccountRegistry:
         return self.definitions.keys()
 
 
-def _catalog_path(custom_path: Path | None = None) -> Path:
+CatalogResource = Path | Traversable
+
+
+def _catalog_path(custom_path: Path | None = None) -> CatalogResource:
     if custom_path:
         return custom_path
     package = resources.files("app.core")
-    return Path(package / "service_accounts.yaml")
+    return package.joinpath("service_accounts.yaml")
 
 
-def _load_raw_catalog(path: Path) -> dict:
+def _load_raw_catalog(resource: CatalogResource) -> dict:
     try:
-        with path.open("r", encoding="utf-8") as handle:
-            data = yaml.safe_load(handle)
+        raw_text = resource.read_text(encoding="utf-8")
     except FileNotFoundError as exc:
-        raise ServiceAccountCatalogError(f"Service-account catalog not found at '{path}'.") from exc
+        raise ServiceAccountCatalogError(
+            f"Service-account catalog not found at '{resource}'."
+        ) from exc
+    except OSError as exc:
+        raise ServiceAccountCatalogError(
+            f"Unable to read service-account catalog at '{resource}': {exc}"
+        ) from exc
+
+    try:
+        data = yaml.safe_load(raw_text)
     except yaml.YAMLError as exc:
         raise ServiceAccountCatalogError(
-            f"Failed to parse service-account catalog at '{path}'."
+            f"Failed to parse service-account catalog at '{resource}'."
         ) from exc
 
     if not isinstance(data, dict) or "service_accounts" not in data:

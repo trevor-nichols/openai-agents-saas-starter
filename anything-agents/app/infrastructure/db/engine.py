@@ -138,10 +138,16 @@ async def run_migrations_if_configured() -> None:
         logger.warning("auto_run_migrations is enabled but Alembic is not installed: %s", exc)
         return
 
-    alembic_cfg = Config(str(_resolve_alembic_ini()))
-    alembic_cfg.set_main_option("sqlalchemy.url", settings.database_url)
+    database_url = settings.database_url
+    if not database_url:
+        raise RuntimeError(
+            "auto_run_migrations is enabled but DATABASE_URL is not configured."
+        )
 
-    logger.info("Running Alembic migrations (database_url=%s)", settings.database_url)
+    alembic_cfg = Config(str(_resolve_alembic_ini()))
+    alembic_cfg.set_main_option("sqlalchemy.url", database_url)
+
+    logger.info("Running Alembic migrations (database_url=%s)", database_url)
     await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
 
 

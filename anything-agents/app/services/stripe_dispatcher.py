@@ -119,9 +119,10 @@ class StripeEventDispatcher:
         handler: EventHandler,
     ) -> DispatchResult:
         repository = self._require_repository()
-        dispatch = await repository.mark_dispatch_in_progress(dispatch.id)
-        if dispatch is None:
+        refreshed_dispatch = await repository.mark_dispatch_in_progress(dispatch.id)
+        if refreshed_dispatch is None:
             raise RuntimeError("Stripe dispatch row missing when starting handler")
+        dispatch = refreshed_dispatch
         try:
             context = await handler.func(event, payload)
         except Exception as exc:  # pragma: no cover - re-raised after bookkeeping
@@ -154,7 +155,9 @@ class StripeEventDispatcher:
             )
             return DispatchResult(processed_at=processed_at, broadcast=context)
 
-    async def _handle_subscription_event(self, event: StripeEvent, payload: dict) -> None:
+    async def _handle_subscription_event(
+        self, event: StripeEvent, payload: dict
+    ) -> DispatchBroadcastContext:
         billing = self._require_billing_service()
         snapshot = self._build_subscription_snapshot(payload)
         await billing.sync_subscription_from_processor(snapshot)

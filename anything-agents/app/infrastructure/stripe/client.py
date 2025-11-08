@@ -9,11 +9,28 @@ import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 
 import stripe
 
+from app.infrastructure.stripe.types import (
+    RETRYABLE_ERRORS as STRIPE_RETRYABLE_ERRORS,
+)
+from app.infrastructure.stripe.types import (
+    SubscriptionCreateParams,
+    SubscriptionModifyItemPayload,
+    SubscriptionModifyParams,
+    UsageRecordPayload,
+    call_create_usage_record,
+    call_subscription_create,
+    call_subscription_delete,
+    call_subscription_modify,
+)
 from app.observability.metrics import observe_stripe_api_call
+
+StripeLibraryError = cast(
+    type[Exception], getattr(getattr(stripe, "error", None), "StripeError", Exception)
+)
 
 logger = logging.getLogger("anything-agents.infrastructure.stripe")
 
@@ -67,12 +84,7 @@ class StripeClientError(RuntimeError):
 class StripeClient:
     """Lightweight async-friendly Stripe wrapper with retries and metrics."""
 
-    RETRYABLE_ERRORS = (
-        stripe.error.APIConnectionError,
-        stripe.error.APIError,
-        stripe.error.RateLimitError,
-        stripe.error.IdempotencyError,
-    )
+    RETRYABLE_ERRORS = STRIPE_RETRYABLE_ERRORS
 
     def __init__(
         self,
@@ -112,7 +124,7 @@ class StripeClient:
         auto_renew: bool,
         metadata: dict[str, str] | None = None,
     ) -> StripeSubscription:
-        params: dict[str, Any] = {
+        params: SubscriptionCreateParams = {
             "customer": customer_id,
             "items": [
                 {
@@ -128,7 +140,7 @@ class StripeClient:
 
         subscription = await self._request(
             "subscription.create",
-            lambda: stripe.Subscription.create(**params),
+            lambda: call_subscription_create(params),
         )
         return self._to_subscription(subscription)
 
@@ -146,7 +158,7 @@ class StripeClient:
         auto_renew: bool | None = None,
         seat_count: int | None = None,
     ) -> StripeSubscription:
-        params: dict[str, Any] = {"expand": ["items.data.price"]}
+        params: SubscriptionModifyParams = {"expand": ["items.data.price"]}
         if auto_renew is not None:
             params["cancel_at_period_end"] = not auto_renew
         if seat_count is not None:
@@ -155,15 +167,15 @@ class StripeClient:
                 raise StripeClientError(
                     "subscription.modify", "Subscription has no items to update quantity."
                 )
-            params.setdefault("items", [])
-            params["items"].append({"id": item.id, "quantity": seat_count})
+            items: list[SubscriptionModifyItemPayload] = params.setdefault("items", [])
+            items.append({"id": item.id, "quantity": seat_count})
 
         if len(params) == 1:  # only expand present
             return subscription
 
         updated = await self._request(
             "subscription.modify",
-            lambda: stripe.Subscription.modify(subscription.id, **params),
+            lambda: call_subscription_modify(subscription.id, dict(params)),
         )
         return self._to_subscription(updated)
 
@@ -177,14 +189,13 @@ class StripeClient:
         if cancel_at_period_end:
 
             def cancel_fn() -> Any:
-                return stripe.Subscription.modify(
-                    subscription_id, cancel_at_period_end=True, **params
-                )
+                updated_params = params | {"cancel_at_period_end": True}
+                return call_subscription_modify(subscription_id, updated_params)
 
         else:
 
             def cancel_fn() -> Any:
-                return stripe.Subscription.delete(subscription_id, **params)
+                return call_subscription_delete(subscription_id, params)
 
         subscription = await self._request("subscription.cancel", cancel_fn)
         return self._to_subscription(subscription)
@@ -205,16 +216,16 @@ class StripeClient:
         idempotency_key: str,
         feature_key: str,
     ) -> StripeUsageRecord:
+        request_payload: UsageRecordPayload = {
+            "subscription_item_id": subscription_item_id,
+            "quantity": quantity,
+            "timestamp": timestamp,
+            "idempotency_key": idempotency_key,
+            "feature_key": feature_key,
+        }
         record = await self._request(
             "usage_record.create",
-            lambda: stripe.SubscriptionItem.create_usage_record(
-                subscription_item_id,
-                quantity=quantity,
-                timestamp=timestamp,
-                action="increment",
-                idempotency_key=idempotency_key,
-                metadata={"feature": feature_key},
-            ),
+            lambda: call_create_usage_record(request_payload),
         )
         ts = _to_datetime(record.timestamp)
         return StripeUsageRecord(
@@ -239,7 +250,7 @@ class StripeClient:
                     duration_seconds=time.perf_counter() - start,
                 )
                 return result
-            except stripe.error.StripeError as exc:  # type: ignore[misc]
+            except StripeLibraryError as exc:  # type: ignore[misc]
                 observe_stripe_api_call(
                     operation=operation,
                     result=_stripe_error_code(exc),
@@ -250,11 +261,11 @@ class StripeClient:
                     operation,
                     attempt,
                     self._max_attempts,
-                    exc.user_message or str(exc),
+                    _stripe_user_message(exc),
                 )
                 if attempt >= self._max_attempts or not self._should_retry(exc):
                     raise StripeClientError(
-                        operation, exc.user_message or str(exc), code=_stripe_error_code(exc)
+                        operation, _stripe_user_message(exc), code=_stripe_error_code(exc)
                     ) from exc
                 await asyncio.sleep(self._backoff(attempt))
                 last_error = exc
@@ -272,7 +283,7 @@ class StripeClient:
         jitter = random.uniform(0, self._initial_backoff)
         return self._initial_backoff * (2 ** (attempt - 1)) + jitter
 
-    def _should_retry(self, exc: stripe.error.StripeError) -> bool:
+    def _should_retry(self, exc: Exception) -> bool:
         return isinstance(exc, self.RETRYABLE_ERRORS)
 
     def _to_subscription(self, subscription: Any) -> StripeSubscription:
@@ -305,11 +316,23 @@ def _iter_items(items: Any) -> Iterable[Any]:
     return []
 
 
-def _stripe_error_code(exc: stripe.error.StripeError) -> str:
+def _stripe_error_code(exc: Exception) -> str:
     code = getattr(exc, "code", None)
     if code:
         return str(code)
-    return exc.error.type if getattr(exc, "error", None) else exc.__class__.__name__
+    error_obj = getattr(exc, "error", None)
+    if error_obj is not None:
+        error_type = getattr(error_obj, "type", None)
+        if error_type:
+            return str(error_type)
+    return exc.__class__.__name__
+
+
+def _stripe_user_message(exc: Exception) -> str:
+    message = getattr(exc, "user_message", None)
+    if message:
+        return str(message)
+    return str(exc)
 
 
 def _to_datetime(value: int | float | None) -> datetime | None:

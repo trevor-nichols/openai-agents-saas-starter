@@ -5,13 +5,32 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import UTC, datetime
+from typing import Protocol
+from uuid import UUID
 
 from app.infrastructure.persistence.stripe.models import StripeEventDispatch
-from app.infrastructure.persistence.stripe.repository import StripeEventRepository
 from app.observability.metrics import observe_dispatch_retry
-from app.services.stripe_dispatcher import StripeEventDispatcher, stripe_event_dispatcher
+from app.services.stripe_dispatcher import stripe_event_dispatcher
+from app.services.stripe_event_models import DispatchResult
 
 logger = logging.getLogger("anything-agents.services.stripe_retry_worker")
+
+
+class StripeDispatchRepository(Protocol):
+    async def list_dispatches_for_retry(
+        self,
+        *,
+        limit: int,
+        ready_before: datetime,
+    ) -> list[StripeEventDispatch]:
+        """Return dispatch rows that should be retried."""
+        ...
+
+
+class StripeDispatchExecutor(Protocol):
+    async def replay_dispatch(self, dispatch_id: UUID) -> DispatchResult:  # pragma: no cover
+        """Attempt to replay a single dispatch identified by its primary key."""
+        ...
 
 
 class StripeDispatchRetryWorker:
@@ -23,8 +42,8 @@ class StripeDispatchRetryWorker:
         poll_interval_seconds: float = 30.0,
         batch_size: int = 10,
     ) -> None:
-        self._repository: StripeEventRepository | None = None
-        self._dispatcher: StripeEventDispatcher | None = None
+        self._repository: StripeDispatchRepository | None = None
+        self._dispatcher: StripeDispatchExecutor | None = None
         self._poll_interval_seconds = poll_interval_seconds
         self._batch_size = batch_size
         self._task: asyncio.Task[None] | None = None
@@ -33,8 +52,8 @@ class StripeDispatchRetryWorker:
     def configure(
         self,
         *,
-        repository: StripeEventRepository,
-        dispatcher: StripeEventDispatcher | None = None,
+        repository: StripeDispatchRepository,
+        dispatcher: StripeDispatchExecutor | None = None,
     ) -> None:
         self._repository = repository
         self._dispatcher = dispatcher or stripe_event_dispatcher
@@ -92,7 +111,7 @@ class StripeDispatchRetryWorker:
 
     async def _replay(
         self,
-        dispatcher: StripeEventDispatcher,
+        dispatcher: StripeDispatchExecutor,
         dispatch: StripeEventDispatch,
     ) -> None:
         try:
@@ -109,12 +128,12 @@ class StripeDispatchRetryWorker:
                 extra={"dispatch_id": str(dispatch.id), "handler": dispatch.handler},
             )
 
-    def _require_repository(self) -> StripeEventRepository:
+    def _require_repository(self) -> StripeDispatchRepository:
         if self._repository is None:
             raise RuntimeError("StripeDispatchRetryWorker repository not configured")
         return self._repository
 
-    def _require_dispatcher(self) -> StripeEventDispatcher:
+    def _require_dispatcher(self) -> StripeDispatchExecutor:
         if self._dispatcher is None:
             raise RuntimeError("StripeDispatchRetryWorker dispatcher not configured")
         return self._dispatcher

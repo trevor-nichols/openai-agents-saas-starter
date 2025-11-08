@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
+from typing import cast
 
 import stripe
 from fastapi import APIRouter, HTTPException, Request, status
@@ -16,6 +17,11 @@ from app.infrastructure.persistence.stripe.repository import (
 from app.observability.metrics import observe_stripe_webhook_event
 from app.services.billing_events import get_billing_events_service
 from app.services.stripe_dispatcher import stripe_event_dispatcher
+
+SignatureVerificationError = cast(
+    type[Exception],
+    getattr(getattr(stripe, "error", None), "SignatureVerificationError", Exception),
+)
 
 logger = logging.getLogger("anything-agents.webhooks.stripe")
 
@@ -50,9 +56,10 @@ async def handle_stripe_webhook(request: Request) -> dict[str, bool]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payload."
         ) from exc
-    except stripe.error.SignatureVerificationError as exc:
+    except SignatureVerificationError as exc:
         observe_stripe_webhook_event(event_type="unknown", result="invalid_signature")
-        logger.warning("Stripe signature verification failed: %s", exc.user_message or str(exc))
+        message = getattr(exc, "user_message", None) or str(exc)
+        logger.warning("Stripe signature verification failed: %s", message)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Signature verification failed."
         ) from exc

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -25,12 +26,20 @@ class FakeRefreshRepo:
         self.prefetched: RefreshTokenRecord | None = None
 
     async def find_active(
-        self, account: str, tenant_id: str | None, scopes: list[str]
+        self, account: str, tenant_id: str | None, scopes: Sequence[str]
     ) -> RefreshTokenRecord | None:
         if self.prefetched:
             return self.prefetched
         key = (account, tenant_id, make_scope_key(scopes))
         return self._records.get(key)
+
+    async def get_by_jti(self, jti: str) -> RefreshTokenRecord | None:
+        if self.prefetched and self.prefetched.jti == jti:
+            return self.prefetched
+        for record in self._records.values():
+            if record.jti == jti:
+                return record
+        return None
 
     async def save(self, record: RefreshTokenRecord) -> None:
         self.saved.append(record)
@@ -44,6 +53,12 @@ class FakeRefreshRepo:
 def _make_service(repo: FakeRefreshRepo | None = None) -> AuthService:
     registry = load_service_account_registry()
     return AuthService(registry, refresh_repository=repo)
+
+
+def _refresh_token(payload: Mapping[str, object]) -> str:
+    token = payload.get("refresh_token")
+    assert isinstance(token, str), "refresh_token should be issued as a string"
+    return token
 
 
 def test_service_account_registry_loads_defaults() -> None:
@@ -71,7 +86,7 @@ async def test_issue_service_account_refresh_token_success() -> None:
     assert result["scopes"] == ["conversations:read"]
     assert result["token_use"] == "refresh"
 
-    claims = get_token_verifier().verify(result["refresh_token"])
+    claims = get_token_verifier().verify(_refresh_token(result))
 
     assert claims["tenant_id"] == tenant_id
     assert claims["scope"] == "conversations:read"
@@ -171,7 +186,7 @@ async def test_existing_token_reused_when_available() -> None:
         force=False,
     )
 
-    assert result["refresh_token"] == "existing"
+    assert _refresh_token(result) == "existing"
     assert repo.saved == []
 
 
@@ -201,7 +216,7 @@ async def test_force_override_mints_new_token() -> None:
         force=True,
     )
 
-    assert result["refresh_token"] != "existing"
+    assert _refresh_token(result) != "existing"
     assert len(repo.saved) == 1
 
 
@@ -222,7 +237,7 @@ async def test_new_token_persisted_to_repository() -> None:
 
     assert repo.saved, "Expected token to be persisted"
     saved_record = repo.saved[-1]
-    assert saved_record.token == result["refresh_token"]
+    assert saved_record.token == _refresh_token(result)
     assert saved_record.tenant_id == tenant_id
     assert saved_record.scopes == ["conversations:read"]
     assert saved_record.signing_kid == result["kid"]

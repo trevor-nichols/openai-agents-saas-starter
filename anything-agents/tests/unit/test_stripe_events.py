@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
+from typing import cast
 
 import pytest
+from sqlalchemy import Table
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.infrastructure.persistence.auth import models as auth_models
@@ -20,16 +23,25 @@ from app.infrastructure.persistence.stripe.repository import (
     StripeEventRepository,
     StripeEventStatus,
 )
+from tests.utils.sqlalchemy import create_tables
 
 _ = (auth_models, conversation_models)
 
 
+STRIPE_TABLES = cast(
+    tuple[Table, ...],
+    (
+        StripeEvent.__table__,
+        StripeEventDispatch.__table__,
+    ),
+)
+
+
 @pytest.fixture
-async def stripe_event_repo():
+async def stripe_event_repo() -> AsyncIterator[StripeEventRepository]:
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
     async with engine.begin() as conn:
-        await conn.run_sync(StripeEvent.__table__.create)
-        await conn.run_sync(StripeEventDispatch.__table__.create)
+        await conn.run_sync(lambda connection: create_tables(connection, STRIPE_TABLES))
     session_factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     repository = StripeEventRepository(session_factory)
     try:

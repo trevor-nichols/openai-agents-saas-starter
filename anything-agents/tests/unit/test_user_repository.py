@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from typing import cast
 from uuid import uuid4
 
 import pytest
 from fakeredis.aioredis import FakeRedis
+from sqlalchemy import Table
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.compiler import compiles
 
@@ -24,6 +28,7 @@ from app.infrastructure.persistence.auth.user_repository import (
     RedisLockoutStore,
 )
 from app.infrastructure.persistence.conversations.models import TenantAccount
+from tests.utils.sqlalchemy import create_tables
 
 
 @compiles(CITEXT, "sqlite")
@@ -41,26 +46,32 @@ def _compile_jsonb(element, compiler, **kwargs):  # pragma: no cover - dialect s
     return "TEXT"
 
 
-def _create_core_tables(connection) -> None:
-    tables = [
+AUTH_TABLES = cast(
+    tuple[Table, ...],
+    (
         TenantAccount.__table__,
         UserAccount.__table__,
         UserProfile.__table__,
         TenantUserMembership.__table__,
         PasswordHistory.__table__,
         UserLoginEvent.__table__,
-    ]
-    for table in tables:
-        table.create(connection, checkfirst=True)
+    ),
+)
+
+
+def _create_core_tables(connection: Connection) -> None:
+    create_tables(connection, AUTH_TABLES)
 
 
 @pytest.fixture
-async def session_factory() -> async_sessionmaker[AsyncSession]:
+async def session_factory() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
     engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
     async with engine.begin() as conn:
         await conn.run_sync(_create_core_tables)
-    yield async_sessionmaker(engine, expire_on_commit=False)
-    await engine.dispose()
+    try:
+        yield async_sessionmaker(engine, expire_on_commit=False)
+    finally:
+        await engine.dispose()
 
 
 @pytest.fixture

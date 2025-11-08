@@ -228,14 +228,22 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
 
     def _encode_with_signing_kid(self, payload: dict[str, Any], signing_kid: str) -> str:
         if signing_kid == "legacy-hs256":
-            return jwt.encode(
+            encoded = jwt.encode(
                 payload, self._settings.secret_key, algorithm=self._settings.jwt_algorithm
             )
+            return self._ensure_token_str(encoded)
         material = self._find_key_material(signing_kid)
         if not material or not material.private_key:
             raise RuntimeError(f"Missing key material for kid '{signing_kid}'.")
         headers = {"kid": material.kid, "alg": "EdDSA", "typ": "JWT"}
-        return jwt.encode(payload, material.private_key, algorithm="EdDSA", headers=headers)
+        encoded = jwt.encode(payload, material.private_key, algorithm="EdDSA", headers=headers)
+        return self._ensure_token_str(encoded)
+
+    @staticmethod
+    def _ensure_token_str(token: str | bytes) -> str:
+        if isinstance(token, bytes):
+            return token.decode("utf-8")
+        return token
 
     def _find_key_material(self, kid: str) -> KeyMaterial | None:
         keyset = load_keyset(self._settings)

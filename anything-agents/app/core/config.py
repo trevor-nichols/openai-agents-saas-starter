@@ -196,13 +196,13 @@ class Settings(BaseSettings):
         description="Failed login attempts allowed before locking the account.",
         alias="AUTH_LOCKOUT_THRESHOLD",
     )
-    auth_lockout_window_minutes: int = Field(
-        default=60,
+    auth_lockout_window_minutes: float = Field(
+        default=60.0,
         description="Rolling window in minutes for lockout threshold calculations.",
         alias="AUTH_LOCKOUT_WINDOW_MINUTES",
     )
-    auth_lockout_duration_minutes: int = Field(
-        default=60,
+    auth_lockout_duration_minutes: float = Field(
+        default=60.0,
         description="Automatic unlock window for locked users (minutes).",
         alias="AUTH_LOCKOUT_DURATION_MINUTES",
     )

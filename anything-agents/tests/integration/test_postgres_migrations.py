@@ -5,9 +5,10 @@ from __future__ import annotations
 import asyncio
 import os
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any, cast
 
 import asyncpg
 import pytest
@@ -50,7 +51,7 @@ def _require_database_url() -> URL:
 
 
 @pytest.fixture(scope="session")
-def event_loop() -> AsyncIterator[asyncio.AbstractEventLoop]:
+def event_loop() -> Iterator[asyncio.AbstractEventLoop]:
     """Ensure a session-scoped event loop for async fixtures."""
 
     loop = asyncio.new_event_loop()
@@ -235,7 +236,8 @@ async def test_sdk_session_tables_persist_history(migrated_engine: AsyncEngine) 
         sessions_table="sdk_agent_sessions",
         messages_table="sdk_agent_session_messages",
     )
-    restored_items = await resumed_session.get_items()
+    restored_items_raw = await resumed_session.get_items()
+    restored_items = cast(list[dict[str, Any]], restored_items_raw)
 
     assert len(restored_items) == 2
     assert restored_items[0]["content"] == "Hello durable session."

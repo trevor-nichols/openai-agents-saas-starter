@@ -85,7 +85,10 @@ def configure_vault_secret_manager(settings: Settings | None = None) -> None:
     if settings.auth_key_storage_backend != "secret-manager":
         return
 
-    if not settings.vault_addr or not settings.vault_token:
+    vault_addr = settings.vault_addr
+    vault_token = settings.vault_token
+
+    if not vault_addr or not vault_token:
         raise KeyStorageError(
             "Vault address/token are required when auth_key_storage_backend=secret-manager."
         )
@@ -94,8 +97,8 @@ def configure_vault_secret_manager(settings: Settings | None = None) -> None:
 
     def factory() -> VaultKVSecretManagerClient:
         return VaultKVSecretManagerClient(
-            base_url=settings.vault_addr,
-            token=settings.vault_token,
+            base_url=vault_addr,
+            token=vault_token,
         )
 
     register_secret_manager_client(factory)

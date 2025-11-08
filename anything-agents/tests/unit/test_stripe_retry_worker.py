@@ -4,21 +4,34 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from types import SimpleNamespace
+from datetime import UTC, datetime
 
 import pytest
 
+from app.infrastructure.persistence.stripe.models import StripeEventDispatch
 from app.observability.metrics import STRIPE_DISPATCH_RETRY_TOTAL
+from app.services.stripe_event_models import DispatchResult
 from app.services.stripe_retry_worker import StripeDispatchRetryWorker
+
+
+def _dispatch(handler: str = "billing_sync") -> StripeEventDispatch:
+    return StripeEventDispatch(
+        id=uuid.uuid4(),
+        stripe_event_id=uuid.uuid4(),
+        handler=handler,
+    )
 
 
 class _FakeRepository:
     def __init__(self, dispatch_count: int = 1) -> None:
-        self._dispatches = [
-            SimpleNamespace(id=uuid.uuid4(), handler="billing_sync") for _ in range(dispatch_count)
-        ]
+        self._dispatches = [_dispatch() for _ in range(dispatch_count)]
 
-    async def list_dispatches_for_retry(self, *, limit: int, ready_before):
+    async def list_dispatches_for_retry(
+        self,
+        *,
+        limit: int,
+        ready_before: datetime,
+    ) -> list[StripeEventDispatch]:
         if not self._dispatches:
             await asyncio.sleep(0)
             return []
@@ -31,11 +44,12 @@ class _FakeDispatcher:
         self.fail_first = fail_first
         self.calls: list[uuid.UUID] = []
 
-    async def replay_dispatch(self, dispatch_id: uuid.UUID) -> None:
+    async def replay_dispatch(self, dispatch_id: uuid.UUID) -> DispatchResult:
         self.calls.append(dispatch_id)
         if self.fail_first:
             self.fail_first = False
             raise RuntimeError("boom")
+        return DispatchResult(processed_at=datetime.now(UTC))
 
 
 @pytest.mark.asyncio

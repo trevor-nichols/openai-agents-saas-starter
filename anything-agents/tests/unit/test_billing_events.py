@@ -5,11 +5,12 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import UTC, datetime
-from types import SimpleNamespace
+from typing import cast
 
 import pytest
 from fakeredis.aioredis import FakeRedis
 
+from app.infrastructure.persistence.stripe.models import StripeEvent, StripeEventStatus
 from app.observability.metrics import (
     STRIPE_BILLING_STREAM_BACKLOG_SECONDS,
     STRIPE_BILLING_STREAM_EVENTS_TOTAL,
@@ -61,13 +62,14 @@ async def test_publish_includes_dispatch_context():
     service.configure(backend=backend, repository=None)
 
     event = _make_event()
+    tenant_id = _tenant_hint(event)
     context = DispatchBroadcastContext(
-        tenant_id=event.tenant_hint,
+        tenant_id=tenant_id,
         event_type=event.event_type,
         summary="Invoice paid",
         status="paid",
         subscription=SubscriptionSnapshotView(
-            tenant_id=event.tenant_hint,
+            tenant_id=tenant_id,
             plan_code="starter",
             status="active",
             auto_renew=True,
@@ -78,7 +80,7 @@ async def test_publish_includes_dispatch_context():
             cancel_at=None,
         ),
         invoice=InvoiceSnapshotView(
-            tenant_id=event.tenant_hint,
+            tenant_id=tenant_id,
             invoice_id="in_test",
             status="paid",
             amount_due_cents=1000,
@@ -149,8 +151,8 @@ async def test_publish_raises_after_max_attempts(monkeypatch):
         )
 
 
-def _make_event(tenant: str = "tenant-1") -> SimpleNamespace:
-    return SimpleNamespace(
+def _make_event(tenant: str = "tenant-1") -> StripeEvent:
+    return StripeEvent(
         id=uuid.uuid4(),
         stripe_event_id="evt_unit",
         event_type="invoice.payment_failed",
@@ -158,8 +160,12 @@ def _make_event(tenant: str = "tenant-1") -> SimpleNamespace:
         tenant_hint=tenant,
         processed_at=datetime.now(UTC),
         received_at=datetime.now(UTC),
-        processing_outcome="processed",
+        processing_outcome=StripeEventStatus.PROCESSED.value,
     )
+
+
+def _tenant_hint(event: StripeEvent) -> str:
+    return cast(str, event.tenant_hint)
 
 
 @pytest.mark.asyncio
@@ -172,13 +178,14 @@ async def test_publish_updates_stream_metrics():
         STRIPE_BILLING_STREAM_EVENTS_TOTAL, source="webhook", result="published"
     )
     event = _make_event()
+    tenant_id = _tenant_hint(event)
     context = DispatchBroadcastContext(
-        tenant_id=event.tenant_hint,
+        tenant_id=tenant_id,
         event_type=event.event_type,
         summary="Invoice processed",
         status="paid",
         subscription=SubscriptionSnapshotView(
-            tenant_id=event.tenant_hint,
+            tenant_id=tenant_id,
             plan_code="starter",
             status="active",
             auto_renew=True,

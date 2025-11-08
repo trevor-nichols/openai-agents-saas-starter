@@ -55,7 +55,12 @@ async def get_tenant_context(
     header_tenant = tenant_id_header if isinstance(tenant_id_header, str) else None
     header_role = tenant_role_header if isinstance(tenant_role_header, str) else None
 
-    payload = current_user.get("payload", {})
+    payload_obj = current_user.get("payload")
+    payload: dict[str, Any]
+    if isinstance(payload_obj, dict):
+        payload = payload_obj
+    else:
+        payload = {}
     token_tenant = payload.get("tenant_id")
     effective_tenant = token_tenant
 

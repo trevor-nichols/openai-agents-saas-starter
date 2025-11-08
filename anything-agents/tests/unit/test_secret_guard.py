@@ -16,6 +16,12 @@ from app.core.config import (
 )
 
 
+def _settings(payload: dict[str, object]) -> Settings:
+    """Convenience helper that keeps pydantic init semantics consistent in tests."""
+
+    return Settings.model_validate(payload)
+
+
 def test_secret_warnings_detect_defaults() -> None:
     settings = Settings.model_validate(
         {
@@ -43,17 +49,19 @@ def test_secret_warnings_detect_placeholders() -> None:
 
 
 def test_enforce_secret_overrides_in_production() -> None:
-    settings = Settings(
-        debug=False,
-        environment="production",
-        secret_key=DEFAULT_SECRET_KEY,
-        auth_password_pepper=DEFAULT_PASSWORD_PEPPER,
-        auth_refresh_token_pepper=DEFAULT_REFRESH_TOKEN_PEPPER,
+    settings = _settings(
+        {
+            "DEBUG": False,
+            "ENVIRONMENT": "production",
+            "SECRET_KEY": DEFAULT_SECRET_KEY,
+            "AUTH_PASSWORD_PEPPER": DEFAULT_PASSWORD_PEPPER,
+            "AUTH_REFRESH_TOKEN_PEPPER": DEFAULT_REFRESH_TOKEN_PEPPER,
+        }
     )
     with pytest.raises(RuntimeError):
         enforce_secret_overrides(settings, force=True)
 
 
 def test_dev_mode_allows_defaults() -> None:
-    settings = Settings(debug=True)
+    settings = _settings({"DEBUG": True})
     enforce_secret_overrides(settings)

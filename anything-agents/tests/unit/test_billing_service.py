@@ -3,9 +3,10 @@
 import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import Table, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.infrastructure.persistence.auth import models as auth_models  # noqa: F401
@@ -22,6 +23,7 @@ from app.services.payment_gateway import (
     PaymentGatewayError,
     SubscriptionProvisionResult,
 )
+from tests.utils.sqlalchemy import create_tables
 
 
 class FakeGateway(PaymentGateway):
@@ -98,25 +100,25 @@ class ErrorGateway(FakeGateway):
         raise PaymentGatewayError("boom")
 
 
-@pytest.fixture
-async def billing_context():
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    tables_to_create = [
+TABLES_TO_CREATE = cast(
+    tuple[Table, ...],
+    (
         persistence_models.TenantAccount.__table__,
         persistence_models.BillingPlan.__table__,
         persistence_models.PlanFeature.__table__,
         persistence_models.TenantSubscription.__table__,
         persistence_models.SubscriptionInvoice.__table__,
         persistence_models.SubscriptionUsage.__table__,
-    ]
+    ),
+)
+
+
+@pytest.fixture
+async def billing_context():
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
 
     async with engine.begin() as conn:
-        await conn.run_sync(
-            lambda connection: persistence_models.Base.metadata.create_all(
-                bind=connection,
-                tables=tables_to_create,
-            )
-        )
+        await conn.run_sync(lambda connection: create_tables(connection, TABLES_TO_CREATE))
 
     session_factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     tenant_id = uuid.uuid4()
