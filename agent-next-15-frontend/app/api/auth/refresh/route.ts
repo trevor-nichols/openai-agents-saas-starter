@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 
 import { getRefreshTokenFromCookies } from '@/lib/auth/cookies';
-import { refreshSessionWithBackend } from '@/lib/auth/session';
+import { destroySession, refreshSessionWithBackend } from '@/lib/auth/session';
 
 export async function POST() {
   const token = getRefreshTokenFromCookies();
   if (!token) {
+    destroySession();
     return NextResponse.json({ message: 'Refresh token missing.' }, { status: 401 });
   }
 
@@ -17,6 +18,7 @@ export async function POST() {
       expiresAt: updated.expires_at,
     });
   } catch (error) {
+    destroySession();
     return NextResponse.json(
       { message: error instanceof Error ? error.message : 'Failed to refresh session.' },
       { status: 401 },
