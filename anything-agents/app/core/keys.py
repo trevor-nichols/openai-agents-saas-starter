@@ -5,10 +5,11 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable, Protocol
+from typing import Any, Protocol
 from uuid import uuid4
 
 from cryptography.hazmat.primitives import serialization
@@ -16,7 +17,7 @@ from cryptography.hazmat.primitives.asymmetric import ed25519
 
 from app.core.config import Settings, get_settings
 
-UTC = timezone.utc
+UTC = UTC
 KEYSET_SCHEMA_VERSION = 1
 
 
@@ -52,7 +53,7 @@ class KeyMaterial:
         return payload
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "KeyMaterial":
+    def from_dict(cls, data: dict[str, Any]) -> KeyMaterial:
         return cls(
             kid=data["kid"],
             private_key=data.get("private_key"),
@@ -79,7 +80,7 @@ class KeySet:
         self._cached_jwks: JWKSDocument | None = None
 
     @classmethod
-    def empty(cls) -> "KeySet":
+    def empty(cls) -> KeySet:
         return cls(active=None)
 
     def to_dict(self) -> dict[str, Any]:
@@ -90,7 +91,7 @@ class KeySet:
         }
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "KeySet":
+    def from_dict(cls, payload: dict[str, Any]) -> KeySet:
         active = KeyMaterial.from_dict(payload["active"]) if payload.get("active") else None
         next_key = KeyMaterial.from_dict(payload["next"]) if payload.get("next") else None
         return cls(active=active, next_key=next_key)
@@ -123,7 +124,9 @@ class KeySet:
 
         last_modified = max(timestamps) if timestamps else datetime.now(UTC)
 
-        doc = JWKSDocument(payload={"keys": keys}, fingerprint=fingerprint, last_modified=last_modified)
+        doc = JWKSDocument(
+            payload={"keys": keys}, fingerprint=fingerprint, last_modified=last_modified
+        )
         self._cached_jwks = doc
         return doc
 
@@ -148,11 +151,9 @@ class KeySet:
 
 
 class KeyStorageAdapter(Protocol):
-    def load_keyset(self) -> KeySet:
-        ...
+    def load_keyset(self) -> KeySet: ...
 
-    def save_keyset(self, keyset: KeySet) -> None:
-        ...
+    def save_keyset(self, keyset: KeySet) -> None: ...
 
 
 class FileKeyStorage(KeyStorageAdapter):
@@ -164,7 +165,7 @@ class FileKeyStorage(KeyStorageAdapter):
             return KeySet.empty()
         try:
             data = json.loads(self.path.read_text())
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise KeyStorageError(f"Failed to read keyset file: {exc}") from exc
         return KeySet.from_dict(data)
 
@@ -172,16 +173,14 @@ class FileKeyStorage(KeyStorageAdapter):
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             self.path.write_text(json.dumps(keyset.to_dict(), indent=2))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise KeyStorageError(f"Failed to write keyset file: {exc}") from exc
 
 
 class SecretManagerClient(Protocol):
-    def read_secret(self, name: str) -> str | None:
-        ...
+    def read_secret(self, name: str) -> str | None: ...
 
-    def write_secret(self, name: str, value: str) -> None:
-        ...
+    def write_secret(self, name: str, value: str) -> None: ...
 
 
 _secret_manager_client_factory: Callable[[], SecretManagerClient] | None = None

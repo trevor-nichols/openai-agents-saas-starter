@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from app.domain.auth import RefreshTokenRecord, make_scope_key
-from app.core.service_accounts import load_service_account_registry
 from app.core.security import get_token_verifier
+from app.core.service_accounts import load_service_account_registry
+from app.domain.auth import RefreshTokenRecord, make_scope_key
 from app.services.auth_service import (
     AuthService,
     ServiceAccountRateLimitError,
@@ -154,8 +154,8 @@ async def test_existing_token_reused_when_available() -> None:
         account="analytics-batch",
         tenant_id="11111111-2222-3333-4444-555555555555",
         scopes=["conversations:read"],
-        issued_at=datetime.now(timezone.utc) - timedelta(minutes=1),
-        expires_at=datetime.now(timezone.utc) + timedelta(minutes=10),
+        issued_at=datetime.now(UTC) - timedelta(minutes=1),
+        expires_at=datetime.now(UTC) + timedelta(minutes=10),
         fingerprint=None,
         signing_kid="ed25519-active-test",
     )
@@ -184,8 +184,8 @@ async def test_force_override_mints_new_token() -> None:
         account="analytics-batch",
         tenant_id="11111111-2222-3333-4444-555555555555",
         scopes=["conversations:read"],
-        issued_at=datetime.now(timezone.utc) - timedelta(minutes=1),
-        expires_at=datetime.now(timezone.utc) + timedelta(minutes=10),
+        issued_at=datetime.now(UTC) - timedelta(minutes=1),
+        expires_at=datetime.now(UTC) + timedelta(minutes=10),
         fingerprint=None,
         signing_kid="ed25519-active-test",
     )

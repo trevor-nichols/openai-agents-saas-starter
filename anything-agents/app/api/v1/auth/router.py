@@ -5,7 +5,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
@@ -24,9 +24,8 @@ from app.core.config import get_settings
 from app.infrastructure.security.nonce_store import get_nonce_store
 from app.infrastructure.security.vault import (
     VaultClientUnavailable,
-    VaultTransitClient,
-    get_vault_transit_client,
     VaultVerificationError,
+    get_vault_transit_client,
 )
 from app.observability.logging import log_event
 from app.observability.metrics import record_nonce_cache_result
@@ -202,7 +201,9 @@ async def issue_service_account_token(
     except ServiceAccountRateLimitError as exc:
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc)) from exc
     except ServiceAccountCatalogUnavailable as exc:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        ) from exc
 
     if claims is not None:
         _validate_request_against_claims(claims, payload)
@@ -338,7 +339,7 @@ async def _enforce_nonce(claims: dict[str, Any]) -> None:
             detail="Vault payload missing exp.",
         )
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     ttl_seconds = exp - int(now.timestamp())
     if ttl_seconds <= 0:
         raise HTTPException(
@@ -379,7 +380,7 @@ def _enforce_timestamps(claims: dict[str, Any]) -> None:
             detail="Vault payload missing iat.",
         )
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     issued_delta = now.timestamp() - issued_at
     if issued_delta < -30:
         raise HTTPException(
@@ -493,7 +494,7 @@ def _decode_vault_payload(vault_payload: str) -> dict[str, Any]:
     padded = vault_payload + "=" * (-len(vault_payload) % 4)
     try:
         decoded = base64.urlsafe_b64decode(padded.encode("utf-8"))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid Vault payload encoding: {exc}",
@@ -548,24 +549,34 @@ def _normalize_scope_list(
     error_status: int,
 ) -> list[str]:
     if not isinstance(scopes, list):
-        raise HTTPException(status_code=error_status, detail=f"{field_name} must be an array of strings.")
+        raise HTTPException(
+            status_code=error_status, detail=f"{field_name} must be an array of strings."
+        )
 
     normalized: list[str] = []
     for scope in scopes:
         if not isinstance(scope, str):
-            raise HTTPException(status_code=error_status, detail=f"{field_name} must contain strings only.")
+            raise HTTPException(
+                status_code=error_status, detail=f"{field_name} must contain strings only."
+            )
         trimmed = scope.strip()
         if not trimmed:
-            raise HTTPException(status_code=error_status, detail=f"{field_name} cannot contain empty scopes.")
+            raise HTTPException(
+                status_code=error_status, detail=f"{field_name} cannot contain empty scopes."
+            )
         if trimmed not in normalized:
             normalized.append(trimmed)
 
     if not normalized:
-        raise HTTPException(status_code=error_status, detail=f"{field_name} must include at least one scope.")
+        raise HTTPException(
+            status_code=error_status, detail=f"{field_name} must include at least one scope."
+        )
     return normalized
 
 
 def _coerce_positive_int(value: Any, *, field_name: str, error_status: int) -> int:
     if not isinstance(value, int) or value <= 0:
-        raise HTTPException(status_code=error_status, detail=f"{field_name} must be a positive integer.")
+        raise HTTPException(
+            status_code=error_status, detail=f"{field_name} must be a positive integer."
+        )
     return value

@@ -2,13 +2,12 @@
 
 import json
 from collections.abc import AsyncIterator
-from typing import Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 
-from app.api.dependencies.auth import CurrentUser, require_scopes
 from app.api.dependencies import raise_rate_limit_http_error
+from app.api.dependencies.auth import CurrentUser, require_scopes
 from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse, StreamingChatResponse
 from app.core.config import get_settings
 from app.services.agent_service import agent_service
@@ -135,7 +134,7 @@ async def _acquire_stream_slot(quota: ConcurrencyQuota, user: CurrentUser) -> Ra
         raise_rate_limit_http_error(exc, tenant_id=tenant_id, user_id=user_id)
 
 
-def _user_identity(user: CurrentUser) -> Tuple[str, str]:
+def _user_identity(user: CurrentUser) -> tuple[str, str]:
     payload = user.get("payload") if isinstance(user, dict) else {}
     tenant_id = str((payload or {}).get("tenant_id") or "unknown")
     user_id = str(user.get("user_id") or "anonymous")

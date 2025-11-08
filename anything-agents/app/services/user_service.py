@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from datetime import datetime, timezone
-from typing import Sequence
+from collections.abc import Sequence
+from datetime import UTC, datetime
 from uuid import UUID
 
 from app.core.config import Settings, get_settings
@@ -15,10 +15,10 @@ from app.domain.users import (
     TenantMembershipDTO,
     UserCreate,
     UserCreatePayload,
+    UserLoginEventDTO,
     UserRecord,
     UserRepository,
     UserStatus,
-    UserLoginEventDTO,
 )
 from app.infrastructure.persistence.auth.user_repository import get_user_repository
 from app.observability.logging import log_event
@@ -171,7 +171,9 @@ class UserService:
                 ip_address=ip_address,
                 user_agent=user_agent,
             )
-            log_event("auth.lockout", user_id=str(user.id), tenant_id=str(tenant_id), attempts=failures)
+            log_event(
+                "auth.lockout", user_id=str(user.id), tenant_id=str(tenant_id), attempts=failures
+            )
             raise UserLockedError("Account locked due to repeated failures.")
 
     async def _ensure_account_active(
@@ -241,7 +243,7 @@ class UserService:
             user_agent=user_agent,
             result=result,  # type: ignore[arg-type]
             reason=reason,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         await self._repository.record_login_event(event)
 
@@ -283,6 +285,9 @@ def get_user_service() -> UserService:
     if _DEFAULT_SERVICE is None:
         repository = get_user_repository()
         if repository is None:
-            raise RuntimeError("User repository is not configured. Run Postgres migrations and provide DATABASE_URL.")
+            raise RuntimeError(
+                "User repository is not configured. "
+                "Run Postgres migrations and provide DATABASE_URL."
+            )
         _DEFAULT_SERVICE = UserService(repository)
     return _DEFAULT_SERVICE

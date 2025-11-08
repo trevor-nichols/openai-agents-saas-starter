@@ -6,13 +6,13 @@ import time
 from typing import Any
 
 import pytest
-from fastapi.testclient import TestClient
 from fakeredis.aioredis import FakeRedis
+from fastapi.testclient import TestClient
 
 from app.cli.auth_cli import build_parser, handle_issue_service_account
-from app.infrastructure.security.nonce_store import RedisNonceStore
 from app.core import config as config_module
 from app.core.security import get_token_verifier
+from app.infrastructure.security.nonce_store import RedisNonceStore
 from main import app
 
 
@@ -25,12 +25,14 @@ class FakeVaultClient:
         return True
 
 
-def test_cli_roundtrip_enforces_nonce_reuse(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+def test_cli_roundtrip_enforces_nonce_reuse(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     # Route CLI HTTP calls through the FastAPI app.
     test_client = TestClient(app)
 
     class DummyHttpxClient:
-        def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401 - signature shaped like httpx.Client
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
             self._client = test_client
 
         def __enter__(self) -> DummyHttpxClient:

@@ -29,7 +29,9 @@ class VaultTransitClient:
     key_name: str
     timeout: float = 5.0
 
-    def verify_signature(self, payload_b64: str, signature: str, transport: httpx.BaseTransport | None = None) -> bool:
+    def verify_signature(
+        self, payload_b64: str, signature: str, transport: httpx.BaseTransport | None = None
+    ) -> bool:
         """Verify a Vault Transit signature for the given payload."""
 
         url = f"{self.base_url.rstrip('/')}/v1/transit/verify/{self.key_name}"

@@ -66,14 +66,11 @@ class SubscriptionInvoiceRecord:
 class BillingRepository(Protocol):
     """Persistence contract for billing plan and subscription data."""
 
-    async def list_plans(self) -> list[BillingPlan]:
-        ...
+    async def list_plans(self) -> list[BillingPlan]: ...
 
-    async def get_subscription(self, tenant_id: str) -> TenantSubscription | None:
-        ...
+    async def get_subscription(self, tenant_id: str) -> TenantSubscription | None: ...
 
-    async def upsert_subscription(self, subscription: TenantSubscription) -> None:
-        ...
+    async def upsert_subscription(self, subscription: TenantSubscription) -> None: ...
 
     async def update_subscription(
         self,
@@ -82,8 +79,7 @@ class BillingRepository(Protocol):
         auto_renew: bool | None = None,
         billing_email: str | None = None,
         seat_count: int | None = None,
-    ) -> TenantSubscription:
-        ...
+    ) -> TenantSubscription: ...
 
     async def record_usage(
         self,
@@ -94,8 +90,7 @@ class BillingRepository(Protocol):
         period_start: datetime,
         period_end: datetime,
         idempotency_key: str | None = None,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     async def record_usage_from_processor(
         self,
@@ -106,8 +101,6 @@ class BillingRepository(Protocol):
         period_start: datetime,
         period_end: datetime,
         idempotency_key: str | None = None,
-    ) -> None:
-        ...
+    ) -> None: ...
 
-    async def upsert_invoice(self, invoice: SubscriptionInvoiceRecord) -> None:
-        ...
+    async def upsert_invoice(self, invoice: SubscriptionInvoiceRecord) -> None: ...

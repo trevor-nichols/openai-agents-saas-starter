@@ -64,7 +64,9 @@ def test_configure_vault_secret_manager_registers(monkeypatch: pytest.MonkeyPatc
         captured["factory"] = factory
 
     monkeypatch.setattr(
-        vault_kv, "register_secret_manager_client", fake_register  # type: ignore[arg-type]
+        vault_kv,
+        "register_secret_manager_client",
+        fake_register,  # type: ignore[arg-type]
     )
 
     vault_kv.configure_vault_secret_manager()

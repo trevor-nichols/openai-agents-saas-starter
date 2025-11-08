@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.infrastructure.persistence.auth import models as auth_models
+
+# Import other model modules so SQLAlchemy's registry resolves relationships during configuration.
+from app.infrastructure.persistence.conversations import models as conversation_models
 from app.infrastructure.persistence.stripe.models import (
     StripeDispatchStatus,
     StripeEvent,
@@ -17,9 +21,7 @@ from app.infrastructure.persistence.stripe.repository import (
     StripeEventStatus,
 )
 
-# Import other model modules so SQLAlchemy's registry resolves relationships during configuration.
-import app.infrastructure.persistence.conversations.models  # noqa: F401
-import app.infrastructure.persistence.auth.models  # noqa: F401
+_ = (auth_models, conversation_models)
 
 
 @pytest.fixture
@@ -44,7 +46,7 @@ async def test_upsert_event_is_idempotent(stripe_event_repo: StripeEventReposito
         event_type="customer.subscription.created",
         payload=payload,
         tenant_hint="tenant-123",
-        stripe_created_at=datetime.now(timezone.utc),
+        stripe_created_at=datetime.now(UTC),
     )
     assert created is True
 
@@ -53,7 +55,7 @@ async def test_upsert_event_is_idempotent(stripe_event_repo: StripeEventReposito
         event_type="customer.subscription.created",
         payload=payload,
         tenant_hint="tenant-123",
-        stripe_created_at=datetime.now(timezone.utc),
+        stripe_created_at=datetime.now(UTC),
     )
     assert created_again is False
     assert duplicate.id == record.id
@@ -127,12 +129,16 @@ async def test_list_dispatches_supports_offset(stripe_event_repo: StripeEventRep
         await stripe_event_repo.ensure_dispatch(event_id=record.id, handler="billing_sync")
         records.append(record)
 
-    page_two = await stripe_event_repo.list_dispatches(handler="billing_sync", status=None, limit=1, offset=1)
+    page_two = await stripe_event_repo.list_dispatches(
+        handler="billing_sync", status=None, limit=1, offset=1
+    )
     assert len(page_two) == 1
 
 
 @pytest.mark.asyncio
-async def test_list_dispatches_for_retry_filters_ready_rows(stripe_event_repo: StripeEventRepository):
+async def test_list_dispatches_for_retry_filters_ready_rows(
+    stripe_event_repo: StripeEventRepository,
+):
     record, _ = await stripe_event_repo.upsert_event(
         stripe_event_id="evt_retry",
         event_type="customer.subscription.updated",
@@ -142,16 +148,20 @@ async def test_list_dispatches_for_retry_filters_ready_rows(stripe_event_repo: S
     )
     dispatch = await stripe_event_repo.ensure_dispatch(event_id=record.id, handler="billing_sync")
 
-    future = datetime.now(timezone.utc) + timedelta(minutes=10)
+    future = datetime.now(UTC) + timedelta(minutes=10)
     await stripe_event_repo.mark_dispatch_failed(dispatch.id, error="boom", next_retry_at=future)
-    pending = await stripe_event_repo.list_dispatches_for_retry(limit=10, ready_before=datetime.now(timezone.utc))
+    pending = await stripe_event_repo.list_dispatches_for_retry(
+        limit=10, ready_before=datetime.now(UTC)
+    )
     assert pending == []
 
     await stripe_event_repo.mark_dispatch_failed(
         dispatch.id,
         error="boom",
-        next_retry_at=datetime.now(timezone.utc) - timedelta(minutes=1),
+        next_retry_at=datetime.now(UTC) - timedelta(minutes=1),
     )
-    ready = await stripe_event_repo.list_dispatches_for_retry(limit=10, ready_before=datetime.now(timezone.utc))
+    ready = await stripe_event_repo.list_dispatches_for_retry(
+        limit=10, ready_before=datetime.now(UTC)
+    )
     assert len(ready) == 1
     assert ready[0].id == dispatch.id

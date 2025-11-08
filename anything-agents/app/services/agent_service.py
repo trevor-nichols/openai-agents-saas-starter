@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import AsyncGenerator
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any, ClassVar
 
 from agents import Agent, function_tool, handoff, trace
-from agents.extensions.memory.sqlalchemy_session import SQLAlchemySession
 from agents.extensions.handoff_prompt import prompt_with_handoff_instructions
+from agents.extensions.memory.sqlalchemy_session import SQLAlchemySession
 from openai.types.responses import ResponseTextDeltaEvent
 
 from app.api.v1.agents.schemas import AgentStatus, AgentSummary
@@ -17,14 +17,15 @@ from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse, Streami
 from app.api.v1.conversations.schemas import ChatMessage, ConversationHistory, ConversationSummary
 from app.core.config import get_settings
 from app.domain.conversations import (
-    ConversationMetadata,
     ConversationMessage,
+    ConversationMetadata,
     ConversationRepository,
     ConversationSessionState,
 )
 from app.infrastructure.openai import runner as agent_runner
 from app.infrastructure.openai.sessions import build_conversation_session
 from app.utils.tools import ToolRegistry, initialize_tools
+
 from .conversation_service import conversation_service
 
 
@@ -43,16 +44,14 @@ async def search_conversations(query: str) -> str:
     if not results:
         return "No conversations contained the requested text."
 
-    top_matches = "\n".join(
-        f"{result.conversation_id}: {result.preview}" for result in results[:5]
-    )
+    top_matches = "\n".join(f"{result.conversation_id}: {result.preview}" for result in results[:5])
     return f"Found {len(results)} matching conversations:\n{top_matches}"
 
 
 class AgentRegistry:
     """Manage lifecycle of agent instances and their tool configuration."""
 
-    _AGENT_CAPABILITIES: dict[str, tuple[str, ...]] = {
+    _AGENT_CAPABILITIES: ClassVar[dict[str, tuple[str, ...]]] = {
         "triage": ("general", "search", "handoff"),
         "code_assistant": ("code", "search"),
         "data_analyst": ("analysis", "search"),
@@ -160,7 +159,7 @@ class AgentRegistry:
 class AgentService:
     """Core façade that orchestrates agent interactions."""
 
-    def __init__(self, conversation_repo: Optional[ConversationRepository] = None):
+    def __init__(self, conversation_repo: ConversationRepository | None = None):
         if conversation_repo is not None:
             conversation_service.set_repository(conversation_repo)
 
@@ -364,9 +363,7 @@ class AgentService:
             raise RuntimeError("No triage agent configured.")
         return "triage", fallback
 
-    async def _acquire_sdk_session(
-        self, conversation_id: str
-    ) -> tuple[str, SQLAlchemySession]:
+    async def _acquire_sdk_session(self, conversation_id: str) -> tuple[str, SQLAlchemySession]:
         state = await conversation_service.get_session_state(conversation_id)
         if state and state.sdk_session_id:
             session_id = state.sdk_session_id
@@ -380,7 +377,7 @@ class AgentService:
             conversation_id,
             ConversationSessionState(
                 sdk_session_id=session_id,
-                last_session_sync_at=datetime.now(timezone.utc),
+                last_session_sync_at=datetime.now(UTC),
             ),
         )
 

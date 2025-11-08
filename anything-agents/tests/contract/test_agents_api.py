@@ -3,9 +3,8 @@
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
-from fastapi.testclient import TestClient
-
 import pytest
+from fastapi.testclient import TestClient
 
 from app.api.dependencies.auth import require_current_user
 from app.api.v1.chat import router as chat_router

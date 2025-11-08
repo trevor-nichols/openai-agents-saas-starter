@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from types import SimpleNamespace
 
 import pytest
 from fakeredis.aioredis import FakeRedis
-
-from types import SimpleNamespace
 
 from app.observability.metrics import (
     STRIPE_BILLING_STREAM_BACKLOG_SECONDS,
@@ -73,8 +72,8 @@ async def test_publish_includes_dispatch_context():
             status="active",
             auto_renew=True,
             seat_count=1,
-            current_period_start=datetime.now(timezone.utc),
-            current_period_end=datetime.now(timezone.utc),
+            current_period_start=datetime.now(UTC),
+            current_period_end=datetime.now(UTC),
             trial_ends_at=None,
             cancel_at=None,
         ),
@@ -87,15 +86,15 @@ async def test_publish_includes_dispatch_context():
             billing_reason="subscription_cycle",
             hosted_invoice_url="https://example.com",
             collection_method="charge_automatically",
-            period_start=datetime.now(timezone.utc),
-            period_end=datetime.now(timezone.utc),
+            period_start=datetime.now(UTC),
+            period_end=datetime.now(UTC),
         ),
         usage=[
             UsageDelta(
                 feature_key="messages",
                 quantity=10,
-                period_start=datetime.now(timezone.utc),
-                period_end=datetime.now(timezone.utc),
+                period_start=datetime.now(UTC),
+                period_end=datetime.now(UTC),
                 amount_cents=500,
             )
         ],
@@ -126,7 +125,9 @@ async def test_publish_retries_on_backend_failure(monkeypatch):
 
     monkeypatch.setattr("app.services.billing_events.asyncio.sleep", no_sleep)
 
-    await service.publish_from_event(_make_event(), {"data": {"object": {"metadata": {"tenant_id": "tenant-1"}}}})
+    await service.publish_from_event(
+        _make_event(), {"data": {"object": {"metadata": {"tenant_id": "tenant-1"}}}}
+    )
 
 
 @pytest.mark.asyncio
@@ -143,7 +144,9 @@ async def test_publish_raises_after_max_attempts(monkeypatch):
     monkeypatch.setattr("app.services.billing_events.asyncio.sleep", no_sleep)
 
     with pytest.raises(RuntimeError):
-        await service.publish_from_event(_make_event(), {"data": {"object": {"metadata": {"tenant_id": "tenant-1"}}}})
+        await service.publish_from_event(
+            _make_event(), {"data": {"object": {"metadata": {"tenant_id": "tenant-1"}}}}
+        )
 
 
 def _make_event(tenant: str = "tenant-1") -> SimpleNamespace:
@@ -153,8 +156,8 @@ def _make_event(tenant: str = "tenant-1") -> SimpleNamespace:
         event_type="invoice.payment_failed",
         payload={"data": {"object": {"metadata": {"tenant_id": tenant}, "status": "failed"}}},
         tenant_hint=tenant,
-        processed_at=datetime.now(timezone.utc),
-        received_at=datetime.now(timezone.utc),
+        processed_at=datetime.now(UTC),
+        received_at=datetime.now(UTC),
         processing_outcome="processed",
     )
 
@@ -165,7 +168,9 @@ async def test_publish_updates_stream_metrics():
     service = BillingEventsService()
     service.configure(backend=backend, repository=None)
 
-    baseline = _counter_value(STRIPE_BILLING_STREAM_EVENTS_TOTAL, source="webhook", result="published")
+    baseline = _counter_value(
+        STRIPE_BILLING_STREAM_EVENTS_TOTAL, source="webhook", result="published"
+    )
     event = _make_event()
     context = DispatchBroadcastContext(
         tenant_id=event.tenant_hint,
@@ -178,8 +183,8 @@ async def test_publish_updates_stream_metrics():
             status="active",
             auto_renew=True,
             seat_count=1,
-            current_period_start=datetime.now(timezone.utc),
-            current_period_end=datetime.now(timezone.utc),
+            current_period_start=datetime.now(UTC),
+            current_period_end=datetime.now(UTC),
             trial_ends_at=None,
             cancel_at=None,
         ),
@@ -190,7 +195,9 @@ async def test_publish_updates_stream_metrics():
     await service.publish_from_event(event, event.payload, context=context)
     await service.mark_processed(event.processed_at)
 
-    updated = _counter_value(STRIPE_BILLING_STREAM_EVENTS_TOTAL, source="webhook", result="published")
+    updated = _counter_value(
+        STRIPE_BILLING_STREAM_EVENTS_TOTAL, source="webhook", result="published"
+    )
     assert updated == baseline + 1
     assert STRIPE_BILLING_STREAM_BACKLOG_SECONDS._value.get() >= 0
 

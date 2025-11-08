@@ -6,8 +6,8 @@ import base64
 import json
 import time
 
-import pytest
 import jwt
+import pytest
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 
@@ -60,7 +60,9 @@ def test_verifier_rejects_tampered_payload() -> None:
     payload_bytes = base64.urlsafe_b64decode(f"{payload}{padding}")
     tampered = json.loads(payload_bytes)
     tampered["scope"] = "tampered"
-    new_payload = base64.urlsafe_b64encode(json.dumps(tampered).encode("utf-8")).decode("utf-8").rstrip("=")
+    new_payload = (
+        base64.urlsafe_b64encode(json.dumps(tampered).encode("utf-8")).decode("utf-8").rstrip("=")
+    )
     tampered_token = ".".join([header, new_payload, signature])
 
     with pytest.raises(TokenVerifierError):
@@ -76,7 +78,9 @@ def test_verifier_rejects_unknown_kid() -> None:
     header_bytes = base64.urlsafe_b64decode(f"{header}{header_padding}")
     new_header = json.loads(header_bytes)
     new_header["kid"] = "ed25519-missing"
-    encoded = base64.urlsafe_b64encode(json.dumps(new_header).encode("utf-8")).decode("utf-8").rstrip("=")
+    encoded = (
+        base64.urlsafe_b64encode(json.dumps(new_header).encode("utf-8")).decode("utf-8").rstrip("=")
+    )
     swapped = ".".join([encoded, payload, signature])
 
     with pytest.raises(TokenVerifierError):

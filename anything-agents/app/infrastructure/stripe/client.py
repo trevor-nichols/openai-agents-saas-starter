@@ -6,9 +6,10 @@ import asyncio
 import logging
 import random
 import time
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Callable, Iterable
+from datetime import UTC, datetime
+from typing import Any
 
 import stripe
 
@@ -151,7 +152,9 @@ class StripeClient:
         if seat_count is not None:
             item = subscription.primary_item
             if item is None:
-                raise StripeClientError("subscription.modify", "Subscription has no items to update quantity.")
+                raise StripeClientError(
+                    "subscription.modify", "Subscription has no items to update quantity."
+                )
             params.setdefault("items", [])
             params["items"].append({"id": item.id, "quantity": seat_count})
 
@@ -164,15 +167,24 @@ class StripeClient:
         )
         return self._to_subscription(updated)
 
-    async def cancel_subscription(self, subscription_id: str, *, cancel_at_period_end: bool) -> StripeSubscription:
+    async def cancel_subscription(
+        self, subscription_id: str, *, cancel_at_period_end: bool
+    ) -> StripeSubscription:
         params: dict[str, Any] = {
             "expand": ["items.data.price"],
         }
         cancel_fn: Callable[[], Any]
         if cancel_at_period_end:
-            cancel_fn = lambda: stripe.Subscription.modify(subscription_id, cancel_at_period_end=True, **params)
+
+            def cancel_fn() -> Any:
+                return stripe.Subscription.modify(
+                    subscription_id, cancel_at_period_end=True, **params
+                )
+
         else:
-            cancel_fn = lambda: stripe.Subscription.delete(subscription_id, **params)
+
+            def cancel_fn() -> Any:
+                return stripe.Subscription.delete(subscription_id, **params)
 
         subscription = await self._request("subscription.cancel", cancel_fn)
         return self._to_subscription(subscription)
@@ -209,7 +221,7 @@ class StripeClient:
             id=record.id,
             subscription_item_id=record.subscription_item,
             quantity=record.quantity,
-            timestamp=ts or datetime.now(timezone.utc),
+            timestamp=ts or datetime.now(UTC),
         )
 
     async def _request(self, operation: str, func: Callable[[], Any]) -> Any:
@@ -221,7 +233,11 @@ class StripeClient:
             try:
                 loop = asyncio.get_running_loop()
                 result = await loop.run_in_executor(None, func)
-                observe_stripe_api_call(operation=operation, result="success", duration_seconds=time.perf_counter() - start)
+                observe_stripe_api_call(
+                    operation=operation,
+                    result="success",
+                    duration_seconds=time.perf_counter() - start,
+                )
                 return result
             except stripe.error.StripeError as exc:  # type: ignore[misc]
                 observe_stripe_api_call(
@@ -237,7 +253,9 @@ class StripeClient:
                     exc.user_message or str(exc),
                 )
                 if attempt >= self._max_attempts or not self._should_retry(exc):
-                    raise StripeClientError(operation, exc.user_message or str(exc), code=_stripe_error_code(exc)) from exc
+                    raise StripeClientError(
+                        operation, exc.user_message or str(exc), code=_stripe_error_code(exc)
+                    ) from exc
                 await asyncio.sleep(self._backoff(attempt))
                 last_error = exc
             except Exception as exc:  # pragma: no cover - unexpected runtime failure
@@ -297,4 +315,4 @@ def _stripe_error_code(exc: stripe.error.StripeError) -> str:
 def _to_datetime(value: int | float | None) -> datetime | None:
     if value is None:
         return None
-    return datetime.fromtimestamp(float(value), tz=timezone.utc)
+    return datetime.fromtimestamp(float(value), tz=UTC)

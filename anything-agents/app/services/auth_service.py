@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import asyncio
 from collections import deque
+from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from time import perf_counter
-from typing import Sequence
 from uuid import UUID, uuid4
 
 import jwt
@@ -19,15 +19,15 @@ from app.core.security import (
     get_token_signer,
     get_token_verifier,
 )
-from app.domain.auth import RefreshTokenRecord, RefreshTokenRepository
-from app.domain.users import AuthenticatedUser
 from app.core.service_accounts import (
-    ServiceAccountDefinition,
-    ServiceAccountRegistry,
     ServiceAccountCatalogError,
+    ServiceAccountDefinition,
     ServiceAccountNotFoundError,
+    ServiceAccountRegistry,
     get_default_service_account_registry,
 )
+from app.domain.auth import RefreshTokenRecord, RefreshTokenRepository
+from app.domain.users import AuthenticatedUser
 from app.infrastructure.persistence.auth.repository import (
     get_refresh_token_repository,
 )
@@ -120,7 +120,7 @@ class AuthService:
             except ServiceAccountNotFoundError as exc:
                 raise ServiceAccountValidationError(str(exc)) from exc
 
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             async with self._lock:
                 self._enforce_rate_limits(account, now)
 
@@ -288,7 +288,12 @@ class AuthService:
                 ip_address=ip_address,
                 user_agent=user_agent,
             )
-        except (InvalidCredentialsError, UserLockedError, UserDisabledError, TenantContextRequiredError) as exc:
+        except (
+            InvalidCredentialsError,
+            UserLockedError,
+            UserDisabledError,
+            TenantContextRequiredError,
+        ) as exc:
             raise UserAuthenticationError(str(exc)) from exc
         return await self._issue_user_tokens(
             auth_user,
@@ -335,9 +340,7 @@ class AuthService:
             reason="refresh",
         )
 
-    def _validate_tenant(
-        self, definition: ServiceAccountDefinition, tenant_id: str | None
-    ) -> None:
+    def _validate_tenant(self, definition: ServiceAccountDefinition, tenant_id: str | None) -> None:
         if definition.requires_tenant and not tenant_id:
             raise ServiceAccountValidationError(
                 f"Service account '{definition.account}' requires a tenant identifier."
@@ -413,7 +416,7 @@ class AuthService:
         settings = get_settings()
         self._ensure_refresh_repository()
         signer = get_token_signer(settings)
-        issued_at = datetime.now(timezone.utc)
+        issued_at = datetime.now(UTC)
         access_expires = issued_at + timedelta(minutes=settings.access_token_expire_minutes)
         access_payload = {
             "sub": f"user:{auth_user.user_id}",
@@ -585,16 +588,12 @@ class AuthService:
         )
         await self._refresh_repo.save(record)
 
-    async def revoke_service_account_token(
-        self, jti: str, *, reason: str | None = None
-    ) -> None:
+    async def revoke_service_account_token(self, jti: str, *, reason: str | None = None) -> None:
         if not self._refresh_repo:
             return
         await self._refresh_repo.revoke(jti, reason=reason)
 
-    def _record_to_response(
-        self, record: RefreshTokenRecord
-    ) -> dict[str, str | int | None]:
+    def _record_to_response(self, record: RefreshTokenRecord) -> dict[str, str | int | None]:
         kid = record.signing_kid or self._extract_kid(record.token)
         return {
             "refresh_token": record.token,
@@ -610,7 +609,7 @@ class AuthService:
     def _extract_jti(self, token: str) -> str:
         try:
             payload = jwt.decode(token, options={"verify_signature": False, "verify_exp": False})
-        except Exception:  # noqa: BLE001
+        except Exception:
             return str(uuid4())
         value = payload.get("jti")
         return str(value) if value else str(uuid4())
@@ -618,7 +617,7 @@ class AuthService:
     def _extract_kid(self, token: str) -> str:
         try:
             header = jwt.get_unverified_header(token)
-        except Exception:  # noqa: BLE001
+        except Exception:
             return "unknown"
         kid = header.get("kid")
         return str(kid) if kid else "unknown"

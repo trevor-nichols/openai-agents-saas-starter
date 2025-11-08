@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Sequence
+from collections.abc import Sequence
+from datetime import UTC, datetime
+from typing import Any
 
 import jwt
 from sqlalchemy import select, update
@@ -45,7 +46,9 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
         self._settings = settings
         self._pepper = settings.auth_refresh_token_pepper
         if not self._pepper:
-            raise ValueError("AUTH_REFRESH_TOKEN_PEPPER must be configured for refresh-token storage.")
+            raise ValueError(
+                "AUTH_REFRESH_TOKEN_PEPPER must be configured for refresh-token storage."
+            )
 
     async def find_active(
         self, account: str, tenant_id: str | None, scopes: Sequence[str]
@@ -59,7 +62,7 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
             ServiceAccountToken.account == account,
             ServiceAccountToken.scope_key == scope_key,
             ServiceAccountToken.revoked_at.is_(None),
-            ServiceAccountToken.expires_at > datetime.now(timezone.utc),
+            ServiceAccountToken.expires_at > datetime.now(UTC),
         ]
         if tenant_id:
             conditions.append(ServiceAccountToken.tenant_id == uuid.UUID(tenant_id))
@@ -92,7 +95,7 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
 
         if not row:
             return None
-        if row.revoked_at is not None or row.expires_at <= datetime.now(timezone.utc):
+        if row.revoked_at is not None or row.expires_at <= datetime.now(UTC):
             return None
         return self._row_to_record(row)
 
@@ -124,8 +127,12 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
             stmt = (
                 update(ServiceAccountToken)
                 .where(ServiceAccountToken.refresh_jti == jti)
-                .values(revoked_at=datetime.now(timezone.utc), revoked_reason=reason)
-                .returning(ServiceAccountToken.account, ServiceAccountToken.tenant_id, ServiceAccountToken.scope_key)
+                .values(revoked_at=datetime.now(UTC), revoked_reason=reason)
+                .returning(
+                    ServiceAccountToken.account,
+                    ServiceAccountToken.tenant_id,
+                    ServiceAccountToken.scope_key,
+                )
             )
             result = await session.execute(stmt)
             await session.commit()
@@ -157,7 +164,7 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
         await session.execute(
             update(ServiceAccountToken)
             .where(*conditions)
-            .values(revoked_at=datetime.now(timezone.utc), revoked_reason=reason)
+            .values(revoked_at=datetime.now(UTC), revoked_reason=reason)
         )
 
     def _row_to_record(self, row: ServiceAccountToken) -> RefreshTokenRecord | None:
@@ -195,7 +202,7 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
             payload["fingerprint"] = row.fingerprint
         try:
             token = self._encode_with_signing_kid(payload, row.signing_kid)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "Unable to reconstruct refresh token for account=%s kid=%s: %s",
                 row.account,
@@ -221,7 +228,9 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
 
     def _encode_with_signing_kid(self, payload: dict[str, Any], signing_kid: str) -> str:
         if signing_kid == "legacy-hs256":
-            return jwt.encode(payload, self._settings.secret_key, algorithm=self._settings.jwt_algorithm)
+            return jwt.encode(
+                payload, self._settings.secret_key, algorithm=self._settings.jwt_algorithm
+            )
         material = self._find_key_material(signing_kid)
         if not material or not material.private_key:
             raise RuntimeError(f"Missing key material for kid '{signing_kid}'.")

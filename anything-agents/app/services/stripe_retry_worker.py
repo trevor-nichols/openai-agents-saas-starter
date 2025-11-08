@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.infrastructure.persistence.stripe.models import StripeEventDispatch
 from app.infrastructure.persistence.stripe.repository import StripeEventRepository
@@ -67,7 +67,7 @@ class StripeDispatchRetryWorker:
                     self._stop_event.wait(),
                     timeout=self._poll_interval_seconds,
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 continue
 
     async def _process_due_dispatches(self) -> None:
@@ -76,7 +76,7 @@ class StripeDispatchRetryWorker:
         try:
             due_dispatches = await repository.list_dispatches_for_retry(
                 limit=self._batch_size,
-                ready_before=datetime.now(timezone.utc),
+                ready_before=datetime.now(UTC),
             )
         except Exception:  # pragma: no cover - defensive logging
             logger.exception("Failed to enumerate Stripe dispatches for retry")

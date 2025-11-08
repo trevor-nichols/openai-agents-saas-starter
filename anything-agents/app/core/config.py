@@ -7,8 +7,6 @@ import json
 from functools import lru_cache
 
 from pydantic import Field, ValidationInfo, field_validator
-
-
 from pydantic_settings import BaseSettings
 
 DEFAULT_SECRET_KEY = "your-secret-key-here-change-in-production"
@@ -24,21 +22,21 @@ _SAFE_ENVIRONMENTS = {"development", "dev", "local", "test"}
 # SETTINGS CLASS
 # =============================================================================
 
+
 class Settings(BaseSettings):
     """
     Application settings loaded from environment variables.
-    
+
     Uses Pydantic Settings for type validation and environment loading.
     """
-    
+
     # =============================================================================
     # APPLICATION SETTINGS
     # =============================================================================
-    
+
     app_name: str = Field(default="anything-agents", description="Application name")
     app_description: str = Field(
-        default="anything-agents FastAPI microservice",
-        description="Application description"
+        default="anything-agents FastAPI microservice", description="Application description"
     )
     app_version: str = Field(default="1.0.0", description="Application version")
     debug: bool = Field(default=False, description="Debug mode")
@@ -48,44 +46,37 @@ class Settings(BaseSettings):
         alias="ENVIRONMENT",
     )
     port: int = Field(default=8000, description="Server port")
-    
+
     # =============================================================================
     # AI API KEYS
     # =============================================================================
-    
+
     openai_api_key: str | None = Field(default=None, description="OpenAI API key")
     anthropic_api_key: str | None = Field(default=None, description="Anthropic API key")
     gemini_api_key: str | None = Field(default=None, description="Google Gemini API key")
     xai_api_key: str | None = Field(default=None, description="xAI API key")
-    
+
     # =============================================================================
     # AI TOOLS API KEYS
     # =============================================================================
-    
+
     tavily_api_key: str | None = Field(default=None, description="Tavily web search API key")
-    
+
     # =============================================================================
     # SECURITY SETTINGS
     # =============================================================================
-    
-    secret_key: str = Field(
-        default=DEFAULT_SECRET_KEY,
-        description="JWT secret key"
-    )
+
+    secret_key: str = Field(default=DEFAULT_SECRET_KEY, description="JWT secret key")
     jwt_algorithm: str = Field(default="HS256", description="JWT algorithm")
     access_token_expire_minutes: int = Field(
-        default=30,
-        description="Access token expiration time in minutes"
+        default=30, description="Access token expiration time in minutes"
     )
-    
+
     # =============================================================================
     # REDIS SETTINGS
     # =============================================================================
-    
-    redis_url: str = Field(
-        default="redis://localhost:6379/0",
-        description="Redis connection URL"
-    )
+
+    redis_url: str = Field(default="redis://localhost:6379/0", description="Redis connection URL")
 
     # =============================================================================
     # RATE LIMITING SETTINGS
@@ -121,23 +112,19 @@ class Settings(BaseSettings):
         description="Redis key namespace used by the rate limiter service.",
         alias="RATE_LIMIT_KEY_PREFIX",
     )
-    
+
     # =============================================================================
     # CORS SETTINGS (simplified to avoid parsing issues)
     # =============================================================================
-    
+
     allowed_origins: str = Field(
         default="http://localhost:8000,http://localhost:8080",
-        description="CORS allowed origins (comma-separated)"
+        description="CORS allowed origins (comma-separated)",
     )
     allowed_methods: str = Field(
-        default="GET,POST,PUT,DELETE,OPTIONS",
-        description="CORS allowed methods (comma-separated)"
+        default="GET,POST,PUT,DELETE,OPTIONS", description="CORS allowed methods (comma-separated)"
     )
-    allowed_headers: str = Field(
-        default="*",
-        description="CORS allowed headers (comma-separated)"
-    )
+    allowed_headers: str = Field(default="*", description="CORS allowed headers (comma-separated)")
 
     # =============================================================================
     # AUTHENTICATION SETTINGS
@@ -153,7 +140,8 @@ class Settings(BaseSettings):
         ],
         description=(
             "Ordered list of permitted JWT audiences. "
-            "Provide as JSON array via AUTH_AUDIENCE environment variable; comma-separated strings are accepted when instantiating Settings directly."
+            "Provide as JSON array via AUTH_AUDIENCE environment variable; "
+            "comma-separated strings are accepted when instantiating Settings directly."
         ),
     )
     auth_key_storage_backend: str = Field(
@@ -228,11 +216,11 @@ class Settings(BaseSettings):
         description="Window in minutes used for IP-based throttling heuristics.",
         alias="AUTH_IP_LOCKOUT_WINDOW_MINUTES",
     )
-    
+
     # =============================================================================
     # LOGGING SETTINGS
     # =============================================================================
-    
+
     log_level: str = Field(default="INFO", description="Logging level")
 
     # =============================================================================
@@ -345,28 +333,28 @@ class Settings(BaseSettings):
         ),
         alias="STRIPE_PRODUCT_PRICE_MAP",
     )
-    
+
     # =============================================================================
     # HELPER METHODS
     # =============================================================================
-    
+
     @property
     def jwks_max_age_seconds(self) -> int:
         """Return preferred JWKS max-age in seconds."""
 
         return self.auth_jwks_max_age_seconds or self.auth_jwks_cache_seconds
-    
+
     def get_allowed_origins_list(self) -> list[str]:
         """Get allowed origins as a list."""
-        return [origin.strip() for origin in self.allowed_origins.split(',') if origin.strip()]
-    
+        return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]
+
     def get_allowed_methods_list(self) -> list[str]:
         """Get allowed methods as a list."""
-        return [method.strip() for method in self.allowed_methods.split(',') if method.strip()]
-    
+        return [method.strip() for method in self.allowed_methods.split(",") if method.strip()]
+
     def get_allowed_headers_list(self) -> list[str]:
         """Get allowed headers as a list."""
-        return [header.strip() for header in self.allowed_headers.split(',') if header.strip()]
+        return [header.strip() for header in self.allowed_headers.split(",") if header.strip()]
 
     def required_stripe_envs_missing(self) -> list[str]:
         """Return the list of Stripe environment variables missing when billing is enabled."""
@@ -433,7 +421,10 @@ class Settings(BaseSettings):
             {DEFAULT_REFRESH_TOKEN_PEPPER, PLACEHOLDER_REFRESH_TOKEN_PEPPER},
         ):
             warnings.append("AUTH_REFRESH_TOKEN_PEPPER is using the starter value")
-        if self.auth_key_storage_backend == "file" and self.auth_key_storage_path == DEFAULT_KEY_STORAGE_PATH:
+        if (
+            self.auth_key_storage_backend == "file"
+            and self.auth_key_storage_path == DEFAULT_KEY_STORAGE_PATH
+        ):
             warnings.append("AUTH_KEY_STORAGE_PATH still points to var/keys/keyset.json")
         return warnings
 
@@ -449,11 +440,11 @@ class Settings(BaseSettings):
     def should_enforce_secret_overrides(self) -> bool:
         env = (self.environment or "").lower()
         return not self.debug and env not in _SAFE_ENVIRONMENTS
-    
+
     # =============================================================================
     # CONFIGURATION
     # =============================================================================
-    
+
     model_config = {
         "env_file": (".env.local", ".env"),
         "env_file_encoding": "utf-8",
@@ -474,7 +465,7 @@ class Settings(BaseSettings):
 
         if isinstance(value, str):
             items = [item.strip() for item in value.split(",") if item.strip()]
-        elif isinstance(value, (list, tuple, set)):
+        elif isinstance(value, list | tuple | set):
             items = [str(item).strip() for item in value if str(item).strip()]
         else:
             raise ValueError("auth_audience must be a list or comma-separated string.")
@@ -525,23 +516,30 @@ class Settings(BaseSettings):
             try:
                 parsed = json.loads(text)
             except json.JSONDecodeError:
-                parsed = {}
-                for item in text.split(","):
-                    entry = item.strip()
-                    if not entry:
-                        continue
-                    if "=" in entry:
-                        key, price = entry.split("=", 1)
-                    elif ":" in entry:
-                        key, price = entry.split(":", 1)
-                    else:
-                        raise ValueError(
-                            "Invalid STRIPE_PRODUCT_PRICE_MAP entry. Use key=value or JSON dict."
-                        )
-                    parsed[key] = price
+                parsed = cls._parse_price_map_csv(text)
             return parsed
 
-        raise ValueError("STRIPE_PRODUCT_PRICE_MAP must be a mapping, JSON string, or comma-delimited list.")
+        raise ValueError(
+            "STRIPE_PRODUCT_PRICE_MAP must be a mapping, JSON string, or comma-delimited list."
+        )
+
+    @staticmethod
+    def _parse_price_map_csv(text: str) -> dict[str, str]:
+        parsed: dict[str, str] = {}
+        for item in text.split(","):
+            entry = item.strip()
+            if not entry:
+                continue
+            if "=" in entry:
+                key, price = entry.split("=", 1)
+            elif ":" in entry:
+                key, price = entry.split(":", 1)
+            else:
+                raise ValueError(
+                    "Invalid STRIPE_PRODUCT_PRICE_MAP entry. Use key=value or JSON dict."
+                )
+            parsed[key] = price
+        return parsed
 
     @field_validator("stripe_product_price_map")
     @classmethod
@@ -551,25 +549,29 @@ class Settings(BaseSettings):
             plan = str(plan_code).strip()
             price = str(price_id).strip()
             if not plan or not price:
-                raise ValueError("Stripe product price map entries require non-empty plan codes and price IDs.")
+                raise ValueError(
+                    "Stripe product price map entries require non-empty plan codes and price IDs."
+                )
             cleaned[plan] = price
         return cleaned
+
 
 # =============================================================================
 # SETTINGS INSTANCE
 # =============================================================================
 
+
 @lru_cache
 def get_settings() -> Settings:
     """
     Get application settings instance.
-    
+
     Uses LRU cache to ensure settings are loaded only once.
-    
+
     Returns:
         Settings: Application settings instance
     """
-    return Settings() 
+    return Settings()
 
 
 def enforce_secret_overrides(settings: Settings, *, force: bool = False) -> None:

@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from time import perf_counter
-from typing import Awaitable, Callable, Protocol, TypeVar
+from typing import Protocol, TypeVar
 from uuid import uuid4
 
 from app.core.config import Settings, get_settings
@@ -41,8 +42,7 @@ class PaymentGateway(Protocol):
         billing_email: str | None,
         auto_renew: bool,
         seat_count: int | None,
-    ) -> SubscriptionProvisionResult:
-        ...
+    ) -> SubscriptionProvisionResult: ...
 
     async def update_subscription(
         self,
@@ -51,16 +51,14 @@ class PaymentGateway(Protocol):
         auto_renew: bool | None = None,
         seat_count: int | None = None,
         billing_email: str | None = None,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     async def cancel_subscription(
         self,
         subscription_id: str,
         *,
         cancel_at_period_end: bool,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     async def record_usage(
         self,
@@ -71,8 +69,7 @@ class PaymentGateway(Protocol):
         idempotency_key: str | None,
         period_start: datetime | None = None,
         period_end: datetime | None = None,
-    ) -> None:
-        ...
+    ) -> None: ...
 
 
 class PaymentGatewayError(RuntimeError):
@@ -124,7 +121,7 @@ class StripeGateway(PaymentGateway):
                 processor=self.processor_name,
                 customer_id=customer.id,
                 subscription_id=subscription.id,
-                starts_at=subscription.current_period_start or datetime.now(timezone.utc),
+                starts_at=subscription.current_period_start or datetime.now(UTC),
                 current_period_start=subscription.current_period_start,
                 current_period_end=subscription.current_period_end,
                 trial_ends_at=subscription.trial_end,
@@ -158,7 +155,9 @@ class StripeGateway(PaymentGateway):
     ) -> None:
         async def _action() -> None:
             client = self._get_client()
-            await client.cancel_subscription(subscription_id, cancel_at_period_end=cancel_at_period_end)
+            await client.cancel_subscription(
+                subscription_id, cancel_at_period_end=cancel_at_period_end
+            )
 
         await self._execute_operation(
             operation="cancel_subscription",
@@ -339,7 +338,9 @@ class StripeGateway(PaymentGateway):
                 "error_code": error_code,
             }
             logger.error("Stripe API error during gateway operation", extra=failure_context)
-            raise PaymentGatewayError(f"Stripe error during {operation}: {exc}", code=error_code) from exc
+            raise PaymentGatewayError(
+                f"Stripe error during {operation}: {exc}", code=error_code
+            ) from exc
         except Exception:
             duration = perf_counter() - start
             observe_stripe_gateway_operation(
@@ -369,11 +370,11 @@ class StripeGateway(PaymentGateway):
 
 
 def _usage_timestamp(*, period_end: datetime | None, period_start: datetime | None) -> int:
-    target = period_end or period_start or datetime.now(timezone.utc)
+    target = period_end or period_start or datetime.now(UTC)
     if target.tzinfo is None:
-        target = target.replace(tzinfo=timezone.utc)
+        target = target.replace(tzinfo=UTC)
     else:
-        target = target.astimezone(timezone.utc)
+        target = target.astimezone(UTC)
     return int(target.timestamp())
 
 

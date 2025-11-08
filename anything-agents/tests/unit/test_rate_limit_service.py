@@ -1,4 +1,5 @@
 import asyncio
+from typing import Any
 
 import pytest
 from fakeredis.aioredis import FakeRedis
@@ -6,10 +7,10 @@ from redis.exceptions import ConnectionError
 
 from app.services.rate_limit_service import (
     ConcurrencyQuota,
-    RateLimitExceeded,
-    RateLimitQuota,
-    RateLimitLease,
     RateLimiter,
+    RateLimitExceeded,
+    RateLimitLease,
+    RateLimitQuota,
 )
 
 
@@ -63,7 +64,7 @@ async def test_concurrency_lease_refreshes_ttl() -> None:
 
 
 class _FlakyRedis:
-    async def incr(self, *_args, **_kwargs):  # noqa: ANN001
+    async def incr(self, *_args: Any, **_kwargs: Any) -> None:
         raise ConnectionError("boom")
 
 

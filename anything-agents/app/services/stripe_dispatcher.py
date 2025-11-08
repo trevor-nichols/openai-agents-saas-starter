@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import logging
 import uuid
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Awaitable, Callable, Mapping
+from datetime import UTC, datetime, timedelta
 
 from app.infrastructure.persistence.stripe.models import (
-    StripeDispatchStatus,
     StripeEvent,
     StripeEventDispatch,
     StripeEventStatus,
@@ -63,21 +62,31 @@ class StripeEventDispatcher:
 
     def _build_handlers(self) -> Mapping[str, EventHandler]:
         return {
-            "customer.subscription.created": EventHandler("billing_sync", self._handle_subscription_event),
-            "customer.subscription.updated": EventHandler("billing_sync", self._handle_subscription_event),
-            "customer.subscription.deleted": EventHandler("billing_sync", self._handle_subscription_event),
+            "customer.subscription.created": EventHandler(
+                "billing_sync", self._handle_subscription_event
+            ),
+            "customer.subscription.updated": EventHandler(
+                "billing_sync", self._handle_subscription_event
+            ),
+            "customer.subscription.deleted": EventHandler(
+                "billing_sync", self._handle_subscription_event
+            ),
             "invoice.payment_succeeded": EventHandler("invoice_sync", self._handle_invoice_event),
             "invoice.payment_failed": EventHandler("invoice_sync", self._handle_invoice_event),
             "invoice.paid": EventHandler("invoice_sync", self._handle_invoice_event),
             "invoice.finalized": EventHandler("invoice_sync", self._handle_invoice_event),
-            "invoice.payment_action_required": EventHandler("invoice_sync", self._handle_invoice_event),
+            "invoice.payment_action_required": EventHandler(
+                "invoice_sync", self._handle_invoice_event
+            ),
         }
 
     async def dispatch_now(self, event: StripeEvent, payload: dict) -> DispatchResult:
         handler = self._handlers.get(event.event_type)
         repository = self._require_repository()
         if handler is None:
-            processed_at = await repository.record_outcome(event.id, status=StripeEventStatus.PROCESSED)
+            processed_at = await repository.record_outcome(
+                event.id, status=StripeEventStatus.PROCESSED
+            )
             logger.debug("No dispatcher registered for event %s", event.event_type)
             return DispatchResult(processed_at=processed_at)
 
@@ -95,7 +104,9 @@ class StripeEventDispatcher:
         handler = self._handlers.get(event.event_type)
         if handler is None:
             await repository.mark_dispatch_completed(dispatch.id)
-            processed_at = await repository.record_outcome(event.id, status=StripeEventStatus.PROCESSED)
+            processed_at = await repository.record_outcome(
+                event.id, status=StripeEventStatus.PROCESSED
+            )
             return DispatchResult(processed_at=processed_at)
         await repository.reset_dispatch(dispatch.id)
         return await self._execute_handler(dispatch, event, event.payload, handler)
@@ -121,7 +132,11 @@ class StripeEventDispatcher:
                 error=error_message,
                 next_retry_at=retry_at,
             )
-            failure_time = await repository.record_outcome(event.id, status=StripeEventStatus.FAILED, error=error_message)
+            await repository.record_outcome(
+                event.id,
+                status=StripeEventStatus.FAILED,
+                error=error_message,
+            )
             logger.exception(
                 "Stripe dispatch handler failed",
                 extra={"stripe_event_id": event.stripe_event_id, "handler": handler.name},
@@ -151,12 +166,18 @@ class StripeEventDispatcher:
             subscription=self._subscription_view(snapshot),
         )
 
-    async def _handle_invoice_event(self, event: StripeEvent, payload: dict) -> DispatchBroadcastContext:
+    async def _handle_invoice_event(
+        self, event: StripeEvent, payload: dict
+    ) -> DispatchBroadcastContext:
         billing = self._require_billing_service()
         snapshot = self._build_invoice_snapshot(event, payload)
         await billing.ingest_invoice_snapshot(snapshot)
         summary = snapshot.description or snapshot.billing_reason or f"Invoice {snapshot.status}"
-        usage = [self._usage_delta_from_line(line) for line in snapshot.lines if line.quantity not in (None, 0)]
+        usage = [
+            self._usage_delta_from_line(line)
+            for line in snapshot.lines
+            if line.quantity not in (None, 0)
+        ]
         return DispatchBroadcastContext(
             tenant_id=snapshot.tenant_id,
             event_type=event.event_type,
@@ -205,7 +226,9 @@ class StripeEventDispatcher:
         )
         return snapshot
 
-    def _subscription_view(self, snapshot: ProcessorSubscriptionSnapshot) -> SubscriptionSnapshotView:
+    def _subscription_view(
+        self, snapshot: ProcessorSubscriptionSnapshot
+    ) -> SubscriptionSnapshotView:
         return SubscriptionSnapshotView(
             tenant_id=snapshot.tenant_id,
             plan_code=snapshot.plan_code,
@@ -218,7 +241,9 @@ class StripeEventDispatcher:
             cancel_at=snapshot.cancel_at,
         )
 
-    def _build_invoice_snapshot(self, event: StripeEvent, payload: dict) -> ProcessorInvoiceSnapshot:
+    def _build_invoice_snapshot(
+        self, event: StripeEvent, payload: dict
+    ) -> ProcessorInvoiceSnapshot:
         data_obj = (payload.get("data") or {}).get("object") or {}
         metadata = data_obj.get("metadata") or {}
         tenant_id = metadata.get("tenant_id") or metadata.get("tenant") or event.tenant_hint
@@ -309,7 +334,11 @@ class StripeEventDispatcher:
             return None
         price = items[0].get("price") or {}
         price_metadata = price.get("metadata") or {}
-        return price_metadata.get("plan_code") or price_metadata.get("anything_agents_plan_code") or price.get("nickname")
+        return (
+            price_metadata.get("plan_code")
+            or price_metadata.get("anything_agents_plan_code")
+            or price.get("nickname")
+        )
 
     def _extract_price_id(self, data_obj: dict) -> str | None:
         items = ((data_obj.get("items") or {}).get("data")) or []
@@ -327,7 +356,7 @@ class StripeEventDispatcher:
     def _next_retry_time(self, attempts: int) -> datetime:
         delay = self._retry_base_seconds * (2 ** max(attempts - 1, 0))
         delay = min(delay, self._retry_max_seconds)
-        return datetime.now(timezone.utc) + timedelta(seconds=delay)
+        return datetime.now(UTC) + timedelta(seconds=delay)
 
     def _require_repository(self) -> StripeEventRepository:
         if self._repository is None:
@@ -345,10 +374,10 @@ def _coerce_datetime(value) -> datetime | None:
         return None
     if isinstance(value, datetime):
         if value.tzinfo is None:
-            return value.replace(tzinfo=timezone.utc)
-        return value.astimezone(timezone.utc)
+            return value.replace(tzinfo=UTC)
+        return value.astimezone(UTC)
     try:
-        return datetime.fromtimestamp(float(value), tz=timezone.utc)
+        return datetime.fromtimestamp(float(value), tz=UTC)
     except (TypeError, ValueError):  # pragma: no cover - guard rails for malformed data
         return None
 

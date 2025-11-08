@@ -6,7 +6,8 @@ from uuid import uuid4
 
 import pytest
 from fakeredis.aioredis import FakeRedis
-from sqlalchemy.dialects.postgresql import CITEXT, JSONB, UUID as PG_UUID
+from sqlalchemy.dialects.postgresql import CITEXT, JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.compiler import compiles
 
@@ -121,7 +122,9 @@ async def test_lockout_counter_and_state(repository: PostgresUserRepository, ten
 
 
 @pytest.mark.asyncio
-async def test_record_login_event(repository: PostgresUserRepository, tenant_id, session_factory: async_sessionmaker[AsyncSession]) -> None:
+async def test_record_login_event(
+    repository: PostgresUserRepository, tenant_id, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
     user = await _create_user(repository, tenant_id, "events@example.com")
     event = UserLoginEventDTO(
         user_id=user.id,

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import AsyncIterator
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
@@ -135,9 +135,7 @@ async def run_migrations_if_configured() -> None:
         from alembic import command
         from alembic.config import Config
     except ModuleNotFoundError as exc:  # pragma: no cover - dev configuration issue
-        logger.warning(
-            "auto_run_migrations is enabled but Alembic is not installed: %s", exc
-        )
+        logger.warning("auto_run_migrations is enabled but Alembic is not installed: %s", exc)
         return
 
     alembic_cfg = Config(str(_resolve_alembic_ini()))

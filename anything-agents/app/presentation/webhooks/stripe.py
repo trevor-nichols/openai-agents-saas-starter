@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import stripe
 from fastapi import APIRouter, HTTPException, Request, status
@@ -37,17 +37,25 @@ async def handle_stripe_webhook(request: Request) -> dict[str, bool]:
     signature = request.headers.get("stripe-signature")
     if not signature:
         observe_stripe_webhook_event(event_type="unknown", result="missing_signature")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing Stripe signature header.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Missing Stripe signature header."
+        )
 
     try:
-        event = stripe.Webhook.construct_event(payload=payload.decode("utf-8"), sig_header=signature, secret=secret)
+        event = stripe.Webhook.construct_event(
+            payload=payload.decode("utf-8"), sig_header=signature, secret=secret
+        )
     except ValueError as exc:  # pragma: no cover - invalid JSON
         observe_stripe_webhook_event(event_type="unknown", result="invalid_json")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payload.") from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payload."
+        ) from exc
     except stripe.error.SignatureVerificationError as exc:
         observe_stripe_webhook_event(event_type="unknown", result="invalid_signature")
         logger.warning("Stripe signature verification failed: %s", exc.user_message or str(exc))
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Signature verification failed.") from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Signature verification failed."
+        ) from exc
 
     event_dict = event.to_dict_recursive()
     event_type = event_dict.get("type", "unknown")
@@ -80,7 +88,9 @@ async def handle_stripe_webhook(request: Request) -> dict[str, bool]:
             "Stripe webhook handler failed",
             extra={"stripe_event_id": event_dict["id"], "event_type": event_type},
         )
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to process event.") from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to process event."
+        ) from exc
 
     processed_at = dispatch_result.processed_at if dispatch_result else None
     if processed_at:
@@ -89,7 +99,9 @@ async def handle_stripe_webhook(request: Request) -> dict[str, bool]:
     if settings.enable_billing_stream:
         events_service = get_billing_events_service()
         try:
-            await events_service.publish_from_event(record, event_dict, context=dispatch_result.broadcast if dispatch_result else None)
+            await events_service.publish_from_event(
+                record, event_dict, context=dispatch_result.broadcast if dispatch_result else None
+            )
         except Exception as exc:  # pragma: no cover - failure path exercised via mocks
             failure_time = await repository.record_outcome(
                 record.id,
@@ -111,7 +123,11 @@ async def handle_stripe_webhook(request: Request) -> dict[str, bool]:
     observe_stripe_webhook_event(event_type=event_type, result="dispatched")
     logger.info(
         "Stored Stripe event",
-        extra={"stripe_event_id": event_dict["id"], "event_type": event_type, "tenant": tenant_hint},
+        extra={
+            "stripe_event_id": event_dict["id"],
+            "event_type": event_type,
+            "tenant": tenant_hint,
+        },
     )
     return {"success": True, "duplicate": False}
 
@@ -129,4 +145,4 @@ def _extract_created(event: dict) -> datetime | None:
     created = event.get("created")
     if created is None:
         return None
-    return datetime.fromtimestamp(float(created), tz=timezone.utc)
+    return datetime.fromtimestamp(float(created), tz=UTC)

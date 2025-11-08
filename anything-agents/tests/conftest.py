@@ -2,31 +2,31 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 from collections import defaultdict
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import pytest
-from fakeredis.aioredis import FakeRedis
 import sqlalchemy.ext.asyncio as sqla_async
-import asyncio
+from fakeredis.aioredis import FakeRedis
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB
 from sqlalchemy.ext.compiler import compiles
 
 from app.core import config as config_module
 from app.domain.conversations import (
-    ConversationMetadata,
     ConversationMessage,
+    ConversationMetadata,
     ConversationRecord,
     ConversationRepository,
     ConversationSessionState,
 )
-from app.services.conversation_service import conversation_service
 from app.infrastructure.openai.sessions import (
     configure_sdk_session_store,
     reset_sdk_session_store,
 )
+from app.services.conversation_service import conversation_service
 
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 os.environ["REDIS_URL"] = "redis://localhost:6379/0"
@@ -53,7 +53,10 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         "--enable-stripe-replay",
         action="store_true",
         default=False,
-        help="Run tests marked with @pytest.mark.stripe_replay (requires Postgres + Stripe fixtures).",
+        help=(
+            "Run tests marked with @pytest.mark.stripe_replay "
+            "(requires Postgres + Stripe fixtures)."
+        ),
     )
 
 
@@ -117,7 +120,9 @@ def _patch_redis_client(monkeypatch: pytest.MonkeyPatch) -> None:
 
     clients: dict[tuple[str, bool], FakeRedis] = {}
 
-    def _fake_from_url(url: str, *, encoding: str = "utf-8", decode_responses: bool = False, **kwargs):
+    def _fake_from_url(
+        url: str, *, encoding: str = "utf-8", decode_responses: bool = False, **kwargs
+    ):
         key = (url, decode_responses)
         client = clients.get(key)
         if client is None:
@@ -169,9 +174,7 @@ class EphemeralConversationRepository(ConversationRepository):
         self._metadata.pop(conversation_id, None)
         self._session_state.pop(conversation_id, None)
 
-    async def get_session_state(
-        self, conversation_id: str
-    ) -> ConversationSessionState | None:
+    async def get_session_state(self, conversation_id: str) -> ConversationSessionState | None:
         return self._session_state.get(conversation_id)
 
     async def upsert_session_state(

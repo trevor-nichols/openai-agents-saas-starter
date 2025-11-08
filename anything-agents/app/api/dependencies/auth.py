@@ -21,9 +21,7 @@ class ScopeSet:
         normalized = {scope.strip() for scope in scopes if scope and scope.strip()}
         self._scopes = normalized
         self._wildcards = {
-            scope[:-1]
-            for scope in normalized
-            if scope.endswith(":*") and len(scope) > 2
+            scope[:-1] for scope in normalized if scope.endswith(":*") and len(scope) > 2
         }
         self._is_support_superuser = "support:*" in normalized
 

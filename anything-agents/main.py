@@ -3,44 +3,43 @@
 # Dependencies: app/core/config.py, app/api, app/presentation
 # Used by: uvicorn server to run the application
 
-from contextlib import asynccontextmanager
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from redis.asyncio import Redis
 
 from app.api.errors import register_exception_handlers
 from app.api.router import api_router
 from app.core.config import Settings, enforce_secret_overrides, get_settings
-from redis.asyncio import Redis
-
 from app.infrastructure.db import (
     dispose_engine,
     get_async_sessionmaker,
     get_engine,
     init_engine,
 )
+from app.infrastructure.openai.sessions import configure_sdk_session_store
 from app.infrastructure.persistence.billing import PostgresBillingRepository
 from app.infrastructure.persistence.conversations.postgres import PostgresConversationRepository
 from app.infrastructure.persistence.stripe.repository import (
     StripeEventRepository,
     configure_stripe_event_repository,
 )
-from app.infrastructure.openai.sessions import configure_sdk_session_store
 from app.infrastructure.security.vault_kv import configure_vault_secret_manager
 from app.middleware.logging import LoggingMiddleware
 from app.presentation import health as health_routes
 from app.presentation import metrics as metrics_routes
 from app.presentation import well_known as well_known_routes
 from app.presentation.webhooks import stripe as stripe_webhook
-from app.services.billing_service import billing_service
 from app.services.billing_events import RedisBillingEventBackend, billing_events_service
+from app.services.billing_service import billing_service
 from app.services.conversation_service import conversation_service
 from app.services.payment_gateway import stripe_gateway
+from app.services.rate_limit_service import rate_limiter
 from app.services.stripe_dispatcher import stripe_event_dispatcher
 from app.services.stripe_retry_worker import stripe_dispatch_retry_worker
-from app.services.rate_limit_service import rate_limiter
 
 # =============================================================================
 # MODULE CONSTANTS
@@ -52,6 +51,7 @@ _STRIPE_TROUBLESHOOTING_DOC = "docs/billing/stripe-setup.md#startup-validation--
 # =============================================================================
 # LIFESPAN EVENTS
 # =============================================================================
+
 
 def _ensure_billing_prerequisites(settings: Settings) -> None:
     missing = settings.required_stripe_envs_missing()
@@ -133,7 +133,9 @@ async def lifespan(app: FastAPI):
         configure_stripe_event_repository(stripe_repo)
         stripe_event_dispatcher.configure(repository=stripe_repo, billing=billing_service)
         if settings.enable_billing_retry_worker:
-            stripe_dispatch_retry_worker.configure(repository=stripe_repo, dispatcher=stripe_event_dispatcher)
+            stripe_dispatch_retry_worker.configure(
+                repository=stripe_repo, dispatcher=stripe_event_dispatcher
+            )
             await stripe_dispatch_retry_worker.start()
             retry_worker_started = True
         else:
@@ -142,7 +144,9 @@ async def lifespan(app: FastAPI):
         if settings.enable_billing_stream:
             redis_url = settings.billing_events_redis_url or settings.redis_url
             if not redis_url:
-                raise RuntimeError("ENABLE_BILLING_STREAM requires BILLING_EVENTS_REDIS_URL or REDIS_URL")
+                raise RuntimeError(
+                    "ENABLE_BILLING_STREAM requires BILLING_EVENTS_REDIS_URL or REDIS_URL"
+                )
             redis_client = Redis.from_url(redis_url, encoding="utf-8", decode_responses=False)
             backend = RedisBillingEventBackend(redis_client)
             billing_events_service.configure(backend=backend, repository=stripe_repo)
@@ -162,19 +166,21 @@ async def lifespan(app: FastAPI):
             await rate_limiter.shutdown()
         await dispose_engine()
 
+
 # =============================================================================
 # APPLICATION FACTORY
 # =============================================================================
 
+
 def create_application() -> FastAPI:
     """
     Create and configure the FastAPI application.
-    
+
     Returns:
         FastAPI: Configured FastAPI application instance
     """
     settings = get_settings()
-    
+
     # Create FastAPI app
     app = FastAPI(
         title=settings.app_name,
@@ -185,22 +191,24 @@ def create_application() -> FastAPI:
         redoc_url="/redoc" if settings.debug else None,
         lifespan=lifespan,
     )
-    
+
     # =============================================================================
     # MIDDLEWARE CONFIGURATION
     # =============================================================================
-    
+
     # Trusted hosts middleware (allow common hosts for development)
     app.add_middleware(
         TrustedHostMiddleware,
-        allowed_hosts=["*"] if settings.debug else [
-            "localhost", 
-            "127.0.0.1", 
+        allowed_hosts=["*"]
+        if settings.debug
+        else [
+            "localhost",
+            "127.0.0.1",
             "testserver",  # For FastAPI TestClient
-            "testclient"   # Additional TestClient host
-        ]
+            "testclient",  # Additional TestClient host
+        ],
     )
-    
+
     # CORS middleware
     app.add_middleware(
         CORSMiddleware,
@@ -209,7 +217,7 @@ def create_application() -> FastAPI:
         allow_methods=settings.get_allowed_methods_list(),
         allow_headers=settings.get_allowed_headers_list(),
     )
-    
+
     # Custom logging middleware
     app.add_middleware(LoggingMiddleware)
 
@@ -228,8 +236,9 @@ def create_application() -> FastAPI:
 
     # Versioned API surface
     app.include_router(api_router, prefix="/api", tags=["api"])
-    
+
     return app
+
 
 # =============================================================================
 # APPLICATION INSTANCE
@@ -241,11 +250,12 @@ app = create_application()
 # ROOT ENDPOINT
 # =============================================================================
 
+
 @app.get("/")
 async def root():
     """
     Root endpoint providing basic service information.
-    
+
     Returns:
         dict: Service information
     """
@@ -258,5 +268,5 @@ async def root():
         "health": "/health",
         "api": "/api/v1",
         "chat": "/api/v1/chat",
-        "agents": "/api/v1/agents"
+        "agents": "/api/v1/agents",
     }

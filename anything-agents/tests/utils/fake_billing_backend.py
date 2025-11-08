@@ -9,7 +9,7 @@ from app.services.billing_events import BillingEventBackend, BillingEventStream
 
 
 class QueueBillingEventStream(BillingEventStream):
-    def __init__(self, queue: "asyncio.Queue[str]") -> None:
+    def __init__(self, queue: asyncio.Queue[str]) -> None:
         self._queue = queue
         self._closed = False
         self._pending: asyncio.Task[str | None] | None = None
@@ -22,7 +22,7 @@ class QueueBillingEventStream(BillingEventStream):
         try:
             self._pending = asyncio.create_task(self._queue.get())
             return await asyncio.wait_for(self._pending, timeout=timeout)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return None
         finally:
             if self._pending and not self._pending.done():

@@ -140,7 +140,8 @@ STRIPE_GATEWAY_OPERATIONS_TOTAL = Counter(
 
 STRIPE_GATEWAY_OPERATION_DURATION_SECONDS = Histogram(
     "stripe_gateway_operation_duration_seconds",
-    "Latency histogram for Stripe gateway operations segmented by operation, plan_code, and result.",
+    "Latency histogram for Stripe gateway operations segmented by operation, "
+    "plan_code, and result.",
     ("operation", "plan_code", "result"),
     buckets=_LATENCY_BUCKETS,
     registry=REGISTRY,
@@ -177,7 +178,9 @@ RATE_LIMIT_HITS_TOTAL = Counter(
 def observe_jwt_signing(*, result: str, token_use: str | None, duration_seconds: float) -> None:
     label = _sanitize_token_use(token_use)
     JWT_SIGNINGS_TOTAL.labels(result=result, token_use=label).inc()
-    JWT_SIGNING_DURATION_SECONDS.labels(result=result, token_use=label).observe(max(duration_seconds, 0.0))
+    JWT_SIGNING_DURATION_SECONDS.labels(result=result, token_use=label).observe(
+        max(duration_seconds, 0.0)
+    )
 
 
 def observe_jwt_verification(
@@ -230,7 +233,9 @@ def record_nonce_cache_result(*, hit: bool) -> None:
 
 def observe_stripe_api_call(*, operation: str, result: str, duration_seconds: float) -> None:
     STRIPE_API_REQUESTS_TOTAL.labels(operation=operation, result=result).inc()
-    STRIPE_API_LATENCY_SECONDS.labels(operation=operation, result=result).observe(max(duration_seconds, 0.0))
+    STRIPE_API_LATENCY_SECONDS.labels(operation=operation, result=result).observe(
+        max(duration_seconds, 0.0)
+    )
 
 
 def observe_stripe_webhook_event(*, event_type: str, result: str) -> None:
@@ -245,7 +250,9 @@ def observe_stripe_gateway_operation(
     duration_seconds: float,
 ) -> None:
     plan_label = _sanitize_plan_code(plan_code)
-    STRIPE_GATEWAY_OPERATIONS_TOTAL.labels(operation=operation, plan_code=plan_label, result=result).inc()
+    STRIPE_GATEWAY_OPERATIONS_TOTAL.labels(
+        operation=operation, plan_code=plan_label, result=result
+    ).inc()
     STRIPE_GATEWAY_OPERATION_DURATION_SECONDS.labels(
         operation=operation,
         plan_code=plan_label,

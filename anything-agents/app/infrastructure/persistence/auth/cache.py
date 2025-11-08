@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Protocol
 
 from redis.asyncio import Redis
@@ -13,18 +13,19 @@ from app.domain.auth import RefreshTokenRecord
 
 
 class RefreshTokenCache(Protocol):
-    async def get(self, account: str, tenant_id: str | None, scope_key: str) -> RefreshTokenRecord | None:
-        ...
+    async def get(
+        self, account: str, tenant_id: str | None, scope_key: str
+    ) -> RefreshTokenRecord | None: ...
 
-    async def set(self, record: RefreshTokenRecord) -> None:
-        ...
+    async def set(self, record: RefreshTokenRecord) -> None: ...
 
-    async def invalidate(self, account: str, tenant_id: str | None, scope_key: str) -> None:
-        ...
+    async def invalidate(self, account: str, tenant_id: str | None, scope_key: str) -> None: ...
 
 
 class NullRefreshTokenCache:
-    async def get(self, account: str, tenant_id: str | None, scope_key: str) -> RefreshTokenRecord | None:
+    async def get(
+        self, account: str, tenant_id: str | None, scope_key: str
+    ) -> RefreshTokenRecord | None:
         return None
 
     async def set(self, record: RefreshTokenRecord) -> None:
@@ -50,7 +51,7 @@ class RedisRefreshTokenCache:
             return None
         data = json.loads(payload)
         expires_at = datetime.fromisoformat(data["expires_at"])
-        if expires_at <= datetime.now(timezone.utc):
+        if expires_at <= datetime.now(UTC):
             await self._client.delete(key)
             return None
         return RefreshTokenRecord(
@@ -66,7 +67,7 @@ class RedisRefreshTokenCache:
         )
 
     async def set(self, record: RefreshTokenRecord) -> None:
-        ttl = int((record.expires_at - datetime.now(timezone.utc)).total_seconds())
+        ttl = int((record.expires_at - datetime.now(UTC)).total_seconds())
         if ttl <= 0:
             return
         key = self._key(record.account, record.tenant_id, record.scope_key)

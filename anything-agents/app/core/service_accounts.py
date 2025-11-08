@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import lru_cache
 from importlib import resources
 from pathlib import Path
-from typing import Iterable
 
 import yaml
 from pydantic import BaseModel, Field, ValidationError, model_validator
@@ -31,7 +31,7 @@ class ServiceAccountDefinition(BaseModel):
     max_ttl_minutes: int = Field(gt=0)
 
     @model_validator(mode="after")
-    def _validate_ttl(self) -> "ServiceAccountDefinition":
+    def _validate_ttl(self) -> ServiceAccountDefinition:
         if self.default_ttl_minutes and self.default_ttl_minutes > self.max_ttl_minutes:
             raise ValueError("default_ttl_minutes cannot exceed max_ttl_minutes.")
         return self
@@ -47,7 +47,9 @@ class ServiceAccountRegistry:
         try:
             return self.definitions[account]
         except KeyError as exc:
-            raise ServiceAccountNotFoundError(f"Service account '{account}' is not defined.") from exc
+            raise ServiceAccountNotFoundError(
+                f"Service account '{account}' is not defined."
+            ) from exc
 
     def accounts(self) -> Iterable[str]:
         return self.definitions.keys()
@@ -65,9 +67,7 @@ def _load_raw_catalog(path: Path) -> dict:
         with path.open("r", encoding="utf-8") as handle:
             data = yaml.safe_load(handle)
     except FileNotFoundError as exc:
-        raise ServiceAccountCatalogError(
-            f"Service-account catalog not found at '{path}'."
-        ) from exc
+        raise ServiceAccountCatalogError(f"Service-account catalog not found at '{path}'.") from exc
     except yaml.YAMLError as exc:
         raise ServiceAccountCatalogError(
             f"Failed to parse service-account catalog at '{path}'."
@@ -91,9 +91,7 @@ def load_service_account_registry(path: Path | None = None) -> ServiceAccountReg
         try:
             definition = ServiceAccountDefinition.model_validate(entry)
         except ValidationError as exc:
-            raise ServiceAccountCatalogError(
-                f"Invalid service-account entry: {entry}"
-            ) from exc
+            raise ServiceAccountCatalogError(f"Invalid service-account entry: {entry}") from exc
 
         if definition.account in definitions:
             raise ServiceAccountCatalogError(

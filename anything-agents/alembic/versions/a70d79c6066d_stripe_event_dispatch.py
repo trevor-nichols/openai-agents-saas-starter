@@ -1,9 +1,9 @@
 """Add stripe event dispatch table"""
 
-from alembic import op  # noqa: E402
-import sqlalchemy as sa  # noqa: E402
-from sqlalchemy.dialects import postgresql  # noqa: E402
+import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
+from alembic import op
 
 revision = "a70d79c6066d"
 down_revision = "636feb5dd51a"
@@ -27,8 +27,18 @@ def upgrade() -> None:
         sa.Column("last_attempt_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("next_retry_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("last_error", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("timezone('utc', now())"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("timezone('utc', now())"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('utc', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('utc', now())"),
+            nullable=False,
+        ),
         sa.UniqueConstraint("stripe_event_id", "handler", name="uq_stripe_event_dispatch_handler"),
     )
     op.create_index(

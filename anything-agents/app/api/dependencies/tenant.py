@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from enum import Enum
-from typing import Any, Iterable, Sequence
+from typing import Any
 
 from fastapi import Depends, Header, HTTPException, status
 

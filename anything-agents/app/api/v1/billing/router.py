@@ -3,20 +3,18 @@
 from __future__ import annotations
 
 import asyncio
-import json
-
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 
+from app.api.dependencies import raise_rate_limit_http_error
 from app.api.dependencies.tenant import (
     TenantContext,
     TenantRole,
     get_tenant_context,
     require_tenant_role,
 )
-from app.api.dependencies import raise_rate_limit_http_error
 from app.api.models.common import SuccessResponse
 from app.api.v1.billing.schemas import (
     BillingPlanResponse,
@@ -26,16 +24,16 @@ from app.api.v1.billing.schemas import (
     UpdateSubscriptionRequest,
     UsageRecordRequest,
 )
+from app.core.config import get_settings
+from app.services.billing_events import get_billing_events_service
 from app.services.billing_service import (
     BillingError,
+    InvalidTenantIdentifierError,
     PlanNotFoundError,
     SubscriptionNotFoundError,
     SubscriptionStateError,
-    InvalidTenantIdentifierError,
     billing_service,
 )
-from app.services.billing_events import get_billing_events_service
-from app.core.config import get_settings
 from app.services.rate_limit_service import (
     ConcurrencyQuota,
     RateLimitExceeded,
@@ -109,9 +107,7 @@ async def get_tenant_subscription(
 async def start_subscription(
     tenant_id: str,
     payload: StartSubscriptionRequest,
-    context: TenantContext = Depends(
-        require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)
-    ),
+    context: TenantContext = Depends(require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)),
 ) -> TenantSubscriptionResponse:
     """Provision a new subscription for the tenant."""
 
@@ -137,19 +133,13 @@ async def start_subscription(
 async def update_subscription(
     tenant_id: str,
     payload: UpdateSubscriptionRequest,
-    context: TenantContext = Depends(
-        require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)
-    ),
+    context: TenantContext = Depends(require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)),
 ) -> TenantSubscriptionResponse:
     """Adjust subscription metadata (auto-renew, seats, billing email)."""
 
     _assert_same_tenant(context, tenant_id)
 
-    if (
-        payload.auto_renew is None
-        and payload.billing_email is None
-        and payload.seat_count is None
-    ):
+    if payload.auto_renew is None and payload.billing_email is None and payload.seat_count is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No subscription fields provided for update.",
@@ -174,9 +164,7 @@ async def update_subscription(
 async def cancel_subscription(
     tenant_id: str,
     payload: CancelSubscriptionRequest,
-    context: TenantContext = Depends(
-        require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)
-    ),
+    context: TenantContext = Depends(require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)),
 ) -> TenantSubscriptionResponse:
     """Cancel the tenant subscription (immediately or at period end)."""
 
@@ -199,9 +187,7 @@ async def cancel_subscription(
 async def record_usage(
     tenant_id: str,
     payload: UsageRecordRequest,
-    context: TenantContext = Depends(
-        require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)
-    ),
+    context: TenantContext = Depends(require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)),
 ) -> SuccessResponse:
     """Report metered usage for a tenant subscription."""
 
@@ -224,11 +210,15 @@ async def record_usage(
 @router.get("/stream")
 async def billing_event_stream(
     request: Request,
-    context: TenantContext = Depends(require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.VIEWER)),
+    context: TenantContext = Depends(
+        require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.VIEWER)
+    ),
 ) -> StreamingResponse:
     settings = get_settings()
     if not settings.enable_billing_stream:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Billing stream is disabled.")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Billing stream is disabled."
+        )
 
     service = get_billing_events_service()
     await _enforce_tenant_quota(
@@ -257,8 +247,11 @@ async def billing_event_stream(
             try:
                 while True:
                     try:
-                        message = await asyncio.wait_for(subscription.next_message(timeout=keepalive_interval), timeout=keepalive_interval + 1)
-                    except asyncio.TimeoutError:
+                        message = await asyncio.wait_for(
+                            subscription.next_message(timeout=keepalive_interval),
+                            timeout=keepalive_interval + 1,
+                        )
+                    except TimeoutError:
                         if await request.is_disconnected():
                             break
                         yield ": ping\n\n"

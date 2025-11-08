@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "0e52ba5ab089"
@@ -42,7 +43,9 @@ def upgrade() -> None:
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("email", postgresql.CITEXT(), nullable=False),
         sa.Column("password_hash", sa.Text(), nullable=False),
-        sa.Column("password_pepper_version", sa.String(length=32), nullable=False, server_default="v1"),
+        sa.Column(
+            "password_pepper_version", sa.String(length=32), nullable=False, server_default="v1"
+        ),
         sa.Column(
             "status",
             postgresql.ENUM(
@@ -248,7 +251,6 @@ def downgrade() -> None:
     op.drop_constraint("uq_users_email", "users", type_="unique")
     op.drop_table("users")
 
-    bind = op.get_bind()
     op.execute(
         """
         DO $$

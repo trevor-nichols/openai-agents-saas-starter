@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -20,9 +19,17 @@ from app.domain.billing import (
 )
 from app.infrastructure.persistence.conversations.models import (
     BillingPlan as ORMPlan,
+)
+from app.infrastructure.persistence.conversations.models import (
     PlanFeature as ORMPlanFeature,
+)
+from app.infrastructure.persistence.conversations.models import (
     SubscriptionInvoice as ORMSubscriptionInvoice,
+)
+from app.infrastructure.persistence.conversations.models import (
     SubscriptionUsage as ORMSubscriptionUsage,
+)
+from app.infrastructure.persistence.conversations.models import (
     TenantSubscription as ORMTenantSubscription,
 )
 
@@ -37,14 +44,12 @@ class PostgresBillingRepository(BillingRepository):
 
     async def list_plans(self) -> list[BillingPlan]:
         async with self._session_factory() as session:
-            result = await session.execute(
-                select(ORMPlan).options(selectinload(ORMPlan.features))
-            )
+            result = await session.execute(select(ORMPlan).options(selectinload(ORMPlan.features)))
             plans = [self._to_domain_plan(row) for row in result.scalars()]
             logger.debug("Fetched %s billing plans from Postgres.", len(plans))
             return plans
 
-    async def get_subscription(self, tenant_id: str) -> Optional[TenantSubscription]:
+    async def get_subscription(self, tenant_id: str) -> TenantSubscription | None:
         async with self._session_factory() as session:
             try:
                 tenant_uuid = self._parse_tenant_uuid(tenant_id)
@@ -66,7 +71,9 @@ class PostgresBillingRepository(BillingRepository):
 
     async def upsert_subscription(self, subscription: TenantSubscription) -> None:
         async with self._session_factory() as session:
-            plan_row = await session.scalar(select(ORMPlan).where(ORMPlan.code == subscription.plan_code))
+            plan_row = await session.scalar(
+                select(ORMPlan).where(ORMPlan.code == subscription.plan_code)
+            )
             if plan_row is None:
                 raise ValueError(f"Billing plan '{subscription.plan_code}' not found.")
 
@@ -110,7 +117,7 @@ class PostgresBillingRepository(BillingRepository):
                 existing.cancel_at = subscription.cancel_at
                 existing.seat_count = subscription.seat_count
                 existing.metadata_json = subscription.metadata or {}
-                existing.updated_at = datetime.now(timezone.utc)
+                existing.updated_at = datetime.now(UTC)
 
             await session.commit()
 
@@ -139,7 +146,7 @@ class PostgresBillingRepository(BillingRepository):
             if seat_count is not None:
                 subscription.seat_count = seat_count
 
-            subscription.updated_at = datetime.now(timezone.utc)
+            subscription.updated_at = datetime.now(UTC)
             await session.commit()
             await session.refresh(subscription)
             return self._to_domain_subscription(subscription)
@@ -207,7 +214,9 @@ class PostgresBillingRepository(BillingRepository):
                 existing = await session.scalar(
                     select(ORMSubscriptionInvoice)
                     .where(ORMSubscriptionInvoice.subscription_id == subscription.id)
-                    .where(ORMSubscriptionInvoice.external_invoice_id == invoice.processor_invoice_id)
+                    .where(
+                        ORMSubscriptionInvoice.external_invoice_id == invoice.processor_invoice_id
+                    )
                 )
             if existing is None:
                 existing = await session.scalar(
@@ -280,7 +289,7 @@ class PostgresBillingRepository(BillingRepository):
             period_start=period_start,
             period_end=period_end,
             quantity=quantity,
-            reported_at=datetime.now(timezone.utc),
+            reported_at=datetime.now(UTC),
             external_event_id=idempotency_key,
         )
         session.add(usage)
@@ -297,7 +306,9 @@ class PostgresBillingRepository(BillingRepository):
             trial_days=plan.trial_days,
             seat_included=plan.seat_included,
             feature_toggles=plan.feature_toggles or {},
-            features=[PostgresBillingRepository._to_domain_feature(feature) for feature in plan.features],
+            features=[
+                PostgresBillingRepository._to_domain_feature(feature) for feature in plan.features
+            ],
             is_active=plan.is_active,
         )
 

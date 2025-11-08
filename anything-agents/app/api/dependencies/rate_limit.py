@@ -32,4 +32,3 @@ def raise_rate_limit_http_error(
         detail=f"Rate limit exceeded ({exc.quota}). Retry after {exc.retry_after}s.",
         headers={"Retry-After": str(exc.retry_after)},
     ) from exc
-

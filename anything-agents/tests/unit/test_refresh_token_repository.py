@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from types import SimpleNamespace, MethodType
+from datetime import UTC, datetime, timedelta
+from types import MethodType, SimpleNamespace
 from uuid import uuid4
 
 from app.core.config import Settings
 from app.infrastructure.persistence.auth import repository as repository_module
 from app.infrastructure.persistence.auth.repository import PostgresRefreshTokenRepository
 
-
-UTC = timezone.utc
+UTC = UTC
 
 
 def _build_repo() -> PostgresRefreshTokenRepository:
@@ -66,7 +65,8 @@ def test_rehydrate_service_account_token_includes_original_claims(monkeypatch) -
         MethodType(fake_encode, repo),
     )
 
-    new_verify = lambda token, hashed, pepper: token == expected_token and hashed == "stored-hash-service"  # noqa: E731
+    def new_verify(token: str, hashed: str, pepper: str) -> bool:
+        return token == expected_token and hashed == "stored-hash-service"
     monkeypatch.setattr(
         repository_module,
         "verify_refresh_token",
@@ -123,7 +123,8 @@ def test_rehydrate_user_token_preserves_user_subject(monkeypatch) -> None:
         MethodType(fake_encode, repo),
     )
 
-    new_verify = lambda token, hashed, pepper: token == expected_token and hashed == "stored-hash-user"  # noqa: E731
+    def new_verify(token: str, hashed: str, pepper: str) -> bool:
+        return token == expected_token and hashed == "stored-hash-user"
     monkeypatch.setattr(
         repository_module,
         "verify_refresh_token",

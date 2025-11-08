@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import or_, select, update
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.infrastructure.persistence.stripe.models import (
     StripeDispatchStatus,
@@ -15,8 +16,6 @@ from app.infrastructure.persistence.stripe.models import (
     StripeEventDispatch,
     StripeEventStatus,
 )
-
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 __all__ = [
     "StripeEventRepository",
@@ -79,7 +78,7 @@ class StripeEventRepository:
         status: StripeEventStatus,
         error: str | None = None,
     ) -> datetime:
-        processed_at = datetime.now(timezone.utc)
+        processed_at = datetime.now(UTC)
         async with self._session_factory() as session:
             await session.execute(
                 update(StripeEvent)
@@ -122,7 +121,9 @@ class StripeEventRepository:
         async with self._session_factory() as session:
             stmt = select(StripeEvent).order_by(StripeEvent.received_at.desc()).limit(limit)
             if status:
-                status_value = status.value if isinstance(status, StripeEventStatus) else str(status)
+                status_value = (
+                    status.value if isinstance(status, StripeEventStatus) else str(status)
+                )
                 stmt = stmt.where(StripeEvent.processing_outcome == status_value)
             result = await session.execute(stmt)
             return list(result.scalars())
@@ -183,14 +184,16 @@ class StripeEventRepository:
             if handler:
                 stmt = stmt.where(StripeEventDispatch.handler == handler)
             if status:
-                status_value = status.value if isinstance(status, StripeDispatchStatus) else str(status)
+                status_value = (
+                    status.value if isinstance(status, StripeDispatchStatus) else str(status)
+                )
                 stmt = stmt.where(StripeEventDispatch.status == status_value)
             result = await session.execute(stmt)
             rows = result.fetchall()
             return [(row[0], row[1]) for row in rows]
 
     async def mark_dispatch_in_progress(self, dispatch_id: uuid.UUID) -> StripeEventDispatch | None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         async with self._session_factory() as session:
             await session.execute(
                 update(StripeEventDispatch)
@@ -213,7 +216,7 @@ class StripeEventRepository:
         limit: int = 25,
         ready_before: datetime | None = None,
     ) -> list[StripeEventDispatch]:
-        cutoff = ready_before or datetime.now(timezone.utc)
+        cutoff = ready_before or datetime.now(UTC)
         async with self._session_factory() as session:
             stmt = (
                 select(StripeEventDispatch)
@@ -224,14 +227,16 @@ class StripeEventRepository:
                         StripeEventDispatch.next_retry_at <= cutoff,
                     )
                 )
-                .order_by(StripeEventDispatch.next_retry_at.asc(), StripeEventDispatch.created_at.asc())
+                .order_by(
+                    StripeEventDispatch.next_retry_at.asc(), StripeEventDispatch.created_at.asc()
+                )
                 .limit(limit)
             )
             result = await session.execute(stmt)
             return list(result.scalars())
 
     async def mark_dispatch_completed(self, dispatch_id: uuid.UUID) -> StripeEventDispatch | None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         async with self._session_factory() as session:
             await session.execute(
                 update(StripeEventDispatch)
@@ -253,7 +258,7 @@ class StripeEventRepository:
         error: str,
         next_retry_at: datetime | None = None,
     ) -> StripeEventDispatch | None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         async with self._session_factory() as session:
             await session.execute(
                 update(StripeEventDispatch)
@@ -269,7 +274,7 @@ class StripeEventRepository:
         return await self.get_dispatch(dispatch_id)
 
     async def reset_dispatch(self, dispatch_id: uuid.UUID) -> StripeEventDispatch | None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         async with self._session_factory() as session:
             await session.execute(
                 update(StripeEventDispatch)
@@ -300,5 +305,7 @@ def reset_stripe_event_repository() -> None:
 
 def get_stripe_event_repository() -> StripeEventRepository:
     if _stripe_event_repository is None:
-        raise RuntimeError("StripeEventRepository is not configured. Ensure ENABLE_BILLING=true on startup.")
+        raise RuntimeError(
+            "StripeEventRepository is not configured. Ensure ENABLE_BILLING=true on startup."
+        )
     return _stripe_event_repository

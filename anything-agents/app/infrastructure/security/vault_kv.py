@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
 import httpx
 
@@ -41,9 +40,7 @@ class VaultKVSecretManagerClient(SecretManagerClient):
         if response.status_code == 404:
             return None
         if response.status_code >= 400:
-            raise KeyStorageError(
-                f"Vault KV read failed ({response.status_code}): {response.text}"
-            )
+            raise KeyStorageError(f"Vault KV read failed ({response.status_code}): {response.text}")
 
         payload = response.json()
         data = payload.get("data", {})
@@ -93,9 +90,7 @@ def configure_vault_secret_manager(settings: Settings | None = None) -> None:
             "Vault address/token are required when auth_key_storage_backend=secret-manager."
         )
     if not settings.auth_key_secret_name:
-        raise KeyStorageError(
-            "auth_key_secret_name must be configured for secret-manager backend."
-        )
+        raise KeyStorageError("auth_key_secret_name must be configured for secret-manager backend.")
 
     def factory() -> VaultKVSecretManagerClient:
         return VaultKVSecretManagerClient(

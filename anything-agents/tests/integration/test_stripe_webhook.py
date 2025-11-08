@@ -7,12 +7,13 @@ import time
 from pathlib import Path
 
 import pytest
-import stripe
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import get_settings
+from app.infrastructure.persistence.auth import models as auth_models
+from app.infrastructure.persistence.conversations import models as conversation_models
 from app.infrastructure.persistence.stripe.models import StripeEvent, StripeEventDispatch
 from app.infrastructure.persistence.stripe.repository import (
     StripeEventRepository,
@@ -21,12 +22,11 @@ from app.infrastructure.persistence.stripe.repository import (
     reset_stripe_event_repository,
 )
 from app.presentation.webhooks import stripe as stripe_webhook
-from app.services.billing_events import BillingEventsService, billing_events_service
+from app.services.billing_events import BillingEventsService
 from app.services.stripe_dispatcher import stripe_event_dispatcher
 from tests.utils.fake_billing_backend import QueueBillingEventBackend
 
-import app.infrastructure.persistence.conversations.models  # noqa: F401
-import app.infrastructure.persistence.auth.models  # noqa: F401
+_ = (auth_models, conversation_models)
 
 pytestmark = pytest.mark.stripe_replay
 
@@ -81,16 +81,20 @@ def fake_billing_events(monkeypatch):
     service = BillingEventsService()
     backend = QueueBillingEventBackend()
     service.configure(backend=backend, repository=None)
-    monkeypatch.setattr("app.services.billing_events._billing_events_service", service, raising=False)
-    monkeypatch.setattr("app.services.billing_events.billing_events_service", service, raising=False)
+    monkeypatch.setattr(
+        "app.services.billing_events._billing_events_service", service, raising=False
+    )
+    monkeypatch.setattr(
+        "app.services.billing_events.billing_events_service", service, raising=False
+    )
     return service
 
 
 def _signature(payload: str, secret: str) -> str:
     timestamp = int(time.time())
-    signed = f"{timestamp}.{payload}".encode("utf-8")
-    import hmac
+    signed = f"{timestamp}.{payload}".encode()
     import hashlib
+    import hmac
 
     digest = hmac.new(secret.encode("utf-8"), signed, hashlib.sha256).hexdigest()
     return f"t={timestamp},v1={digest}"
@@ -105,7 +109,7 @@ def load_fixture(name: str) -> str:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "fixture_name, tenant_id", 
+    "fixture_name, tenant_id",
     [
         ("customer.subscription.created.json", "11111111-2222-3333-4444-555555555555"),
         ("invoice.payment_failed.json", "11111111-2222-3333-4444-555555555555"),
@@ -176,7 +180,9 @@ async def test_duplicate_event_is_acknowledged(
 
 
 @pytest.mark.asyncio
-async def test_invalid_signature_returns_400(webhook_app: FastAPI, sqlite_stripe_repo: StripeEventRepository):
+async def test_invalid_signature_returns_400(
+    webhook_app: FastAPI, sqlite_stripe_repo: StripeEventRepository
+):
     body = json.dumps({"id": "evt_bad", "type": "invoice.payment_failed"})
     transport = ASGITransport(app=webhook_app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:

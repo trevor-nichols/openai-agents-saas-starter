@@ -7,9 +7,10 @@ Create Date: 2025-11-07 15:00:00.000000
 
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "20251107_150000"
@@ -27,9 +28,16 @@ def upgrade() -> None:
         sa.Column("payload", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.Column("tenant_hint", sa.String(length=64), nullable=True),
         sa.Column("stripe_created_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("received_at", sa.DateTime(timezone=True), server_default=sa.text("timezone('utc', now())"), nullable=False),
+        sa.Column(
+            "received_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('utc', now())"),
+            nullable=False,
+        ),
         sa.Column("processed_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("processing_outcome", sa.String(length=32), server_default="received", nullable=False),
+        sa.Column(
+            "processing_outcome", sa.String(length=32), server_default="received", nullable=False
+        ),
         sa.Column("processing_error", sa.Text(), nullable=True),
         sa.Column("processing_attempts", sa.Integer(), nullable=False, server_default="0"),
     )

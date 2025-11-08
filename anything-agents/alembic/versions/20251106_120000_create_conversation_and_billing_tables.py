@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import uuid
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "20251106_120000"
@@ -155,7 +156,7 @@ def upgrade() -> None:
             name="fk_tenant_subscriptions_plan_id_billing_plans",
             ondelete="RESTRICT",
         ),
-)
+    )
     op.create_index(
         "ix_tenant_subscriptions_tenant_status",
         "tenant_subscriptions",

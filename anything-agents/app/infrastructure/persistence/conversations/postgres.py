@@ -5,15 +5,15 @@ from __future__ import annotations
 import logging
 import uuid
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.domain.conversations import (
-    ConversationMetadata,
     ConversationMessage,
+    ConversationMetadata,
     ConversationRecord,
     ConversationRepository,
     ConversationSessionState,
@@ -26,9 +26,7 @@ from app.infrastructure.persistence.conversations.models import (
 
 logger = logging.getLogger("anything-agents.persistence")
 
-_CONVERSATION_NAMESPACE = uuid.uuid5(
-    uuid.NAMESPACE_URL, "anything-agents:conversation"
-)
+_CONVERSATION_NAMESPACE = uuid.uuid5(uuid.NAMESPACE_URL, "anything-agents:conversation")
 
 
 def _coerce_conversation_uuid(conversation_id: str) -> uuid.UUID:
@@ -47,7 +45,9 @@ def _derive_conversation_key(conversation_id: str) -> str:
         return str(uuid.UUID(conversation_id))
     except (TypeError, ValueError):
         if len(conversation_id) > 255:
-            raise ValueError("Conversation identifier must be 255 characters or fewer.")
+            raise ValueError(
+                "Conversation identifier must be 255 characters or fewer."
+            ) from None
         return conversation_id
 
 
@@ -87,7 +87,7 @@ class PostgresConversationRepository(ConversationRepository):
             position = conversation.message_count
             conversation.message_count = position + 1
             conversation.last_message_at = _to_utc(message.timestamp)
-            conversation.updated_at = datetime.now(timezone.utc)
+            conversation.updated_at = datetime.now(UTC)
             conversation.agent_entrypoint = metadata.agent_entrypoint
             if metadata.active_agent:
                 conversation.active_agent = metadata.active_agent
@@ -122,9 +122,7 @@ class PostgresConversationRepository(ConversationRepository):
                 token_count_completion=metadata.total_tokens_completion
                 if message.role == "assistant"
                 else None,
-                reasoning_tokens=metadata.reasoning_tokens
-                if message.role == "assistant"
-                else None,
+                reasoning_tokens=metadata.reasoning_tokens if message.role == "assistant" else None,
                 created_at=_to_utc(message.timestamp),
             )
             session.add(db_message)
@@ -207,9 +205,7 @@ class PostgresConversationRepository(ConversationRepository):
                 await session.delete(conversation)
                 await session.commit()
 
-    async def get_session_state(
-        self, conversation_id: str
-    ) -> ConversationSessionState | None:
+    async def get_session_state(self, conversation_id: str) -> ConversationSessionState | None:
         conversation_uuid = _coerce_conversation_uuid(conversation_id)
         async with self._session_factory() as session:
             conversation = await session.get(AgentConversation, conversation_uuid)
@@ -283,8 +279,8 @@ class PostgresConversationRepository(ConversationRepository):
             sdk_session_id=metadata.sdk_session_id,
             session_cursor=metadata.session_cursor,
             last_session_sync_at=metadata.last_session_sync_at,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         session.add(conversation)
         await session.flush()
@@ -309,7 +305,7 @@ class PostgresConversationRepository(ConversationRepository):
             id=uuid.uuid4(),
             slug=self._default_tenant_slug,
             name=self._default_tenant_name,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         session.add(tenant)
         try:
@@ -336,5 +332,5 @@ def _extract_message_content(payload: dict | str | None) -> str:
 
 def _to_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)

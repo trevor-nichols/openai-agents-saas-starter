@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol, Sequence
+from typing import Protocol
 
 from passlib.context import CryptContext
 
@@ -39,17 +40,13 @@ class RefreshTokenRepository(Protocol):
 
     async def find_active(
         self, account: str, tenant_id: str | None, scopes: Sequence[str]
-    ) -> RefreshTokenRecord | None:
-        ...
+    ) -> RefreshTokenRecord | None: ...
 
-    async def get_by_jti(self, jti: str) -> RefreshTokenRecord | None:
-        ...
+    async def get_by_jti(self, jti: str) -> RefreshTokenRecord | None: ...
 
-    async def save(self, record: RefreshTokenRecord) -> None:
-        ...
+    async def save(self, record: RefreshTokenRecord) -> None: ...
 
-    async def revoke(self, jti: str, *, reason: str | None = None) -> None:
-        ...
+    async def revoke(self, jti: str, *, reason: str | None = None) -> None: ...
 
 
 _REFRESH_TOKEN_CONTEXT = CryptContext(schemes=["bcrypt"], deprecated="auto")

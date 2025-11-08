@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 from app.domain.conversations import (
-    ConversationMetadata,
     ConversationMessage,
+    ConversationMetadata,
     ConversationRecord,
     ConversationRepository,
     ConversationSessionState,
@@ -86,9 +86,7 @@ class ConversationService:
 
         return matches
 
-    async def get_session_state(
-        self, conversation_id: str
-    ) -> ConversationSessionState | None:
+    async def get_session_state(self, conversation_id: str) -> ConversationSessionState | None:
         return await self._require_repository().get_session_state(conversation_id)
 
     async def update_session_state(

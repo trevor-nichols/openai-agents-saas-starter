@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
 import logging
-from typing import Iterable, Sequence
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
+from types import TracebackType
 
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
@@ -47,7 +48,9 @@ class RateLimitLease:
 
     __slots__ = ("_redis", "_key", "_released", "_ttl", "_heartbeat", "_stop")
 
-    def __init__(self, redis: Redis | None, key: str | None, ttl_seconds: int | None = None) -> None:
+    def __init__(
+        self, redis: Redis | None, key: str | None, ttl_seconds: int | None = None
+    ) -> None:
         self._redis = redis
         self._key = key
         self._released = False
@@ -72,13 +75,18 @@ class RateLimitLease:
         if value <= 0:
             await self._redis.delete(self._key)
 
-    async def __aenter__(self) -> "RateLimitLease":
+    async def __aenter__(self) -> RateLimitLease:
         if self._redis and self._key and self._ttl > 0:
             interval = max(self._ttl / 2, 0.5)
             self._heartbeat = asyncio.create_task(self._refresh_loop(interval))
         return self
 
-    async def __aexit__(self, exc_type, exc, tb) -> None:  # noqa: ANN001
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
         await self.release()
 
     async def _refresh_loop(self, interval: float) -> None:
@@ -87,7 +95,7 @@ class RateLimitLease:
                 try:
                     await asyncio.wait_for(self._stop.wait(), timeout=interval)
                     break
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     if self._redis and self._key:
                         await self._redis.expire(self._key, int(max(self._ttl, 1)))
         except asyncio.CancelledError:  # pragma: no cover - expected
@@ -103,7 +111,9 @@ class RateLimiter:
         self._owns_client = False
         self._logger = logging.getLogger(__name__)
 
-    def configure(self, *, redis: Redis, prefix: str = "rate-limit", owns_client: bool = True) -> None:
+    def configure(
+        self, *, redis: Redis, prefix: str = "rate-limit", owns_client: bool = True
+    ) -> None:
         self._redis = redis
         self._prefix = prefix.strip() or "rate-limit"
         self._owns_client = owns_client

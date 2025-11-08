@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
@@ -14,7 +13,7 @@ from httpx import ASGITransport, AsyncClient
 from app.api.dependencies.auth import require_current_user
 from app.api.v1.billing.router import router as billing_router
 from app.core.config import get_settings
-from app.services.billing_events import BillingEventsService, billing_events_service
+from app.services.billing_events import BillingEventsService
 from app.services.stripe_event_models import (
     DispatchBroadcastContext,
     InvoiceSnapshotView,
@@ -41,8 +40,12 @@ async def test_sse_emits_events(monkeypatch):
     backend = QueueBillingEventBackend()
     service.configure(backend=backend, repository=None)
 
-    monkeypatch.setattr("app.services.billing_events._billing_events_service", service, raising=False)
-    monkeypatch.setattr("app.services.billing_events.billing_events_service", service, raising=False)
+    monkeypatch.setattr(
+        "app.services.billing_events._billing_events_service", service, raising=False
+    )
+    monkeypatch.setattr(
+        "app.services.billing_events.billing_events_service", service, raising=False
+    )
 
     app = FastAPI()
     app.dependency_overrides[require_current_user] = _authorized_user
@@ -77,8 +80,12 @@ async def test_stream_rejects_tenant_mismatch(monkeypatch):
     backend = QueueBillingEventBackend()
     service.configure(backend=backend, repository=None)
 
-    monkeypatch.setattr("app.services.billing_events._billing_events_service", service, raising=False)
-    monkeypatch.setattr("app.services.billing_events.billing_events_service", service, raising=False)
+    monkeypatch.setattr(
+        "app.services.billing_events._billing_events_service", service, raising=False
+    )
+    monkeypatch.setattr(
+        "app.services.billing_events.billing_events_service", service, raising=False
+    )
 
     app = FastAPI()
     app.dependency_overrides[require_current_user] = _authorized_user
@@ -94,7 +101,7 @@ async def test_stream_rejects_tenant_mismatch(monkeypatch):
 
 
 async def _publish_invoice_event(service: BillingEventsService) -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     record = SimpleNamespace(
         tenant_hint="tenant-123",
         event_type="invoice.payment_succeeded",

@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
-from app.domain.billing import BillingPlan, BillingRepository, SubscriptionInvoiceRecord, TenantSubscription
+from app.domain.billing import (
+    BillingPlan,
+    BillingRepository,
+    SubscriptionInvoiceRecord,
+    TenantSubscription,
+)
 from app.services.payment_gateway import (
     PaymentGateway,
     PaymentGatewayError,
@@ -87,7 +91,7 @@ class BillingService:
 
     def __init__(
         self,
-        repository: Optional[BillingRepository] = None,
+        repository: BillingRepository | None = None,
         gateway: PaymentGateway | None = None,
     ) -> None:
         self._repository: BillingRepository | None = repository
@@ -157,9 +161,7 @@ class BillingService:
         try:
             await repository.upsert_subscription(subscription)
         except ValueError as exc:
-            raise InvalidTenantIdentifierError(
-                "Tenant identifier is not a valid UUID."
-            ) from exc
+            raise InvalidTenantIdentifierError("Tenant identifier is not a valid UUID.") from exc
         return subscription
 
     async def cancel_subscription(
@@ -184,14 +186,12 @@ class BillingService:
             subscription.cancel_at = subscription.current_period_end
         else:
             subscription.status = "canceled"
-            subscription.cancel_at = datetime.now(timezone.utc)
+            subscription.cancel_at = datetime.now(UTC)
 
         try:
             await self._require_repository().upsert_subscription(subscription)
         except ValueError as exc:
-            raise InvalidTenantIdentifierError(
-                "Tenant identifier is not a valid UUID."
-            ) from exc
+            raise InvalidTenantIdentifierError("Tenant identifier is not a valid UUID.") from exc
         return subscription
 
     async def record_usage(
@@ -221,7 +221,7 @@ class BillingService:
         except PaymentGatewayError as exc:
             raise PaymentProviderError(str(exc)) from exc
 
-        utc_now = datetime.now(timezone.utc)
+        utc_now = datetime.now(UTC)
         start = _to_utc(period_start) if period_start else utc_now
         end = _to_utc(period_end) if period_end else utc_now
 
@@ -237,9 +237,7 @@ class BillingService:
                 idempotency_key=idempotency_key,
             )
         except ValueError as exc:
-            raise InvalidTenantIdentifierError(
-                "Tenant identifier is not a valid UUID."
-            ) from exc
+            raise InvalidTenantIdentifierError("Tenant identifier is not a valid UUID.") from exc
 
     async def _ensure_plan_exists(self, plan_code: str) -> BillingPlan:
         plans = await self._require_repository().list_plans()
@@ -252,9 +250,7 @@ class BillingService:
         try:
             subscription = await self._require_repository().get_subscription(tenant_id)
         except ValueError as exc:
-            raise InvalidTenantIdentifierError(
-                "Tenant identifier is not a valid UUID."
-            ) from exc
+            raise InvalidTenantIdentifierError("Tenant identifier is not a valid UUID.") from exc
         if subscription is None:
             raise SubscriptionNotFoundError(
                 f"Tenant '{tenant_id}' does not have an active subscription."
@@ -290,9 +286,7 @@ class BillingService:
                 seat_count=seat_count,
             )
         except ValueError as exc:
-            raise InvalidTenantIdentifierError(
-                "Tenant identifier is not a valid UUID."
-            ) from exc
+            raise InvalidTenantIdentifierError("Tenant identifier is not a valid UUID.") from exc
         return updated
 
     async def sync_subscription_from_processor(
@@ -301,7 +295,7 @@ class BillingService:
         *,
         processor_name: str = "stripe",
     ) -> TenantSubscription:
-        starts_at = snapshot.starts_at or datetime.now(timezone.utc)
+        starts_at = snapshot.starts_at or datetime.now(UTC)
         plan = await self._ensure_plan_exists(snapshot.plan_code)
         subscription = TenantSubscription(
             tenant_id=snapshot.tenant_id,
@@ -332,7 +326,7 @@ class BillingService:
         snapshot: ProcessorInvoiceSnapshot,
     ) -> None:
         repository = self._require_repository()
-        period_start = _to_utc(snapshot.period_start or datetime.now(timezone.utc))
+        period_start = _to_utc(snapshot.period_start or datetime.now(UTC))
         period_end = _to_utc(snapshot.period_end or period_start)
         currency = (snapshot.currency or "usd").upper()
 
@@ -364,16 +358,19 @@ class BillingService:
                     quantity=line.quantity,
                     period_start=line_start,
                     period_end=line_end,
-                    idempotency_key=line.idempotency_key or f"{snapshot.invoice_id}:{line.feature_key}",
+                    idempotency_key=line.idempotency_key
+                    or f"{snapshot.invoice_id}:{line.feature_key}",
                 )
             except ValueError as exc:
-                raise InvalidTenantIdentifierError("Tenant identifier is not a valid UUID.") from exc
+                raise InvalidTenantIdentifierError(
+                    "Tenant identifier is not a valid UUID."
+                ) from exc
 
 
 def _to_utc(dt: datetime) -> datetime:
     if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
+        return dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
 
 
 billing_service = BillingService()

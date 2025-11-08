@@ -10,27 +10,27 @@ from agents import function_tool
 from tavily import TavilyClient
 
 # Ruff/browsers: allow missing type info from third-party package until stubs are provided
-
-
 from app.core.config import get_settings
 
 # =============================================================================
 # TAVILY CLIENT INITIALIZATION
 # =============================================================================
 
+
 def get_tavily_client() -> TavilyClient | None:
     """
     Get Tavily client instance.
-    
+
     Returns:
         Optional[TavilyClient]: Tavily client if API key is available, None otherwise
     """
     settings = get_settings()
-    
-    if not hasattr(settings, 'tavily_api_key') or not settings.tavily_api_key:
+
+    if not hasattr(settings, "tavily_api_key") or not settings.tavily_api_key:
         return None
-    
+
     return TavilyClient(api_key=settings.tavily_api_key)
+
 
 # =============================================================================
 # WEB SEARCH TOOLS
@@ -50,32 +50,32 @@ async def tavily_search_tool(
 ) -> str:
     """
     Search the web using Tavily API for current information.
-    
+
     This tool allows agents to search the web for real-time information,
     current events, facts, and any topic that requires up-to-date data.
-    
+
     Args:
         query: The search query to execute
         max_results: Maximum number of search results (1-20, default: 5)
         search_depth: Search depth - "basic" or "advanced" (default: "basic")
         include_answer: Whether to include an AI-generated answer (default: True)
         topic: Search topic - "general" or "news" (default: "general")
-    
+
     Returns:
         str: Formatted search results with sources and optional AI answer
     """
-    
+
     # Get Tavily client
     client = get_tavily_client()
     if not client:
         return "Web search is not available. Tavily API key is not configured."
-    
+
     try:
         # Validate parameters
         max_results = max(1, min(20, max_results))
         search_depth_value: SearchDepth = search_depth
         topic_value: Topic = topic
-        
+
         # Execute search
         response = await asyncio.to_thread(
             client.search,
@@ -85,61 +85,63 @@ async def tavily_search_tool(
             include_answer=include_answer,
             topic=topic_value,
             include_raw_content=False,
-            include_images=False
+            include_images=False,
         )
-        
+
         # Format results
         formatted_results = _format_search_results(response, query)
         return formatted_results
-        
+
     except Exception as e:
         return f"Web search failed: {e!s}"
+
 
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
 
+
 def _format_search_results(response: dict[str, Any], query: str) -> str:
     """
     Format Tavily search results into a readable string.
-    
+
     Args:
         response: Raw Tavily API response
         query: Original search query
-        
+
     Returns:
         str: Formatted search results
     """
-    
+
     formatted = f"🔍 Web Search Results for: '{query}'\n"
     formatted += "=" * 50 + "\n\n"
-    
+
     # Add AI-generated answer if available
     if response.get("answer"):
         formatted += "📝 AI Summary:\n"
         formatted += f"{response['answer']}\n\n"
         formatted += "📚 Sources:\n"
         formatted += "-" * 20 + "\n"
-    
+
     # Add search results
     results = response.get("results", [])
     if not results:
         formatted += "No search results found.\n"
         return formatted
-    
+
     for i, result in enumerate(results, 1):
         title = result.get("title", "No title")
         url = result.get("url", "No URL")
         content = result.get("content", "No content available")
         score = result.get("score", 0)
-        
+
         formatted += f"{i}. {title}\n"
         formatted += f"   URL: {url}\n"
         formatted += f"   Relevance: {score:.2f}\n"
         formatted += f"   Content: {content[:200]}{'...' if len(content) > 200 else ''}\n\n"
-    
+
     # Add metadata
     response_time = response.get("response_time", "Unknown")
     formatted += f"⏱️ Search completed in {response_time} seconds\n"
-    
-    return formatted 
+
+    return formatted

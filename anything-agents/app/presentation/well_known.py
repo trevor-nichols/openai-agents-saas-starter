@@ -39,6 +39,6 @@ async def jwks_document(request: Request) -> Response:
 
 
 def _build_etag(fingerprint: str, salt: str) -> str:
-    material = f"{salt}:{fingerprint}".encode("utf-8")
+    material = f"{salt}:{fingerprint}".encode()
     digest = hashlib.sha256(material).hexdigest()
-    return f"\"{digest}\""
+    return f'"{digest}"'

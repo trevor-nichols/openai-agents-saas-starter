@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Protocol
 
 from redis.asyncio import Redis
@@ -18,11 +18,11 @@ from app.domain.users import (
     PasswordHistoryEntry,
     TenantMembershipDTO,
     UserCreatePayload,
+    UserLoginEventDTO,
     UserRecord,
     UserRepository,
     UserRepositoryError,
     UserStatus,
-    UserLoginEventDTO,
 )
 from app.infrastructure.db import get_async_sessionmaker
 from app.infrastructure.persistence.auth.models import (
@@ -37,36 +37,31 @@ logger = logging.getLogger("anything-agents.persistence.users")
 
 
 class LockoutStore(Protocol):
-    async def increment(self, user_id: uuid.UUID, ttl_seconds: int) -> int:
-        ...
+    async def increment(self, user_id: uuid.UUID, ttl_seconds: int) -> int: ...
 
-    async def reset(self, user_id: uuid.UUID) -> None:
-        ...
+    async def reset(self, user_id: uuid.UUID) -> None: ...
 
-    async def lock(self, user_id: uuid.UUID, duration_seconds: int) -> None:
-        ...
+    async def lock(self, user_id: uuid.UUID, duration_seconds: int) -> None: ...
 
-    async def unlock(self, user_id: uuid.UUID) -> None:
-        ...
+    async def unlock(self, user_id: uuid.UUID) -> None: ...
 
-    async def is_locked(self, user_id: uuid.UUID) -> bool:
-        ...
+    async def is_locked(self, user_id: uuid.UUID) -> bool: ...
 
 
 class NullLockoutStore:
-    async def increment(self, user_id: uuid.UUID, ttl_seconds: int) -> int:  # noqa: ARG002
+    async def increment(self, _user_id: uuid.UUID, _ttl_seconds: int) -> int:
         return 0
 
-    async def reset(self, user_id: uuid.UUID) -> None:  # noqa: ARG002
+    async def reset(self, _user_id: uuid.UUID) -> None:
         return None
 
-    async def lock(self, user_id: uuid.UUID, duration_seconds: int) -> None:  # noqa: ARG002
+    async def lock(self, _user_id: uuid.UUID, _duration_seconds: int) -> None:
         return None
 
-    async def unlock(self, user_id: uuid.UUID) -> None:  # noqa: ARG002
+    async def unlock(self, _user_id: uuid.UUID) -> None:
         return None
 
-    async def is_locked(self, user_id: uuid.UUID) -> bool:  # noqa: ARG002
+    async def is_locked(self, _user_id: uuid.UUID) -> bool:
         return False
 
 
@@ -167,7 +162,7 @@ class PostgresUserRepository(UserRepository):
             await session.execute(
                 update(UserAccount)
                 .where(UserAccount.id == user_id)
-                .values(status=status, updated_at=datetime.now(timezone.utc))
+                .values(status=status, updated_at=datetime.now(UTC))
             )
             await session.commit()
 
@@ -201,7 +196,9 @@ class PostgresUserRepository(UserRepository):
             session.add(row)
             await session.commit()
 
-    async def list_password_history(self, user_id: uuid.UUID, limit: int = 5) -> list[PasswordHistoryEntry]:
+    async def list_password_history(
+        self, user_id: uuid.UUID, limit: int = 5
+    ) -> list[PasswordHistoryEntry]:
         async with self._session_factory() as session:
             result = await session.execute(
                 select(PasswordHistory)
@@ -255,12 +252,9 @@ class PostgresUserRepository(UserRepository):
         email: str | None = None,
         user_id: uuid.UUID | None = None,
     ) -> UserAccount | None:
-        stmt = (
-            select(UserAccount)
-            .options(
-                selectinload(UserAccount.memberships),
-                selectinload(UserAccount.profile),
-            )
+        stmt = select(UserAccount).options(
+            selectinload(UserAccount.memberships),
+            selectinload(UserAccount.profile),
         )
         if email:
             stmt = stmt.where(UserAccount.email == email)

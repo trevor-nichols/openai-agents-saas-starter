@@ -1,8 +1,8 @@
 """Tests covering the billing service scaffolding."""
 
-from datetime import datetime, timezone
-from types import SimpleNamespace
 import uuid
+from datetime import UTC, datetime
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import select
@@ -42,7 +42,7 @@ class FakeGateway(PaymentGateway):
         seat_count: int | None,
     ) -> SubscriptionProvisionResult:
         self.subscription_counter += 1
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         self.last_quantity = seat_count or 1
         return SubscriptionProvisionResult(
             processor="stub",
@@ -212,7 +212,7 @@ async def test_ingest_invoice_snapshot_records_invoice_and_usage(billing_context
         auto_renew=True,
     )
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     snapshot = ProcessorInvoiceSnapshot(
         tenant_id=billing_context.tenant_id,
         invoice_id="in_local",

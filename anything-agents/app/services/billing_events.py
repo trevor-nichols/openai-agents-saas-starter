@@ -7,8 +7,8 @@ import json
 import logging
 from collections import deque
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
-from typing import AsyncIterator, Protocol
+from datetime import UTC, datetime
+from typing import Protocol
 
 from redis.asyncio import Redis
 
@@ -37,9 +37,9 @@ class BillingEventPayload:
     occurred_at: str
     summary: str | None
     status: str
-    subscription: "BillingEventSubscription" | None = None
-    invoice: "BillingEventInvoice" | None = None
-    usage: list["BillingEventUsage"] = field(default_factory=list)
+    subscription: BillingEventSubscription | None = None
+    invoice: BillingEventInvoice | None = None
+    usage: list[BillingEventUsage] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -77,28 +77,21 @@ class BillingEventUsage:
 
 
 class BillingEventStream(Protocol):
-    async def next_message(self, timeout: float | None = None) -> str | None:
-        ...
+    async def next_message(self, timeout: float | None = None) -> str | None: ...
 
-    async def close(self) -> None:
-        ...
+    async def close(self) -> None: ...
 
 
 class BillingEventBackend(Protocol):
-    async def publish(self, channel: str, message: str) -> None:
-        ...
+    async def publish(self, channel: str, message: str) -> None: ...
 
-    async def subscribe(self, channel: str) -> BillingEventStream:
-        ...
+    async def subscribe(self, channel: str) -> BillingEventStream: ...
 
-    async def store_bookmark(self, key: str, value: str) -> None:
-        ...
+    async def store_bookmark(self, key: str, value: str) -> None: ...
 
-    async def load_bookmark(self, key: str) -> str | None:
-        ...
+    async def load_bookmark(self, key: str) -> str | None: ...
 
-    async def close(self) -> None:
-        ...
+    async def close(self) -> None: ...
 
 
 class RedisBillingEventStream:
@@ -296,7 +289,7 @@ class BillingEventsService:
                 break
             for event in events:
                 await self._publish_from_record(event)
-                replay_after = event.processed_at or datetime.now(timezone.utc)
+                replay_after = event.processed_at or datetime.now(UTC)
             if replay_after is not None:
                 await self.mark_processed(replay_after)
 
@@ -351,7 +344,9 @@ class BillingEventsService:
                         "event_type": message.event_type,
                     },
                 )
-                observe_stripe_webhook_event(event_type=message.event_type, result="broadcast_failed")
+                observe_stripe_webhook_event(
+                    event_type=message.event_type, result="broadcast_failed"
+                )
                 if attempts >= self._publish_retry_attempts:
                     record_billing_stream_event(source=source, result="failed")
                     raise
@@ -373,7 +368,7 @@ class BillingEventsService:
         if not processed_at or not self._backend:
             return
         await self._backend.store_bookmark(self._bookmark_key, processed_at.isoformat())
-        lag_seconds = (datetime.now(timezone.utc) - processed_at).total_seconds()
+        lag_seconds = (datetime.now(UTC) - processed_at).total_seconds()
         record_billing_stream_backlog(lag_seconds)
 
     async def subscribe(self, tenant_id: str) -> BillingEventStream:
@@ -420,7 +415,7 @@ class BillingEventsService:
             tenant_id=tenant_id,
             event_type=record.event_type,
             stripe_event_id=record.stripe_event_id,
-            occurred_at=(occurred_at or datetime.now(timezone.utc)).isoformat(),
+            occurred_at=(occurred_at or datetime.now(UTC)).isoformat(),
             summary=summary,
             status=status or record.processing_outcome,
             subscription=subscription,
@@ -469,9 +464,9 @@ class BillingEventsService:
         if value is None:
             return None
         if value.tzinfo is None:
-            value = value.replace(tzinfo=timezone.utc)
+            value = value.replace(tzinfo=UTC)
         else:
-            value = value.astimezone(timezone.utc)
+            value = value.astimezone(UTC)
         return value.isoformat()
 
 

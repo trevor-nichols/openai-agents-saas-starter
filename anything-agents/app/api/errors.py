@@ -1,7 +1,7 @@
 """Centralised exception handling for the API layer."""
 
-from collections.abc import Awaitable
-from typing import Callable, cast
+from collections.abc import Awaitable, Callable
+from typing import cast
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError

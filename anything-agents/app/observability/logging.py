@@ -13,7 +13,7 @@ LOGGER = logging.getLogger("auth.observability")
 def _serialize(value: Any) -> Any:
     if isinstance(value, datetime):
         return value.isoformat()
-    if isinstance(value, (set, frozenset)):
+    if isinstance(value, set | frozenset):
         return sorted(value)
     return value
 

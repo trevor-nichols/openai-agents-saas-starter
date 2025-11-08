@@ -6,23 +6,29 @@ import asyncio
 import os
 import uuid
 from collections.abc import AsyncIterator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import asyncpg
 import pytest
-from alembic import command
-from alembic.config import Config
+from agents.extensions.memory.sqlalchemy_session import SQLAlchemySession
 from sqlalchemy import select, text
 from sqlalchemy.engine.url import URL, make_url
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
+from alembic import command
+from alembic.config import Config
 from app.domain.billing import TenantSubscription
-from agents.extensions.memory.sqlalchemy_session import SQLAlchemySession
-
-from app.domain.conversations import ConversationMetadata, ConversationMessage
+from app.domain.conversations import ConversationMessage, ConversationMetadata
 from app.infrastructure.persistence.billing.postgres import PostgresBillingRepository
-from app.infrastructure.persistence.conversations.models import SubscriptionUsage as ORMSubscriptionUsage
+from app.infrastructure.persistence.conversations.models import (
+    SubscriptionUsage as ORMSubscriptionUsage,
+)
 from app.infrastructure.persistence.conversations.postgres import (
     PostgresConversationRepository,
 )
@@ -39,9 +45,7 @@ def _require_database_url() -> URL:
         pytest.skip("DATABASE_URL not set; skipping Postgres integration tests.")
     url = make_url(raw_url)
     if not url.drivername.startswith("postgresql"):
-        pytest.skip(
-            "DATABASE_URL is not a Postgres URL; skipping Postgres integration tests."
-        )
+        pytest.skip("DATABASE_URL is not a Postgres URL; skipping Postgres integration tests.")
     return url
 
 
@@ -266,7 +270,7 @@ async def test_billing_subscription_upsert_roundtrip(
         status="active",
         auto_renew=True,
         billing_email="owner@example.com",
-        starts_at=datetime.now(timezone.utc),
+        starts_at=datetime.now(UTC),
         seat_count=plan.seat_included,
         metadata={"source": "integration-test"},
         processor="stripe",
@@ -292,7 +296,7 @@ async def test_billing_subscription_upsert_roundtrip(
     assert updated.billing_email == "billing@example.com"
     assert updated.seat_count == 7
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     await repository.record_usage(
         tenant_id,
         feature_key="messages",

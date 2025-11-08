@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -28,7 +28,7 @@ class FakeSettings:
 
 class FakeStripeClient:
     def __init__(self) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         self.subscription = StripeSubscription(
             id="sub_123",
             customer_id="cus_123",
@@ -82,7 +82,7 @@ class FakeStripeClient:
             id="usg_123",
             subscription_item_id="si_123",
             quantity=payload["quantity"],
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
 
     def _customer(self, email: str | None):
@@ -170,7 +170,9 @@ async def test_gateway_emits_metrics_on_success(monkeypatch: pytest.MonkeyPatch)
     def fake_observe(**kwargs):
         calls.append(kwargs)
 
-    monkeypatch.setattr("app.services.payment_gateway.observe_stripe_gateway_operation", fake_observe)
+    monkeypatch.setattr(
+        "app.services.payment_gateway.observe_stripe_gateway_operation", fake_observe
+    )
 
     client = FakeStripeClient()
     settings = FakeSettings(stripe_product_price_map={"starter": "price_123"})
@@ -198,7 +200,9 @@ async def test_stripe_errors_wrapped_with_gateway_error(monkeypatch: pytest.Monk
     def fake_observe(**kwargs):
         calls.append(kwargs)
 
-    monkeypatch.setattr("app.services.payment_gateway.observe_stripe_gateway_operation", fake_observe)
+    monkeypatch.setattr(
+        "app.services.payment_gateway.observe_stripe_gateway_operation", fake_observe
+    )
 
     class ExplodingClient(FakeStripeClient):
         async def create_customer(self, *, email: str | None, tenant_id: str):  # type: ignore[override]

@@ -18,7 +18,7 @@ class PlanFeatureResponse(BaseModel):
     is_metered: bool = False
 
     @classmethod
-    def from_domain(cls, feature: PlanFeature) -> "PlanFeatureResponse":
+    def from_domain(cls, feature: PlanFeature) -> PlanFeatureResponse:
         return cls(
             key=feature.key,
             display_name=feature.display_name,
@@ -43,7 +43,7 @@ class BillingPlanResponse(BaseModel):
     features: list[PlanFeatureResponse] = Field(default_factory=list)
 
     @classmethod
-    def from_domain(cls, plan: BillingPlan) -> "BillingPlanResponse":
+    def from_domain(cls, plan: BillingPlan) -> BillingPlanResponse:
         return cls(
             code=plan.code,
             name=plan.name,
@@ -74,7 +74,7 @@ class TenantSubscriptionResponse(BaseModel):
     metadata: dict[str, str] = Field(default_factory=dict)
 
     @classmethod
-    def from_domain(cls, subscription: TenantSubscription) -> "TenantSubscriptionResponse":
+    def from_domain(cls, subscription: TenantSubscription) -> TenantSubscriptionResponse:
         return cls(
             tenant_id=subscription.tenant_id,
             plan_code=subscription.plan_code,
@@ -95,7 +95,9 @@ class StartSubscriptionRequest(BaseModel):
     plan_code: str = Field(..., description="Billing plan to activate.")
     billing_email: EmailStr | None = Field(default=None, description="Primary billing contact.")
     auto_renew: bool = Field(default=True, description="Whether the subscription auto-renews.")
-    seat_count: conint(gt=0) | None = Field(default=None, description="Optional explicit seat count override.")
+    seat_count: conint(gt=0) | None = Field(
+        default=None, description="Optional explicit seat count override."
+    )
 
 
 class UpdateSubscriptionRequest(BaseModel):

@@ -3,25 +3,26 @@
 from __future__ import annotations
 
 import base64
+from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from time import perf_counter
-from typing import Any, Protocol, Sequence
+from typing import Any, Protocol
 
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 import jwt
-from jwt import PyJWTError
-from passlib.context import CryptContext
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jwt import PyJWTError
+from passlib.context import CryptContext
 
 from app.core.config import Settings, get_settings
 from app.core.keys import KeyMaterial, KeySet, load_keyset
 from app.observability.logging import log_event
 from app.observability.metrics import observe_jwt_signing, observe_jwt_verification
 
-UTC = timezone.utc
+UTC = UTC
 
 # =============================================================================
 # SECURITY CONFIGURATION
@@ -35,6 +36,7 @@ security = HTTPBearer()
 
 # Shared helpers -------------------------------------------------------------
 
+
 def _unauthorized(detail: str = "Could not validate credentials") -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -46,12 +48,14 @@ def _unauthorized(detail: str = "Could not validate credentials") -> HTTPExcepti
 def _is_user_subject(value: str | None) -> bool:
     return isinstance(value, str) and value.startswith(USER_SUBJECT_PREFIX)
 
+
 ACCESS_TOKEN_USE = "access"
 USER_SUBJECT_PREFIX = "user:"
 
 # =============================================================================
 # PASSWORD UTILITIES
 # =============================================================================
+
 
 def _password_pepper(settings: Settings | None = None, override: str | None = None) -> str:
     target = override or (settings or get_settings()).auth_password_pepper
@@ -73,11 +77,11 @@ def verify_password(
 ) -> bool:
     """
     Verify a password against its hash.
-    
+
     Args:
         plain_password: Plain text password
         hashed_password: Hashed password to verify against
-        
+
     Returns:
         bool: True if password matches, False otherwise
     """
@@ -94,16 +98,17 @@ def get_password_hash(
 ) -> str:
     """
     Hash a password using bcrypt.
-    
+
     Args:
         password: Plain text password to hash
-        
+
     Returns:
         str: Hashed password
     """
     pepper_value = _password_pepper(settings, override=pepper)
     material = _pepperize_password(password, pepper=pepper_value)
     return pwd_context.hash(material)
+
 
 # =============================================================================
 # TOKEN SIGNER / VERIFIER
@@ -142,15 +147,13 @@ class SignedTokenBundle:
 class TokenSigner(Protocol):
     """Interface for producing signed JWTs."""
 
-    def sign(self, payload: dict[str, Any]) -> SignedTokenBundle:
-        ...
+    def sign(self, payload: dict[str, Any]) -> SignedTokenBundle: ...
 
 
 class TokenVerifier(Protocol):
     """Interface for validating signed JWTs."""
 
-    def verify(self, token: str, *, audience: Sequence[str] | None = None) -> dict[str, Any]:
-        ...
+    def verify(self, token: str, *, audience: Sequence[str] | None = None) -> dict[str, Any]: ...
 
 
 class EdDSATokenSigner(TokenSigner):
@@ -169,7 +172,9 @@ class EdDSATokenSigner(TokenSigner):
             if not active or not active.private_key:
                 failure_logged = True
                 duration = perf_counter() - started
-                observe_jwt_signing(result="failure", token_use=token_use, duration_seconds=duration)
+                observe_jwt_signing(
+                    result="failure", token_use=token_use, duration_seconds=duration
+                )
                 log_event(
                     "token_sign",
                     level="error",
@@ -192,7 +197,9 @@ class EdDSATokenSigner(TokenSigner):
             return SignedTokenBundle(primary=primary)
         except TokenSignerError as exc:
             if not failure_logged:
-                observe_jwt_signing(result="failure", token_use=token_use, duration_seconds=perf_counter() - started)
+                observe_jwt_signing(
+                    result="failure", token_use=token_use, duration_seconds=perf_counter() - started
+                )
                 log_event(
                     "token_sign",
                     level="error",
@@ -202,9 +209,11 @@ class EdDSATokenSigner(TokenSigner):
                     token_use=token_use or "unknown",
                 )
             raise
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             if not failure_logged:
-                observe_jwt_signing(result="failure", token_use=token_use, duration_seconds=perf_counter() - started)
+                observe_jwt_signing(
+                    result="failure", token_use=token_use, duration_seconds=perf_counter() - started
+                )
                 log_event(
                     "token_sign",
                     level="error",
@@ -235,7 +244,7 @@ class EdDSATokenVerifier(TokenVerifier):
             keyset = load_keyset(self._settings)
             try:
                 header = jwt.get_unverified_header(token)
-            except PyJWTError as exc:  # noqa: BLE001
+            except PyJWTError as exc:
                 failure_logged = True
                 observe_jwt_verification(
                     result="failure", token_use=token_use, duration_seconds=perf_counter() - started
@@ -349,7 +358,7 @@ def _public_pem_from_jwk(jwk_payload: dict[str, Any]) -> bytes:
     if not x:
         raise TokenVerifierError("Ed25519 JWK missing 'x' coordinate.")
     padding = "=" * ((4 - len(x) % 4) % 4)
-    public_bytes = base64.urlsafe_b64decode(f"{x}{padding}".encode("utf-8"))
+    public_bytes = base64.urlsafe_b64decode(f"{x}{padding}".encode())
     public_key = ed25519.Ed25519PublicKey.from_public_bytes(public_bytes)
     return public_key.public_bytes(
         encoding=serialization.Encoding.PEM,
@@ -370,6 +379,7 @@ def get_token_verifier(settings: Settings | None = None) -> TokenVerifier:
 # =============================================================================
 # JWT TOKEN UTILITIES
 # =============================================================================
+
 
 def _utcnow() -> datetime:
     return datetime.now(UTC)
@@ -399,25 +409,27 @@ def verify_token(token: str, *, audience: Sequence[str] | None = None) -> dict[s
     except TokenVerifierError as exc:
         raise _unauthorized() from exc
 
+
 # =============================================================================
 # DEPENDENCY FUNCTIONS
 # =============================================================================
+
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> dict[str, Any]:
     """
     Get current user from JWT token.
-    
+
     This is a dependency that can be used in FastAPI route functions
     to require authentication.
-    
+
     Args:
         credentials: HTTP Bearer credentials
-        
+
     Returns:
         Dict[str, Any]: Current user information
-        
+
     Raises:
         HTTPException: If token is invalid
     """
@@ -444,23 +456,24 @@ def _normalize_subject(subject: str) -> str:
         return subject.split("user:", 1)[1]
     return subject
 
+
 async def get_current_active_user(
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     Get current active user.
-    
+
     This dependency ensures the user is both authenticated and active.
-    
+
     Args:
         current_user: Current user from get_current_user dependency
-        
+
     Returns:
         Dict[str, Any]: Current active user information
-        
+
     Raises:
         HTTPException: If user is inactive
     """
     # Add your user status checking logic here
     # For now, we'll just return the user
-    return current_user 
+    return current_user

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "20251106_220000"
@@ -30,9 +31,7 @@ def upgrade() -> None:
         sa.Column("revoked_reason", sa.String(length=256), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.UniqueConstraint(
-            "refresh_jti", name="uq_service_account_tokens_jti"
-        ),
+        sa.UniqueConstraint("refresh_jti", name="uq_service_account_tokens_jti"),
     )
     op.create_index(
         "ix_service_account_tokens_tenant",

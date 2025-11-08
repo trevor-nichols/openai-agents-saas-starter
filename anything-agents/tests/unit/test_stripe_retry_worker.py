@@ -18,7 +18,7 @@ class _FakeRepository:
             SimpleNamespace(id=uuid.uuid4(), handler="billing_sync") for _ in range(dispatch_count)
         ]
 
-    async def list_dispatches_for_retry(self, *, limit: int, ready_before):  # noqa: D401 - test stub
+    async def list_dispatches_for_retry(self, *, limit: int, ready_before):
         if not self._dispatches:
             await asyncio.sleep(0)
             return []

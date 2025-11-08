@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from uuid import uuid4
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock
+from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -26,7 +26,7 @@ def client() -> TestClient:
 
 
 def _make_session_tokens() -> UserSessionTokens:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return UserSessionTokens(
         access_token="access-token",
         refresh_token="refresh-token",
@@ -49,7 +49,7 @@ def fake_auth_service(monkeypatch: pytest.MonkeyPatch):
 
 def _mint_user_token(*, token_use: str) -> tuple[str, str]:
     signer = get_token_signer()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     subject = f"user:{uuid4()}"
     payload = {
         "sub": subject,
@@ -112,7 +112,9 @@ def test_login_invalid_credentials_returns_401(fake_auth_service, client: TestCl
 
 def test_login_locked_account_returns_423(fake_auth_service, client: TestClient) -> None:
     async def _raise_locked(**_: object) -> None:
-        raise UserAuthenticationError("Account locked.") from UserLockedError("Account locked due to failures.")
+        raise UserAuthenticationError("Account locked.") from UserLockedError(
+            "Account locked due to failures."
+        )
 
     fake_auth_service.login_user.side_effect = _raise_locked
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
     BigInteger,
@@ -17,10 +17,11 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.infrastructure.persistence.models.base import Base, UTC_NOW, uuid_pk
+from app.infrastructure.persistence.models.base import UTC_NOW, Base, uuid_pk
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from app.infrastructure.persistence.auth.models import (
@@ -34,30 +35,28 @@ class TenantAccount(Base):
 
     __tablename__ = "tenant_accounts"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk
-    )
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk)
     slug: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=UTC_NOW, nullable=False
     )
 
-    memberships: Mapped[list["TenantUserMembership"]] = relationship(
+    memberships: Mapped[list[TenantUserMembership]] = relationship(
         "TenantUserMembership",
         back_populates="tenant",
         cascade="all, delete-orphan",
     )
-    users: Mapped[list["UserAccount"]] = relationship(
+    users: Mapped[list[UserAccount]] = relationship(
         "UserAccount",
         secondary="tenant_user_memberships",
         back_populates="tenants",
         viewonly=True,
     )
-    subscriptions: Mapped[list["TenantSubscription"]] = relationship(
+    subscriptions: Mapped[list[TenantSubscription]] = relationship(
         back_populates="tenant", cascade="all, delete-orphan"
     )
-    conversations: Mapped[list["AgentConversation"]] = relationship(
+    conversations: Mapped[list[AgentConversation]] = relationship(
         back_populates="tenant", cascade="all, delete-orphan"
     )
 
@@ -72,24 +71,18 @@ class AgentConversation(Base):
         UniqueConstraint("conversation_key", name="uq_agent_conversations_key"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk
-    )
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk)
     conversation_key: Mapped[str] = mapped_column(String(255), nullable=False)
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("tenant_accounts.id", ondelete="CASCADE"), nullable=False
     )
-    user_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("users.id", ondelete="SET NULL")
-    )
+    user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     agent_entrypoint: Mapped[str] = mapped_column(String(64), nullable=False)
     active_agent: Mapped[str | None] = mapped_column(String(64))
     status: Mapped[str] = mapped_column(String(16), default="active", nullable=False)
     message_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     total_tokens_prompt: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    total_tokens_completion: Mapped[int] = mapped_column(
-        Integer, default=0, nullable=False
-    )
+    total_tokens_completion: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     reasoning_tokens: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     handoff_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     source_channel: Mapped[str | None] = mapped_column(String(32))
@@ -107,9 +100,9 @@ class AgentConversation(Base):
         DateTime(timezone=True), default=UTC_NOW, nullable=False
     )
 
-    tenant: Mapped["TenantAccount"] = relationship(back_populates="conversations")
-    user: Mapped["UserAccount | None"] = relationship(back_populates="conversations")
-    messages: Mapped[list["AgentMessage"]] = relationship(
+    tenant: Mapped[TenantAccount] = relationship(back_populates="conversations")
+    user: Mapped[UserAccount | None] = relationship(back_populates="conversations")
+    messages: Mapped[list[AgentMessage]] = relationship(
         back_populates="conversation",
         cascade="all, delete-orphan",
         order_by="AgentMessage.position",
@@ -153,7 +146,7 @@ class AgentMessage(Base):
         DateTime(timezone=True), default=UTC_NOW, nullable=False
     )
 
-    conversation: Mapped["AgentConversation"] = relationship(back_populates="messages")
+    conversation: Mapped[AgentConversation] = relationship(back_populates="messages")
 
 
 class BillingPlan(Base):
@@ -162,9 +155,7 @@ class BillingPlan(Base):
     __tablename__ = "billing_plans"
     __table_args__ = (UniqueConstraint("code", name="uq_billing_plans_code"),)
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk
-    )
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk)
     code: Mapped[str] = mapped_column(String(64), nullable=False)
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     interval: Mapped[str] = mapped_column(String(16), default="monthly", nullable=False)
@@ -182,12 +173,10 @@ class BillingPlan(Base):
         DateTime(timezone=True), default=UTC_NOW, nullable=False
     )
 
-    features: Mapped[list["PlanFeature"]] = relationship(
+    features: Mapped[list[PlanFeature]] = relationship(
         back_populates="plan", cascade="all, delete-orphan"
     )
-    subscriptions: Mapped[list["TenantSubscription"]] = relationship(
-        back_populates="plan"
-    )
+    subscriptions: Mapped[list[TenantSubscription]] = relationship(back_populates="plan")
 
 
 class PlanFeature(Base):
@@ -216,20 +205,16 @@ class PlanFeature(Base):
         DateTime(timezone=True), default=UTC_NOW, nullable=False
     )
 
-    plan: Mapped["BillingPlan"] = relationship(back_populates="features")
+    plan: Mapped[BillingPlan] = relationship(back_populates="features")
 
 
 class TenantSubscription(Base):
     """Subscription status for a tenant."""
 
     __tablename__ = "tenant_subscriptions"
-    __table_args__ = (
-        Index("ix_tenant_subscriptions_tenant_status", "tenant_id", "status"),
-    )
+    __table_args__ = (Index("ix_tenant_subscriptions_tenant_status", "tenant_id", "status"),)
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk
-    )
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk)
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("tenant_accounts.id", ondelete="CASCADE"), nullable=False
     )
@@ -258,13 +243,13 @@ class TenantSubscription(Base):
         DateTime(timezone=True), default=UTC_NOW, nullable=False
     )
 
-    tenant: Mapped["TenantAccount"] = relationship(back_populates="subscriptions")
-    plan: Mapped["BillingPlan"] = relationship(back_populates="subscriptions")
-    invoices: Mapped[list["SubscriptionInvoice"]] = relationship(
+    tenant: Mapped[TenantAccount] = relationship(back_populates="subscriptions")
+    plan: Mapped[BillingPlan] = relationship(back_populates="subscriptions")
+    invoices: Mapped[list[SubscriptionInvoice]] = relationship(
         back_populates="subscription",
         cascade="all, delete-orphan",
     )
-    usage_records: Mapped[list["SubscriptionUsage"]] = relationship(
+    usage_records: Mapped[list[SubscriptionUsage]] = relationship(
         back_populates="subscription",
         cascade="all, delete-orphan",
     )
@@ -282,9 +267,7 @@ class SubscriptionInvoice(Base):
         ),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk
-    )
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk)
     subscription_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("tenant_subscriptions.id", ondelete="CASCADE"), nullable=False
     )
@@ -299,7 +282,7 @@ class SubscriptionInvoice(Base):
         DateTime(timezone=True), default=UTC_NOW, nullable=False
     )
 
-    subscription: Mapped["TenantSubscription"] = relationship(back_populates="invoices")
+    subscription: Mapped[TenantSubscription] = relationship(back_populates="invoices")
 
 
 class SubscriptionUsage(Base):
@@ -315,9 +298,7 @@ class SubscriptionUsage(Base):
         ),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk
-    )
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk)
     subscription_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("tenant_subscriptions.id", ondelete="CASCADE"), nullable=False
     )
@@ -331,15 +312,12 @@ class SubscriptionUsage(Base):
     )
     external_event_id: Mapped[str | None] = mapped_column(String(128))
 
-    subscription: Mapped["TenantSubscription"] = relationship(
-        back_populates="usage_records"
-    )
+    subscription: Mapped[TenantSubscription] = relationship(back_populates="usage_records")
 
 
 __all__ = [
     "Base",
     "TenantAccount",
-    "User",
     "AgentConversation",
     "AgentMessage",
     "BillingPlan",

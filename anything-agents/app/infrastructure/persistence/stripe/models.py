@@ -12,7 +12,7 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import JSON, TypeDecorator
 
-from app.infrastructure.persistence.models.base import Base, UTC_NOW, uuid_pk
+from app.infrastructure.persistence.models.base import UTC_NOW, Base, uuid_pk
 
 
 class JSONBCompat(TypeDecorator):
@@ -44,15 +44,15 @@ class StripeEvent(Base):
         Index("ix_stripe_events_status", "processing_outcome"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk
-    )
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk)
     stripe_event_id: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     event_type: Mapped[str] = mapped_column(String(128), nullable=False)
     payload: Mapped[dict[str, Any]] = mapped_column(JSONBCompat, nullable=False)
     tenant_hint: Mapped[str | None] = mapped_column(String(64))
     stripe_created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=UTC_NOW, nullable=False)
+    received_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=UTC_NOW, nullable=False
+    )
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     processing_outcome: Mapped[str] = mapped_column(
         String(32), default=StripeEventStatus.RECEIVED.value, nullable=False
@@ -84,10 +84,16 @@ class StripeEventDispatch(Base):
         nullable=False,
     )
     handler: Mapped[str] = mapped_column(String(64), nullable=False)
-    status: Mapped[str] = mapped_column(String(32), default=StripeDispatchStatus.PENDING.value, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(32), default=StripeDispatchStatus.PENDING.value, nullable=False
+    )
     attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     next_retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_error: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=UTC_NOW, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=UTC_NOW, onupdate=UTC_NOW, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=UTC_NOW, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=UTC_NOW, onupdate=UTC_NOW, nullable=False
+    )

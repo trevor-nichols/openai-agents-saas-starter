@@ -68,9 +68,7 @@ def test_fingerprint_mismatch_rejected():
 
 
 def test_claims_backfill_missing_request_fields():
-    claims = _base_claims(
-        scopes=["agents:read"], lifetime_minutes=45, fingerprint="runner-a"
-    )
+    claims = _base_claims(scopes=["agents:read"], lifetime_minutes=45, fingerprint="runner-a")
     request = _request()
     _validate_claims_against_request(claims, request)
     assert request.lifetime_minutes == 45

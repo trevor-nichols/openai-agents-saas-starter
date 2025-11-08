@@ -7,7 +7,8 @@ from uuid import uuid4
 
 import pytest
 from fakeredis.aioredis import FakeRedis
-from sqlalchemy.dialects.postgresql import CITEXT, JSONB, UUID as PG_UUID
+from sqlalchemy.dialects.postgresql import CITEXT, JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.compiler import compiles
 
@@ -20,7 +21,10 @@ from app.infrastructure.persistence.auth.models import (
     UserLoginEvent,
     UserProfile,
 )
-from app.infrastructure.persistence.auth.user_repository import PostgresUserRepository, RedisLockoutStore
+from app.infrastructure.persistence.auth.user_repository import (
+    PostgresUserRepository,
+    RedisLockoutStore,
+)
 from app.infrastructure.persistence.conversations.models import TenantAccount
 from app.services.user_service import InvalidCredentialsError, UserLockedError, UserService
 

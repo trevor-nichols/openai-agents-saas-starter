@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import asyncio
+import importlib.util
+from pathlib import Path
 
 import pytest
-from pathlib import Path
-import importlib.util
-
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.infrastructure.persistence.stripe.models import (

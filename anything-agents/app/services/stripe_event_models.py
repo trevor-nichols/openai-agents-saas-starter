@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List
 
 
 @dataclass(slots=True)
@@ -52,7 +51,7 @@ class DispatchBroadcastContext:
     status: str | None
     subscription: SubscriptionSnapshotView | None = None
     invoice: InvoiceSnapshotView | None = None
-    usage: List[UsageDelta] = field(default_factory=list)
+    usage: list[UsageDelta] = field(default_factory=list)
 
 
 @dataclass(slots=True)
