@@ -1,3 +1,15 @@
+# Problem Tracker
+
+## 2025-11-08 – Pylance false positives (13 errors)
+
+- **Status:** resolved
+- **Symptoms:** VS Code/Pylance reported missing imports for `app.services.rate_limit_service`, unknown symbol `raise_rate_limit_http_error`, type mismatches in `app/cli/auth_cli.py`, and a bad signature for `app/utils/tools/web_search.py`.
+- **Root cause:** The editor wasn’t loading the repo’s `extraPaths`, so anything under `anything-agents/` looked like an unresolved namespace; once imports failed, every re-exported symbol showed as unknown. The Tavily helper also lacked guards when the SDK returned `None`.
+- **Fix:** Added a repo-level `pyrightconfig.json` that mirrors the settings in `pyproject.toml`, introduced `_require_settings()` so the CLI always passes a concrete `Settings` object into the Vault/key helpers, and hardened the Tavily response formatter to short-circuit on unexpected payloads.
+- **Validation:** `hatch run lint` and `hatch run pyright` on 2025-11-08 both report 0 issues.
+- **Follow-up:** Communicate to frontend/backend devs that VS Code will now pick up the right config automatically; no additional work required unless new diagnostics appear.
+
+
 [{
 	"resource": "/Volumes/AGENAI/Coding/Public Github/openai-agents-starter/anything-agents/app/api/dependencies/rate_limit.py",
 	"owner": "Pylance3",
@@ -99,106 +111,6 @@
 	"endColumn": 37,
 	"origin": "extHost1"
 },{
-	"resource": "/Volumes/AGENAI/Coding/Public Github/openai-agents-starter/anything-agents/app/cli/auth_cli.py",
-	"owner": "Pylance3",
-	"code": {
-		"value": "reportArgumentType",
-		"target": {
-			"$mid": 1,
-			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportArgumentType.md",
-			"scheme": "https",
-			"authority": "github.com"
-		}
-	},
-	"severity": 8,
-	"message": "Argument of type \"Settings\" cannot be assigned to parameter \"settings\" of type \"Settings | None\" in function \"configure_vault_secret_manager\"\n  Type \"Settings\" is not assignable to type \"Settings | None\"\n    \"app.core.config.Settings\" is not assignable to \"app.core.config.Settings\"\n    \"Settings\" is not assignable to \"None\"",
-	"source": "Pylance",
-	"startLineNumber": 266,
-	"startColumn": 40,
-	"endLineNumber": 266,
-	"endColumn": 48,
-	"origin": "extHost1"
-},{
-	"resource": "/Volumes/AGENAI/Coding/Public Github/openai-agents-starter/anything-agents/app/cli/auth_cli.py",
-	"owner": "Pylance3",
-	"code": {
-		"value": "reportArgumentType",
-		"target": {
-			"$mid": 1,
-			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportArgumentType.md",
-			"scheme": "https",
-			"authority": "github.com"
-		}
-	},
-	"severity": 8,
-	"message": "Argument of type \"Settings\" cannot be assigned to parameter \"settings\" of type \"Settings | None\" in function \"load_keyset\"\n  Type \"Settings\" is not assignable to type \"Settings | None\"\n    \"app.core.config.Settings\" is not assignable to \"app.core.config.Settings\"\n    \"Settings\" is not assignable to \"None\"",
-	"source": "Pylance",
-	"startLineNumber": 267,
-	"startColumn": 30,
-	"endLineNumber": 267,
-	"endColumn": 38,
-	"origin": "extHost1"
-},{
-	"resource": "/Volumes/AGENAI/Coding/Public Github/openai-agents-starter/anything-agents/app/cli/auth_cli.py",
-	"owner": "Pylance3",
-	"code": {
-		"value": "reportArgumentType",
-		"target": {
-			"$mid": 1,
-			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportArgumentType.md",
-			"scheme": "https",
-			"authority": "github.com"
-		}
-	},
-	"severity": 8,
-	"message": "Argument of type \"Settings\" cannot be assigned to parameter \"settings\" of type \"Settings | None\" in function \"save_keyset\"\n  Type \"Settings\" is not assignable to type \"Settings | None\"\n    \"app.core.config.Settings\" is not assignable to \"app.core.config.Settings\"\n    \"Settings\" is not assignable to \"None\"",
-	"source": "Pylance",
-	"startLineNumber": 275,
-	"startColumn": 29,
-	"endLineNumber": 275,
-	"endColumn": 37,
-	"origin": "extHost1"
-},{
-	"resource": "/Volumes/AGENAI/Coding/Public Github/openai-agents-starter/anything-agents/app/cli/auth_cli.py",
-	"owner": "Pylance3",
-	"code": {
-		"value": "reportArgumentType",
-		"target": {
-			"$mid": 1,
-			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportArgumentType.md",
-			"scheme": "https",
-			"authority": "github.com"
-		}
-	},
-	"severity": 8,
-	"message": "Argument of type \"Settings\" cannot be assigned to parameter \"settings\" of type \"Settings | None\" in function \"configure_vault_secret_manager\"\n  Type \"Settings\" is not assignable to type \"Settings | None\"\n    \"app.core.config.Settings\" is not assignable to \"app.core.config.Settings\"\n    \"Settings\" is not assignable to \"None\"",
-	"source": "Pylance",
-	"startLineNumber": 292,
-	"startColumn": 40,
-	"endLineNumber": 292,
-	"endColumn": 48,
-	"origin": "extHost1"
-},{
-	"resource": "/Volumes/AGENAI/Coding/Public Github/openai-agents-starter/anything-agents/app/cli/auth_cli.py",
-	"owner": "Pylance3",
-	"code": {
-		"value": "reportArgumentType",
-		"target": {
-			"$mid": 1,
-			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportArgumentType.md",
-			"scheme": "https",
-			"authority": "github.com"
-		}
-	},
-	"severity": 8,
-	"message": "Argument of type \"Settings\" cannot be assigned to parameter \"settings\" of type \"Settings | None\" in function \"load_keyset\"\n  Type \"Settings\" is not assignable to type \"Settings | None\"\n    \"app.core.config.Settings\" is not assignable to \"app.core.config.Settings\"\n    \"Settings\" is not assignable to \"None\"",
-	"source": "Pylance",
-	"startLineNumber": 293,
-	"startColumn": 30,
-	"endLineNumber": 293,
-	"endColumn": 38,
-	"origin": "extHost1"
-},{
 	"resource": "/Volumes/AGENAI/Coding/Public Github/openai-agents-starter/anything-agents/app/infrastructure/stripe/client.py",
 	"owner": "Pylance3",
 	"code": {
@@ -237,25 +149,5 @@
 	"startColumn": 6,
 	"endLineNumber": 19,
 	"endColumn": 37,
-	"origin": "extHost1"
-},{
-	"resource": "/Volumes/AGENAI/Coding/Public Github/openai-agents-starter/anything-agents/app/utils/tools/web_search.py",
-	"owner": "Pylance3",
-	"code": {
-		"value": "reportArgumentType",
-		"target": {
-			"$mid": 1,
-			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportArgumentType.md",
-			"scheme": "https",
-			"authority": "github.com"
-		}
-	},
-	"severity": 8,
-	"message": "Argument of type \"Any | None\" cannot be assigned to parameter \"response\" of type \"dict[str, Any]\" in function \"_format_search_results\"\n  Type \"Any | None\" is not assignable to type \"dict[str, Any]\"\n    \"None\" is not assignable to \"dict[str, Any]\"",
-	"source": "Pylance",
-	"startLineNumber": 92,
-	"startColumn": 52,
-	"endLineNumber": 92,
-	"endColumn": 60,
 	"origin": "extHost1"
 }]

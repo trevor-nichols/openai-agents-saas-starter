@@ -13,7 +13,7 @@ from typing import Any
 
 import httpx
 
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 from app.core.keys import (
     KeyStorageError,
     generate_ed25519_keypair,
@@ -99,12 +99,23 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _load_settings():
+def _load_settings() -> Settings | None:
     try:
         return get_settings()
     except Exception:
         # CLI may run outside app context; rely on env defaults.
         return None
+
+
+def _require_settings() -> Settings:
+    """
+    Ensure CLI flows that demand configuration always receive a Settings instance.
+    """
+
+    settings = get_settings()
+    if not isinstance(settings, Settings):  # pragma: no cover - defensive
+        raise CLIError("Failed to load application settings.")
+    return settings
 
 
 def _vault_headers(request_payload: dict[str, Any], settings) -> tuple[str, dict[str, str]]:
@@ -262,7 +273,7 @@ def handle_issue_service_account(args: argparse.Namespace) -> int:
 
 def handle_keys_rotate(args: argparse.Namespace) -> int:
     try:
-        settings = get_settings()
+        settings = _require_settings()
         configure_vault_secret_manager(settings)
         keyset = load_keyset(settings)
     except KeyStorageError as exc:
@@ -288,7 +299,7 @@ def handle_keys_rotate(args: argparse.Namespace) -> int:
 
 def handle_jwks_print(_: argparse.Namespace) -> int:
     try:
-        settings = get_settings()
+        settings = _require_settings()
         configure_vault_secret_manager(settings)
         keyset = load_keyset(settings)
     except KeyStorageError as exc:

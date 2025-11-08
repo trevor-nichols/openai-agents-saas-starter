@@ -89,6 +89,9 @@ async def tavily_search_tool(
         )
 
         # Format results
+        if not isinstance(response, dict):
+            return "Web search failed: Tavily returned an unexpected payload."
+
         formatted_results = _format_search_results(response, query)
         return formatted_results
 
