@@ -8,7 +8,7 @@ endif
 
 ENV_RUNNER := python scripts/run_with_env.py
 
-.PHONY: help migrate migration-revision dev-up dev-down dev-logs dev-ps
+.PHONY: help bootstrap api migrate migration-revision dev-up dev-down dev-logs dev-ps
 
 help:
 	@echo "Available commands:"
@@ -18,9 +18,19 @@ help:
 	@echo "  make dev-ps                 # Show running containers"
 	@echo "  make migrate                # Run Alembic migrations with current env"
 	@echo "  make migration-revision MESSAGE=...  # Create a new Alembic revision"
+	@echo "  make bootstrap              # Provision the Hatch environment with project dependencies"
+	@echo "  make api                    # Run the FastAPI server via hatch run serve"
 	@echo "  make test-stripe            # Run fixture-driven Stripe replay tests"
 	@echo "  make stripe-replay ARGS='...' # Invoke the Stripe replay CLI"
 	@echo "  make lint-stripe-fixtures   # Validate Stripe fixture JSON files"
+
+bootstrap:
+	@echo "Creating/refreshing the Hatch environment"
+	@hatch env create
+
+api:
+	@echo "Starting FastAPI via hatch run serve"
+	@$(ENV_RUNNER) .env.compose $(ENV_FILE) -- hatch run serve
 
 migrate:
 	@echo "Using .env.compose + $(ENV_FILE)"
