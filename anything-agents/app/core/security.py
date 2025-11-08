@@ -458,7 +458,8 @@ async def get_current_user(
         HTTPException: If token is invalid
     """
     token = credentials.credentials
-    payload = verify_token(token)
+    settings = get_settings()
+    payload = verify_token(token, audience=settings.auth_audience)
 
     token_use = payload.get("token_use")
     if token_use != ACCESS_TOKEN_USE:
