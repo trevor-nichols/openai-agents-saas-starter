@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+from asyncio import AbstractEventLoop
 from threading import Lock
 from typing import Protocol
+from weakref import WeakKeyDictionary
 
 from redis.asyncio import Redis
 
@@ -33,7 +35,7 @@ class RedisNonceStore:
         return bool(result)
 
 
-_STORE_CACHE: dict[tuple[str, int], RedisNonceStore] = {}
+_STORE_CACHE: dict[str, WeakKeyDictionary[AbstractEventLoop, RedisNonceStore]] = {}
 _STORE_CACHE_LOCK = Lock()
 
 
@@ -51,11 +53,11 @@ def get_nonce_store(settings: Settings | None = None) -> NonceStore:
         settings = get_settings()
 
     loop = asyncio.get_running_loop()
-    cache_key = (settings.redis_url, id(loop))
 
     with _STORE_CACHE_LOCK:
-        store = _STORE_CACHE.get(cache_key)
+        bucket = _STORE_CACHE.setdefault(settings.redis_url, WeakKeyDictionary())
+        store = bucket.get(loop)
         if store is None:
             store = _build_nonce_store(settings.redis_url)
-            _STORE_CACHE[cache_key] = store
+            bucket[loop] = store
     return store

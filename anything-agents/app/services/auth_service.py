@@ -424,6 +424,7 @@ class AuthService:
         signer = get_token_signer(settings)
         issued_at = datetime.now(UTC)
         access_expires = issued_at + timedelta(minutes=settings.access_token_expire_minutes)
+        audience = settings.auth_audience or [settings.app_name]
         access_payload = {
             "sub": f"user:{auth_user.user_id}",
             "tenant_id": str(auth_user.tenant_id),
@@ -431,7 +432,7 @@ class AuthService:
             "scope": " ".join(auth_user.scopes),
             "token_use": "access",
             "iss": settings.app_name,
-            "aud": [settings.app_name],
+            "aud": audience,
             "jti": str(uuid4()),
             "iat": int(issued_at.timestamp()),
             "nbf": int(issued_at.timestamp()),
