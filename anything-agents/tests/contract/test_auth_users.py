@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi.testclient import TestClient
 
+from app.core.security import get_token_signer
 from app.services.auth_service import (
     UserAuthenticationError,
     UserRefreshError,
@@ -44,6 +45,22 @@ def fake_auth_service(monkeypatch: pytest.MonkeyPatch):
     mock_service = AsyncMock()
     monkeypatch.setattr("app.api.v1.auth.router.auth_service", mock_service)
     return mock_service
+
+
+def _mint_user_token(*, token_use: str) -> tuple[str, str]:
+    signer = get_token_signer()
+    now = datetime.now(timezone.utc)
+    subject = f"user:{uuid4()}"
+    payload = {
+        "sub": subject,
+        "scope": "conversations:read",
+        "token_use": token_use,
+        "iat": int(now.timestamp()),
+        "nbf": int(now.timestamp()),
+        "exp": int((now + timedelta(minutes=15)).timestamp()),
+    }
+    token = signer.sign(payload).primary.token
+    return token, subject
 
 
 def test_login_success_includes_client_context(fake_auth_service, client: TestClient) -> None:
@@ -147,3 +164,25 @@ def test_refresh_revoked_returns_401(fake_auth_service, client: TestClient) -> N
     body = response.json()
     assert body["message"] == "Refresh token has been revoked or expired."
     assert body["error"] == "Refresh token has been revoked or expired."
+
+
+def test_me_endpoint_accepts_access_token(client: TestClient) -> None:
+    token, subject = _mint_user_token(token_use="access")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.get("/api/v1/auth/me", headers=headers)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["data"]["user_id"] == subject.split("user:", 1)[1]
+
+
+def test_me_endpoint_rejects_refresh_token(client: TestClient) -> None:
+    token, _ = _mint_user_token(token_use="refresh")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.get("/api/v1/auth/me", headers=headers)
+
+    assert response.status_code == 401
+    body = response.json()
+    assert body["error"] == "Access token required."

@@ -33,6 +33,22 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # HTTP Bearer token scheme
 security = HTTPBearer()
 
+# Shared helpers -------------------------------------------------------------
+
+def _unauthorized(detail: str = "Could not validate credentials") -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail=detail,
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+def _is_user_subject(value: str | None) -> bool:
+    return isinstance(value, str) and value.startswith(USER_SUBJECT_PREFIX)
+
+ACCESS_TOKEN_USE = "access"
+USER_SUBJECT_PREFIX = "user:"
+
 # =============================================================================
 # PASSWORD UTILITIES
 # =============================================================================
@@ -206,7 +222,7 @@ class EdDSATokenSigner(TokenSigner):
 
 
 class EdDSATokenVerifier(TokenVerifier):
-    """Ed25519 verifier that accepts active/next/retired keys from the KeySet."""
+    """Ed25519 verifier that validates tokens against the active KeySet key only."""
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
@@ -381,11 +397,7 @@ def verify_token(token: str, *, audience: Sequence[str] | None = None) -> dict[s
     try:
         return get_token_verifier().verify(token, audience=audience)
     except TokenVerifierError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        ) from exc
+        raise _unauthorized() from exc
 
 # =============================================================================
 # DEPENDENCY FUNCTIONS
@@ -412,13 +424,13 @@ async def get_current_user(
     token = credentials.credentials
     payload = verify_token(token)
 
+    token_use = payload.get("token_use")
+    if token_use != ACCESS_TOKEN_USE:
+        raise _unauthorized("Access token required.")
+
     subject = payload.get("sub")
-    if subject is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    if not _is_user_subject(subject):
+        raise _unauthorized("Token subject must reference a user account.")
 
     return {
         "user_id": _normalize_subject(subject),
