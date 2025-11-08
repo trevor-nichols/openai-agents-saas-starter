@@ -27,7 +27,19 @@ def _stub_current_user():
     }
 
 
-app.dependency_overrides[require_current_user] = _stub_current_user
+@pytest.fixture(autouse=True)
+def _override_current_user():
+    """Scope the auth override to this module so other suites see real auth."""
+
+    previous = app.dependency_overrides.get(require_current_user)
+    app.dependency_overrides[require_current_user] = _stub_current_user
+    try:
+        yield
+    finally:
+        if previous is None:
+            app.dependency_overrides.pop(require_current_user, None)
+        else:
+            app.dependency_overrides[require_current_user] = previous
 
 
 def test_list_available_agents() -> None:
