@@ -134,6 +134,7 @@ async def test_webhook_replays_fixture(
     stored = await sqlite_stripe_repo.get_by_event_id(payload["id"])
     assert stored is not None
     assert stored.processing_outcome == StripeEventStatus.PROCESSED.value
+    assert stored.processed_at is not None
     assert stored.tenant_hint == tenant_id
 
     stream = await fake_billing_events.subscribe(tenant_id)

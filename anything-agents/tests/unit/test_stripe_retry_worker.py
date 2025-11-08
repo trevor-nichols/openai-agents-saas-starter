@@ -8,6 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from app.observability.metrics import STRIPE_DISPATCH_RETRY_TOTAL
 from app.services.stripe_retry_worker import StripeDispatchRetryWorker
 
 
@@ -44,11 +45,15 @@ async def test_worker_replays_due_dispatches():
     worker = StripeDispatchRetryWorker(poll_interval_seconds=0.05, batch_size=5)
     worker.configure(repository=repo, dispatcher=dispatcher)
 
+    before = _counter_value(result="success")
+
     await worker.start()
     await asyncio.sleep(0.2)
     await worker.shutdown()
 
     assert dispatcher.calls, "Expected the worker to replay the pending dispatch"
+    after = _counter_value(result="success")
+    assert after >= before + 1
 
 
 @pytest.mark.asyncio
@@ -58,8 +63,17 @@ async def test_worker_continues_after_dispatch_failure():
     worker = StripeDispatchRetryWorker(poll_interval_seconds=0.05, batch_size=1)
     worker.configure(repository=repo, dispatcher=dispatcher)
 
+    before_fail = _counter_value(result="failed")
+    before_success = _counter_value(result="success")
+
     await worker.start()
     await asyncio.sleep(0.3)
     await worker.shutdown()
 
     assert len(dispatcher.calls) >= 2
+    assert _counter_value(result="failed") >= before_fail + 1
+    assert _counter_value(result="success") >= before_success + 1
+
+
+def _counter_value(*, result: str) -> float:
+    return STRIPE_DISPATCH_RETRY_TOTAL.labels(handler="billing_sync", result=result)._value.get()

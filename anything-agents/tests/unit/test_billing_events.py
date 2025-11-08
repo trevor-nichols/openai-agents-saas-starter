@@ -11,6 +11,10 @@ from fakeredis.aioredis import FakeRedis
 
 from types import SimpleNamespace
 
+from app.observability.metrics import (
+    STRIPE_BILLING_STREAM_BACKLOG_SECONDS,
+    STRIPE_BILLING_STREAM_EVENTS_TOTAL,
+)
 from app.services.billing_events import BillingEventsService, RedisBillingEventBackend
 from app.services.stripe_event_models import (
     DispatchBroadcastContext,
@@ -153,3 +157,43 @@ def _make_event(tenant: str = "tenant-1") -> SimpleNamespace:
         received_at=datetime.now(timezone.utc),
         processing_outcome="processed",
     )
+
+
+@pytest.mark.asyncio
+async def test_publish_updates_stream_metrics():
+    backend = RedisBillingEventBackend(FakeRedis())
+    service = BillingEventsService()
+    service.configure(backend=backend, repository=None)
+
+    baseline = _counter_value(STRIPE_BILLING_STREAM_EVENTS_TOTAL, source="webhook", result="published")
+    event = _make_event()
+    context = DispatchBroadcastContext(
+        tenant_id=event.tenant_hint,
+        event_type=event.event_type,
+        summary="Invoice processed",
+        status="paid",
+        subscription=SubscriptionSnapshotView(
+            tenant_id=event.tenant_hint,
+            plan_code="starter",
+            status="active",
+            auto_renew=True,
+            seat_count=1,
+            current_period_start=datetime.now(timezone.utc),
+            current_period_end=datetime.now(timezone.utc),
+            trial_ends_at=None,
+            cancel_at=None,
+        ),
+        invoice=None,
+        usage=[],
+    )
+
+    await service.publish_from_event(event, event.payload, context=context)
+    await service.mark_processed(event.processed_at)
+
+    updated = _counter_value(STRIPE_BILLING_STREAM_EVENTS_TOTAL, source="webhook", result="published")
+    assert updated == baseline + 1
+    assert STRIPE_BILLING_STREAM_BACKLOG_SECONDS._value.get() >= 0
+
+
+def _counter_value(metric, **labels) -> float:
+    return metric.labels(**labels)._value.get()

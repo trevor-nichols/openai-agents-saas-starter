@@ -14,7 +14,11 @@ from redis.asyncio import Redis
 
 from app.infrastructure.persistence.stripe.models import StripeEvent
 from app.infrastructure.persistence.stripe.repository import StripeEventRepository
-from app.observability.metrics import observe_stripe_webhook_event
+from app.observability.metrics import (
+    observe_stripe_webhook_event,
+    record_billing_stream_backlog,
+    record_billing_stream_event,
+)
 from app.services.stripe_event_models import (
     DispatchBroadcastContext,
     InvoiceSnapshotView,
@@ -306,11 +310,12 @@ class BillingEventsService:
             return
         if not record.tenant_hint:
             logger.debug("Skipping Stripe event %s without tenant hint", record.stripe_event_id)
+            record_billing_stream_event(source="webhook", result="skipped_no_tenant")
             return
-        await self._publish(record, payload, context)
+        await self._publish(record, payload, context, source="webhook")
 
     async def _publish_from_record(self, record: StripeEvent) -> None:
-        await self._publish(record, record.payload, None)
+        await self._publish(record, record.payload, None, source="replay")
         await self.mark_processed(record.processed_at)
 
     async def _publish(
@@ -318,11 +323,15 @@ class BillingEventsService:
         record: StripeEvent,
         payload: dict,
         context: DispatchBroadcastContext | None,
+        *,
+        source: str,
     ) -> None:
         if not record.tenant_hint or not self._backend:
+            record_billing_stream_event(source=source, result="skipped_backend")
             return
         message = self._normalize_payload(record, payload, context)
         if message is None:
+            record_billing_stream_event(source=source, result="normalization_failed")
             return
         channel = self._channel(record.tenant_hint)
         attempts = 0
@@ -344,10 +353,13 @@ class BillingEventsService:
                 )
                 observe_stripe_webhook_event(event_type=message.event_type, result="broadcast_failed")
                 if attempts >= self._publish_retry_attempts:
+                    record_billing_stream_event(source=source, result="failed")
                     raise
                 await asyncio.sleep(self._publish_retry_delay_seconds)
 
         observe_stripe_webhook_event(event_type=message.event_type, result="broadcasted")
+        result_label = "replayed" if source == "replay" else "published"
+        record_billing_stream_event(source=source, result=result_label)
         logger.info(
             "Broadcasted billing event",
             extra={
@@ -361,6 +373,8 @@ class BillingEventsService:
         if not processed_at or not self._backend:
             return
         await self._backend.store_bookmark(self._bookmark_key, processed_at.isoformat())
+        lag_seconds = (datetime.now(timezone.utc) - processed_at).total_seconds()
+        record_billing_stream_backlog(lag_seconds)
 
     async def subscribe(self, tenant_id: str) -> BillingEventStream:
         if not self._backend:

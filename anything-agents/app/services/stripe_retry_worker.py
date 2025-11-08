@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 
 from app.infrastructure.persistence.stripe.models import StripeEventDispatch
 from app.infrastructure.persistence.stripe.repository import StripeEventRepository
+from app.observability.metrics import observe_dispatch_retry
 from app.services.stripe_dispatcher import StripeEventDispatcher, stripe_event_dispatcher
 
 logger = logging.getLogger("anything-agents.services.stripe_retry_worker")
@@ -96,11 +97,13 @@ class StripeDispatchRetryWorker:
     ) -> None:
         try:
             await dispatcher.replay_dispatch(dispatch.id)
+            observe_dispatch_retry(handler=dispatch.handler, result="success")
             logger.info(
                 "Retried Stripe dispatch",
                 extra={"dispatch_id": str(dispatch.id), "handler": dispatch.handler},
             )
         except Exception:  # pragma: no cover - dispatcher handles bookkeeping
+            observe_dispatch_retry(handler=dispatch.handler, result="failed")
             logger.exception(
                 "Automatic replay failed",
                 extra={"dispatch_id": str(dispatch.id), "handler": dispatch.handler},

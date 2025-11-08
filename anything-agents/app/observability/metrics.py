@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Final
 
-from prometheus_client import CollectorRegistry, Counter, Histogram
+from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 
 REGISTRY: Final = CollectorRegistry(auto_describe=True)
 
@@ -146,6 +146,26 @@ STRIPE_GATEWAY_OPERATION_DURATION_SECONDS = Histogram(
     registry=REGISTRY,
 )
 
+STRIPE_DISPATCH_RETRY_TOTAL = Counter(
+    "stripe_dispatch_retry_total",
+    "Count of Stripe dispatch retry attempts segmented by handler and result.",
+    ("handler", "result"),
+    registry=REGISTRY,
+)
+
+STRIPE_BILLING_STREAM_EVENTS_TOTAL = Counter(
+    "stripe_billing_stream_events_total",
+    "Count of billing stream publish attempts segmented by source and result.",
+    ("source", "result"),
+    registry=REGISTRY,
+)
+
+STRIPE_BILLING_STREAM_BACKLOG_SECONDS = Gauge(
+    "stripe_billing_stream_backlog_seconds",
+    "Age in seconds between the most recently processed Stripe event and now.",
+    registry=REGISTRY,
+)
+
 
 def observe_jwt_signing(*, result: str, token_use: str | None, duration_seconds: float) -> None:
     label = _sanitize_token_use(token_use)
@@ -220,3 +240,15 @@ def observe_stripe_gateway_operation(
         plan_code=plan_label,
         result=result,
     ).observe(max(duration_seconds, 0.0))
+
+
+def observe_dispatch_retry(*, handler: str, result: str) -> None:
+    STRIPE_DISPATCH_RETRY_TOTAL.labels(handler=handler or "unknown", result=result).inc()
+
+
+def record_billing_stream_event(*, source: str, result: str) -> None:
+    STRIPE_BILLING_STREAM_EVENTS_TOTAL.labels(source=source or "unknown", result=result).inc()
+
+
+def record_billing_stream_backlog(seconds: float) -> None:
+    STRIPE_BILLING_STREAM_BACKLOG_SECONDS.set(max(seconds, 0.0))

@@ -14,6 +14,9 @@ This document outlines the operator workflows for receiving, inspecting, and rep
 
 - `stripe_webhook_events_total{event_type,result}` – count of accepted/duplicate/failed/dispatched events.
 - `stripe_webhook_events_total{result="dispatch_failed"}` – primary alert for dispatcher regressions (firing when >0 for 5 minutes).
+- `stripe_dispatch_retry_total{result}` – emits `success`/`failed` labels each time the retry worker replays a dispatch, confirming whether auto-heal is progressing.
+- `stripe_billing_stream_events_total{source,result}` – counts webhook vs. replay publish attempts across outcomes (`published`, `replayed`, `failed`, `normalization_failed`, `skipped_*`).
+- `stripe_billing_stream_backlog_seconds` – gauge showing how far the Redis bookmark trails real time; rises when the stream cannot keep pace.
 - Structured logs emitted with `stripe_event_id`, `event_type`, and `tenant_hint` for correlation.
 - `stripe_gateway_operation_*` histograms/counters back gateway calls (`start_subscription`, `record_usage`, etc.); dashboard panes group by `operation` + `plan_code`.
 - The Prometheus `/metrics` endpoint exposes counters/histograms for API and webhook calls.
@@ -122,8 +125,9 @@ Normalized `BillingEventPayload` messages delivered over `/api/v1/billing/stream
 
 1. **Redis** – `make dev-up` already launches Redis. Inspect `billing:events:last_processed_at` via `redis-cli` to ensure bookmarks advance.
 2. **SSE endpoint** – `curl -H "X-Tenant-Id: <tenant>" -H "X-Tenant-Role: owner" http://localhost:8000/api/v1/billing/stream` should return a continuous event stream (ping comments every 15s).
-3. **Frontend panel** – the Agent dashboard displays the live Billing Activity list. If it stalls, verify cookies include the tenant metadata and inspect browser devtools for SSE disconnects.
-4. **Metrics** – monitor `stripe_webhook_events_total{result="dispatch_failed"}` to catch domain sync issues and `stripe_webhook_events_total{result="broadcast_failed"}` for SSE fan-out regressions.
+3. **Frontend panel** – the Agent dashboard displays subscription/invoice/usage cards from the stream payload. If it stalls, verify cookies include the tenant metadata and inspect browser devtools for SSE disconnects.
+4. **Metrics** – monitor `stripe_webhook_events_total{result="dispatch_failed"}` plus `stripe_billing_stream_events_total{result="failed"}`/`stripe_billing_stream_backlog_seconds` to catch stuck fan-out or Redis lag.
+5. **Automated suites** – run `make test-stripe` (fixture-driven webhook + SSE tests) and `make lint-stripe-fixtures` before pushing changes so replay tooling stays in sync.
 
 ## Dispatcher Retry Worker
 
@@ -138,7 +142,8 @@ Normalized `BillingEventPayload` messages delivered over `/api/v1/billing/stream
 | --- | --- | --- |
 | Dispatch failures | `sum(rate(stripe_webhook_events_total{result="dispatch_failed"}[5m])) > 0` | Page on sustained dispatcher failures. Include event type label in alert annotations. |
 | Gateway regressions | `sum(rate(stripe_gateway_operations_total{operation="record_usage",result!="success"}[5m]))` | Tracks upstream API issues per operation/plan. Feed into Grafana table grouped by `result`. |
-| Streaming backlog | `stripe_webhook_events_total{result="broadcast_failed"}` + Redis TTL (`billing:events:last_processed_at`) lag | Alert when bookmark lag > 2m; if Redis is healthy but SSE consumers lag, inspect worker logs for retry churn. |
+| Streaming backlog | `stripe_billing_stream_backlog_seconds > 120` or sustained `stripe_billing_stream_events_total{result="failed"}` | Alert when bookmark lag > 2m; correlate with Redis health checks and dispatcher retry logs. |
+| Retry worker | `increase(stripe_dispatch_retry_total{result="failed"}[5m]) > 0` | Fire when the worker cannot auto-heal dispatch rows; pair with CLI replay to unblock tenants. |
 
 Dashboards should chart:
 
