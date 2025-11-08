@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from app.core.config import Settings, get_settings
-from app.core.security import get_password_hash, verify_password
+from app.core.security import PASSWORD_HASH_VERSION, get_password_hash, verify_password
 from app.domain.users import (
     AuthenticatedUser,
     TenantMembershipDTO,
@@ -67,6 +67,7 @@ class UserService:
         create_payload = UserCreatePayload(
             email=payload.email,
             password_hash=hashed,
+            password_pepper_version=PASSWORD_HASH_VERSION,
             tenant_id=payload.tenant_id,
             role=payload.role,
             display_name=payload.display_name,
@@ -92,9 +93,17 @@ class UserService:
         membership = self._resolve_membership(user.memberships, tenant_id)
         await self._ensure_account_active(user, membership.tenant_id, ip_address, user_agent)
 
-        if not verify_password(password, user.password_hash):
+        verification = verify_password(password, user.password_hash)
+        if not verification.is_valid:
             await self._handle_failed_login(user, membership.tenant_id, ip_address, user_agent)
             raise InvalidCredentialsError("Invalid email or password.")
+
+        if verification.requires_rehash:
+            await self._repository.update_password_hash(
+                user.id,
+                get_password_hash(password),
+                password_pepper_version=PASSWORD_HASH_VERSION,
+            )
 
         await self._repository.reset_lockout_counter(user.id)
         await self._repository.clear_user_lock(user.id)

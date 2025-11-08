@@ -230,6 +230,35 @@ class PostgresUserRepository(UserRepository):
             )
             await session.commit()
 
+    async def update_password_hash(
+        self,
+        user_id: uuid.UUID,
+        password_hash: str,
+        *,
+        password_pepper_version: str,
+    ) -> None:
+        now = datetime.now(UTC)
+        async with self._session_factory() as session:
+            await session.execute(
+                update(UserAccount)
+                .where(UserAccount.id == user_id)
+                .values(
+                    password_hash=password_hash,
+                    password_pepper_version=password_pepper_version,
+                    updated_at=now,
+                )
+            )
+            session.add(
+                PasswordHistory(
+                    id=uuid.uuid4(),
+                    user_id=user_id,
+                    password_hash=password_hash,
+                    password_pepper_version=password_pepper_version,
+                    created_at=now,
+                )
+            )
+            await session.commit()
+
     async def increment_lockout_counter(self, user_id: uuid.UUID, *, ttl_seconds: int) -> int:
         return await self._lockout_store.increment(user_id, ttl_seconds)
 

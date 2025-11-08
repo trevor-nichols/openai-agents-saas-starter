@@ -128,6 +128,14 @@ class UserRepository(Protocol):
 
     async def is_user_locked(self, user_id: UUID) -> bool: ...
 
+    async def update_password_hash(
+        self,
+        user_id: UUID,
+        password_hash: str,
+        *,
+        password_pepper_version: str,
+    ) -> None: ...
+
 
 class UserRepositoryError(RuntimeError):
     """Base error for user repository operations."""

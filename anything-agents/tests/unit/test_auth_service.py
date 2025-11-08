@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
+from typing import cast
+from uuid import uuid4
 
 import pytest
 
@@ -15,7 +17,9 @@ from app.services.auth_service import (
     AuthService,
     ServiceAccountRateLimitError,
     ServiceAccountValidationError,
+    UserAuthenticationError,
 )
+from app.services.user_service import MembershipNotFoundError, UserService
 
 
 class FakeRefreshRepo:
@@ -53,6 +57,16 @@ class FakeRefreshRepo:
 def _make_service(repo: FakeRefreshRepo | None = None) -> AuthService:
     registry = load_service_account_registry()
     return AuthService(registry, refresh_repository=repo)
+
+
+class _StubUserService:
+    def __init__(self, *, exc: Exception | None = None) -> None:
+        self._exc = exc
+
+    async def authenticate(self, **_: object):
+        if self._exc is not None:
+            raise self._exc
+        raise AssertionError("authenticate should not be called without configured behavior")
 
 
 def _refresh_token(payload: Mapping[str, object]) -> str:
@@ -241,3 +255,23 @@ async def test_new_token_persisted_to_repository() -> None:
     assert saved_record.tenant_id == tenant_id
     assert saved_record.scopes == ["conversations:read"]
     assert saved_record.signing_kid == result["kid"]
+
+
+@pytest.mark.asyncio
+async def test_login_user_handles_membership_not_found() -> None:
+    tenant_id = str(uuid4())
+    stub = _StubUserService(exc=MembershipNotFoundError("not a member"))
+    service = AuthService(
+        load_service_account_registry(),
+        refresh_repository=None,
+        user_service=cast(UserService, stub),
+    )
+
+    with pytest.raises(UserAuthenticationError):
+        await service.login_user(
+            email="owner@example.com",
+            password="Password123!!",
+            tenant_id=tenant_id,
+            ip_address=None,
+            user_agent=None,
+        )

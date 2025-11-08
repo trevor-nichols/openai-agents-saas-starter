@@ -36,6 +36,7 @@ from app.observability.logging import log_event
 from app.observability.metrics import observe_service_account_issuance
 from app.services.user_service import (
     InvalidCredentialsError,
+    MembershipNotFoundError,
     TenantContextRequiredError,
     UserDisabledError,
     UserLockedError,
@@ -291,6 +292,7 @@ class AuthService:
             )
         except (
             InvalidCredentialsError,
+            MembershipNotFoundError,
             UserLockedError,
             UserDisabledError,
             TenantContextRequiredError,

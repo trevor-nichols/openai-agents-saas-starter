@@ -58,6 +58,8 @@ def _is_user_subject(value: str | None) -> bool:
 
 ACCESS_TOKEN_USE = "access"
 USER_SUBJECT_PREFIX = "user:"
+PASSWORD_HASH_VERSION = "v2"
+LEGACY_PASSWORD_HASH_VERSION = "v1"
 
 # =============================================================================
 # PASSWORD UTILITIES
@@ -81,20 +83,20 @@ def verify_password(
     *,
     settings: Settings | None = None,
     pepper: str | None = None,
-) -> bool:
-    """
-    Verify a password against its hash.
+) -> PasswordVerificationResult:
+    """Verify a password hash, supporting legacy (unpeppered) digests."""
 
-    Args:
-        plain_password: Plain text password
-        hashed_password: Hashed password to verify against
-
-    Returns:
-        bool: True if password matches, False otherwise
-    """
     pepper_value = _password_pepper(settings, override=pepper)
     material = _pepperize_password(plain_password, pepper=pepper_value)
-    return pwd_context.verify(material, hashed_password)
+    if pwd_context.verify(material, hashed_password):
+        return PasswordVerificationResult(is_valid=True, requires_rehash=False)
+
+    # Fallback for legacy hashes that omitted the pepper. If this succeeds,
+    # callers should rehash the password with the new pepper immediately.
+    if pwd_context.verify(plain_password, hashed_password):
+        return PasswordVerificationResult(is_valid=True, requires_rehash=True)
+
+    return PasswordVerificationResult(is_valid=False, requires_rehash=False)
 
 
 def get_password_hash(
@@ -149,6 +151,14 @@ class SignedTokenBundle:
 
     primary: SignedToken
     secondary: SignedToken | None = None
+
+
+@dataclass(slots=True, frozen=True)
+class PasswordVerificationResult:
+    """Outcome of password verification including upgrade hints."""
+
+    is_valid: bool
+    requires_rehash: bool = False
 
 
 class TokenSigner(Protocol):
@@ -355,6 +365,10 @@ def _find_key_material(keyset: KeySet, kid: str | None) -> KeyMaterial:
         materials: list[KeyMaterial] = []
         if keyset.active:
             materials.append(keyset.active)
+        if getattr(keyset, "next", None):
+            materials.append(keyset.next)  # type: ignore[arg-type]
+        retired: Sequence[KeyMaterial] = getattr(keyset, "retired", None) or []
+        materials.extend(retired)
         return materials
 
     for material in _iter():

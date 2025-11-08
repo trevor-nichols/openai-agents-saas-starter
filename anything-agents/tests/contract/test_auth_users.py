@@ -16,7 +16,11 @@ from app.services.auth_service import (
     UserRefreshError,
     UserSessionTokens,
 )
-from app.services.user_service import InvalidCredentialsError, UserLockedError
+from app.services.user_service import (
+    InvalidCredentialsError,
+    MembershipNotFoundError,
+    UserLockedError,
+)
 from main import app
 
 
@@ -128,6 +132,25 @@ def test_login_locked_account_returns_423(fake_auth_service, client: TestClient)
     body = response.json()
     assert body["message"] == "Account locked due to failures."
     assert body["error"] == "Account locked due to failures."
+
+
+def test_login_missing_tenant_returns_401(fake_auth_service, client: TestClient) -> None:
+    async def _raise_membership(**_: object) -> None:
+        raise UserAuthenticationError(
+            "User is not assigned to this tenant."
+        ) from MembershipNotFoundError("User is not assigned to this tenant.")
+
+    fake_auth_service.login_user.side_effect = _raise_membership
+
+    response = client.post(
+        "/api/v1/auth/token",
+        json={"email": "owner@example.com", "password": "whatever", "tenant_id": str(uuid4())},
+    )
+
+    assert response.status_code == 401
+    body = response.json()
+    assert body["message"] == "User is not assigned to this tenant."
+    assert body["error"] == "User is not assigned to this tenant."
 
 
 def test_refresh_success_returns_new_tokens(fake_auth_service, client: TestClient) -> None:

@@ -21,7 +21,7 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.core.config import get_settings  # noqa: E402
-from app.core.security import get_password_hash  # noqa: E402
+from app.core.security import PASSWORD_HASH_VERSION, get_password_hash  # noqa: E402
 from app.infrastructure.db.engine import get_async_sessionmaker, init_engine  # noqa: E402
 from app.infrastructure.persistence.auth.models import (  # noqa: E402
     PasswordHistory,
@@ -66,7 +66,7 @@ async def _seed_user(args: argparse.Namespace) -> None:
             id=uuid4(),
             email=normalized_email,
             password_hash=password_hash,
-            password_pepper_version="v1",
+            password_pepper_version=PASSWORD_HASH_VERSION,
             status=UserStatus.ACTIVE if not args.locked else UserStatus.LOCKED,
         )
         session.add(user)
@@ -93,7 +93,7 @@ async def _seed_user(args: argparse.Namespace) -> None:
             id=uuid4(),
             user_id=user.id,
             password_hash=password_hash,
-            password_pepper_version="v1",
+            password_pepper_version=PASSWORD_HASH_VERSION,
         )
         session.add(history)
 

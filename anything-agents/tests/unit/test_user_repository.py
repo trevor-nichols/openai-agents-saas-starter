@@ -15,6 +15,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.compiler import compiles
 
+from app.core.security import PASSWORD_HASH_VERSION
 from app.domain.users import UserCreatePayload, UserLoginEventDTO, UserRecord, UserStatus
 from app.infrastructure.persistence.auth.models import (
     PasswordHistory,
@@ -101,6 +102,7 @@ async def _create_user(repo: PostgresUserRepository, tenant_id, email: str) -> U
     payload = UserCreatePayload(
         email=email,
         password_hash="hashed",
+        password_pepper_version=PASSWORD_HASH_VERSION,
         tenant_id=tenant_id,
         role="admin",
         display_name="Owner",
@@ -150,3 +152,32 @@ async def test_record_login_event(
     async with session_factory() as session:
         rows = await session.execute(UserLoginEvent.__table__.select())
         assert rows.first() is not None
+
+
+@pytest.mark.asyncio
+async def test_update_password_hash(
+    repository: PostgresUserRepository,
+    tenant_id,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    user = await _create_user(repository, tenant_id, "rotate@example.com")
+
+    await repository.update_password_hash(
+        user.id,
+        password_hash="repeppered",
+        password_pepper_version=PASSWORD_HASH_VERSION,
+    )
+
+    refreshed = await repository.get_user_by_id(user.id)
+    assert refreshed is not None
+    assert refreshed.password_hash == "repeppered"
+    assert refreshed.password_pepper_version == PASSWORD_HASH_VERSION
+
+    async with session_factory() as session:
+        rows = await session.execute(
+            PasswordHistory.__table__
+            .select()
+            .where(PasswordHistory.__table__.c.user_id == user.id)
+        )
+        history_rows = rows.fetchall()
+        assert len(history_rows) == 2
