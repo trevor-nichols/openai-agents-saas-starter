@@ -13,7 +13,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import get_settings
-from app.infrastructure.persistence.stripe.models import StripeEvent
+from app.infrastructure.persistence.stripe.models import StripeEvent, StripeEventDispatch
 from app.infrastructure.persistence.stripe.repository import (
     StripeEventRepository,
     StripeEventStatus,
@@ -22,6 +22,7 @@ from app.infrastructure.persistence.stripe.repository import (
 )
 from app.presentation.webhooks import stripe as stripe_webhook
 from app.services.billing_events import BillingEventsService, billing_events_service
+from app.services.stripe_dispatcher import stripe_event_dispatcher
 from tests.utils.fake_billing_backend import QueueBillingEventBackend
 
 import app.infrastructure.persistence.conversations.models  # noqa: F401
@@ -42,14 +43,25 @@ def configure_secret(monkeypatch):
         get_settings.cache_clear()
 
 
+class _FakeBillingService:
+    def __init__(self) -> None:
+        self.snapshot_calls: int = 0
+
+    async def sync_subscription_from_processor(self, *_args, **_kwargs):
+        self.snapshot_calls += 1
+
+
 @pytest.fixture
 async def sqlite_stripe_repo():
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
     async with engine.begin() as conn:
         await conn.run_sync(StripeEvent.__table__.create)
+        await conn.run_sync(StripeEventDispatch.__table__.create)
     session_factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     repo = StripeEventRepository(session_factory)
     configure_stripe_event_repository(repo)
+    fake_billing = _FakeBillingService()
+    stripe_event_dispatcher.configure(repository=repo, billing=fake_billing)  # type: ignore[arg-type]
     try:
         yield repo
     finally:
@@ -128,7 +140,12 @@ async def test_webhook_replays_fixture(
     message = await stream.next_message(timeout=0.2)
     await stream.close()
     assert message is not None
-    assert payload["type"] in message
+    data = json.loads(message)
+    assert data["event_type"] == payload["type"]
+    if payload["type"].startswith("customer.subscription"):
+        assert data["subscription"]["status"] == payload["data"]["object"].get("status")
+    if payload["type"].startswith("invoice."):
+        assert data["invoice"]["status"] == payload["data"]["object"].get("status")
 
 
 @pytest.mark.asyncio

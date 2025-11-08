@@ -317,8 +317,8 @@ make test-stripe
 
 # Validate and replay stored Stripe events (examples)
 make lint-stripe-fixtures
-make stripe-replay ARGS="list --status failed"
-make stripe-replay ARGS="replay --event-id evt_123 --dry-run"
+make stripe-replay ARGS="list --handler billing_sync --status failed"
+make stripe-replay ARGS="replay --dispatch-id 7ad7c7bc-..."
 ```
 
 ## 🔄 Migration Path: Single → Multiagent

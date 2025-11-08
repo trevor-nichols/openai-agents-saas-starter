@@ -14,6 +14,8 @@ from app.infrastructure.persistence.conversations import models as persistence_m
 from app.services.billing_service import (
     BillingService,
     PaymentProviderError,
+    ProcessorInvoiceLineSnapshot,
+    ProcessorInvoiceSnapshot,
 )
 from app.services.payment_gateway import (
     PaymentGateway,
@@ -197,6 +199,56 @@ async def test_start_subscription_uses_gateway_and_repository(billing_context):
     stored = await service.get_subscription(billing_context.tenant_id)
     assert stored is not None
     assert stored.plan_code == "starter"
+
+
+@pytest.mark.asyncio
+async def test_ingest_invoice_snapshot_records_invoice_and_usage(billing_context):
+    service = _service(billing_context)
+
+    await service.start_subscription(
+        tenant_id=billing_context.tenant_id,
+        plan_code="starter",
+        billing_email="owner@example.com",
+        auto_renew=True,
+    )
+
+    now = datetime.now(timezone.utc)
+    snapshot = ProcessorInvoiceSnapshot(
+        tenant_id=billing_context.tenant_id,
+        invoice_id="in_local",
+        status="paid",
+        amount_due_cents=1500,
+        currency="usd",
+        period_start=now,
+        period_end=now,
+        hosted_invoice_url="https://example.com",
+        billing_reason="subscription_cycle",
+        collection_method="charge_automatically",
+        description="Monthly",
+        lines=[
+            ProcessorInvoiceLineSnapshot(
+                feature_key="messages",
+                quantity=5,
+                period_start=now,
+                period_end=now,
+                idempotency_key="line_1",
+                amount_cents=500,
+            )
+        ],
+    )
+
+    await service.ingest_invoice_snapshot(snapshot)
+
+    async with billing_context.session_factory() as session:
+        invoice = await session.scalar(
+            select(persistence_models.SubscriptionInvoice).where(
+                persistence_models.SubscriptionInvoice.external_invoice_id == "in_local"
+            )
+        )
+        assert invoice is not None
+        usage = await session.scalar(select(persistence_models.SubscriptionUsage))
+        assert usage is not None
+        assert usage.quantity == 5
 
 
 @pytest.mark.asyncio

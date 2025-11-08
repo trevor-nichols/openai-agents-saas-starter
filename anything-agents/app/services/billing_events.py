@@ -6,7 +6,7 @@ import asyncio
 import json
 import logging
 from collections import deque
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import AsyncIterator, Protocol
 
@@ -15,6 +15,12 @@ from redis.asyncio import Redis
 from app.infrastructure.persistence.stripe.models import StripeEvent
 from app.infrastructure.persistence.stripe.repository import StripeEventRepository
 from app.observability.metrics import observe_stripe_webhook_event
+from app.services.stripe_event_models import (
+    DispatchBroadcastContext,
+    InvoiceSnapshotView,
+    SubscriptionSnapshotView,
+    UsageDelta,
+)
 
 logger = logging.getLogger("anything-agents.services.billing_events")
 
@@ -27,6 +33,43 @@ class BillingEventPayload:
     occurred_at: str
     summary: str | None
     status: str
+    subscription: "BillingEventSubscription" | None = None
+    invoice: "BillingEventInvoice" | None = None
+    usage: list["BillingEventUsage"] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class BillingEventSubscription:
+    plan_code: str
+    status: str
+    seat_count: int | None
+    auto_renew: bool
+    current_period_start: str | None
+    current_period_end: str | None
+    trial_ends_at: str | None
+    cancel_at: str | None
+
+
+@dataclass(slots=True)
+class BillingEventInvoice:
+    invoice_id: str
+    status: str
+    amount_due_cents: int
+    currency: str
+    billing_reason: str | None
+    hosted_invoice_url: str | None
+    collection_method: str | None
+    period_start: str | None
+    period_end: str | None
+
+
+@dataclass(slots=True)
+class BillingEventUsage:
+    feature_key: str
+    quantity: int
+    period_start: str | None
+    period_end: str | None
+    amount_cents: int | None
 
 
 class BillingEventStream(Protocol):
@@ -253,22 +296,32 @@ class BillingEventsService:
             if replay_after is not None:
                 await self.mark_processed(replay_after)
 
-    async def publish_from_event(self, record: StripeEvent, payload: dict) -> None:
+    async def publish_from_event(
+        self,
+        record: StripeEvent,
+        payload: dict,
+        context: DispatchBroadcastContext | None = None,
+    ) -> None:
         if not self._enabled or not self._backend:
             return
         if not record.tenant_hint:
             logger.debug("Skipping Stripe event %s without tenant hint", record.stripe_event_id)
             return
-        await self._publish(record, payload)
+        await self._publish(record, payload, context)
 
     async def _publish_from_record(self, record: StripeEvent) -> None:
-        await self._publish(record, record.payload)
+        await self._publish(record, record.payload, None)
         await self.mark_processed(record.processed_at)
 
-    async def _publish(self, record: StripeEvent, payload: dict) -> None:
+    async def _publish(
+        self,
+        record: StripeEvent,
+        payload: dict,
+        context: DispatchBroadcastContext | None,
+    ) -> None:
         if not record.tenant_hint or not self._backend:
             return
-        message = self._normalize_payload(record, payload)
+        message = self._normalize_payload(record, payload, context)
         if message is None:
             return
         channel = self._channel(record.tenant_hint)
@@ -324,22 +377,88 @@ class BillingEventsService:
     def _channel(self, tenant_id: str) -> str:
         return f"{self._channel_prefix}{tenant_id}"
 
-    def _normalize_payload(self, record: StripeEvent, payload: dict) -> BillingEventPayload | None:
-        tenant_id = record.tenant_hint
+    def _normalize_payload(
+        self,
+        record: StripeEvent,
+        payload: dict,
+        context: DispatchBroadcastContext | None,
+    ) -> BillingEventPayload | None:
+        tenant_id = context.tenant_id if context else record.tenant_hint
         if tenant_id is None:
             return None
         data_object = (payload.get("data") or {}).get("object") or {}
-        status = data_object.get("status") or data_object.get("billing_reason")
-        summary = data_object.get("description") or status
+        context_status = context.status if context else None
+        context_summary = context.summary if context else None
+        status = context_status or data_object.get("status") or data_object.get("billing_reason")
+        summary = context_summary or data_object.get("description") or status
         occurred_at = record.processed_at or record.received_at
+        subscription = None
+        invoice = None
+        usage: list[BillingEventUsage] = []
+        if context:
+            if context.subscription:
+                subscription = self._subscription_payload_from_context(context.subscription)
+            if context.invoice:
+                invoice = self._invoice_payload_from_context(context.invoice)
+            if context.usage:
+                usage = [self._usage_payload_from_context(item) for item in context.usage]
         return BillingEventPayload(
             tenant_id=tenant_id,
             event_type=record.event_type,
             stripe_event_id=record.stripe_event_id,
             occurred_at=(occurred_at or datetime.now(timezone.utc)).isoformat(),
             summary=summary,
-            status=record.processing_outcome,
+            status=status or record.processing_outcome,
+            subscription=subscription,
+            invoice=invoice,
+            usage=usage,
         )
+
+    def _subscription_payload_from_context(
+        self, view: SubscriptionSnapshotView
+    ) -> BillingEventSubscription:
+        return BillingEventSubscription(
+            plan_code=view.plan_code,
+            status=view.status,
+            seat_count=view.seat_count,
+            auto_renew=view.auto_renew,
+            current_period_start=self._iso(view.current_period_start),
+            current_period_end=self._iso(view.current_period_end),
+            trial_ends_at=self._iso(view.trial_ends_at),
+            cancel_at=self._iso(view.cancel_at),
+        )
+
+    def _invoice_payload_from_context(self, view: InvoiceSnapshotView) -> BillingEventInvoice:
+        return BillingEventInvoice(
+            invoice_id=view.invoice_id,
+            status=view.status,
+            amount_due_cents=view.amount_due_cents,
+            currency=view.currency,
+            billing_reason=view.billing_reason,
+            hosted_invoice_url=view.hosted_invoice_url,
+            collection_method=view.collection_method,
+            period_start=self._iso(view.period_start),
+            period_end=self._iso(view.period_end),
+        )
+
+    def _usage_payload_from_context(self, usage: UsageDelta) -> BillingEventUsage:
+        return BillingEventUsage(
+            feature_key=usage.feature_key,
+            quantity=usage.quantity,
+            period_start=self._iso(usage.period_start),
+            period_end=self._iso(usage.period_end),
+            amount_cents=usage.amount_cents,
+        )
+
+    @staticmethod
+    def _iso(value: datetime | None) -> str | None:
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        else:
+            value = value.astimezone(timezone.utc)
+        return value.isoformat()
 
 
 _billing_events_service = BillingEventsService()

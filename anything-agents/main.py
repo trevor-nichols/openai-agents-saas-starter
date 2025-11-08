@@ -38,6 +38,8 @@ from app.services.billing_service import billing_service
 from app.services.billing_events import RedisBillingEventBackend, billing_events_service
 from app.services.conversation_service import conversation_service
 from app.services.payment_gateway import stripe_gateway
+from app.services.stripe_dispatcher import stripe_event_dispatcher
+from app.services.stripe_retry_worker import stripe_dispatch_retry_worker
 
 # =============================================================================
 # MODULE CONSTANTS
@@ -83,6 +85,7 @@ async def lifespan(app: FastAPI):
     session_factory = None
     stripe_repo: StripeEventRepository | None = None
     redis_backend_configured = False
+    retry_worker_started = False
 
     if settings.enable_billing:
         _ensure_billing_prerequisites(settings)
@@ -101,6 +104,10 @@ async def lifespan(app: FastAPI):
         billing_service.set_repository(PostgresBillingRepository(session_factory))
         stripe_repo = StripeEventRepository(session_factory)
         configure_stripe_event_repository(stripe_repo)
+        stripe_event_dispatcher.configure(repository=stripe_repo, billing=billing_service)
+        stripe_dispatch_retry_worker.configure(repository=stripe_repo, dispatcher=stripe_event_dispatcher)
+        await stripe_dispatch_retry_worker.start()
+        retry_worker_started = True
         if settings.enable_billing_stream:
             redis_url = settings.billing_events_redis_url or settings.redis_url
             if not redis_url:
@@ -115,6 +122,8 @@ async def lifespan(app: FastAPI):
     finally:
         if redis_backend_configured:
             await billing_events_service.shutdown()
+        if retry_worker_started:
+            await stripe_dispatch_retry_worker.shutdown()
         await dispose_engine()
 
 # =============================================================================

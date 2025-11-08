@@ -87,7 +87,7 @@ The assistant guides you through Stripe CLI login, optional `make dev-up`, Postg
 ## Troubleshooting & Tests
 
 - **Fixture-driven tests** – Run `make test-stripe` to replay fixture payloads through the webhook and streaming stack. This suite ensures event persistence and SSE broadcasting keep working without talking to live Stripe.
-- **Replay CLI** – Use `make stripe-replay ARGS="list --status failed"` to inspect stored events and `make stripe-replay ARGS="replay --event-id evt_123"` to reprocess failures. Add `--dry-run` to inspect payloads.
+- **Replay CLI** – Use `make stripe-replay ARGS="list --handler billing_sync --status failed"` to inspect stored dispatch rows and `make stripe-replay ARGS="replay --dispatch-id <uuid>"` to reprocess failures without re-sending webhooks.
 - **Fixture linting** – `make lint-stripe-fixtures` loads every JSON file under `tests/fixtures/stripe/` to catch syntax errors before CI.
 - **Redis unavailable** – The SSE endpoint returns `503` when `ENABLE_BILLING_STREAM=true` but no Redis URL is configured. Ensure `BILLING_EVENTS_REDIS_URL` (or `REDIS_URL`) points to a reachable instance.
 - **CI flaky tests** – If the replay tests fail with `duplicate` responses, ensure fixtures have unique `id` values and run `make test-stripe` locally to reproduce.

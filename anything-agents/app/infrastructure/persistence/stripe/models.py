@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from sqlalchemy import DateTime, Index, Integer, String, Text
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import JSON, TypeDecorator
@@ -60,3 +60,34 @@ class StripeEvent(Base):
     processing_error: Mapped[str | None] = mapped_column(Text)
     processing_attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
+
+class StripeDispatchStatus(str, Enum):
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    FAILED = "failed"
+    COMPLETED = "completed"
+
+
+class StripeEventDispatch(Base):
+    """Per-handler dispatch records for Stripe events."""
+
+    __tablename__ = "stripe_event_dispatch"
+    __table_args__ = (
+        Index("ix_stripe_event_dispatch_handler_status", "handler", "status", "next_retry_at"),
+        UniqueConstraint("stripe_event_id", "handler", name="uq_stripe_event_dispatch_handler"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk)
+    stripe_event_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("stripe_events.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    handler: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default=StripeDispatchStatus.PENDING.value, nullable=False)
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    next_retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=UTC_NOW, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=UTC_NOW, onupdate=UTC_NOW, nullable=False)

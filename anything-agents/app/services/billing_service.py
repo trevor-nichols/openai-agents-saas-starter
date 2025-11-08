@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
 
-from app.domain.billing import BillingPlan, BillingRepository, TenantSubscription
+from app.domain.billing import BillingPlan, BillingRepository, SubscriptionInvoiceRecord, TenantSubscription
 from app.services.payment_gateway import (
     PaymentGateway,
     PaymentGatewayError,
@@ -35,6 +36,50 @@ class InvalidTenantIdentifierError(BillingError):
 
 class PaymentProviderError(BillingError):
     """Raised when the payment gateway rejects a request."""
+
+
+@dataclass(slots=True)
+class ProcessorSubscriptionSnapshot:
+    tenant_id: str
+    plan_code: str
+    status: str
+    auto_renew: bool
+    starts_at: datetime | None
+    current_period_start: datetime | None
+    current_period_end: datetime | None
+    trial_ends_at: datetime | None
+    cancel_at: datetime | None
+    seat_count: int | None
+    billing_email: str | None
+    processor_customer_id: str | None
+    processor_subscription_id: str
+    metadata: dict[str, str]
+
+
+@dataclass(slots=True)
+class ProcessorInvoiceLineSnapshot:
+    feature_key: str
+    quantity: int
+    period_start: datetime | None
+    period_end: datetime | None
+    idempotency_key: str | None = None
+    amount_cents: int | None = None
+
+
+@dataclass(slots=True)
+class ProcessorInvoiceSnapshot:
+    tenant_id: str
+    invoice_id: str
+    status: str
+    amount_due_cents: int
+    currency: str
+    period_start: datetime | None
+    period_end: datetime | None
+    hosted_invoice_url: str | None
+    billing_reason: str | None
+    collection_method: str | None
+    description: str | None = None
+    lines: list[ProcessorInvoiceLineSnapshot] = field(default_factory=list)
 
 
 class BillingService:
@@ -249,6 +294,80 @@ class BillingService:
                 "Tenant identifier is not a valid UUID."
             ) from exc
         return updated
+
+    async def sync_subscription_from_processor(
+        self,
+        snapshot: ProcessorSubscriptionSnapshot,
+        *,
+        processor_name: str = "stripe",
+    ) -> TenantSubscription:
+        starts_at = snapshot.starts_at or datetime.now(timezone.utc)
+        plan = await self._ensure_plan_exists(snapshot.plan_code)
+        subscription = TenantSubscription(
+            tenant_id=snapshot.tenant_id,
+            plan_code=snapshot.plan_code,
+            status=snapshot.status,
+            auto_renew=snapshot.auto_renew,
+            billing_email=snapshot.billing_email,
+            starts_at=starts_at,
+            current_period_start=snapshot.current_period_start,
+            current_period_end=snapshot.current_period_end,
+            trial_ends_at=snapshot.trial_ends_at,
+            cancel_at=snapshot.cancel_at,
+            seat_count=snapshot.seat_count or plan.seat_included,
+            metadata=snapshot.metadata or {},
+            processor=processor_name,
+            processor_customer_id=snapshot.processor_customer_id,
+            processor_subscription_id=snapshot.processor_subscription_id,
+        )
+        repository = self._require_repository()
+        try:
+            await repository.upsert_subscription(subscription)
+        except ValueError as exc:
+            raise InvalidTenantIdentifierError("Tenant identifier is not a valid UUID.") from exc
+        return subscription
+
+    async def ingest_invoice_snapshot(
+        self,
+        snapshot: ProcessorInvoiceSnapshot,
+    ) -> None:
+        repository = self._require_repository()
+        period_start = _to_utc(snapshot.period_start or datetime.now(timezone.utc))
+        period_end = _to_utc(snapshot.period_end or period_start)
+        currency = (snapshot.currency or "usd").upper()
+
+        invoice_record = SubscriptionInvoiceRecord(
+            tenant_id=snapshot.tenant_id,
+            period_start=period_start,
+            period_end=period_end,
+            amount_cents=max(snapshot.amount_due_cents, 0),
+            currency=currency,
+            status=snapshot.status,
+            processor_invoice_id=snapshot.invoice_id,
+            hosted_invoice_url=snapshot.hosted_invoice_url,
+        )
+
+        try:
+            await repository.upsert_invoice(invoice_record)
+        except ValueError as exc:
+            raise InvalidTenantIdentifierError("Tenant identifier is not a valid UUID.") from exc
+
+        for line in snapshot.lines:
+            if not line.feature_key or line.quantity in (None, 0):
+                continue
+            line_start = _to_utc(line.period_start) if line.period_start else period_start
+            line_end = _to_utc(line.period_end) if line.period_end else period_end
+            try:
+                await repository.record_usage_from_processor(
+                    snapshot.tenant_id,
+                    feature_key=line.feature_key,
+                    quantity=line.quantity,
+                    period_start=line_start,
+                    period_end=line_end,
+                    idempotency_key=line.idempotency_key or f"{snapshot.invoice_id}:{line.feature_key}",
+                )
+            except ValueError as exc:
+                raise InvalidTenantIdentifierError("Tenant identifier is not a valid UUID.") from exc
 
 
 def _to_utc(dt: datetime) -> datetime:

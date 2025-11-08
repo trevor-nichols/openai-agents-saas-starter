@@ -15,6 +15,7 @@ from app.infrastructure.persistence.stripe.repository import (
 )
 from app.observability.metrics import observe_stripe_webhook_event
 from app.services.billing_events import get_billing_events_service
+from app.services.stripe_dispatcher import stripe_event_dispatcher
 
 logger = logging.getLogger("anything-agents.webhooks.stripe")
 
@@ -70,26 +71,25 @@ async def handle_stripe_webhook(request: Request) -> dict[str, bool]:
         )
         return {"success": True, "duplicate": True}
 
+    dispatch_result = None
     try:
-        await _dispatch_event(event_dict)
-    except Exception as exc:  # pragma: no cover - exercised in tests via failure path
-        failure_time = await repository.record_outcome(record.id, status=StripeEventStatus.FAILED, error=str(exc))
-        record.processed_at = failure_time
-        record.processing_outcome = StripeEventStatus.FAILED.value
-        observe_stripe_webhook_event(event_type=event_type, result="failed")
+        dispatch_result = await stripe_event_dispatcher.dispatch_now(record, event_dict)
+    except Exception as exc:  # pragma: no cover - exercised via mocks
+        observe_stripe_webhook_event(event_type=event_type, result="dispatch_failed")
         logger.exception(
             "Stripe webhook handler failed",
             extra={"stripe_event_id": event_dict["id"], "event_type": event_type},
         )
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to process event.") from exc
 
-    processed_at = await repository.record_outcome(record.id, status=StripeEventStatus.PROCESSED)
-    record.processed_at = processed_at
+    processed_at = dispatch_result.processed_at if dispatch_result else None
+    if processed_at:
+        record.processed_at = processed_at
     record.processing_outcome = StripeEventStatus.PROCESSED.value
     if settings.enable_billing_stream:
         events_service = get_billing_events_service()
         try:
-            await events_service.publish_from_event(record, event_dict)
+            await events_service.publish_from_event(record, event_dict, context=dispatch_result.broadcast if dispatch_result else None)
         except Exception as exc:  # pragma: no cover - failure path exercised via mocks
             failure_time = await repository.record_outcome(
                 record.id,
@@ -108,27 +108,12 @@ async def handle_stripe_webhook(request: Request) -> dict[str, bool]:
                 detail="Failed to publish billing event.",
             ) from exc
         await events_service.mark_processed(processed_at)
-    observe_stripe_webhook_event(event_type=event_type, result="processed")
+    observe_stripe_webhook_event(event_type=event_type, result="dispatched")
     logger.info(
         "Stored Stripe event",
         extra={"stripe_event_id": event_dict["id"], "event_type": event_type, "tenant": tenant_hint},
     )
     return {"success": True, "duplicate": False}
-
-
-async def _dispatch_event(event: dict) -> None:
-    event_type = event.get("type")
-    if event_type in {
-        "customer.subscription.created",
-        "customer.subscription.updated",
-        "customer.subscription.deleted",
-        "invoice.paid",
-        "invoice.payment_failed",
-    }:
-        logger.info("Stripe subscription event received", extra={"event_type": event_type})
-        return
-
-    logger.debug("Unhandled Stripe event type: %s", event_type)
 
 
 def _extract_tenant_hint(event: dict) -> str | None:

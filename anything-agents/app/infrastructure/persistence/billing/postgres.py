@@ -15,11 +15,13 @@ from app.domain.billing import (
     BillingPlan,
     BillingRepository,
     PlanFeature,
+    SubscriptionInvoiceRecord,
     TenantSubscription,
 )
 from app.infrastructure.persistence.conversations.models import (
     BillingPlan as ORMPlan,
     PlanFeature as ORMPlanFeature,
+    SubscriptionInvoice as ORMSubscriptionInvoice,
     SubscriptionUsage as ORMSubscriptionUsage,
     TenantSubscription as ORMTenantSubscription,
 )
@@ -153,37 +155,135 @@ class PostgresBillingRepository(BillingRepository):
         idempotency_key: str | None = None,
     ) -> None:
         async with self._session_factory() as session:
-            tenant_uuid = self._parse_tenant_uuid(tenant_id)
-            subscription = await session.scalar(
-                select(ORMTenantSubscription).where(ORMTenantSubscription.tenant_id == tenant_uuid)
-            )
+            subscription = await self._get_subscription_row(session, tenant_id)
             if subscription is None:
                 raise ValueError(f"Tenant '{tenant_id}' does not have a subscription.")
 
-            if idempotency_key:
-                existing = await session.scalar(
-                    select(ORMSubscriptionUsage).where(
-                        ORMSubscriptionUsage.subscription_id == subscription.id,
-                        ORMSubscriptionUsage.feature_key == feature_key,
-                        ORMSubscriptionUsage.external_event_id == idempotency_key,
-                    )
-                )
-                if existing is not None:
-                    return
-
-            usage = ORMSubscriptionUsage(
-                id=uuid.uuid4(),
+            await self._insert_usage_record(
+                session,
                 subscription_id=subscription.id,
                 feature_key=feature_key,
-                unit="units",
+                quantity=quantity,
                 period_start=period_start,
                 period_end=period_end,
-                quantity=quantity,
-                reported_at=datetime.now(timezone.utc),
-                external_event_id=idempotency_key,
+                idempotency_key=idempotency_key,
             )
-            session.add(usage)
             await session.commit()
+
+    async def record_usage_from_processor(
+        self,
+        tenant_id: str,
+        *,
+        feature_key: str,
+        quantity: int,
+        period_start: datetime,
+        period_end: datetime,
+        idempotency_key: str | None = None,
+    ) -> None:
+        async with self._session_factory() as session:
+            subscription = await self._get_subscription_row(session, tenant_id)
+            if subscription is None:
+                raise ValueError(f"Tenant '{tenant_id}' does not have a subscription.")
+
+            await self._insert_usage_record(
+                session,
+                subscription_id=subscription.id,
+                feature_key=feature_key,
+                quantity=quantity,
+                period_start=period_start,
+                period_end=period_end,
+                idempotency_key=idempotency_key,
+            )
+            await session.commit()
+
+    async def upsert_invoice(self, invoice: SubscriptionInvoiceRecord) -> None:
+        async with self._session_factory() as session:
+            subscription = await self._get_subscription_row(session, invoice.tenant_id)
+            if subscription is None:
+                raise ValueError(f"Tenant '{invoice.tenant_id}' does not have a subscription.")
+
+            existing = None
+            if invoice.processor_invoice_id:
+                existing = await session.scalar(
+                    select(ORMSubscriptionInvoice)
+                    .where(ORMSubscriptionInvoice.subscription_id == subscription.id)
+                    .where(ORMSubscriptionInvoice.external_invoice_id == invoice.processor_invoice_id)
+                )
+            if existing is None:
+                existing = await session.scalar(
+                    select(ORMSubscriptionInvoice)
+                    .where(ORMSubscriptionInvoice.subscription_id == subscription.id)
+                    .where(ORMSubscriptionInvoice.period_start == invoice.period_start)
+                )
+
+            if existing is None:
+                entity = ORMSubscriptionInvoice(
+                    id=uuid.uuid4(),
+                    subscription_id=subscription.id,
+                    period_start=invoice.period_start,
+                    period_end=invoice.period_end,
+                    amount_cents=invoice.amount_cents,
+                    currency=invoice.currency,
+                    status=invoice.status,
+                    external_invoice_id=invoice.processor_invoice_id,
+                    hosted_invoice_url=invoice.hosted_invoice_url,
+                )
+                session.add(entity)
+            else:
+                existing.period_start = invoice.period_start
+                existing.period_end = invoice.period_end
+                existing.amount_cents = invoice.amount_cents
+                existing.currency = invoice.currency
+                existing.status = invoice.status
+                existing.external_invoice_id = invoice.processor_invoice_id
+                existing.hosted_invoice_url = invoice.hosted_invoice_url
+
+            await session.commit()
+
+    async def _get_subscription_row(
+        self,
+        session: AsyncSession,
+        tenant_id: str,
+    ) -> ORMTenantSubscription | None:
+        tenant_uuid = self._parse_tenant_uuid(tenant_id)
+        return await session.scalar(
+            select(ORMTenantSubscription).where(ORMTenantSubscription.tenant_id == tenant_uuid)
+        )
+
+    async def _insert_usage_record(
+        self,
+        session: AsyncSession,
+        *,
+        subscription_id: uuid.UUID,
+        feature_key: str,
+        quantity: int,
+        period_start: datetime,
+        period_end: datetime,
+        idempotency_key: str | None,
+    ) -> None:
+        if idempotency_key:
+            existing = await session.scalar(
+                select(ORMSubscriptionUsage).where(
+                    ORMSubscriptionUsage.subscription_id == subscription_id,
+                    ORMSubscriptionUsage.feature_key == feature_key,
+                    ORMSubscriptionUsage.external_event_id == idempotency_key,
+                )
+            )
+            if existing is not None:
+                return
+
+        usage = ORMSubscriptionUsage(
+            id=uuid.uuid4(),
+            subscription_id=subscription_id,
+            feature_key=feature_key,
+            unit="units",
+            period_start=period_start,
+            period_end=period_end,
+            quantity=quantity,
+            reported_at=datetime.now(timezone.utc),
+            external_event_id=idempotency_key,
+        )
+        session.add(usage)
 
     @staticmethod
     def _to_domain_plan(plan: ORMPlan) -> BillingPlan:

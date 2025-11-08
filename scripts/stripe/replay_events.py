@@ -5,15 +5,12 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import hashlib
-import hmac
 import json
 import sys
-import time
+import uuid
 from pathlib import Path
 from typing import Iterable
 
-import httpx
 from dotenv import load_dotenv
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -28,10 +25,13 @@ from app.infrastructure.db import (  # noqa: E402
     get_async_sessionmaker,
     init_engine,
 )
+from app.infrastructure.persistence.billing import PostgresBillingRepository  # noqa: E402
 from app.infrastructure.persistence.stripe.repository import (  # noqa: E402
     StripeEventRepository,
-    StripeEventStatus,
+    StripeDispatchStatus,
 )
+from app.services.billing_service import billing_service  # noqa: E402
+from app.services.stripe_dispatcher import stripe_event_dispatcher  # noqa: E402
 
 FIXTURES_DIR = REPO_ROOT / "anything-agents" / "tests" / "fixtures" / "stripe"
 
@@ -47,20 +47,19 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Stripe event tooling")
     sub = parser.add_subparsers(dest="command")
 
-    list_cmd = sub.add_parser("list", help="List stored Stripe events")
-    list_cmd.add_argument("--status", choices=[s.value for s in StripeEventStatus] + ["all"], default="failed")
+    list_cmd = sub.add_parser("list", help="List stored Stripe dispatches")
+    list_cmd.add_argument("--status", choices=[s.value for s in StripeDispatchStatus] + ["all"], default="failed")
+    list_cmd.add_argument("--handler", default="billing_sync")
     list_cmd.add_argument("--limit", type=int, default=20)
+    list_cmd.add_argument("--page", type=int, default=1, help="Page number (1-indexed)")
 
-    replay_cmd = sub.add_parser("replay", help="Replay stored events back into the webhook")
-    replay_cmd.add_argument("--event-id", action="append", help="Specific Stripe event ID(s) to replay")
-    replay_cmd.add_argument("--status", choices=[s.value for s in StripeEventStatus], help="Replay by status")
+    replay_cmd = sub.add_parser("replay", help="Replay stored dispatches through the dispatcher")
+    replay_cmd.add_argument("--dispatch-id", action="append", help="Specific dispatch UUID(s) to replay")
+    replay_cmd.add_argument("--event-id", action="append", help="Replay dispatches derived from Stripe event IDs")
+    replay_cmd.add_argument("--status", choices=[s.value for s in StripeDispatchStatus], help="Replay by status")
     replay_cmd.add_argument("--limit", type=int, default=5, help="Limit when replaying by status")
-    replay_cmd.add_argument(
-        "--webhook-url",
-        default="http://localhost:8000/webhooks/stripe",
-        help="Webhook endpoint to call",
-    )
-    replay_cmd.add_argument("--dry-run", action="store_true", help="Print payloads without POSTing")
+    replay_cmd.add_argument("--handler", default="billing_sync")
+    replay_cmd.add_argument("--yes", action="store_true", help="Skip confirmation prompt")
 
     fixtures_cmd = sub.add_parser("validate-fixtures", help="Validate local Stripe fixture JSON files")
     fixtures_cmd.add_argument(
@@ -77,6 +76,8 @@ async def init_repository() -> StripeEventRepository:
     config_module.get_settings.cache_clear()
     await init_engine(run_migrations=False)
     session_factory = get_async_sessionmaker()
+    billing_repository = PostgresBillingRepository(session_factory)
+    billing_service.set_repository(billing_repository)
     return StripeEventRepository(session_factory)
 
 
@@ -85,69 +86,86 @@ async def shutdown_repository() -> None:
     config_module.get_settings.cache_clear()
 
 
-async def cmd_list(repo: StripeEventRepository, status: str, limit: int) -> None:
+async def cmd_list(
+    repo: StripeEventRepository,
+    handler: str,
+    status: str,
+    limit: int,
+    *,
+    page: int,
+) -> None:
     status_filter = None if status == "all" else status
-    events = await repo.list_events(status=status_filter, limit=limit)
-    if not events:
-        print("No events found.")
+    offset = max(page - 1, 0) * limit
+    dispatches = await repo.list_dispatches(handler=handler, status=status_filter, limit=limit, offset=offset)
+    if not dispatches:
+        print("No dispatches found.")
         return
-    for event in events:
+    print(f"Page {page} (limit {limit})")
+    for dispatch, event in dispatches:
         print(
-            f"{event.stripe_event_id}\t{event.event_type}\ttenant={event.tenant_hint}\tstatus={event.processing_outcome}\t"
-            f"received={event.received_at.isoformat() if event.received_at else 'unknown'}"
+            f"{dispatch.id}\t{dispatch.status}\thandler={dispatch.handler}\tattempts={dispatch.attempts}\t"
+            f"event={event.stripe_event_id} ({event.event_type})\ttenant={event.tenant_hint}"
         )
 
 
 async def cmd_replay(
     repo: StripeEventRepository,
     *,
+    dispatch_ids: Iterable[str] | None,
     event_ids: Iterable[str] | None,
     status: str | None,
     limit: int,
-    webhook_url: str,
-    dry_run: bool,
+    handler: str,
+    assume_yes: bool,
 ) -> None:
-    settings = get_settings()
-    secret = settings.stripe_webhook_secret
-    if not secret:
-        raise RuntimeError("STRIPE_WEBHOOK_SECRET must be configured to compute webhook signatures.")
+    dispatcher = stripe_event_dispatcher
+    stripe_event_dispatcher.configure(repository=repo, billing=billing_service)
 
-    events = []
-    if event_ids:
+    targets: list[uuid.UUID] = []
+    if dispatch_ids:
+        for dispatch_id in dispatch_ids:
+            targets.append(uuid.UUID(dispatch_id))
+    elif event_ids:
         for event_id in event_ids:
-            record = await repo.get_by_event_id(event_id)
-            if record is None:
+            event = await repo.get_by_event_id(event_id)
+            if event is None:
                 print(f"⚠️  Event {event_id} not found; skipping")
                 continue
-            events.append(record)
+            dispatch = await repo.ensure_dispatch(event_id=event.id, handler=handler)
+            targets.append(dispatch.id)
     elif status:
-        events = await repo.list_events(status=status, limit=limit)
+        rows = await repo.list_dispatches(handler=handler, status=status, limit=limit)
+        targets.extend(row[0].id for row in rows)
     else:
-        raise SystemExit("Either --event-id or --status is required for replay.")
+        raise SystemExit("Provide --dispatch-id, --event-id, or --status for replay.")
 
-    if not events:
-        print("No events to replay.")
+    if not targets:
+        print("No dispatches to replay.")
         return
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        for event in events:
-            payload = json.dumps(event.payload, separators=(",", ":"), sort_keys=True)
-            if dry_run:
-                print(f"🛈 Dry-run: would replay {event.stripe_event_id} ({event.event_type})")
-                continue
-            timestamp = int(time.time())
-            signed_payload = f"{timestamp}.{payload}".encode("utf-8")
-            signature = hmac.new(secret.encode("utf-8"), signed_payload, hashlib.sha256).hexdigest()
-            headers = {
-                "stripe-signature": f"t={timestamp},v1={signature}",
-                "content-type": "application/json",
-            }
-            response = await client.post(webhook_url, content=payload, headers=headers)
-            status_code = response.status_code
-            if status_code >= 400:
-                print(f"❌ Failed to replay {event.stripe_event_id}: HTTP {status_code} -> {response.text}")
-            else:
-                print(f"✅ Replayed {event.stripe_event_id} ({event.event_type}) -> HTTP {status_code}")
+    if not _confirm_replay(targets, assume_yes=assume_yes):
+        print("Aborted by user.")
+        return
+
+    for dispatch_id in targets:
+        try:
+            result = await dispatcher.replay_dispatch(dispatch_id)
+            when = result.processed_at.isoformat() if result.processed_at else "n/a"
+            print(f"✅ Replayed dispatch {dispatch_id} (processed_at={when})")
+        except Exception as exc:  # pragma: no cover - CLI surface
+            print(f"❌ Failed to replay {dispatch_id}: {exc}")
+
+
+def _confirm_replay(targets: list[uuid.UUID], *, assume_yes: bool) -> bool:
+    if assume_yes or not targets:
+        return True
+    preview = "\n".join(str(t) for t in targets[:5])
+    if len(targets) > 5:
+        preview += f"\n...and {len(targets) - 5} more"
+    print("About to replay the following dispatch IDs:")
+    print(preview)
+    answer = input("Proceed? [y/N]: ").strip().lower()
+    return answer in {"y", "yes"}
 
 
 def validate_fixtures(path: str) -> None:
@@ -176,17 +194,22 @@ async def main() -> None:
     repo = await init_repository()
     try:
         if args.command == "list":
-            await cmd_list(repo, status=args.status, limit=args.limit)
+            await cmd_list(
+                repo,
+                handler=args.handler,
+                status=args.status,
+                limit=args.limit,
+                page=args.page,
+            )
         elif args.command == "replay":
-            if not args.event_id and not args.status:
-                raise SystemExit("--event-id or --status is required for replay.")
             await cmd_replay(
                 repo,
+                dispatch_ids=args.dispatch_id,
                 event_ids=args.event_id,
                 status=args.status,
                 limit=args.limit,
-                webhook_url=args.webhook_url,
-                dry_run=args.dry_run,
+                handler=args.handler,
+                assume_yes=args.yes,
             )
         else:
             raise SystemExit("Unknown command")

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import datetime, timezone
 
@@ -11,6 +12,12 @@ from fakeredis.aioredis import FakeRedis
 from types import SimpleNamespace
 
 from app.services.billing_events import BillingEventsService, RedisBillingEventBackend
+from app.services.stripe_event_models import (
+    DispatchBroadcastContext,
+    InvoiceSnapshotView,
+    SubscriptionSnapshotView,
+    UsageDelta,
+)
 
 
 class FlakyBackend(RedisBillingEventBackend):
@@ -39,7 +46,67 @@ async def test_publish_from_event_queues_payload():
     message = await stream.next_message(timeout=0.1)
     await stream.close()
     assert message is not None
-    assert "invoice.payment_failed" in message
+    data = json.loads(message)
+    assert data["event_type"] == "invoice.payment_failed"
+    assert data["usage"] == []
+
+
+@pytest.mark.asyncio
+async def test_publish_includes_dispatch_context():
+    backend = RedisBillingEventBackend(FakeRedis())
+    service = BillingEventsService()
+    service.configure(backend=backend, repository=None)
+
+    event = _make_event()
+    context = DispatchBroadcastContext(
+        tenant_id=event.tenant_hint,
+        event_type=event.event_type,
+        summary="Invoice paid",
+        status="paid",
+        subscription=SubscriptionSnapshotView(
+            tenant_id=event.tenant_hint,
+            plan_code="starter",
+            status="active",
+            auto_renew=True,
+            seat_count=1,
+            current_period_start=datetime.now(timezone.utc),
+            current_period_end=datetime.now(timezone.utc),
+            trial_ends_at=None,
+            cancel_at=None,
+        ),
+        invoice=InvoiceSnapshotView(
+            tenant_id=event.tenant_hint,
+            invoice_id="in_test",
+            status="paid",
+            amount_due_cents=1000,
+            currency="usd",
+            billing_reason="subscription_cycle",
+            hosted_invoice_url="https://example.com",
+            collection_method="charge_automatically",
+            period_start=datetime.now(timezone.utc),
+            period_end=datetime.now(timezone.utc),
+        ),
+        usage=[
+            UsageDelta(
+                feature_key="messages",
+                quantity=10,
+                period_start=datetime.now(timezone.utc),
+                period_end=datetime.now(timezone.utc),
+                amount_cents=500,
+            )
+        ],
+    )
+
+    await service.publish_from_event(event, event.payload, context=context)
+
+    stream = await service.subscribe("tenant-1")
+    message = await stream.next_message(timeout=0.1)
+    await stream.close()
+    assert message is not None
+    payload = json.loads(message)
+    assert payload["subscription"]["plan_code"] == "starter"
+    assert payload["invoice"]["status"] == "paid"
+    assert payload["usage"][0]["feature_key"] == "messages"
 
 
 @pytest.mark.asyncio

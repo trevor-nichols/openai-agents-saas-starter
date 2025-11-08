@@ -6,10 +6,21 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
+from sqlalchemy.exc import IntegrityError
+
+from app.infrastructure.persistence.stripe.models import (
+    StripeDispatchStatus,
+    StripeEvent,
+    StripeEventDispatch,
+    StripeEventStatus,
+)
+
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.infrastructure.persistence.stripe.models import StripeEvent, StripeEventStatus
+__all__ = [
+    "StripeEventRepository",
+]
 
 logger = logging.getLogger("anything-agents.persistence.stripe_events")
 
@@ -56,6 +67,10 @@ class StripeEventRepository:
             return await session.scalar(
                 select(StripeEvent).where(StripeEvent.stripe_event_id == stripe_event_id)
             )
+
+    async def get_event_by_uuid(self, event_uuid: uuid.UUID) -> StripeEvent | None:
+        async with self._session_factory() as session:
+            return await session.scalar(select(StripeEvent).where(StripeEvent.id == event_uuid))
 
     async def record_outcome(
         self,
@@ -111,6 +126,163 @@ class StripeEventRepository:
                 stmt = stmt.where(StripeEvent.processing_outcome == status_value)
             result = await session.execute(stmt)
             return list(result.scalars())
+
+    async def ensure_dispatch(self, *, event_id: uuid.UUID, handler: str) -> StripeEventDispatch:
+        async with self._session_factory() as session:
+            existing = await session.scalar(
+                select(StripeEventDispatch)
+                .where(StripeEventDispatch.stripe_event_id == event_id)
+                .where(StripeEventDispatch.handler == handler)
+            )
+            if existing is not None:
+                return existing
+
+            entity = StripeEventDispatch(
+                id=uuid.uuid4(),
+                stripe_event_id=event_id,
+                handler=handler,
+            )
+            session.add(entity)
+            try:
+                await session.commit()
+            except IntegrityError:
+                await session.rollback()
+                existing = await session.scalar(
+                    select(StripeEventDispatch)
+                    .where(StripeEventDispatch.stripe_event_id == event_id)
+                    .where(StripeEventDispatch.handler == handler)
+                )
+                if existing is None:  # pragma: no cover - race condition fallback
+                    raise
+                return existing
+            await session.refresh(entity)
+            return entity
+
+    async def get_dispatch(self, dispatch_id: uuid.UUID) -> StripeEventDispatch | None:
+        async with self._session_factory() as session:
+            return await session.scalar(
+                select(StripeEventDispatch).where(StripeEventDispatch.id == dispatch_id)
+            )
+
+    async def list_dispatches(
+        self,
+        *,
+        handler: str | None = None,
+        status: StripeDispatchStatus | str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[tuple[StripeEventDispatch, StripeEvent]]:
+        async with self._session_factory() as session:
+            stmt = (
+                select(StripeEventDispatch, StripeEvent)
+                .join(StripeEvent, StripeEvent.id == StripeEventDispatch.stripe_event_id)
+                .order_by(StripeEventDispatch.created_at.desc())
+                .offset(max(offset, 0))
+                .limit(limit)
+            )
+            if handler:
+                stmt = stmt.where(StripeEventDispatch.handler == handler)
+            if status:
+                status_value = status.value if isinstance(status, StripeDispatchStatus) else str(status)
+                stmt = stmt.where(StripeEventDispatch.status == status_value)
+            result = await session.execute(stmt)
+            rows = result.fetchall()
+            return [(row[0], row[1]) for row in rows]
+
+    async def mark_dispatch_in_progress(self, dispatch_id: uuid.UUID) -> StripeEventDispatch | None:
+        now = datetime.now(timezone.utc)
+        async with self._session_factory() as session:
+            await session.execute(
+                update(StripeEventDispatch)
+                .where(StripeEventDispatch.id == dispatch_id)
+                .values(
+                    status=StripeDispatchStatus.IN_PROGRESS.value,
+                    attempts=StripeEventDispatch.attempts + 1,
+                    last_attempt_at=now,
+                    next_retry_at=None,
+                    last_error=None,
+                    updated_at=now,
+                )
+            )
+            await session.commit()
+        return await self.get_dispatch(dispatch_id)
+
+    async def list_dispatches_for_retry(
+        self,
+        *,
+        limit: int = 25,
+        ready_before: datetime | None = None,
+    ) -> list[StripeEventDispatch]:
+        cutoff = ready_before or datetime.now(timezone.utc)
+        async with self._session_factory() as session:
+            stmt = (
+                select(StripeEventDispatch)
+                .where(StripeEventDispatch.status == StripeDispatchStatus.FAILED.value)
+                .where(
+                    or_(
+                        StripeEventDispatch.next_retry_at.is_(None),
+                        StripeEventDispatch.next_retry_at <= cutoff,
+                    )
+                )
+                .order_by(StripeEventDispatch.next_retry_at.asc(), StripeEventDispatch.created_at.asc())
+                .limit(limit)
+            )
+            result = await session.execute(stmt)
+            return list(result.scalars())
+
+    async def mark_dispatch_completed(self, dispatch_id: uuid.UUID) -> StripeEventDispatch | None:
+        now = datetime.now(timezone.utc)
+        async with self._session_factory() as session:
+            await session.execute(
+                update(StripeEventDispatch)
+                .where(StripeEventDispatch.id == dispatch_id)
+                .values(
+                    status=StripeDispatchStatus.COMPLETED.value,
+                    last_error=None,
+                    next_retry_at=None,
+                    updated_at=now,
+                )
+            )
+            await session.commit()
+        return await self.get_dispatch(dispatch_id)
+
+    async def mark_dispatch_failed(
+        self,
+        dispatch_id: uuid.UUID,
+        *,
+        error: str,
+        next_retry_at: datetime | None = None,
+    ) -> StripeEventDispatch | None:
+        now = datetime.now(timezone.utc)
+        async with self._session_factory() as session:
+            await session.execute(
+                update(StripeEventDispatch)
+                .where(StripeEventDispatch.id == dispatch_id)
+                .values(
+                    status=StripeDispatchStatus.FAILED.value,
+                    last_error=error,
+                    next_retry_at=next_retry_at,
+                    updated_at=now,
+                )
+            )
+            await session.commit()
+        return await self.get_dispatch(dispatch_id)
+
+    async def reset_dispatch(self, dispatch_id: uuid.UUID) -> StripeEventDispatch | None:
+        now = datetime.now(timezone.utc)
+        async with self._session_factory() as session:
+            await session.execute(
+                update(StripeEventDispatch)
+                .where(StripeEventDispatch.id == dispatch_id)
+                .values(
+                    status=StripeDispatchStatus.PENDING.value,
+                    last_error=None,
+                    next_retry_at=None,
+                    updated_at=now,
+                )
+            )
+            await session.commit()
+        return await self.get_dispatch(dispatch_id)
 
 
 _stripe_event_repository: StripeEventRepository | None = None
