@@ -301,7 +301,8 @@ class BillingEventsService:
     ) -> None:
         if not self._enabled or not self._backend:
             return
-        if not record.tenant_hint:
+        tenant_id = context.tenant_id if context and context.tenant_id else record.tenant_hint
+        if not tenant_id:
             logger.debug("Skipping Stripe event %s without tenant hint", record.stripe_event_id)
             record_billing_stream_event(source="webhook", result="skipped_no_tenant")
             return
@@ -319,14 +320,14 @@ class BillingEventsService:
         *,
         source: str,
     ) -> None:
-        if not record.tenant_hint or not self._backend:
+        if not self._backend:
             record_billing_stream_event(source=source, result="skipped_backend")
             return
         message = self._normalize_payload(record, payload, context)
         if message is None:
             record_billing_stream_event(source=source, result="normalization_failed")
             return
-        channel = self._channel(record.tenant_hint)
+        channel = self._channel(message.tenant_id)
         attempts = 0
         while True:
             try:
