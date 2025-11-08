@@ -124,17 +124,29 @@ Normalized `BillingEventPayload` messages delivered over `/api/v1/billing/stream
 ## Streaming Health Checks
 
 1. **Redis** – `make dev-up` already launches Redis. Inspect `billing:events:last_processed_at` via `redis-cli` to ensure bookmarks advance.
-2. **SSE endpoint** – `curl -H "X-Tenant-Id: <tenant>" -H "X-Tenant-Role: owner" http://localhost:8000/api/v1/billing/stream` should return a continuous event stream (ping comments every 15s).
+2. **SSE endpoint** – `curl -H "X-Tenant-Id: <tenant>" -H "X-Tenant-Role: owner" http://localhost:8000/api/v1/billing/stream` should return a continuous event stream (ping comments every 15s). Headers are optional but, when provided, must align with the tenant/role embedded in the JWT.
 3. **Frontend panel** – the Agent dashboard displays subscription/invoice/usage cards from the stream payload. If it stalls, verify cookies include the tenant metadata and inspect browser devtools for SSE disconnects.
 4. **Metrics** – monitor `stripe_webhook_events_total{result="dispatch_failed"}` plus `stripe_billing_stream_events_total{result="failed"}`/`stripe_billing_stream_backlog_seconds` to catch stuck fan-out or Redis lag.
 5. **Automated suites** – run `make test-stripe` (fixture-driven webhook + SSE tests) and `make lint-stripe-fixtures` before pushing changes so replay tooling stays in sync.
 
 ## Dispatcher Retry Worker
 
-- **Service** – `StripeDispatchRetryWorker` lives in `app/services/stripe_retry_worker.py` and starts automatically when `ENABLE_BILLING=true`.
+- **Service** – `StripeDispatchRetryWorker` lives in `app/services/stripe_retry_worker.py`. Enable it per-process via `ENABLE_BILLING_RETRY_WORKER=true`. For multi-pod deployments, run exactly one instance with the flag on.
 - **Dependencies** – reuses the configured `StripeEventRepository` + `StripeEventDispatcher`; no extra queues required.
 - **Behaviour** – polls every 30s, pulls failed dispatch rows whose `next_retry_at` has passed, and calls `dispatcher.replay_dispatch()` so the normal bookkeeping runs (status -> `completed`/`failed`, metrics, billing stream publish).
 - **Backoff** – dispatcher failures schedule retries with exponential backoff (30s to 10m). When the root cause persists, rows remain `failed` and alerts stay firing; use the CLI to inspect or force replay with `--yes`.
+
+## Billing Stream Replay Worker
+
+- **Purpose** – On startup the API replays previously processed Stripe events into Redis so new subscribers catch up before receiving live SSE updates.
+- **Toggle** – Controlled by `ENABLE_BILLING_STREAM_REPLAY` (defaults to true). Disable this flag on secondary API replicas to avoid duplicate replays; keep it enabled on the worker pod that owns the Redis channel.
+- **Failure modes** – If replay is disabled everywhere, newly scaled pods will not backfill historical events—document this expectation for frontend dashboards.
+
+## Rate Limiting & Abuse Controls
+
+- `/api/v1/billing/stream` enforces Redis-backed quotas. Each tenant may initiate at most `BILLING_STREAM_RATE_LIMIT_PER_MINUTE` new subscriptions per minute and hold `BILLING_STREAM_CONCURRENT_LIMIT` simultaneous connections. Defaults ship in `.env.local.example` and can be tuned per environment.
+- Exceeding either threshold results in HTTP 429 + `Retry-After` along with structured `rate_limit.block` logs and the Prometheus counter `rate_limit_hits_total{quota="billing_stream_*"}`. Tenants can self-retry after the indicated back-off; operators should avoid manual resets unless absolutely necessary.
+- To unblock a tenant manually, remove Redis keys prefixed with `${RATE_LIMIT_KEY_PREFIX}:quota:billing_stream_*:<tenant_id>` (for bursts) or `${RATE_LIMIT_KEY_PREFIX}:concurrency:billing_stream_concurrency:<tenant_id>` (for stuck sockets). Capture the key name, tenant id, and rationale in the incident log before clearing counters.
 
 ## Dashboards & Alerts
 

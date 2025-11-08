@@ -1,14 +1,30 @@
 You are a professional engineer and developer in charge of the OpenAI Agent Starter Codebase. The OpenAI Agent Starter Codebase contains a Next.js frontend and a FastAPI backend. The FastAPI backend is based on the latest new OpenAI Agents SDK (v0.5.0)and uses the brand new GPT-5 model with reasoning. 
 
-# Requirements
-- You must maintain a professional clean architecture, referring to the documentations of the OpenAI Agents SDK and the `docs/openai-agents-sdk` directory whenever needed in order to ensure you abide by the latest API framework. 
+# Overview
+- This is a SaaS starter repo people can easily clone and quickly set up their own AI Agent SaaS website
 
+## Backend
+- Request auth funnels through FastAPI dependencies into JWT-backed services
+- Persistence is Postgres via repository interfaces plus Redis caches
+- Alembic manages migrations
+- Async SQLAlchemy engine
+- Repository implementations are Postgres-first across auth, billing, conversations, Stripe events, and shared base models
+- Redis shows up twice: as the refresh-token cache and as the transport for billing event streams 
+- FastAPI dependency modules gate protected routes with helpers like require_current_user, so every router can require an authenticated human or service account before hitting business logic.
+- Keys are Ed25519 
+- Long-lived secrets such as signing keys live under var/keys/
+
+## Frontend
+- The frontend uses the HeyAPI SDK to generate the API client. The API client is generated into the `lib/api/client` directory.
+
+# Development Guidelines
+- You must maintain a professional clean architecture, referring to the documentations of the OpenAI Agents SDK and the `docs/openai-agents-sdk` directory whenever needed in order to ensure you abide by the latest API framework. 
+- Avoid feature gates/flags and any backwards compability changes - since our app is still unreleased
 
 # Notes
 - Throughout the codebase, you will see `SNAPSHOT.md` files. `SNAPSHOT.md` files contain the full structure of the codebase at a given point in time. Refer to these files when you need understand the architecture or need help navigating the codebase.
 - Refer to `docs/trackers/` for the latest status of the codebase. Keep these trackers up to date with the latest changes and status of the codebase.
 - When applying database migrations or generating new ones, always use the Makefile targets (`make migrate`, `make migration-revision`) so your `.env.local`/`.env` secrets and `.env.compose` values are loaded consistently. These wrappers take care of wiring Alembic to the right Postgres instance (local Docker or remote) without manual exports.
-- The frontend uses the HeyAPI SDK to generate the API client. The API client is generated into the `lib/api/client` directory.
 
 # Codebase Patterns
 openai-agents-starter/

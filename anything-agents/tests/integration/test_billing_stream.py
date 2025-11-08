@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, status
 from httpx import ASGITransport, AsyncClient
 
 from app.api.dependencies.auth import require_current_user
@@ -45,7 +45,7 @@ async def test_sse_emits_events(monkeypatch):
     monkeypatch.setattr("app.services.billing_events.billing_events_service", service, raising=False)
 
     app = FastAPI()
-    app.dependency_overrides[require_current_user] = lambda: {"sub": "tester"}
+    app.dependency_overrides[require_current_user] = _authorized_user
     app.include_router(billing_router, prefix="/api/v1")
 
     transport = ASGITransport(app=app)
@@ -69,6 +69,28 @@ async def test_sse_emits_events(monkeypatch):
             assert payload["subscription"]["plan_code"] == "starter"
             assert payload["invoice"]["status"] == "paid"
             assert payload["usage"][0]["feature_key"] == "messages"
+
+
+@pytest.mark.asyncio
+async def test_stream_rejects_tenant_mismatch(monkeypatch):
+    service = BillingEventsService()
+    backend = QueueBillingEventBackend()
+    service.configure(backend=backend, repository=None)
+
+    monkeypatch.setattr("app.services.billing_events._billing_events_service", service, raising=False)
+    monkeypatch.setattr("app.services.billing_events.billing_events_service", service, raising=False)
+
+    app = FastAPI()
+    app.dependency_overrides[require_current_user] = _authorized_user
+    app.include_router(billing_router, prefix="/api/v1")
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.get(
+            "/api/v1/billing/stream",
+            headers={"X-Tenant-Id": "tenant-999", "X-Tenant-Role": "owner"},
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
 async def _publish_invoice_event(service: BillingEventsService) -> None:
@@ -129,3 +151,15 @@ def _extract_event_payload(stream_buffer: str) -> dict:
             raw = block.replace("data:", "", 1).strip()
             return json.loads(raw)
     raise AssertionError("No SSE data payload found")
+
+
+def _authorized_user():
+    return {
+        "user_id": "tester",
+        "subject": "user:tester",
+        "payload": {
+            "tenant_id": "tenant-123",
+            "roles": ["owner"],
+            "scope": "billing:manage billing:read",
+        },
+    }

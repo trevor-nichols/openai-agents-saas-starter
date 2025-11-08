@@ -70,25 +70,29 @@ This provisions a local virtualenv with all runtime and developer dependencies d
 
 ### 3. Environment Configuration
 
-Copy `.env.example` to `.env.local` and configure:
+Copy `.env.local.example` to `.env.local` and configure every secret (do **not** reuse the sample values outside local dev). Key fields:
 
 ```bash
-# AI API Keys (at least one required)
-OPENAI_API_KEY=your_openai_key
-ANTHROPIC_API_KEY=your_anthropic_key
-GEMINI_API_KEY=your_gemini_key
-XAI_API_KEY=your_xai_key
+# Deployment metadata & secrets
+ENVIRONMENT=development
+SECRET_KEY=change-me
+AUTH_PASSWORD_PEPPER=change-me
+AUTH_REFRESH_TOKEN_PEPPER=change-me
+
+# AI API Keys (set at least one)
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+GEMINI_API_KEY=
+XAI_API_KEY=
 
 # Server Configuration
 PORT=8000
-DEBUG=True
-SECRET_KEY=your_secret_key
+DEBUG=true
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents
 AUTO_RUN_MIGRATIONS=true  # dev convenience (requires Alembic dependency)
 ENABLE_BILLING=false      # flip to true once Postgres persistence is ready
 
 # Auth Hardening
-AUTH_PASSWORD_PEPPER=local-dev-password-pepper
 AUTH_PASSWORD_HISTORY_COUNT=5
 AUTH_LOCKOUT_THRESHOLD=5
 AUTH_LOCKOUT_WINDOW_MINUTES=60
@@ -141,6 +145,7 @@ You will be prompted for the password unless you pass `--password`. The script e
 Run the standard backend quality gates before opening a PR:
 
 ```bash
+python scripts/check_secrets.py
 hatch run lint
 hatch run typecheck
 hatch run pyright
@@ -162,10 +167,10 @@ The test suite creates a throwaway database, applies Alembic migrations, and ver
 
 ### 9. Billing API (Postgres Only)
 
-Billing routes expect two headers on every request:
+Billing routes derive tenant identity/role from the JWT payload. Optional headers are still accepted for backwards compatibility, but they must **match or down-scope** the token claims:
 
-- `X-Tenant-Id`: tenant identifier (UUID recommended)
-- `X-Tenant-Role`: one of `owner`, `admin`, `viewer`
+- `X-Tenant-Id` (optional): must match the `tenant_id` embedded in the access token if supplied.
+- `X-Tenant-Role` (optional): may request a lower role (`owner` > `admin` > `viewer`) but cannot elevate beyond what the token grants.
 
 Example: start a subscription (requires role `owner` or `admin`):
 
@@ -229,6 +234,8 @@ POST /api/v1/chat
 # Streaming chat
 POST /api/v1/chat/stream
 # Returns Server-Sent Events stream
+
+> **Rate limits:** Chat and streaming endpoints enforce per-user quotas (`CHAT_RATE_LIMIT_PER_MINUTE`, `CHAT_STREAM_RATE_LIMIT_PER_MINUTE`) plus concurrent stream caps (`CHAT_STREAM_CONCURRENT_LIMIT`). Adjust these environment variables (see `.env.local.example`) to tune throughput per environment and watch for HTTP 429 responses if callers exceed the limits.
 ```
 
 ### Conversation Management
@@ -420,3 +427,4 @@ MIT License - see LICENSE file for details.
 ---
 
 **Ready to build something amazing with AI agents? Start with the single agent and scale to multiagent systems as your needs grow!** 🚀 
+Run `python scripts/check_secrets.py` (or add it to CI) to verify you replaced every placeholder secret before deploying. Production/staging boots will now fail fast if `ENVIRONMENT` isn’t a dev value and the defaults remain.

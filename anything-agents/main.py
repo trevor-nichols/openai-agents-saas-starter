@@ -12,7 +12,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.errors import register_exception_handlers
 from app.api.router import api_router
-from app.core.config import Settings, get_settings
+from app.core.config import Settings, enforce_secret_overrides, get_settings
 from redis.asyncio import Redis
 
 from app.infrastructure.db import (
@@ -40,6 +40,7 @@ from app.services.conversation_service import conversation_service
 from app.services.payment_gateway import stripe_gateway
 from app.services.stripe_dispatcher import stripe_event_dispatcher
 from app.services.stripe_retry_worker import stripe_dispatch_retry_worker
+from app.services.rate_limit_service import rate_limiter
 
 # =============================================================================
 # MODULE CONSTANTS
@@ -80,12 +81,38 @@ def _log_billing_configuration(settings: Settings) -> None:
 async def lifespan(app: FastAPI):
     """Handle application lifespan events."""
     settings = get_settings()
+    warnings = settings.secret_warnings()
+    try:
+        enforce_secret_overrides(settings)
+    except RuntimeError:
+        raise
+    else:
+        if warnings and not settings.should_enforce_secret_overrides():
+            logger.warning(
+                "Default development secrets detected (environment=%s): %s",
+                settings.environment,
+                "; ".join(warnings),
+            )
     configure_vault_secret_manager(settings)
 
     session_factory = None
     stripe_repo: StripeEventRepository | None = None
     redis_backend_configured = False
     retry_worker_started = False
+    rate_limit_configured = False
+    rate_limit_client: Redis | None = None
+
+    if settings.redis_url:
+        rate_limit_client = Redis.from_url(
+            settings.redis_url,
+            encoding="utf-8",
+            decode_responses=False,
+        )
+        rate_limiter.configure(
+            redis=rate_limit_client,
+            prefix=settings.rate_limit_key_prefix,
+        )
+        rate_limit_configured = True
 
     if settings.enable_billing:
         _ensure_billing_prerequisites(settings)
@@ -105,9 +132,13 @@ async def lifespan(app: FastAPI):
         stripe_repo = StripeEventRepository(session_factory)
         configure_stripe_event_repository(stripe_repo)
         stripe_event_dispatcher.configure(repository=stripe_repo, billing=billing_service)
-        stripe_dispatch_retry_worker.configure(repository=stripe_repo, dispatcher=stripe_event_dispatcher)
-        await stripe_dispatch_retry_worker.start()
-        retry_worker_started = True
+        if settings.enable_billing_retry_worker:
+            stripe_dispatch_retry_worker.configure(repository=stripe_repo, dispatcher=stripe_event_dispatcher)
+            await stripe_dispatch_retry_worker.start()
+            retry_worker_started = True
+        else:
+            logger.info("Stripe dispatch retry worker disabled by configuration")
+
         if settings.enable_billing_stream:
             redis_url = settings.billing_events_redis_url or settings.redis_url
             if not redis_url:
@@ -115,8 +146,11 @@ async def lifespan(app: FastAPI):
             redis_client = Redis.from_url(redis_url, encoding="utf-8", decode_responses=False)
             backend = RedisBillingEventBackend(redis_client)
             billing_events_service.configure(backend=backend, repository=stripe_repo)
-            await billing_events_service.startup()
-            redis_backend_configured = True
+            if settings.enable_billing_stream_replay:
+                await billing_events_service.startup()
+                redis_backend_configured = True
+            else:
+                logger.info("Billing stream replay/startup disabled by configuration")
     try:
         yield
     finally:
@@ -124,6 +158,8 @@ async def lifespan(app: FastAPI):
             await billing_events_service.shutdown()
         if retry_worker_started:
             await stripe_dispatch_retry_worker.shutdown()
+        if rate_limit_configured:
+            await rate_limiter.shutdown()
         await dispose_engine()
 
 # =============================================================================

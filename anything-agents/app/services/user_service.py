@@ -257,13 +257,22 @@ class UserService:
             return [
                 "conversations:read",
                 "conversations:write",
+                "conversations:delete",
+                "tools:read",
                 "billing:read",
                 "billing:manage",
                 "support:read",
             ]
         if normalized in {"member", "editor"}:
-            return ["conversations:read", "conversations:write"]
-        return ["conversations:read"]
+            return [
+                "conversations:read",
+                "conversations:write",
+                "tools:read",
+            ]
+        return [
+            "conversations:read",
+            "tools:read",
+        ]
 
 
 _DEFAULT_SERVICE: UserService | None = None

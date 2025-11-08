@@ -11,6 +11,15 @@ from pydantic import Field, ValidationInfo, field_validator
 
 from pydantic_settings import BaseSettings
 
+DEFAULT_SECRET_KEY = "your-secret-key-here-change-in-production"
+DEFAULT_PASSWORD_PEPPER = "local-dev-password-pepper"
+DEFAULT_REFRESH_TOKEN_PEPPER = "local-dev-refresh-pepper"
+DEFAULT_KEY_STORAGE_PATH = "var/keys/keyset.json"
+PLACEHOLDER_SECRET_KEY = "change-me"
+PLACEHOLDER_PASSWORD_PEPPER = "change-me-too"
+PLACEHOLDER_REFRESH_TOKEN_PEPPER = "change-me-again"
+_SAFE_ENVIRONMENTS = {"development", "dev", "local", "test"}
+
 # =============================================================================
 # SETTINGS CLASS
 # =============================================================================
@@ -33,6 +42,11 @@ class Settings(BaseSettings):
     )
     app_version: str = Field(default="1.0.0", description="Application version")
     debug: bool = Field(default=False, description="Debug mode")
+    environment: str = Field(
+        default="development",
+        description="Deployment environment label (development, staging, production, etc.)",
+        alias="ENVIRONMENT",
+    )
     port: int = Field(default=8000, description="Server port")
     
     # =============================================================================
@@ -55,7 +69,7 @@ class Settings(BaseSettings):
     # =============================================================================
     
     secret_key: str = Field(
-        default="your-secret-key-here-change-in-production",
+        default=DEFAULT_SECRET_KEY,
         description="JWT secret key"
     )
     jwt_algorithm: str = Field(default="HS256", description="JWT algorithm")
@@ -71,6 +85,41 @@ class Settings(BaseSettings):
     redis_url: str = Field(
         default="redis://localhost:6379/0",
         description="Redis connection URL"
+    )
+
+    # =============================================================================
+    # RATE LIMITING SETTINGS
+    # =============================================================================
+
+    chat_rate_limit_per_minute: int = Field(
+        default=60,
+        description="Maximum chat completions allowed per user per minute.",
+        alias="CHAT_RATE_LIMIT_PER_MINUTE",
+    )
+    chat_stream_rate_limit_per_minute: int = Field(
+        default=30,
+        description="Maximum streaming chat sessions started per user per minute.",
+        alias="CHAT_STREAM_RATE_LIMIT_PER_MINUTE",
+    )
+    chat_stream_concurrent_limit: int = Field(
+        default=5,
+        description="Simultaneous streaming chat sessions allowed per user.",
+        alias="CHAT_STREAM_CONCURRENT_LIMIT",
+    )
+    billing_stream_rate_limit_per_minute: int = Field(
+        default=20,
+        description="Maximum billing stream subscriptions allowed per tenant per minute.",
+        alias="BILLING_STREAM_RATE_LIMIT_PER_MINUTE",
+    )
+    billing_stream_concurrent_limit: int = Field(
+        default=3,
+        description="Simultaneous billing stream connections allowed per tenant.",
+        alias="BILLING_STREAM_CONCURRENT_LIMIT",
+    )
+    rate_limit_key_prefix: str = Field(
+        default="rate-limit",
+        description="Redis key namespace used by the rate limiter service.",
+        alias="RATE_LIMIT_KEY_PREFIX",
     )
     
     # =============================================================================
@@ -112,7 +161,7 @@ class Settings(BaseSettings):
         description="Key storage backend (file or secret-manager).",
     )
     auth_key_storage_path: str = Field(
-        default="var/keys/keyset.json",
+        default=DEFAULT_KEY_STORAGE_PATH,
         description="Filesystem path for keyset JSON when using file backend.",
     )
     auth_key_secret_name: str | None = Field(
@@ -135,12 +184,12 @@ class Settings(BaseSettings):
         alias="AUTH_JWKS_ETAG_SALT",
     )
     auth_refresh_token_pepper: str = Field(
-        default="local-dev-refresh-pepper",
+        default=DEFAULT_REFRESH_TOKEN_PEPPER,
         description="Server-side pepper prepended when hashing refresh tokens.",
         alias="AUTH_REFRESH_TOKEN_PEPPER",
     )
     auth_password_pepper: str = Field(
-        default="local-dev-password-pepper",
+        default=DEFAULT_PASSWORD_PEPPER,
         description="Pepper prepended to human passwords prior to hashing.",
         alias="AUTH_PASSWORD_PEPPER",
     )
@@ -253,6 +302,16 @@ class Settings(BaseSettings):
         description="Enable real-time billing event streaming endpoints",
         alias="ENABLE_BILLING_STREAM",
     )
+    enable_billing_retry_worker: bool = Field(
+        default=True,
+        description="Run the Stripe dispatch retry worker inside this process",
+        alias="ENABLE_BILLING_RETRY_WORKER",
+    )
+    enable_billing_stream_replay: bool = Field(
+        default=True,
+        description="Replay processed Stripe events into Redis billing streams during startup",
+        alias="ENABLE_BILLING_STREAM_REPLAY",
+    )
     auto_run_migrations: bool = Field(
         default=False,
         description="Automatically run Alembic migrations on startup (dev convenience)",
@@ -352,6 +411,44 @@ class Settings(BaseSettings):
         suffix = cleaned[-4:]
         middle_length = max(len(cleaned) - len(prefix) - len(suffix), 3)
         return f"{prefix}{'*' * middle_length}{suffix}"
+
+    # =============================================================================
+    # SECRET VALIDATION HELPERS
+    # =============================================================================
+
+    def secret_warnings(self) -> list[str]:
+        warnings: list[str] = []
+        if self._is_placeholder_secret(
+            self.secret_key,
+            {DEFAULT_SECRET_KEY, PLACEHOLDER_SECRET_KEY},
+        ):
+            warnings.append("SECRET_KEY is using the starter value")
+        if self._is_placeholder_secret(
+            self.auth_password_pepper,
+            {DEFAULT_PASSWORD_PEPPER, PLACEHOLDER_PASSWORD_PEPPER},
+        ):
+            warnings.append("AUTH_PASSWORD_PEPPER is using the starter value")
+        if self._is_placeholder_secret(
+            self.auth_refresh_token_pepper,
+            {DEFAULT_REFRESH_TOKEN_PEPPER, PLACEHOLDER_REFRESH_TOKEN_PEPPER},
+        ):
+            warnings.append("AUTH_REFRESH_TOKEN_PEPPER is using the starter value")
+        if self.auth_key_storage_backend == "file" and self.auth_key_storage_path == DEFAULT_KEY_STORAGE_PATH:
+            warnings.append("AUTH_KEY_STORAGE_PATH still points to var/keys/keyset.json")
+        return warnings
+
+    @staticmethod
+    def _is_placeholder_secret(value: str | None, placeholders: set[str]) -> bool:
+        if value is None:
+            return True
+        normalized = value.strip()
+        if not normalized:
+            return True
+        return normalized in placeholders
+
+    def should_enforce_secret_overrides(self) -> bool:
+        env = (self.environment or "").lower()
+        return not self.debug and env not in _SAFE_ENVIRONMENTS
     
     # =============================================================================
     # CONFIGURATION
@@ -473,3 +570,19 @@ def get_settings() -> Settings:
         Settings: Application settings instance
     """
     return Settings() 
+
+
+def enforce_secret_overrides(settings: Settings, *, force: bool = False) -> None:
+    """
+    Ensure production environments do not run with placeholder secrets.
+    """
+
+    issues = settings.secret_warnings()
+    if not issues:
+        return
+    if force or settings.should_enforce_secret_overrides():
+        formatted = "; ".join(issues)
+        raise RuntimeError(
+            "Production environment cannot start with default secrets. "
+            f"Fix the following: {formatted}"
+        )

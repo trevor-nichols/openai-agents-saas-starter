@@ -16,6 +16,7 @@ from app.api.dependencies.tenant import (
     get_tenant_context,
     require_tenant_role,
 )
+from app.api.dependencies import raise_rate_limit_http_error
 from app.api.models.common import SuccessResponse
 from app.api.v1.billing.schemas import (
     BillingPlanResponse,
@@ -35,6 +36,13 @@ from app.services.billing_service import (
 )
 from app.services.billing_events import get_billing_events_service
 from app.core.config import get_settings
+from app.services.rate_limit_service import (
+    ConcurrencyQuota,
+    RateLimitExceeded,
+    RateLimitLease,
+    RateLimitQuota,
+    rate_limiter,
+)
 
 router = APIRouter(prefix="/billing", tags=["billing"])
 
@@ -223,28 +231,70 @@ async def billing_event_stream(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Billing stream is disabled.")
 
     service = get_billing_events_service()
+    await _enforce_tenant_quota(
+        quota=RateLimitQuota(
+            name="billing_stream_per_minute",
+            limit=settings.billing_stream_rate_limit_per_minute,
+            window_seconds=60,
+            scope="tenant",
+        ),
+        context=context,
+    )
+    stream_lease = await _acquire_tenant_stream_slot(
+        quota=ConcurrencyQuota(
+            name="billing_stream_concurrency",
+            limit=settings.billing_stream_concurrent_limit,
+            ttl_seconds=300,
+            scope="tenant",
+        ),
+        context=context,
+    )
 
     async def event_generator() -> AsyncIterator[str]:  # type: ignore[name-defined]
-        subscription = await service.subscribe(context.tenant_id)
-        keepalive_interval = 15.0
-        try:
-            while True:
-                try:
-                    message = await asyncio.wait_for(subscription.next_message(timeout=keepalive_interval), timeout=keepalive_interval + 1)
-                except asyncio.TimeoutError:
+        async with stream_lease:
+            subscription = await service.subscribe(context.tenant_id)
+            keepalive_interval = 15.0
+            try:
+                while True:
+                    try:
+                        message = await asyncio.wait_for(subscription.next_message(timeout=keepalive_interval), timeout=keepalive_interval + 1)
+                    except asyncio.TimeoutError:
+                        if await request.is_disconnected():
+                            break
+                        yield ": ping\n\n"
+                        continue
+                    if message is None:
+                        if await request.is_disconnected():
+                            break
+                        yield ": ping\n\n"
+                        continue
                     if await request.is_disconnected():
                         break
-                    yield ": ping\n\n"
-                    continue
-                if message is None:
-                    if await request.is_disconnected():
-                        break
-                    yield ": ping\n\n"
-                    continue
-                if await request.is_disconnected():
-                    break
-                yield f"data: {message}\n\n"
-        finally:
-            await subscription.close()
+                    yield f"data: {message}\n\n"
+            finally:
+                await subscription.close()
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+async def _enforce_tenant_quota(quota: RateLimitQuota, context: TenantContext) -> None:
+    if quota.limit <= 0:
+        return
+    tenant_id = context.tenant_id
+    try:
+        await rate_limiter.enforce(quota, [tenant_id])
+    except RateLimitExceeded as exc:
+        raise_rate_limit_http_error(exc, tenant_id=tenant_id, user_id=context.user.get("user_id"))
+
+
+async def _acquire_tenant_stream_slot(
+    quota: ConcurrencyQuota,
+    context: TenantContext,
+) -> RateLimitLease:
+    if quota.limit <= 0:
+        return RateLimitLease(None, None)
+    tenant_id = context.tenant_id
+    try:
+        return await rate_limiter.acquire_concurrency(quota, [tenant_id])
+    except RateLimitExceeded as exc:
+        raise_rate_limit_http_error(exc, tenant_id=tenant_id, user_id=context.user.get("user_id"))

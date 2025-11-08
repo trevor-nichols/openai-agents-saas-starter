@@ -1,16 +1,15 @@
 import type { NextRequest } from 'next/server';
 
 import { API_BASE_URL } from '@/lib/config';
-import { getAccessTokenFromCookies, getSessionMetaFromCookies } from '@/lib/auth/cookies';
+import { getAccessTokenFromCookies } from '@/lib/auth/cookies';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const accessToken = getAccessTokenFromCookies();
-  const session = getSessionMetaFromCookies();
 
-  if (!accessToken || !session?.tenantId) {
+  if (!accessToken) {
     return new Response('Unauthorized', { status: 401 });
   }
 
@@ -23,8 +22,9 @@ export async function GET(request: NextRequest) {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        'X-Tenant-Id': session.tenantId,
-        'X-Tenant-Role': request.headers.get('x-tenant-role') ?? 'owner',
+        ...(request.headers.has('x-tenant-role')
+          ? { 'X-Tenant-Role': request.headers.get('x-tenant-role') ?? undefined }
+          : {}),
       },
       cache: 'no-store',
       signal: abortController.signal,

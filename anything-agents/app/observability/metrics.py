@@ -166,6 +166,13 @@ STRIPE_BILLING_STREAM_BACKLOG_SECONDS = Gauge(
     registry=REGISTRY,
 )
 
+RATE_LIMIT_HITS_TOTAL = Counter(
+    "rate_limit_hits_total",
+    "Count of API rate-limit rejections segmented by quota and scope.",
+    ("quota", "scope"),
+    registry=REGISTRY,
+)
+
 
 def observe_jwt_signing(*, result: str, token_use: str | None, duration_seconds: float) -> None:
     label = _sanitize_token_use(token_use)
@@ -208,6 +215,10 @@ def observe_service_account_issuance(
         reason=reason,
         reused=reused_label,
     ).observe(max(duration_seconds, 0.0))
+
+
+def record_rate_limit_hit(*, quota: str, scope: str) -> None:
+    RATE_LIMIT_HITS_TOTAL.labels(quota=quota, scope=(scope or "unknown")).inc()
 
 
 def record_nonce_cache_result(*, hit: bool) -> None:
