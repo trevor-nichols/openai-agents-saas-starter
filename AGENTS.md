@@ -29,7 +29,6 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 # Codebase Patterns
 openai-agents-starter/
 ├── pyproject.toml
-├── run.py
 ├── agent-next-15-frontend/
 │   ├── app/
 │   │   ├── (agent)/
@@ -46,30 +45,49 @@ openai-agents-starter/
 │   │   └── useConversations.ts
 │   ├── lib/
 │   │   └── api/
-│   │       ├── client/… (generated)
+│   │       ├── client/… (generated HeyAPI SDK)
 │   │       ├── config.ts
 │   │       └── streaming.ts
 │   ├── types/
 │   │   └── generated/… (OpenAPI types)
 │   └── config + tooling files (package.json, tailwind.config.ts, etc.)
 ├── anything-agents/
+│   ├── alembic/ (database migrations)
 │   ├── app/
-│   │   ├── core/ (config, security)
-│   │   ├── middleware/ (logging)
-│   │   ├── routers/ (agents, api, auth, health)
-│   │   ├── schemas/ (agents, auth, common)
-│   │   ├── services/ (agent_service.py)
+│   │   ├── api/ (FastAPI layer - versioned routes, dependencies, models)
+│   │   │   ├── dependencies/ (auth, tenant, common)
+│   │   │   ├── models/ (Pydantic request/response schemas)
+│   │   │   └── v1/ (agents, auth, billing, chat, conversations, tools)
+│   │   ├── cli/ (command-line tools for auth management)
+│   │   ├── core/ (config, security, keys, service accounts)
+│   │   ├── domain/ (business models, repository protocols)
+│   │   │   ├── auth.py, billing.py, conversations.py, users.py
+│   │   ├── infrastructure/ (external integrations)
+│   │   │   ├── db/ (SQLAlchemy engine, sessions)
+│   │   │   ├── openai/ (Agents SDK wrappers)
+│   │   │   ├── persistence/ (repository implementations)
+│   │   │   │   ├── auth/, billing/, conversations/, stripe/
+│   │   │   ├── security/ (nonce store, Vault clients)
+│   │   │   └── stripe/ (Stripe API client)
+│   │   ├── middleware/ (logging with correlation IDs)
+│   │   ├── observability/ (structured logging, Prometheus metrics)
+│   │   ├── presentation/ (health checks, webhooks, well-known endpoints)
+│   │   ├── services/ (orchestration layer)
+│   │   │   ├── agent_service.py, auth_service.py
+│   │   │   ├── billing_service.py, billing_events.py
+│   │   │   ├── conversation_service.py, user_service.py
+│   │   │   ├── payment_gateway.py, stripe_dispatcher.py, stripe_retry_worker.py
 │   │   └── utils/
-│   │       └── tools/ (registry.py, web_search.py)
-│   ├── main.py
-│   ├── README.md
-│   └── tests/
-│       ├── test_agents.py
-│       ├── test_health.py
-│       ├── test_streaming.py
-│       └── test_tools.py
+│   │       └── tools/ (agent tool registry and definitions)
+│   ├── main.py (FastAPI application entry point)
+│   ├── tests/
+│   │   ├── contract/ (API endpoint contract tests)
+│   │   ├── integration/ (tests with real database/Redis)
+│   │   ├── unit/ (fast tests with mocks)
+│   │   ├── fixtures/ (test data: keysets, Stripe events)
+│   │   └── utils/ (test helpers)
+│   └── var/keys/ (Ed25519 signing keys)
 └── docs/
-    └── openai-agents-sdk/
-        ├── agents/… (SDK docs)
-        ├── examples/… (usage patterns)
-        └── tracing/, memory/, handoffs/, etc.
+    ├── openai-agents-sdk/ (SDK reference documentation)
+    │   ├── agents/, examples/, tracing/, memory/, handoffs/, etc.
+    └── trackers/ (development status tracking)
