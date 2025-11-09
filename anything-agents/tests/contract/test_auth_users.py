@@ -10,6 +10,7 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
+from app.core.config import get_settings
 from app.core.security import get_token_signer
 from app.services.auth_service import (
     UserAuthenticationError,
@@ -55,11 +56,14 @@ def fake_auth_service(monkeypatch: pytest.MonkeyPatch):
 def _mint_user_token(*, token_use: str) -> tuple[str, str]:
     signer = get_token_signer()
     now = datetime.now(UTC)
+    settings = get_settings()
     subject = f"user:{uuid4()}"
     payload = {
         "sub": subject,
         "scope": "conversations:read",
         "token_use": token_use,
+        "iss": settings.app_name,
+        "aud": settings.auth_audience,
         "iat": int(now.timestamp()),
         "nbf": int(now.timestamp()),
         "exp": int((now + timedelta(minutes=15)).timestamp()),
