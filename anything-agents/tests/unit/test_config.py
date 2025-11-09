@@ -138,3 +138,49 @@ def test_signup_rate_limit_requires_positive_values() -> None:
 
     with pytest.raises(ValueError):
         Settings(signup_rate_limit_per_hour=-5)
+
+
+def test_allowed_hosts_default_includes_local_and_test_hosts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Baseline trusted hosts cover localhost and FastAPI test clients."""
+
+    monkeypatch.delenv("ALLOWED_HOSTS", raising=False)
+
+    settings = Settings()
+
+    hosts = settings.get_allowed_hosts_list()
+
+    assert {"localhost", "localhost:8000", "127.0.0.1"}.issubset(set(hosts))
+    assert "testserver" in hosts
+    assert "testclient" in hosts
+
+
+def test_allowed_hosts_env_override_respects_production_values(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Explicit ALLOWED_HOSTS override is honored without adding test-only hosts."""
+
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("ALLOWED_HOSTS", "api.example.com,docs.example.com")
+
+    settings = Settings()
+
+    hosts = settings.get_allowed_hosts_list()
+
+    assert hosts == ["api.example.com", "docs.example.com"]
+
+
+def test_allowed_origins_default_matches_frontend_pair(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The default CORS list aligns with local frontend + API ports."""
+
+    monkeypatch.delenv("ALLOWED_ORIGINS", raising=False)
+
+    settings = Settings()
+
+    assert settings.get_allowed_origins_list() == [
+        "http://localhost:3000",
+        "http://localhost:8000",
+    ]

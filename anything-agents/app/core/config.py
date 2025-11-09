@@ -150,11 +150,17 @@ class Settings(BaseSettings):
     )
 
     # =============================================================================
-    # CORS SETTINGS (simplified to avoid parsing issues)
+    # NETWORK SECURITY SETTINGS
     # =============================================================================
 
+    allowed_hosts: str = Field(
+        default="localhost,localhost:8000,127.0.0.1,testserver,testclient",
+        description=(
+            "Trusted hosts for FastAPI TrustedHostMiddleware (comma-separated host[:port] entries)."
+        ),
+    )
     allowed_origins: str = Field(
-        default="http://localhost:8000,http://localhost:8080",
+        default="http://localhost:3000,http://localhost:8000",
         description="CORS allowed origins (comma-separated)",
     )
     allowed_methods: str = Field(
@@ -474,6 +480,25 @@ class Settings(BaseSettings):
         """Return preferred JWKS max-age in seconds."""
 
         return self.auth_jwks_max_age_seconds or self.auth_jwks_cache_seconds
+
+    def get_allowed_hosts_list(self) -> list[str]:
+        """Return trusted hosts parsed from the comma-separated settings string."""
+
+        normalized_hosts: list[str] = []
+        for host in self.allowed_hosts.split(","):
+            candidate = host.strip()
+            if candidate and candidate not in normalized_hosts:
+                normalized_hosts.append(candidate)
+
+        if self.debug or self.environment.lower() in _SAFE_ENVIRONMENTS:
+            for safe_host in ("testserver", "testclient"):
+                if safe_host not in normalized_hosts:
+                    normalized_hosts.append(safe_host)
+
+        if not normalized_hosts:
+            normalized_hosts = ["localhost"]
+
+        return normalized_hosts
 
     def get_allowed_origins_list(self) -> list[str]:
         """Get allowed origins as a list."""

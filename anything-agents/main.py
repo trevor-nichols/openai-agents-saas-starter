@@ -196,17 +196,10 @@ def create_application() -> FastAPI:
     # MIDDLEWARE CONFIGURATION
     # =============================================================================
 
-    # Trusted hosts middleware (allow common hosts for development)
+    # Trusted hosts middleware (allow env-configured hosts, widen during debug)
     app.add_middleware(
         TrustedHostMiddleware,
-        allowed_hosts=["*"]
-        if settings.debug
-        else [
-            "localhost",
-            "127.0.0.1",
-            "testserver",  # For FastAPI TestClient
-            "testclient",  # Additional TestClient host
-        ],
+        allowed_hosts=["*"] if settings.debug else settings.get_allowed_hosts_list(),
     )
 
     # CORS middleware
