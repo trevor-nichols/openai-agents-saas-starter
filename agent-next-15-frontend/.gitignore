@@ -40,5 +40,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# generated code
-/lib/api/client/
+# generated code (opt-in)
+# Previously ignored to keep local SDKs only; we now track the Hey API client
