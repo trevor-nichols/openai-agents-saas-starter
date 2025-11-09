@@ -337,7 +337,19 @@ class PostgresUserRepository(UserRepository):
             updated_at=user.updated_at,
             display_name=display_name,
             memberships=memberships,
+            email_verified_at=user.email_verified_at,
         )
+
+    async def mark_email_verified(self, user_id: uuid.UUID, *, timestamp: datetime) -> None:
+        async with self._session_factory() as session:
+            user = await session.get(UserAccount, user_id)
+            if not user:
+                return
+            user.email_verified_at = timestamp
+            if user.status == UserStatus.PENDING:
+                user.status = UserStatus.ACTIVE  # type: ignore[assignment]
+            user.updated_at = timestamp
+            await session.commit()
 
 
 def build_lockout_store(settings: Settings) -> LockoutStore:

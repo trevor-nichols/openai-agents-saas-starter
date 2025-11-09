@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.api.dependencies.auth import CurrentUser, require_scopes
+from app.api.dependencies.auth import CurrentUser, require_verified_scopes
 from app.api.v1.agents.schemas import AgentStatus, AgentSummary
 from app.services.agent_service import agent_service
 
@@ -11,7 +11,7 @@ router = APIRouter(prefix="/agents", tags=["agents"])
 
 @router.get("", response_model=list[AgentSummary])
 async def list_available_agents(
-    _current_user: CurrentUser = Depends(require_scopes("tools:read")),
+    _current_user: CurrentUser = Depends(require_verified_scopes("tools:read")),
 ) -> list[AgentSummary]:
     """Return all agents registered with the platform."""
 
@@ -21,7 +21,7 @@ async def list_available_agents(
 @router.get("/{agent_name}/status", response_model=AgentStatus)
 async def get_agent_status(
     agent_name: str,
-    _current_user: CurrentUser = Depends(require_scopes("tools:read")),
+    _current_user: CurrentUser = Depends(require_verified_scopes("tools:read")),
 ) -> AgentStatus:
     """Return health/status details for a specific agent."""
 

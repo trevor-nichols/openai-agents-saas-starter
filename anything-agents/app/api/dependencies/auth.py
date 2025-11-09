@@ -7,6 +7,7 @@ from typing import Any
 
 from fastapi import Depends, HTTPException, status
 
+from app.core.config import get_settings
 from app.core.security import get_current_user
 
 CurrentUser = dict[str, Any]
@@ -102,3 +103,39 @@ def require_scopes(*scopes: str, match: str = "all"):
         return user
 
     return _dependency
+
+
+def require_verified_user():
+    def _dependency(user: CurrentUser = Depends(require_current_user)) -> CurrentUser:
+        return _ensure_verified(user)
+
+    return _dependency
+
+
+def require_verified_scopes(*scopes: str, match: str = "all"):
+    scope_dependency = require_scopes(*scopes, match=match)
+
+    def _dependency(user: CurrentUser = Depends(scope_dependency)) -> CurrentUser:
+        return _ensure_verified(user)
+
+    return _dependency
+
+
+def _ensure_verified(user: CurrentUser) -> CurrentUser:
+    settings = get_settings()
+    if not settings.require_email_verification:
+        return user
+    payload = user.get("payload") if isinstance(user, dict) else None
+    payload_dict = payload or {}
+    # Legacy access tokens minted before the email_verified claim existed will not contain
+    # the key at all. Allow them to pass through; access tokens are short-lived, so the
+    # grace period expires automatically as soon as the caller refreshes.
+    if "email_verified" not in payload_dict:
+        return user
+    is_verified = bool(user.get("email_verified")) or bool(payload_dict.get("email_verified"))
+    if not is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email verification required.",
+        )
+    return user

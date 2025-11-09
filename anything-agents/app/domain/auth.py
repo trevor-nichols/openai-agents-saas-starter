@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
+from uuid import UUID
 
 from passlib.context import CryptContext
 
@@ -29,6 +30,7 @@ class RefreshTokenRecord:
     issued_at: datetime
     fingerprint: str | None = None
     signing_kid: str | None = None
+    session_id: UUID | None = None
 
     @property
     def scope_key(self) -> str:
@@ -49,6 +51,113 @@ class RefreshTokenRepository(Protocol):
     async def revoke(self, jti: str, *, reason: str | None = None) -> None: ...
 
     async def revoke_account(self, account: str, *, reason: str | None = None) -> int: ...
+
+
+@dataclass(slots=True, frozen=True)
+class SessionLocation:
+    """Approximate geolocation data for a user session."""
+
+    city: str | None = None
+    region: str | None = None
+    country: str | None = None
+
+
+@dataclass(slots=True, frozen=True)
+class SessionClientDetails:
+    """Parsed metadata extracted from the user-agent string."""
+
+    platform: str | None = None
+    browser: str | None = None
+    device: str | None = None
+
+
+@dataclass(slots=True)
+class UserSessionTokens:
+    """Value object containing freshly minted access/refresh tokens."""
+
+    access_token: str
+    refresh_token: str
+    expires_at: datetime
+    refresh_expires_at: datetime
+    kid: str
+    refresh_kid: str
+    scopes: list[str]
+    tenant_id: str
+    user_id: str
+    email_verified: bool
+    session_id: str
+    token_type: str = "bearer"
+
+
+@dataclass(slots=True, frozen=True)
+class UserSession:
+    """Persisted session/device metadata for a user."""
+
+    id: UUID
+    user_id: UUID
+    tenant_id: UUID
+    refresh_jti: str
+    fingerprint: str | None
+    ip_hash: str | None
+    ip_masked: str | None
+    user_agent: str | None
+    client: SessionClientDetails
+    location: SessionLocation | None
+    created_at: datetime
+    updated_at: datetime
+    last_seen_at: datetime | None
+    revoked_at: datetime | None
+
+
+@dataclass(slots=True, frozen=True)
+class UserSessionListResult:
+    """Paginated session query result."""
+
+    sessions: list[UserSession]
+    total: int
+
+
+class UserSessionRepository(Protocol):
+    """Storage contract for device/session metadata."""
+
+    async def upsert_session(
+        self,
+        *,
+        session_id: UUID,
+        user_id: UUID,
+        tenant_id: UUID,
+        refresh_jti: str,
+        fingerprint: str | None,
+        ip_address: str | None,
+        user_agent: str | None,
+        client: SessionClientDetails,
+        location: SessionLocation | None,
+        occurred_at: datetime,
+    ) -> UserSession: ...
+
+    async def list_sessions(
+        self,
+        *,
+        user_id: UUID,
+        tenant_id: UUID | None = None,
+        include_revoked: bool = False,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> UserSessionListResult: ...
+
+    async def get_session(self, *, session_id: UUID, user_id: UUID) -> UserSession | None: ...
+
+    async def mark_session_revoked(
+        self, *, session_id: UUID, reason: str | None = None
+    ) -> bool: ...
+
+    async def mark_session_revoked_by_jti(
+        self, *, refresh_jti: str, reason: str | None = None
+    ) -> bool: ...
+
+    async def revoke_all_for_user(
+        self, *, user_id: UUID, reason: str | None = None
+    ) -> int: ...
 
 
 _REFRESH_TOKEN_CONTEXT = CryptContext(schemes=["bcrypt"], deprecated="auto")

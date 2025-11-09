@@ -80,6 +80,46 @@ class UserRefreshRequest(BaseModel):
     refresh_token: str = Field(min_length=16, description="Previously issued refresh token.")
 
 
+class PasswordForgotRequest(BaseModel):
+    """Initiate a password reset email."""
+
+    email: EmailStr = Field(description="Email address associated with the account.")
+
+
+class PasswordResetConfirmRequest(BaseModel):
+    """Redeem a password reset token to set a new password."""
+
+    token: str = Field(min_length=32, description="Password reset token from email.")
+    new_password: str = Field(
+        min_length=14,
+        description="Replacement password that satisfies platform policy.",
+    )
+
+    @field_validator("new_password")
+    @classmethod
+    def _validate_new_password(cls, value: str):
+        try:
+            validate_password_strength(value)
+        except PasswordPolicyError as exc:
+            raise ValueError(str(exc)) from exc
+        return value
+
+
+class UserLogoutRequest(BaseModel):
+    """Payload for revoking a single refresh token."""
+
+    refresh_token: str = Field(
+        min_length=16,
+        description="Refresh token to revoke for the current user.",
+    )
+
+
+class EmailVerificationConfirmRequest(BaseModel):
+    """Payload for confirming the email verification token."""
+
+    token: str = Field(min_length=32, description="Verification token delivered via email.")
+
+
 class PasswordChangeRequest(BaseModel):
     """Self-service password change payload."""
 
@@ -121,6 +161,8 @@ class UserSessionResponse(BaseModel):
     scopes: list[str] = Field(description="Scopes granted to the session.")
     tenant_id: str = Field(description="Tenant identifier tied to the session.")
     user_id: str = Field(description="Authenticated user identifier.")
+    email_verified: bool = Field(description="Whether the user's email has been verified.")
+    session_id: UUID = Field(description="Stable identifier for the refresh session/device.")
 
 
 class UserRegisterResponse(UserSessionResponse):
@@ -158,7 +200,7 @@ class ServiceAccountTokenResponse(BaseModel):
     refresh_token: str = Field(description="Minted refresh token for the service account.")
     expires_at: str = Field(description="ISO-8601 expiration timestamp.")
     issued_at: str = Field(description="ISO-8601 issuance timestamp.")
-    scopes: list[str] = Field(description="Authorized scopes.")
+    scopes: list[str] = Field(description="Authorized scopes attached to the token.")
     tenant_id: str | None = Field(
         default=None,
         description="Tenant UUID if the account is tenant-scoped.",
@@ -166,3 +208,67 @@ class ServiceAccountTokenResponse(BaseModel):
     kid: str = Field(description="Key identifier used to sign the token.")
     account: str = Field(description="Service-account identifier.")
     token_use: str = Field(description="Token classification (refresh, access, etc.).")
+    session_id: str | None = Field(
+        default=None,
+        description="Optional session identifier when linked to a human session.",
+    )
+
+
+class SessionClientInfo(BaseModel):
+    """Details about the client/browser reported for a session."""
+
+    platform: str | None = Field(
+        default=None,
+        description="Operating system/platform hint derived from the user-agent.",
+    )
+    browser: str | None = Field(
+        default=None,
+        description="Browser family detected from the user-agent.",
+    )
+    device: str | None = Field(
+        default=None,
+        description="Device class (desktop, mobile, tablet, bot).",
+    )
+    user_agent: str | None = Field(
+        default=None,
+        description="Raw user-agent string captured during login/refresh.",
+    )
+
+
+class SessionLocationInfo(BaseModel):
+    """Approximate geolocation information for a session."""
+
+    city: str | None = Field(default=None, description="City derived from GeoIP (if available).")
+    region: str | None = Field(default=None, description="Region/subdivision derived from GeoIP.")
+    country: str | None = Field(default=None, description="Country code derived from GeoIP.")
+
+
+class UserSessionItem(BaseModel):
+    """Single session/device entry for session management UI."""
+
+    id: UUID = Field(description="Session identifier.")
+    tenant_id: UUID = Field(description="Tenant associated with the session.")
+    created_at: datetime = Field(description="Timestamp when the session was first created.")
+    last_seen_at: datetime | None = Field(description="Last activity timestamp for the session.")
+    revoked_at: datetime | None = Field(description="When the session was revoked (if applicable).")
+    ip_address_masked: str | None = Field(
+        default=None, description="Masked IP address for user-facing audits."
+    )
+    fingerprint: str | None = Field(
+        default=None,
+        description="Server-generated fingerprint for the IP + user-agent combo.",
+    )
+    client: SessionClientInfo = Field(description="Client/browser metadata.")
+    location: SessionLocationInfo | None = Field(
+        default=None, description="Approximate location for the session."
+    )
+    current: bool = Field(description="True when this session matches the caller's token context.")
+
+
+class UserSessionListResponse(BaseModel):
+    """Paginated list of user sessions/devices."""
+
+    sessions: list[UserSessionItem] = Field(description="Session records for the user.")
+    total: int = Field(description="Total number of sessions matching the filter.")
+    limit: int = Field(description="Maximum sessions returned in this response.")
+    offset: int = Field(description="Offset applied when querying sessions.")

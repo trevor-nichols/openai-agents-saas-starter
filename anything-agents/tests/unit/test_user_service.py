@@ -363,3 +363,27 @@ async def test_admin_reset_password_validates_membership(
             tenant_id=other_tenant,
             new_password="DoesNotMatter!!44",
         )
+
+
+@pytest.mark.asyncio
+async def test_reset_password_via_token_updates_credentials(
+    user_service: UserService,
+    tenant_id,
+) -> None:
+    await _register_user(user_service, tenant_id, "token@example.com", STRONG_PASSWORD)
+    user = await user_service._repository.get_user_by_email("token@example.com")
+    assert user is not None
+
+    await user_service.reset_password_via_token(
+        user_id=user.id,
+        new_password="ResetToken##4455",
+    )
+
+    auth_user = await user_service.authenticate(
+        email="token@example.com",
+        password="ResetToken##4455",
+        tenant_id=tenant_id,
+        ip_address=None,
+        user_agent=None,
+    )
+    assert auth_user.user_id == user.id

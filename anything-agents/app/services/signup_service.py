@@ -33,6 +33,7 @@ from app.services.billing_service import (
     PaymentProviderError,
     billing_service,
 )
+from app.services.email_verification_service import get_email_verification_service
 
 SlugGenerator = Callable[[str], str]
 
@@ -127,6 +128,12 @@ class SignupService:
             user_agent=user_agent,
         )
 
+        await self._trigger_email_verification(
+            user_id=user_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+
         log_event(
             "signup.completed",
             result="success",
@@ -141,6 +148,29 @@ class SignupService:
             user_id=user_id,
             session=tokens,
         )
+
+    async def _trigger_email_verification(
+        self,
+        *,
+        user_id: str,
+        ip_address: str | None,
+        user_agent: str | None,
+    ) -> None:
+        try:
+            service = get_email_verification_service()
+            await service.send_verification_email(
+                user_id=user_id,
+                email=None,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+        except Exception as exc:  # pragma: no cover - best effort
+            log_event(
+                "signup.email_verification",
+                result="error",
+                user_id=user_id,
+                reason=str(exc),
+            )
 
     async def _ensure_unique_slug(self, base_slug: str) -> str:
         candidate = base_slug

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 
 from app.api.dependencies import raise_rate_limit_http_error
-from app.api.dependencies.auth import CurrentUser, require_scopes
+from app.api.dependencies.auth import CurrentUser, require_verified_scopes
 from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse, StreamingChatResponse
 from app.core.config import get_settings
 from app.services.agent_service import agent_service
@@ -26,7 +26,7 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 @router.post("", response_model=AgentChatResponse)
 async def chat_with_agent(
     request: AgentChatRequest,
-    current_user: CurrentUser = Depends(require_scopes("conversations:write")),
+    current_user: CurrentUser = Depends(require_verified_scopes("conversations:write")),
 ) -> AgentChatResponse:
     """Send a message to the agent framework and receive a full response."""
 
@@ -53,7 +53,7 @@ async def chat_with_agent(
 @router.post("/stream")
 async def stream_chat_with_agent(
     request: AgentChatRequest,
-    current_user: CurrentUser = Depends(require_scopes("conversations:write")),
+    current_user: CurrentUser = Depends(require_verified_scopes("conversations:write")),
 ) -> StreamingResponse:
     """Provide an SSE stream for real-time agent responses."""
 

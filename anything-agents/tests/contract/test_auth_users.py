@@ -5,18 +5,27 @@ from __future__ import annotations
 from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.core.config import get_settings
 from app.core.security import get_token_signer
+from app.domain.auth import (
+    SessionClientDetails,
+    SessionLocation,
+    UserSession,
+    UserSessionListResult,
+)
 from app.services.auth_service import (
     UserAuthenticationError,
+    UserLogoutError,
     UserRefreshError,
     UserSessionTokens,
 )
+from app.services.email_verification_service import InvalidEmailVerificationTokenError
+from app.services.password_recovery_service import InvalidPasswordResetTokenError
 from app.services.user_service import (
     InvalidCredentialsError,
     MembershipNotFoundError,
@@ -43,6 +52,8 @@ def _make_session_tokens() -> UserSessionTokens:
         scopes=["conversations:read"],
         tenant_id=str(uuid4()),
         user_id=str(uuid4()),
+        email_verified=True,
+        session_id=str(uuid4()),
     )
 
 
@@ -50,8 +61,43 @@ def _make_session_tokens() -> UserSessionTokens:
 def fake_auth_service(monkeypatch: pytest.MonkeyPatch):
     mock_service = AsyncMock()
     mock_service.revoke_user_sessions = AsyncMock(return_value=0)
-    monkeypatch.setattr("app.api.v1.auth.router.auth_service", mock_service)
+    mock_service.logout_user_session = AsyncMock(return_value=True)
+    mock_service.list_user_sessions = AsyncMock()
+    mock_service.revoke_user_session_by_id = AsyncMock(return_value=True)
+    monkeypatch.setattr("app.api.v1.auth.routes_sessions.auth_service", mock_service)
+    monkeypatch.setattr("app.api.v1.auth.routes_passwords.auth_service", mock_service)
     return mock_service
+
+
+@pytest.fixture
+def fake_password_recovery_service(monkeypatch: pytest.MonkeyPatch):
+    service = AsyncMock()
+    service.request_password_reset = AsyncMock()
+    service.confirm_password_reset = AsyncMock()
+
+    def _get_service():
+        return service
+
+    monkeypatch.setattr(
+        "app.api.v1.auth.routes_passwords.get_password_recovery_service", _get_service
+    )
+    return service
+
+
+@pytest.fixture
+def fake_email_verification_service(monkeypatch: pytest.MonkeyPatch):
+    service = AsyncMock()
+    service.send_verification_email = AsyncMock(return_value=True)
+    service.verify_token = AsyncMock()
+
+    def _get_service():
+        return service
+
+    monkeypatch.setattr(
+        "app.api.v1.auth.routes_email.get_email_verification_service",
+        _get_service,
+    )
+    return service
 
 
 @pytest.fixture
@@ -63,12 +109,17 @@ def fake_user_service(monkeypatch: pytest.MonkeyPatch):
     def _get_service():
         return stub
 
-    monkeypatch.setattr("app.api.v1.auth.router.get_user_service", _get_service)
+    monkeypatch.setattr("app.api.v1.auth.routes_passwords.get_user_service", _get_service)
     return stub
 
 
 def _mint_user_token(
-    *, token_use: str, scope: str = "conversations:read", tenant_id: str | None = None
+    *,
+    token_use: str,
+    scope: str = "conversations:read",
+    tenant_id: str | None = None,
+    email_verified: bool = True,
+    session_id: UUID | None = None,
 ) -> tuple[str, str]:
     signer = get_token_signer()
     now = datetime.now(UTC)
@@ -83,9 +134,12 @@ def _mint_user_token(
         "iat": int(now.timestamp()),
         "nbf": int(now.timestamp()),
         "exp": int((now + timedelta(minutes=15)).timestamp()),
+        "email_verified": email_verified,
     }
     if tenant_id:
         payload["tenant_id"] = tenant_id
+    if session_id:
+        payload["sid"] = str(session_id)
     token = signer.sign(payload).primary.token
     return token, subject
 
@@ -109,6 +163,7 @@ def test_login_success_includes_client_context(fake_auth_service, client: TestCl
     assert body["refresh_token"] == tokens.refresh_token
     assert body["kid"] == tokens.kid
     assert body["user_id"] == tokens.user_id
+    assert body["session_id"] == tokens.session_id
 
     fake_auth_service.login_user.assert_awaited_once()
     kwargs = fake_auth_service.login_user.await_args.kwargs
@@ -190,6 +245,7 @@ def test_refresh_success_returns_new_tokens(fake_auth_service, client: TestClien
     body = response.json()
     assert body["refresh_token"] == tokens.refresh_token
     assert body["refresh_kid"] == tokens.refresh_kid
+    assert body["session_id"] == tokens.session_id
     fake_auth_service.refresh_user_session.assert_awaited_once()
     args = fake_auth_service.refresh_user_session.await_args.args
     kwargs = fake_auth_service.refresh_user_session.await_args.kwargs
@@ -212,6 +268,212 @@ def test_refresh_revoked_returns_401(fake_auth_service, client: TestClient) -> N
     body = response.json()
     assert body["message"] == "Refresh token has been revoked or expired."
     assert body["error"] == "Refresh token has been revoked or expired."
+
+
+def test_password_forgot_endpoint(fake_password_recovery_service, client: TestClient) -> None:
+    response = client.post(
+        "/api/v1/auth/password/forgot",
+        json={"email": "owner@example.com"},
+        headers={"X-Forwarded-For": "198.51.100.10", "User-Agent": "pytest-agent"},
+    )
+
+    assert response.status_code == 202, response.text
+    fake_password_recovery_service.request_password_reset.assert_awaited_once()
+
+
+def test_password_confirm_endpoint_success(
+    fake_password_recovery_service, client: TestClient
+) -> None:
+    response = client.post(
+        "/api/v1/auth/password/confirm",
+        json={"token": "abc.def", "new_password": "ValidPassword!!12345"},
+    )
+
+    assert response.status_code == 200, response.text
+    fake_password_recovery_service.confirm_password_reset.assert_awaited_once()
+
+
+def test_password_confirm_invalid_token_returns_400(
+    fake_password_recovery_service, client: TestClient
+) -> None:
+    async def _raise_invalid(**_: object) -> None:
+        raise InvalidPasswordResetTokenError("Password reset token is invalid or expired.")
+
+    fake_password_recovery_service.confirm_password_reset.side_effect = _raise_invalid
+
+    response = client.post(
+        "/api/v1/auth/password/confirm",
+        json={"token": "bad.token", "new_password": "ValidPassword!!12345"},
+    )
+
+    assert response.status_code == 400
+    body = response.json()
+    assert body["error"] == "Password reset token is invalid or expired."
+
+
+def test_email_send_endpoint(fake_email_verification_service, client: TestClient) -> None:
+    token, _ = _mint_user_token(token_use="access", email_verified=False)
+    response = client.post(
+        "/api/v1/auth/email/send",
+        headers={"Authorization": f"Bearer {token}", "X-Forwarded-For": "198.51.100.2"},
+    )
+
+    assert response.status_code == 202
+    fake_email_verification_service.send_verification_email.assert_awaited_once()
+
+
+def test_email_send_endpoint_skips_when_verified(client: TestClient) -> None:
+    token, _ = _mint_user_token(token_use="access", email_verified=True)
+    response = client.post(
+        "/api/v1/auth/email/send",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 202
+    assert response.json()["data"]["email_verified"] is True
+
+
+def test_email_verify_endpoint_success(fake_email_verification_service, client: TestClient) -> None:
+    response = client.post(
+        "/api/v1/auth/email/verify",
+        json={"token": "abc.def"},
+    )
+
+    assert response.status_code == 200
+    fake_email_verification_service.verify_token.assert_awaited_once()
+
+
+def test_email_verify_endpoint_invalid_token(
+    fake_email_verification_service, client: TestClient
+) -> None:
+    async def _raise_invalid(**_: object) -> None:
+        raise InvalidEmailVerificationTokenError("Verification token is invalid or expired.")
+
+    fake_email_verification_service.verify_token.side_effect = _raise_invalid
+
+    response = client.post(
+        "/api/v1/auth/email/verify",
+        json={"token": "bad.token"},
+    )
+
+    assert response.status_code == 400
+    body = response.json()
+    assert body["error"] == "Verification token is invalid or expired."
+
+
+def test_logout_single_session_success(fake_auth_service, client: TestClient) -> None:
+    token, subject = _mint_user_token(token_use="access")
+    user_id = subject.split("user:", 1)[1]
+    response = client.post(
+        "/api/v1/auth/logout",
+        json={"refresh_token": "refresh-token"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200, response.text
+    fake_auth_service.logout_user_session.assert_awaited_once()
+    kwargs = fake_auth_service.logout_user_session.await_args.kwargs
+    assert kwargs["refresh_token"] == "refresh-token"
+    assert kwargs["expected_user_id"] == user_id
+
+
+def test_logout_single_session_forbidden_on_service_error(
+    fake_auth_service, client: TestClient
+) -> None:
+    token, _ = _mint_user_token(token_use="access")
+
+    async def _raise_logout(*_: object, **__: object) -> None:
+        raise UserLogoutError("Refresh token does not belong to the authenticated user.")
+
+    fake_auth_service.logout_user_session.side_effect = _raise_logout
+
+    response = client.post(
+        "/api/v1/auth/logout",
+        json={"refresh_token": "foreign-token"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 403
+    body = response.json()
+    assert body["message"] == "Refresh token does not belong to the authenticated user."
+    assert body["error"] == "Refresh token does not belong to the authenticated user."
+
+
+def test_logout_all_endpoint(fake_auth_service, client: TestClient) -> None:
+    fake_auth_service.revoke_user_sessions.return_value = 2
+    token, _ = _mint_user_token(token_use="access")
+
+    response = client.post(
+        "/api/v1/auth/logout/all",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200, response.text
+    args = fake_auth_service.revoke_user_sessions.await_args
+    assert isinstance(args.args[0], UUID)
+    assert args.kwargs["reason"] == "user_logout_all"
+    body = response.json()
+    assert body["data"]["revoked"] == 2
+
+
+def test_list_sessions_endpoint(fake_auth_service, client: TestClient) -> None:
+    user_id = uuid4()
+    session_id = uuid4()
+    session = UserSession(
+        id=session_id,
+        user_id=user_id,
+        tenant_id=uuid4(),
+        refresh_jti="jti-1",
+        fingerprint="fp==",
+        ip_hash="hash",
+        ip_masked="203.0.113.*",
+        user_agent="pytest-agent",
+        client=SessionClientDetails(platform="macOS", browser="Arc", device="desktop"),
+        location=SessionLocation(city="Seattle", region="WA", country="US"),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+        last_seen_at=datetime.now(UTC),
+        revoked_at=None,
+    )
+    fake_auth_service.list_user_sessions.return_value = UserSessionListResult(
+        sessions=[session],
+        total=1,
+    )
+    token, _ = _mint_user_token(token_use="access", session_id=session_id)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.get("/api/v1/auth/sessions", headers=headers)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["total"] == 1
+    assert body["sessions"][0]["id"] == str(session_id)
+    assert body["sessions"][0]["current"] is True
+    fake_auth_service.list_user_sessions.assert_awaited_once()
+
+
+def test_delete_session_endpoint(fake_auth_service, client: TestClient) -> None:
+    session_id = uuid4()
+    fake_auth_service.revoke_user_session_by_id.return_value = True
+    token, _ = _mint_user_token(token_use="access")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.delete(f"/api/v1/auth/sessions/{session_id}", headers=headers)
+
+    assert response.status_code == 200, response.text
+    fake_auth_service.revoke_user_session_by_id.assert_awaited_once()
+    kwargs = fake_auth_service.revoke_user_session_by_id.await_args.kwargs
+    assert kwargs["session_id"] == session_id
+
+
+def test_delete_session_not_found(fake_auth_service, client: TestClient) -> None:
+    fake_auth_service.revoke_user_session_by_id.return_value = False
+    token, _ = _mint_user_token(token_use="access")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.delete(f"/api/v1/auth/sessions/{uuid4()}", headers=headers)
+
+    assert response.status_code == 404
 
 
 def test_me_endpoint_accepts_access_token(client: TestClient) -> None:

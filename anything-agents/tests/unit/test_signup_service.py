@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, cast
+from unittest.mock import AsyncMock
+from uuid import uuid4
 
 import pytest
 
@@ -60,6 +62,18 @@ class StubAuthService:
         return self.tokens
 
 
+@pytest.fixture(autouse=True)
+def mock_email_verification(monkeypatch: pytest.MonkeyPatch):
+    service = AsyncMock()
+    service.send_verification_email = AsyncMock(return_value=True)
+
+    def _get_service():
+        return service
+
+    monkeypatch.setattr("app.services.signup_service.get_email_verification_service", _get_service)
+    return service
+
+
 def _token_payload(user_id: str, tenant_id: str) -> UserSessionTokens:
     now = datetime.now(UTC)
     return UserSessionTokens(
@@ -72,6 +86,8 @@ def _token_payload(user_id: str, tenant_id: str) -> UserSessionTokens:
         scopes=["conversations:read"],
         tenant_id=tenant_id,
         user_id=user_id,
+        email_verified=False,
+        session_id=str(uuid4()),
     )
 
 

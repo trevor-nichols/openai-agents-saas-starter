@@ -153,6 +153,27 @@ class UserService:
             tenant_id=str(tenant_id),
         )
 
+    async def reset_password_via_token(self, *, user_id: UUID, new_password: str) -> None:
+        user = await self._repository.get_user_by_id(user_id)
+        if user is None:
+            raise InvalidCredentialsError("Unknown user.")
+        await self._enforce_password_history(user.id, new_password)
+        await self._validate_new_password(new_password, hints=[user.email])
+        hashed = get_password_hash(new_password)
+        await self._repository.update_password_hash(
+            user.id,
+            hashed,
+            password_pepper_version=PASSWORD_HASH_VERSION,
+        )
+        await self._trim_password_history(user.id)
+        await self._repository.reset_lockout_counter(user.id)
+        await self._repository.clear_user_lock(user.id)
+        log_event(
+            "auth.password_reset_token",
+            result="success",
+            user_id=str(user.id),
+        )
+
     async def authenticate(
         self,
         *,
@@ -206,6 +227,7 @@ class UserService:
             email=user.email,
             role=membership.role,
             scopes=self._scopes_for_role(membership.role),
+            email_verified=user.email_verified_at is not None,
         )
 
     async def load_active_user(
@@ -227,6 +249,7 @@ class UserService:
             email=user.email,
             role=membership.role,
             scopes=self._scopes_for_role(membership.role),
+            email_verified=user.email_verified_at is not None,
         )
 
     async def _handle_failed_login(

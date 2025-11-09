@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from typing import Protocol
+from uuid import UUID
 
 from redis.asyncio import Redis
 
@@ -54,6 +55,7 @@ class RedisRefreshTokenCache:
         if expires_at <= datetime.now(UTC):
             await self._client.delete(key)
             return None
+        session_id = data.get("session_id")
         return RefreshTokenRecord(
             token=data["token"],
             jti=data["jti"],
@@ -64,6 +66,7 @@ class RedisRefreshTokenCache:
             issued_at=datetime.fromisoformat(data["issued_at"]),
             fingerprint=data.get("fingerprint"),
             signing_kid=data.get("signing_kid"),
+            session_id=UUID(session_id) if session_id else None,
         )
 
     async def set(self, record: RefreshTokenRecord) -> None:
@@ -82,6 +85,7 @@ class RedisRefreshTokenCache:
                 "issued_at": record.issued_at.isoformat(),
                 "fingerprint": record.fingerprint,
                 "signing_kid": record.signing_kid,
+                "session_id": str(record.session_id) if record.session_id else None,
             }
         )
         await self._client.set(key, payload, ex=ttl)

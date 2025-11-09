@@ -85,6 +85,7 @@ class UserRecord:
     updated_at: datetime
     display_name: str | None
     memberships: list[TenantMembershipDTO]
+    email_verified_at: datetime | None
 
 
 @dataclass(slots=True)
@@ -106,6 +107,7 @@ class AuthenticatedUser:
     email: EmailStr
     role: str
     scopes: list[str]
+    email_verified: bool
 
 
 class UserRepository(Protocol):
@@ -144,6 +146,8 @@ class UserRepository(Protocol):
         *,
         password_pepper_version: str,
     ) -> None: ...
+
+    async def mark_email_verified(self, user_id: UUID, *, timestamp: datetime) -> None: ...
 
 
 class UserRepositoryError(RuntimeError):
