@@ -11,7 +11,10 @@
 'use client';
 
 import React from 'react';
-import { ConversationListItem } from '../../app/(agent)/actions'; // Assuming ConversationListItem is exported from actions
+
+import type { ConversationListItem } from '@/types/conversations';
+
+import { LogoutButton } from '../auth/LogoutButton';
 
 interface ConversationSidebarProps {
   conversationList: ConversationListItem[];
@@ -76,6 +79,9 @@ export default function ConversationSidebar({
           </ul>
         )}
       </div>
+      <div className="mt-4 border-t border-gray-200 pt-4">
+        <LogoutButton />
+      </div>
     </aside>
   );
-} 
+}

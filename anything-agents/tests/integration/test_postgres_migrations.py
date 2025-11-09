@@ -5,22 +5,31 @@ from __future__ import annotations
 import asyncio
 import os
 import uuid
-from collections.abc import AsyncIterator
-from datetime import datetime, timezone
+from collections.abc import AsyncIterator, Iterator
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any, cast
 
 import asyncpg
 import pytest
-from alembic import command
-from alembic.config import Config
+from agents.extensions.memory.sqlalchemy_session import SQLAlchemySession
 from sqlalchemy import select, text
 from sqlalchemy.engine.url import URL, make_url
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
+from alembic import command
+from alembic.config import Config
 from app.domain.billing import TenantSubscription
-from app.domain.conversations import ConversationMetadata, ConversationMessage
+from app.domain.conversations import ConversationMessage, ConversationMetadata
 from app.infrastructure.persistence.billing.postgres import PostgresBillingRepository
-from app.infrastructure.persistence.conversations.models import SubscriptionUsage as ORMSubscriptionUsage
+from app.infrastructure.persistence.conversations.models import (
+    SubscriptionUsage as ORMSubscriptionUsage,
+)
 from app.infrastructure.persistence.conversations.postgres import (
     PostgresConversationRepository,
 )
@@ -35,11 +44,14 @@ def _require_database_url() -> URL:
     raw_url = os.getenv("DATABASE_URL")
     if not raw_url:
         pytest.skip("DATABASE_URL not set; skipping Postgres integration tests.")
-    return make_url(raw_url)
+    url = make_url(raw_url)
+    if not url.drivername.startswith("postgresql"):
+        pytest.skip("DATABASE_URL is not a Postgres URL; skipping Postgres integration tests.")
+    return url
 
 
 @pytest.fixture(scope="session")
-def event_loop() -> AsyncIterator[asyncio.AbstractEventLoop]:
+def event_loop() -> Iterator[asyncio.AbstractEventLoop]:
     """Ensure a session-scoped event loop for async fixtures."""
 
     loop = asyncio.new_event_loop()
@@ -113,8 +125,15 @@ async def test_core_tables_exist(migrated_engine: AsyncEngine) -> None:
         "tenant_accounts",
         "agent_conversations",
         "agent_messages",
+        "sdk_agent_sessions",
+        "sdk_agent_session_messages",
         "billing_plans",
         "tenant_subscriptions",
+        "users",
+        "user_profiles",
+        "tenant_user_memberships",
+        "password_history",
+        "user_login_events",
     }
 
     async with migrated_engine.connect() as conn:
@@ -192,6 +211,40 @@ async def test_repository_preserves_custom_conversation_id(
 
 
 @pytest.mark.asyncio
+async def test_sdk_session_tables_persist_history(migrated_engine: AsyncEngine) -> None:
+    """Ensure SQLAlchemySession reuses history across instances (service restart simulation)."""
+
+    session_id = f"session-{uuid.uuid4()}"
+    first_session = SQLAlchemySession(
+        session_id=session_id,
+        engine=migrated_engine,
+        sessions_table="sdk_agent_sessions",
+        messages_table="sdk_agent_session_messages",
+    )
+
+    await first_session.add_items(
+        [
+            {"role": "user", "content": "Hello durable session."},
+            {"role": "assistant", "content": "Greetings preserved."},
+        ]
+    )
+
+    # Simulate a fresh process by building a new session instance with the same ID.
+    resumed_session = SQLAlchemySession(
+        session_id=session_id,
+        engine=migrated_engine,
+        sessions_table="sdk_agent_sessions",
+        messages_table="sdk_agent_session_messages",
+    )
+    restored_items_raw = await resumed_session.get_items()
+    restored_items = cast(list[dict[str, Any]], restored_items_raw)
+
+    assert len(restored_items) == 2
+    assert restored_items[0]["content"] == "Hello durable session."
+    assert restored_items[1]["role"] == "assistant"
+
+
+@pytest.mark.asyncio
 async def test_billing_repository_reads_seeded_plans(
     migrated_session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
@@ -219,7 +272,7 @@ async def test_billing_subscription_upsert_roundtrip(
         status="active",
         auto_renew=True,
         billing_email="owner@example.com",
-        starts_at=datetime.now(timezone.utc),
+        starts_at=datetime.now(UTC),
         seat_count=plan.seat_included,
         metadata={"source": "integration-test"},
         processor="stripe",
@@ -245,7 +298,7 @@ async def test_billing_subscription_upsert_roundtrip(
     assert updated.billing_email == "billing@example.com"
     assert updated.seat_count == 7
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     await repository.record_usage(
         tenant_id,
         feature_key="messages",

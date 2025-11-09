@@ -5,6 +5,21 @@ import pytest
 from app.core.config import Settings
 
 
+def sanitized_settings(**overrides) -> Settings:
+    """Return a Settings copy with deterministic, test-friendly values."""
+
+    base = Settings()
+    defaults = {
+        "stripe_secret_key": None,
+        "stripe_webhook_secret": None,
+        "stripe_product_price_map": {},
+        "enable_billing_stream": False,
+        "billing_events_redis_url": None,
+    }
+    defaults.update(overrides)
+    return base.model_copy(update=defaults)
+
+
 def test_auth_audience_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     """Verify default JWT audience list is applied when no override is provided."""
 
@@ -40,3 +55,68 @@ def test_auth_audience_validation_errors(bad_value: object) -> None:
 
     with pytest.raises(ValueError):
         Settings(auth_audience=bad_value)  # type: ignore[arg-type]
+
+
+def test_required_stripe_envs_missing_detects_blanks() -> None:
+    """Missing Stripe variables are reported for billing guardrails."""
+
+    settings = sanitized_settings(
+        stripe_secret_key="   ",
+        stripe_webhook_secret=None,
+        stripe_product_price_map={},
+    )
+
+    assert settings.required_stripe_envs_missing() == [
+        "STRIPE_SECRET_KEY",
+        "STRIPE_WEBHOOK_SECRET",
+        "STRIPE_PRODUCT_PRICE_MAP",
+    ]
+
+
+def test_required_stripe_envs_missing_returns_empty_when_configured() -> None:
+    """Guardrail helper returns an empty list when all values exist."""
+
+    settings = sanitized_settings(
+        stripe_secret_key="sk_test_1234567890",
+        stripe_webhook_secret="whsec_abcdef123456",
+        stripe_product_price_map={"starter": "price_123"},
+    )
+
+    assert settings.required_stripe_envs_missing() == []
+
+
+def test_stripe_configuration_summary_masks_tokens() -> None:
+    """Masked summary hides sensitive data while exposing plan context."""
+
+    settings = sanitized_settings(
+        stripe_secret_key="sk_test_1234567890",
+        stripe_webhook_secret="whsec_abcd987654321",
+        stripe_product_price_map={"starter": "price_123", "pro": "price_456"},
+        enable_billing_stream=True,
+        billing_events_redis_url="redis://billing-events:6379/1",
+    )
+
+    summary = settings.stripe_configuration_summary()
+
+    secret_mask = summary["stripe_secret_key"]
+    webhook_mask = summary["stripe_webhook_secret"]
+    plan_count = summary["plan_count"]
+    plans_configured = summary["plans_configured"]
+    billing_enabled = summary["billing_stream_enabled"]
+    backend = summary["billing_stream_backend"]
+
+    assert isinstance(secret_mask, str)
+    assert isinstance(webhook_mask, str)
+    assert isinstance(plan_count, int)
+    assert isinstance(plans_configured, list)
+    assert all(isinstance(plan, str) for plan in plans_configured)
+    assert isinstance(billing_enabled, bool)
+    assert isinstance(backend, str | type(None))
+
+    assert secret_mask.startswith("sk") and secret_mask.endswith("7890")
+    assert all(char == "*" for char in secret_mask[2:-4])
+    assert webhook_mask.endswith("4321")
+    assert plan_count == 2
+    assert plans_configured == ["pro", "starter"]
+    assert billing_enabled is True
+    assert backend == "BILLING_EVENTS_REDIS_URL"

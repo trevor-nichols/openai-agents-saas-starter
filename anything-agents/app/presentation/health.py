@@ -31,14 +31,13 @@ async def readiness_check() -> HealthResponse:
     """Readiness probe for orchestrators (extend with dependency checks)."""
 
     settings = get_settings()
-    if not settings.use_in_memory_repo:
-        try:
-            await verify_database_connection()
-        except Exception as exc:  # pragma: no cover - readiness failure
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"Database connectivity check failed: {exc}",
-            ) from exc
+    try:
+        await verify_database_connection()
+    except Exception as exc:  # pragma: no cover - readiness failure
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Database connectivity check failed: {exc}",
+        ) from exc
 
     return HealthResponse(
         status="ready",

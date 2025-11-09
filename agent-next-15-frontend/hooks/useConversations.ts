@@ -8,7 +8,8 @@
 // - app/(agent)/page.tsx: This hook will be used to provide conversation data and loading states.
 
 import { useState, useEffect, useCallback } from 'react';
-import { listConversationsAction, ConversationListItem } from '../app/(agent)/actions';
+
+import type { ConversationListItem, ConversationListResponse } from '@/types/conversations';
 
 interface UseConversationsReturn {
   conversationList: ConversationListItem[];
@@ -29,7 +30,11 @@ export function useConversations(): UseConversationsReturn {
     setIsLoadingConversations(true);
     setError(null);
     try {
-      const result = await listConversationsAction();
+      const response = await fetch('/api/conversations', { method: 'GET', cache: 'no-store' });
+      const result = (await response.json()) as ConversationListResponse;
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load conversations');
+      }
       if (result.success && result.conversations) {
         setConversationList(result.conversations);
         console.log("[useConversations] Conversation list loaded:", result.conversations.length);

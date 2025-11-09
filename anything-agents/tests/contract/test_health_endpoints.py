@@ -9,6 +9,7 @@ from main import app
 
 client = TestClient(app)
 
+
 def test_health_check():
     """Test basic health check endpoint."""
     response = client.get("/health")
@@ -18,6 +19,7 @@ def test_health_check():
     assert "timestamp" in data
     assert "version" in data
 
+
 def test_readiness_check():
     """Test readiness check endpoint."""
     response = client.get("/health/ready")
@@ -25,4 +27,4 @@ def test_readiness_check():
     data = response.json()
     assert data["status"] == "ready"
     assert "timestamp" in data
-    assert "version" in data 
+    assert "version" in data

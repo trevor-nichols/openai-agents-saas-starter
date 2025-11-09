@@ -5,17 +5,19 @@ from __future__ import annotations
 import logging
 import uuid
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Literal, cast
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.domain.conversations import (
-    ConversationMetadata,
     ConversationMessage,
+    ConversationMetadata,
     ConversationRecord,
     ConversationRepository,
+    ConversationSessionState,
 )
 from app.infrastructure.persistence.conversations.models import (
     AgentConversation,
@@ -25,9 +27,11 @@ from app.infrastructure.persistence.conversations.models import (
 
 logger = logging.getLogger("anything-agents.persistence")
 
-_CONVERSATION_NAMESPACE = uuid.uuid5(
-    uuid.NAMESPACE_URL, "anything-agents:conversation"
-)
+_CONVERSATION_NAMESPACE = uuid.uuid5(uuid.NAMESPACE_URL, "anything-agents:conversation")
+_MESSAGE_ROLES: tuple[str, ...] = ("user", "assistant", "system")
+
+
+MessageRole = Literal["user", "assistant", "system"]
 
 
 def _coerce_conversation_uuid(conversation_id: str) -> uuid.UUID:
@@ -46,7 +50,9 @@ def _derive_conversation_key(conversation_id: str) -> str:
         return str(uuid.UUID(conversation_id))
     except (TypeError, ValueError):
         if len(conversation_id) > 255:
-            raise ValueError("Conversation identifier must be 255 characters or fewer.")
+            raise ValueError(
+                "Conversation identifier must be 255 characters or fewer."
+            ) from None
         return conversation_id
 
 
@@ -86,7 +92,7 @@ class PostgresConversationRepository(ConversationRepository):
             position = conversation.message_count
             conversation.message_count = position + 1
             conversation.last_message_at = _to_utc(message.timestamp)
-            conversation.updated_at = datetime.now(timezone.utc)
+            conversation.updated_at = datetime.now(UTC)
             conversation.agent_entrypoint = metadata.agent_entrypoint
             if metadata.active_agent:
                 conversation.active_agent = metadata.active_agent
@@ -102,6 +108,12 @@ class PostgresConversationRepository(ConversationRepository):
                 conversation.total_tokens_completion = metadata.total_tokens_completion
             if metadata.reasoning_tokens is not None:
                 conversation.reasoning_tokens = metadata.reasoning_tokens
+            if metadata.sdk_session_id:
+                conversation.sdk_session_id = metadata.sdk_session_id
+            if metadata.session_cursor:
+                conversation.session_cursor = metadata.session_cursor
+            if metadata.last_session_sync_at:
+                conversation.last_session_sync_at = metadata.last_session_sync_at
 
             db_message = AgentMessage(
                 conversation_id=conversation.id,
@@ -115,9 +127,7 @@ class PostgresConversationRepository(ConversationRepository):
                 token_count_completion=metadata.total_tokens_completion
                 if message.role == "assistant"
                 else None,
-                reasoning_tokens=metadata.reasoning_tokens
-                if message.role == "assistant"
-                else None,
+                reasoning_tokens=metadata.reasoning_tokens if message.role == "assistant" else None,
                 created_at=_to_utc(message.timestamp),
             )
             session.add(db_message)
@@ -140,7 +150,7 @@ class PostgresConversationRepository(ConversationRepository):
             rows: Sequence[AgentMessage] = result.scalars().all()
             return [
                 ConversationMessage(
-                    role=row.role,
+                    role=_coerce_role(row.role),
                     content=_extract_message_content(row.content),
                     timestamp=row.created_at,
                 )
@@ -178,7 +188,7 @@ class PostgresConversationRepository(ConversationRepository):
                 entries = grouped.get(conversation.id, [])
                 messages_list = [
                     ConversationMessage(
-                        role=item.role,
+                        role=_coerce_role(item.role),
                         content=_extract_message_content(item.content),
                         timestamp=item.created_at,
                     )
@@ -200,6 +210,38 @@ class PostgresConversationRepository(ConversationRepository):
                 await session.delete(conversation)
                 await session.commit()
 
+    async def get_session_state(self, conversation_id: str) -> ConversationSessionState | None:
+        conversation_uuid = _coerce_conversation_uuid(conversation_id)
+        async with self._session_factory() as session:
+            conversation = await session.get(AgentConversation, conversation_uuid)
+            if conversation is None:
+                return None
+            return ConversationSessionState(
+                sdk_session_id=conversation.sdk_session_id,
+                session_cursor=conversation.session_cursor,
+                last_session_sync_at=conversation.last_session_sync_at,
+            )
+
+    async def upsert_session_state(
+        self, conversation_id: str, state: ConversationSessionState
+    ) -> None:
+        conversation_uuid = _coerce_conversation_uuid(conversation_id)
+        async with self._session_factory() as session:
+            conversation = await session.get(
+                AgentConversation, conversation_uuid, with_for_update=True
+            )
+            if conversation is None:
+                raise ValueError(
+                    f"Conversation {conversation_id} does not exist; "
+                    "session state cannot be updated."
+                )
+
+            conversation.sdk_session_id = state.sdk_session_id
+            conversation.session_cursor = state.session_cursor
+            conversation.last_session_sync_at = state.last_session_sync_at
+
+            await session.commit()
+
     async def _get_or_create_conversation(
         self,
         session: AsyncSession,
@@ -217,6 +259,12 @@ class PostgresConversationRepository(ConversationRepository):
         if conversation:
             if conversation.conversation_key != conversation_key:
                 conversation.conversation_key = conversation_key
+            if metadata.sdk_session_id:
+                conversation.sdk_session_id = metadata.sdk_session_id
+            if metadata.session_cursor:
+                conversation.session_cursor = metadata.session_cursor
+            if metadata.last_session_sync_at:
+                conversation.last_session_sync_at = metadata.last_session_sync_at
             return conversation
 
         conversation = AgentConversation(
@@ -233,8 +281,11 @@ class PostgresConversationRepository(ConversationRepository):
             total_tokens_completion=metadata.total_tokens_completion or 0,
             reasoning_tokens=metadata.reasoning_tokens or 0,
             handoff_count=metadata.handoff_count or 0,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            sdk_session_id=metadata.sdk_session_id,
+            session_cursor=metadata.session_cursor,
+            last_session_sync_at=metadata.last_session_sync_at,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         session.add(conversation)
         await session.flush()
@@ -259,7 +310,7 @@ class PostgresConversationRepository(ConversationRepository):
             id=uuid.uuid4(),
             slug=self._default_tenant_slug,
             name=self._default_tenant_name,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         session.add(tenant)
         try:
@@ -286,5 +337,9 @@ def _extract_message_content(payload: dict | str | None) -> str:
 
 def _to_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+def _coerce_role(value: str) -> MessageRole:
+    if value not in _MESSAGE_ROLES:
+        raise ValueError(f"Unsupported conversation role '{value}'")
+    return cast(MessageRole, value)

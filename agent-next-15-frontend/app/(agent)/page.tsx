@@ -15,11 +15,13 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { ConversationListItem } from './actions';
+import type { ConversationListItem } from '@/types/conversations';
 import { streamChat } from '@/lib/api/streaming';
 import ChatInterface, { ChatMessage } from '../../components/agent/ChatInterface';
 import ConversationSidebar from '../../components/agent/ConversationSidebar';
+import BillingEventsPanel from '../../components/billing/BillingEventsPanel';
 import { useConversations } from '../../hooks/useConversations';
+import { useBillingStream } from '../../hooks/useBillingStream';
 
 // --- AgentPage Component (Container) ---
 export default function AgentPage() {
@@ -33,6 +35,7 @@ export default function AgentPage() {
     addConversationToList,
     updateConversationInList,
   } = useConversations();
+  const { events: billingEvents, status: billingStreamStatus } = useBillingStream();
 
   // Function to simulate fetching messages for a selected conversation
   // In a real app, this would fetch from an API or local storage
@@ -189,6 +192,7 @@ export default function AgentPage() {
             isSending={isSending}
             currentConversationId={currentConversationId}
           />
+          <BillingEventsPanel events={billingEvents} status={billingStreamStatus} />
         </div>
       </main>
 

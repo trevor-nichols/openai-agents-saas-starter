@@ -1,0 +1,14 @@
+{
+  "id": "evt_sub_created",
+  "type": "customer.subscription.created",
+  "created": 1762532307,
+  "data": {
+    "object": {
+      "id": "sub_123",
+      "status": "active",
+      "metadata": {
+        "tenant_id": "11111111-2222-3333-4444-555555555555"
+      }
+    }
+  }
+}

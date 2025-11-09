@@ -1,0 +1,1391 @@
+[
+  {
+    "eventNumber": 1,
+    "timestampMs": 916,
+    "event": {
+      "type": "response.created",
+      "sequence_number": 0,
+      "response": {
+        "id": "resp_068eb9bf0a06535000690e2d41d7d8819face8d5bd1f24600b",
+        "object": "response",
+        "created_at": 1762536769,
+        "status": "in_progress",
+        "background": false,
+        "error": null,
+        "incomplete_details": null,
+        "instructions": null,
+        "max_output_tokens": null,
+        "max_tool_calls": null,
+        "model": "gpt-4o-2024-08-06",
+        "output": [],
+        "parallel_tool_calls": true,
+        "previous_response_id": null,
+        "prompt_cache_key": null,
+        "prompt_cache_retention": null,
+        "reasoning": {
+          "effort": null,
+          "summary": null
+        },
+        "safety_identifier": null,
+        "service_tier": "auto",
+        "store": true,
+        "temperature": 1,
+        "text": {
+          "format": {
+            "type": "json_schema",
+            "description": null,
+            "name": "research_paper_extraction",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "description": "The title of the research paper"
+                },
+                "authors": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "List of author names"
+                },
+                "abstract": {
+                  "type": "string",
+                  "description": "The abstract of the paper"
+                },
+                "keywords": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Keywords or topics"
+                },
+                "publication_year": {
+                  "type": "number",
+                  "description": "Year of publication"
+                }
+              },
+              "required": [
+                "title",
+                "authors",
+                "abstract",
+                "keywords",
+                "publication_year"
+              ],
+              "additionalProperties": false
+            },
+            "strict": true
+          },
+          "verbosity": "medium"
+        },
+        "tool_choice": "auto",
+        "tools": [],
+        "top_logprobs": 0,
+        "top_p": 1,
+        "truncation": "disabled",
+        "usage": null,
+        "user": null,
+        "metadata": {}
+      }
+    }
+  },
+  {
+    "eventNumber": 2,
+    "timestampMs": 916,
+    "event": {
+      "type": "response.in_progress",
+      "sequence_number": 1,
+      "response": {
+        "id": "resp_068eb9bf0a06535000690e2d41d7d8819face8d5bd1f24600b",
+        "object": "response",
+        "created_at": 1762536769,
+        "status": "in_progress",
+        "background": false,
+        "error": null,
+        "incomplete_details": null,
+        "instructions": null,
+        "max_output_tokens": null,
+        "max_tool_calls": null,
+        "model": "gpt-4o-2024-08-06",
+        "output": [],
+        "parallel_tool_calls": true,
+        "previous_response_id": null,
+        "prompt_cache_key": null,
+        "prompt_cache_retention": null,
+        "reasoning": {
+          "effort": null,
+          "summary": null
+        },
+        "safety_identifier": null,
+        "service_tier": "auto",
+        "store": true,
+        "temperature": 1,
+        "text": {
+          "format": {
+            "type": "json_schema",
+            "description": null,
+            "name": "research_paper_extraction",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "description": "The title of the research paper"
+                },
+                "authors": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "List of author names"
+                },
+                "abstract": {
+                  "type": "string",
+                  "description": "The abstract of the paper"
+                },
+                "keywords": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Keywords or topics"
+                },
+                "publication_year": {
+                  "type": "number",
+                  "description": "Year of publication"
+                }
+              },
+              "required": [
+                "title",
+                "authors",
+                "abstract",
+                "keywords",
+                "publication_year"
+              ],
+              "additionalProperties": false
+            },
+            "strict": true
+          },
+          "verbosity": "medium"
+        },
+        "tool_choice": "auto",
+        "tools": [],
+        "top_logprobs": 0,
+        "top_p": 1,
+        "truncation": "disabled",
+        "usage": null,
+        "user": null,
+        "metadata": {}
+      }
+    }
+  },
+  {
+    "eventNumber": 3,
+    "timestampMs": 1956,
+    "event": {
+      "type": "response.output_item.added",
+      "sequence_number": 2,
+      "output_index": 0,
+      "item": {
+        "id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+        "type": "message",
+        "status": "in_progress",
+        "content": [],
+        "role": "assistant"
+      }
+    }
+  },
+  {
+    "eventNumber": 4,
+    "timestampMs": 1956,
+    "event": {
+      "type": "response.content_part.added",
+      "sequence_number": 3,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "part": {
+        "type": "output_text",
+        "annotations": [],
+        "logprobs": [],
+        "text": ""
+      }
+    }
+  },
+  {
+    "eventNumber": 5,
+    "timestampMs": 1959,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 4,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "{\"",
+      "logprobs": [],
+      "obfuscation": "DLefBPb2ZcJKE9"
+    }
+  },
+  {
+    "eventNumber": 6,
+    "timestampMs": 1995,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 5,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "title",
+      "logprobs": [],
+      "obfuscation": "39N61LdUeGA"
+    }
+  },
+  {
+    "eventNumber": 7,
+    "timestampMs": 2002,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 6,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "\":\"",
+      "logprobs": [],
+      "obfuscation": "ieuOcXWAGsITs"
+    }
+  },
+  {
+    "eventNumber": 8,
+    "timestampMs": 2002,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 7,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "Adv",
+      "logprobs": [],
+      "obfuscation": "hlOkqQsimgvs7"
+    }
+  },
+  {
+    "eventNumber": 9,
+    "timestampMs": 2002,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 8,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "ances",
+      "logprobs": [],
+      "obfuscation": "0TX6kqV28cS"
+    }
+  },
+  {
+    "eventNumber": 10,
+    "timestampMs": 2007,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 9,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " in",
+      "logprobs": [],
+      "obfuscation": "rbhiLvfFIAWq2"
+    }
+  },
+  {
+    "eventNumber": 11,
+    "timestampMs": 2016,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 10,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " Neural",
+      "logprobs": [],
+      "obfuscation": "dFI1O61ME"
+    }
+  },
+  {
+    "eventNumber": 12,
+    "timestampMs": 2016,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 11,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " Architecture",
+      "logprobs": [],
+      "obfuscation": "KQH"
+    }
+  },
+  {
+    "eventNumber": 13,
+    "timestampMs": 2017,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 12,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " Search",
+      "logprobs": [],
+      "obfuscation": "FbzlqZ2qc"
+    }
+  },
+  {
+    "eventNumber": 14,
+    "timestampMs": 2033,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 13,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " for",
+      "logprobs": [],
+      "obfuscation": "IfGVdQr6n9kr"
+    }
+  },
+  {
+    "eventNumber": 15,
+    "timestampMs": 2033,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 14,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " Computer",
+      "logprobs": [],
+      "obfuscation": "dKm3jTj"
+    }
+  },
+  {
+    "eventNumber": 16,
+    "timestampMs": 2033,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 15,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " Vision",
+      "logprobs": [],
+      "obfuscation": "vdzxfQK8C"
+    }
+  },
+  {
+    "eventNumber": 17,
+    "timestampMs": 2033,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 16,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "\",\"",
+      "logprobs": [],
+      "obfuscation": "VqQsqCcLKbcMh"
+    }
+  },
+  {
+    "eventNumber": 18,
+    "timestampMs": 2073,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 17,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "authors",
+      "logprobs": [],
+      "obfuscation": "jDgOVZKrU"
+    }
+  },
+  {
+    "eventNumber": 19,
+    "timestampMs": 2073,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 18,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "\":[\"",
+      "logprobs": [],
+      "obfuscation": "cEtdTWV3LpOC"
+    }
+  },
+  {
+    "eventNumber": 20,
+    "timestampMs": 2098,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 19,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "Dr",
+      "logprobs": [],
+      "obfuscation": "6JRjj9TticUG5d"
+    }
+  },
+  {
+    "eventNumber": 21,
+    "timestampMs": 2098,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 20,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ".",
+      "logprobs": [],
+      "obfuscation": "SrDdClwG11t10zm"
+    }
+  },
+  {
+    "eventNumber": 22,
+    "timestampMs": 2108,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 21,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " Sarah",
+      "logprobs": [],
+      "obfuscation": "qZ4LhtV6Lh"
+    }
+  },
+  {
+    "eventNumber": 23,
+    "timestampMs": 2108,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 22,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " Chen",
+      "logprobs": [],
+      "obfuscation": "XmmktyF26Rh"
+    }
+  },
+  {
+    "eventNumber": 24,
+    "timestampMs": 2148,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 23,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "\",\"",
+      "logprobs": [],
+      "obfuscation": "LhRuwPhiMrvHj"
+    }
+  },
+  {
+    "eventNumber": 25,
+    "timestampMs": 2148,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 24,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "Dr",
+      "logprobs": [],
+      "obfuscation": "zf1HUShMMyLD6J"
+    }
+  },
+  {
+    "eventNumber": 26,
+    "timestampMs": 2175,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 25,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ".",
+      "logprobs": [],
+      "obfuscation": "LuexmlxF0WRUi6G"
+    }
+  },
+  {
+    "eventNumber": 27,
+    "timestampMs": 2175,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 26,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " Michael",
+      "logprobs": [],
+      "obfuscation": "GE03KOLR"
+    }
+  },
+  {
+    "eventNumber": 28,
+    "timestampMs": 2175,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 27,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " Rodriguez",
+      "logprobs": [],
+      "obfuscation": "kyhocU"
+    }
+  },
+  {
+    "eventNumber": 29,
+    "timestampMs": 2175,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 28,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "\",\"",
+      "logprobs": [],
+      "obfuscation": "4Z76HqAmt56vk"
+    }
+  },
+  {
+    "eventNumber": 30,
+    "timestampMs": 2175,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 29,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "Dr",
+      "logprobs": [],
+      "obfuscation": "A6fhtuLZAEDR3S"
+    }
+  },
+  {
+    "eventNumber": 31,
+    "timestampMs": 2175,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 30,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ".",
+      "logprobs": [],
+      "obfuscation": "172AUi98I4XlLtF"
+    }
+  },
+  {
+    "eventNumber": 32,
+    "timestampMs": 2175,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 31,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " A",
+      "logprobs": [],
+      "obfuscation": "HA0gfMz3ESa6Nv"
+    }
+  },
+  {
+    "eventNumber": 33,
+    "timestampMs": 2183,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 32,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "isha",
+      "logprobs": [],
+      "obfuscation": "d1et6UyaWkUa"
+    }
+  },
+  {
+    "eventNumber": 34,
+    "timestampMs": 2192,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 33,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " Patel",
+      "logprobs": [],
+      "obfuscation": "2v7l5Q6cUX"
+    }
+  },
+  {
+    "eventNumber": 35,
+    "timestampMs": 2193,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 34,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "\"],",
+      "logprobs": [],
+      "obfuscation": "pMdc9dXiEoWAW"
+    }
+  },
+  {
+    "eventNumber": 36,
+    "timestampMs": 2193,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 35,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "\"",
+      "logprobs": [],
+      "obfuscation": "Of9yZ4pL37HbsEY"
+    }
+  },
+  {
+    "eventNumber": 37,
+    "timestampMs": 2193,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 36,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "abstract",
+      "logprobs": [],
+      "obfuscation": "4OqtM6sS"
+    }
+  },
+  {
+    "eventNumber": 38,
+    "timestampMs": 2216,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 37,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "\":\"",
+      "logprobs": [],
+      "obfuscation": "1O1nzLgS7AwDf"
+    }
+  },
+  {
+    "eventNumber": 39,
+    "timestampMs": 2216,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 38,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "This",
+      "logprobs": [],
+      "obfuscation": "2M0qrDl42QCj"
+    }
+  },
+  {
+    "eventNumber": 40,
+    "timestampMs": 2216,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 39,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " paper",
+      "logprobs": [],
+      "obfuscation": "YUAloBwuOf"
+    }
+  },
+  {
+    "eventNumber": 41,
+    "timestampMs": 2216,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 40,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " presents",
+      "logprobs": [],
+      "obfuscation": "Dg7xTGb"
+    }
+  },
+  {
+    "eventNumber": 42,
+    "timestampMs": 2234,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 41,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " a",
+      "logprobs": [],
+      "obfuscation": "hwxcEOdPaQfQPw"
+    }
+  },
+  {
+    "eventNumber": 43,
+    "timestampMs": 2234,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 42,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " novel",
+      "logprobs": [],
+      "obfuscation": "0mEFiIEx63"
+    }
+  },
+  {
+    "eventNumber": 44,
+    "timestampMs": 2243,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 43,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " approach",
+      "logprobs": [],
+      "obfuscation": "eNqv7VN"
+    }
+  },
+  {
+    "eventNumber": 45,
+    "timestampMs": 2252,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 44,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " to",
+      "logprobs": [],
+      "obfuscation": "czpycvZ3mld02"
+    }
+  },
+  {
+    "eventNumber": 46,
+    "timestampMs": 2252,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 45,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " automated",
+      "logprobs": [],
+      "obfuscation": "EZNnDj"
+    }
+  },
+  {
+    "eventNumber": 47,
+    "timestampMs": 2252,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 46,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " neural",
+      "logprobs": [],
+      "obfuscation": "UBpxqetgo"
+    }
+  },
+  {
+    "eventNumber": 48,
+    "timestampMs": 2253,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 47,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " architecture",
+      "logprobs": [],
+      "obfuscation": "v2q"
+    }
+  },
+  {
+    "eventNumber": 49,
+    "timestampMs": 2253,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 48,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " search",
+      "logprobs": [],
+      "obfuscation": "RriFHD2Jh"
+    }
+  },
+  {
+    "eventNumber": 50,
+    "timestampMs": 2266,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 49,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " (",
+      "logprobs": [],
+      "obfuscation": "3T00KqeDFNu0OS"
+    }
+  },
+  {
+    "eventNumber": 51,
+    "timestampMs": 2266,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 50,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "NAS",
+      "logprobs": [],
+      "obfuscation": "8CoJ5rR7CMB6c"
+    }
+  },
+  {
+    "eventNumber": 52,
+    "timestampMs": 2327,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 51,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ").",
+      "logprobs": [],
+      "obfuscation": "bY0QLy8C811NX3"
+    }
+  },
+  {
+    "eventNumber": 53,
+    "timestampMs": 2327,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 52,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "\",\"",
+      "logprobs": [],
+      "obfuscation": "f5pjW5rRkuaFA"
+    }
+  },
+  {
+    "eventNumber": 54,
+    "timestampMs": 2328,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 53,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "keywords",
+      "logprobs": [],
+      "obfuscation": "KZQ9ba4S"
+    }
+  },
+  {
+    "eventNumber": 55,
+    "timestampMs": 2328,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 54,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "\":[\"",
+      "logprobs": [],
+      "obfuscation": "iM7KQkT57l7K"
+    }
+  },
+  {
+    "eventNumber": 56,
+    "timestampMs": 2343,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 55,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "Ne",
+      "logprobs": [],
+      "obfuscation": "ocTILIsG4Tth1o"
+    }
+  },
+  {
+    "eventNumber": 57,
+    "timestampMs": 2396,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 56,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "ural",
+      "logprobs": [],
+      "obfuscation": "EKg5RzXzSXkt"
+    }
+  },
+  {
+    "eventNumber": 58,
+    "timestampMs": 2398,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 57,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " Architecture",
+      "logprobs": [],
+      "obfuscation": "IHB"
+    }
+  },
+  {
+    "eventNumber": 59,
+    "timestampMs": 2398,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 58,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " Search",
+      "logprobs": [],
+      "obfuscation": "yrwAxRn3b"
+    }
+  },
+  {
+    "eventNumber": 60,
+    "timestampMs": 2398,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 59,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "\",\"",
+      "logprobs": [],
+      "obfuscation": "GwwtvAA5j1a7I"
+    }
+  },
+  {
+    "eventNumber": 61,
+    "timestampMs": 2421,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 60,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "Computer",
+      "logprobs": [],
+      "obfuscation": "MU39AFVx"
+    }
+  },
+  {
+    "eventNumber": 62,
+    "timestampMs": 2421,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 61,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " Vision",
+      "logprobs": [],
+      "obfuscation": "zT2yNHKPs"
+    }
+  },
+  {
+    "eventNumber": 63,
+    "timestampMs": 2513,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 62,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "\",\"",
+      "logprobs": [],
+      "obfuscation": "TtSaV6f5fUUdx"
+    }
+  },
+  {
+    "eventNumber": 64,
+    "timestampMs": 2513,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 63,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "Auto",
+      "logprobs": [],
+      "obfuscation": "Y2ozonviJEsg"
+    }
+  },
+  {
+    "eventNumber": 65,
+    "timestampMs": 2514,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 64,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "ML",
+      "logprobs": [],
+      "obfuscation": "91Nmtmb6uzYclr"
+    }
+  },
+  {
+    "eventNumber": 66,
+    "timestampMs": 2514,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 65,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "\",\"",
+      "logprobs": [],
+      "obfuscation": "lvM53aooF4XaU"
+    }
+  },
+  {
+    "eventNumber": 67,
+    "timestampMs": 2527,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 66,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "Deep",
+      "logprobs": [],
+      "obfuscation": "gIo3ImqQkbG8"
+    }
+  },
+  {
+    "eventNumber": 68,
+    "timestampMs": 2527,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 67,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " Learning",
+      "logprobs": [],
+      "obfuscation": "zlTKOko"
+    }
+  },
+  {
+    "eventNumber": 69,
+    "timestampMs": 2554,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 68,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "\"],",
+      "logprobs": [],
+      "obfuscation": "p3Clnf6THNip0"
+    }
+  },
+  {
+    "eventNumber": 70,
+    "timestampMs": 2559,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 69,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "\"",
+      "logprobs": [],
+      "obfuscation": "Vao0Z8yeQWuAOBx"
+    }
+  },
+  {
+    "eventNumber": 71,
+    "timestampMs": 2617,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 70,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "publication",
+      "logprobs": [],
+      "obfuscation": "Ds6Cr"
+    }
+  },
+  {
+    "eventNumber": 72,
+    "timestampMs": 2617,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 71,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "_year",
+      "logprobs": [],
+      "obfuscation": "VeHl3CyhWau"
+    }
+  },
+  {
+    "eventNumber": 73,
+    "timestampMs": 2624,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 72,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "\":",
+      "logprobs": [],
+      "obfuscation": "kKHuYbj0pR3fS3"
+    }
+  },
+  {
+    "eventNumber": 74,
+    "timestampMs": 2626,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 73,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "202",
+      "logprobs": [],
+      "obfuscation": "8bI37raCuuw6R"
+    }
+  },
+  {
+    "eventNumber": 75,
+    "timestampMs": 2633,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 74,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "4",
+      "logprobs": [],
+      "obfuscation": "oj3hnV9v09OTqWT"
+    }
+  },
+  {
+    "eventNumber": 76,
+    "timestampMs": 2637,
+    "event": {
+      "type": "response.output_text.delta",
+      "sequence_number": 75,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "}",
+      "logprobs": [],
+      "obfuscation": "YuF7RiEMOzUNoon"
+    }
+  },
+  {
+    "eventNumber": 77,
+    "timestampMs": 2674,
+    "event": {
+      "type": "response.output_text.done",
+      "sequence_number": 76,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "text": "{\"title\":\"Advances in Neural Architecture Search for Computer Vision\",\"authors\":[\"Dr. Sarah Chen\",\"Dr. Michael Rodriguez\",\"Dr. Aisha Patel\"],\"abstract\":\"This paper presents a novel approach to automated neural architecture search (NAS).\",\"keywords\":[\"Neural Architecture Search\",\"Computer Vision\",\"AutoML\",\"Deep Learning\"],\"publication_year\":2024}",
+      "logprobs": []
+    }
+  },
+  {
+    "eventNumber": 78,
+    "timestampMs": 2674,
+    "event": {
+      "type": "response.content_part.done",
+      "sequence_number": 77,
+      "item_id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+      "output_index": 0,
+      "content_index": 0,
+      "part": {
+        "type": "output_text",
+        "annotations": [],
+        "logprobs": [],
+        "text": "{\"title\":\"Advances in Neural Architecture Search for Computer Vision\",\"authors\":[\"Dr. Sarah Chen\",\"Dr. Michael Rodriguez\",\"Dr. Aisha Patel\"],\"abstract\":\"This paper presents a novel approach to automated neural architecture search (NAS).\",\"keywords\":[\"Neural Architecture Search\",\"Computer Vision\",\"AutoML\",\"Deep Learning\"],\"publication_year\":2024}"
+      }
+    }
+  },
+  {
+    "eventNumber": 79,
+    "timestampMs": 2674,
+    "event": {
+      "type": "response.output_item.done",
+      "sequence_number": 78,
+      "output_index": 0,
+      "item": {
+        "id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+        "type": "message",
+        "status": "completed",
+        "content": [
+          {
+            "type": "output_text",
+            "annotations": [],
+            "logprobs": [],
+            "text": "{\"title\":\"Advances in Neural Architecture Search for Computer Vision\",\"authors\":[\"Dr. Sarah Chen\",\"Dr. Michael Rodriguez\",\"Dr. Aisha Patel\"],\"abstract\":\"This paper presents a novel approach to automated neural architecture search (NAS).\",\"keywords\":[\"Neural Architecture Search\",\"Computer Vision\",\"AutoML\",\"Deep Learning\"],\"publication_year\":2024}"
+          }
+        ],
+        "role": "assistant"
+      }
+    }
+  },
+  {
+    "eventNumber": 80,
+    "timestampMs": 2794,
+    "event": {
+      "type": "response.completed",
+      "sequence_number": 79,
+      "response": {
+        "id": "resp_068eb9bf0a06535000690e2d41d7d8819face8d5bd1f24600b",
+        "object": "response",
+        "created_at": 1762536769,
+        "status": "completed",
+        "background": false,
+        "error": null,
+        "incomplete_details": null,
+        "instructions": null,
+        "max_output_tokens": null,
+        "max_tool_calls": null,
+        "model": "gpt-4o-2024-08-06",
+        "output": [
+          {
+            "id": "msg_068eb9bf0a06535000690e2d42faa4819fa9068c91397e0b75",
+            "type": "message",
+            "status": "completed",
+            "content": [
+              {
+                "type": "output_text",
+                "annotations": [],
+                "logprobs": [],
+                "text": "{\"title\":\"Advances in Neural Architecture Search for Computer Vision\",\"authors\":[\"Dr. Sarah Chen\",\"Dr. Michael Rodriguez\",\"Dr. Aisha Patel\"],\"abstract\":\"This paper presents a novel approach to automated neural architecture search (NAS).\",\"keywords\":[\"Neural Architecture Search\",\"Computer Vision\",\"AutoML\",\"Deep Learning\"],\"publication_year\":2024}"
+              }
+            ],
+            "role": "assistant"
+          }
+        ],
+        "parallel_tool_calls": true,
+        "previous_response_id": null,
+        "prompt_cache_key": null,
+        "prompt_cache_retention": null,
+        "reasoning": {
+          "effort": null,
+          "summary": null
+        },
+        "safety_identifier": null,
+        "service_tier": "default",
+        "store": true,
+        "temperature": 1,
+        "text": {
+          "format": {
+            "type": "json_schema",
+            "description": null,
+            "name": "research_paper_extraction",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "description": "The title of the research paper"
+                },
+                "authors": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "List of author names"
+                },
+                "abstract": {
+                  "type": "string",
+                  "description": "The abstract of the paper"
+                },
+                "keywords": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Keywords or topics"
+                },
+                "publication_year": {
+                  "type": "number",
+                  "description": "Year of publication"
+                }
+              },
+              "required": [
+                "title",
+                "authors",
+                "abstract",
+                "keywords",
+                "publication_year"
+              ],
+              "additionalProperties": false
+            },
+            "strict": true
+          },
+          "verbosity": "medium"
+        },
+        "tool_choice": "auto",
+        "tools": [],
+        "top_logprobs": 0,
+        "top_p": 1,
+        "truncation": "disabled",
+        "usage": {
+          "input_tokens": 204,
+          "input_tokens_details": {
+            "cached_tokens": 0
+          },
+          "output_tokens": 73,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 277
+        },
+        "user": null,
+        "metadata": {}
+      }
+    }
+  }
+]

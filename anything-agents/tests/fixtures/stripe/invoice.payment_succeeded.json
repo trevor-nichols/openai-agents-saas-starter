@@ -1,0 +1,47 @@
+{
+  "id": "evt_invoice_paid",
+  "type": "invoice.payment_succeeded",
+  "created": 1762532400,
+  "data": {
+    "object": {
+      "id": "in_paid",
+      "status": "paid",
+      "amount_due": 9900,
+      "currency": "usd",
+      "description": "Starter plan invoice",
+      "billing_reason": "subscription_cycle",
+      "collection_method": "charge_automatically",
+      "metadata": {
+        "tenant_id": "11111111-2222-3333-4444-555555555555"
+      },
+      "hosted_invoice_url": "https://example.com/invoices/in_paid",
+      "period_start": 1762132400,
+      "period_end": 1764724400,
+      "lines": {
+        "data": [
+          {
+            "id": "il_metered",
+            "quantity": 1200,
+            "amount": 4800,
+            "period": {
+              "start": 1762132400,
+              "end": 1764724400
+            },
+            "metadata": {
+              "feature_key": "messages"
+            },
+            "price": {
+              "recurring": {
+                "usage_type": "metered"
+              },
+              "metadata": {
+                "feature_key": "messages"
+              },
+              "nickname": "Messages"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

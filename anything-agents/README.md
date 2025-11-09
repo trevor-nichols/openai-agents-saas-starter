@@ -70,23 +70,35 @@ This provisions a local virtualenv with all runtime and developer dependencies d
 
 ### 3. Environment Configuration
 
-Copy `.env.example` to `.env.local` and configure:
+Copy `.env.local.example` to `.env.local` and configure every secret (do **not** reuse the sample values outside local dev). Key fields:
 
 ```bash
-# AI API Keys (at least one required)
-OPENAI_API_KEY=your_openai_key
-ANTHROPIC_API_KEY=your_anthropic_key
-GEMINI_API_KEY=your_gemini_key
-XAI_API_KEY=your_xai_key
+# Deployment metadata & secrets
+ENVIRONMENT=development
+SECRET_KEY=change-me
+AUTH_PASSWORD_PEPPER=change-me
+AUTH_REFRESH_TOKEN_PEPPER=change-me
+
+# AI API Keys (set at least one)
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+GEMINI_API_KEY=
+XAI_API_KEY=
 
 # Server Configuration
 PORT=8000
-DEBUG=True
-SECRET_KEY=your_secret_key
+DEBUG=true
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents
-USE_IN_MEMORY_REPO=false  # set true to skip Postgres locally
 AUTO_RUN_MIGRATIONS=true  # dev convenience (requires Alembic dependency)
 ENABLE_BILLING=false      # flip to true once Postgres persistence is ready
+
+# Auth Hardening
+AUTH_PASSWORD_HISTORY_COUNT=5
+AUTH_LOCKOUT_THRESHOLD=5
+AUTH_LOCKOUT_WINDOW_MINUTES=60
+AUTH_LOCKOUT_DURATION_MINUTES=60
+AUTH_IP_LOCKOUT_THRESHOLD=50
+AUTH_IP_LOCKOUT_WINDOW_MINUTES=10
 ```
 
 ### 4. Run the Application
@@ -97,36 +109,50 @@ hatch run serve
 
 The API will be available at `http://localhost:8000`
 
+> **Compose vs. application env files**
+> - `.env.compose` (tracked) holds the non-sensitive defaults that Docker Compose needs (ports, default credentials, project name). You should not edit this file.
+> - `.env.local` (gitignored) contains your secrets and any overrides. The Make targets below source **both** files, so you never have to `export` variables manually.
+> - `.env.compose` now sets `DATABASE_URL`, so durable Postgres storage is the out-of-the-box behavior.
+
 ### 5. Database & Migrations
 
-1. Start the infrastructure stack (Postgres + Redis) via Docker Compose. If you already
-   have something bound to port 5432 or 6379, set `POSTGRES_PORT` / `REDIS_PORT` in your
-   `.env.local` before running this command.
+1. Start the infrastructure stack (Postgres + Redis) via the helper, which automatically sources `.env.compose` and your `.env.local`:
    ```bash
-   docker compose up -d postgres redis
+   make dev-up
    ```
-   *(To stop later: `docker compose down` — data persists in the named volumes `postgres-data` / `redis-data`.)*
+   *(Stop later with `make dev-down`. Data persists inside the `postgres-data` / `redis-data` volumes.)*
 2. Apply the baseline migration:
    ```bash
    make migrate
    ```
 3. Generate new migrations as the schema evolves:
    ```bash
-   hatch run migration-revision "add widget table"
+   make migration-revision MESSAGE="add widget table"
    ```
 
-### 6. Quality Checks
+### 6. Seed a Local Admin User
+
+Once Postgres is running and the new auth tables are migrated, create a bootstrap user via the helper script (the Makefile wrappers automatically load both `.env.compose` and `.env.local`):
+
+```bash
+python scripts/seed_users.py --email admin@example.com --tenant-slug default --role admin
+```
+
+You will be prompted for the password unless you pass `--password`. The script ensures the tenant exists, hashes the password with the configured pepper, stores password history, and prints the resulting credentials for quick testing.
+
+### 7. Quality Checks
 
 Run the standard backend quality gates before opening a PR:
 
 ```bash
+python scripts/check_secrets.py
 hatch run lint
 hatch run typecheck
 hatch run pyright
 hatch run test
 ```
 
-### 7. Postgres Integration Smoke Tests
+### 8. Postgres Integration Smoke Tests
 
 Provision a Postgres instance (see step 5), then run:
 
@@ -137,14 +163,14 @@ hatch run pytest anything-agents/tests/integration -m postgres
 
 The test suite creates a throwaway database, applies Alembic migrations, and verifies the Postgres conversation and billing repositories.
 
-> **Note:** Billing endpoints require Postgres. Set `USE_IN_MEMORY_REPO=false`, configure `DATABASE_URL`, and then flip `ENABLE_BILLING=true`; the app will fail fast if billing is enabled without a durable store.
+> **Note:** Billing endpoints require Postgres. Configure `DATABASE_URL`, then flip `ENABLE_BILLING=true`; the app fails fast if durable storage or Stripe secrets are missing.
 
-### 8. Billing API (Postgres Only)
+### 9. Billing API (Postgres Only)
 
-Billing routes expect two headers on every request:
+Billing routes derive tenant identity/role from the JWT payload. Optional headers are still accepted for backwards compatibility, but they must **match or down-scope** the token claims:
 
-- `X-Tenant-Id`: tenant identifier (UUID recommended)
-- `X-Tenant-Role`: one of `owner`, `admin`, `viewer`
+- `X-Tenant-Id` (optional): must match the `tenant_id` embedded in the access token if supplied.
+- `X-Tenant-Role` (optional): may request a lower role (`owner` > `admin` > `viewer`) but cannot elevate beyond what the token grants.
 
 Example: start a subscription (requires role `owner` or `admin`):
 
@@ -167,6 +193,10 @@ curl -X POST "http://localhost:8000/api/v1/billing/tenants/tenant-123/usage" \
      -H "Content-Type: application/json" \
      -d '{"feature_key": "messages", "quantity": 120, "idempotency_key": "messages-2025-11-06"}'
 ```
+
+#### Stripe configuration
+
+Billing routes now require Stripe credentials whenever `ENABLE_BILLING=true`. The quickest path is to run `pnpm stripe:setup`, which prompts for your Stripe secret/webhook secrets, asks how much to charge for the Starter + Pro plans, and then creates/reuses the corresponding Stripe products/prices (7-day trial included). The script writes `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PRODUCT_PRICE_MAP` into `.env.local` and flips `ENABLE_BILLING=true` for you. Prefer manual edits? You can still populate those keys yourself—just keep the JSON map in sync with your real Stripe price IDs. See `docs/billing/stripe-setup.md` for the full checklist.
 
 ## 🤖 Agent Types
 
@@ -204,6 +234,8 @@ POST /api/v1/chat
 # Streaming chat
 POST /api/v1/chat/stream
 # Returns Server-Sent Events stream
+
+> **Rate limits:** Chat and streaming endpoints enforce per-user quotas (`CHAT_RATE_LIMIT_PER_MINUTE`, `CHAT_STREAM_RATE_LIMIT_PER_MINUTE`) plus concurrent stream caps (`CHAT_STREAM_CONCURRENT_LIMIT`). Adjust these environment variables (see `.env.local.example`) to tune throughput per environment and watch for HTTP 429 responses if callers exceed the limits.
 ```
 
 ### Conversation Management
@@ -286,6 +318,14 @@ pytest tests/test_agents.py
 
 # Run with coverage
 pytest --cov=app tests/
+
+# Replay Stripe fixtures through the webhook + SSE stack
+make test-stripe
+
+# Validate and replay stored Stripe events (examples)
+make lint-stripe-fixtures
+make stripe-replay ARGS="list --handler billing_sync --status failed"
+make stripe-replay ARGS="replay --dispatch-id 7ad7c7bc-..."
 ```
 
 ## 🔄 Migration Path: Single → Multiagent
@@ -387,3 +427,4 @@ MIT License - see LICENSE file for details.
 ---
 
 **Ready to build something amazing with AI agents? Start with the single agent and scale to multiagent systems as your needs grow!** 🚀 
+Run `python scripts/check_secrets.py` (or add it to CI) to verify you replaced every placeholder secret before deploying. Production/staging boots will now fail fast if `ENVIRONMENT` isn’t a dev value and the defaults remain.

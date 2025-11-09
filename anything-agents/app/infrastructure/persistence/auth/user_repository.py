@@ -1,0 +1,336 @@
+"""SQLAlchemy-backed user repository with Redis lockout helpers."""
+
+from __future__ import annotations
+
+import logging
+import uuid
+from datetime import UTC, datetime
+from typing import Protocol
+
+from redis.asyncio import Redis
+from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.orm import selectinload
+
+from app.core.config import Settings, get_settings
+from app.domain.users import (
+    PasswordHistoryEntry,
+    TenantMembershipDTO,
+    UserCreatePayload,
+    UserLoginEventDTO,
+    UserRecord,
+    UserRepository,
+    UserRepositoryError,
+    UserStatus,
+)
+from app.infrastructure.db import get_async_sessionmaker
+from app.infrastructure.persistence.auth.models import (
+    PasswordHistory,
+    TenantUserMembership,
+    UserAccount,
+    UserLoginEvent,
+    UserProfile,
+)
+
+logger = logging.getLogger("anything-agents.persistence.users")
+
+
+class LockoutStore(Protocol):
+    async def increment(self, user_id: uuid.UUID, ttl_seconds: int) -> int: ...
+
+    async def reset(self, user_id: uuid.UUID) -> None: ...
+
+    async def lock(self, user_id: uuid.UUID, duration_seconds: int) -> None: ...
+
+    async def unlock(self, user_id: uuid.UUID) -> None: ...
+
+    async def is_locked(self, user_id: uuid.UUID) -> bool: ...
+
+
+class NullLockoutStore:
+    async def increment(self, _user_id: uuid.UUID, _ttl_seconds: int) -> int:
+        return 0
+
+    async def reset(self, _user_id: uuid.UUID) -> None:
+        return None
+
+    async def lock(self, _user_id: uuid.UUID, _duration_seconds: int) -> None:
+        return None
+
+    async def unlock(self, _user_id: uuid.UUID) -> None:
+        return None
+
+    async def is_locked(self, _user_id: uuid.UUID) -> bool:
+        return False
+
+
+class RedisLockoutStore:
+    """Redis-backed counter and lock management for login attempts."""
+
+    def __init__(self, client: Redis, *, prefix: str = "auth:lockout") -> None:
+        self._client = client
+        self._prefix = prefix
+
+    async def increment(self, user_id: uuid.UUID, ttl_seconds: int) -> int:
+        key = self._counter_key(user_id)
+        value = await self._client.incr(key)
+        await self._client.expire(key, ttl_seconds)
+        return int(value)
+
+    async def reset(self, user_id: uuid.UUID) -> None:
+        await self._client.delete(self._counter_key(user_id))
+
+    async def lock(self, user_id: uuid.UUID, duration_seconds: int) -> None:
+        await self._client.set(self._lock_key(user_id), b"1", ex=duration_seconds)
+
+    async def unlock(self, user_id: uuid.UUID) -> None:
+        await self._client.delete(self._lock_key(user_id))
+
+    async def is_locked(self, user_id: uuid.UUID) -> bool:
+        return bool(await self._client.exists(self._lock_key(user_id)))
+
+    def _counter_key(self, user_id: uuid.UUID) -> str:
+        return f"{self._prefix}:counter:{user_id}"
+
+    def _lock_key(self, user_id: uuid.UUID) -> str:
+        return f"{self._prefix}:state:{user_id}"
+
+
+class PostgresUserRepository(UserRepository):
+    def __init__(
+        self,
+        session_factory: async_sessionmaker[AsyncSession],
+        lockout_store: LockoutStore,
+    ) -> None:
+        self._session_factory = session_factory
+        self._lockout_store = lockout_store
+
+    async def create_user(self, payload: UserCreatePayload) -> UserRecord:
+        normalized_email = payload.email.lower().strip()
+        user_id = payload.user_id or uuid.uuid4()
+        async with self._session_factory() as session:
+            try:
+                user = UserAccount(
+                    id=user_id,
+                    email=normalized_email,
+                    password_hash=payload.password_hash,
+                    password_pepper_version=payload.password_pepper_version,
+                    status=payload.status,
+                )
+                session.add(user)
+                await session.flush()
+
+                if payload.display_name:
+                    profile = UserProfile(
+                        id=uuid.uuid4(),
+                        user_id=user.id,
+                        display_name=payload.display_name,
+                    )
+                    session.add(profile)
+
+                if payload.tenant_id:
+                    membership = TenantUserMembership(
+                        id=uuid.uuid4(),
+                        user_id=user.id,
+                        tenant_id=payload.tenant_id,
+                        role=payload.role,
+                    )
+                    session.add(membership)
+
+                session.add(
+                    PasswordHistory(
+                        id=uuid.uuid4(),
+                        user_id=user.id,
+                        password_hash=payload.password_hash,
+                        password_pepper_version=payload.password_pepper_version,
+                    )
+                )
+
+                await session.commit()
+            except IntegrityError as exc:  # pragma: no cover - handled via tests
+                await session.rollback()
+                raise UserRepositoryError(f"Failed to create user: {exc}") from exc
+
+        record = await self.get_user_by_id(user_id)
+        if record is None:
+            raise UserRepositoryError("User creation succeeded but record could not be reloaded.")
+        return record
+
+    async def update_user_status(self, user_id: uuid.UUID, status: UserStatus) -> None:
+        async with self._session_factory() as session:
+            await session.execute(
+                update(UserAccount)
+                .where(UserAccount.id == user_id)
+                .values(status=status, updated_at=datetime.now(UTC))
+            )
+            await session.commit()
+
+    async def get_user_by_email(self, email: str) -> UserRecord | None:
+        normalized = email.strip().lower()
+        async with self._session_factory() as session:
+            user = await self._fetch_user(session, email=normalized)
+            if not user:
+                return None
+            return self._to_record(user)
+
+    async def get_user_by_id(self, user_id: uuid.UUID) -> UserRecord | None:
+        async with self._session_factory() as session:
+            user = await self._fetch_user(session, user_id=user_id)
+            if not user:
+                return None
+            return self._to_record(user)
+
+    async def record_login_event(self, event: UserLoginEventDTO) -> None:
+        async with self._session_factory() as session:
+            row = UserLoginEvent(
+                id=uuid.uuid4(),
+                user_id=event.user_id,
+                tenant_id=event.tenant_id,
+                ip_hash=event.ip_hash,
+                user_agent=event.user_agent,
+                result=event.result,
+                reason=event.reason,
+                created_at=event.created_at,
+            )
+            session.add(row)
+            await session.commit()
+
+    async def list_password_history(
+        self, user_id: uuid.UUID, limit: int = 5
+    ) -> list[PasswordHistoryEntry]:
+        async with self._session_factory() as session:
+            result = await session.execute(
+                select(PasswordHistory)
+                .where(PasswordHistory.user_id == user_id)
+                .order_by(PasswordHistory.created_at.desc())
+                .limit(limit)
+            )
+            rows = result.scalars().all()
+            return [
+                PasswordHistoryEntry(
+                    user_id=row.user_id,
+                    password_hash=row.password_hash,
+                    password_pepper_version=row.password_pepper_version,
+                    created_at=row.created_at,
+                )
+                for row in rows
+            ]
+
+    async def add_password_history(self, entry: PasswordHistoryEntry) -> None:
+        async with self._session_factory() as session:
+            session.add(
+                PasswordHistory(
+                    id=uuid.uuid4(),
+                    user_id=entry.user_id,
+                    password_hash=entry.password_hash,
+                    password_pepper_version=entry.password_pepper_version,
+                    created_at=entry.created_at,
+                )
+            )
+            await session.commit()
+
+    async def update_password_hash(
+        self,
+        user_id: uuid.UUID,
+        password_hash: str,
+        *,
+        password_pepper_version: str,
+    ) -> None:
+        now = datetime.now(UTC)
+        async with self._session_factory() as session:
+            await session.execute(
+                update(UserAccount)
+                .where(UserAccount.id == user_id)
+                .values(
+                    password_hash=password_hash,
+                    password_pepper_version=password_pepper_version,
+                    updated_at=now,
+                )
+            )
+            session.add(
+                PasswordHistory(
+                    id=uuid.uuid4(),
+                    user_id=user_id,
+                    password_hash=password_hash,
+                    password_pepper_version=password_pepper_version,
+                    created_at=now,
+                )
+            )
+            await session.commit()
+
+    async def increment_lockout_counter(self, user_id: uuid.UUID, *, ttl_seconds: int) -> int:
+        return await self._lockout_store.increment(user_id, ttl_seconds)
+
+    async def reset_lockout_counter(self, user_id: uuid.UUID) -> None:
+        await self._lockout_store.reset(user_id)
+
+    async def mark_user_locked(self, user_id: uuid.UUID, *, duration_seconds: int) -> None:
+        await self._lockout_store.lock(user_id, duration_seconds)
+
+    async def clear_user_lock(self, user_id: uuid.UUID) -> None:
+        await self._lockout_store.unlock(user_id)
+
+    async def is_user_locked(self, user_id: uuid.UUID) -> bool:
+        return await self._lockout_store.is_locked(user_id)
+
+    async def _fetch_user(
+        self,
+        session: AsyncSession,
+        *,
+        email: str | None = None,
+        user_id: uuid.UUID | None = None,
+    ) -> UserAccount | None:
+        stmt = select(UserAccount).options(
+            selectinload(UserAccount.memberships),
+            selectinload(UserAccount.profile),
+        )
+        if email:
+            stmt = stmt.where(UserAccount.email == email)
+        if user_id:
+            stmt = stmt.where(UserAccount.id == user_id)
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    def _to_record(self, user: UserAccount) -> UserRecord:
+        memberships = [
+            TenantMembershipDTO(
+                tenant_id=membership.tenant_id,
+                role=membership.role,
+                created_at=membership.created_at,
+            )
+            for membership in user.memberships
+        ]
+        display_name = user.profile.display_name if user.profile else None
+        raw_status = user.status.value if hasattr(user.status, "value") else str(user.status)
+        status = UserStatus(raw_status)
+        return UserRecord(
+            id=user.id,
+            email=user.email,
+            status=status,
+            password_hash=user.password_hash,
+            password_pepper_version=user.password_pepper_version,
+            created_at=user.created_at,
+            updated_at=user.updated_at,
+            display_name=display_name,
+            memberships=memberships,
+        )
+
+
+def build_lockout_store(settings: Settings) -> LockoutStore:
+    if not settings.redis_url:
+        raise RuntimeError("redis_url is required to build the lockout store.")
+    client = Redis.from_url(settings.redis_url, encoding="utf-8", decode_responses=False)
+    return RedisLockoutStore(client)
+
+
+def get_user_repository(settings: Settings | None = None) -> UserRepository | None:
+    settings = settings or get_settings()
+    if not settings.database_url:
+        return None
+    try:
+        session_factory = get_async_sessionmaker()
+    except RuntimeError:
+        return None
+    lockout_store = build_lockout_store(settings)
+    return PostgresUserRepository(session_factory, lockout_store)

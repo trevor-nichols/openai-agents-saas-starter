@@ -9,6 +9,8 @@
 
 import React from 'react';
 
+import { SilentRefresh } from '@/components/auth/SilentRefresh';
+
 // --- AgentLayout Component ---
 // This layout component wraps all pages within the (agent) route group.
 // It can be used to add UI elements common to all agent pages (e.g., a sidebar, header).
@@ -18,7 +20,9 @@ export default function AgentLayout({
   children: React.ReactNode;
 }) {
   return (
-    // For now, it just renders the children. We can add shared UI here later.
-    <>{children}</>
+    <>
+      <SilentRefresh />
+      {children}
+    </>
   );
 }

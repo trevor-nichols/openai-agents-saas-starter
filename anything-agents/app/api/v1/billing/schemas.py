@@ -1,12 +1,15 @@
 """Pydantic schemas for billing endpoints."""
-
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Annotated
 
-from pydantic import BaseModel, EmailStr, Field, conint
+from pydantic import BaseModel, EmailStr, Field
 
 from app.domain.billing import BillingPlan, PlanFeature, TenantSubscription
+
+PositiveSeatCount = Annotated[int, Field(gt=0)]
+PositiveUsageQuantity = Annotated[int, Field(gt=0)]
 
 
 class PlanFeatureResponse(BaseModel):
@@ -18,7 +21,7 @@ class PlanFeatureResponse(BaseModel):
     is_metered: bool = False
 
     @classmethod
-    def from_domain(cls, feature: PlanFeature) -> "PlanFeatureResponse":
+    def from_domain(cls, feature: PlanFeature) -> PlanFeatureResponse:
         return cls(
             key=feature.key,
             display_name=feature.display_name,
@@ -43,7 +46,7 @@ class BillingPlanResponse(BaseModel):
     features: list[PlanFeatureResponse] = Field(default_factory=list)
 
     @classmethod
-    def from_domain(cls, plan: BillingPlan) -> "BillingPlanResponse":
+    def from_domain(cls, plan: BillingPlan) -> BillingPlanResponse:
         return cls(
             code=plan.code,
             name=plan.name,
@@ -74,7 +77,7 @@ class TenantSubscriptionResponse(BaseModel):
     metadata: dict[str, str] = Field(default_factory=dict)
 
     @classmethod
-    def from_domain(cls, subscription: TenantSubscription) -> "TenantSubscriptionResponse":
+    def from_domain(cls, subscription: TenantSubscription) -> TenantSubscriptionResponse:
         return cls(
             tenant_id=subscription.tenant_id,
             plan_code=subscription.plan_code,
@@ -95,18 +98,24 @@ class StartSubscriptionRequest(BaseModel):
     plan_code: str = Field(..., description="Billing plan to activate.")
     billing_email: EmailStr | None = Field(default=None, description="Primary billing contact.")
     auto_renew: bool = Field(default=True, description="Whether the subscription auto-renews.")
-    seat_count: conint(gt=0) | None = Field(default=None, description="Optional explicit seat count override.")
+    seat_count: PositiveSeatCount | None = Field(
+        default=None, description="Optional explicit seat count override."
+    )
 
 
 class UpdateSubscriptionRequest(BaseModel):
     auto_renew: bool | None = Field(default=None, description="Toggle auto-renewal.")
     billing_email: EmailStr | None = Field(default=None, description="Override billing contact.")
-    seat_count: conint(gt=0) | None = Field(default=None, description="Adjust allocated seats.")
+    seat_count: PositiveSeatCount | None = Field(
+        default=None, description="Adjust allocated seats."
+    )
 
 
 class UsageRecordRequest(BaseModel):
     feature_key: str = Field(..., description="Identifier of the metered feature.")
-    quantity: conint(gt=0) = Field(..., description="Units consumed in this report.")
+    quantity: PositiveUsageQuantity = Field(
+        ..., description="Units consumed in this report."
+    )
     idempotency_key: str | None = Field(
         default=None,
         description="Client-provided key to deduplicate usage submissions.",

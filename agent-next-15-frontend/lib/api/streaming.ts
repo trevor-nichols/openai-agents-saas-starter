@@ -1,7 +1,7 @@
 // Server-Sent Events (SSE) streaming utilities
 // Handles real-time chat streaming from the agents API
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const STREAM_ROUTE = '/api/chat/stream';
 
 export interface StreamChatParams {
   message: string;
@@ -31,7 +31,7 @@ export async function* streamChat(
 ): AsyncGenerator<StreamChunk, void, unknown> {
   const { message, conversationId, agentType = 'triage' } = params;
 
-  const response = await fetch(`${API_BASE_URL}/api/v1/chat/stream`, {
+  const response = await fetch(STREAM_ROUTE, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

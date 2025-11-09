@@ -1,0 +1,16 @@
+{
+  "id": "evt_invoice_failed",
+  "type": "invoice.payment_failed",
+  "created": 1762532400,
+  "data": {
+    "object": {
+      "id": "in_123",
+      "status": "open",
+      "metadata": {
+        "tenant_id": "11111111-2222-3333-4444-555555555555"
+      },
+      "description": "Invoice failed",
+      "billing_reason": "subscription_cycle"
+    }
+  }
+}

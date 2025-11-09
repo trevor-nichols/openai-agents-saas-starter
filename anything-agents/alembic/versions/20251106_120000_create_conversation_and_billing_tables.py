@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import uuid
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "20251106_120000"
@@ -154,13 +155,6 @@ def upgrade() -> None:
             ["billing_plans.id"],
             name="fk_tenant_subscriptions_plan_id_billing_plans",
             ondelete="RESTRICT",
-        ),
-        sa.UniqueConstraint(
-            "tenant_id",
-            "status",
-            name="uq_tenant_subscriptions_active",
-            deferrable=True,
-            initially="IMMEDIATE",
         ),
     )
     op.create_index(

@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import AsyncGenerator, Iterable
-from datetime import datetime
-from typing import Any, Optional
+from collections.abc import AsyncGenerator
+from datetime import UTC, datetime
+from typing import Any, ClassVar
 
 from agents import Agent, function_tool, handoff, trace
 from agents.extensions.handoff_prompt import prompt_with_handoff_instructions
+from agents.extensions.memory.sqlalchemy_session import SQLAlchemySession
 from openai.types.responses import ResponseTextDeltaEvent
 
 from app.api.v1.agents.schemas import AgentStatus, AgentSummary
@@ -16,12 +17,15 @@ from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse, Streami
 from app.api.v1.conversations.schemas import ChatMessage, ConversationHistory, ConversationSummary
 from app.core.config import get_settings
 from app.domain.conversations import (
-    ConversationMetadata,
     ConversationMessage,
+    ConversationMetadata,
     ConversationRepository,
+    ConversationSessionState,
 )
 from app.infrastructure.openai import runner as agent_runner
+from app.infrastructure.openai.sessions import build_conversation_session
 from app.utils.tools import ToolRegistry, initialize_tools
+
 from .conversation_service import conversation_service
 
 
@@ -40,14 +44,18 @@ async def search_conversations(query: str) -> str:
     if not results:
         return "No conversations contained the requested text."
 
-    top_matches = "\n".join(
-        f"{result.conversation_id}: {result.preview}" for result in results[:5]
-    )
+    top_matches = "\n".join(f"{result.conversation_id}: {result.preview}" for result in results[:5])
     return f"Found {len(results)} matching conversations:\n{top_matches}"
 
 
 class AgentRegistry:
     """Manage lifecycle of agent instances and their tool configuration."""
+
+    _AGENT_CAPABILITIES: ClassVar[dict[str, tuple[str, ...]]] = {
+        "triage": ("general", "search", "handoff"),
+        "code_assistant": ("code", "search"),
+        "data_analyst": ("analysis", "search"),
+    }
 
     def __init__(self, tool_registry: ToolRegistry):
         self._settings = get_settings()
@@ -60,16 +68,26 @@ class AgentRegistry:
         self._tool_registry.register_tool(
             get_current_time,
             category="utility",
-            metadata={"description": "Return the current UTC timestamp."},
+            metadata={
+                "description": "Return the current UTC timestamp.",
+                "core": True,
+                "capabilities": ["general"],
+            },
         )
         self._tool_registry.register_tool(
             search_conversations,
             category="conversation",
-            metadata={"description": "Search cached conversation history."},
+            metadata={
+                "description": "Search cached conversation history.",
+                "core": True,
+                "capabilities": ["conversation", "search"],
+            },
         )
 
     def _build_default_agents(self) -> None:
-        triage_tools = self._tool_registry.get_core_tools()
+        triage_tools = self._select_tools("triage")
+        code_tools = self._select_tools("code_assistant")
+        data_tools = self._select_tools("data_analyst")
 
         code_assistant = Agent(
             name="Code Assistant",
@@ -80,7 +98,7 @@ class AgentRegistry:
             """,
             handoff_description="Handles software engineering questions and code reviews.",
             model="gpt-4.1-2025-04-14",
-            tools=triage_tools,
+            tools=code_tools,
         )
 
         data_analyst = Agent(
@@ -92,7 +110,7 @@ class AgentRegistry:
             """,
             handoff_description="Supports analytical and quantitative queries.",
             model="gpt-4.1-2025-04-14",
-            tools=triage_tools,
+            tools=data_tools,
         )
 
         triage_instructions = prompt_with_handoff_instructions(
@@ -117,6 +135,13 @@ class AgentRegistry:
         self._agents["data_analyst"] = data_analyst
         self._agents["triage"] = triage_agent
 
+    def _select_tools(self, agent_key: str) -> list[Any]:
+        capabilities = self._AGENT_CAPABILITIES.get(agent_key, ())
+        return self._tool_registry.get_tools_for_agent(
+            agent_key,
+            capabilities=capabilities,
+        )
+
     def get_agent(self, agent_name: str) -> Agent | None:
         return self._agents.get(agent_name)
 
@@ -134,7 +159,7 @@ class AgentRegistry:
 class AgentService:
     """Core façade that orchestrates agent interactions."""
 
-    def __init__(self, conversation_repo: Optional[ConversationRepository] = None):
+    def __init__(self, conversation_repo: ConversationRepository | None = None):
         if conversation_repo is not None:
             conversation_service.set_repository(conversation_repo)
 
@@ -143,7 +168,7 @@ class AgentService:
 
     async def chat(self, request: AgentChatRequest) -> AgentChatResponse:
         conversation_id = request.conversation_id or str(uuid.uuid4())
-        history = await conversation_service.get_messages(conversation_id)
+        session_id, session_handle = await self._acquire_sdk_session(conversation_id)
 
         preferred_agent = request.agent_type or "triage"
         agent_name, agent = self._resolve_agent(preferred_agent)
@@ -155,13 +180,17 @@ class AgentService:
             metadata=ConversationMetadata(
                 agent_entrypoint=preferred_agent,
                 active_agent=None,
+                sdk_session_id=session_id,
             ),
         )
 
-        agent_input = self._prepare_agent_input(request.message, history)
-
         with trace(workflow_name="Agent Chat", group_id=conversation_id):
-            result = await agent_runner.run(agent, agent_input)
+            result = await agent_runner.run(
+                agent,
+                request.message,
+                session=session_handle,
+                conversation_id=conversation_id,
+            )
 
         assistant_message = ConversationMessage(
             role="assistant",
@@ -173,8 +202,10 @@ class AgentService:
             metadata=ConversationMetadata(
                 agent_entrypoint=preferred_agent,
                 active_agent=agent_name,
+                sdk_session_id=session_id,
             ),
         )
+        await self._sync_session_state(conversation_id, session_id)
 
         return AgentChatResponse(
             response=str(result.final_output),
@@ -191,7 +222,7 @@ class AgentService:
         self, request: AgentChatRequest
     ) -> AsyncGenerator[StreamingChatResponse, None]:
         conversation_id = request.conversation_id or str(uuid.uuid4())
-        history = await conversation_service.get_messages(conversation_id)
+        session_id, session_handle = await self._acquire_sdk_session(conversation_id)
 
         preferred_agent = request.agent_type or "triage"
         agent_name, agent = self._resolve_agent(preferred_agent)
@@ -203,14 +234,19 @@ class AgentService:
             metadata=ConversationMetadata(
                 agent_entrypoint=preferred_agent,
                 active_agent=None,
+                sdk_session_id=session_id,
             ),
         )
 
-        agent_input = self._prepare_agent_input(request.message, history)
         complete_response = ""
 
         with trace(workflow_name="Agent Chat Stream", group_id=conversation_id):
-            stream = agent_runner.run_streamed(agent, agent_input)
+            stream = agent_runner.run_streamed(
+                agent,
+                request.message,
+                session=session_handle,
+                conversation_id=conversation_id,
+            )
 
             async for event in stream.stream_events():
                 if event.type == "raw_response_event" and isinstance(
@@ -244,8 +280,10 @@ class AgentService:
             metadata=ConversationMetadata(
                 agent_entrypoint=preferred_agent,
                 active_agent=agent_name,
+                sdk_session_id=session_id,
             ),
         )
+        await self._sync_session_state(conversation_id, session_id)
 
     async def get_conversation_history(self, conversation_id: str) -> ConversationHistory:
         messages = await conversation_service.get_messages(conversation_id)
@@ -325,20 +363,23 @@ class AgentService:
             raise RuntimeError("No triage agent configured.")
         return "triage", fallback
 
-    def _prepare_agent_input(
-        self, current_message: str, history: Iterable[ConversationMessage]
-    ) -> str:
-        history_list = list(history)[-5:]
-        if not history_list:
-            return current_message
+    async def _acquire_sdk_session(self, conversation_id: str) -> tuple[str, SQLAlchemySession]:
+        state = await conversation_service.get_session_state(conversation_id)
+        if state and state.sdk_session_id:
+            session_id = state.sdk_session_id
+        else:
+            session_id = conversation_id
+        session_handle = build_conversation_session(session_id)
+        return session_id, session_handle
 
-        context_lines = ["Previous conversation context:"]
-        for message in history_list:
-            context_lines.append(f"{message.role}: {message.content}")
-
-        context_lines.append("")
-        context_lines.append(f"Current user message: {current_message}")
-        return "\n".join(context_lines)
+    async def _sync_session_state(self, conversation_id: str, session_id: str) -> None:
+        await conversation_service.update_session_state(
+            conversation_id,
+            ConversationSessionState(
+                sdk_session_id=session_id,
+                last_session_sync_at=datetime.now(UTC),
+            ),
+        )
 
     @staticmethod
     def _to_chat_message(message: ConversationMessage) -> ChatMessage:

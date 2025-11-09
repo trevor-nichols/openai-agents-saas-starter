@@ -1,0 +1,84 @@
+# Human Identity Provider Requirements
+
+**Status:** Draft for security review (IDP-001)  
+**Last Updated:** 2025-11-07  
+**Owners:** Platform Security Guild · Backend Auth Pod
+
+---
+
+## 1. Purpose & Alignment
+- Replace the `/api/v1/auth/token` demo credentials with a production-grade human login path backed by a persistent identity provider (IdP) while preserving the ability to switch to an external IdP later.
+- Provide canonical requirements for IDP-002 through IDP-006 so backend, frontend, and ops teams deliver against the same contract.
+- Extend the existing EdDSA token stack (AUTH-002/003) to cover human principals without reworking downstream APIs.
+
+## 2. User Lifecycle & Tenant Model
+| State | Description | Allowed Actions | Transition Triggers |
+| --- | --- | --- | --- |
+| `pending` | User invited but not yet activated (password reset or IdP confirmation outstanding). | View invite metadata, complete activation, cancel invite. | Activation link completion, admin cancel, invite expiry. |
+| `active` | Fully provisioned user mapped to one or more tenant memberships. | Login, refresh, call APIs within granted roles/scopes. | Lockout threshold hit, admin disable, tenant removal. |
+| `disabled` | Admin-suspended user; credentials retained for audit but login blocked. | None except audit & reinstatement by privileged admin. | Manual enable, automated re-enable SOP (optional, logged). |
+| `locked` | Temporary lock due to rate-limit breach or security trigger. | No login; refresh tokens invalidated; unlock after TTL or admin override. | TTL expiry, unlock workflow, SOC escalation. |
+
+Tenant relationships:
+- A user may belong to multiple tenants; each membership carries role grants (e.g., `admin`, `member`, `billing-only`).
+- Tokens carry a single `tenant_id` claim; multi-tenant users choose the tenant context during login (future: scoped switching endpoint).
+- Removing the last tenant membership implicitly disables the account until a new tenant is assigned.
+
+## 3. Credential Policy (Passwords + Secrets)
+- **Hashing:** bcrypt `$2b$` with cost `work_factor >= 13`, salted per bcrypt spec plus a global pepper `AUTH_PASSWORD_PEPPER` loaded from secret storage. Pepper rotation requires rehash on next successful login.
+- **Entropy requirements:** minimum 14 characters, must include characters from ≥2 classes (upper/lower/numeric/symbol). Password blacklist enforced via zxcvbn-derived scoring ≥ 3.
+- **Storage:** `users.password_hash` stores bcrypt output only; pepper never persisted. Password history table retains the last 5 hashes to prevent reuse.
+- **Reset flow:** activation + reset tokens are single-use, 15-minute TTL, signed via EdDSA (same signer, distinct `token_use=reset`). Tokens stored hashed in Postgres to allow revocation.
+
+## 4. Login Attempt Limits & Lockouts
+- **Per-User Counter:** Redis key `auth:lockout:user:{user_id}` increments on failed login; 1-hour TTL sliding window.
+- **Thresholds:** 5 consecutive failures ⇒ user enters `locked` state; refresh tokens revoked; admin notified via webhook (future automation). Account unlocks automatically after TTL or via admin API.
+- **Global IP Guardrail:** `auth:lockout:ip:{/24}` counters throttle credential stuffing; 50 failures per minute triggers 10-minute block and structured alert.
+- **Observation:** Lockout events emit `auth.lockout` log with `tenant_id`, `ip_hash`, `user_id`, and `reason` for SOC review.
+
+## 5. Auditing & Telemetry
+- **Structured Logs:**
+  - `auth.login` (success/failure) with `user_id`, `tenant_id`, result, `kid`, source IP hash, user agent fingerprint.
+  - `auth.refresh`, `auth.logout`, `auth.unlock`, `auth.policy` (admin actions).
+- **Retention:** 1 year online in Loki + cold storage per compliance; at least 90 days queryable.
+- **Metrics exposed at `/metrics`:**
+  - Counters: `auth_login_attempts_total{result=}`, `auth_lockouts_total{reason=}`, `auth_refresh_issued_total`, `auth_password_resets_total`.
+  - Histograms: `auth_login_latency_seconds`, `auth_password_verify_seconds`.
+- **Tracing:** Trace IDs propagate across login + downstream service calls via `x-trace-id` header; spans annotate result + tenant.
+- **Auditable Events:** All admin state changes (disable/enable, tenant assignment, password reset initiation) recorded in `user_audit_log` with actor, timestamp, before/after diff.
+
+## 6. Token & Claim Rules
+### 6.1 Access Tokens
+- **Algorithm:** EdDSA (Ed25519) only; `alg` header fixed to `EdDSA`, `kid` references active key.
+- **Lifetime:** 15 minutes default; configurable per environment but capped at 30 minutes.
+- **Claims:**
+  - `iss`: `https://agents.internal.openai.com` (configurable `auth_issuer`).
+  - `aud`: array including `agent-api` plus optional service audiences (billing, analytics) tied to requested scopes.
+  - `sub`: `user:{uuid}` unique per human principal.
+  - `tenant_id`: UUID referencing active tenant context.
+  - `roles`: array of role slugs derived from tenant membership (`admin`, `member`, `viewer`, etc.).
+  - `scopes`: array of granted scopes; subset of global taxonomy.
+  - `jti`: UUIDv7 for replay detection; stored in Redis w/ TTL = token lifetime for telemetry only (no revocation required for access tokens).
+  - `iat`/`nbf`: issued-at and not-before set to same epoch seconds, derived from signer clock.
+  - `exp`: `iat + lifetime`.
+  - `token_use`: literal `access` to disambiguate from service-account / reset tokens.
+- **Validation:** Downstream services must enforce `aud`, `tenant_id`, and `scopes`; unauthorized scope usage returns 403.
+
+### 6.2 Refresh Tokens
+- **Format:** 256-bit random secret encoded as `base64url(<random bytes>::<jti>)` and treated as an opaque string that is immediately hashed at rest.
+- **Storage:** `refresh_tokens` table stores bcrypt(+pepper) hash, `user_id`, `tenant_id`, `signing_kid`, `fingerprint_hash`, `expires_at`, `revoked_at`, `reason`.
+- **Lifetime:** 30 days max; rotation required on every refresh (rotate-on-use). Old token invalidated immediately; reuse attempts trigger lockout event + device notification stub.
+- **Claims embedded:** When minting, include `iss`, `sub`, `tenant_id`, `scopes`, `token_use=refresh`, `jti`, `iat`, `exp`. Not exposed to clients except as opaque string.
+- **Revocation:** Admin logout, lockout, or password reset sets `revoked_at` and caches `jti` in Redis for TTL = remaining lifetime to short-circuit DB lookups.
+
+## 7. External IdP Compatibility
+- **Protocols:** Must support OIDC Authorization Code flow with PKCE and SCIM 2.0 provisioning. Local implementation mirrors these contracts so we can later proxy to Auth0/Okta without changing callers.
+- **Attribute Mapping:** Standardize on `email`, `name`, `tenant_roles` claim, `external_id`. Store mapping so `sub` continuity is preserved if/when we swap IdPs.
+- **Just-In-Time Provisioning:** When operating against an external IdP, we can JIT create users on first login if tenant + role info present; otherwise require SCIM sync before login succeeds.
+- **Session Federation:** Access/refresh tokens remain our own; external IdP handles primary auth but exchanges for our tokens via OIDC token endpoint. This doc ensures our token schema remains stable for that flow.
+- **Secrets & Rotation:** External IdP client secrets stored alongside current pepper/keys; rotation SOP documented in `docs/security/idp-rotation.md` (to be authored in IDP-006).
+
+## 8. Acceptance & Next Steps
+- This document plus the updated threat model constitute the deliverable for IDP-001.
+- Backend + security leads must sign off before IDP-002 migration work starts.
+- Any change to password policy, lockout thresholds, or token schema requires updating this doc and notifying the platform security review channel.

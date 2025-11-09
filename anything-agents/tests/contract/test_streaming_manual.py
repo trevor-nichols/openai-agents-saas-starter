@@ -25,50 +25,47 @@ pytestmark = pytest.mark.skipif(
     reason="Streaming smoke test requires a running agent API server on localhost:8000.",
 )
 
+
 async def test_streaming_chat():
     """Test the streaming chat endpoint."""
-    
+
     url = "http://localhost:8000/api/v1/chat/stream"
-    
+
     chat_request = {
         "message": "Tell me a detailed story about a robot learning to paint",
-        "agent_type": "triage"
+        "agent_type": "triage",
     }
-    
+
     print("🚀 Starting streaming chat test...")
     print(f"📝 Request: {chat_request['message']}")
     print("📡 Streaming response:")
     print("-" * 50)
-    
+
     async with httpx.AsyncClient() as client:
         async with client.stream(
-            "POST", 
-            url, 
-            json=chat_request,
-            headers={"Accept": "text/event-stream"}
+            "POST", url, json=chat_request, headers={"Accept": "text/event-stream"}
         ) as response:
-            
             if response.status_code != 200:
                 print(f"❌ Error: {response.status_code}")
                 print(await response.aread())
                 return
-            
+
             complete_response = ""
-            
+
             async for line in response.aiter_lines():
                 if line.startswith("data: "):
                     try:
                         data = json.loads(line[6:])  # Remove "data: " prefix
-                        
+
                         chunk = data.get("chunk", "")
                         is_complete = data.get("is_complete", False)
                         conversation_id = data.get("conversation_id", "")
                         agent_used = data.get("agent_used", "")
-                        
+
                         if chunk:
                             print(chunk, end="", flush=True)
                             complete_response += chunk
-                        
+
                         if is_complete:
                             print("\n" + "-" * 50)
                             print("✅ Stream complete!")
@@ -76,27 +73,25 @@ async def test_streaming_chat():
                             print(f"💬 Conversation ID: {conversation_id}")
                             print(f"📊 Total characters: {len(complete_response)}")
                             break
-                            
+
                     except json.JSONDecodeError as e:
                         print(f"❌ JSON decode error: {e}")
                         print(f"Raw line: {line}")
 
+
 async def test_regular_chat():
     """Test the regular (non-streaming) chat endpoint for comparison."""
-    
+
     url = "http://localhost:8000/api/v1/chat"
-    
-    chat_request = {
-        "message": "What's the weather like today?",
-        "agent_type": "triage"
-    }
-    
+
+    chat_request = {"message": "What's the weather like today?", "agent_type": "triage"}
+
     print("\n🔄 Testing regular chat for comparison...")
     print(f"📝 Request: {chat_request['message']}")
-    
+
     async with httpx.AsyncClient() as client:
         response = await client.post(url, json=chat_request)
-        
+
         if response.status_code == 200:
             data = response.json()
             print(f"✅ Response: {data['response']}")
@@ -106,18 +101,20 @@ async def test_regular_chat():
             print(f"❌ Error: {response.status_code}")
             print(response.text)
 
+
 async def main():
     """Main test function."""
     print("🧪 Testing Agent Streaming System")
     print("=" * 60)
-    
+
     # Test streaming
     await test_streaming_chat()
-    
+
     # Test regular chat
     await test_regular_chat()
-    
+
     print("\n🎉 Tests completed!")
 
+
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

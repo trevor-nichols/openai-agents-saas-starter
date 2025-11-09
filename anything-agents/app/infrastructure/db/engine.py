@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import AsyncIterator
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.pool import NullPool
 
 from app.core.config import get_settings
 
@@ -46,11 +47,9 @@ async def init_engine(*, run_migrations: bool = False) -> AsyncEngine | None:
     """Initialise the async engine based on application settings."""
 
     settings = get_settings()
-    if settings.use_in_memory_repo:
-        logger.info("In-memory conversation repository enabled; skipping engine initialisation.")
-        return None
 
-    if not settings.database_url:
+    database_url = settings.database_url
+    if not database_url:
         raise RuntimeError(
             "Durable storage is enabled but no database_url is configured. "
             "Set DATABASE_URL or disable durable persistence."
@@ -63,18 +62,26 @@ async def init_engine(*, run_migrations: bool = False) -> AsyncEngine | None:
 
     async with _engine_lock:
         if _engine is None:
+            engine_kwargs: dict[str, object] = {
+                "echo": settings.database_echo,
+            }
+            if database_url.startswith("sqlite+"):
+                engine_kwargs["poolclass"] = NullPool
+            else:
+                engine_kwargs.update(
+                    pool_size=settings.database_pool_size,
+                    max_overflow=settings.database_max_overflow,
+                    pool_recycle=settings.database_pool_recycle,
+                    pool_timeout=settings.database_pool_timeout,
+                )
+
             logger.info(
-                "Initialising async engine (pool_size=%s, max_overflow=%s)",
-                settings.database_pool_size,
-                settings.database_max_overflow,
+                "Initialising async engine (url=%s)",
+                database_url,
             )
             _engine = create_async_engine(
-                settings.database_url,
-                pool_size=settings.database_pool_size,
-                max_overflow=settings.database_max_overflow,
-                pool_recycle=settings.database_pool_recycle,
-                echo=settings.database_echo,
-                pool_timeout=settings.database_pool_timeout,
+                database_url,
+                **engine_kwargs,
             )
             _session_factory = async_sessionmaker(
                 _engine,
@@ -128,15 +135,19 @@ async def run_migrations_if_configured() -> None:
         from alembic import command
         from alembic.config import Config
     except ModuleNotFoundError as exc:  # pragma: no cover - dev configuration issue
-        logger.warning(
-            "auto_run_migrations is enabled but Alembic is not installed: %s", exc
-        )
+        logger.warning("auto_run_migrations is enabled but Alembic is not installed: %s", exc)
         return
 
-    alembic_cfg = Config(str(_resolve_alembic_ini()))
-    alembic_cfg.set_main_option("sqlalchemy.url", settings.database_url)
+    database_url = settings.database_url
+    if not database_url:
+        raise RuntimeError(
+            "auto_run_migrations is enabled but DATABASE_URL is not configured."
+        )
 
-    logger.info("Running Alembic migrations (database_url=%s)", settings.database_url)
+    alembic_cfg = Config(str(_resolve_alembic_ini()))
+    alembic_cfg.set_main_option("sqlalchemy.url", database_url)
+
+    logger.info("Running Alembic migrations (database_url=%s)", database_url)
     await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
 
 

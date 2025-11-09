@@ -6,9 +6,4 @@
 from .registry import ToolRegistry, get_tool_registry, initialize_tools
 from .web_search import tavily_search_tool
 
-__all__ = [
-    "ToolRegistry",
-    "get_tool_registry", 
-    "initialize_tools",
-    "tavily_search_tool"
-] 
+__all__ = ["ToolRegistry", "get_tool_registry", "initialize_tools", "tavily_search_tool"]

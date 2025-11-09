@@ -46,6 +46,18 @@ class ConversationMetadata:
     total_tokens_prompt: int | None = None
     total_tokens_completion: int | None = None
     reasoning_tokens: int | None = None
+    sdk_session_id: str | None = None
+    session_cursor: str | None = None
+    last_session_sync_at: datetime | None = None
+
+
+@dataclass(slots=True)
+class ConversationSessionState:
+    """State container describing the SDK session associated with a conversation."""
+
+    sdk_session_id: str | None = None
+    session_cursor: str | None = None
+    last_session_sync_at: datetime | None = None
 
 
 class ConversationRepository(Protocol):
@@ -57,17 +69,18 @@ class ConversationRepository(Protocol):
         message: ConversationMessage,
         *,
         metadata: ConversationMetadata,
-    ) -> None:
-        ...
+    ) -> None: ...
 
-    async def get_messages(self, conversation_id: str) -> list[ConversationMessage]:
-        ...
+    async def get_messages(self, conversation_id: str) -> list[ConversationMessage]: ...
 
-    async def list_conversation_ids(self) -> list[str]:
-        ...
+    async def list_conversation_ids(self) -> list[str]: ...
 
-    async def iter_conversations(self) -> list[ConversationRecord]:
-        ...
+    async def iter_conversations(self) -> list[ConversationRecord]: ...
 
-    async def clear_conversation(self, conversation_id: str) -> None:
-        ...
+    async def clear_conversation(self, conversation_id: str) -> None: ...
+
+    async def get_session_state(self, conversation_id: str) -> ConversationSessionState | None: ...
+
+    async def upsert_session_state(
+        self, conversation_id: str, state: ConversationSessionState
+    ) -> None: ...

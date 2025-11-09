@@ -9,7 +9,7 @@
 ### Goals
 - Replace demo authentication with a production-grade JWT system signed with Ed25519 (EdDSA).
 - Retain clean architecture boundaries (presentation → application → domain → infrastructure) while isolating crypto concerns.
-- Enable deterministic key rotation and public verification without third-party authorization services.
+- Enable Ed25519 signing with a simple key-management story (single active key, easy replacement) and public verification without third-party authorization services.
 - Provide predictable, auditable behaviour with first-class observability and testing.
 
 ### Non-Goals
@@ -53,10 +53,13 @@
 ### Key Components
 
 - **AuthService (new)**: Lives under `app/services/auth_service.py`. Coordinates token issuance, refresh, revocation, and introspection. Depends on domain abstractions, not concrete crypto.
-- **Key Management Module (`app/core/keys.py`)**: Loads active and next Ed25519 keys, exposes rotation window semantics, materializes JWK payloads, and validates key age policies.
-- **Signer/Verifier Interfaces**: `app/core/security.py` refactored into light façade delegating to injected `TokenSigner`/`TokenVerifier` implementations. This keeps dependency injection trivial for tests while locking algorithms.
+- **Key Management Module (`app/core/keys.py`)**: Loads the single active Ed25519 key, materializes JWK payloads, and persists material to either the filesystem or the Vault KV-backed secret manager adapter (`app/infrastructure/security/vault_kv.py`).
+- **Refresh Token Store (`app/infrastructure/persistence/auth/`)**: Postgres + Redis repository for refresh-token reuse and revocation. `ServiceAccountToken` rows capture tenant/account/scope tuples, while `RedisRefreshTokenCache` accelerates lookups for `force=False` reuse from `AuthService`.
+- **Signer/Verifier Interfaces**: `app/core/security.py` exposes `TokenSigner`/`TokenVerifier` abstractions backed by Ed25519 key material from `KeySet`, enforcing `alg=EdDSA` while always using the lone active signing key.
 - **Revocation Store**: Postgres-backed repository under `app/infrastructure/persistence/auth/postgres.py` to track refresh tokens and revoked `jti` values, leveraging existing async engine.
-- **JWKS Endpoint**: New router `app/presentation/jwks.py` (mounted at `/.well-known/jwks.json`) serving public keys with caching. Paired with CLI task to regenerate bundles.
+- **JWKS Endpoint**: Router `app/presentation/well_known.py` exposes `/.well-known/jwks.json`, pulling from `KeySet.materialize_jwks()` and serving the active key. Responses include `Cache-Control`, strong `ETag`, and `Last-Modified` headers so downstream verifiers can rely on conditional GETs (`If-None-Match`) to avoid unnecessary downloads.
+- **Key CLI (`auth keys rotate`, `auth jwks print`)**: Lives alongside the service-account helper in `app/cli/auth_cli.py`; `keys rotate` generates a fresh Ed25519 keypair and immediately replaces the active key in the configured storage backend, while `jwks print` dumps the current JWKS payload for audits or runbooks without hitting the HTTP endpoint.
+- **Observability Surface (`app/observability/*`, `/metrics`)**: Dedicated `metrics.py` registers Prometheus counters/histograms for signing, verification, JWKS, nonce cache, and service-account issuance, while `logging.py` centralizes structured JSON log emission. FastAPI exposes `GET /metrics` for scrapes and `auth.observability` logger streams to the SIEM.
 
 ## 4. Data & Configuration
 
@@ -71,13 +74,18 @@
 - `iat`, `exp`, `nbf` — standard temporal claims.
 
 ### Settings Additions (`app/core/config.py`)
-- `auth_issuer: str`
 - `auth_audience: list[str]` — defaults to `["agent-api", "analytics-service", "billing-worker", "support-console", "synthetic-monitor"]`; override with a JSON array via `AUTH_AUDIENCE` and keep ordering stable across services.
-- `auth_access_ttl_minutes: int`
-- `auth_refresh_ttl_minutes: int`
-- `auth_key_storage_path: Path` (or secret manager URI)
-- `auth_rotation_overlap_minutes: int`
-- Feature flag `auth_dual_signing_enabled: bool`
+- `auth_key_storage_backend: str` — `file` (default) or `secret-manager`.
+- `auth_key_storage_path: str` — filesystem location for keyset JSON when using the file backend.
+- `auth_key_secret_name: str` — secret-manager entry name/path (e.g., `kv/data/auth/keyset`) for environments storing the keyset outside the filesystem. Used by the Vault KV adapter to read/write the serialized KeySet document.
+- `auth_jwks_cache_seconds: int` — legacy cache-control knob retained for backwards compatibility.
+- `auth_jwks_max_age_seconds: int` — preferred cache-control max-age for JWKS responses (defaults to 300 seconds; override via `AUTH_JWKS_MAX_AGE_SECONDS`).
+- `auth_jwks_etag_salt: str` — salt mixed into JWKS ETag derivation so hashes remain unpredictable; configure via `AUTH_JWKS_ETAG_SALT`.
+- `auth_refresh_token_pepper: str` — server-side secret concatenated with refresh tokens before hashing; must be unique per environment and rotated when compromise is suspected.
+- Additional knobs (`auth_issuer`, TTLs) will land with the AUTH-003 service refactor.
+
+### Persistence Schema (AUTH-002/AUTH-003)
+- `service_account_tokens` — captures issued refresh tokens for service-account tuples with columns `(account, tenant_id, scope_key, scopes JSON, refresh_token_hash, refresh_jti, signing_kid, fingerprint, issued_at, expires_at, revoked_at, revoked_reason)`. `refresh_token_hash` stores the bcrypt(+pepper) digest; `signing_kid` records which Ed25519 key produced the token so reuse logic can deterministically reconstruct the same JWS even after rotations. The partial unique index enforces a single active token per `(account, tenant_id, scope_key)` tuple, while Redis (`auth:refresh:*`) mirrors the latest active row (plaintext, TTL-scoped) for low-latency reuse.
 
 ## 5. Token Flow Sequences
 
@@ -90,10 +98,9 @@
    - HTTPBearer dependency extracts token → TokenVerifier checks signature (`alg=EdDSA`, `kid` lookup).
    - Claims validated (issuer, audience, expiry, revocation) → user context returned to route.
 
-3. **Rotation**
-   - Ops pre-load next key material (same KeySet contract).
-   - Dual-signing optional: TokenSigner signs with both old/new keys while verifiers trust both `kid`s.
-   - Once overlap window expires, retire old key; JWKS updates automatically.
+3. **Manual Key Replacement**
+   - When needed, operators run `auth keys rotate` to generate a new Ed25519 keypair and replace the active key in storage (file or Vault).
+   - JWKS payload updates automatically because `KeySet.materialize_jwks()` always reflects the single active key; consumers poll `/.well-known/jwks.json` according to the published `Cache-Control` headers and honor `ETag` to avoid stale caches.
 
 4. **Revocation**
    - On refresh misuse or manual kill, revoke `jti` via repository + optional cache (Redis).
@@ -104,18 +111,33 @@
 - **Directory Layout** (restructure as part of AUTH-003 prerequisite):
   - `tests/unit/` — pure unit tests (e.g., TokenClaims validation, KeySet rotation logic).
   - `tests/integration/` — existing DB-backed suites (rename/migrate current integration suite here).
-  - `tests/contract/` — FastAPI endpoint tests using TestClient with in-memory dependencies.
+  - `tests/contract/` — FastAPI endpoint tests using TestClient with Redis/Postgres doubles (fakeredis + sqlite).
   - `tests/e2e/` (optional later) — docker-compose driven smoke tests.
-- **Fixtures**: Create shared fixtures under `tests/conftest.py` for fake key storage, in-memory revocation store, and token factories.
+- **Fixtures**: Create shared fixtures under `tests/conftest.py` for fake key storage, Redis-backed revocation store (fakeredis), and token factories.
 - **Coverage**: Enable `pytest --cov=app --cov-report=xml` in CI; fail if coverage for `app/core/security.py`, `app/core/keys.py`, and `app/services/auth_service.py` < 90%.
 - **Static Analysis**: Update Ruff profile to flag insecure JWT usage (`flake8-bandit` rule S320 equivalent) and ensure `algorithms` arg enforced.
 
-## 7. Observability & Ops
+## 7. Observability & Alerts
 
-- **Logging**: Structured JSON logs via existing middleware, including fields `event=jwt.verify`, `kid`, `issuer`, `result`.
-- **Metrics**: Add Prometheus counters (`jwt_verifications_total`, `jwt_failures_total`), gauges for `active_key_age_seconds`, and alerts on sustained failure rate >1% over 5 minutes.
-- **Runbooks**: Document rotation SOP, emergency revoke procedure, and how to regenerate JWKS.
-- **Security Audits**: Schedule quarterly key rotation tests and dependency scanning (SCA) for cryptography libraries.
+### Metrics Surface
+- `jwks_requests_total`, `jwks_not_modified_total` — JWKS responder traffic counters.
+- `jwt_signings_total{result,token_use}` / `jwt_signing_duration_seconds{result,token_use}` — emitted by `TokenSigner`.
+- `jwt_verifications_total{result,token_use}` / `jwt_verification_duration_seconds{result,token_use}` — emitted by `TokenVerifier`.
+- `service_account_issuance_total{account,result,reason,reused}` / `service_account_issuance_latency_seconds{account,result,reason,reused}` — emitted by `AuthService` (success, cached reuse, validation errors, rate limits, signer issues, catalog outages).
+- `nonce_cache_hits_total`, `nonce_cache_misses_total` — emitted from Vault nonce enforcement to spot replay attempts.
+- All series live inside `app/observability/metrics.py`, registered against a dedicated registry scraped via `GET /metrics` (new FastAPI route in `app/presentation/metrics.py`).
+
+### Structured Logging
+- Centralized helper `app/observability/logging.py` writes single-line JSON (`auth.observability` logger) with shared schema.
+- Events include: `token_sign`, `token_verify`, `service_account_issuance`, `service_account_rate_limit`, `vault_signature_verify`, and `vault_nonce_cache`.
+- Each event carries contextual fields (e.g., `{result, token_use, kid, duration_seconds, account, limit_type, reason}`) so SIEM queries/alerts can pivot without regexing free-form text.
+
+### Alerting Targets
+1. **JWT Verification Failure Rate**: `increase(jwt_verifications_total{result="failure"}[5m]) / increase(jwt_verifications_total[5m]) > 0.01` → PagerDuty (Sev2). Runbook: confirm JWKS freshness, inspect signer health, roll keyset back if necessary.
+2. **Service-Account Issuance Latency**: `histogram_quantile(0.95, rate(service_account_issuance_latency_seconds_bucket{result="success"}[5m])) > 2` seconds → #auth-runtime Slack. Runbook covers Redis/Vault latency checks plus signer saturation review.
+3. **Nonce Replay Spike**: `rate(nonce_cache_hits_total[5m]) ≥ 5` → #security-ops Slack to investigate potential credential replay. Runbook pulls Vault audit logs + client metadata.
+
+Dashboards should pin these metrics, annotate alert firings, and link back to this section plus the incident SOP so AUTH-005 assurances remain auditable.
 
 ## 8. Implementation Alignment with Milestones
 
