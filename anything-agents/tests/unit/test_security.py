@@ -11,6 +11,7 @@ import pytest
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 
+from app.core.config import get_settings
 from app.core.keys import load_keyset
 from app.core.security import (
     TokenVerifierError,
@@ -28,10 +29,13 @@ def _payload(
     subject: str = "user:123",
 ) -> dict[str, int | str]:
     now = int(time.time()) + iat_offset
+    settings = get_settings()
     return {
         "sub": subject,
         "scope": "conversations:read",
         "token_use": token_use,
+        "iss": settings.app_name,
+        "aud": settings.auth_audience,
         "iat": now,
         "nbf": now,
         "exp": now + exp_offset,
