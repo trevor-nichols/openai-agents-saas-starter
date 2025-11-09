@@ -88,6 +88,7 @@ XAI_API_KEY=
 # Server Configuration
 PORT=8000
 DEBUG=true
+APP_PUBLIC_URL=http://localhost:3000
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents
 AUTO_RUN_MIGRATIONS=true  # dev convenience (requires Alembic dependency)
 ENABLE_BILLING=false      # flip to true once Postgres persistence is ready
@@ -99,7 +100,17 @@ AUTH_LOCKOUT_WINDOW_MINUTES=60
 AUTH_LOCKOUT_DURATION_MINUTES=60
 AUTH_IP_LOCKOUT_THRESHOLD=50
 AUTH_IP_LOCKOUT_WINDOW_MINUTES=10
+
+# Email Delivery (Resend)
+RESEND_EMAIL_ENABLED=false
+RESEND_API_KEY=
+RESEND_DEFAULT_FROM=support@example.com
+RESEND_BASE_URL=https://api.resend.com
+RESEND_EMAIL_VERIFICATION_TEMPLATE_ID=
+RESEND_PASSWORD_RESET_TEMPLATE_ID=
 ```
+
+Flip `RESEND_EMAIL_ENABLED=true` only after you have verified the sender domain inside Resend and populated both `RESEND_API_KEY` and `RESEND_DEFAULT_FROM`. Leave the template ID fields empty to send inline HTML from the backend, or point them at published Resend templates for richer layouts.
 
 ### 4. Run the Application
 

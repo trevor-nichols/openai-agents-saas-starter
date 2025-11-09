@@ -41,6 +41,11 @@ class Settings(BaseSettings):
         default="anything-agents FastAPI microservice", description="Application description"
     )
     app_version: str = Field(default="1.0.0", description="Application version")
+    app_public_url: str = Field(
+        default="http://localhost:3000",
+        description="Public base URL used when generating email links.",
+        alias="APP_PUBLIC_URL",
+    )
     debug: bool = Field(default=False, description="Debug mode")
     environment: str = Field(
         default="development",
@@ -278,6 +283,39 @@ class Settings(BaseSettings):
         default=10,
         description="Verification email sends per IP per hour.",
         alias="EMAIL_VERIFICATION_IP_RATE_LIMIT_PER_HOUR",
+    )
+    enable_resend_email_delivery: bool = Field(
+        default=False,
+        description=(
+            "When true, use Resend for transactional email delivery instead of the "
+            "logging notifier."
+        ),
+        alias="RESEND_EMAIL_ENABLED",
+    )
+    resend_api_key: str | None = Field(
+        default=None,
+        description="Resend API key (re_...). Required when RESEND_EMAIL_ENABLED=true.",
+        alias="RESEND_API_KEY",
+    )
+    resend_base_url: str = Field(
+        default="https://api.resend.com",
+        description="Override Resend API base URL for testing/sandbox environments.",
+        alias="RESEND_BASE_URL",
+    )
+    resend_default_from: str | None = Field(
+        default=None,
+        description="Fully-qualified From address (e.g., support@example.com) verified in Resend.",
+        alias="RESEND_DEFAULT_FROM",
+    )
+    resend_email_verification_template_id: str | None = Field(
+        default=None,
+        description="Optional Resend template ID for email verification messages.",
+        alias="RESEND_EMAIL_VERIFICATION_TEMPLATE_ID",
+    )
+    resend_password_reset_template_id: str | None = Field(
+        default=None,
+        description="Optional Resend template ID for password reset messages.",
+        alias="RESEND_PASSWORD_RESET_TEMPLATE_ID",
     )
     auth_lockout_threshold: int = Field(
         default=5,
@@ -519,6 +557,15 @@ class Settings(BaseSettings):
             and self.auth_key_storage_path == DEFAULT_KEY_STORAGE_PATH
         ):
             warnings.append("AUTH_KEY_STORAGE_PATH still points to var/keys/keyset.json")
+        if self.enable_resend_email_delivery:
+            if not (self.resend_api_key and self.resend_api_key.strip()):
+                warnings.append(
+                    "RESEND_API_KEY must be configured when RESEND_EMAIL_ENABLED is true"
+                )
+            if not (self.resend_default_from and self.resend_default_from.strip()):
+                warnings.append(
+                    "RESEND_DEFAULT_FROM must be configured when RESEND_EMAIL_ENABLED is true"
+                )
         return warnings
 
     @staticmethod

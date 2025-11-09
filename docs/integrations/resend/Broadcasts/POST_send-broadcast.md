@@ -1,0 +1,166 @@
+# Send Broadcast
+
+> Start sending broadcasts to your audience through the Resend API.
+
+export const ResendParamField = ({children, body, path, ...props}) => {
+  const [lang, setLang] = useState(() => {
+    return localStorage.getItem('code') || '"Node.js"';
+  });
+  useEffect(() => {
+    const onStorage = event => {
+      const key = event.detail.key;
+      if (key === 'code') {
+        setLang(event.detail.value);
+      }
+    };
+    document.addEventListener('mintlify-localstorage', onStorage);
+    return () => {
+      document.removeEventListener('mintlify-localstorage', onStorage);
+    };
+  }, []);
+  const toCamelCase = str => typeof str === 'string' ? str.replace(/[_-](\w)/g, (_, c) => c.toUpperCase()) : str;
+  const resolvedBody = useMemo(() => {
+    const value = JSON.parse(lang);
+    return value === 'Node.js' ? toCamelCase(body) : body;
+  }, [body, lang]);
+  const resolvedPath = useMemo(() => {
+    const value = JSON.parse(lang);
+    return value === 'Node.js' ? toCamelCase(path) : path;
+  }, [path, lang]);
+  return <ParamField body={resolvedBody} path={resolvedPath} {...props}>
+      {children}
+    </ParamField>;
+};
+
+<Note>You can send broadcasts only if they were created via the API.</Note>
+
+## Path Parameters
+
+<ResendParamField path="broadcast_id" type="string" required>
+  The broadcast ID.
+</ResendParamField>
+
+## Body Parameters
+
+<ResendParamField body="scheduled_at" type="string">
+  Schedule email to be sent later. The date should be in natural language (e.g.:
+  `in 1 min`) or ISO 8601 format (e.g: `2024-08-05T11:52:01.858Z`).
+</ResendParamField>
+
+<RequestExample>
+  ```ts Node.js theme={null}
+  import { Resend } from 'resend';
+
+  const resend = new Resend('re_xxxxxxxxx');
+
+  const { data, error } = await resend.broadcasts.send(
+    '559ac32e-9ef5-46fb-82a1-b76b840c0f7b',
+    {
+      scheduledAt: 'in 1 min',
+    },
+  );
+  ```
+
+  ```php PHP theme={null}
+  $resend = Resend::client('re_xxxxxxxxx');
+
+  $resend->broadcasts->send('559ac32e-9ef5-46fb-82a1-b76b840c0f7b', [
+    'scheduled_at' => 'in 1 min',
+  ]);
+  ```
+
+  ```py Python theme={null}
+  import resend
+
+  resend.api_key = "re_xxxxxxxxx"
+
+  params: resend.Broadcasts.SendParams = {
+    "broadcast_id": "559ac32e-9ef5-46fb-82a1-b76b840c0f7b",
+    "scheduled_at": "in 1 min"
+  }
+  resend.Broadcasts.send(params)
+  ```
+
+  ```ruby Ruby theme={null}
+  require "resend"
+
+  Resend.api_key = "re_xxxxxxxxx"
+
+  params = {
+    broadcast_id: "559ac32e-9ef5-46fb-82a1-b76b840c0f7b",
+    scheduled_at: "in 1 min"
+  }
+  Resend::Broadcasts.send(params)
+  ```
+
+  ```go Go theme={null}
+  import 	"github.com/resend/resend-go/v3"
+
+  client := resend.NewClient("re_xxxxxxxxx")
+
+  sendParams := &resend.SendBroadcastRequest{
+    BroadcastId: "559ac32e-9ef5-46fb-82a1-b76b840c0f7b",
+    ScheduledAt: "in 1 min",
+  }
+
+  sent, _ := client.Broadcasts.Send(sendParams)
+  ```
+
+  ```rust Rust theme={null}
+  use resend_rs::{types::SendBroadcastOptions, Resend, Result};
+
+  #[tokio::main]
+  async fn main() -> Result<()> {
+    let resend = Resend::new("re_xxxxxxxxx");
+
+    let opts =
+      SendBroadcastOptions::new("559ac32e-9ef5-46fb-82a1-b76b840c0f7b").with_scheduled_at("in 1 min");
+
+    let _broadcast = resend.broadcasts.send(opts).await?;
+
+    Ok(())
+  }
+  ```
+
+  ```java Java theme={null}
+  Resend resend = new Resend("re_xxxxxxxxx");
+
+  SendBroadcastOptions params = SendBroadcastOptions.builder()
+      .scheduledAt("in 1 min")
+      .build();
+
+  SendBroadcastResponseSuccess data = resend.broadcasts().send(params,
+      "498ee8e4-7aa2-4eb5-9f04-4194848049d1");
+  ```
+
+  ```csharp .NET theme={null}
+  using Resend;
+
+  IResend resend = ResendClient.Create( "re_xxxxxxxxx" ); // Or from DI
+
+  // Send now
+  await resend.BroadcastSendAsync( new Guid( "559ac32e-9ef5-46fb-82a1-b76b840c0f7b" ) );
+
+  // Send in 5 mins
+  await resend.BroadcastScheduleAsync(
+      new Guid( "559ac32e-9ef5-46fb-82a1-b76b840c0f7b" ),
+      DateTime.UtcNow.AddMinutes( 5 ) );
+  ```
+
+  ```bash cURL theme={null}
+  curl -X POST 'https://api.resend.com/broadcasts/559ac32e-9ef5-46fb-82a1-b76b840c0f7b/send' \
+       -H 'Authorization: Bearer re_xxxxxxxxx' \
+       -H 'Content-Type: application/json' \
+       -d $'{
+    "scheduled_at": "in 1 min"
+  }'
+  ```
+</RequestExample>
+
+<ResponseExample>
+  ```json Response theme={null}
+  {
+    "id": "49a3999c-0ce1-4ea6-ab68-afcd6dc2e794"
+  }
+  ```
+</ResponseExample>

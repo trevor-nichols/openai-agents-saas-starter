@@ -174,6 +174,21 @@ RATE_LIMIT_HITS_TOTAL = Counter(
     registry=REGISTRY,
 )
 
+EMAIL_DELIVERY_ATTEMPTS_TOTAL = Counter(
+    "email_delivery_attempts_total",
+    "Count of transactional email delivery attempts segmented by category and result.",
+    ("category", "result"),
+    registry=REGISTRY,
+)
+
+EMAIL_DELIVERY_LATENCY_SECONDS = Histogram(
+    "email_delivery_latency_seconds",
+    "Latency histogram for transactional email sends segmented by category and result.",
+    ("category", "result"),
+    buckets=_LATENCY_BUCKETS,
+    registry=REGISTRY,
+)
+
 
 def observe_jwt_signing(*, result: str, token_use: str | None, duration_seconds: float) -> None:
     label = _sanitize_token_use(token_use)
@@ -222,6 +237,14 @@ def observe_service_account_issuance(
 
 def record_rate_limit_hit(*, quota: str, scope: str) -> None:
     RATE_LIMIT_HITS_TOTAL.labels(quota=quota, scope=(scope or "unknown")).inc()
+
+
+def observe_email_delivery(*, category: str | None, result: str, duration_seconds: float) -> None:
+    label = (category or "unknown").lower()
+    EMAIL_DELIVERY_ATTEMPTS_TOTAL.labels(category=label, result=result).inc()
+    EMAIL_DELIVERY_LATENCY_SECONDS.labels(category=label, result=result).observe(
+        max(duration_seconds, 0.0)
+    )
 
 
 def record_nonce_cache_result(*, hit: bool) -> None:

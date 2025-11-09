@@ -16,16 +16,27 @@ from app.domain.email_verification import (
     EmailVerificationTokenStore,
 )
 from app.domain.users import UserRepository
+from app.infrastructure.notifications import (
+    ResendEmailAdapter,
+    ResendEmailError,
+    ResendEmailRequest,
+    get_resend_email_adapter,
+)
 from app.infrastructure.persistence.auth.user_repository import get_user_repository
 from app.infrastructure.security.email_verification_store import (
     get_email_verification_token_store,
 )
 from app.observability.logging import log_event
+from app.presentation.emails import render_verification_email
 from app.services.auth_service import auth_service
 
 
 class EmailVerificationError(RuntimeError):
     """Base class for email verification failures."""
+
+
+class EmailVerificationDeliveryError(EmailVerificationError):
+    """Raised when the verification email cannot be delivered."""
 
 
 class InvalidEmailVerificationTokenError(EmailVerificationError):
@@ -51,6 +62,60 @@ class LoggingEmailVerificationNotifier(EmailVerificationNotifier):
             email=email,
             expires_at=expires_at.isoformat(),
             token_preview=f"{token[:4]}...",
+        )
+
+
+class ResendEmailVerificationNotifier(EmailVerificationNotifier):
+    """Sends verification emails through Resend."""
+
+    def __init__(self, adapter: ResendEmailAdapter, settings: Settings) -> None:
+        self._adapter = adapter
+        self._settings = settings
+
+    async def send_verification(self, *, email: str, token: str, expires_at: datetime) -> None:
+        request = self._build_request(email=email, token=token, expires_at=expires_at)
+        try:
+            await self._adapter.send_email(request)
+        except ResendEmailError as exc:
+            log_event(
+                "auth.email_verification_notification",
+                result="error",
+                email=email,
+                reason=getattr(exc, "error_code", None) or "resend_error",
+            )
+            raise
+
+    def _build_request(
+        self,
+        *,
+        email: str,
+        token: str,
+        expires_at: datetime,
+    ) -> ResendEmailRequest:
+        subject = f"Verify your email for {self._settings.app_name}"
+        template_id = self._settings.resend_email_verification_template_id
+        if template_id:
+            return ResendEmailRequest(
+                to=[email],
+                subject=subject,
+                template_id=template_id,
+                template_variables={
+                    "token": token,
+                    "expires_at": expires_at.isoformat(),
+                    "app_name": self._settings.app_name,
+                },
+                tags={"category": "email_verification"},
+                category="email_verification",
+            )
+
+        content = render_verification_email(self._settings, token, expires_at)
+        return ResendEmailRequest(
+            to=[email],
+            subject=subject,
+            html_body=content.html,
+            text_body=content.text,
+            tags={"category": "email_verification"},
+            category="email_verification",
         )
 
 
@@ -93,11 +158,14 @@ class EmailVerificationService:
             ua=user_agent,
         )
         await self._token_store.save(record, ttl_seconds=self._token_ttl_seconds())
-        await self._notifier.send_verification(
-            email=email_to_use,
-            token=token,
-            expires_at=record.expires_at,
-        )
+        try:
+            await self._notifier.send_verification(
+                email=email_to_use,
+                token=token,
+                expires_at=record.expires_at,
+            )
+        except ResendEmailError as exc:
+            raise EmailVerificationDeliveryError("Failed to send verification email.") from exc
         log_event(
             "auth.email_verification_request",
             result="queued",
@@ -192,7 +260,12 @@ def build_email_verification_service() -> EmailVerificationService:
     if repository is None:
         raise RuntimeError("User repository is not configured; email verification unavailable.")
     token_store = get_email_verification_token_store(settings)
-    notifier: EmailVerificationNotifier = LoggingEmailVerificationNotifier()
+    notifier: EmailVerificationNotifier
+    if settings.enable_resend_email_delivery:
+        adapter = get_resend_email_adapter(settings)
+        notifier = ResendEmailVerificationNotifier(adapter, settings)
+    else:
+        notifier = LoggingEmailVerificationNotifier()
     return EmailVerificationService(repository, token_store, notifier, settings=settings)
 
 
@@ -207,8 +280,9 @@ def get_email_verification_service() -> EmailVerificationService:
 
 
 __all__ = [
-    "EmailVerificationService",
+    "EmailVerificationDeliveryError",
     "EmailVerificationError",
+    "EmailVerificationService",
     "InvalidEmailVerificationTokenError",
     "get_email_verification_service",
 ]

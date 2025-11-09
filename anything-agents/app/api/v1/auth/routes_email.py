@@ -12,6 +12,7 @@ from app.api.models.auth import EmailVerificationConfirmRequest
 from app.api.models.common import SuccessResponse
 from app.api.v1.auth.utils import extract_client_ip, extract_user_agent
 from app.services.email_verification_service import (
+    EmailVerificationDeliveryError,
     InvalidEmailVerificationTokenError,
     get_email_verification_service,
 )
@@ -37,12 +38,18 @@ async def send_email_verification(
     await _enforce_email_verification_quota(current_user["user_id"], client_ip)
 
     service = get_email_verification_service()
-    await service.send_verification_email(
-        user_id=current_user["user_id"],
-        email=None,
-        ip_address=client_ip,
-        user_agent=extract_user_agent(request),
-    )
+    try:
+        await service.send_verification_email(
+            user_id=current_user["user_id"],
+            email=None,
+            ip_address=client_ip,
+            user_agent=extract_user_agent(request),
+        )
+    except EmailVerificationDeliveryError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Unable to send verification email. Please try again shortly.",
+        ) from exc
 
     return SuccessResponse(
         message="Verification email sent.",
