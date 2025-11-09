@@ -27,7 +27,7 @@ def _payload(
     exp_offset: int = 300,
     token_use: str = "access",
     subject: str = "user:123",
-) -> dict[str, int | str]:
+) -> dict[str, int | str | list[str]]:
     now = int(time.time()) + iat_offset
     settings = get_settings()
     return {
