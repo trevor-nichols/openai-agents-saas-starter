@@ -77,7 +77,7 @@ class UserRegisterRequest(BaseModel):
 class UserRefreshRequest(BaseModel):
     """Refresh session request payload."""
 
-    refresh_token: str = Field(min_length=16, description="Previously issued refresh token.")
+    refresh_token: str = Field(min_length=1, description="Previously issued refresh token.")
 
 
 class PasswordForgotRequest(BaseModel):
@@ -89,7 +89,7 @@ class PasswordForgotRequest(BaseModel):
 class PasswordResetConfirmRequest(BaseModel):
     """Redeem a password reset token to set a new password."""
 
-    token: str = Field(min_length=32, description="Password reset token from email.")
+    token: str = Field(min_length=1, description="Password reset token from email.")
     new_password: str = Field(
         min_length=14,
         description="Replacement password that satisfies platform policy.",
@@ -109,7 +109,7 @@ class UserLogoutRequest(BaseModel):
     """Payload for revoking a single refresh token."""
 
     refresh_token: str = Field(
-        min_length=16,
+        min_length=1,
         description="Refresh token to revoke for the current user.",
     )
 
@@ -117,7 +117,7 @@ class UserLogoutRequest(BaseModel):
 class EmailVerificationConfirmRequest(BaseModel):
     """Payload for confirming the email verification token."""
 
-    token: str = Field(min_length=32, description="Verification token delivered via email.")
+    token: str = Field(min_length=1, description="Verification token delivered via email.")
 
 
 class PasswordChangeRequest(BaseModel):

@@ -60,6 +60,22 @@ class AuthService:
             user_service=user_service,
         )
 
+        def _forward_verify_token(
+            token: str,
+            *,
+            allow_expired: bool = False,
+            error_cls: type[UserAuthenticationError] = UserRefreshError,
+            error_message: str = "Refresh token verification failed.",
+        ) -> dict[str, object]:
+            return self._verify_token(
+                token,
+                allow_expired=allow_expired,
+                error_cls=error_cls,
+                error_message=error_message,
+            )
+
+        self._sessions.set_token_verifier(_forward_verify_token)
+
     async def issue_service_account_refresh_token(
         self,
         *,
@@ -174,7 +190,7 @@ class AuthService:
         error_cls: type[UserAuthenticationError] = UserRefreshError,
         error_message: str = "Refresh token verification failed.",
     ) -> dict[str, object]:
-        return self._sessions._verify_token(  # type: ignore[attr-defined]
+        return self._sessions._default_verify_token(  # type: ignore[attr-defined]
             token,
             allow_expired=allow_expired,
             error_cls=error_cls,

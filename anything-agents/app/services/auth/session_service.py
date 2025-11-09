@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 from datetime import UTC, datetime, timedelta
+from typing import Protocol
 from uuid import UUID, uuid4
 
 from app.core.config import get_settings
@@ -27,6 +28,17 @@ from .refresh_token_manager import RefreshTokenManager
 from .session_store import SessionStore
 
 
+class TokenVerifierCallable(Protocol):
+    def __call__(
+        self,
+        token: str,
+        *,
+        allow_expired: bool = False,
+        error_cls: type[UserAuthenticationError] = UserRefreshError,
+        error_message: str = "Refresh token verification failed.",
+    ) -> dict[str, object]: ...
+
+
 class UserSessionService:
     """Handles login, refresh, and lifecycle management for human sessions."""
 
@@ -36,10 +48,15 @@ class UserSessionService:
         refresh_tokens: RefreshTokenManager,
         session_store: SessionStore,
         user_service: UserService | None,
+        token_verifier: TokenVerifierCallable | None = None,
     ) -> None:
         self._refresh_tokens = refresh_tokens
         self._session_store = session_store
         self._user_service = user_service
+        self._token_verifier: TokenVerifierCallable | None = token_verifier
+
+    def set_token_verifier(self, verifier: TokenVerifierCallable | None) -> None:
+        self._token_verifier = verifier
 
     async def login_user(
         self,
@@ -327,6 +344,28 @@ class UserSessionService:
         )
 
     def _verify_token(
+        self,
+        token: str,
+        *,
+        allow_expired: bool = False,
+        error_cls: type[UserAuthenticationError] = UserRefreshError,
+        error_message: str = "Refresh token verification failed.",
+    ) -> dict[str, object]:
+        if self._token_verifier is not None:
+            return self._token_verifier(
+                token,
+                allow_expired=allow_expired,
+                error_cls=error_cls,
+                error_message=error_message,
+            )
+        return self._default_verify_token(
+            token,
+            allow_expired=allow_expired,
+            error_cls=error_cls,
+            error_message=error_message,
+        )
+
+    def _default_verify_token(
         self,
         token: str,
         *,
