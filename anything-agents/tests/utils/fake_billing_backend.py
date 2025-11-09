@@ -63,3 +63,14 @@ class QueueBillingEventBackend(BillingEventBackend):
         for stream in list(self._subscribers):
             await stream.close()
         self._subscribers.clear()
+
+    # Test helper ---------------------------------------------------------
+
+    def pop(self, tenant_id: str) -> str | None:
+        queue = self._queues.get(self._channel(tenant_id))
+        if not queue or queue.empty():
+            return None
+        return queue.get_nowait()
+
+    def _channel(self, tenant_id: str) -> str:
+        return f"billing:{tenant_id}"

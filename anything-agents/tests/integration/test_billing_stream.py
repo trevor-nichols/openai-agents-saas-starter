@@ -104,6 +104,53 @@ async def test_stream_rejects_tenant_mismatch(monkeypatch):
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
+@pytest.mark.asyncio
+async def test_context_tenant_override_publishes_to_correct_channel(monkeypatch):
+    service = BillingEventsService()
+    backend = QueueBillingEventBackend()
+    service.configure(backend=backend, repository=None)
+
+    monkeypatch.setattr(
+        "app.services.billing_events._billing_events_service", service, raising=False
+    )
+    monkeypatch.setattr(
+        "app.services.billing_events.billing_events_service", service, raising=False
+    )
+
+    # Event lacks tenant_hint but dispatcher context resolves the tenant.
+    now = datetime.now(UTC)
+    record = StripeEvent(
+        id=uuid4(),
+        stripe_event_id="evt_missing_hint",
+        event_type="invoice.payment_succeeded",
+        payload={"data": {"object": {"status": "paid"}}},
+        tenant_hint=None,
+        stripe_created_at=now,
+        received_at=now,
+        processed_at=now,
+        processing_outcome=StripeEventStatus.PROCESSED.value,
+        processing_attempts=1,
+    )
+    override_tenant = "tenant-override"
+    context = DispatchBroadcastContext(
+        tenant_id=override_tenant,
+        event_type="invoice.payment_succeeded",
+        summary="Invoice paid",
+        status="paid",
+        subscription=None,
+        invoice=None,
+        usage=[],
+    )
+
+    await service.publish_from_event(record, record.payload, context=context)
+
+    published = backend.pop(override_tenant)
+    assert published is not None, "Expected message in override tenant channel"
+    payload = json.loads(published)
+    assert payload["tenant_id"] == override_tenant
+    assert payload["event_type"] == "invoice.payment_succeeded"
+
+
 async def _publish_invoice_event(service: BillingEventsService) -> None:
     now = datetime.now(UTC)
     record = StripeEvent(
