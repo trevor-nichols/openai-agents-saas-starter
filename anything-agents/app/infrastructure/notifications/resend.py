@@ -7,7 +7,7 @@ import math
 import time
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Final
+from typing import Any, Final, cast
 
 import resend
 from resend import exceptions as resend_exceptions
@@ -182,11 +182,16 @@ class ResendEmailAdapter:
         return ResendEmailSendResult(message_id=message_id)
 
     @staticmethod
-    def _send_sync(payload: dict[str, Any], idempotency_key: str | None) -> Mapping[str, Any]:
-        options = {"idempotency_key": idempotency_key} if idempotency_key else None
+    def _send_sync(
+        payload: resend.Emails.SendParams,
+        idempotency_key: str | None,
+    ) -> Mapping[str, Any]:
+        options: resend.Emails.SendOptions | None = (
+            {"idempotency_key": idempotency_key} if idempotency_key else None
+        )
         return resend.Emails.send(payload, options=options)
 
-    def _build_payload(self, request: ResendEmailRequest) -> dict[str, Any]:
+    def _build_payload(self, request: ResendEmailRequest) -> resend.Emails.SendParams:
         to = _normalize_recipients(request.to)
         if not to:
             raise ValueError("At least one recipient is required.")
@@ -238,7 +243,7 @@ class ResendEmailAdapter:
             if request.text_body is not None:
                 payload["text"] = request.text_body
 
-        return payload
+        return cast(resend.Emails.SendParams, payload)
 
 
 def _normalize_recipients(value: Sequence[str] | str | None) -> list[str] | None:
