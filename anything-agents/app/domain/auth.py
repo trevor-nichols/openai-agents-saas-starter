@@ -48,6 +48,8 @@ class RefreshTokenRepository(Protocol):
 
     async def revoke(self, jti: str, *, reason: str | None = None) -> None: ...
 
+    async def revoke_account(self, account: str, *, reason: str | None = None) -> int: ...
+
 
 _REFRESH_TOKEN_CONTEXT = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

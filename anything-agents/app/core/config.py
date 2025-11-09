@@ -245,6 +245,11 @@ class Settings(BaseSettings):
         description="Window in minutes used for IP-based throttling heuristics.",
         alias="AUTH_IP_LOCKOUT_WINDOW_MINUTES",
     )
+    auth_ip_lockout_duration_minutes: int = Field(
+        default=10,
+        description="Duration in minutes to block an IP/subnet after threshold breaches.",
+        alias="AUTH_IP_LOCKOUT_DURATION_MINUTES",
+    )
 
     # =============================================================================
     # LOGGING SETTINGS

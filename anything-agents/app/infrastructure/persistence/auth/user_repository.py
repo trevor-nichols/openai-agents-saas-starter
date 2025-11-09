@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from typing import Protocol
 
 from redis.asyncio import Redis
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
@@ -227,6 +227,29 @@ class PostgresUserRepository(UserRepository):
                     password_pepper_version=entry.password_pepper_version,
                     created_at=entry.created_at,
                 )
+            )
+            await session.commit()
+
+    async def trim_password_history(self, user_id: uuid.UUID, keep: int) -> None:
+        if keep < 0:
+            keep = 0
+        async with self._session_factory() as session:
+            if keep == 0:
+                await session.execute(
+                    delete(PasswordHistory).where(PasswordHistory.user_id == user_id)
+                )
+                await session.commit()
+                return
+
+            subquery = (
+                select(PasswordHistory.id)
+                .where(PasswordHistory.user_id == user_id)
+                .order_by(PasswordHistory.created_at.desc())
+                .offset(keep)
+            )
+
+            await session.execute(
+                delete(PasswordHistory).where(PasswordHistory.id.in_(subquery))
             )
             await session.commit()
 

@@ -8,7 +8,9 @@ from enum import Enum
 from typing import Literal, Protocol
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, EmailStr, Field, FieldValidationInfo, field_validator
+
+from app.core.password_policy import PasswordPolicyError, validate_password_strength
 
 
 class UserStatus(str, Enum):
@@ -42,10 +44,15 @@ class UserCreate(BaseModel):
     role: str = Field(default="admin", min_length=1, max_length=32)
     display_name: str | None = Field(default=None, max_length=128)
 
-    @validator("password")
-    def _validate_password_strength(cls, value: str) -> str:
-        if value.lower() == value or value.upper() == value:
-            raise ValueError("Password must mix character cases.")
+    @field_validator("password")
+    @classmethod
+    def _validate_password_strength(cls, value: str, info: FieldValidationInfo) -> str:
+        email = info.data.get("email") if info.data else None
+        inputs = [email] if isinstance(email, str) else None
+        try:
+            validate_password_strength(value, user_inputs=inputs)
+        except PasswordPolicyError as exc:  # pragma: no cover - validation path
+            raise ValueError(str(exc)) from exc
         return value
 
 
@@ -117,6 +124,8 @@ class UserRepository(Protocol):
     ) -> list[PasswordHistoryEntry]: ...
 
     async def add_password_history(self, entry: PasswordHistoryEntry) -> None: ...
+
+    async def trim_password_history(self, user_id: UUID, keep: int) -> None: ...
 
     async def increment_lockout_counter(self, user_id: UUID, *, ttl_seconds: int) -> int: ...
 

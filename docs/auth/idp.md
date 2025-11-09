@@ -29,11 +29,12 @@ Tenant relationships:
 - **Entropy requirements:** minimum 14 characters, must include characters from ≥2 classes (upper/lower/numeric/symbol). Password blacklist enforced via zxcvbn-derived scoring ≥ 3.
 - **Storage:** `users.password_hash` stores bcrypt output only; pepper never persisted. Password history table retains the last 5 hashes to prevent reuse.
 - **Reset flow:** activation + reset tokens are single-use, 15-minute TTL, signed via EdDSA (same signer, distinct `token_use=reset`). Tokens stored hashed in Postgres to allow revocation.
+- **Operational APIs:** `/api/v1/auth/password/change` (self-service, requires a valid access token) and `/api/v1/auth/password/reset` (owner/support scope, per-tenant) now front the reset flow so UI + support tooling can orchestrate policy-compliant changes without touching storage internals.
 
 ## 4. Login Attempt Limits & Lockouts
 - **Per-User Counter:** Redis key `auth:lockout:user:{user_id}` increments on failed login; 1-hour TTL sliding window.
 - **Thresholds:** 5 consecutive failures ⇒ user enters `locked` state; refresh tokens revoked; admin notified via webhook (future automation). Account unlocks automatically after TTL or via admin API.
-- **Global IP Guardrail:** `auth:lockout:ip:{/24}` counters throttle credential stuffing; 50 failures per minute triggers 10-minute block and structured alert.
+- **Global IP Guardrail:** `auth:lockout:ip:{/24}` counters throttle credential stuffing; 50 failures per minute triggers a configurable block (see `AUTH_IP_LOCKOUT_WINDOW_MINUTES` + `AUTH_IP_LOCKOUT_DURATION_MINUTES`) and structured alert.
 - **Observation:** Lockout events emit `auth.lockout` log with `tenant_id`, `ip_hash`, `user_id`, and `reason` for SOC review.
 
 ## 5. Auditing & Telemetry

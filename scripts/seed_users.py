@@ -21,6 +21,7 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.core.config import get_settings  # noqa: E402
+from app.core.password_policy import PasswordPolicyError, validate_password_strength  # noqa: E402
 from app.core.security import PASSWORD_HASH_VERSION, get_password_hash  # noqa: E402
 from app.infrastructure.db.engine import get_async_sessionmaker, init_engine  # noqa: E402
 from app.infrastructure.persistence.auth.models import (  # noqa: E402
@@ -59,6 +60,11 @@ async def _seed_user(args: argparse.Namespace) -> None:
         )
         if existing.scalars().first():
             raise SystemExit(f"User {normalized_email} already exists")
+
+        try:
+            validate_password_strength(args.password, user_inputs=[normalized_email])
+        except PasswordPolicyError as exc:
+            raise SystemExit(str(exc)) from exc
 
         password_hash = get_password_hash(args.password)
 

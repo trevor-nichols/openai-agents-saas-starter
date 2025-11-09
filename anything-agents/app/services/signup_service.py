@@ -14,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.config import Settings, get_settings
+from app.core.password_policy import PasswordPolicyError, validate_password_strength
 from app.core.security import PASSWORD_HASH_VERSION, get_password_hash
 from app.infrastructure.db import get_async_sessionmaker
 from app.infrastructure.persistence.auth.models import (
@@ -95,6 +96,11 @@ class SignupService:
         settings = self._settings_factory()
         if not settings.allow_public_signup:
             raise PublicSignupDisabledError("Public signup is disabled.")
+
+        try:
+            validate_password_strength(password, user_inputs=[email])
+        except PasswordPolicyError as exc:
+            raise SignupServiceError(str(exc)) from exc
 
         tenant_slug = await self._ensure_unique_slug(self._slug_generator(tenant_name))
         tenant_id, user_id = await self._provision_tenant_owner(

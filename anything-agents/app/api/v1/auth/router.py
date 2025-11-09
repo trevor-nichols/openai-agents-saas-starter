@@ -7,13 +7,16 @@ import hashlib
 import json
 from datetime import UTC, datetime
 from typing import Any
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
 
 from app.api.dependencies import raise_rate_limit_http_error
-from app.api.dependencies.auth import require_current_user
+from app.api.dependencies.auth import require_current_user, require_scopes
 from app.api.models.auth import (
+    PasswordChangeRequest,
+    PasswordResetRequest,
     ServiceAccountIssueRequest,
     ServiceAccountTokenResponse,
     UserLoginRequest,
@@ -24,6 +27,7 @@ from app.api.models.auth import (
 )
 from app.api.models.common import SuccessResponse
 from app.core.config import get_settings
+from app.domain.users import PasswordReuseError
 from app.infrastructure.security.nonce_store import get_nonce_store
 from app.infrastructure.security.vault import (
     VaultClientUnavailable,
@@ -58,10 +62,13 @@ from app.services.signup_service import (
 )
 from app.services.user_service import (
     InvalidCredentialsError,
+    IpThrottledError,
     MembershipNotFoundError,
+    PasswordPolicyViolationError,
     TenantContextRequiredError,
     UserDisabledError,
     UserLockedError,
+    get_user_service,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -153,6 +160,69 @@ async def refresh_access_token(
     return _to_user_session_response(tokens)
 
 
+@router.post("/password/change", response_model=SuccessResponse)
+async def change_password(
+    payload: PasswordChangeRequest,
+    current_user: dict[str, Any] = Depends(require_current_user),
+) -> SuccessResponse:
+    service = get_user_service()
+    user_uuid = UUID(current_user["user_id"])
+    try:
+        await service.change_password(
+            user_id=user_uuid,
+            current_password=payload.current_password,
+            new_password=payload.new_password,
+        )
+    except InvalidCredentialsError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
+    except PasswordReuseError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except PasswordPolicyViolationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    await auth_service.revoke_user_sessions(user_uuid, reason="password_change")
+    return SuccessResponse(message="Password updated successfully", data=None)
+
+
+@router.post("/password/reset", response_model=SuccessResponse)
+async def admin_reset_password(
+    payload: PasswordResetRequest,
+    current_user: dict[str, Any] = Depends(require_scopes("support:read")),
+) -> SuccessResponse:
+    tenant_claim = current_user.get("payload", {}).get("tenant_id")
+    if not tenant_claim:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Tenant context is required for password reset.",
+        )
+    try:
+        tenant_id = UUID(tenant_claim)
+    except ValueError as exc:  # pragma: no cover - defensive
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid tenant id.",
+        ) from exc
+
+    service = get_user_service()
+    try:
+        await service.admin_reset_password(
+            target_user_id=payload.user_id,
+            tenant_id=tenant_id,
+            new_password=payload.new_password,
+        )
+    except MembershipNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except InvalidCredentialsError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PasswordReuseError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except PasswordPolicyViolationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    await auth_service.revoke_user_sessions(payload.user_id, reason="password_reset")
+    return SuccessResponse(message="Password reset successfully", data=None)
+
+
 @router.get("/me", response_model=SuccessResponse)
 async def get_current_user_info(
     current_user: dict[str, Any] = Depends(require_current_user),
@@ -238,6 +308,11 @@ def _map_user_auth_error(exc: UserAuthenticationError) -> HTTPException:
         return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(cause))
     if isinstance(cause, TenantContextRequiredError):
         return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(cause))
+    if isinstance(cause, IpThrottledError):
+        return HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=str(cause),
+        )
     return HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail=str(exc),

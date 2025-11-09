@@ -36,6 +36,7 @@ from app.observability.logging import log_event
 from app.observability.metrics import observe_service_account_issuance
 from app.services.user_service import (
     InvalidCredentialsError,
+    IpThrottledError,
     MembershipNotFoundError,
     TenantContextRequiredError,
     UserDisabledError,
@@ -296,6 +297,7 @@ class AuthService:
             UserLockedError,
             UserDisabledError,
             TenantContextRequiredError,
+            IpThrottledError,
         ) as exc:
             raise UserAuthenticationError(str(exc)) from exc
         return await self._issue_user_tokens(
@@ -600,6 +602,25 @@ class AuthService:
         if not self._refresh_repo:
             return
         await self._refresh_repo.revoke(jti, reason=reason)
+
+    async def revoke_user_sessions(
+        self,
+        user_id: UUID,
+        *,
+        reason: str = "password_change",
+    ) -> int:
+        repo = self._ensure_refresh_repository()
+        account = self._user_account_key(user_id)
+        revoked = await repo.revoke_account(account, reason=reason)
+        if revoked:
+            log_event(
+                "auth.session_revoke",
+                result="success",
+                user_id=str(user_id),
+                revoked=revoked,
+                reason=reason,
+            )
+        return revoked
 
     def _record_to_response(
         self, record: RefreshTokenRecord

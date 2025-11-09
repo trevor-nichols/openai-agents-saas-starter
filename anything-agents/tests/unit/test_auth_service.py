@@ -27,6 +27,7 @@ class FakeRefreshRepo:
         self._records: dict[tuple[str, str | None, str], RefreshTokenRecord] = {}
         self.saved: list[RefreshTokenRecord] = []
         self.revoked: list[str] = []
+        self.revoked_accounts: list[str] = []
         self.prefetched: RefreshTokenRecord | None = None
 
     async def find_active(
@@ -52,6 +53,13 @@ class FakeRefreshRepo:
 
     async def revoke(self, jti: str, *, reason: str | None = None) -> None:
         self.revoked.append(jti)
+
+    async def revoke_account(self, account: str, *, reason: str | None = None) -> int:
+        victims = [key for key in self._records if key[0] == account]
+        for key in victims:
+            del self._records[key]
+        self.revoked_accounts.append(account)
+        return len(victims)
 
 
 def _make_service(repo: FakeRefreshRepo | None = None) -> AuthService:
@@ -270,8 +278,33 @@ async def test_login_user_handles_membership_not_found() -> None:
     with pytest.raises(UserAuthenticationError):
         await service.login_user(
             email="owner@example.com",
-            password="Password123!!",
+            password="MapleSunder##552",
             tenant_id=tenant_id,
             ip_address=None,
             user_agent=None,
         )
+
+
+@pytest.mark.asyncio
+async def test_revoke_user_sessions_delegates_to_refresh_repo() -> None:
+    repo = FakeRefreshRepo()
+    service = _make_service(repo)
+    user_id = uuid4()
+    account = f"user:{user_id}"
+    record = RefreshTokenRecord(
+        token="token-1",
+        jti="jti-1",
+        account=account,
+        tenant_id=None,
+        scopes=["conversations:read"],
+        issued_at=datetime.now(UTC),
+        expires_at=datetime.now(UTC) + timedelta(days=1),
+        fingerprint=None,
+        signing_kid="kid-1",
+    )
+    repo._records[(account, None, make_scope_key(record.scopes))] = record
+
+    revoked = await service.revoke_user_sessions(user_id, reason="password_reset")
+
+    assert revoked == 1
+    assert repo.revoked_accounts == [account]

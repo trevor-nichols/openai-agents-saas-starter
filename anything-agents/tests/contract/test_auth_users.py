@@ -49,18 +49,34 @@ def _make_session_tokens() -> UserSessionTokens:
 @pytest.fixture
 def fake_auth_service(monkeypatch: pytest.MonkeyPatch):
     mock_service = AsyncMock()
+    mock_service.revoke_user_sessions = AsyncMock(return_value=0)
     monkeypatch.setattr("app.api.v1.auth.router.auth_service", mock_service)
     return mock_service
 
 
-def _mint_user_token(*, token_use: str) -> tuple[str, str]:
+@pytest.fixture
+def fake_user_service(monkeypatch: pytest.MonkeyPatch):
+    stub = AsyncMock()
+    stub.change_password = AsyncMock()
+    stub.admin_reset_password = AsyncMock()
+
+    def _get_service():
+        return stub
+
+    monkeypatch.setattr("app.api.v1.auth.router.get_user_service", _get_service)
+    return stub
+
+
+def _mint_user_token(
+    *, token_use: str, scope: str = "conversations:read", tenant_id: str | None = None
+) -> tuple[str, str]:
     signer = get_token_signer()
     now = datetime.now(UTC)
     settings = get_settings()
     subject = f"user:{uuid4()}"
     payload = {
         "sub": subject,
-        "scope": "conversations:read",
+        "scope": scope,
         "token_use": token_use,
         "iss": settings.app_name,
         "aud": settings.auth_audience,
@@ -68,6 +84,8 @@ def _mint_user_token(*, token_use: str) -> tuple[str, str]:
         "nbf": int(now.timestamp()),
         "exp": int((now + timedelta(minutes=15)).timestamp()),
     }
+    if tenant_id:
+        payload["tenant_id"] = tenant_id
     token = signer.sign(payload).primary.token
     return token, subject
 
@@ -216,3 +234,50 @@ def test_me_endpoint_rejects_refresh_token(client: TestClient) -> None:
     assert response.status_code == 401
     body = response.json()
     assert body["error"] == "Access token required."
+
+
+def test_password_change_endpoint(fake_auth_service, fake_user_service, client: TestClient) -> None:
+    token, subject = _mint_user_token(token_use="access")
+    headers = {"Authorization": f"Bearer {token}"}
+    payload = {
+        "current_password": "CurrentPass!!11",
+        "new_password": "AuroraCypress!!992",
+    }
+
+    response = client.post("/api/v1/auth/password/change", json=payload, headers=headers)
+
+    assert response.status_code == 200, response.text
+    fake_user_service.change_password.assert_awaited_once()
+    fake_auth_service.revoke_user_sessions.assert_awaited_once()
+    args = fake_user_service.change_password.await_args.kwargs
+    assert args["current_password"] == payload["current_password"]
+    assert args["new_password"] == payload["new_password"]
+    assert args["user_id"]
+    revoked_args = fake_auth_service.revoke_user_sessions.await_args
+    assert revoked_args.kwargs["reason"] == "password_change"
+
+
+def test_password_reset_endpoint(fake_auth_service, fake_user_service, client: TestClient) -> None:
+    tenant_id = str(uuid4())
+    token, _ = _mint_user_token(
+        token_use="access",
+        scope="support:read",
+        tenant_id=tenant_id,
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    target_user = str(uuid4())
+    payload = {
+        "user_id": target_user,
+        "new_password": "HarborNebula##713",
+    }
+
+    response = client.post("/api/v1/auth/password/reset", json=payload, headers=headers)
+
+    assert response.status_code == 200, response.text
+    fake_user_service.admin_reset_password.assert_awaited_once()
+    kwargs = fake_user_service.admin_reset_password.await_args.kwargs
+    assert str(kwargs["target_user_id"]) == target_user
+    assert str(kwargs["tenant_id"]) == tenant_id
+    assert kwargs["new_password"] == payload["new_password"]
+    revoked_args = fake_auth_service.revoke_user_sessions.await_args
+    assert revoked_args.kwargs["reason"] == "password_reset"

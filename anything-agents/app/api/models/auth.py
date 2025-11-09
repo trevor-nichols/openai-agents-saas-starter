@@ -1,8 +1,11 @@
 """Authentication request and response models."""
 
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
+
+from app.core.password_policy import PasswordPolicyError, validate_password_strength
 
 
 class UserLoginRequest(BaseModel):
@@ -57,11 +60,47 @@ class UserRegisterRequest(BaseModel):
             raise ValueError("Terms of Service must be accepted to create an account.")
         return value
 
+    @field_validator("password")
+    @classmethod
+    def _validate_password(cls, value: str, info):
+        inputs = []
+        email = info.data.get("email") if hasattr(info, "data") and info.data else None
+        if email:
+            inputs.append(email)
+        try:
+            validate_password_strength(value, user_inputs=inputs)
+        except PasswordPolicyError as exc:
+            raise ValueError(str(exc)) from exc
+        return value
+
 
 class UserRefreshRequest(BaseModel):
     """Refresh session request payload."""
 
     refresh_token: str = Field(min_length=16, description="Previously issued refresh token.")
+
+
+class PasswordChangeRequest(BaseModel):
+    """Self-service password change payload."""
+
+    current_password: str = Field(
+        min_length=8,
+        description="Current password for verification.",
+    )
+    new_password: str = Field(
+        min_length=14,
+        description="New password that satisfies platform policy.",
+    )
+
+
+class PasswordResetRequest(BaseModel):
+    """Admin-initiated password reset payload."""
+
+    user_id: UUID = Field(description="Target user identifier.")
+    new_password: str = Field(
+        min_length=14,
+        description="Replacement password that satisfies platform policy.",
+    )
 
 
 class UserSessionResponse(BaseModel):

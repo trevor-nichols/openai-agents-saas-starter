@@ -142,6 +142,30 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
             tenant = str(row.tenant_id) if row.tenant_id else None
             await self._cache.invalidate(row.account, tenant, row.scope_key)
 
+    async def revoke_account(self, account: str, *, reason: str | None = None) -> int:
+        async with self._session_factory() as session:
+            stmt = (
+                update(ServiceAccountToken)
+                .where(
+                    ServiceAccountToken.account == account,
+                    ServiceAccountToken.revoked_at.is_(None),
+                )
+                .values(revoked_at=datetime.now(UTC), revoked_reason=reason)
+                .returning(
+                    ServiceAccountToken.account,
+                    ServiceAccountToken.tenant_id,
+                    ServiceAccountToken.scope_key,
+                )
+            )
+            result = await session.execute(stmt)
+            rows = result.fetchall()
+            await session.commit()
+
+        for row in rows:
+            tenant = str(row.tenant_id) if row.tenant_id else None
+            await self._cache.invalidate(row.account, tenant, row.scope_key)
+        return len(rows)
+
     async def _revoke_existing(
         self,
         session: AsyncSession,
