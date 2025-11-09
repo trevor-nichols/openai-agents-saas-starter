@@ -13,9 +13,16 @@ from uuid import uuid4
 from app.core.config import Settings, get_settings
 from app.domain.password_reset import PasswordResetTokenRecord, PasswordResetTokenStore
 from app.domain.users import UserRecord, UserRepository
+from app.infrastructure.notifications import (
+    ResendEmailAdapter,
+    ResendEmailError,
+    ResendEmailRequest,
+    get_resend_email_adapter,
+)
 from app.infrastructure.persistence.auth.user_repository import get_user_repository
 from app.infrastructure.security.password_reset_store import get_password_reset_token_store
 from app.observability.logging import log_event
+from app.presentation.emails import render_password_reset_email
 from app.services.auth_service import auth_service
 from app.services.user_service import (
     InvalidCredentialsError,
@@ -28,6 +35,10 @@ from app.services.user_service import (
 
 class PasswordRecoveryError(RuntimeError):
     """Base class for password recovery failures."""
+
+
+class PasswordResetDeliveryError(PasswordRecoveryError):
+    """Raised when the password reset email cannot be delivered."""
 
 
 class InvalidPasswordResetTokenError(PasswordRecoveryError):
@@ -54,6 +65,58 @@ class LoggingPasswordResetNotifier(PasswordResetNotifier):
             email=email,
             expires_at=expires_at.isoformat(),
             token_preview=f"{token[:4]}...",
+        )
+
+
+class ResendPasswordResetNotifier(PasswordResetNotifier):
+    def __init__(self, adapter: ResendEmailAdapter, settings: Settings) -> None:
+        self._adapter = adapter
+        self._settings = settings
+
+    async def send_password_reset(self, *, email: str, token: str, expires_at: datetime) -> None:
+        request = self._build_request(email=email, token=token, expires_at=expires_at)
+        try:
+            await self._adapter.send_email(request)
+        except ResendEmailError as exc:
+            log_event(
+                "auth.password_reset_notification",
+                result="error",
+                email=email,
+                reason=getattr(exc, "error_code", None) or "resend_error",
+            )
+            raise PasswordResetDeliveryError("Failed to send password reset email.") from exc
+
+    def _build_request(
+        self,
+        *,
+        email: str,
+        token: str,
+        expires_at: datetime,
+    ) -> ResendEmailRequest:
+        subject = f"Reset your {self._settings.app_name} password"
+        template_id = self._settings.resend_password_reset_template_id
+        if template_id:
+            return ResendEmailRequest(
+                to=[email],
+                subject=subject,
+                template_id=template_id,
+                template_variables={
+                    "token": token,
+                    "expires_at": expires_at.isoformat(),
+                    "app_name": self._settings.app_name,
+                },
+                tags={"category": "password_reset"},
+                category="password_reset",
+            )
+
+        content = render_password_reset_email(self._settings, token, expires_at)
+        return ResendEmailRequest(
+            to=[email],
+            subject=subject,
+            html_body=content.html,
+            text_body=content.text,
+            tags={"category": "password_reset"},
+            category="password_reset",
         )
 
 
@@ -220,7 +283,12 @@ def build_password_recovery_service() -> PasswordRecoveryService:
     if repository is None:
         raise RuntimeError("User repository is not configured; password reset unavailable.")
     token_store = get_password_reset_token_store(settings)
-    notifier: PasswordResetNotifier = LoggingPasswordResetNotifier()
+    notifier: PasswordResetNotifier
+    if settings.enable_resend_email_delivery:
+        adapter = get_resend_email_adapter(settings)
+        notifier = ResendPasswordResetNotifier(adapter, settings)
+    else:
+        notifier = LoggingPasswordResetNotifier()
     return PasswordRecoveryService(
         repository,
         token_store,
@@ -233,9 +301,10 @@ _DEFAULT_SERVICE: PasswordRecoveryService | None = None
 
 
 __all__ = [
-    "PasswordRecoveryService",
-    "PasswordRecoveryError",
     "InvalidPasswordResetTokenError",
+    "PasswordResetDeliveryError",
+    "PasswordRecoveryError",
+    "PasswordRecoveryService",
     "build_password_recovery_service",
     "get_password_recovery_service",
 ]

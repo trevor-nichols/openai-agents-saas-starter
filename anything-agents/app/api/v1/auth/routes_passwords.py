@@ -19,6 +19,7 @@ from app.api.v1.auth.utils import extract_client_ip, extract_user_agent
 from app.services.auth_service import auth_service
 from app.services.password_recovery_service import (
     InvalidPasswordResetTokenError,
+    PasswordResetDeliveryError,
     get_password_recovery_service,
 )
 from app.services.rate_limit_service import RateLimitExceeded, RateLimitQuota, rate_limiter
@@ -45,11 +46,17 @@ async def request_password_reset(
     client_ip = extract_client_ip(request)
     await _enforce_password_reset_quota(email=payload.email, client_ip=client_ip)
     service = get_password_recovery_service()
-    await service.request_password_reset(
-        email=payload.email,
-        ip_address=client_ip,
-        user_agent=extract_user_agent(request),
-    )
+    try:
+        await service.request_password_reset(
+            email=payload.email,
+            ip_address=client_ip,
+            user_agent=extract_user_agent(request),
+        )
+    except PasswordResetDeliveryError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Unable to send password reset email. Please try again shortly.",
+        ) from exc
     return SuccessResponse(
         message="If the account exists, password reset instructions have been sent.",
         data=None,

@@ -24,8 +24,14 @@ from app.services.auth_service import (
     UserRefreshError,
     UserSessionTokens,
 )
-from app.services.email_verification_service import InvalidEmailVerificationTokenError
-from app.services.password_recovery_service import InvalidPasswordResetTokenError
+from app.services.email_verification_service import (
+    EmailVerificationDeliveryError,
+    InvalidEmailVerificationTokenError,
+)
+from app.services.password_recovery_service import (
+    InvalidPasswordResetTokenError,
+    PasswordResetDeliveryError,
+)
 from app.services.user_service import (
     InvalidCredentialsError,
     MembershipNotFoundError,
@@ -281,6 +287,34 @@ def test_password_forgot_endpoint(fake_password_recovery_service, client: TestCl
     fake_password_recovery_service.request_password_reset.assert_awaited_once()
 
 
+def test_password_forgot_delivery_failure(
+    monkeypatch: pytest.MonkeyPatch, client: TestClient
+) -> None:
+    service = AsyncMock()
+    service.request_password_reset = AsyncMock(
+        side_effect=PasswordResetDeliveryError("retry later")
+    )
+
+    def _get_service() -> AsyncMock:
+        return service
+
+    monkeypatch.setattr(
+        "app.api.v1.auth.routes_passwords.get_password_recovery_service",
+        _get_service,
+    )
+
+    response = client.post(
+        "/api/v1/auth/password/forgot",
+        json={"email": "owner@example.com"},
+    )
+
+    assert response.status_code == 502
+    assert (
+        response.json()["error"]
+        == "Unable to send password reset email. Please try again shortly."
+    )
+
+
 def test_password_confirm_endpoint_success(
     fake_password_recovery_service, client: TestClient
 ) -> None:
@@ -320,6 +354,35 @@ def test_email_send_endpoint(fake_email_verification_service, client: TestClient
 
     assert response.status_code == 202
     fake_email_verification_service.send_verification_email.assert_awaited_once()
+
+
+def test_email_send_endpoint_delivery_failure(
+    monkeypatch: pytest.MonkeyPatch, client: TestClient
+) -> None:
+    service = AsyncMock()
+    service.send_verification_email = AsyncMock(
+        side_effect=EmailVerificationDeliveryError("retry later")
+    )
+
+    def _get_service() -> AsyncMock:
+        return service
+
+    monkeypatch.setattr(
+        "app.api.v1.auth.routes_email.get_email_verification_service",
+        _get_service,
+    )
+
+    token, _ = _mint_user_token(token_use="access", email_verified=False)
+    response = client.post(
+        "/api/v1/auth/email/send",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 502
+    assert (
+        response.json()["error"]
+        == "Unable to send verification email. Please try again shortly."
+    )
 
 
 def test_email_send_endpoint_skips_when_verified(client: TestClient) -> None:
