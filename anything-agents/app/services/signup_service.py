@@ -14,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.config import Settings, get_settings
+from app.core.password_policy import PasswordPolicyError, validate_password_strength
 from app.core.security import PASSWORD_HASH_VERSION, get_password_hash
 from app.infrastructure.db import get_async_sessionmaker
 from app.infrastructure.persistence.auth.models import (
@@ -32,6 +33,7 @@ from app.services.billing_service import (
     PaymentProviderError,
     billing_service,
 )
+from app.services.email_verification_service import get_email_verification_service
 
 SlugGenerator = Callable[[str], str]
 
@@ -96,6 +98,11 @@ class SignupService:
         if not settings.allow_public_signup:
             raise PublicSignupDisabledError("Public signup is disabled.")
 
+        try:
+            validate_password_strength(password, user_inputs=[email])
+        except PasswordPolicyError as exc:
+            raise SignupServiceError(str(exc)) from exc
+
         tenant_slug = await self._ensure_unique_slug(self._slug_generator(tenant_name))
         tenant_id, user_id = await self._provision_tenant_owner(
             tenant_name=tenant_name.strip(),
@@ -121,6 +128,12 @@ class SignupService:
             user_agent=user_agent,
         )
 
+        await self._trigger_email_verification(
+            user_id=user_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+
         log_event(
             "signup.completed",
             result="success",
@@ -135,6 +148,29 @@ class SignupService:
             user_id=user_id,
             session=tokens,
         )
+
+    async def _trigger_email_verification(
+        self,
+        *,
+        user_id: str,
+        ip_address: str | None,
+        user_agent: str | None,
+    ) -> None:
+        try:
+            service = get_email_verification_service()
+            await service.send_verification_email(
+                user_id=user_id,
+                email=None,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+        except Exception as exc:  # pragma: no cover - best effort
+            log_event(
+                "signup.email_verification",
+                result="error",
+                user_id=user_id,
+                reason=str(exc),
+            )
 
     async def _ensure_unique_slug(self, base_slug: str) -> str:
         candidate = base_slug

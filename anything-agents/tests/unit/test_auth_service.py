@@ -5,19 +5,27 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
+from types import MethodType
 from typing import cast
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
 from app.core.security import get_token_verifier
 from app.core.service_accounts import load_service_account_registry
-from app.domain.auth import RefreshTokenRecord, make_scope_key
+from app.domain.auth import (
+    RefreshTokenRecord,
+    SessionClientDetails,
+    UserSession,
+    UserSessionListResult,
+    make_scope_key,
+)
 from app.services.auth_service import (
     AuthService,
     ServiceAccountRateLimitError,
     ServiceAccountValidationError,
     UserAuthenticationError,
+    UserLogoutError,
 )
 from app.services.user_service import MembershipNotFoundError, UserService
 
@@ -27,6 +35,7 @@ class FakeRefreshRepo:
         self._records: dict[tuple[str, str | None, str], RefreshTokenRecord] = {}
         self.saved: list[RefreshTokenRecord] = []
         self.revoked: list[str] = []
+        self.revoked_accounts: list[str] = []
         self.prefetched: RefreshTokenRecord | None = None
 
     async def find_active(
@@ -53,10 +62,67 @@ class FakeRefreshRepo:
     async def revoke(self, jti: str, *, reason: str | None = None) -> None:
         self.revoked.append(jti)
 
+    async def revoke_account(self, account: str, *, reason: str | None = None) -> int:
+        victims = [key for key in self._records if key[0] == account]
+        for key in victims:
+            del self._records[key]
+        self.revoked_accounts.append(account)
+        return len(victims)
 
-def _make_service(repo: FakeRefreshRepo | None = None) -> AuthService:
+
+def _make_service(
+    repo: FakeRefreshRepo | None = None,
+    session_repo: FakeSessionRepo | None = None,
+) -> AuthService:
     registry = load_service_account_registry()
-    return AuthService(registry, refresh_repository=repo)
+    return AuthService(
+        registry,
+        refresh_repository=repo,
+        session_repository=session_repo,
+    )
+
+
+class FakeSessionRepo:
+    def __init__(self) -> None:
+        self.sessions: dict[UUID, UserSession] = {}
+        self.list_result = UserSessionListResult(sessions=[], total=0)
+        self.revoked_sessions: list[UUID] = []
+        self.revoked_users: list[UUID] = []
+        self.revoked_jtis: list[str] = []
+
+    async def upsert_session(self, **_: object) -> UserSession:
+        raise AssertionError("not expected in these tests")
+
+    async def list_sessions(
+        self,
+        *,
+        user_id: UUID,
+        tenant_id: UUID | None = None,
+        include_revoked: bool = False,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> UserSessionListResult:
+        return self.list_result
+
+    async def get_session(self, *, session_id: UUID, user_id: UUID) -> UserSession | None:
+        session = self.sessions.get(session_id)
+        if session and session.user_id == user_id:
+            return session
+        return None
+
+    async def mark_session_revoked(self, *, session_id: UUID, reason: str | None = None) -> bool:
+        self.revoked_sessions.append(session_id)
+        return True
+
+    async def mark_session_revoked_by_jti(
+        self, *, refresh_jti: str, reason: str | None = None
+    ) -> bool:
+        self.revoked_jtis.append(refresh_jti)
+        return True
+
+    async def revoke_all_for_user(self, *, user_id: UUID, reason: str | None = None) -> int:
+        self.revoked_users.append(user_id)
+        return sum(1 for session in self.sessions.values() if session.user_id == user_id)
 
 
 class _StubUserService:
@@ -270,8 +336,174 @@ async def test_login_user_handles_membership_not_found() -> None:
     with pytest.raises(UserAuthenticationError):
         await service.login_user(
             email="owner@example.com",
-            password="Password123!!",
+            password="MapleSunder##552",
             tenant_id=tenant_id,
             ip_address=None,
             user_agent=None,
         )
+
+
+@pytest.mark.asyncio
+async def test_revoke_user_sessions_delegates_to_refresh_repo() -> None:
+    repo = FakeRefreshRepo()
+    service = _make_service(repo)
+    user_id = uuid4()
+    account = f"user:{user_id}"
+    record = RefreshTokenRecord(
+        token="token-1",
+        jti="jti-1",
+        account=account,
+        tenant_id=None,
+        scopes=["conversations:read"],
+        issued_at=datetime.now(UTC),
+        expires_at=datetime.now(UTC) + timedelta(days=1),
+        fingerprint=None,
+        signing_kid="kid-1",
+    )
+    repo._records[(account, None, make_scope_key(record.scopes))] = record
+
+    revoked = await service.revoke_user_sessions(user_id, reason="password_reset")
+
+    assert revoked == 1
+    assert repo.revoked_accounts == [account]
+
+
+@pytest.mark.asyncio
+async def test_logout_user_session_revokes_matching_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    repo = FakeRefreshRepo()
+    service = _make_service(repo)
+    user_id = uuid4()
+    account = f"user:{user_id}"
+    record = RefreshTokenRecord(
+        token="token-1",
+        jti="jti-1",
+        account=account,
+        tenant_id="tenant-1",
+        scopes=["conversations:read"],
+        issued_at=datetime.now(UTC),
+        expires_at=datetime.now(UTC) + timedelta(days=1),
+        fingerprint="fp",
+        signing_kid="kid-1",
+    )
+    repo._records[(account, record.tenant_id, make_scope_key(record.scopes))] = record
+
+    def _fake_verify(self, *_: object, **__: object):
+        return {"token_use": "refresh", "sub": f"user:{user_id}", "jti": record.jti}
+
+    monkeypatch.setattr(service, "_verify_token", MethodType(_fake_verify, service))
+
+    revoked = await service.logout_user_session(
+        refresh_token="token-1",
+        expected_user_id=str(user_id),
+    )
+
+    assert revoked is True
+    assert repo.revoked == [record.jti]
+
+
+@pytest.mark.asyncio
+async def test_logout_user_session_is_idempotent_when_record_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo = FakeRefreshRepo()
+    service = _make_service(repo)
+    user_id = uuid4()
+
+    def _fake_verify(self, *_: object, **__: object):
+        return {"token_use": "refresh", "sub": f"user:{user_id}", "jti": "unknown"}
+
+    monkeypatch.setattr(service, "_verify_token", MethodType(_fake_verify, service))
+
+    revoked = await service.logout_user_session(
+        refresh_token="token-unknown",
+        expected_user_id=str(user_id),
+    )
+
+    assert revoked is False
+    assert repo.revoked == []
+
+
+@pytest.mark.asyncio
+async def test_logout_user_session_rejects_mismatched_user(monkeypatch: pytest.MonkeyPatch) -> None:
+    repo = FakeRefreshRepo()
+    service = _make_service(repo)
+    owner_id = uuid4()
+    foreign_id = uuid4()
+
+    def _fake_verify(self, *_: object, **__: object):
+        return {"token_use": "refresh", "sub": f"user:{foreign_id}", "jti": "jti-1"}
+
+    monkeypatch.setattr(service, "_verify_token", MethodType(_fake_verify, service))
+
+    with pytest.raises(UserLogoutError):
+        await service.logout_user_session(
+            refresh_token="token-foreign",
+            expected_user_id=str(owner_id),
+        )
+
+
+def _build_session(
+    *,
+    session_id: UUID,
+    user_id: UUID,
+    tenant_id: UUID | None = None,
+    refresh_jti: str = 'jti-test',
+) -> UserSession:
+    now = datetime.now(UTC)
+    return UserSession(
+        id=session_id,
+        user_id=user_id,
+        tenant_id=tenant_id or uuid4(),
+        refresh_jti=refresh_jti,
+        fingerprint=None,
+        ip_hash=None,
+        ip_masked='203.0.113.*',
+        user_agent='pytest-agent',
+        client=SessionClientDetails(),
+        location=None,
+        created_at=now,
+        updated_at=now,
+        last_seen_at=now,
+        revoked_at=None,
+    )
+
+
+@pytest.mark.asyncio
+async def test_revoke_user_session_by_id_revokes_refresh_and_session() -> None:
+    refresh_repo = FakeRefreshRepo()
+    session_repo = FakeSessionRepo()
+    service = _make_service(refresh_repo, session_repo)
+    user_id = uuid4()
+    session_id = uuid4()
+    session_repo.sessions[session_id] = _build_session(
+        session_id=session_id,
+        user_id=user_id,
+        tenant_id=uuid4(),
+        refresh_jti='jti-session',
+    )
+
+    result = await service.revoke_user_session_by_id(user_id=user_id, session_id=session_id)
+
+    assert result is True
+    assert 'jti-session' in refresh_repo.revoked
+    assert session_id in session_repo.revoked_sessions
+
+
+@pytest.mark.asyncio
+async def test_revoke_user_session_by_id_returns_false_when_missing() -> None:
+    service = _make_service(FakeRefreshRepo(), FakeSessionRepo())
+    assert (
+        await service.revoke_user_session_by_id(user_id=uuid4(), session_id=uuid4()) is False
+    )
+
+
+@pytest.mark.asyncio
+async def test_list_user_sessions_delegates_to_repository() -> None:
+    repo = FakeSessionRepo()
+    expected = UserSessionListResult(sessions=[], total=0)
+    repo.list_result = expected
+    service = _make_service(FakeRefreshRepo(), repo)
+
+    result = await service.list_user_sessions(user_id=uuid4())
+
+    assert result is expected

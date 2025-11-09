@@ -101,10 +101,12 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
 
     async def save(self, record: RefreshTokenRecord) -> None:
         hashed_token = hash_refresh_token(record.token, pepper=self._pepper)
+        enforce_single = self._enforce_single_active(record.account)
         async with self._session_factory() as session:
-            await self._revoke_existing(
-                session, record.account, record.tenant_id, record.scope_key, reason="replaced"
-            )
+            if enforce_single:
+                await self._revoke_existing(
+                    session, record.account, record.tenant_id, record.scope_key, reason="replaced"
+                )
             db_row = ServiceAccountToken(
                 id=uuid.uuid4(),
                 account=record.account,
@@ -115,12 +117,14 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
                 refresh_jti=record.jti,
                 signing_kid=record.signing_kid or "unknown",
                 fingerprint=record.fingerprint,
+                session_id=record.session_id,
                 issued_at=record.issued_at,
                 expires_at=record.expires_at,
             )
             session.add(db_row)
             await session.commit()
-        await self._cache.set(record)
+        if enforce_single:
+            await self._cache.set(record)
 
     async def revoke(self, jti: str, *, reason: str | None = None) -> None:
         async with self._session_factory() as session:
@@ -141,6 +145,30 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
         if row:
             tenant = str(row.tenant_id) if row.tenant_id else None
             await self._cache.invalidate(row.account, tenant, row.scope_key)
+
+    async def revoke_account(self, account: str, *, reason: str | None = None) -> int:
+        async with self._session_factory() as session:
+            stmt = (
+                update(ServiceAccountToken)
+                .where(
+                    ServiceAccountToken.account == account,
+                    ServiceAccountToken.revoked_at.is_(None),
+                )
+                .values(revoked_at=datetime.now(UTC), revoked_reason=reason)
+                .returning(
+                    ServiceAccountToken.account,
+                    ServiceAccountToken.tenant_id,
+                    ServiceAccountToken.scope_key,
+                )
+            )
+            result = await session.execute(stmt)
+            rows = result.fetchall()
+            await session.commit()
+
+        for row in rows:
+            tenant = str(row.tenant_id) if row.tenant_id else None
+            await self._cache.invalidate(row.account, tenant, row.scope_key)
+        return len(rows)
 
     async def _revoke_existing(
         self,
@@ -181,6 +209,7 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
             issued_at=row.issued_at,
             fingerprint=row.fingerprint,
             signing_kid=row.signing_kid,
+            session_id=row.session_id,
         )
 
     def _rehydrate_token(self, row: ServiceAccountToken) -> str | None:
@@ -261,6 +290,10 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
             if material.kid == kid:
                 return material
         return None
+
+    @staticmethod
+    def _enforce_single_active(account: str) -> bool:
+        return not account.startswith("user:")
 
 
 def get_refresh_token_repository(settings: Settings | None = None) -> RefreshTokenRepository | None:

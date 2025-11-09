@@ -181,3 +181,34 @@ async def test_update_password_hash(
         )
         history_rows = rows.fetchall()
         assert len(history_rows) == 2
+
+
+@pytest.mark.asyncio
+async def test_trim_password_history_keeps_most_recent(
+    repository: PostgresUserRepository,
+    tenant_id,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    user = await _create_user(repository, tenant_id, "history@example.com")
+
+    for idx in range(4):
+        await repository.update_password_hash(
+            user.id,
+            password_hash=f"hash-{idx}",
+            password_pepper_version=PASSWORD_HASH_VERSION,
+        )
+
+    await repository.trim_password_history(user.id, keep=2)
+
+    async with session_factory() as session:
+        rows = await session.execute(
+            PasswordHistory.__table__
+            .select()
+            .where(PasswordHistory.__table__.c.user_id == user.id)
+            .order_by(PasswordHistory.__table__.c.created_at.desc())
+        )
+        history_rows = rows.fetchall()
+
+    assert len(history_rows) == 2
+    assert history_rows[0].password_hash == "hash-3"
+    assert history_rows[1].password_hash == "hash-2"

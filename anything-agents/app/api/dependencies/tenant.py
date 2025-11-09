@@ -8,7 +8,7 @@ from typing import Any
 
 from fastapi import Depends, Header, HTTPException, status
 
-from app.api.dependencies.auth import CurrentUser, require_current_user
+from app.api.dependencies.auth import CurrentUser, require_verified_user
 
 
 class TenantRole(str, Enum):
@@ -48,7 +48,7 @@ class TenantContext:
 async def get_tenant_context(
     tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
     tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
-    current_user: CurrentUser = Depends(require_current_user),
+    current_user: CurrentUser = Depends(require_verified_user()),
 ) -> TenantContext:
     """Resolve tenant context using JWT claims (headers may only down-scope access)."""
 

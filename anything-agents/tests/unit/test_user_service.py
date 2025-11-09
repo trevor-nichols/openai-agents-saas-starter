@@ -22,7 +22,7 @@ from app.core.security import (
     PASSWORD_HASH_VERSION,
     pwd_context,
 )
-from app.domain.users import UserCreate, UserCreatePayload, UserStatus
+from app.domain.users import PasswordReuseError, UserCreate, UserCreatePayload, UserStatus
 from app.infrastructure.persistence.auth.models import (
     PasswordHistory,
     TenantUserMembership,
@@ -35,7 +35,15 @@ from app.infrastructure.persistence.auth.user_repository import (
     RedisLockoutStore,
 )
 from app.infrastructure.persistence.conversations.models import TenantAccount
-from app.services.user_service import InvalidCredentialsError, UserLockedError, UserService
+from app.services.user_service import (
+    InvalidCredentialsError,
+    IpThrottledError,
+    MembershipNotFoundError,
+    NullLoginThrottle,
+    PasswordPolicyViolationError,
+    UserLockedError,
+    UserService,
+)
 from tests.utils.sqlalchemy import create_tables
 
 
@@ -105,6 +113,21 @@ def lockout_redis() -> FakeRedis:
     return FakeRedis()
 
 
+class _BlockingThrottle(NullLoginThrottle):
+    def __init__(self) -> None:
+        self.failures: list[str | None] = []
+        self.blocked: set[str] = set()
+
+    async def ensure_allowed(self, ip_address: str | None) -> None:
+        if ip_address and ip_address in self.blocked:
+            raise IpThrottledError("blocked")
+
+    async def register_failure(self, ip_address: str | None) -> None:
+        self.failures.append(ip_address)
+        if ip_address:
+            self.blocked.add(ip_address)
+
+
 @pytest.fixture
 async def user_service(
     session_factory: async_sessionmaker[AsyncSession],
@@ -113,7 +136,11 @@ async def user_service(
 ) -> UserService:
     store = RedisLockoutStore(lockout_redis)
     repository = PostgresUserRepository(session_factory, store)
-    return UserService(repository, settings=service_settings)
+    return UserService(repository, settings=service_settings, ip_throttler=NullLoginThrottle())
+
+
+STRONG_PASSWORD = "VividOrchard!92Trail"
+ALT_PASSWORD = "GraniteHarbor#713"
 
 
 async def _register_user(service: UserService, tenant_id, email: str, password: str) -> None:
@@ -129,10 +156,10 @@ async def _register_user(service: UserService, tenant_id, email: str, password: 
 
 @pytest.mark.asyncio
 async def test_authenticate_success(user_service: UserService, tenant_id) -> None:
-    await _register_user(user_service, tenant_id, "service@example.com", "Str0ngPassword!!")
+    await _register_user(user_service, tenant_id, "service@example.com", STRONG_PASSWORD)
     auth_user = await user_service.authenticate(
         email="service@example.com",
-        password="Str0ngPassword!!",
+        password=STRONG_PASSWORD,
         tenant_id=tenant_id,
         ip_address="127.0.0.1",
         user_agent="pytest",
@@ -145,7 +172,7 @@ async def test_authenticate_success(user_service: UserService, tenant_id) -> Non
 async def test_authenticate_invalid_password_leads_to_lockout(
     user_service: UserService, tenant_id
 ) -> None:
-    await _register_user(user_service, tenant_id, "lock@example.com", "AnotherStrongPass!!")
+    await _register_user(user_service, tenant_id, "lock@example.com", "SummitValley*421")
 
     with pytest.raises(InvalidCredentialsError):
         await user_service.authenticate(
@@ -171,14 +198,14 @@ async def test_locked_user_unlocks_after_duration(
     user_service: UserService,
     tenant_id,
 ) -> None:
-    await _register_user(user_service, tenant_id, "unlock@example.com", "Password1234!!")
+    await _register_user(user_service, tenant_id, "unlock@example.com", "SilverGrove&884")
 
     # Trip lockout
     for _ in range(2):
         with pytest.raises((InvalidCredentialsError, UserLockedError)):
             await user_service.authenticate(
                 email="unlock@example.com",
-                password="bad-password",
+            password="bad-password",
                 tenant_id=tenant_id,
                 ip_address="2.2.2.2",
                 user_agent="pytest",
@@ -188,7 +215,7 @@ async def test_locked_user_unlocks_after_duration(
 
     auth_user = await user_service.authenticate(
         email="unlock@example.com",
-        password="Password1234!!",
+        password="SilverGrove&884",
         tenant_id=tenant_id,
         ip_address="2.2.2.2",
         user_agent="pytest",
@@ -225,3 +252,138 @@ async def test_authenticate_migrates_legacy_hash(
     refreshed = await user_service._repository.get_user_by_email("legacy@example.com")
     assert refreshed is not None
     assert refreshed.password_pepper_version == PASSWORD_HASH_VERSION
+
+
+@pytest.mark.asyncio
+async def test_change_password_updates_hash_and_enforces_history(
+    user_service: UserService,
+    tenant_id,
+) -> None:
+    await _register_user(user_service, tenant_id, "owner@example.com", STRONG_PASSWORD)
+    user = await user_service._repository.get_user_by_email("owner@example.com")
+    assert user is not None
+
+    await user_service.change_password(
+        user_id=user.id,
+        current_password=STRONG_PASSWORD,
+        new_password="SparrowMeadow??462",
+    )
+
+    refreshed = await user_service._repository.get_user_by_email("owner@example.com")
+    assert refreshed is not None
+    assert refreshed.password_hash != user.password_hash
+
+    # Reusing an old password should be rejected.
+    with pytest.raises(PasswordReuseError):
+        await user_service.change_password(
+            user_id=refreshed.id,
+            current_password="SparrowMeadow??462",
+            new_password=STRONG_PASSWORD,
+        )
+
+
+@pytest.mark.asyncio
+async def test_change_password_rejects_weak_secret(
+    user_service: UserService,
+    tenant_id,
+) -> None:
+    await _register_user(user_service, tenant_id, "weak@example.com", STRONG_PASSWORD)
+    user = await user_service._repository.get_user_by_email("weak@example.com")
+    assert user is not None
+
+    with pytest.raises(PasswordPolicyViolationError):
+        await user_service.change_password(
+            user_id=user.id,
+            current_password=STRONG_PASSWORD,
+            new_password="shortpass",
+        )
+
+
+@pytest.mark.asyncio
+async def test_ip_throttle_blocks_after_failures(
+    session_factory: async_sessionmaker[AsyncSession],
+    service_settings: Settings,
+    lockout_redis: FakeRedis,
+    tenant_id,
+) -> None:
+    store = RedisLockoutStore(lockout_redis)
+    repository = PostgresUserRepository(session_factory, store)
+    throttle = _BlockingThrottle()
+    service = UserService(repository, settings=service_settings, ip_throttler=throttle)
+
+    await _register_user(service, tenant_id, "throttle@example.com", STRONG_PASSWORD)
+
+    with pytest.raises(InvalidCredentialsError):
+        await service.authenticate(
+            email="throttle@example.com",
+            password="completely-wrong",
+            tenant_id=tenant_id,
+            ip_address="198.51.100.10",
+            user_agent="pytest",
+        )
+
+    with pytest.raises(IpThrottledError):
+        await service.authenticate(
+            email="throttle@example.com",
+            password=STRONG_PASSWORD,
+            tenant_id=tenant_id,
+            ip_address="198.51.100.10",
+            user_agent="pytest",
+        )
+
+
+@pytest.mark.asyncio
+async def test_admin_reset_password_validates_membership(
+    user_service: UserService,
+    tenant_id,
+) -> None:
+    await _register_user(user_service, tenant_id, "member@example.com", ALT_PASSWORD)
+    user = await user_service._repository.get_user_by_email("member@example.com")
+    assert user is not None
+
+    await user_service.admin_reset_password(
+        target_user_id=user.id,
+        tenant_id=tenant_id,
+        new_password="MarinerForest!!551",
+    )
+
+    auth_user = await user_service.authenticate(
+        email="member@example.com",
+        password="MarinerForest!!551",
+        tenant_id=tenant_id,
+        ip_address=None,
+        user_agent=None,
+    )
+    assert auth_user.user_id == user.id
+
+    other_tenant = uuid4()
+    with pytest.raises(MembershipNotFoundError):
+        await user_service.admin_reset_password(
+            target_user_id=user.id,
+            tenant_id=other_tenant,
+            new_password="DoesNotMatter!!44",
+        )
+
+
+@pytest.mark.asyncio
+async def test_reset_password_via_token_updates_credentials(
+    user_service: UserService,
+    tenant_id,
+) -> None:
+    await _register_user(user_service, tenant_id, "token@example.com", STRONG_PASSWORD)
+    user = await user_service._repository.get_user_by_email("token@example.com")
+    assert user is not None
+
+    await user_service.reset_password_via_token(
+        user_id=user.id,
+        new_password="ResetToken##4455",
+    )
+
+    auth_user = await user_service.authenticate(
+        email="token@example.com",
+        password="ResetToken##4455",
+        tenant_id=tenant_id,
+        ip_address=None,
+        user_agent=None,
+    )
+    assert auth_user.user_id == user.id

@@ -11,6 +11,8 @@ from pydantic_settings import BaseSettings
 
 DEFAULT_SECRET_KEY = "your-secret-key-here-change-in-production"
 DEFAULT_PASSWORD_PEPPER = "local-dev-password-pepper"
+DEFAULT_PASSWORD_RESET_TOKEN_PEPPER = "local-reset-token-pepper"
+DEFAULT_EMAIL_VERIFICATION_TOKEN_PEPPER = "local-email-verify-pepper"
 DEFAULT_REFRESH_TOKEN_PEPPER = "local-dev-refresh-pepper"
 DEFAULT_KEY_STORAGE_PATH = "var/keys/keyset.json"
 PLACEHOLDER_SECRET_KEY = "change-me"
@@ -215,10 +217,67 @@ class Settings(BaseSettings):
         description="Default refresh token lifetime for human users (minutes).",
         alias="AUTH_REFRESH_TOKEN_TTL_MINUTES",
     )
+    auth_session_encryption_key: str | None = Field(
+        default=None,
+        description=(
+            "Base64-compatible secret used to encrypt stored IP metadata for user sessions."
+        ),
+        alias="AUTH_SESSION_ENCRYPTION_KEY",
+    )
+    auth_session_ip_hash_salt: str | None = Field(
+        default=None,
+        description="Salt blended into session IP hash derivation (defaults to SECRET_KEY).",
+        alias="AUTH_SESSION_IP_HASH_SALT",
+    )
     auth_password_history_count: int = Field(
         default=5,
         description="Number of historical password hashes retained per user.",
         alias="AUTH_PASSWORD_HISTORY_COUNT",
+    )
+    require_email_verification: bool = Field(
+        default=True,
+        description="Require verified email before accessing protected APIs.",
+        alias="REQUIRE_EMAIL_VERIFICATION",
+    )
+    auth_email_verification_token_pepper: str = Field(
+        default=DEFAULT_EMAIL_VERIFICATION_TOKEN_PEPPER,
+        description="Pepper used when hashing email verification token secrets.",
+        alias="AUTH_EMAIL_VERIFICATION_TOKEN_PEPPER",
+    )
+    auth_password_reset_token_pepper: str = Field(
+        default=DEFAULT_PASSWORD_RESET_TOKEN_PEPPER,
+        description="Pepper used to hash password reset token secrets.",
+        alias="AUTH_PASSWORD_RESET_TOKEN_PEPPER",
+    )
+    password_reset_token_ttl_minutes: int = Field(
+        default=30,
+        description="Password reset token lifetime in minutes.",
+        alias="PASSWORD_RESET_TOKEN_TTL_MINUTES",
+    )
+    password_reset_email_rate_limit_per_hour: int = Field(
+        default=5,
+        description="Password reset requests allowed per email per hour.",
+        alias="PASSWORD_RESET_EMAIL_RATE_LIMIT_PER_HOUR",
+    )
+    password_reset_ip_rate_limit_per_hour: int = Field(
+        default=20,
+        description="Password reset requests allowed per IP per hour.",
+        alias="PASSWORD_RESET_IP_RATE_LIMIT_PER_HOUR",
+    )
+    email_verification_token_ttl_minutes: int = Field(
+        default=60,
+        description="Email verification token lifetime in minutes.",
+        alias="EMAIL_VERIFICATION_TOKEN_TTL_MINUTES",
+    )
+    email_verification_email_rate_limit_per_hour: int = Field(
+        default=3,
+        description="Verification email sends per account per hour.",
+        alias="EMAIL_VERIFICATION_EMAIL_RATE_LIMIT_PER_HOUR",
+    )
+    email_verification_ip_rate_limit_per_hour: int = Field(
+        default=10,
+        description="Verification email sends per IP per hour.",
+        alias="EMAIL_VERIFICATION_IP_RATE_LIMIT_PER_HOUR",
     )
     auth_lockout_threshold: int = Field(
         default=5,
@@ -244,6 +303,11 @@ class Settings(BaseSettings):
         default=10,
         description="Window in minutes used for IP-based throttling heuristics.",
         alias="AUTH_IP_LOCKOUT_WINDOW_MINUTES",
+    )
+    auth_ip_lockout_duration_minutes: int = Field(
+        default=10,
+        description="Duration in minutes to block an IP/subnet after threshold breaches.",
+        alias="AUTH_IP_LOCKOUT_DURATION_MINUTES",
     )
 
     # =============================================================================

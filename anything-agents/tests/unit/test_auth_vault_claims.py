@@ -2,7 +2,7 @@ import pytest
 from fastapi import HTTPException, status
 
 from app.api.models.auth import ServiceAccountIssueRequest
-from app.api.v1.auth.router import _validate_claims_against_request
+from app.api.v1.auth.routes_service_accounts import _validate_claims_against_request
 
 
 def _base_claims(**overrides):

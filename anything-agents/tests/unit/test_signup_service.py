@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, cast
+from unittest.mock import AsyncMock
+from uuid import uuid4
 
 import pytest
 
@@ -60,6 +62,18 @@ class StubAuthService:
         return self.tokens
 
 
+@pytest.fixture(autouse=True)
+def mock_email_verification(monkeypatch: pytest.MonkeyPatch):
+    service = AsyncMock()
+    service.send_verification_email = AsyncMock(return_value=True)
+
+    def _get_service():
+        return service
+
+    monkeypatch.setattr("app.services.signup_service.get_email_verification_service", _get_service)
+    return service
+
+
 def _token_payload(user_id: str, tenant_id: str) -> UserSessionTokens:
     now = datetime.now(UTC)
     return UserSessionTokens(
@@ -72,6 +86,8 @@ def _token_payload(user_id: str, tenant_id: str) -> UserSessionTokens:
         scopes=["conversations:read"],
         tenant_id=tenant_id,
         user_id=user_id,
+        email_verified=False,
+        session_id=str(uuid4()),
     )
 
 
@@ -120,7 +136,7 @@ async def test_register_uses_plan_trial_when_override_disallowed(
 
     result = await service.register(
         email="owner@example.com",
-        password="Password12345!",
+        password="IroncladValley$462",
         tenant_name="Acme",
         display_name="Acme Owner",
         plan_code="starter",
@@ -159,7 +175,7 @@ async def test_register_allows_shorter_trial_when_flag_enabled(
 
     await service.register(
         email="flag@example.com",
-        password="Password12345!",
+        password="IroncladValley$462",
         tenant_name="Flag",
         display_name=None,
         plan_code="starter",
@@ -196,7 +212,7 @@ async def test_register_clamps_override_to_plan_cap(
 
     await service.register(
         email="clamp@example.com",
-        password="Password12345!",
+        password="IroncladValley$462",
         tenant_name="Clamp",
         display_name=None,
         plan_code="starter",
@@ -227,7 +243,7 @@ async def test_register_propagates_duplicate_email(monkeypatch: pytest.MonkeyPat
     with pytest.raises(EmailAlreadyRegisteredError):
         await service.register(
             email="owner@example.com",
-            password="Password12345!",
+            password="IroncladValley$462",
             tenant_name="Acme",
             display_name=None,
             plan_code=None,
@@ -254,7 +270,7 @@ async def test_register_surfaces_billing_plan_errors(monkeypatch: pytest.MonkeyP
     with pytest.raises(PlanNotFoundError):
         await service.register(
             email="owner3@example.com",
-            password="Password12345!",
+            password="IroncladValley$462",
             tenant_name="Acme",
             display_name=None,
             plan_code="unknown",

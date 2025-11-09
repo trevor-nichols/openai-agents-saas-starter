@@ -64,8 +64,12 @@ def test_cli_roundtrip_enforces_nonce_reuse(
 
     fake_client = FakeVaultClient()
     nonce_store = RedisNonceStore(FakeRedis())
-    monkeypatch.setattr("app.api.v1.auth.router.get_vault_transit_client", lambda: fake_client)
-    monkeypatch.setattr("app.api.v1.auth.router.get_nonce_store", lambda: nonce_store)
+    monkeypatch.setattr(
+        "app.api.v1.auth.routes_service_accounts.get_vault_transit_client", lambda: fake_client
+    )
+    monkeypatch.setattr(
+        "app.api.v1.auth.routes_service_accounts.get_nonce_store", lambda: nonce_store
+    )
 
     issued_at = int(time.time())
 

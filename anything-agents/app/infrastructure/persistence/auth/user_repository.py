@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from typing import Protocol
 
 from redis.asyncio import Redis
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
@@ -230,6 +230,29 @@ class PostgresUserRepository(UserRepository):
             )
             await session.commit()
 
+    async def trim_password_history(self, user_id: uuid.UUID, keep: int) -> None:
+        if keep < 0:
+            keep = 0
+        async with self._session_factory() as session:
+            if keep == 0:
+                await session.execute(
+                    delete(PasswordHistory).where(PasswordHistory.user_id == user_id)
+                )
+                await session.commit()
+                return
+
+            subquery = (
+                select(PasswordHistory.id)
+                .where(PasswordHistory.user_id == user_id)
+                .order_by(PasswordHistory.created_at.desc())
+                .offset(keep)
+            )
+
+            await session.execute(
+                delete(PasswordHistory).where(PasswordHistory.id.in_(subquery))
+            )
+            await session.commit()
+
     async def update_password_hash(
         self,
         user_id: uuid.UUID,
@@ -314,7 +337,19 @@ class PostgresUserRepository(UserRepository):
             updated_at=user.updated_at,
             display_name=display_name,
             memberships=memberships,
+            email_verified_at=user.email_verified_at,
         )
+
+    async def mark_email_verified(self, user_id: uuid.UUID, *, timestamp: datetime) -> None:
+        async with self._session_factory() as session:
+            user = await session.get(UserAccount, user_id)
+            if not user:
+                return
+            user.email_verified_at = timestamp
+            if user.status == UserStatus.PENDING:
+                user.status = UserStatus.ACTIVE  # type: ignore[assignment]
+            user.updated_at = timestamp
+            await session.commit()
 
 
 def build_lockout_store(settings: Settings) -> LockoutStore:

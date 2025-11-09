@@ -170,7 +170,13 @@ class TokenSigner(Protocol):
 class TokenVerifier(Protocol):
     """Interface for validating signed JWTs."""
 
-    def verify(self, token: str, *, audience: Sequence[str] | None = None) -> dict[str, Any]: ...
+    def verify(
+        self,
+        token: str,
+        *,
+        audience: Sequence[str] | None = None,
+        allow_expired: bool = False,
+    ) -> dict[str, Any]: ...
 
 
 class EdDSATokenSigner(TokenSigner):
@@ -258,7 +264,13 @@ class EdDSATokenVerifier(TokenVerifier):
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
 
-    def verify(self, token: str, *, audience: Sequence[str] | None = None) -> dict[str, Any]:
+    def verify(
+        self,
+        token: str,
+        *,
+        audience: Sequence[str] | None = None,
+        allow_expired: bool = False,
+    ) -> dict[str, Any]:
         started = perf_counter()
         token_use: str | None = None
         failure_logged = False
@@ -304,6 +316,7 @@ class EdDSATokenVerifier(TokenVerifier):
                 "require_exp": True,
                 "require_iat": True,
                 "verify_aud": audience is not None,
+                "verify_exp": not allow_expired,
             }
             try:
                 decoded = jwt.decode(
@@ -471,11 +484,14 @@ async def get_current_user(
     if not _is_user_subject(raw_subject):
         raise _unauthorized("Token subject must reference a user account.")
     subject = raw_subject
+    email_verified = bool(payload.get("email_verified"))
 
     return {
         "user_id": _normalize_subject(subject),
         "subject": subject,
         "payload": payload,
+        "email_verified": email_verified,
+        "session_id": payload.get("sid"),
     }
 
 
