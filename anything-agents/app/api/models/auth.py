@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class UserLoginRequest(BaseModel):
@@ -14,6 +14,48 @@ class UserLoginRequest(BaseModel):
         default=None,
         description="Tenant UUID when the user belongs to multiple tenants.",
     )
+
+
+class UserRegisterRequest(BaseModel):
+    """Public signup payload used to create a tenant + owner account."""
+
+    email: EmailStr = Field(description="Primary user email used for login + billing.")
+    password: str = Field(
+        min_length=14,
+        description="Password that meets the platform's minimum complexity requirements.",
+    )
+    tenant_name: str = Field(
+        min_length=2,
+        max_length=128,
+        description="Display name for the tenant.",
+    )
+    display_name: str | None = Field(
+        default=None, description="Optional profile display name for the owner account."
+    )
+    plan_code: str | None = Field(
+        default=None,
+        description="Requested billing plan (defaults to server configuration when omitted).",
+    )
+    trial_days: int | None = Field(
+        default=None,
+        ge=0,
+        le=365,
+        description=(
+            "Optional trial duration hint; ignored unless the deployment explicitly "
+            "allows overrides."
+        ),
+    )
+    accept_terms: bool = Field(
+        default=False,
+        description="Indicates whether the caller accepted the Terms of Service.",
+    )
+
+    @field_validator("accept_terms")
+    @classmethod
+    def _require_terms(cls, value: bool) -> bool:
+        if not value:
+            raise ValueError("Terms of Service must be accepted to create an account.")
+        return value
 
 
 class UserRefreshRequest(BaseModel):
@@ -40,6 +82,12 @@ class UserSessionResponse(BaseModel):
     scopes: list[str] = Field(description="Scopes granted to the session.")
     tenant_id: str = Field(description="Tenant identifier tied to the session.")
     user_id: str = Field(description="Authenticated user identifier.")
+
+
+class UserRegisterResponse(UserSessionResponse):
+    """Session response returned by /auth/register with tenant metadata."""
+
+    tenant_slug: str = Field(description="URL-safe slug generated for the tenant.")
 
 
 class ServiceAccountIssueRequest(BaseModel):

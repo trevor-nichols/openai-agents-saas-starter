@@ -122,6 +122,7 @@ class StripeClient:
         price_id: str,
         quantity: int,
         auto_renew: bool,
+        trial_period_days: int | None = None,
         metadata: dict[str, str] | None = None,
     ) -> StripeSubscription:
         params: SubscriptionCreateParams = {
@@ -137,6 +138,8 @@ class StripeClient:
         }
         if not auto_renew:
             params["cancel_at_period_end"] = True
+        if trial_period_days:
+            params["trial_period_days"] = trial_period_days
 
         subscription = await self._request(
             "subscription.create",

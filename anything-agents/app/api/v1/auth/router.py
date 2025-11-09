@@ -11,12 +11,15 @@ from typing import Any
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
 
+from app.api.dependencies import raise_rate_limit_http_error
 from app.api.dependencies.auth import require_current_user
 from app.api.models.auth import (
     ServiceAccountIssueRequest,
     ServiceAccountTokenResponse,
     UserLoginRequest,
     UserRefreshRequest,
+    UserRegisterRequest,
+    UserRegisterResponse,
     UserSessionResponse,
 )
 from app.api.models.common import SuccessResponse
@@ -38,6 +41,21 @@ from app.services.auth_service import (
     UserSessionTokens,
     auth_service,
 )
+from app.services.billing_service import (
+    BillingError,
+    InvalidTenantIdentifierError,
+    PlanNotFoundError,
+    SubscriptionNotFoundError,
+    SubscriptionStateError,
+)
+from app.services.rate_limit_service import RateLimitExceeded, RateLimitQuota, rate_limiter
+from app.services.signup_service import (
+    BillingProvisioningError,
+    EmailAlreadyRegisteredError,
+    PublicSignupDisabledError,
+    TenantSlugCollisionError,
+    signup_service,
+)
 from app.services.user_service import (
     InvalidCredentialsError,
     MembershipNotFoundError,
@@ -47,6 +65,40 @@ from app.services.user_service import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.post("/register", response_model=UserRegisterResponse, status_code=status.HTTP_201_CREATED)
+async def register_tenant(
+    payload: UserRegisterRequest,
+    request: Request,
+) -> UserRegisterResponse:
+    client_ip = _extract_client_ip(request)
+    await _enforce_signup_quota(client_ip)
+
+    try:
+        result = await signup_service.register(
+            email=payload.email,
+            password=payload.password,
+            tenant_name=payload.tenant_name,
+            display_name=payload.display_name,
+            plan_code=payload.plan_code,
+            trial_days=payload.trial_days,
+            ip_address=client_ip,
+            user_agent=_extract_user_agent(request),
+        )
+    except PublicSignupDisabledError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except EmailAlreadyRegisteredError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except TenantSlugCollisionError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except BillingProvisioningError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+    except BillingError as exc:
+        _handle_signup_billing_error(exc)
+
+    session_payload = _to_user_session_response(result.session)
+    return UserRegisterResponse(**session_payload.model_dump(), tenant_slug=result.tenant_slug)
 
 
 @router.post("/token", response_model=UserSessionResponse)
@@ -143,6 +195,33 @@ def _to_user_session_response(tokens: UserSessionTokens) -> UserSessionResponse:
         tenant_id=tokens.tenant_id,
         user_id=tokens.user_id,
     )
+
+
+async def _enforce_signup_quota(client_ip: str | None) -> None:
+    settings = get_settings()
+    quota = RateLimitQuota(
+        name="signup_per_hour",
+        limit=settings.signup_rate_limit_per_hour,
+        window_seconds=3600,
+        scope="ip",
+    )
+    if quota.limit <= 0:
+        return
+    identity = client_ip or "unknown"
+    try:
+        await rate_limiter.enforce(quota, [identity])
+    except RateLimitExceeded as exc:
+        raise_rate_limit_http_error(exc, tenant_id="public-signup", user_id=identity)
+
+
+def _handle_signup_billing_error(exc: BillingError) -> None:
+    if isinstance(exc, PlanNotFoundError):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    if isinstance(exc, SubscriptionStateError):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    if isinstance(exc, InvalidTenantIdentifierError | SubscriptionNotFoundError):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 def _map_user_auth_error(exc: UserAuthenticationError) -> HTTPException:

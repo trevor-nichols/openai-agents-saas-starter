@@ -139,6 +139,18 @@
 
 Dashboards should pin these metrics, annotate alert firings, and link back to this section plus the incident SOP so AUTH-005 assurances remain auditable.
 
+### `/auth/register` Failure Modes
+Public signup flows run through the transactional `SignupService`. Clients and operators should expect the following responses and react accordingly:
+
+| HTTP Status | Condition | Notes |
+|-------------|-----------|-------|
+| **403 FORBIDDEN** | `allow_public_signup` is `False`. | Server short-circuits before any DB work and surfaces `PublicSignupDisabledError` so deployments can go invite-only without code changes. |
+| **409 CONFLICT** | Email already exists or slug allocation exceeds retries. | Email collisions are detected inside the transaction (before inserts) and raise `EmailAlreadyRegisteredError`; slug collisions are extremely rare and map to `TenantSlugCollisionError`. No tenant rows are persisted in either case. |
+| **429 TOO MANY REQUESTS** | IP exceeded `signup_rate_limit_per_hour`. | Enforced via the shared rate limiter; `Retry-After` communicates when the next attempt is allowed. |
+| **502 BAD GATEWAY** | Billing gateway rejected the initial plan/trial. | Tenant + owner accounts remain active; ops can retry plan creation or fall back to a free tier. The response includes `BillingProvisioningError` detail for observability. |
+
+Any other exception bubbles up as a 500 and emits the `signup.*` structured log events for incident response. Keep this table synchronized with `app/api/v1/auth/router.py` and the settings described in Section 3.
+
 ## 8. Implementation Alignment with Milestones
 
 | Milestone Item | Key Deliverables Here |

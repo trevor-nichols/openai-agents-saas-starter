@@ -120,3 +120,21 @@ def test_stripe_configuration_summary_masks_tokens() -> None:
     assert plans_configured == ["pro", "starter"]
     assert billing_enabled is True
     assert backend == "BILLING_EVENTS_REDIS_URL"
+
+
+def test_signup_settings_defaults() -> None:
+    """Public signup toggles expose sensible defaults for starter deployments."""
+
+    settings = Settings()
+
+    assert settings.allow_public_signup is True
+    assert settings.signup_rate_limit_per_hour == 20
+    assert settings.signup_default_plan_code == "starter"
+    assert settings.signup_default_trial_days == 14
+
+
+def test_signup_rate_limit_requires_positive_values() -> None:
+    """Negative signup rate limits are rejected."""
+
+    with pytest.raises(ValueError):
+        Settings(signup_rate_limit_per_hour=-5)

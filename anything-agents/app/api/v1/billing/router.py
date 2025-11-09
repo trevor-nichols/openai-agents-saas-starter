@@ -120,6 +120,7 @@ async def start_subscription(
             billing_email=payload.billing_email,
             auto_renew=payload.auto_renew,
             seat_count=payload.seat_count,
+            trial_days=None,
         )
     except BillingError as exc:  # pragma: no cover - translated below
         _handle_billing_error(exc)

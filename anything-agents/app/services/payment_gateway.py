@@ -48,6 +48,7 @@ class PaymentGateway(Protocol):
         billing_email: str | None,
         auto_renew: bool,
         seat_count: int | None,
+        trial_days: int | None,
     ) -> SubscriptionProvisionResult: ...
 
     async def update_subscription(
@@ -96,6 +97,7 @@ class StripeGatewayClient(Protocol):
         price_id: str,
         quantity: int,
         auto_renew: bool,
+        trial_period_days: int | None = None,
         metadata: dict[str, str] | None = None,
     ) -> StripeSubscription: ...
 
@@ -147,8 +149,10 @@ class StripeGateway(PaymentGateway):
         billing_email: str | None,
         auto_renew: bool,
         seat_count: int | None,
+        trial_days: int | None,
     ) -> SubscriptionProvisionResult:
         quantity = seat_count or 1
+        effective_trial = trial_days if trial_days and trial_days > 0 else None
 
         async def _action() -> SubscriptionProvisionResult:
             client = self._get_client()
@@ -160,6 +164,7 @@ class StripeGateway(PaymentGateway):
                 price_id=price_id,
                 quantity=quantity,
                 auto_renew=auto_renew,
+                trial_period_days=effective_trial,
                 metadata={"tenant_id": tenant_id, "plan_code": plan_code},
             )
 
@@ -189,6 +194,7 @@ class StripeGateway(PaymentGateway):
                 "seat_count": seat_count,
                 "auto_renew": auto_renew,
                 "has_billing_email": bool(billing_email),
+                "trial_days": effective_trial or 0,
             },
             action=_action,
         )

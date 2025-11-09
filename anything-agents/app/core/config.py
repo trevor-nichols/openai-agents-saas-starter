@@ -114,6 +114,35 @@ class Settings(BaseSettings):
     )
 
     # =============================================================================
+    # SIGNUP / TENANT ONBOARDING
+    # =============================================================================
+
+    allow_public_signup: bool = Field(
+        default=True,
+        description="Allow unauthenticated tenants to self-register via /auth/register.",
+    )
+    allow_signup_trial_override: bool = Field(
+        default=False,
+        description=(
+            "Permit /auth/register callers to request trial periods up to the plan/default cap."
+        ),
+    )
+    signup_rate_limit_per_hour: int = Field(
+        default=20,
+        description="Maximum signup attempts permitted per IP address each hour.",
+    )
+    signup_default_plan_code: str | None = Field(
+        default="starter",
+        description="Plan code automatically provisioned for new tenants when billing is enabled.",
+    )
+    signup_default_trial_days: int = Field(
+        default=14,
+        description=(
+            "Fallback trial length (days) for tenants when processor metadata is unavailable."
+        ),
+    )
+
+    # =============================================================================
     # CORS SETTINGS (simplified to avoid parsing issues)
     # =============================================================================
 
@@ -554,6 +583,13 @@ class Settings(BaseSettings):
                 )
             cleaned[plan] = price
         return cleaned
+
+    @field_validator("signup_rate_limit_per_hour", "signup_default_trial_days")
+    @classmethod
+    def _validate_signup_ints(cls, value: int, info: ValidationInfo) -> int:
+        if value < 0:
+            raise ValueError(f"{info.field_name} must be greater than or equal to zero.")
+        return value
 
 
 # =============================================================================

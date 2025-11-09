@@ -42,6 +42,7 @@ class FakeGateway(PaymentGateway):
         billing_email: str | None,
         auto_renew: bool,
         seat_count: int | None,
+        trial_days: int | None,
     ) -> SubscriptionProvisionResult:
         self.subscription_counter += 1
         now = datetime.now(UTC)
@@ -194,6 +195,7 @@ async def test_start_subscription_uses_gateway_and_repository(billing_context):
         plan_code="starter",
         billing_email="owner@example.com",
         auto_renew=True,
+        trial_days=None,
     )
 
     assert subscription.processor_subscription_id is not None
@@ -212,6 +214,7 @@ async def test_ingest_invoice_snapshot_records_invoice_and_usage(billing_context
         plan_code="starter",
         billing_email="owner@example.com",
         auto_renew=True,
+        trial_days=None,
     )
 
     now = datetime.now(UTC)
@@ -263,6 +266,7 @@ async def test_update_subscription_applies_changes(billing_context):
         plan_code="starter",
         billing_email="owner@example.com",
         auto_renew=True,
+        trial_days=None,
     )
 
     updated = await service.update_subscription(
@@ -286,6 +290,7 @@ async def test_record_usage_logs_entry(billing_context):
         plan_code="starter",
         billing_email="owner@example.com",
         auto_renew=True,
+        trial_days=None,
     )
 
     await service.record_usage(
@@ -311,4 +316,5 @@ async def test_gateway_errors_surface_as_payment_provider_error(billing_context)
             plan_code="starter",
             billing_email=None,
             auto_renew=True,
+            trial_days=None,
         )

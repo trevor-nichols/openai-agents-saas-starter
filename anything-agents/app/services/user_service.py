@@ -264,7 +264,7 @@ class UserService:
 
     def _scopes_for_role(self, role: str) -> list[str]:
         normalized = role.lower()
-        if normalized == "admin":
+        if normalized in {"admin", "owner"}:
             return [
                 "conversations:read",
                 "conversations:write",

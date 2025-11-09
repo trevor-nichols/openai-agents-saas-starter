@@ -121,11 +121,13 @@ class BillingService:
 
     async def start_subscription(
         self,
+        *,
         tenant_id: str,
         plan_code: str,
         billing_email: str | None,
         auto_renew: bool,
         seat_count: int | None = None,
+        trial_days: int | None = None,
     ) -> TenantSubscription:
         plan = await self._ensure_plan_exists(plan_code)
         try:
@@ -135,6 +137,7 @@ class BillingService:
                 billing_email=billing_email,
                 auto_renew=auto_renew,
                 seat_count=seat_count,
+                trial_days=trial_days,
             )
         except PaymentGatewayError as exc:
             raise PaymentProviderError(str(exc)) from exc

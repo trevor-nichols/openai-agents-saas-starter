@@ -22,6 +22,7 @@ class SubscriptionCreateParams(TypedDict, total=False):
     metadata: dict[str, str]
     expand: list[str]
     cancel_at_period_end: bool
+    trial_period_days: int
 
 
 class SubscriptionModifyItemPayload(TypedDict, total=False):

@@ -50,6 +50,7 @@ class FakeStripeClient:
         price_id: str,
         quantity: int,
         auto_renew: bool,
+        trial_period_days: int | None = None,
         metadata: dict[str, str] | None = None,
     ) -> StripeSubscription:
         payload: dict[str, Any] = {
@@ -59,6 +60,8 @@ class FakeStripeClient:
             "auto_renew": auto_renew,
             "metadata": metadata or {},
         }
+        if trial_period_days is not None:
+            payload["trial_period_days"] = trial_period_days
         self.created_subscriptions.append(payload)
         return self.subscription
 
@@ -137,6 +140,7 @@ async def test_start_subscription_returns_metadata():
         billing_email="owner@example.com",
         auto_renew=True,
         seat_count=2,
+        trial_days=None,
     )
 
     assert result.metadata is not None
@@ -144,6 +148,24 @@ async def test_start_subscription_returns_metadata():
     assert result.metadata["stripe_subscription_item_id"] == "si_123"
     assert client.created_customers
     assert client.created_subscriptions[0]["quantity"] == 2
+
+
+@pytest.mark.asyncio
+async def test_start_subscription_threads_trial_days():
+    client = FakeStripeClient()
+    settings = _settings({"starter": "price_123"})
+    gateway = StripeGateway(client=client, settings_factory=lambda: settings)
+
+    await gateway.start_subscription(
+        tenant_id="tenant",
+        plan_code="starter",
+        billing_email=None,
+        auto_renew=True,
+        seat_count=1,
+        trial_days=7,
+    )
+
+    assert client.created_subscriptions[0].get("trial_period_days") == 7
 
 
 @pytest.mark.asyncio
@@ -195,6 +217,7 @@ async def test_missing_price_mapping_raises_error():
             billing_email=None,
             auto_renew=True,
             seat_count=1,
+            trial_days=None,
         )
 
     assert exc_info.value.code == "price_mapping_missing"
@@ -221,6 +244,7 @@ async def test_gateway_emits_metrics_on_success(monkeypatch: pytest.MonkeyPatch)
         billing_email=None,
         auto_renew=True,
         seat_count=1,
+        trial_days=None,
     )
 
     assert calls, "expected gateway metrics to be recorded"
@@ -257,6 +281,7 @@ async def test_stripe_errors_wrapped_with_gateway_error(monkeypatch: pytest.Monk
             billing_email=None,
             auto_renew=True,
             seat_count=1,
+            trial_days=None,
         )
 
     assert exc_info.value.code == "api_error"
