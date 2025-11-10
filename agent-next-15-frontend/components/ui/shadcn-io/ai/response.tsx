@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@repo/shadcn-ui/lib/utils';
+import { cn } from '@/lib/utils';
 import type { ComponentProps, HTMLAttributes } from 'react';
 import { isValidElement, memo } from 'react';
 import ReactMarkdown, { type Options } from 'react-markdown';
@@ -18,7 +18,7 @@ import hardenReactMarkdown from 'harden-react-markdown';
  */
 function parseIncompleteMarkdown(text: string): string {
   if (!text || typeof text !== 'string') {
-    return text;
+    return '';
   }
 
   let result = text;
@@ -27,7 +27,7 @@ function parseIncompleteMarkdown(text: string): string {
   // Pattern: [...] or ![...] where the closing ] is missing
   const linkImagePattern = /(!?\[)([^\]]*?)$/;
   const linkMatch = result.match(linkImagePattern);
-  if (linkMatch) {
+  if (linkMatch && linkMatch[1]) {
     // If we have an unterminated [ or ![, remove it and everything after
     const startIndex = result.lastIndexOf(linkMatch[1]);
     result = result.substring(0, startIndex);
@@ -108,9 +108,6 @@ function parseIncompleteMarkdown(text: string): string {
   const inlineCodeMatch = result.match(inlineCodePattern);
   if (inlineCodeMatch) {
     // Check if we're dealing with a code block (triple backticks)
-    const hasCodeBlockStart = result.includes('```');
-    const codeBlockPattern = /```[\s\S]*?```/g;
-    const completeCodeBlocks = (result.match(codeBlockPattern) || []).length;
     const allTripleBackticks = (result.match(/```/g) || []).length;
 
     // If we have an odd number of ``` sequences, we're inside an incomplete code block
@@ -325,9 +322,9 @@ const components: Options['components'] = {
     if (
       isValidElement(children) &&
       children.props &&
-      typeof (children.props as any).children === 'string'
+      typeof (children.props as Record<string, unknown>).children === 'string'
     ) {
-      code = (children.props as any).children;
+      code = (children.props as Record<string, unknown>).children as string;
     } else if (typeof children === 'string') {
       code = children;
     }

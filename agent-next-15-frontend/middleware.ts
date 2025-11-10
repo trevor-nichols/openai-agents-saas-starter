@@ -3,12 +3,14 @@ import type { NextRequest } from 'next/server';
 
 import { ACCESS_TOKEN_COOKIE } from '@/lib/config';
 
-const PUBLIC_PATHS = ['/login', '/favicon.ico', '/_next', '/api'];
+const PUBLIC_EXACT_PATHS = new Set(['/', '/pricing', '/features', '/docs', '/login', '/register']);
+const PUBLIC_PREFIXES = ['/password', '/email', '/api', '/_next', '/favicon.ico'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const isPublic = PUBLIC_PATHS.some((path) => pathname.startsWith(path));
+  const isPublic =
+    PUBLIC_EXACT_PATHS.has(pathname) || PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
   const hasSession = Boolean(request.cookies.get(ACCESS_TOKEN_COOKIE)?.value);
 
   if (!hasSession && !isPublic) {
@@ -18,9 +20,9 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (hasSession && pathname === '/login') {
+  if (hasSession && (pathname === '/login' || pathname === '/register')) {
     const homeUrl = request.nextUrl.clone();
-    homeUrl.pathname = '/';
+    homeUrl.pathname = '/dashboard';
     return NextResponse.redirect(homeUrl);
   }
 

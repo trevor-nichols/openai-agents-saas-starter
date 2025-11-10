@@ -3,10 +3,10 @@
 // It allows users to view and select conversations.
 // Dependencies:
 // - React: For creating the component.
-// - ../../app/(agent)/actions: For the ConversationListItem type.
+// - app/(app)/(workspace)/chat/actions: For the ConversationListItem type.
 // - Tailwind CSS: For styling.
 // Dependents:
-// - app/(agent)/page.tsx: This component will be used in the main agent page layout.
+// - app/(app)/(workspace)/chat/page.tsx: This component is used in the chat workspace page layout.
 
 'use client';
 

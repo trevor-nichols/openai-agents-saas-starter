@@ -24,7 +24,7 @@ export function LoginForm({ redirectTo }: { redirectTo?: string }) {
 
   return (
     <form action={formAction} className="space-y-4 w-full max-w-sm">
-      <input type="hidden" name="redirectTo" value={redirectTo ?? '/'} />
+      <input type="hidden" name="redirectTo" value={redirectTo ?? '/dashboard'} />
       <div>
         <label className="block text-sm font-medium text-gray-700" htmlFor="email">
           Email

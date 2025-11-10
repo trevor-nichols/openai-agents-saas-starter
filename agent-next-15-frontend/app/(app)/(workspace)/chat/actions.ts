@@ -1,10 +1,17 @@
+// File Path: app/(app)/(workspace)/chat/actions.ts
+// Description: Server Actions powering chat streaming and conversation listing.
+// Sections:
+// - Stream chat: Proxy streaming responses from the backend.
+// - List conversations: Fetch conversation summaries for the workspace.
+
 'use server';
 
 import type { StreamChunk } from '@/lib/chat/types';
 import { streamChatServer } from '@/lib/server/streaming/chat';
 import { listConversations } from '@/lib/server/services/conversations';
 
-// Server Action for streaming chat with agents
+// --- Stream chat ---
+// Exposes the streaming chat server action to the client workspace components.
 export async function* streamChatAgent(params: {
   message: string;
   conversationId?: string | null;
@@ -28,7 +35,8 @@ export async function* streamChatAgent(params: {
   }
 }
 
-// Server Action for listing conversations
+// --- List conversations ---
+// Enables TanStack Query hooks to fetch the user’s conversations via a server action.
 export async function listConversationsAction() {
   try {
     const conversations = await listConversations();
@@ -43,3 +51,4 @@ export async function listConversationsAction() {
     };
   }
 }
+

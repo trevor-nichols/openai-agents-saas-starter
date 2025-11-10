@@ -2,10 +2,10 @@
 // Description: Component responsible for rendering the chat message display area and the message input form.
 // Dependencies:
 // - React: For component structure, state management (passed as props or managed via context/hooks later).
-// - ../../app/(agent)/actions (indirectly, via props): For sending messages.
+// - app/(app)/(workspace)/chat/actions (indirectly, via props): For sending messages.
 // - Tailwind CSS: For styling.
 // Dependents:
-// - app/(agent)/page.tsx: This component will be used within the main agent page.
+// - app/(app)/(workspace)/chat/page.tsx: This component is rendered within the chat workspace page.
 
 'use client';
 

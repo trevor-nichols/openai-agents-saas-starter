@@ -2,19 +2,19 @@
 
 import * as React from 'react';
 import { useEffect, useState, useRef } from 'react';
-import { BellIcon, HelpCircleIcon, UserIcon, ChevronDownIcon } from 'lucide-react';
-import { Button } from '@repo/shadcn-ui/components/ui/button';
+import { BellIcon, HelpCircleIcon, ChevronDownIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   NavigationMenu,
   NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
-} from '@repo/shadcn-ui/components/ui/navigation-menu';
+} from '@/components/ui/navigation-menu';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@repo/shadcn-ui/components/ui/popover';
+} from '@/components/ui/popover';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,11 +22,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@repo/shadcn-ui/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback, AvatarImage } from '@repo/shadcn-ui/components/ui/avatar';
-import { Badge } from '@repo/shadcn-ui/components/ui/badge';
-import { cn } from '@repo/shadcn-ui/lib/utils';
-import type { ComponentProps } from 'react';
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 // Simple logo component for the navbar
 const Logo = (props: React.SVGAttributes<SVGElement>) => {
