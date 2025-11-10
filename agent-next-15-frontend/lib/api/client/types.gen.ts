@@ -305,6 +305,20 @@ export type ConversationSummary = {
 };
 
 /**
+ * EmailVerificationConfirmRequest
+ *
+ * Payload for confirming the email verification token.
+ */
+export type EmailVerificationConfirmRequest = {
+    /**
+     * Token
+     *
+     * Verification token delivered via email.
+     */
+    token: string;
+};
+
+/**
  * HTTPValidationError
  */
 export type HttpValidationError = {
@@ -344,6 +358,80 @@ export type HealthResponse = {
      * Process uptime in seconds when available.
      */
     uptime?: number | null;
+};
+
+/**
+ * PasswordChangeRequest
+ *
+ * Self-service password change payload.
+ */
+export type PasswordChangeRequest = {
+    /**
+     * Current Password
+     *
+     * Current password for verification.
+     */
+    current_password: string;
+    /**
+     * New Password
+     *
+     * New password that satisfies platform policy.
+     */
+    new_password: string;
+};
+
+/**
+ * PasswordForgotRequest
+ *
+ * Initiate a password reset email.
+ */
+export type PasswordForgotRequest = {
+    /**
+     * Email
+     *
+     * Email address associated with the account.
+     */
+    email: string;
+};
+
+/**
+ * PasswordResetConfirmRequest
+ *
+ * Redeem a password reset token to set a new password.
+ */
+export type PasswordResetConfirmRequest = {
+    /**
+     * Token
+     *
+     * Password reset token from email.
+     */
+    token: string;
+    /**
+     * New Password
+     *
+     * Replacement password that satisfies platform policy.
+     */
+    new_password: string;
+};
+
+/**
+ * PasswordResetRequest
+ *
+ * Admin-initiated password reset payload.
+ */
+export type PasswordResetRequest = {
+    /**
+     * User Id
+     *
+     * Target user identifier.
+     */
+    user_id: string;
+    /**
+     * New Password
+     *
+     * Replacement password that satisfies platform policy.
+     */
+    new_password: string;
 };
 
 /**
@@ -447,7 +535,7 @@ export type ServiceAccountTokenResponse = {
     /**
      * Scopes
      *
-     * Authorized scopes.
+     * Authorized scopes attached to the token.
      */
     scopes: Array<string>;
     /**
@@ -474,6 +562,70 @@ export type ServiceAccountTokenResponse = {
      * Token classification (refresh, access, etc.).
      */
     token_use: string;
+    /**
+     * Session Id
+     *
+     * Optional session identifier when linked to a human session.
+     */
+    session_id?: string | null;
+};
+
+/**
+ * SessionClientInfo
+ *
+ * Details about the client/browser reported for a session.
+ */
+export type SessionClientInfo = {
+    /**
+     * Platform
+     *
+     * Operating system/platform hint derived from the user-agent.
+     */
+    platform?: string | null;
+    /**
+     * Browser
+     *
+     * Browser family detected from the user-agent.
+     */
+    browser?: string | null;
+    /**
+     * Device
+     *
+     * Device class (desktop, mobile, tablet, bot).
+     */
+    device?: string | null;
+    /**
+     * User Agent
+     *
+     * Raw user-agent string captured during login/refresh.
+     */
+    user_agent?: string | null;
+};
+
+/**
+ * SessionLocationInfo
+ *
+ * Approximate geolocation information for a session.
+ */
+export type SessionLocationInfo = {
+    /**
+     * City
+     *
+     * City derived from GeoIP (if available).
+     */
+    city?: string | null;
+    /**
+     * Region
+     *
+     * Region/subdivision derived from GeoIP.
+     */
+    region?: string | null;
+    /**
+     * Country
+     *
+     * Country code derived from GeoIP.
+     */
+    country?: string | null;
 };
 
 /**
@@ -675,6 +827,20 @@ export type UserLoginRequest = {
 };
 
 /**
+ * UserLogoutRequest
+ *
+ * Payload for revoking a single refresh token.
+ */
+export type UserLogoutRequest = {
+    /**
+     * Refresh Token
+     *
+     * Refresh token to revoke for the current user.
+     */
+    refresh_token: string;
+};
+
+/**
  * UserRefreshRequest
  *
  * Refresh session request payload.
@@ -805,11 +971,119 @@ export type UserRegisterResponse = {
      */
     user_id: string;
     /**
+     * Email Verified
+     *
+     * Whether the user's email has been verified.
+     */
+    email_verified: boolean;
+    /**
+     * Session Id
+     *
+     * Stable identifier for the refresh session/device.
+     */
+    session_id: string;
+    /**
      * Tenant Slug
      *
      * URL-safe slug generated for the tenant.
      */
     tenant_slug: string;
+};
+
+/**
+ * UserSessionItem
+ *
+ * Single session/device entry for session management UI.
+ */
+export type UserSessionItem = {
+    /**
+     * Id
+     *
+     * Session identifier.
+     */
+    id: string;
+    /**
+     * Tenant Id
+     *
+     * Tenant associated with the session.
+     */
+    tenant_id: string;
+    /**
+     * Created At
+     *
+     * Timestamp when the session was first created.
+     */
+    created_at: string;
+    /**
+     * Last Seen At
+     *
+     * Last activity timestamp for the session.
+     */
+    last_seen_at: string | null;
+    /**
+     * Revoked At
+     *
+     * When the session was revoked (if applicable).
+     */
+    revoked_at: string | null;
+    /**
+     * Ip Address Masked
+     *
+     * Masked IP address for user-facing audits.
+     */
+    ip_address_masked?: string | null;
+    /**
+     * Fingerprint
+     *
+     * Server-generated fingerprint for the IP + user-agent combo.
+     */
+    fingerprint?: string | null;
+    /**
+     * Client/browser metadata.
+     */
+    client: SessionClientInfo;
+    /**
+     * Approximate location for the session.
+     */
+    location?: SessionLocationInfo | null;
+    /**
+     * Current
+     *
+     * True when this session matches the caller's token context.
+     */
+    current: boolean;
+};
+
+/**
+ * UserSessionListResponse
+ *
+ * Paginated list of user sessions/devices.
+ */
+export type UserSessionListResponse = {
+    /**
+     * Sessions
+     *
+     * Session records for the user.
+     */
+    sessions: Array<UserSessionItem>;
+    /**
+     * Total
+     *
+     * Total number of sessions matching the filter.
+     */
+    total: number;
+    /**
+     * Limit
+     *
+     * Maximum sessions returned in this response.
+     */
+    limit: number;
+    /**
+     * Offset
+     *
+     * Offset applied when querying sessions.
+     */
+    offset: number;
 };
 
 /**
@@ -878,6 +1152,18 @@ export type UserSessionResponse = {
      * Authenticated user identifier.
      */
     user_id: string;
+    /**
+     * Email Verified
+     *
+     * Whether the user's email has been verified.
+     */
+    email_verified: boolean;
+    /**
+     * Session Id
+     *
+     * Stable identifier for the refresh session/device.
+     */
+    session_id: string;
 };
 
 /**
@@ -950,31 +1236,6 @@ export type HandleStripeWebhookWebhooksStripePostResponses = {
 
 export type HandleStripeWebhookWebhooksStripePostResponse = HandleStripeWebhookWebhooksStripePostResponses[keyof HandleStripeWebhookWebhooksStripePostResponses];
 
-export type RegisterTenantApiV1AuthRegisterPostData = {
-    body: UserRegisterRequest;
-    path?: never;
-    query?: never;
-    url: '/api/v1/auth/register';
-};
-
-export type RegisterTenantApiV1AuthRegisterPostErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type RegisterTenantApiV1AuthRegisterPostError = RegisterTenantApiV1AuthRegisterPostErrors[keyof RegisterTenantApiV1AuthRegisterPostErrors];
-
-export type RegisterTenantApiV1AuthRegisterPostResponses = {
-    /**
-     * Successful Response
-     */
-    201: UserRegisterResponse;
-};
-
-export type RegisterTenantApiV1AuthRegisterPostResponse = RegisterTenantApiV1AuthRegisterPostResponses[keyof RegisterTenantApiV1AuthRegisterPostResponses];
-
 export type LoginForAccessTokenApiV1AuthTokenPostData = {
     body: UserLoginRequest;
     path?: never;
@@ -1025,6 +1286,127 @@ export type RefreshAccessTokenApiV1AuthRefreshPostResponses = {
 
 export type RefreshAccessTokenApiV1AuthRefreshPostResponse = RefreshAccessTokenApiV1AuthRefreshPostResponses[keyof RefreshAccessTokenApiV1AuthRefreshPostResponses];
 
+export type LogoutSessionApiV1AuthLogoutPostData = {
+    body: UserLogoutRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/logout';
+};
+
+export type LogoutSessionApiV1AuthLogoutPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type LogoutSessionApiV1AuthLogoutPostError = LogoutSessionApiV1AuthLogoutPostErrors[keyof LogoutSessionApiV1AuthLogoutPostErrors];
+
+export type LogoutSessionApiV1AuthLogoutPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: SuccessResponse;
+};
+
+export type LogoutSessionApiV1AuthLogoutPostResponse = LogoutSessionApiV1AuthLogoutPostResponses[keyof LogoutSessionApiV1AuthLogoutPostResponses];
+
+export type LogoutAllSessionsApiV1AuthLogoutAllPostData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/logout/all';
+};
+
+export type LogoutAllSessionsApiV1AuthLogoutAllPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: SuccessResponse;
+};
+
+export type LogoutAllSessionsApiV1AuthLogoutAllPostResponse = LogoutAllSessionsApiV1AuthLogoutAllPostResponses[keyof LogoutAllSessionsApiV1AuthLogoutAllPostResponses];
+
+export type ListUserSessionsApiV1AuthSessionsGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Include Revoked
+         *
+         * When true, include revoked sessions in the response.
+         */
+        include_revoked?: boolean;
+        /**
+         * Limit
+         *
+         * Maximum number of sessions to return.
+         */
+        limit?: number;
+        /**
+         * Offset
+         *
+         * Offset applied when listing sessions.
+         */
+        offset?: number;
+        /**
+         * Tenant Id
+         *
+         * Optional tenant scope for filtering sessions.
+         */
+        tenant_id?: string | null;
+    };
+    url: '/api/v1/auth/sessions';
+};
+
+export type ListUserSessionsApiV1AuthSessionsGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListUserSessionsApiV1AuthSessionsGetError = ListUserSessionsApiV1AuthSessionsGetErrors[keyof ListUserSessionsApiV1AuthSessionsGetErrors];
+
+export type ListUserSessionsApiV1AuthSessionsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: UserSessionListResponse;
+};
+
+export type ListUserSessionsApiV1AuthSessionsGetResponse = ListUserSessionsApiV1AuthSessionsGetResponses[keyof ListUserSessionsApiV1AuthSessionsGetResponses];
+
+export type RevokeUserSessionApiV1AuthSessionsSessionIdDeleteData = {
+    body?: never;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+    };
+    query?: never;
+    url: '/api/v1/auth/sessions/{session_id}';
+};
+
+export type RevokeUserSessionApiV1AuthSessionsSessionIdDeleteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RevokeUserSessionApiV1AuthSessionsSessionIdDeleteError = RevokeUserSessionApiV1AuthSessionsSessionIdDeleteErrors[keyof RevokeUserSessionApiV1AuthSessionsSessionIdDeleteErrors];
+
+export type RevokeUserSessionApiV1AuthSessionsSessionIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    200: SuccessResponse;
+};
+
+export type RevokeUserSessionApiV1AuthSessionsSessionIdDeleteResponse = RevokeUserSessionApiV1AuthSessionsSessionIdDeleteResponses[keyof RevokeUserSessionApiV1AuthSessionsSessionIdDeleteResponses];
+
 export type GetCurrentUserInfoApiV1AuthMeGetData = {
     body?: never;
     path?: never;
@@ -1040,6 +1422,147 @@ export type GetCurrentUserInfoApiV1AuthMeGetResponses = {
 };
 
 export type GetCurrentUserInfoApiV1AuthMeGetResponse = GetCurrentUserInfoApiV1AuthMeGetResponses[keyof GetCurrentUserInfoApiV1AuthMeGetResponses];
+
+export type SendEmailVerificationApiV1AuthEmailSendPostData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/email/send';
+};
+
+export type SendEmailVerificationApiV1AuthEmailSendPostResponses = {
+    /**
+     * Successful Response
+     */
+    202: SuccessResponse;
+};
+
+export type SendEmailVerificationApiV1AuthEmailSendPostResponse = SendEmailVerificationApiV1AuthEmailSendPostResponses[keyof SendEmailVerificationApiV1AuthEmailSendPostResponses];
+
+export type VerifyEmailTokenApiV1AuthEmailVerifyPostData = {
+    body: EmailVerificationConfirmRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/email/verify';
+};
+
+export type VerifyEmailTokenApiV1AuthEmailVerifyPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type VerifyEmailTokenApiV1AuthEmailVerifyPostError = VerifyEmailTokenApiV1AuthEmailVerifyPostErrors[keyof VerifyEmailTokenApiV1AuthEmailVerifyPostErrors];
+
+export type VerifyEmailTokenApiV1AuthEmailVerifyPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: SuccessResponse;
+};
+
+export type VerifyEmailTokenApiV1AuthEmailVerifyPostResponse = VerifyEmailTokenApiV1AuthEmailVerifyPostResponses[keyof VerifyEmailTokenApiV1AuthEmailVerifyPostResponses];
+
+export type RequestPasswordResetApiV1AuthPasswordForgotPostData = {
+    body: PasswordForgotRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/password/forgot';
+};
+
+export type RequestPasswordResetApiV1AuthPasswordForgotPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RequestPasswordResetApiV1AuthPasswordForgotPostError = RequestPasswordResetApiV1AuthPasswordForgotPostErrors[keyof RequestPasswordResetApiV1AuthPasswordForgotPostErrors];
+
+export type RequestPasswordResetApiV1AuthPasswordForgotPostResponses = {
+    /**
+     * Successful Response
+     */
+    202: SuccessResponse;
+};
+
+export type RequestPasswordResetApiV1AuthPasswordForgotPostResponse = RequestPasswordResetApiV1AuthPasswordForgotPostResponses[keyof RequestPasswordResetApiV1AuthPasswordForgotPostResponses];
+
+export type ConfirmPasswordResetApiV1AuthPasswordConfirmPostData = {
+    body: PasswordResetConfirmRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/password/confirm';
+};
+
+export type ConfirmPasswordResetApiV1AuthPasswordConfirmPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ConfirmPasswordResetApiV1AuthPasswordConfirmPostError = ConfirmPasswordResetApiV1AuthPasswordConfirmPostErrors[keyof ConfirmPasswordResetApiV1AuthPasswordConfirmPostErrors];
+
+export type ConfirmPasswordResetApiV1AuthPasswordConfirmPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: SuccessResponse;
+};
+
+export type ConfirmPasswordResetApiV1AuthPasswordConfirmPostResponse = ConfirmPasswordResetApiV1AuthPasswordConfirmPostResponses[keyof ConfirmPasswordResetApiV1AuthPasswordConfirmPostResponses];
+
+export type ChangePasswordApiV1AuthPasswordChangePostData = {
+    body: PasswordChangeRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/password/change';
+};
+
+export type ChangePasswordApiV1AuthPasswordChangePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ChangePasswordApiV1AuthPasswordChangePostError = ChangePasswordApiV1AuthPasswordChangePostErrors[keyof ChangePasswordApiV1AuthPasswordChangePostErrors];
+
+export type ChangePasswordApiV1AuthPasswordChangePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: SuccessResponse;
+};
+
+export type ChangePasswordApiV1AuthPasswordChangePostResponse = ChangePasswordApiV1AuthPasswordChangePostResponses[keyof ChangePasswordApiV1AuthPasswordChangePostResponses];
+
+export type AdminResetPasswordApiV1AuthPasswordResetPostData = {
+    body: PasswordResetRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/password/reset';
+};
+
+export type AdminResetPasswordApiV1AuthPasswordResetPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AdminResetPasswordApiV1AuthPasswordResetPostError = AdminResetPasswordApiV1AuthPasswordResetPostErrors[keyof AdminResetPasswordApiV1AuthPasswordResetPostErrors];
+
+export type AdminResetPasswordApiV1AuthPasswordResetPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: SuccessResponse;
+};
+
+export type AdminResetPasswordApiV1AuthPasswordResetPostResponse = AdminResetPasswordApiV1AuthPasswordResetPostResponses[keyof AdminResetPasswordApiV1AuthPasswordResetPostResponses];
 
 export type IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostData = {
     body: ServiceAccountIssueRequest;
@@ -1075,6 +1598,31 @@ export type IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponses =
 };
 
 export type IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponse = IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponses[keyof IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponses];
+
+export type RegisterTenantApiV1AuthRegisterPostData = {
+    body: UserRegisterRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/register';
+};
+
+export type RegisterTenantApiV1AuthRegisterPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RegisterTenantApiV1AuthRegisterPostError = RegisterTenantApiV1AuthRegisterPostErrors[keyof RegisterTenantApiV1AuthRegisterPostErrors];
+
+export type RegisterTenantApiV1AuthRegisterPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: UserRegisterResponse;
+};
+
+export type RegisterTenantApiV1AuthRegisterPostResponse = RegisterTenantApiV1AuthRegisterPostResponses[keyof RegisterTenantApiV1AuthRegisterPostResponses];
 
 export type ChatWithAgentApiV1ChatPostData = {
     body: AgentChatRequest;

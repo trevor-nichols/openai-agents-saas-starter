@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { BillingEventStreamApiV1BillingStreamGetData, BillingEventStreamApiV1BillingStreamGetErrors, BillingEventStreamApiV1BillingStreamGetResponses, CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostData, CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostErrors, CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostResponses, ChatWithAgentApiV1ChatPostData, ChatWithAgentApiV1ChatPostErrors, ChatWithAgentApiV1ChatPostResponses, DeleteConversationApiV1ConversationsConversationIdDeleteData, DeleteConversationApiV1ConversationsConversationIdDeleteErrors, DeleteConversationApiV1ConversationsConversationIdDeleteResponses, GetAgentStatusApiV1AgentsAgentNameStatusGetData, GetAgentStatusApiV1AgentsAgentNameStatusGetErrors, GetAgentStatusApiV1AgentsAgentNameStatusGetResponses, GetConversationApiV1ConversationsConversationIdGetData, GetConversationApiV1ConversationsConversationIdGetErrors, GetConversationApiV1ConversationsConversationIdGetResponses, GetCurrentUserInfoApiV1AuthMeGetData, GetCurrentUserInfoApiV1AuthMeGetResponses, GetTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGetData, GetTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGetErrors, GetTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGetResponses, HandleStripeWebhookWebhooksStripePostData, HandleStripeWebhookWebhooksStripePostResponses, HealthCheckHealthGetData, HealthCheckHealthGetResponses, IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostData, IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostErrors, IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponses, ListAvailableAgentsApiV1AgentsGetData, ListAvailableAgentsApiV1AgentsGetResponses, ListAvailableToolsApiV1ToolsGetData, ListAvailableToolsApiV1ToolsGetResponses, ListBillingPlansApiV1BillingPlansGetData, ListBillingPlansApiV1BillingPlansGetResponses, ListConversationsApiV1ConversationsGetData, ListConversationsApiV1ConversationsGetResponses, LoginForAccessTokenApiV1AuthTokenPostData, LoginForAccessTokenApiV1AuthTokenPostErrors, LoginForAccessTokenApiV1AuthTokenPostResponses, ReadinessCheckHealthReadyGetData, ReadinessCheckHealthReadyGetResponses, RecordUsageApiV1BillingTenantsTenantIdUsagePostData, RecordUsageApiV1BillingTenantsTenantIdUsagePostErrors, RecordUsageApiV1BillingTenantsTenantIdUsagePostResponses, RefreshAccessTokenApiV1AuthRefreshPostData, RefreshAccessTokenApiV1AuthRefreshPostErrors, RefreshAccessTokenApiV1AuthRefreshPostResponses, RegisterTenantApiV1AuthRegisterPostData, RegisterTenantApiV1AuthRegisterPostErrors, RegisterTenantApiV1AuthRegisterPostResponses, RootGetData, RootGetResponses, StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostData, StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostErrors, StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponses, StreamChatWithAgentApiV1ChatStreamPostData, StreamChatWithAgentApiV1ChatStreamPostErrors, StreamChatWithAgentApiV1ChatStreamPostResponses, UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchData, UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchErrors, UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchResponses } from './types.gen';
+import type { AdminResetPasswordApiV1AuthPasswordResetPostData, AdminResetPasswordApiV1AuthPasswordResetPostErrors, AdminResetPasswordApiV1AuthPasswordResetPostResponses, BillingEventStreamApiV1BillingStreamGetData, BillingEventStreamApiV1BillingStreamGetErrors, BillingEventStreamApiV1BillingStreamGetResponses, CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostData, CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostErrors, CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostResponses, ChangePasswordApiV1AuthPasswordChangePostData, ChangePasswordApiV1AuthPasswordChangePostErrors, ChangePasswordApiV1AuthPasswordChangePostResponses, ChatWithAgentApiV1ChatPostData, ChatWithAgentApiV1ChatPostErrors, ChatWithAgentApiV1ChatPostResponses, ConfirmPasswordResetApiV1AuthPasswordConfirmPostData, ConfirmPasswordResetApiV1AuthPasswordConfirmPostErrors, ConfirmPasswordResetApiV1AuthPasswordConfirmPostResponses, DeleteConversationApiV1ConversationsConversationIdDeleteData, DeleteConversationApiV1ConversationsConversationIdDeleteErrors, DeleteConversationApiV1ConversationsConversationIdDeleteResponses, GetAgentStatusApiV1AgentsAgentNameStatusGetData, GetAgentStatusApiV1AgentsAgentNameStatusGetErrors, GetAgentStatusApiV1AgentsAgentNameStatusGetResponses, GetConversationApiV1ConversationsConversationIdGetData, GetConversationApiV1ConversationsConversationIdGetErrors, GetConversationApiV1ConversationsConversationIdGetResponses, GetCurrentUserInfoApiV1AuthMeGetData, GetCurrentUserInfoApiV1AuthMeGetResponses, GetTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGetData, GetTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGetErrors, GetTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGetResponses, HandleStripeWebhookWebhooksStripePostData, HandleStripeWebhookWebhooksStripePostResponses, HealthCheckHealthGetData, HealthCheckHealthGetResponses, IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostData, IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostErrors, IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponses, ListAvailableAgentsApiV1AgentsGetData, ListAvailableAgentsApiV1AgentsGetResponses, ListAvailableToolsApiV1ToolsGetData, ListAvailableToolsApiV1ToolsGetResponses, ListBillingPlansApiV1BillingPlansGetData, ListBillingPlansApiV1BillingPlansGetResponses, ListConversationsApiV1ConversationsGetData, ListConversationsApiV1ConversationsGetResponses, ListUserSessionsApiV1AuthSessionsGetData, ListUserSessionsApiV1AuthSessionsGetErrors, ListUserSessionsApiV1AuthSessionsGetResponses, LoginForAccessTokenApiV1AuthTokenPostData, LoginForAccessTokenApiV1AuthTokenPostErrors, LoginForAccessTokenApiV1AuthTokenPostResponses, LogoutAllSessionsApiV1AuthLogoutAllPostData, LogoutAllSessionsApiV1AuthLogoutAllPostResponses, LogoutSessionApiV1AuthLogoutPostData, LogoutSessionApiV1AuthLogoutPostErrors, LogoutSessionApiV1AuthLogoutPostResponses, ReadinessCheckHealthReadyGetData, ReadinessCheckHealthReadyGetResponses, RecordUsageApiV1BillingTenantsTenantIdUsagePostData, RecordUsageApiV1BillingTenantsTenantIdUsagePostErrors, RecordUsageApiV1BillingTenantsTenantIdUsagePostResponses, RefreshAccessTokenApiV1AuthRefreshPostData, RefreshAccessTokenApiV1AuthRefreshPostErrors, RefreshAccessTokenApiV1AuthRefreshPostResponses, RegisterTenantApiV1AuthRegisterPostData, RegisterTenantApiV1AuthRegisterPostErrors, RegisterTenantApiV1AuthRegisterPostResponses, RequestPasswordResetApiV1AuthPasswordForgotPostData, RequestPasswordResetApiV1AuthPasswordForgotPostErrors, RequestPasswordResetApiV1AuthPasswordForgotPostResponses, RevokeUserSessionApiV1AuthSessionsSessionIdDeleteData, RevokeUserSessionApiV1AuthSessionsSessionIdDeleteErrors, RevokeUserSessionApiV1AuthSessionsSessionIdDeleteResponses, RootGetData, RootGetResponses, SendEmailVerificationApiV1AuthEmailSendPostData, SendEmailVerificationApiV1AuthEmailSendPostResponses, StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostData, StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostErrors, StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponses, StreamChatWithAgentApiV1ChatStreamPostData, StreamChatWithAgentApiV1ChatStreamPostErrors, StreamChatWithAgentApiV1ChatStreamPostResponses, UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchData, UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchErrors, UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchResponses, VerifyEmailTokenApiV1AuthEmailVerifyPostData, VerifyEmailTokenApiV1AuthEmailVerifyPostErrors, VerifyEmailTokenApiV1AuthEmailVerifyPostResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -53,20 +53,6 @@ export const handleStripeWebhookWebhooksStripePost = <ThrowOnError extends boole
 };
 
 /**
- * Register Tenant
- */
-export const registerTenantApiV1AuthRegisterPost = <ThrowOnError extends boolean = false>(options: Options<RegisterTenantApiV1AuthRegisterPostData, ThrowOnError>) => {
-    return (options.client ?? client).post<RegisterTenantApiV1AuthRegisterPostResponses, RegisterTenantApiV1AuthRegisterPostErrors, ThrowOnError>({
-        url: '/api/v1/auth/register',
-        ...options,
-        headers: {
-            'Content-Type': 'application/json',
-            ...options.headers
-        }
-    });
-};
-
-/**
  * Login For Access Token
  *
  * Authenticate a user and mint fresh access/refresh tokens.
@@ -99,6 +85,82 @@ export const refreshAccessTokenApiV1AuthRefreshPost = <ThrowOnError extends bool
 };
 
 /**
+ * Logout Session
+ *
+ * Revoke a single refresh token for the authenticated user.
+ */
+export const logoutSessionApiV1AuthLogoutPost = <ThrowOnError extends boolean = false>(options: Options<LogoutSessionApiV1AuthLogoutPostData, ThrowOnError>) => {
+    return (options.client ?? client).post<LogoutSessionApiV1AuthLogoutPostResponses, LogoutSessionApiV1AuthLogoutPostErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            }
+        ],
+        url: '/api/v1/auth/logout',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Logout All Sessions
+ *
+ * Revoke every refresh token tied to the authenticated user.
+ */
+export const logoutAllSessionsApiV1AuthLogoutAllPost = <ThrowOnError extends boolean = false>(options?: Options<LogoutAllSessionsApiV1AuthLogoutAllPostData, ThrowOnError>) => {
+    return (options?.client ?? client).post<LogoutAllSessionsApiV1AuthLogoutAllPostResponses, unknown, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            }
+        ],
+        url: '/api/v1/auth/logout/all',
+        ...options
+    });
+};
+
+/**
+ * List User Sessions
+ *
+ * Return paginated session/device metadata for the authenticated user.
+ */
+export const listUserSessionsApiV1AuthSessionsGet = <ThrowOnError extends boolean = false>(options?: Options<ListUserSessionsApiV1AuthSessionsGetData, ThrowOnError>) => {
+    return (options?.client ?? client).get<ListUserSessionsApiV1AuthSessionsGetResponses, ListUserSessionsApiV1AuthSessionsGetErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            }
+        ],
+        url: '/api/v1/auth/sessions',
+        ...options
+    });
+};
+
+/**
+ * Revoke User Session
+ *
+ * Revoke a specific session/device for the authenticated user.
+ */
+export const revokeUserSessionApiV1AuthSessionsSessionIdDelete = <ThrowOnError extends boolean = false>(options: Options<RevokeUserSessionApiV1AuthSessionsSessionIdDeleteData, ThrowOnError>) => {
+    return (options.client ?? client).delete<RevokeUserSessionApiV1AuthSessionsSessionIdDeleteResponses, RevokeUserSessionApiV1AuthSessionsSessionIdDeleteErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            }
+        ],
+        url: '/api/v1/auth/sessions/{session_id}',
+        ...options
+    });
+};
+
+/**
  * Get Current User Info
  *
  * Return metadata about the current authenticated user.
@@ -117,6 +179,104 @@ export const getCurrentUserInfoApiV1AuthMeGet = <ThrowOnError extends boolean = 
 };
 
 /**
+ * Send Email Verification
+ */
+export const sendEmailVerificationApiV1AuthEmailSendPost = <ThrowOnError extends boolean = false>(options?: Options<SendEmailVerificationApiV1AuthEmailSendPostData, ThrowOnError>) => {
+    return (options?.client ?? client).post<SendEmailVerificationApiV1AuthEmailSendPostResponses, unknown, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            }
+        ],
+        url: '/api/v1/auth/email/send',
+        ...options
+    });
+};
+
+/**
+ * Verify Email Token
+ */
+export const verifyEmailTokenApiV1AuthEmailVerifyPost = <ThrowOnError extends boolean = false>(options: Options<VerifyEmailTokenApiV1AuthEmailVerifyPostData, ThrowOnError>) => {
+    return (options.client ?? client).post<VerifyEmailTokenApiV1AuthEmailVerifyPostResponses, VerifyEmailTokenApiV1AuthEmailVerifyPostErrors, ThrowOnError>({
+        url: '/api/v1/auth/email/verify',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Request Password Reset
+ */
+export const requestPasswordResetApiV1AuthPasswordForgotPost = <ThrowOnError extends boolean = false>(options: Options<RequestPasswordResetApiV1AuthPasswordForgotPostData, ThrowOnError>) => {
+    return (options.client ?? client).post<RequestPasswordResetApiV1AuthPasswordForgotPostResponses, RequestPasswordResetApiV1AuthPasswordForgotPostErrors, ThrowOnError>({
+        url: '/api/v1/auth/password/forgot',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Confirm Password Reset
+ */
+export const confirmPasswordResetApiV1AuthPasswordConfirmPost = <ThrowOnError extends boolean = false>(options: Options<ConfirmPasswordResetApiV1AuthPasswordConfirmPostData, ThrowOnError>) => {
+    return (options.client ?? client).post<ConfirmPasswordResetApiV1AuthPasswordConfirmPostResponses, ConfirmPasswordResetApiV1AuthPasswordConfirmPostErrors, ThrowOnError>({
+        url: '/api/v1/auth/password/confirm',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Change Password
+ */
+export const changePasswordApiV1AuthPasswordChangePost = <ThrowOnError extends boolean = false>(options: Options<ChangePasswordApiV1AuthPasswordChangePostData, ThrowOnError>) => {
+    return (options.client ?? client).post<ChangePasswordApiV1AuthPasswordChangePostResponses, ChangePasswordApiV1AuthPasswordChangePostErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            }
+        ],
+        url: '/api/v1/auth/password/change',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Admin Reset Password
+ */
+export const adminResetPasswordApiV1AuthPasswordResetPost = <ThrowOnError extends boolean = false>(options: Options<AdminResetPasswordApiV1AuthPasswordResetPostData, ThrowOnError>) => {
+    return (options.client ?? client).post<AdminResetPasswordApiV1AuthPasswordResetPostResponses, AdminResetPasswordApiV1AuthPasswordResetPostErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            }
+        ],
+        url: '/api/v1/auth/password/reset',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
  * Issue Service Account Token
  *
  * Mint a refresh token for a registered service account.
@@ -124,6 +284,20 @@ export const getCurrentUserInfoApiV1AuthMeGet = <ThrowOnError extends boolean = 
 export const issueServiceAccountTokenApiV1AuthServiceAccountsIssuePost = <ThrowOnError extends boolean = false>(options: Options<IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostData, ThrowOnError>) => {
     return (options.client ?? client).post<IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponses, IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostErrors, ThrowOnError>({
         url: '/api/v1/auth/service-accounts/issue',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Register Tenant
+ */
+export const registerTenantApiV1AuthRegisterPost = <ThrowOnError extends boolean = false>(options: Options<RegisterTenantApiV1AuthRegisterPostData, ThrowOnError>) => {
+    return (options.client ?? client).post<RegisterTenantApiV1AuthRegisterPostResponses, RegisterTenantApiV1AuthRegisterPostErrors, ThrowOnError>({
+        url: '/api/v1/auth/register',
         ...options,
         headers: {
             'Content-Type': 'application/json',

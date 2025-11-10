@@ -225,7 +225,7 @@ def create_application() -> FastAPI:
         app.include_router(stripe_webhook.router)
 
     # Versioned API surface
-    app.include_router(api_router, prefix="/api", tags=["api"])
+    app.include_router(api_router, prefix="/api")
 
     return app
 
