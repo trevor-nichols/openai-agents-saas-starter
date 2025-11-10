@@ -1,0 +1,13 @@
+"""Ensure contract tests run with hermetic env overrides."""
+
+from __future__ import annotations
+
+import os
+
+from app.core import config as config_module
+
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+os.environ["REDIS_URL"] = "redis://localhost:6379/0"
+os.environ.setdefault("AUTO_RUN_MIGRATIONS", "false")
+os.environ.setdefault("ENABLE_BILLING", "false")
+config_module.get_settings.cache_clear()
