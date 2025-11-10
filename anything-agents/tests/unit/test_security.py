@@ -45,10 +45,12 @@ def _payload(
 def test_sign_and_verify_round_trip() -> None:
     signer = get_token_signer()
     verifier = get_token_verifier()
+    keyset = load_keyset()
 
     signed = signer.sign(_payload())
 
-    assert signed.primary.kid == "ed25519-active-test"
+    assert keyset.active is not None
+    assert signed.primary.kid == keyset.active.kid
     claims = verifier.verify(signed.primary.token)
     assert claims["sub"] == "user:123"
     assert claims["scope"] == "conversations:read"

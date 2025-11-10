@@ -18,6 +18,11 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+      REDIS_URL: "redis://localhost:6379/0"
+      STARTER_CLI_SKIP_ENV: "true"
+      STARTER_CLI_SKIP_VAULT_PROBE: "true"
     services:
       postgres:
         image: postgres:15

@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
+from app.core.keys import load_keyset
 from app.core.security import get_token_verifier
 from app.core.service_accounts import load_service_account_registry
 from app.domain.auth import (
@@ -172,7 +173,9 @@ async def test_issue_service_account_refresh_token_success() -> None:
     assert claims["scope"] == "conversations:read"
     assert claims["token_use"] == "refresh"
     assert claims["account"] == "analytics-batch"
-    assert result["kid"] == "ed25519-active-test"
+    keyset = load_keyset()
+    assert keyset.active is not None
+    assert result["kid"] == keyset.active.kid
 
 
 @pytest.mark.asyncio

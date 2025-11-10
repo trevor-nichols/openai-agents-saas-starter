@@ -148,6 +148,11 @@ class Settings(BaseSettings):
             "Fallback trial length (days) for tenants when processor metadata is unavailable."
         ),
     )
+    tenant_default_slug: str = Field(
+        default="default",
+        description="Tenant slug recorded by the CLI when seeding the initial org.",
+        alias="TENANT_DEFAULT_SLUG",
+    )
 
     # =============================================================================
     # NETWORK SECURITY SETTINGS
@@ -437,6 +442,11 @@ class Settings(BaseSettings):
         description="Replay processed Stripe events into Redis billing streams during startup",
         alias="ENABLE_BILLING_STREAM_REPLAY",
     )
+    billing_retry_deployment_mode: str = Field(
+        default="inline",
+        description="Documented deployment target for the Stripe retry worker (inline/dedicated).",
+        alias="BILLING_RETRY_DEPLOYMENT_MODE",
+    )
     auto_run_migrations: bool = Field(
         default=False,
         description="Automatically run Alembic migrations on startup (dev convenience)",
@@ -469,6 +479,51 @@ class Settings(BaseSettings):
             "comma-delimited entries such as 'starter=price_123,pro=price_456'."
         ),
         alias="STRIPE_PRODUCT_PRICE_MAP",
+    )
+
+    # =============================================================================
+    # OBSERVABILITY & GEOIP SETTINGS
+    # =============================================================================
+
+    logging_sink: str = Field(
+        default="stdout",
+        description="Logging sink (stdout, datadog, otlp, or none).",
+        alias="LOGGING_SINK",
+    )
+    logging_datadog_api_key: str | None = Field(
+        default=None,
+        description="Datadog API key when logging_sink=datadog.",
+        alias="LOGGING_DATADOG_API_KEY",
+    )
+    logging_datadog_site: str | None = Field(
+        default="datadoghq.com",
+        description="Datadog site (datadoghq.com, datadoghq.eu, etc.).",
+        alias="LOGGING_DATADOG_SITE",
+    )
+    logging_otlp_endpoint: str | None = Field(
+        default=None,
+        description="OTLP/HTTP endpoint when logging_sink=otlp.",
+        alias="LOGGING_OTLP_ENDPOINT",
+    )
+    logging_otlp_headers: str | None = Field(
+        default=None,
+        description="Optional OTLP headers JSON when logging_sink=otlp.",
+        alias="LOGGING_OTLP_HEADERS",
+    )
+    geoip_provider: str = Field(
+        default="none",
+        description="GeoIP provider selection (none, maxmind, ip2location).",
+        alias="GEOIP_PROVIDER",
+    )
+    geoip_maxmind_license_key: str | None = Field(
+        default=None,
+        description="MaxMind license key when geoip_provider=maxmind.",
+        alias="GEOIP_MAXMIND_LICENSE_KEY",
+    )
+    geoip_ip2location_api_key: str | None = Field(
+        default=None,
+        description="IP2Location API key when geoip_provider=ip2location.",
+        alias="GEOIP_IP2LOCATION_API_KEY",
     )
 
     # =============================================================================

@@ -70,36 +70,71 @@ This provisions a local virtualenv with all runtime and developer dependencies d
 
 ### 3. Environment Configuration
 
-Copy `.env.local.example` to `.env.local` and configure every secret (do **not** reuse the sample values outside local dev). Key fields:
+Copy `.env.local.example` to `.env.local` and configure every secret (do **not** reuse the sample values outside local dev). Sections are labeled to indicate what is **required** vs **optional** in production; the CLI setup wizard will surface the same groupings. Highlights:
 
 ```bash
-# Deployment metadata & secrets
+# Core application (required)
 ENVIRONMENT=development
-SECRET_KEY=change-me
-AUTH_PASSWORD_PEPPER=change-me
-AUTH_REFRESH_TOKEN_PEPPER=change-me
-
-# AI API Keys (set at least one)
-OPENAI_API_KEY=
-ANTHROPIC_API_KEY=
-GEMINI_API_KEY=
-XAI_API_KEY=
-
-# Server Configuration
-PORT=8000
 DEBUG=true
+PORT=8000
 APP_PUBLIC_URL=http://localhost:3000
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents
-AUTO_RUN_MIGRATIONS=true  # dev convenience (requires Alembic dependency)
-ENABLE_BILLING=false      # flip to true once Postgres persistence is ready
+ALLOWED_HOSTS=localhost,localhost:8000,127.0.0.1,testserver,testclient
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
 
-# Auth Hardening
+# Secrets (replace before production)
+SECRET_KEY=change-me
+AUTH_PASSWORD_PEPPER=change-me-too
+AUTH_REFRESH_TOKEN_PEPPER=change-me-again
+AUTH_EMAIL_VERIFICATION_TOKEN_PEPPER=change-me-email
+AUTH_PASSWORD_RESET_TOKEN_PEPPER=change-me-reset
+AUTH_SESSION_ENCRYPTION_KEY=   # required for encrypted session metadata in prod
+AUTH_SESSION_IP_HASH_SALT=
+
+# Persistence / Redis
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents
+REDIS_URL=redis://localhost:6379/0
+BILLING_EVENTS_REDIS_URL=
+AUTO_RUN_MIGRATIONS=false      # dev convenience only
+
+# Rate limits & auth policies (tune per env)
+REQUIRE_EMAIL_VERIFICATION=true
+CHAT_RATE_LIMIT_PER_MINUTE=60
+CHAT_STREAM_RATE_LIMIT_PER_MINUTE=30
+CHAT_STREAM_CONCURRENT_LIMIT=5
+BILLING_STREAM_RATE_LIMIT_PER_MINUTE=20
+BILLING_STREAM_CONCURRENT_LIMIT=3
+PASSWORD_RESET_TOKEN_TTL_MINUTES=30
+PASSWORD_RESET_EMAIL_RATE_LIMIT_PER_HOUR=5
+PASSWORD_RESET_IP_RATE_LIMIT_PER_HOUR=20
+EMAIL_VERIFICATION_TOKEN_TTL_MINUTES=60
+EMAIL_VERIFICATION_EMAIL_RATE_LIMIT_PER_HOUR=3
+EMAIL_VERIFICATION_IP_RATE_LIMIT_PER_HOUR=10
 AUTH_PASSWORD_HISTORY_COUNT=5
 AUTH_LOCKOUT_THRESHOLD=5
 AUTH_LOCKOUT_WINDOW_MINUTES=60
 AUTH_LOCKOUT_DURATION_MINUTES=60
 AUTH_IP_LOCKOUT_THRESHOLD=50
 AUTH_IP_LOCKOUT_WINDOW_MINUTES=10
+AUTH_IP_LOCKOUT_DURATION_MINUTES=10
+AUTH_JWKS_CACHE_SECONDS=300
+AUTH_JWKS_MAX_AGE_SECONDS=300
+AUTH_JWKS_ETAG_SALT=local-jwks-salt
+
+# Billing (set when ENABLE_BILLING=true)
+ENABLE_BILLING=false
+ENABLE_BILLING_STREAM=false
+ENABLE_BILLING_RETRY_WORKER=true
+ENABLE_BILLING_STREAM_REPLAY=true
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+STRIPE_PRODUCT_PRICE_MAP={"starter":"price_xxx"}
+
+# Providers
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+GEMINI_API_KEY=
+XAI_API_KEY=
+TAVILY_API_KEY=
 
 # Email Delivery (Resend)
 RESEND_EMAIL_ENABLED=false
@@ -108,9 +143,26 @@ RESEND_DEFAULT_FROM=support@example.com
 RESEND_BASE_URL=https://api.resend.com
 RESEND_EMAIL_VERIFICATION_TEMPLATE_ID=
 RESEND_PASSWORD_RESET_TEMPLATE_ID=
+
+# Vault Transit (optional locally, required when vault verification is enabled)
+VAULT_VERIFY_ENABLED=false
+VAULT_ADDR=
+VAULT_TOKEN=
+VAULT_TRANSIT_KEY=auth-service
 ```
 
-Flip `RESEND_EMAIL_ENABLED=true` only after you have verified the sender domain inside Resend and populated both `RESEND_API_KEY` and `RESEND_DEFAULT_FROM`. Leave the template ID fields empty to send inline HTML from the backend, or point them at published Resend templates for richer layouts.
+Flip `RESEND_EMAIL_ENABLED=true` only after you have verified the sender domain inside Resend and populated both `RESEND_API_KEY` and `RESEND_DEFAULT_FROM`. Leave the template ID and Vault fields empty for local development—the backend uses safe defaults until you enable those features—but treat every pepper/secret as mandatory before staging or production. The upcoming setup CLI surfaces these required vs. optional values, prompting for high-risk inputs (peppers, Stripe/Resend keys, Vault credentials) and explicitly calling out when defaults are acceptable.
+
+### Unified CLI (backend + frontend tooling)
+
+Prefer not to edit env files manually? Run the consolidated operator CLI:
+
+```bash
+python -m starter_cli.cli setup wizard        # full interactive flow
+make cli CMD="setup wizard --profile=production"  # helper wrapper
+```
+
+The wizard now walks through profiles (local/staging/production), captures required vs. optional secrets, verifies Vault Transit connectivity before enabling service-account issuance, validates Stripe/Redis/Resend inputs (with optional migration + seeding helpers), and records tenant/logging/GeoIP/signup policies so auditors can trace every decision. It writes `.env.local` + `agent-next-15-frontend/.env.local`, then emits a milestone-aligned report. Stripe provisioning and auth tooling now live exclusively under the consolidated CLI (`python -m starter_cli.cli stripe …`, `python -m starter_cli.cli auth …`).
 
 ### 4. Run the Application
 
@@ -207,7 +259,7 @@ curl -X POST "http://localhost:8000/api/v1/billing/tenants/tenant-123/usage" \
 
 #### Stripe configuration
 
-Billing routes now require Stripe credentials whenever `ENABLE_BILLING=true`. The quickest path is to run `pnpm stripe:setup`, which prompts for your Stripe secret/webhook secrets, asks how much to charge for the Starter + Pro plans, and then creates/reuses the corresponding Stripe products/prices (7-day trial included). The script writes `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PRODUCT_PRICE_MAP` into `.env.local` and flips `ENABLE_BILLING=true` for you. Prefer manual edits? You can still populate those keys yourself—just keep the JSON map in sync with your real Stripe price IDs. See `docs/billing/stripe-setup.md` for the full checklist.
+Billing routes now require Stripe credentials whenever `ENABLE_BILLING=true`. The quickest path is to run the consolidated operator CLI via `python -m starter_cli.cli stripe setup` (aliased by `pnpm stripe:setup`), which prompts for your Stripe secret/webhook secrets, asks how much to charge for the Starter + Pro plans, and then creates/reuses the corresponding Stripe products/prices (7-day trial included). The CLI writes `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PRODUCT_PRICE_MAP` into `.env.local` and flips `ENABLE_BILLING=true` for you. Prefer manual edits? You can still populate those keys yourself—just keep the JSON map in sync with your real Stripe price IDs. See `docs/billing/stripe-setup.md` for the full checklist.
 
 ## 🤖 Agent Types
 

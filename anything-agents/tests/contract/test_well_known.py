@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
+from app.core.keys import load_keyset
 from main import app
 
 
@@ -15,7 +16,9 @@ def test_jwks_endpoint_returns_active_and_next_keys() -> None:
     assert response.status_code == 200
     payload = response.json()
     kids = {entry["kid"] for entry in payload["keys"]}
-    assert kids == {"ed25519-active-test", "ed25519-next-test"}
+    keyset = load_keyset()
+    expected_kids = {material.kid for material in (keyset.active, keyset.next) if material}
+    assert kids == expected_kids
     assert "Cache-Control" in response.headers
     assert "ETag" in response.headers
     assert "Last-Modified" in response.headers

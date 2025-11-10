@@ -8,11 +8,19 @@ from collections import defaultdict
 from collections.abc import Generator, Iterable
 from pathlib import Path
 
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+os.environ["REDIS_URL"] = "redis://localhost:6379/0"
+os.environ.setdefault("AUTO_RUN_MIGRATIONS", "false")
+os.environ.setdefault("ENABLE_BILLING", "false")
+os.environ.setdefault("STARTER_CLI_SKIP_ENV", "true")
+os.environ.setdefault("STARTER_CLI_SKIP_VAULT_PROBE", "true")
+
 import pytest
 import sqlalchemy.ext.asyncio as sqla_async
 from fakeredis.aioredis import FakeRedis
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB
 from sqlalchemy.ext.compiler import compiles
+from starter_shared import config as shared_config
 
 from app.core import config as config_module
 from app.domain.conversations import (
@@ -28,10 +36,7 @@ from app.infrastructure.openai.sessions import (
 )
 from app.services.conversation_service import conversation_service
 
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
-os.environ["REDIS_URL"] = "redis://localhost:6379/0"
-os.environ.setdefault("AUTO_RUN_MIGRATIONS", "false")
-os.environ.setdefault("ENABLE_BILLING", "false")
+config_module.get_settings.cache_clear()
 
 TEST_KEYSET_PATH = Path(__file__).parent / "fixtures" / "keysets" / "test_keyset.json"
 
@@ -108,10 +113,12 @@ def _configure_auth_settings(monkeypatch: pytest.MonkeyPatch) -> Generator[None,
     monkeypatch.setenv("AUTH_JWKS_ETAG_SALT", "test-jwks-salt")
     monkeypatch.setenv("AUTH_JWKS_MAX_AGE_SECONDS", "120")
     config_module.get_settings.cache_clear()
+    shared_config.get_settings.cache_clear()
     try:
         yield
     finally:
         config_module.get_settings.cache_clear()
+        shared_config.get_settings.cache_clear()
 
 
 @pytest.fixture(autouse=True)

@@ -1,24 +1,22 @@
 {
   "schema_version": 1,
   "active": {
-    "kid": "ed25519-active-test",
-    "status": "active",
+    "kid": "ed25519-4b8d3b7a6005",
     "public_jwk": {
       "kty": "OKP",
       "crv": "Ed25519",
-      "kid": "ed25519-active-test",
-      "x": "sKeq9EnRjOuvvsUHCaVd0pkDM1S2bkkKZnEsjz2HYfQ",
+      "kid": "ed25519-4b8d3b7a6005",
+      "x": "08RY76eFdDJoHUbuX6n0a_n3rci3ko-lEb9DxNBLGVU",
       "use": "sig",
       "alg": "EdDSA"
     },
-    "created_at": "2025-11-06T22:46:14.436422+00:00",
-    "not_before": "2025-01-01T00:00:00+00:00",
+    "created_at": "2025-11-10T14:38:49.429801+00:00",
+    "not_before": "2025-11-10T14:38:49.429801+00:00",
     "not_after": null,
-    "private_key": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIDuEKGt83ZiPfUYEy3eHSnNY0FskXLUSeFpTSUyO/Ygq\n-----END PRIVATE KEY-----\n"
+    "private_key": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIGUftSKg22DqO7ocXqh1mxVlSgHQsChvC2A5OUjzJEcg\n-----END PRIVATE KEY-----\n"
   },
   "next": {
     "kid": "ed25519-next-test",
-    "status": "next",
     "public_jwk": {
       "kty": "OKP",
       "crv": "Ed25519",
@@ -31,6 +29,5 @@
     "not_before": "2025-02-01T00:00:00+00:00",
     "not_after": null,
     "private_key": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIKPEaGPmInpCuSOywMy5UJ+lccQm9TtSRtn9aPRPJTjv\n-----END PRIVATE KEY-----\n"
-  },
-  "retired": []
+  }
 }

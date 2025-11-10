@@ -1,10 +1,16 @@
 """Test suite covering agent-facing endpoints and services."""
 
+import os
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
+
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
+os.environ.setdefault("AUTO_RUN_MIGRATIONS", "false")
+os.environ.setdefault("ENABLE_BILLING", "false")
 
 from app.api.dependencies.auth import require_current_user
 from app.api.v1.chat import router as chat_router

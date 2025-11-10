@@ -41,6 +41,10 @@ ALEMBIC_INI = PROJECT_ROOT / "alembic.ini"
 
 
 def _require_database_url() -> URL:
+    if os.getenv("USE_REAL_POSTGRES", "false").lower() not in {"1", "true", "yes"}:
+        pytest.skip(
+            "USE_REAL_POSTGRES is not true; skipping Postgres integration tests by default."
+        )
     raw_url = os.getenv("DATABASE_URL")
     if not raw_url:
         pytest.skip("DATABASE_URL not set; skipping Postgres integration tests.")
