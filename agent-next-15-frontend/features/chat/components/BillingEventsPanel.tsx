@@ -1,3 +1,9 @@
+// File Path: features/chat/components/BillingEventsPanel.tsx
+// Description: Real-time billing event feed displayed beneath the chat workspace.
+// Sections:
+// - Component props: Billing stream data sourced from TanStack Query.
+// - Rendering helpers: Format subscription/invoice/usage details.
+
 'use client';
 
 import React from 'react';
@@ -9,7 +15,7 @@ interface BillingEventsPanelProps {
   status: BillingStreamStatus;
 }
 
-export default function BillingEventsPanel({ events, status }: BillingEventsPanelProps) {
+export function BillingEventsPanel({ events, status }: BillingEventsPanelProps) {
   return (
     <section className="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between">
@@ -29,7 +35,7 @@ export default function BillingEventsPanel({ events, status }: BillingEventsPane
                 <span className="font-medium capitalize">{formatEventType(event.event_type)}</span>
                 <span className="text-xs text-slate-400">{formatTimestamp(event.occurred_at)}</span>
               </div>
-              {event.summary && <p className="text-xs text-slate-500">{event.summary}</p>}
+              {event.summary ? <p className="text-xs text-slate-500">{event.summary}</p> : null}
 
               <div className="mt-2 space-y-2 text-xs text-slate-600">
                 {renderSubscription(event)}
@@ -97,7 +103,18 @@ function renderInvoice(event: BillingEvent) {
         <Detail label="Reason" value={invoice.billing_reason ?? '—'} />
         <Detail label="Collection" value={invoice.collection_method ?? '—'} />
         <Detail label="Period" value={formatPeriod(invoice.period_start, invoice.period_end)} />
-        <Detail label="Invoice" value={invoice.hosted_invoice_url ? <a className="text-blue-600 hover:underline" href={invoice.hosted_invoice_url} target="_blank" rel="noreferrer">View invoice</a> : '—'} />
+        <Detail
+          label="Invoice"
+          value={
+            invoice.hosted_invoice_url ? (
+              <a className="text-blue-600 hover:underline" href={invoice.hosted_invoice_url} target="_blank" rel="noreferrer">
+                View invoice
+              </a>
+            ) : (
+              '—'
+            )
+          }
+        />
       </dl>
     </div>
   );
@@ -117,11 +134,11 @@ function renderUsage(event: BillingEvent) {
             </div>
             <div className="text-[11px] text-slate-500">
               {formatPeriod(record.period_start, record.period_end)}
-              {record.amount_cents != null && (
+              {record.amount_cents != null ? (
                 <span className="ml-2">
                   {formatCurrency(record.amount_cents, event.invoice?.currency ?? 'usd')}
                 </span>
-              )}
+              ) : null}
             </div>
           </li>
         ))}
@@ -161,3 +178,4 @@ function formatPeriod(start?: string | null, end?: string | null): string {
   if (!start || !end) return formatDate(start ?? end ?? undefined);
   return `${formatDate(start)} → ${formatDate(end)}`;
 }
+

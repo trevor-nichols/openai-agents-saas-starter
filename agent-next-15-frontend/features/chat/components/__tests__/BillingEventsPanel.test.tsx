@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 
-import BillingEventsPanel from '../BillingEventsPanel';
+import { BillingEventsPanel } from '../BillingEventsPanel';
 
 const sampleEvents = [
   {
@@ -22,3 +22,4 @@ describe('BillingEventsPanel', () => {
     expect(screen.getByText(/live/i)).toBeInTheDocument();
   });
 });
+

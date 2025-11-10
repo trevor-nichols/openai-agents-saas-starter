@@ -149,18 +149,46 @@
 │   │       └── route.ts         # API route to list available tools.
 │   ├── layout.tsx               # Root application layout, sets up HTML structure and providers.
 │   └── providers.tsx            # Client-side providers, primarily for React Query.
-├── components/                  # Reusable React components.
-│   ├── agent/                   # Components for the AI agent chat interface.
-│   │   ├── ChatInterface.tsx    # Renders the chat message list and input form.
-│   │   └── ConversationSidebar.tsx # Renders the sidebar with a list of conversations.
+├── features/                    # Feature modules orchestrating page-level experiences.
+│   ├── account/                 # Account settings feature surfaces.
+│   │   ├── ProfilePanel.tsx     # Placeholder profile view.
+│   │   ├── SecurityPanel.tsx    # Placeholder security controls.
+│   │   ├── SessionsPanel.tsx    # Placeholder session management.
+│   │   ├── ServiceAccountsPanel.tsx # Placeholder service account management.
+│   │   └── index.ts             # Barrel export for account surfaces.
+│   ├── agents/                  # Agent roster feature module.
+│   │   ├── AgentsOverview.tsx   # Placeholder agent inventory view.
+│   │   └── index.ts             # Barrel export for agent features.
+│   ├── billing/                 # Billing hub feature module.
+│   │   ├── BillingOverview.tsx  # Placeholder billing overview.
+│   │   ├── PlanManagement.tsx   # Placeholder plan management view.
+│   │   └── index.ts             # Barrel export for billing features.
+│   ├── chat/                    # Chat workspace feature module.
+│   │   ├── ChatWorkspace.tsx    # Client orchestrator for the chat workspace.
+│   │   ├── components/          # Chat-specific reusable components.
+│   │   │   ├── BillingEventsPanel.tsx # Real-time billing activity panel.
+│   │   │   ├── ChatInterface.tsx # Chat transcript + input component.
+│   │   │   ├── ConversationSidebar.tsx # Conversation list with actions.
+│   │   │   └── __tests__/       # Tests covering chat feature components.
+│   │   │       └── BillingEventsPanel.test.tsx # Unit tests for BillingEventsPanel.
+│   │   └── index.ts             # Barrel export for chat features.
+│   ├── conversations/           # Conversation management feature.
+│   │   ├── ConversationsHub.tsx # Placeholder conversations table.
+│   │   └── index.ts             # Barrel export for conversation features.
+│   ├── dashboard/               # Dashboard feature module.
+│   │   ├── DashboardOverview.tsx # Placeholder dashboard layout.
+│   │   └── index.ts             # Barrel export for dashboard.
+│   ├── settings/                # Tenant/admin settings feature surfaces.
+│   │   ├── TenantSettingsPanel.tsx # Placeholder tenant configuration view.
+│   │   └── index.ts             # Barrel export for settings features.
+│   └── tools/                   # Tool catalog feature module.
+│       ├── ToolsCatalog.tsx     # Placeholder tool catalog view.
+│       └── index.ts             # Barrel export for tools.
+├── components/                  # Shared components used across features.
 │   ├── auth/                    # Components used in authentication flows.
 │   │   ├── LoginForm.tsx        # The user login form component.
 │   │   ├── LogoutButton.tsx     # A button component to trigger the logout action.
 │   │   └── SilentRefresh.tsx    # A component to handle silent session token refreshing.
-│   ├── billing/                 # Components related to billing UI.
-│   │   ├── BillingEventsPanel.tsx # Displays real-time billing events from an SSE stream.
-│   │   └── __tests__/           # Tests for billing components.
-│   │       └── BillingEventsPanel.test.tsx # Tests for the BillingEventsPanel component.
 │   └── ui/                      # Core UI components, based on shadcn/ui.
 ├── eslint.config.mjs            # ESLint configuration file.
 ├── hooks/                       # Custom React hooks for application logic.
