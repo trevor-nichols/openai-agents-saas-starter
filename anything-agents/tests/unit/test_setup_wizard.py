@@ -151,6 +151,7 @@ def test_wizard_clears_optional_provider_keys(temp_ctx: CLIContext) -> None:
         encoding="utf-8",
     )
 
+    snapshot = dict(os.environ)
     answers = {
         "ENVIRONMENT": "development",
         "DEBUG": "true",
@@ -199,6 +200,59 @@ def test_wizard_clears_optional_provider_keys(temp_ctx: CLIContext) -> None:
     assert 'GEMINI_API_KEY=""' in env_body
     assert 'XAI_API_KEY=""' in env_body
     assert 'TAVILY_API_KEY=""' in env_body
+    _cleanup_env(snapshot)
+
+
+def test_wizard_does_not_leak_env_values(temp_ctx: CLIContext) -> None:
+    os.environ["ALLOW_PUBLIC_SIGNUP"] = "false"
+    baseline_snapshot = dict(os.environ)
+
+    answers = {
+        "ENVIRONMENT": "development",
+        "DEBUG": "true",
+        "PORT": "8000",
+        "APP_PUBLIC_URL": "http://localhost:3000",
+        "ALLOWED_HOSTS": "localhost",
+        "ALLOWED_ORIGINS": "http://localhost:3000",
+        "AUTO_RUN_MIGRATIONS": "false",
+        "API_BASE_URL": "http://127.0.0.1:8000",
+        "ROTATE_SIGNING_KEYS": "false",
+        "VAULT_VERIFY_ENABLED": "false",
+        "OPENAI_API_KEY": "sk-openai",
+        "ENABLE_ANTHROPIC_API_KEY": "false",
+        "ENABLE_GEMINI_API_KEY": "false",
+        "ENABLE_XAI_API_KEY": "false",
+        "ENABLE_TAVILY": "false",
+        "REDIS_URL": "redis://localhost:6379/0",
+        "BILLING_EVENTS_REDIS_URL": "",
+        "ENABLE_BILLING": "false",
+        "ENABLE_BILLING_STREAM": "false",
+        "RESEND_EMAIL_ENABLED": "false",
+        "RESEND_BASE_URL": "https://api.resend.com",
+        "RUN_MIGRATIONS_NOW": "false",
+        "TENANT_DEFAULT_SLUG": "local",
+        "LOGGING_SINK": "stdout",
+        "GEOIP_PROVIDER": "none",
+        "ALLOW_PUBLIC_SIGNUP": "true",
+        "ALLOW_SIGNUP_TRIAL_OVERRIDE": "false",
+        "SIGNUP_RATE_LIMIT_PER_HOUR": "15",
+        "SIGNUP_DEFAULT_PLAN_CODE": "starter",
+        "SIGNUP_DEFAULT_TRIAL_DAYS": "21",
+        "ENABLE_BILLING_RETRY_WORKER": "true",
+        "ENABLE_BILLING_STREAM_REPLAY": "false",
+    }
+
+    wizard = SetupWizard(
+        ctx=temp_ctx,
+        profile="local",
+        output_format="summary",
+        input_provider=HeadlessInputProvider(answers=answers),
+    )
+    wizard.execute()
+    assert os.environ["ALLOW_PUBLIC_SIGNUP"] == "true"
+
+    _cleanup_env(baseline_snapshot)
+    assert os.environ["ALLOW_PUBLIC_SIGNUP"] == "false"
 
 
 def test_wizard_rotates_new_peppers(monkeypatch, temp_ctx: CLIContext) -> None:

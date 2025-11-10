@@ -24,6 +24,7 @@ Document the outstanding deliverables we have already promised for the bootstrap
 - **Required vs optional prompts:** Every interactive step labels variables as "required before production" vs "optional/default-ok" (peppers, Stripe/Resend keys, Vault inputs, JWKS/cache knobs) and the CLI enforces entry of the high-risk secrets before proceeding.
 - **Guided wizard UX:** Implement a progress-based wizard with profiles (local dev / staging / production), dependency-aware branching (billing → Stripe, email → Resend, Vault → transit inputs), and optional dry-run/headless modes so operators across skill levels can configure backend + frontend envs in one pass.
 - **Implementation roadmap:** Execute in phases—(1) scaffold repo-root CLI package + entrypoint, (2) migrate existing auth and Stripe scripts into the new structure, (3) ship the core setup wizard shell, (4) layer feature sections (secrets, providers, tenant/observability, signup/worker) iteratively, and (5) add frontend env generation and non-interactive flags before deprecating legacy scripts.
+- **Testing contract:** CLI modules must remain import-safe (no `get_settings()` or DB connections at import time) and rely on the repo-root `conftest.py` hermetic overrides; new CLI features require unit tests that run under the SQLite/Redis in-memory defaults.
 
 ### Status Update – 2025-11-10
 
