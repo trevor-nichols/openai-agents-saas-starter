@@ -19,7 +19,10 @@ class StarterSettingsProtocol(Protocol):
 
     vault_addr: str | None
     vault_token: str | None
-    vault_transit_key: str | None
+    vault_transit_key: str
+    auth_key_storage_backend: str
+    auth_key_storage_path: str
+    auth_key_secret_name: str | None
     enable_billing: bool
     enable_billing_retry_worker: bool
     allow_public_signup: bool

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from anything_agents.cli import main as cli_main
 from starter_shared import config as shared_config
 

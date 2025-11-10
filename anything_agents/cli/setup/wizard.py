@@ -968,7 +968,14 @@ class SetupWizard:
         length: int = 32,
     ) -> None:
         existing = self._current(key)
-        placeholders = {"", "change-me", "change-me-too", "change-me-again", "change-me-email", "change-me-reset"}
+        placeholders = {
+            "",
+            "change-me",
+            "change-me-too",
+            "change-me-again",
+            "change-me-email",
+            "change-me-reset",
+        }
         if existing and existing not in placeholders:
             self._set_backend(key, existing, mask=True)
             return

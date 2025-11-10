@@ -12,7 +12,6 @@ from typing import Any
 
 import httpx
 from dotenv import load_dotenv
-
 from starter_shared.config import StarterSettingsProtocol, get_settings
 
 from .console import console

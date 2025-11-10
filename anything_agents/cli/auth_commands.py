@@ -7,7 +7,6 @@ import sys
 from typing import Any
 
 import httpx
-
 from starter_shared.keys import (
     KeyStorageError,
     generate_ed25519_keypair,

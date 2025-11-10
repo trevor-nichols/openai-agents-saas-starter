@@ -12,16 +12,40 @@ class Console:
     stream: TextIO = sys.stdout
     err_stream: TextIO = sys.stderr
 
-    def info(self, message: str, topic: str | None = None, *, stream: TextIO | None = None) -> None:
+    def info(
+        self,
+        message: str,
+        topic: str | None = None,
+        *,
+        stream: TextIO | None = None,
+    ) -> None:
         self._write("INFO", message, topic, stream=stream or self.stream)
 
-    def warn(self, message: str, topic: str | None = None, *, stream: TextIO | None = None) -> None:
+    def warn(
+        self,
+        message: str,
+        topic: str | None = None,
+        *,
+        stream: TextIO | None = None,
+    ) -> None:
         self._write("WARN", message, topic, stream=stream or self.err_stream)
 
-    def error(self, message: str, topic: str | None = None, *, stream: TextIO | None = None) -> None:
+    def error(
+        self,
+        message: str,
+        topic: str | None = None,
+        *,
+        stream: TextIO | None = None,
+    ) -> None:
         self._write("ERROR", message, topic, stream=stream or self.err_stream)
 
-    def success(self, message: str, topic: str | None = None, *, stream: TextIO | None = None) -> None:
+    def success(
+        self,
+        message: str,
+        topic: str | None = None,
+        *,
+        stream: TextIO | None = None,
+    ) -> None:
         self._write("SUCCESS", message, topic, stream=stream or self.stream)
 
     def newline(self) -> None:
