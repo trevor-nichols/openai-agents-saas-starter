@@ -8,13 +8,13 @@ from typing import Any
 
 import httpx
 
-from app.core.keys import (
+from starter_shared.keys import (
     KeyStorageError,
     generate_ed25519_keypair,
     load_keyset,
     save_keyset,
 )
-from app.infrastructure.security.vault_kv import configure_vault_secret_manager
+from starter_shared.vault_kv import configure_vault_secret_manager
 
 from .common import CLIContext, CLIError, build_context, build_vault_headers
 from .console import console

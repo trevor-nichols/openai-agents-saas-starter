@@ -82,9 +82,10 @@ allow-direct-references = true
 [tool.hatch.build.sources]
 app = "anything-agents/app"
 anything_agents = "anything_agents"
+starter_shared = "starter_shared"
 
 [tool.hatch.build.targets.wheel]
-packages = ["app", "anything_agents"]
+packages = ["app", "anything_agents", "starter_shared"]
 include = [
   "run.py",
   "anything-agents/main.py",
@@ -98,6 +99,7 @@ exclude = [
 include = [
   "anything-agents/**",
   "anything_agents/**",
+  "starter_shared/**",
   "docs/**",
   "run.py",
   "README.md",
@@ -128,7 +130,7 @@ migration-revision = "alembic -c anything-agents/alembic.ini revision -m \"{args
 
 [tool.ruff]
 line-length = 100
-src = ["anything-agents", "anything_agents"]
+src = ["anything-agents", "anything_agents", "starter_shared"]
 target-version = "py311"
 
 [tool.ruff.lint]

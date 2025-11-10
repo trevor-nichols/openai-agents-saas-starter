@@ -13,7 +13,7 @@ from typing import Any
 import httpx
 from dotenv import load_dotenv
 
-from app.core.config import Settings, get_settings
+from starter_shared.config import StarterSettingsProtocol, get_settings
 
 from .console import console
 
@@ -36,7 +36,7 @@ class CLIContext:
     project_root: Path = PROJECT_ROOT
     env_files: tuple[Path, ...] = DEFAULT_ENV_FILES
     loaded_env_files: list[Path] = field(default_factory=list)
-    settings: Settings | None = None
+    settings: StarterSettingsProtocol | None = None
 
     def load_environment(self, *, verbose: bool = True) -> None:
         """Load environment variables from configured files."""
@@ -49,7 +49,7 @@ class CLIContext:
             if verbose:
                 console.info(f"Loaded environment from {env_file}", topic="env")
 
-    def optional_settings(self) -> Settings | None:
+    def optional_settings(self) -> StarterSettingsProtocol | None:
         """Attempt to load the FastAPI settings module."""
         if self.settings is not None:
             return self.settings
@@ -59,7 +59,7 @@ class CLIContext:
             return None
         return self.settings
 
-    def require_settings(self) -> Settings:
+    def require_settings(self) -> StarterSettingsProtocol:
         """Load settings and raise CLIError if configuration is invalid."""
         settings = self.optional_settings()
         if settings is None:
@@ -84,7 +84,7 @@ def iter_env_files(paths: Iterable[str]) -> list[Path]:
 
 def build_vault_headers(
     request_payload: dict[str, Any],
-    settings: Settings | None,
+    settings: StarterSettingsProtocol | None,
 ) -> tuple[str, dict[str, str]]:
     """
     Build the Authorization header + payload metadata for Vault-signed requests.

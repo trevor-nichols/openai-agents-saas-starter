@@ -9,8 +9,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from app.core import config as config_module
-from app.core.config import Settings
+from starter_shared.config import StarterSettingsProtocol, get_settings
 
 from ..auth_commands import handle_keys_rotate
 from ..common import CLIContext, CLIError
@@ -662,7 +661,7 @@ class SetupWizard:
 
         self.ctx.settings = None
         try:
-            cache_clear = config_module.get_settings.cache_clear
+            cache_clear = get_settings.cache_clear
         except AttributeError:  # pragma: no cover - defensive
             return
         cache_clear()
@@ -682,7 +681,7 @@ class SetupWizard:
 
     def _secrets_section(
         self,
-        settings: Settings | None,
+        settings: StarterSettingsProtocol | None,
         env_snapshot: dict[str, str],
     ) -> SectionResult:
         section = SectionResult("M1 - Secrets & Key Management", "Rotate and harden keys.")
@@ -739,7 +738,7 @@ class SetupWizard:
 
     def _providers_section(
         self,
-        settings: Settings | None,
+        settings: StarterSettingsProtocol | None,
         env_snapshot: dict[str, str],
     ) -> SectionResult:
         section = SectionResult(
@@ -816,7 +815,7 @@ class SetupWizard:
 
     def _signup_worker_section(
         self,
-        settings: Settings | None,
+        settings: StarterSettingsProtocol | None,
         env_snapshot: dict[str, str],
     ) -> SectionResult:
         section = SectionResult(

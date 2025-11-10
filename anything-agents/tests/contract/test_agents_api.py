@@ -7,7 +7,7 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 
-os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("AUTO_RUN_MIGRATIONS", "false")
 os.environ.setdefault("ENABLE_BILLING", "false")

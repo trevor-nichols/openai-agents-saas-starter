@@ -4,12 +4,13 @@ _Last updated: 2025-11-10_
 
 ## Purpose
 
-Document the outstanding deliverables we have already promised for the bootstrap CLI so we can plan implementation work, staffing, and verification. All scope items below come directly from active/open tracker entries or specs that defer action to the CLI rather than the FastAPI backend.
+Document the outstanding deliverables for the Agent Starter CLI (ASC) so we can plan implementation work, staffing, and verification. All scope items below come directly from active/open tracker entries or specs that defer action to the CLI rather than the FastAPI backend.
 
 ## Milestone Summary
 
 | Milestone | Focus | Issue Coverage | Target Outcomes | Status |
 | --- | --- | --- | --- | --- |
+| M0 – Rebrand & Isolation Guardrails | Rename CLI surface to ASC, extract shared config modules, and eliminate direct imports from `anything-agents/app`. | CLI-020, CLI-021 | CLI packages load without FastAPI dependencies, repo docs reflect the new name, and automated checks prevent regressions. | In Progress |
 | M1 – Secrets & Key Management | Replace repo secrets with operator-supplied values and wire Vault Transit for service-account issuance. | SEC-007, SEC-008 | CLI rotates peppers/keys, stores them in Vault (or guarded local files), and configures AuthService to require Vault-signed requests outside dev. | In Progress |
 | M2 – Provider & Infra Provisioning | Enforce required third-party keys, managed Redis configuration, and migration/plan seeding workflows. | OPS-003, INFRA-004, DB-007 | CLI refuses to finish until Stripe/Resend/OpenAI keys and Redis endpoints are validated, then runs `make migrate` + plan seeding with recorded outputs. | In Progress |
 | M3 – Tenant & Observability Guardrails | Ensure tenant attribution, log forwarding, and GeoIP enrichment are configured during setup. | BE-012, OBS-006, OBS-007 | CLI scaffolds tenant-aware metadata defaults, enables JSON logging or external sinks, and wires GeoIP providers (or explicit "none" choice). | In Progress |
@@ -17,21 +18,21 @@ Document the outstanding deliverables we have already promised for the bootstrap
 
 ### Architecture Guardrails for CLI Implementation
 
-- **Single entrypoint:** Consolidate all operator tooling (existing auth token helper, future setup workflows, Stripe helpers, frontend env bootstrap) under a dedicated repo-root CLI package (e.g., `cli/`) exposed via `python -m anything_agents.cli` plus a Hatch/Make alias so both backend and frontend setup flows share the same surface.
-- **Modular subcommands:** Keep functional areas in separate modules (`auth.py`, `setup.py`, `stripe.py`, etc.) but expose them via shared argument parsing so interactive setup flows can reuse secrets/key helpers already defined in the auth CLI.
+- **Single entrypoint:** Consolidate all operator tooling under the `agent_starter_cli` package exposed via `python -m agent_starter_cli` plus Hatch/Make aliases so backend and frontend setup flows share the same surface.
+- **Modular subcommands:** Keep functional areas in separate modules (`auth.py`, `setup.py`, `stripe.py`, etc.) but expose them via shared argument parsing so interactive setup flows can reuse the shared helpers without importing FastAPI internals.
 - **Interactive + headless modes:** Default to a guided TUI/prompt flow for first-time setups while supporting flag-driven, non-interactive execution for CI/CD. Each milestone deliverable should note both interaction models.
-- **Shared helpers:** Extract the current Vault signing/key-loading utilities from `app/cli/auth_cli.py` into a reusable `common.py` so future setup commands inherit the same security posture without duplication.
+- **Shared helpers:** Extract the current Vault signing/key-loading utilities from backend modules into neutral `starter_shared/*` helpers so future setup commands inherit the same security posture without duplication while keeping imports acyclic.
 - **Required vs optional prompts:** Every interactive step labels variables as "required before production" vs "optional/default-ok" (peppers, Stripe/Resend keys, Vault inputs, JWKS/cache knobs) and the CLI enforces entry of the high-risk secrets before proceeding.
 - **Guided wizard UX:** Implement a progress-based wizard with profiles (local dev / staging / production), dependency-aware branching (billing → Stripe, email → Resend, Vault → transit inputs), and optional dry-run/headless modes so operators across skill levels can configure backend + frontend envs in one pass.
 - **Implementation roadmap:** Execute in phases—(1) scaffold repo-root CLI package + entrypoint, (2) migrate existing auth and Stripe scripts into the new structure, (3) ship the core setup wizard shell, (4) layer feature sections (secrets, providers, tenant/observability, signup/worker) iteratively, and (5) add frontend env generation and non-interactive flags before deprecating legacy scripts.
-- **Testing contract:** CLI modules must remain import-safe (no `get_settings()` or DB connections at import time) and rely on the repo-root `conftest.py` hermetic overrides; new CLI features require unit tests that run under the SQLite/Redis in-memory defaults.
+- **Testing contract:** CLI modules must remain import-safe (no `get_settings()` or DB connections at import time) and rely on the repo-root `conftest.py` hermetic overrides; new CLI features require unit tests that run under the SQLite/Redis in-memory defaults with HTTP/Vault calls stubbed.
 
 ### Status Update – 2025-11-10
 
-- Phase 1 remains complete: `anything_agents.cli` is the single entrypoint (Hatch/Make/`aa-cli`) and now owns the Stripe + auth flows outright (legacy shims removed).
-- Phase 2 now covers the full milestone surface: the setup wizard is modularized under `anything_agents/cli/setup/*`, supports headless execution via `--non-interactive` + `--answers-file`/`--var`, verifies Vault Transit connectivity, validates Redis/Stripe/Resend inputs, offers optional migration + seeding hooks, captures tenant slug/logging sink/GeoIP decisions, and records signup + worker policy posture (including retry-worker deployment mode).
-- Note (2025-11-10): `auth-cli` and `scripts/stripe/setup.py` have been removed in favor of the consolidated CLI (`python -m anything_agents.cli …`). Update automation to call the new entrypoint.
-- Next refinements: extend the backend to consume the new logging/GeoIP settings and add CLI report exporters for infra audit trails.
+- Phase 1→M0: Renaming to Agent Starter CLI is underway. Entry points (`hatch run cli`, `python -m agent_starter_cli`) are being updated alongside documentation, and a forbidden-import lint will land once the shared config module exists.
+- Phase 2: The setup wizard under `anything_agents/cli/setup/*` already supports headless execution via `--non-interactive` + `--answers-file`/`--var`, verifies Vault Transit connectivity, validates Redis/Stripe/Resend inputs, offers optional migration + seeding hooks, captures tenant slug/logging sink/GeoIP decisions, and records signup + worker policy posture (including retry-worker deployment mode).
+- Reminder (2025-11-10): `auth-cli` and `scripts/stripe/setup.py` remain deprecated. Update automation to call the consolidated CLI entrypoint.
+- Next refinements: extract shared config/crypto helpers, extend the backend to consume the new logging/GeoIP settings, add CLI report exporters for infra audit trails, and enforce the new forbidden-import guard in CI.
 
 ## Detailed Scope
 

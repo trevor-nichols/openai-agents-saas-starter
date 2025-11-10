@@ -18,6 +18,13 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 - The frontend uses the HeyAPI SDK to generate the API client. The API client is generated into the `lib/api/client` directory.
 - All hooks use TanStack Query
 
+## CLI Charter – Agent Starter CLI (ASC)
+- **Purpose:** The ASC is the single operator entrypoint for provisioning secrets, wiring third-party providers, generating env files for both the FastAPI backend and the Next.js frontend, and exporting audit artifacts. It replaces the legacy “Anything Agents” branding.
+- **Boundaries:** ASC never imports `anything-agents/app` modules directly. Shared logic (key generation, schema validation) must live in neutral `starter_shared/*` modules to keep imports acyclic and to allow the CLI to run without initializing the server stack.
+- **Execution modes:** Every workflow supports interactive prompts for first-time operators and headless execution via flags (`--non-interactive`, `--answers-file`, `--var`) so CI/CD can drive the same flows deterministically.
+- **Testing contract:** Importing `python -m agent_starter_cli` must be side-effect free (no DB/Vault connections). Unit tests stub network calls, and the repo-root `conftest.py` enforces SQLite/fakeredis overrides for all CLI modules.
+- **Ownership & roadmap:** Platform Foundations owns the CLI. Work is tracked in `docs/trackers/CLI_MILESTONE.md` with phases for rebrand, config extraction, adapter rewrites, hermetic testing, and CI guardrails. Any new CLI feature must update that tracker before merge.
+
 # Development Guidelines
 - You must maintain a professional clean architecture, referring to the documentations of the OpenAI Agents SDK and the `docs/openai-agents-sdk` directory whenever needed in order to ensure you abide by the latest API framework. 
 - Avoid feature gates/flags and any backwards compability changes - since our app is still unreleased

@@ -9,7 +9,7 @@ from collections.abc import Generator
 from pathlib import Path
 
 import pytest
-from app.core import config as config_module
+from starter_shared import config as shared_config
 
 
 @pytest.fixture()
@@ -34,7 +34,7 @@ class _FailingSettings:
 
 
 def test_cli_imports_do_not_pull_settings(monkeypatch: pytest.MonkeyPatch, env_snapshot) -> None:
-    monkeypatch.setattr(config_module, "get_settings", _FailingSettings())
+    monkeypatch.setattr(shared_config, "get_settings", _FailingSettings())
 
     for name in [m for m in list(sys.modules.keys()) if m.startswith("anything_agents.cli")]:
         del sys.modules[name]
