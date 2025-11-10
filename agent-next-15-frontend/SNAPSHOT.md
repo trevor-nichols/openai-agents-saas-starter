@@ -1,94 +1,106 @@
 .
-├── app/                                 # Main Next.js application directory with routes and logic.
-│   ├── (agent)/                         # Route group for the main agent/chat interface.
-│   │   ├── actions.ts                   # Server Actions for chat streaming and fetching conversations.
-│   │   ├── layout.tsx                   # Layout for agent pages, including silent auth refresh.
-│   │   └── page.tsx                     # Main page component for the agent chat interface.
-│   ├── (auth)/                          # Route group for authentication pages.
-│   │   └── login/                       # Directory for the login page.
-│   │       └── page.tsx                 # The login page UI component.
-│   ├── actions/                         # Directory for application-wide Server Actions.
-│   │   └── auth.ts                      # Server Actions for login, logout, and silent refresh.
-│   ├── api/                             # API route handlers for the Next.js application.
-│   │   ├── auth/                        # API routes related to authentication.
-│   │   │   ├── refresh/                 # API route for refreshing session tokens.
-│   │   │   │   └── route.ts             # Route handler for POSTing to refresh the session.
-│   │   │   └── session/                 # API route for fetching current session info.
-│   │   │       └── route.ts             # Route handler for GETting the current session.
-│   │   ├── billing/                     # API routes for billing features.
-│   │   │   └── stream/                  # API route for the billing event stream.
-│   │   │       └── route.ts             # Route handler that proxies the billing SSE stream from the backend.
-│   │   ├── chat/                        # API routes related to chat functionality.
-│   │   │   └── stream/                  # API route for streaming chat messages.
-│   │   │       └── route.ts             # Route handler that proxies the chat SSE stream from the backend.
-│   │   ├── conversations/               # API routes for conversation management.
-│   │   │   ├── route.test.ts            # Unit tests for the conversations API route.
-│   │   │   └── route.ts                 # Route handler for listing conversations.
-│   └── layout.tsx                       # Root layout for the entire application.
-├── components/                          # Reusable React components.
-│   ├── agent/                           # Components for the agent chat interface.
-│   │   ├── ChatInterface.tsx            # Component for displaying messages and the input form.
-│   │   └── ConversationSidebar.tsx      # Component for the sidebar listing conversations.
-│   ├── auth/                            # Components related to authentication.
-│   │   ├── LoginForm.tsx                # The UI component for the login form.
-│   │   ├── LogoutButton.tsx             # A client component button to trigger the logout action.
-│   │   └── SilentRefresh.tsx            # Component that triggers the silent session refresh hook.
-│   └── billing/                         # Components related to billing information.
-│       ├── BillingEventsPanel.tsx       # Displays a real-time stream of billing events.
-│       └── __tests__/                   # Directory for billing component tests.
-│           └── BillingEventsPanel.test.tsx # Unit tests for the BillingEventsPanel component.
-├── eslint.config.mjs                    # ESLint configuration file for code linting.
-├── hooks/                               # Custom React hooks for shared logic.
-│   ├── useBillingStream.ts              # Hook to manage the real-time billing event stream.
-│   ├── useConversations.ts              # Hook for fetching and managing the list of conversations.
-│   └── useSilentRefresh.ts              # Hook to handle automatic background session refreshing.
-├── lib/                                 # Shared libraries, helpers, and utilities.
-│   ├── api/                             # Utilities and configuration for API communication.
-│   │   ├── client/                      # Auto-generated OpenAPI client directory.
-│   │   │   ├── client/                  # Core files for the generated API client.
-│   │   │   │   ├── client.gen.ts        # Auto-generated core client creation logic.
-│   │   │   │   ├── index.ts             # Auto-generated barrel file for client core files.
-│   │   │   │   ├── types.gen.ts         # Auto-generated types for the client's internal options.
-│   │   │   │   └── utils.gen.ts         # Auto-generated client utility functions.
-│   │   │   ├── client.gen.ts            # Auto-generated client instance and configuration.
-│   │   │   ├── core/                    # Auto-generated core utilities for the API client.
-│   │   │   │   ├── auth.gen.ts          # Auto-generated authentication helpers.
-│   │   │   │   ├── bodySerializer.gen.ts # Auto-generated request body serialization logic.
-│   │   │   │   ├── params.gen.ts        # Auto-generated parameter handling logic.
-│   │   │   │   ├── pathSerializer.gen.ts # Auto-generated path serialization logic.
-│   │   │   │   ├── queryKeySerializer.gen.ts # Auto-generated query key serialization logic.
-│   │   │   │   ├── serverSentEvents.gen.ts # Auto-generated Server-Sent Events handling logic.
-│   │   │   │   ├── types.gen.ts         # Auto-generated core type definitions.
-│   │   │   │   └── utils.gen.ts         # Auto-generated core utility functions.
-│   │   │   ├── index.ts                 # Auto-generated barrel file exporting the SDK.
-│   │   │   ├── sdk.gen.ts               # Auto-generated SDK functions for API endpoints.
-│   │   │   └── types.gen.ts             # Auto-generated TypeScript types from the OpenAPI schema.
-│   │   ├── config.ts                    # Exports the configured API client.
-│   │   └── streaming.ts                 # Client-side utility for handling chat streaming via SSE.
-│   ├── auth/                            # Authentication-related helpers and logic.
-│   │   ├── clientMeta.ts                # Client-side utility for reading session metadata from cookies.
-│   │   ├── cookies.ts                   # Server-side utilities for managing auth cookies.
-│   │   ├── http.ts                      # Server-side authenticated fetch wrapper.
-│   │   └── session.ts                   # Server-side session management functions (login, refresh).
-│   ├── config.ts                        # Application-wide configuration and constants.
-│   └── types/                           # Shared type definitions for the library.
-│       └── auth.ts                      # TypeScript types for authentication data.
-├── middleware.ts                        # Next.js middleware for route protection and redirection.
-├── next.config.ts                       # Configuration file for the Next.js framework.
-├── openapi-ts.config.ts                 # Configuration for the openapi-ts client generator.
-├── playwright.config.ts                 # Configuration for Playwright end-to-end tests.
-├── pnpm-lock.yaml                       # PNPM lockfile for reproducible dependency installation.
-├── postcss.config.mjs                   # Configuration for PostCSS, used by Tailwind CSS.
-├── public/                              # Directory for static assets.
-│   ├── file.svg                         # Static SVG asset.
-│   ├── globe.svg                        # Static SVG asset.
-│   ├── next.svg                         # Static Next.js logo SVG.
-│   ├── vercel.svg                       # Static Vercel logo SVG.
-│   └── window.svg                       # Static SVG asset.
-├── tailwind.config.ts                   # Configuration file for Tailwind CSS.
-├── tests/                               # Directory for end-to-end tests.
-│   └── auth-smoke.spec.ts               # Playwright smoke test for the authentication flow.
-├── types/                               # Global TypeScript type definitions.
-│   └── conversations.ts                 # Type definitions for conversation objects.
-├── vitest.config.ts                     # Configuration file for the Vitest testing framework.
-└── vitest.setup.ts                      # Setup file for Vitest, importing jest-dom matchers.
+├── app/                         # Next.js application directory containing routes and layouts
+│   ├── (agent)/                 # Route group for the main agent chat interface
+│   │   ├── actions.ts           # Server Actions for chat streaming and conversation management
+│   │   ├── layout.tsx           # Layout for agent pages, handles silent session refresh
+│   │   └── page.tsx             # The main agent chat page UI and client-side logic
+│   ├── (auth)/                  # Route group for authentication pages
+│   │   └── login/               # Contains the login route
+│   │       └── page.tsx         # The login page component
+│   ├── actions/                 # Contains global Server Actions
+│   │   └── auth.ts              # Server Actions for login, logout, and session refresh
+│   ├── api/                     # API route handlers (backend for frontend)
+│   │   ├── auth/                # Authentication-related API routes
+│   │   │   ├── refresh/         # Route for refreshing authentication tokens
+│   │   │   │   └── route.ts     # API endpoint for handling token refresh requests
+│   │   │   └── session/         # Route for fetching current session data
+│   │   │       └── route.ts     # API endpoint for providing current session status
+│   │   ├── billing/             # Billing-related API routes
+│   │   │   └── stream/          # Route for the real-time billing event stream
+│   │   │       └── route.ts     # Proxies the SSE stream for billing events from the backend
+│   │   ├── chat/                # Chat-related API routes
+│   │   │   └── stream/          # Route for the real-time chat message stream
+│   │   │       └── route.ts     # Proxies the SSE stream for chat messages from the backend
+│   │   ├── conversations/       # Conversation-related API routes
+│   │   │   ├── route.test.ts    # Unit tests for the conversations list API endpoint
+│   │   │   └── route.ts         # API endpoint for listing user conversations
+│   ├── layout.tsx               # Root layout for the entire application
+│   └── providers.tsx            # Client-side providers, primarily for React Query
+├── components/                  # Reusable React components
+│   ├── agent/                   # Components for the agent/chat interface
+│   │   ├── ChatInterface.tsx    # Renders the chat message history and input form
+│   │   └── ConversationSidebar.tsx # Sidebar for listing conversations and starting new ones
+│   ├── auth/                    # Authentication-related components
+│   │   ├── LoginForm.tsx        # The user login form component
+│   │   ├── LogoutButton.tsx     # A button to trigger the user logout action
+│   │   └── SilentRefresh.tsx    # Component to handle silent authentication token refresh
+│   ├── billing/                 # Billing-related components
+│   │   ├── BillingEventsPanel.tsx # Displays a real-time feed of billing events
+│   │   └── __tests__/           # Contains tests for billing components
+│   │       └── BillingEventsPanel.test.tsx # Unit test for the BillingEventsPanel component
+├── eslint.config.mjs            # ESLint configuration file
+├── hooks/                       # Legacy custom React hooks (functionality moved to lib/queries)
+│   ├── useBillingStream.ts      # Hook for managing the real-time billing event stream
+│   ├── useConversations.ts      # Hook for fetching and managing the list of conversations
+│   └── useSilentRefresh.ts      # Hook for managing silent session token refresh logic
+├── lib/                         # Core logic, API clients, and utilities
+│   ├── api/                     # API abstraction layer
+│   │   ├── billing.ts           # Functions for connecting to the billing event stream
+│   │   ├── client/              # Auto-generated OpenAPI client directory
+│   │   │   ├── client/          # Sub-directory for the core generated client
+│   │   │   │   ├── client.gen.ts # The core generated fetch client implementation
+│   │   │   │   ├── index.ts     # Exports core client types and utilities
+│   │   │   │   ├── types.gen.ts # Generated core client type definitions
+│   │   │   │   └── utils.gen.ts # Generated utility functions for the client
+│   │   │   ├── client.gen.ts    # Main generated API client instance
+│   │   │   ├── core/            # Generated core utilities for the API client
+│   │   │   │   ├── auth.gen.ts  # Handles authentication scheme logic
+│   │   │   │   ├── bodySerializer.gen.ts # Serializes request bodies
+│   │   │   │   ├── params.gen.ts # Handles client-side parameter building
+│   │   │   │   ├── pathSerializer.gen.ts # Serializes parameters into URL paths
+│   │   │   │   ├── queryKeySerializer.gen.ts # Helper for creating stable query keys
+│   │   │   │   ├── serverSentEvents.gen.ts # SSE client implementation
+│   │   │   │   ├── types.gen.ts # Core generated types
+│   │   │   │   └── utils.gen.ts # Core generated utility functions
+│   │   │   ├── index.ts         # Main entrypoint for the generated SDK
+│   │   │   ├── sdk.gen.ts       # Generated API methods for each endpoint
+│   │   │   └── types.gen.ts     # TypeScript types generated from the OpenAPI schema
+│   │   ├── config.ts            # Exports the configured auto-generated API client
+│   │   ├── conversations.ts     # API functions for fetching and managing conversations
+│   │   ├── session.ts           # API functions for fetching and refreshing sessions
+│   │   └── streaming.ts         # API function for handling the chat SSE stream
+│   ├── auth/                    # Authentication logic and utilities
+│   │   ├── clientMeta.ts        # Client-side helper to read session metadata from cookies
+│   │   ├── cookies.ts           # Server-side helpers for managing auth cookies
+│   │   ├── http.ts              # Authenticated fetch wrapper for server-side use
+│   │   └── session.ts           # Server-side session management functions
+│   ├── config.ts                # Global application configuration and constants
+│   ├── queries/                 # Modern data-fetching hooks using TanStack Query
+│   │   ├── billing.ts           # Custom hook for managing the billing SSE stream
+│   │   ├── conversations.ts     # TanStack Query hook for managing conversation data
+│   │   ├── keys.ts              # Centralized query keys for TanStack Query
+│   │   └── session.ts           # Custom hook for handling silent session refresh
+│   ├── types/                   # Shared TypeScript type definitions
+│   │   └── auth.ts              # Types related to authentication and user sessions
+│   └── utils.ts                 # General utility functions (e.g., `cn` for classnames)
+├── middleware.ts                # Next.js middleware for route protection
+├── next.config.ts               # Next.js framework configuration
+├── openapi-ts.config.ts         # Configuration for the openapi-ts client generator
+├── playwright.config.ts         # Configuration for Playwright end-to-end tests
+├── pnpm-lock.yaml               # PNPM lockfile for dependency management
+├── postcss.config.mjs           # PostCSS configuration for Tailwind CSS
+├── public/                      # Static assets served by the application
+│   ├── file.svg                 # SVG icon asset
+│   ├── globe.svg                # SVG icon asset
+│   ├── next.svg                 # Next.js logo SVG
+│   ├── vercel.svg               # Vercel logo SVG
+│   └── window.svg               # SVG icon asset
+├── tailwind.config.ts           # Tailwind CSS theme and plugin configuration
+├── tests/                       # End-to-end tests directory
+│   └── auth-smoke.spec.ts       # Playwright test for the login, chat, and logout flow
+├── types/                       # Global TypeScript type definitions
+│   ├── billing.ts               # Types for billing events and data structures
+│   ├── conversations.ts         # Types for conversation data structures
+│   └── session.ts               # Types for session-related data
+├── vitest.config.ts             # Vitest (unit testing framework) configuration
+└── vitest.setup.ts              # Setup file for Vitest tests, e.g., for jest-dom matchers
