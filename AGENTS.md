@@ -17,6 +17,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 ## Frontend
 - The frontend uses the HeyAPI SDK to generate the API client. The API client is generated into the `lib/api/client` directory.
 - All hooks use TanStack Query
+- Use Shadcn components from components/ui/. DO NOT create custom components. If a component we need is not included yet, add it.
 
 ## CLI Charter – Starter CLI (SC)
 - **Purpose:** The SC is the single operator entrypoint for provisioning secrets, wiring third-party providers, generating env files for both the FastAPI backend and the Next.js frontend, and exporting audit artifacts. It replaces the legacy “Anything Agents” branding.
@@ -28,7 +29,8 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 # Development Guidelines
 - You must maintain a professional clean architecture, referring to the documentations of the OpenAI Agents SDK and the `docs/openai-agents-sdk` directory whenever needed in order to ensure you abide by the latest API framework. 
 - Avoid feature gates/flags and any backwards compability changes - since our app is still unreleased
-- **Backend**: Run `hatch run lint` and `hatch run pyright` after all edits to ensure there are no errors
+- **Backend**: Run `hatch run lint` and `hatch run pyright` after all edits in backend to ensure there are no errors
+- **Fronted**: Run `pnpm lint` and `pnpm type-check` after all edits in frontend to ensure there are no errors
 - Keep FastAPI routers roughly ≤300 lines by default—split files when workflows/dependencies diverge, but it’s acceptable for a single router to exceed that limit when it embeds tightly coupled security or validation helpers; extract those helpers into shared modules only once they are reused elsewhere.
 
 # Test Environment Contract

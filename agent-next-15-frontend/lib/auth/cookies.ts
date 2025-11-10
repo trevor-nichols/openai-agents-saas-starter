@@ -24,8 +24,8 @@ const META_COOKIE_BASE = {
   path: '/',
 };
 
-export function persistSessionCookies(tokens: UserSessionTokens): void {
-  const store = cookies();
+export async function persistSessionCookies(tokens: UserSessionTokens): Promise<void> {
+  const store = await cookies();
 
   store.set({
     ...SECURE_COOKIE_BASE,
@@ -58,8 +58,8 @@ export function persistSessionCookies(tokens: UserSessionTokens): void {
   });
 }
 
-export function clearSessionCookies(): void {
-  const store = cookies();
+export async function clearSessionCookies(): Promise<void> {
+  const store = await cookies();
   const names = [ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE, SESSION_META_COOKIE];
   names.forEach((name) => {
     const base =
@@ -75,24 +75,24 @@ export function clearSessionCookies(): void {
   });
 }
 
-export function getAccessTokenFromCookies(): string | null {
-  const token = cookies().get(ACCESS_TOKEN_COOKIE);
+export async function getAccessTokenFromCookies(): Promise<string | null> {
+  const token = (await cookies()).get(ACCESS_TOKEN_COOKIE);
   return token?.value ?? null;
 }
 
-export function getRefreshTokenFromCookies(): string | null {
-  const token = cookies().get(REFRESH_TOKEN_COOKIE);
+export async function getRefreshTokenFromCookies(): Promise<string | null> {
+  const token = (await cookies()).get(REFRESH_TOKEN_COOKIE);
   return token?.value ?? null;
 }
 
-export function getSessionMetaFromCookies(): {
+export async function getSessionMetaFromCookies(): Promise<{
   expiresAt: string;
   refreshExpiresAt: string;
   userId: string;
   tenantId: string;
   scopes: string[];
-} | null {
-  const raw = cookies().get(SESSION_META_COOKIE)?.value;
+} | null> {
+  const raw = (await cookies()).get(SESSION_META_COOKIE)?.value;
   if (!raw) return null;
   try {
     const decoded = Buffer.from(raw, 'base64url').toString('utf-8');

@@ -39,10 +39,10 @@ export async function logoutAction(): Promise<void> {
 }
 
 export async function silentRefreshAction(): Promise<void> {
-  const refreshToken = getRefreshTokenFromCookies();
+  const refreshToken = await getRefreshTokenFromCookies();
   if (!refreshToken) {
-    destroySession();
+    await destroySession();
     redirect('/login');
   }
-  await refreshSessionWithBackend(refreshToken!);
+  await refreshSessionWithBackend(refreshToken);
 }

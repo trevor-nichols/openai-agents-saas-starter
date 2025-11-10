@@ -4,9 +4,9 @@ import { getRefreshTokenFromCookies } from '@/lib/auth/cookies';
 import { destroySession, refreshSessionWithBackend } from '@/lib/auth/session';
 
 export async function POST() {
-  const token = getRefreshTokenFromCookies();
+  const token = await getRefreshTokenFromCookies();
   if (!token) {
-    destroySession();
+    await destroySession();
     return NextResponse.json({ message: 'Refresh token missing.' }, { status: 401 });
   }
 
@@ -18,7 +18,7 @@ export async function POST() {
       expiresAt: updated.expires_at,
     });
   } catch (error) {
-    destroySession();
+    await destroySession();
     return NextResponse.json(
       { message: error instanceof Error ? error.message : 'Failed to refresh session.' },
       { status: 401 },

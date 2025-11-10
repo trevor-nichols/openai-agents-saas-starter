@@ -54,11 +54,11 @@ export async function refreshSessionWithBackend(refreshToken: string): Promise<U
 }
 
 export async function loadSessionSummary(): Promise<SessionSummary | null> {
-  const accessToken = getAccessTokenFromCookies();
+  const accessToken = await getAccessTokenFromCookies();
   if (!accessToken) {
     return null;
   }
-  const meta = getSessionMetaFromCookies();
+  const meta = await getSessionMetaFromCookies();
   if (!meta) {
     return null;
   }
@@ -70,8 +70,8 @@ export async function loadSessionSummary(): Promise<SessionSummary | null> {
   };
 }
 
-export function destroySession(): void {
-  clearSessionCookies();
+export async function destroySession(): Promise<void> {
+  await clearSessionCookies();
 }
 
 function createMockTokens(): UserSessionTokens {

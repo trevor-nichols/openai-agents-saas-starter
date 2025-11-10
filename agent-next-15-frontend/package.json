@@ -7,14 +7,21 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "validate": "pnpm lint && pnpm type-check",
     "generate": "openapi-ts",
     "test:e2e": "playwright test",
     "test:unit": "vitest run --exclude tests/**"
   },
   "dependencies": {
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.553.0",
     "next": "15.1.8",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.4.0",
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -22,13 +29,13 @@
     "@playwright/test": "^1.48.2",
     "@testing-library/jest-dom": "^6.4.4",
     "@testing-library/react": "^16.0.1",
-    "@vitejs/plugin-react": "^4.3.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "jsdom": "^25.0.1",
+    "@vitejs/plugin-react": "^4.3.0",
     "eslint": "^9",
     "eslint-config-next": "15.1.8",
+    "jsdom": "^25.0.1",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5",
