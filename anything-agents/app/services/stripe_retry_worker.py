@@ -47,7 +47,7 @@ class StripeDispatchRetryWorker:
         self._poll_interval_seconds = poll_interval_seconds
         self._batch_size = batch_size
         self._task: asyncio.Task[None] | None = None
-        self._stop_event = asyncio.Event()
+        self._stop_event: asyncio.Event | None = None
 
     def configure(
         self,
@@ -63,13 +63,14 @@ class StripeDispatchRetryWorker:
             return
         if self._repository is None or self._dispatcher is None:
             raise RuntimeError("StripeDispatchRetryWorker not configured.")
-        self._stop_event.clear()
+        self._stop_event = asyncio.Event()
         self._task = asyncio.create_task(self._run(), name="stripe-dispatch-retry")
 
     async def shutdown(self) -> None:
         if self._task is None:
             return
-        self._stop_event.set()
+        stop_event = self._require_stop_event()
+        stop_event.set()
         self._task.cancel()
         try:
             await self._task
@@ -77,13 +78,15 @@ class StripeDispatchRetryWorker:
             pass
         finally:
             self._task = None
+            self._stop_event = None
 
     async def _run(self) -> None:
-        while not self._stop_event.is_set():
+        stop_event = self._require_stop_event()
+        while not stop_event.is_set():
             await self._process_due_dispatches()
             try:
                 await asyncio.wait_for(
-                    self._stop_event.wait(),
+                    stop_event.wait(),
                     timeout=self._poll_interval_seconds,
                 )
             except TimeoutError:
@@ -104,8 +107,9 @@ class StripeDispatchRetryWorker:
         if not due_dispatches:
             return
 
+        stop_event = self._require_stop_event()
         for dispatch in due_dispatches:
-            if self._stop_event.is_set():
+            if stop_event.is_set():
                 return
             await self._replay(dispatcher, dispatch)
 
@@ -137,6 +141,11 @@ class StripeDispatchRetryWorker:
         if self._dispatcher is None:
             raise RuntimeError("StripeDispatchRetryWorker dispatcher not configured")
         return self._dispatcher
+
+    def _require_stop_event(self) -> asyncio.Event:
+        if self._stop_event is None:
+            raise RuntimeError("StripeDispatchRetryWorker not started")
+        return self._stop_event
 
 
 stripe_dispatch_retry_worker = StripeDispatchRetryWorker()

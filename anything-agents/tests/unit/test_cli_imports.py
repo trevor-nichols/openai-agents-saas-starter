@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib
 import os
 import sys
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -12,7 +13,7 @@ from app.core import config as config_module
 
 
 @pytest.fixture()
-def env_snapshot() -> None:
+def env_snapshot() -> Generator[None, None, None]:
     snapshot = dict(os.environ)
     try:
         yield
