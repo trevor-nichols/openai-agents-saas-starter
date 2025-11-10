@@ -22,7 +22,7 @@ interface ConversationSidebarProps {
   currentConversationId: string | null;
   onSelectConversation: (conversationId: string) => void;
   onNewConversation: () => void; // Function to handle new conversation creation
-  onDeleteConversation?: (conversationId: string) => void;
+  onDeleteConversation?: (conversationId: string) => void | Promise<void>;
 }
 
 export default function ConversationSidebar({

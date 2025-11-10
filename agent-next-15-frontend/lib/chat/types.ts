@@ -16,3 +16,11 @@ export interface BackendStreamData {
   is_complete: boolean;
   error?: string;
 }
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp?: string;
+  isStreaming?: boolean;
+}

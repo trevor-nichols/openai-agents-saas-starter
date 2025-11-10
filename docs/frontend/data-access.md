@@ -63,6 +63,31 @@ This document codifies how the Next.js frontend talks to the FastAPI backend. Ev
 - Browser-accessible streams (billing events, chat fallback) live behind `/app/api/...` proxy routes that pipe the SSE response and enforce cookie auth.  
 - Client-side streaming utilities (`lib/api/streaming.ts`) only talk to our API routes to avoid leaking tokens.
 
+## Chat Data Flow
+
+The chat experience combines TanStack Query with an orchestrator hook so UI components stay presentation-only.
+
+1. **Client fetch helpers**  
+   - `lib/api/chat.ts` provides `sendChatMessage` and `streamChat`.  
+   - Helpers emit structured errors (`ChatApiError`) and environment-gated debug logs.
+
+2. **TanStack query integration**  
+   - `lib/queries/chat.ts` wraps `sendChatMessage` with optimistic cache invalidation.  
+   - `lib/queries/conversations.ts` owns list/detail keys; detail queries are prefetched any time a conversation is opened or messages stream.
+
+3. **Controller hook**  
+   - `lib/chat/useChatController.ts` handles message streaming, fallback to mutation, deletion, and agent selection state.  
+   - Consumers (e.g., `app/(agent)/page.tsx`) only read the controller output, keeping UI files <200 lines.
+
+4. **Testing**  
+   - Unit tests live under `lib/api/__tests__/chat.test.ts`, `lib/chat/__tests__/useChatController.test.tsx`, and the SSE integration smoke `lib/chat/__tests__/useChatController.integration.test.tsx`.  
+   - Run `pnpm vitest run` to execute the suite; add new tests near the code they validate.
+
+5. **Debug logging**  
+   - `console.debug` statements are wrapped in `NODE_ENV !== 'production'` guards to aid local troubleshooting without polluting prod logs.
+
+When extending the chat domain, follow the same pattern: update helpers/hooks, keep controller logic pure, and document cache impacts in this section.
+
 ## Auth Boundary Rules
 
 - Only code in `lib/server/**` or Next.js server actions may touch Next `cookies()` or create SDK clients.  
@@ -76,6 +101,6 @@ This document codifies how the Next.js frontend talks to the FastAPI backend. Ev
 - [ ] Fetch helper + hook implemented using centralized query keys.  
 - [ ] Types declared under `agent-next-15-frontend/types`.  
 - [ ] Documentation (this file + AGENTS.md note) updated.  
-- [ ] `pnpm lint` & `pnpm type-check` run locally.
+- [ ] `pnpm lint`, `pnpm type-check`, and `pnpm vitest run` executed locally.
 
 Following this blueprint keeps the frontend predictable, auditable, and testable as we add more domains.

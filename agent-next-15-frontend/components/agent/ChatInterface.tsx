@@ -10,15 +10,7 @@
 'use client';
 
 import React, { useState, FormEvent, useEffect, useRef } from 'react';
-
-// Type for individual chat messages (can be shared or moved to a types file)
-export interface ChatMessage {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp?: string;
-  isStreaming?: boolean;
-}
+import type { ChatMessage } from '@/lib/chat/types';
 
 interface ChatInterfaceProps {
   messages: ChatMessage[];

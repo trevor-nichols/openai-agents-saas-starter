@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import type { AgentChatRequest, AgentChatResponse } from '@/lib/api/client/types.gen';
+import { ChatApiError, sendChatMessage } from '@/lib/api/chat';
 import { queryKeys } from './keys';
 
 export function useSendChatMutation() {
@@ -8,20 +9,16 @@ export function useSendChatMutation() {
 
   return useMutation({
     mutationFn: async (payload: AgentChatRequest) => {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+      try {
+        return await sendChatMessage(payload);
+      } catch (error) {
+        if (error instanceof ChatApiError) {
+          throw error;
+        }
 
-      if (!response.ok) {
-        const errorPayload = (await response.json().catch(() => ({}))) as { message?: string };
-        throw new Error(errorPayload.message ?? 'Failed to send chat message');
+        const message = error instanceof Error ? error.message : 'Unknown chat error';
+        throw new ChatApiError(message, { status: 500 });
       }
-
-      return (await response.json()) as AgentChatResponse;
     },
     onSuccess: (response: AgentChatResponse) => {
       if (response.conversation_id) {

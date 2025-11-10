@@ -118,14 +118,15 @@
 ├── eslint.config.mjs                    # ESLint configuration file
 ├── hooks/                               # Contains custom React hooks
 │   ├── useBillingStream.ts              # Custom hook for connecting to the real-time billing event stream
-│   ├── useConversations.ts              # Custom hook for fetching and managing the conversation list
 │   └── useSilentRefresh.ts              # Custom hook to handle silent token refresh logic
 ├── lib/                                 # Core logic, utilities, and libraries
 │   ├── api/                             # Client-side data fetching functions and API client
 │   │   ├── agents.ts                    # Client-side functions for fetching agent data
 │   │   ├── billing.ts                   # Client-side function for connecting to the billing SSE stream
 │   │   ├── billingPlans.ts              # Client-side function for fetching billing plans
-│   │   ├── chat.ts                      # (Empty) Potentially for client-side chat functions
+│   │   ├── __tests__/                   # Unit tests for client fetch helpers
+│   │   │   └── chat.test.ts             # Coverage for chat request + streaming helpers
+│   │   ├── chat.ts                      # Browser chat helpers (send + stream) with structured errors/logging
 │   │   ├── client/                      # Auto-generated API client from OpenAPI specification
 │   │   │   ├── client/                  # Core implementation of the auto-generated client
 │   │   │   │   ├── client.gen.ts        # The main auto-generated client factory function
@@ -155,7 +156,11 @@
 │   │   ├── cookies.ts                   # Server-side helpers for managing authentication cookies
 │   │   └── session.ts                   # Server-side logic for managing user sessions (login, refresh, destroy)
 │   ├── chat/                            # Shared types and logic for chat
-│   │   └── types.ts                     # TypeScript types for chat streaming
+│   │   ├── __tests__/                   # Unit tests for chat controller logic
+│   │   │   ├── useChatController.integration.test.tsx # Integration smoke covering SSE fetch/stream
+│   │   │   └── useChatController.test.tsx # Tests streaming, fallbacks, and deletions
+│   │   ├── types.ts                     # TypeScript types for chat streaming
+│   │   └── useChatController.ts         # Hook orchestrating chat state, streaming, and cache updates
 │   ├── config.ts                        # Application configuration constants
 │   ├── queries/                         # TanStack Query hooks for data fetching
 │   │   ├── agents.ts                    # TanStack Query hooks for fetching agent data
