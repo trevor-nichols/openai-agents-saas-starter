@@ -169,3 +169,4 @@ cython_debug/
 
 CLAUDE.md
 SNAPSHOT.md
+.mcp.json
