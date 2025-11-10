@@ -245,7 +245,7 @@ export const Navbar05 = React.forwardRef<HTMLElement, Navbar05Props>(
     {
       className,
       logo = <Logo />,
-      logoHref = '#',
+      logoHref: _logoHref = '#',
       navigationLinks = defaultNavigationLinks,
       userName = 'John Doe',
       userEmail = 'john@example.com',

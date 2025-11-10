@@ -2,7 +2,8 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 export type Testimonial = {
@@ -25,9 +26,9 @@ export const AnimatedTestimonials = ({
 }: AnimatedTestimonialsProps) => {
   const [active, setActive] = useState(0);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     setActive((prev) => (prev + 1) % testimonials.length);
-  };
+  }, [testimonials.length]);
 
   const handlePrev = () => {
     setActive((prev) => (prev - 1 + testimonials.length) % testimonials.length);
@@ -43,7 +44,7 @@ export const AnimatedTestimonials = ({
       return () => clearInterval(interval);
     }
     return;
-  }, [autoplay]);
+  }, [autoplay, handleNext]);
 
   const randomRotateY = () => {
     return Math.floor(Math.random() * 21) - 10;
@@ -86,7 +87,7 @@ export const AnimatedTestimonials = ({
                   }}
                   className="absolute inset-0 origin-bottom"
                 >
-                  <img
+                  <Image
                     src={testimonial.src}
                     alt={testimonial.name}
                     width={500}
