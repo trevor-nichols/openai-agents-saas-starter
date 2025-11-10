@@ -8,7 +8,7 @@ from app.core.config import Settings
 def make_settings(**overrides) -> Settings:
     """Instantiate Settings without loading repo env files."""
 
-    return Settings(_env_file=None, **overrides)
+    return Settings(**overrides)
 
 
 def sanitized_settings(**overrides) -> Settings:
