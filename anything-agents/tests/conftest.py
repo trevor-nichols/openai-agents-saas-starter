@@ -8,6 +8,11 @@ from collections import defaultdict
 from collections.abc import Generator, Iterable
 from pathlib import Path
 
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+os.environ["REDIS_URL"] = "redis://localhost:6379/0"
+os.environ.setdefault("AUTO_RUN_MIGRATIONS", "false")
+os.environ.setdefault("ENABLE_BILLING", "false")
+
 import pytest
 import sqlalchemy.ext.asyncio as sqla_async
 from fakeredis.aioredis import FakeRedis
@@ -28,10 +33,6 @@ from app.infrastructure.openai.sessions import (
 )
 from app.services.conversation_service import conversation_service
 
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
-os.environ["REDIS_URL"] = "redis://localhost:6379/0"
-os.environ.setdefault("AUTO_RUN_MIGRATIONS", "false")
-os.environ.setdefault("ENABLE_BILLING", "false")
 config_module.get_settings.cache_clear()
 
 TEST_KEYSET_PATH = Path(__file__).parent / "fixtures" / "keysets" / "test_keyset.json"
