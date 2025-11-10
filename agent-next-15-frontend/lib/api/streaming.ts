@@ -1,26 +1,9 @@
 // Server-Sent Events (SSE) streaming utilities
 // Handles real-time chat streaming from the agents API
 
+import type { BackendStreamData, StreamChatParams, StreamChunk } from '@/lib/chat/types';
+
 const STREAM_ROUTE = '/api/chat/stream';
-
-export interface StreamChatParams {
-  message: string;
-  conversationId?: string | null;
-  agentType?: string;
-}
-
-export interface StreamChunk {
-  type: 'content' | 'error';
-  payload: string;
-  conversationId?: string;
-}
-
-interface BackendStreamData {
-  chunk: string;
-  conversation_id: string;
-  is_complete: boolean;
-  error?: string;
-}
 
 /**
  * Stream chat responses using Server-Sent Events

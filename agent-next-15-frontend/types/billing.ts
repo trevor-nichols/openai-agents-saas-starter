@@ -33,6 +33,8 @@ export type BillingEventUsage = {
   amount_cents?: number | null;
 };
 
+import type { BillingPlanResponse } from '@/lib/api/client/types.gen';
+
 export type BillingEvent = {
   tenant_id: string;
   event_type: string;
@@ -46,3 +48,11 @@ export type BillingEvent = {
 };
 
 export type BillingStreamStatus = 'disabled' | 'connecting' | 'open' | 'error';
+
+export type BillingPlan = BillingPlanResponse;
+
+export interface BillingPlanListResponse {
+  success: boolean;
+  plans?: BillingPlan[];
+  error?: string;
+}

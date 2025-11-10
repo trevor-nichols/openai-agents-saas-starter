@@ -1,8 +1,8 @@
 'use server';
 
-import { authenticatedFetch } from '@/lib/auth/http';
-import { streamChat, type StreamChunk } from '@/lib/api/streaming';
-import type { ConversationListItem } from '@/types/conversations';
+import type { StreamChunk } from '@/lib/chat/types';
+import { streamChatServer } from '@/lib/server/streaming/chat';
+import { listConversations } from '@/lib/server/services/conversations';
 
 // Server Action for streaming chat with agents
 export async function* streamChatAgent(params: {
@@ -11,7 +11,7 @@ export async function* streamChatAgent(params: {
   agentType?: string | null;
 }): AsyncGenerator<StreamChunk, void, undefined> {
   try {
-    const stream = streamChat({
+    const stream = streamChatServer({
       message: params.message,
       conversationId: params.conversationId,
       agentType: params.agentType ?? 'triage',
@@ -31,11 +31,7 @@ export async function* streamChatAgent(params: {
 // Server Action for listing conversations
 export async function listConversationsAction() {
   try {
-    const response = await authenticatedFetch('/api/v1/conversations', {
-      method: 'GET',
-    });
-    const payload = await response.json();
-    const conversations = (payload?.data ?? []) as ConversationListItem[];
+    const conversations = await listConversations();
     return {
       success: true,
       conversations,

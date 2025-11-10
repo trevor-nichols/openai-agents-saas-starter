@@ -20,5 +20,10 @@ export const queryKeys = {
   billing: {
     all: ['billing'] as const,
     stream: () => [...queryKeys.billing.all, 'stream'] as const,
+    plans: () => [...queryKeys.billing.all, 'plans'] as const,
+  },
+  tools: {
+    all: ['tools'] as const,
+    list: () => [...queryKeys.tools.all, 'list'] as const,
   },
 } as const;

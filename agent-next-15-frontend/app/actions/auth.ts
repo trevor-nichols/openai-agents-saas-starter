@@ -16,15 +16,18 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
   const redirectToRaw = (formData.get('redirectTo') as string) || '/';
   const redirectTo = redirectToRaw.startsWith('/') ? redirectToRaw : '/';
 
-  if (!email || !password) {
+  if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
     return { error: 'Email and password are required.' };
   }
+
+  const tenantIdValue =
+    typeof tenantId === 'string' && tenantId.trim().length > 0 ? tenantId : null;
 
   try {
     await exchangeCredentials({
       email,
       password,
-      tenant_id: tenantId || null,
+      tenant_id: tenantIdValue,
     });
   } catch (error) {
     return { error: error instanceof Error ? error.message : 'Login failed.' };
