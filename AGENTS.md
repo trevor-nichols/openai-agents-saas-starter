@@ -16,6 +16,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 
 ## Frontend
 - The frontend uses the HeyAPI SDK to generate the API client. The API client is generated into the `lib/api/client` directory.
+- All hooks use TanStack Query
 
 # Development Guidelines
 - You must maintain a professional clean architecture, referring to the documentations of the OpenAI Agents SDK and the `docs/openai-agents-sdk` directory whenever needed in order to ensure you abide by the latest API framework. 

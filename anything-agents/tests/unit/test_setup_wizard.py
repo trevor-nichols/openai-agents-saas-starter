@@ -15,14 +15,16 @@ def temp_ctx(tmp_path: Path) -> CLIContext:
     return CLIContext(project_root=tmp_path, env_files=(env_path,))
 
 
-def _cleanup_env(snapshot: set[str]) -> None:
-    for key in list(os.environ.keys()):
-        if key not in snapshot:
-            os.environ.pop(key, None)
+def _cleanup_env(snapshot: dict[str, str]) -> None:
+    current_keys = set(os.environ.keys())
+    for key in current_keys - snapshot.keys():
+        os.environ.pop(key, None)
+    for key, value in snapshot.items():
+        os.environ[key] = value
 
 
 def test_wizard_headless_local_generates_env(temp_ctx: CLIContext) -> None:
-    snapshot = set(os.environ.keys())
+    snapshot = dict(os.environ)
     answers = {
         "ENVIRONMENT": "development",
         "DEBUG": "true",
@@ -85,7 +87,7 @@ def test_wizard_refreshes_cached_settings(temp_ctx: CLIContext) -> None:
     temp_ctx.load_environment(verbose=False)
     temp_ctx.require_settings()
 
-    snapshot = set(os.environ.keys())
+    snapshot = dict(os.environ)
     answers = {
         "ENVIRONMENT": "development",
         "DEBUG": "true",
@@ -268,7 +270,7 @@ def test_wizard_staging_verifies_vault(
     monkeypatch: pytest.MonkeyPatch,
     temp_ctx: CLIContext,
 ) -> None:
-    snapshot = set(os.environ.keys())
+    snapshot = dict(os.environ)
     answers = {
         "ENVIRONMENT": "staging",
         "DEBUG": "false",
