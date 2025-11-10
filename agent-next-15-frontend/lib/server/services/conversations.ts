@@ -1,7 +1,11 @@
 'use server';
 
-import { listConversationsApiV1ConversationsGet } from '@/lib/api/client/sdk.gen';
-import type { ConversationSummary } from '@/lib/api/client/types.gen';
+import {
+  deleteConversationApiV1ConversationsConversationIdDelete,
+  getConversationApiV1ConversationsConversationIdGet,
+  listConversationsApiV1ConversationsGet,
+} from '@/lib/api/client/sdk.gen';
+import type { ConversationHistory, ConversationSummary } from '@/lib/api/client/types.gen';
 import type { ConversationListItem } from '@/types/conversations';
 
 import { getServerApiClient } from '../apiClient';
@@ -23,6 +27,57 @@ export async function listConversations(): Promise<ConversationListItem[]> {
   const summaries = response.data ?? [];
 
   return summaries.map(mapSummaryToListItem);
+}
+
+/**
+ * Retrieve a full conversation history for the given identifier.
+ */
+export async function getConversationHistory(
+  conversationId: string,
+): Promise<ConversationHistory> {
+  if (!conversationId) {
+    throw new Error('Conversation id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+
+  const response = await getConversationApiV1ConversationsConversationIdGet({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    path: {
+      conversation_id: conversationId,
+    },
+  });
+
+  const history = response.data;
+  if (!history) {
+    throw new Error('Conversation not found.');
+  }
+
+  return history;
+}
+
+/**
+ * Remove a stored conversation history.
+ */
+export async function deleteConversation(conversationId: string): Promise<void> {
+  if (!conversationId) {
+    throw new Error('Conversation id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+
+  await deleteConversationApiV1ConversationsConversationIdDelete({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    path: {
+      conversation_id: conversationId,
+    },
+  });
 }
 
 function mapSummaryToListItem(summary: ConversationSummary): ConversationListItem {

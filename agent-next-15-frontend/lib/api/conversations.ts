@@ -8,7 +8,11 @@
  * - Reusable across different contexts
  */
 
-import type { ConversationListItem, ConversationListResponse } from '@/types/conversations';
+import type {
+  ConversationHistory,
+  ConversationListItem,
+  ConversationListResponse,
+} from '@/types/conversations';
 
 /**
  * Fetch all conversations for the current user
@@ -41,4 +45,37 @@ export function sortConversationsByDate(
   return [...conversations].sort(
     (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
   );
+}
+
+/**
+ * Fetch the detailed history for a specific conversation.
+ */
+export async function fetchConversationHistory(
+  conversationId: string,
+): Promise<ConversationHistory> {
+  const response = await fetch(`/api/conversations/${conversationId}`, {
+    method: 'GET',
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    const errorPayload = (await response.json().catch(() => ({}))) as { message?: string };
+    throw new Error(errorPayload.message || 'Failed to load conversation history');
+  }
+
+  return (await response.json()) as ConversationHistory;
+}
+
+/**
+ * Delete a stored conversation by id.
+ */
+export async function deleteConversationById(conversationId: string): Promise<void> {
+  const response = await fetch(`/api/conversations/${conversationId}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    const errorPayload = (await response.json().catch(() => ({}))) as { message?: string };
+    throw new Error(errorPayload.message || 'Failed to delete conversation');
+  }
 }

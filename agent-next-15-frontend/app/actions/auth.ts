@@ -49,3 +49,4 @@ export async function silentRefreshAction(): Promise<void> {
   }
   await refreshSessionWithBackend(refreshToken);
 }
+

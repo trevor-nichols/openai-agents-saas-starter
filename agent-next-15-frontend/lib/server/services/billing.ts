@@ -2,9 +2,21 @@
 
 import {
   billingEventStreamApiV1BillingStreamGet,
+  cancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPost,
+  getTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGet,
   listBillingPlansApiV1BillingPlansGet,
+  recordUsageApiV1BillingTenantsTenantIdUsagePost,
+  startSubscriptionApiV1BillingTenantsTenantIdSubscriptionPost,
+  updateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatch,
 } from '@/lib/api/client/sdk.gen';
-import type { BillingPlanResponse } from '@/lib/api/client/types.gen';
+import type {
+  BillingPlanResponse,
+  StartSubscriptionRequest,
+  TenantSubscriptionResponse,
+  UpdateSubscriptionRequest,
+  CancelSubscriptionRequest,
+  UsageRecordRequest,
+} from '@/lib/api/client/types.gen';
 
 import { USE_API_MOCK } from '@/lib/config';
 
@@ -79,6 +91,161 @@ export async function listBillingPlans(): Promise<BillingPlanResponse[]> {
   });
 
   return response.data ?? [];
+}
+
+export async function getTenantSubscription(
+  tenantId: string,
+  options?: { tenantRole?: string | null },
+): Promise<TenantSubscriptionResponse> {
+  if (!tenantId) {
+    throw new Error('Tenant id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+  const response = await getTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGet({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    headers: {
+      ...(options?.tenantRole ? { 'X-Tenant-Role': options.tenantRole } : {}),
+    },
+    path: {
+      tenant_id: tenantId,
+    },
+  });
+
+  const payload = response.data;
+  if (!payload) {
+    throw new Error('Subscription not found.');
+  }
+
+  return payload;
+}
+
+export async function startTenantSubscription(
+  tenantId: string,
+  payload: StartSubscriptionRequest,
+  options?: { tenantRole?: string | null },
+): Promise<TenantSubscriptionResponse> {
+  if (!tenantId) {
+    throw new Error('Tenant id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+  const response = await startSubscriptionApiV1BillingTenantsTenantIdSubscriptionPost({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options?.tenantRole ? { 'X-Tenant-Role': options.tenantRole } : {}),
+    },
+    path: {
+      tenant_id: tenantId,
+    },
+    body: payload,
+  });
+
+  const data = response.data;
+  if (!data) {
+    throw new Error('Subscription start returned empty payload.');
+  }
+
+  return data;
+}
+
+export async function updateTenantSubscription(
+  tenantId: string,
+  payload: UpdateSubscriptionRequest,
+  options?: { tenantRole?: string | null },
+): Promise<TenantSubscriptionResponse> {
+  if (!tenantId) {
+    throw new Error('Tenant id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+  const response = await updateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatch({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options?.tenantRole ? { 'X-Tenant-Role': options.tenantRole } : {}),
+    },
+    path: {
+      tenant_id: tenantId,
+    },
+    body: payload,
+  });
+
+  const data = response.data;
+  if (!data) {
+    throw new Error('Subscription update returned empty payload.');
+  }
+
+  return data;
+}
+
+export async function cancelTenantSubscription(
+  tenantId: string,
+  payload: CancelSubscriptionRequest,
+  options?: { tenantRole?: string | null },
+): Promise<TenantSubscriptionResponse> {
+  if (!tenantId) {
+    throw new Error('Tenant id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+  const response = await cancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPost({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options?.tenantRole ? { 'X-Tenant-Role': options.tenantRole } : {}),
+    },
+    path: {
+      tenant_id: tenantId,
+    },
+    body: payload,
+  });
+
+  const data = response.data;
+  if (!data) {
+    throw new Error('Subscription cancel returned empty payload.');
+  }
+
+  return data;
+}
+
+export async function recordTenantUsage(
+  tenantId: string,
+  payload: UsageRecordRequest,
+  options?: { tenantRole?: string | null },
+): Promise<void> {
+  if (!tenantId) {
+    throw new Error('Tenant id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+  await recordUsageApiV1BillingTenantsTenantIdUsagePost({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options?.tenantRole ? { 'X-Tenant-Role': options.tenantRole } : {}),
+    },
+    path: {
+      tenant_id: tenantId,
+    },
+    body: payload,
+  });
 }
 
 function createMockBillingStream(): Response {

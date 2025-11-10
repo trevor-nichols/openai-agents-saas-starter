@@ -26,4 +26,9 @@ export const queryKeys = {
     all: ['tools'] as const,
     list: () => [...queryKeys.tools.all, 'list'] as const,
   },
+  agents: {
+    all: ['agents'] as const,
+    list: () => [...queryKeys.agents.all, 'list'] as const,
+    detail: (agentName: string) => [...queryKeys.agents.all, 'detail', agentName] as const,
+  },
 } as const;

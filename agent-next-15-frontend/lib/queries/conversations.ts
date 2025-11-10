@@ -22,6 +22,7 @@ interface UseConversationsReturn {
   error: string | null;
   addConversationToList: (newConversation: ConversationListItem) => void;
   updateConversationInList: (updatedConversation: ConversationListItem) => void;
+  removeConversationFromList: (conversationId: string) => void;
 }
 
 /**
@@ -92,6 +93,17 @@ export function useConversations(): UseConversationsReturn {
     [queryClient]
   );
 
+  const removeConversationFromList = useCallback(
+    (conversationId: string) => {
+      queryClient.setQueryData<ConversationListItem[]>(
+        queryKeys.conversations.lists(),
+        (oldData = []) => oldData.filter((conversation) => conversation.id !== conversationId),
+      );
+      queryClient.removeQueries({ queryKey: queryKeys.conversations.detail(conversationId) });
+    },
+    [queryClient],
+  );
+
   return {
     conversationList,
     isLoadingConversations,
@@ -99,5 +111,6 @@ export function useConversations(): UseConversationsReturn {
     error: error?.message ?? null,
     addConversationToList,
     updateConversationInList,
+    removeConversationFromList,
   };
 }
