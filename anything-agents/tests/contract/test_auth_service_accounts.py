@@ -6,10 +6,11 @@ import time
 from typing import Any
 
 import pytest
+from anything_agents.cli.auth_commands import build_parser, handle_issue_service_account
+from fakeredis import FakeServer
 from fakeredis.aioredis import FakeRedis
 from fastapi.testclient import TestClient
 
-from app.cli.auth_cli import build_parser, handle_issue_service_account
 from app.core import config as config_module
 from app.core.security import get_token_verifier
 from app.infrastructure.security.nonce_store import RedisNonceStore
@@ -55,7 +56,7 @@ def test_cli_roundtrip_enforces_nonce_reuse(
 
             return _Wrapper(response)
 
-    monkeypatch.setattr("app.cli.auth_cli.httpx.Client", DummyHttpxClient)
+    monkeypatch.setattr("anything_agents.cli.auth_commands.httpx.Client", DummyHttpxClient)
 
     monkeypatch.setenv("VAULT_VERIFY_ENABLED", "true")
     monkeypatch.setenv("VAULT_ADDR", "https://vault.local")
@@ -63,12 +64,13 @@ def test_cli_roundtrip_enforces_nonce_reuse(
     config_module.get_settings.cache_clear()
 
     fake_client = FakeVaultClient()
-    nonce_store = RedisNonceStore(FakeRedis())
+    fake_server = FakeServer()
     monkeypatch.setattr(
         "app.api.v1.auth.routes_service_accounts.get_vault_transit_client", lambda: fake_client
     )
     monkeypatch.setattr(
-        "app.api.v1.auth.routes_service_accounts.get_nonce_store", lambda: nonce_store
+        "app.api.v1.auth.routes_service_accounts.get_nonce_store",
+        lambda: RedisNonceStore(FakeRedis(server=fake_server)),
     )
 
     issued_at = int(time.time())
@@ -92,8 +94,8 @@ def test_cli_roundtrip_enforces_nonce_reuse(
         signed_payloads.append(payload_b64)
         return "signature"
 
-    monkeypatch.setattr("app.cli.auth_cli._build_vault_envelope", fake_envelope)
-    monkeypatch.setattr("app.cli.auth_cli._vault_sign_payload", fake_sign)
+    monkeypatch.setattr("anything_agents.cli.common._build_vault_envelope", fake_envelope)
+    monkeypatch.setattr("anything_agents.cli.common._vault_sign_payload", fake_sign)
 
     parser = build_parser()
     args = parser.parse_args(

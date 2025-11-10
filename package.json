@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "stripe:setup": "python scripts/stripe/setup.py"
+    "stripe:setup": "python -m anything_agents.cli stripe setup"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",

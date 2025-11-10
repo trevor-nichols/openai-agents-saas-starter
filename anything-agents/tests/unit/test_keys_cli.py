@@ -5,7 +5,8 @@ from __future__ import annotations
 import json
 import time
 
-from app.cli.auth_cli import build_parser, handle_keys_rotate
+from anything_agents.cli.auth_commands import build_parser, handle_keys_rotate
+
 from app.core import config as config_module
 from app.core.keys import FileKeyStorage
 from app.core.security import get_token_signer, get_token_verifier

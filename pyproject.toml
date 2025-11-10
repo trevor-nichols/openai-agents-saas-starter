@@ -74,16 +74,17 @@ issues = "https://github.com/openai/openai-agents-starter/issues"
 
 [project.scripts]
 anything-agents = "run:main"
-auth-cli = "app.cli.auth_cli:main"
+aa-cli = "anything_agents.cli.main:main"
 
 [tool.hatch.metadata]
 allow-direct-references = true
 
 [tool.hatch.build.sources]
 app = "anything-agents/app"
+anything_agents = "anything_agents"
 
 [tool.hatch.build.targets.wheel]
-packages = ["app"]
+packages = ["app", "anything_agents"]
 include = [
   "run.py",
   "anything-agents/main.py",
@@ -96,6 +97,7 @@ exclude = [
 [tool.hatch.build.targets.sdist]
 include = [
   "anything-agents/**",
+  "anything_agents/**",
   "docs/**",
   "run.py",
   "README.md",
@@ -109,14 +111,16 @@ exclude = [
 [tool.hatch.envs.default]
 features = ["dev"]
 python = "3.11"
-env-vars = { PYTHONPATH = "anything-agents" }
+[tool.hatch.envs.default.env-vars]
+PYTHONPATH = "anything-agents"
+PYTHONPATH_1 = "."
 
 [tool.hatch.envs.default.scripts]
 serve = "uvicorn main:app --reload --app-dir anything-agents --host 127.0.0.1 --port 8000"
 test = "pytest"
-lint = "ruff check anything-agents"
-format = "ruff format anything-agents"
-typecheck = "mypy anything-agents"
+lint = "ruff check anything-agents anything_agents"
+format = "ruff format anything-agents anything_agents"
+typecheck = "mypy anything-agents anything_agents"
 coverage = "python -m coverage run -m pytest && python -m coverage report"
 pyright = "python -m pyright"
 migrate = "alembic -c anything-agents/alembic.ini upgrade head"
@@ -124,7 +128,7 @@ migration-revision = "alembic -c anything-agents/alembic.ini revision -m \"{args
 
 [tool.ruff]
 line-length = 100
-src = ["anything-agents"]
+src = ["anything-agents", "anything_agents"]
 target-version = "py311"
 
 [tool.ruff.lint]
@@ -162,13 +166,13 @@ module = ["tavily", "tavily.*"]
 ignore_missing_imports = true
 
 [tool.pyright]
-include = ["anything-agents"]
+include = ["anything-agents", "anything_agents"]
 typeCheckingMode = "basic"
 pythonVersion = "3.11"
-extraPaths = ["anything-agents"]
+extraPaths = ["anything-agents", "anything_agents"]
 
 [tool.pytest.ini_options]
-pythonpath = ["anything-agents"]
+pythonpath = ["anything-agents", "."]
 testpaths = ["anything-agents/tests"]
 asyncio_mode = "auto"
 addopts = "--strict-markers --disable-warnings"

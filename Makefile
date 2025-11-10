@@ -8,7 +8,7 @@ endif
 
 ENV_RUNNER := python scripts/run_with_env.py
 
-.PHONY: help bootstrap api migrate migration-revision dev-up dev-down dev-logs dev-ps
+.PHONY: help bootstrap api migrate migration-revision dev-up dev-down dev-logs dev-ps cli
 
 help:
 	@echo "Available commands:"
@@ -23,6 +23,7 @@ help:
 	@echo "  make test-stripe            # Run fixture-driven Stripe replay tests"
 	@echo "  make stripe-replay ARGS='...' # Invoke the Stripe replay CLI"
 	@echo "  make lint-stripe-fixtures   # Validate Stripe fixture JSON files"
+	@echo "  make cli CMD='...'          # Run the consolidated operator CLI (python -m anything_agents.cli)"
 
 bootstrap:
 	@echo "Creating/refreshing the Hatch environment"
@@ -71,3 +72,6 @@ stripe-replay:
 
 lint-stripe-fixtures:
 	@python scripts/stripe/replay_events.py validate-fixtures
+
+cli:
+	@python -m anything_agents.cli $(CMD)

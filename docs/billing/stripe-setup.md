@@ -6,7 +6,7 @@ This guide explains the minimum configuration required to turn on billing with S
 
 1. **Durable storage** – Billing requires Postgres. Provide a valid `DATABASE_URL`. The Docker helper `make dev-up` launches Postgres + Redis with the correct defaults sourced from `.env.compose` and your `.env.local`.
 2. **Stripe account access** – You need permission to view the project in the Stripe Dashboard so you can create products/prices and view API/webhook keys. The backend talks directly to Stripe via the official Python SDK, so the secret key you provide must have customer/subscription/usage write scope (test mode keys are fine locally).
-3. **Local env files** – Never commit secrets. Copy `.env.example` to `.env.local` and keep your Stripe credentials there (gitignored).
+3. **Local env files** – Never commit secrets. Copy `.env.local.example` to `.env.local` and keep your Stripe credentials there (gitignored).
 
 ## Required environment variables
 
@@ -33,7 +33,7 @@ STRIPE_WEBHOOK_SECRET=whsec_your_signing_secret
 STRIPE_PRODUCT_PRICE_MAP={"starter":"price_123","pro":"price_456"}
 ```
 
-> ⚠️ **Secrets stay local** – Do not reuse the placeholder values from `.env.example`, do not commit real keys, and avoid exporting them in your shell history. The backend now fails fast if these values are missing while billing is enabled, so empty strings will not bypass the guard.
+> ⚠️ **Secrets stay local** – Do not reuse the placeholder values from `.env.local.example`, do not commit real keys, and avoid exporting them in your shell history. The backend now fails fast if these values are missing while billing is enabled, so empty strings will not bypass the guard.
 
 ## Startup validation & troubleshooting
 

@@ -1,6 +1,6 @@
 {
-  "include": ["anything-agents"],
+  "include": ["anything-agents", "anything_agents"],
   "typeCheckingMode": "basic",
   "pythonVersion": "3.11",
-  "extraPaths": ["anything-agents"]
+  "extraPaths": ["anything-agents", "anything_agents"]
 }

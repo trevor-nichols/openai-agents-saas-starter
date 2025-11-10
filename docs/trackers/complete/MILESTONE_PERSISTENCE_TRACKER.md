@@ -68,7 +68,7 @@ BillingPlan (1) ────< TenantSubscription (many)
 1. Extend `Settings` with `database_url`, pool sizing, and feature toggles (e.g., `enable_billing`).
 2. Implement async engine/session factory module providing `async_sessionmaker` and dependency-injected Unit of Work helpers.
 3. Add application startup hook to validate connectivity and run pending migrations in development mode (optional toggle).
-4. Provide Docker Compose profile for Postgres (and Redis) plus `.env.example` guidance.
+4. Provide Docker Compose profile for Postgres (and Redis) plus `.env.local.example` guidance.
 5. Backfill health checks (`/health/storage`) and observability hooks (structured logs, metrics) for database availability.
 
 ### DB-004 — SDK Session Integration
