@@ -20,6 +20,7 @@ import sqlalchemy.ext.asyncio as sqla_async
 from fakeredis.aioredis import FakeRedis
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB
 from sqlalchemy.ext.compiler import compiles
+from starter_shared import config as shared_config
 
 from app.core import config as config_module
 from app.domain.conversations import (
@@ -34,7 +35,6 @@ from app.infrastructure.openai.sessions import (
     reset_sdk_session_store,
 )
 from app.services.conversation_service import conversation_service
-from starter_shared import config as shared_config
 
 config_module.get_settings.cache_clear()
 

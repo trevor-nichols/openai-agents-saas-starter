@@ -129,7 +129,9 @@ def _default_vault_request(url: str, headers: dict[str, str]) -> httpx.Response:
         return client.get(url, headers=headers)
 
 
-def set_vault_probe_request(factory: Callable[[str, dict[str, str]], httpx.Response] | None) -> None:
+def set_vault_probe_request(
+    factory: Callable[[str, dict[str, str]], httpx.Response] | None,
+) -> None:
     global _VAULT_PROBE_REQUEST
     _VAULT_PROBE_REQUEST = factory
 

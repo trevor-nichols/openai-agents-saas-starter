@@ -7,11 +7,11 @@ from collections.abc import Callable
 
 import httpx
 import pytest
+from starter_shared import vault_kv as shared_vault_kv
 
 from app.core import config as config_module
 from app.infrastructure.security import vault_kv
 from app.infrastructure.security.vault_kv import VaultKVSecretManagerClient
-from starter_shared import vault_kv as shared_vault_kv
 
 
 def test_vault_kv_client_read_success() -> None:
