@@ -6,12 +6,13 @@ import time
 from typing import Any
 
 import pytest
-from anything_agents.cli.auth_commands import build_parser, handle_issue_service_account
 from fakeredis import FakeServer
 from fakeredis.aioredis import FakeRedis
 from fastapi.testclient import TestClient
+from starter_cli.cli.auth_commands import build_parser, handle_issue_service_account
 
 from app.core import config as config_module
+from app.core.keys import load_keyset
 from app.core.security import get_token_verifier
 from app.infrastructure.security.nonce_store import RedisNonceStore
 from main import app
@@ -56,7 +57,7 @@ def test_cli_roundtrip_enforces_nonce_reuse(
 
             return _Wrapper(response)
 
-    monkeypatch.setattr("anything_agents.cli.auth_commands.httpx.Client", DummyHttpxClient)
+    monkeypatch.setattr("starter_cli.cli.auth_commands.httpx.Client", DummyHttpxClient)
 
     monkeypatch.setenv("VAULT_VERIFY_ENABLED", "true")
     monkeypatch.setenv("VAULT_ADDR", "https://vault.local")
@@ -94,8 +95,8 @@ def test_cli_roundtrip_enforces_nonce_reuse(
         signed_payloads.append(payload_b64)
         return "signature"
 
-    monkeypatch.setattr("anything_agents.cli.common._build_vault_envelope", fake_envelope)
-    monkeypatch.setattr("anything_agents.cli.common._vault_sign_payload", fake_sign)
+    monkeypatch.setattr("starter_cli.cli.common._build_vault_envelope", fake_envelope)
+    monkeypatch.setattr("starter_cli.cli.common._vault_sign_payload", fake_sign)
 
     parser = build_parser()
     args = parser.parse_args(
@@ -157,7 +158,9 @@ def test_service_account_issue_returns_eddsa_token(monkeypatch: pytest.MonkeyPat
     verifier = get_token_verifier()
     claims = verifier.verify(body["refresh_token"])
 
-    assert body["kid"] == "ed25519-active-test"
+    keyset = load_keyset()
+    assert keyset.active is not None
+    assert body["kid"] == keyset.active.kid
     assert claims["token_use"] == "refresh"
     assert claims["account"] == "analytics-batch"
     assert claims["tenant_id"] == payload["tenant_id"]

@@ -5,11 +5,17 @@ from __future__ import annotations
 import json
 import time
 
-from anything_agents.cli.auth_commands import build_parser, handle_keys_rotate
+from starter_cli.cli.auth_commands import build_parser, handle_keys_rotate
+from starter_shared import config as shared_config
 
 from app.core import config as config_module
 from app.core.keys import FileKeyStorage
 from app.core.security import get_token_signer, get_token_verifier
+
+
+def _reset_settings_cache() -> None:
+    config_module.get_settings.cache_clear()
+    shared_config.get_settings.cache_clear()
 
 
 def test_keys_rotate_command(tmp_path, monkeypatch, capsys) -> None:
@@ -17,7 +23,7 @@ def test_keys_rotate_command(tmp_path, monkeypatch, capsys) -> None:
     monkeypatch.setenv("AUTH_KEY_STORAGE_BACKEND", "file")
     monkeypatch.setenv("AUTH_KEY_STORAGE_PATH", str(storage_path))
 
-    config_module.get_settings.cache_clear()
+    _reset_settings_cache()
 
     parser = build_parser()
     args = parser.parse_args(["keys", "rotate", "--kid", "test-kid"])
@@ -39,7 +45,7 @@ def test_keys_rotate_command(tmp_path, monkeypatch, capsys) -> None:
     assert keyset.active
     assert keyset.active.kid == "second-kid"
 
-    config_module.get_settings.cache_clear()
+    _reset_settings_cache()
 
 
 def test_key_cli_sign_and_verify(tmp_path, monkeypatch) -> None:
@@ -48,7 +54,7 @@ def test_key_cli_sign_and_verify(tmp_path, monkeypatch) -> None:
     storage_path = tmp_path / "keys.json"
     monkeypatch.setenv("AUTH_KEY_STORAGE_BACKEND", "file")
     monkeypatch.setenv("AUTH_KEY_STORAGE_PATH", str(storage_path))
-    config_module.get_settings.cache_clear()
+    _reset_settings_cache()
 
     parser = build_parser()
     args = parser.parse_args(["keys", "rotate"])

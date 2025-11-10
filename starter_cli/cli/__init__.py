@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
-from .main import main
+from . import main as main_module
+
+main = main_module
 
 __all__ = ["main"]

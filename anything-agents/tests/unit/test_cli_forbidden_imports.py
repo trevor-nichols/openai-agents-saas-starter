@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-CLI_ROOT = Path(__file__).resolve().parents[3] / "anything_agents" / "cli"
+CLI_ROOT = Path(__file__).resolve().parents[3] / "starter_cli" / "cli"
 FORBIDDEN_TOKENS = ("from app.", "import app.")
 
 

@@ -1,6 +1,6 @@
 # Stripe Developer Setup Script (STRIPE-02)
 
-`python -m anything_agents.cli stripe setup` is the interactive helper that bootstraps billing end-to-end for local development. It wraps the Stripe CLI, Docker/Postgres helpers, and the official Stripe Python SDK so you only need to provide your Stripe secrets and pick the monthly price for each plan (Starter + Pro). The command creates or reuses the corresponding Stripe products/prices with a 7-day trial and writes the resulting configuration into `.env.local`.
+`python -m starter_cli.cli stripe setup` is the interactive helper that bootstraps billing end-to-end for local development. It wraps the Stripe CLI, Docker/Postgres helpers, and the official Stripe Python SDK so you only need to provide your Stripe secrets and pick the monthly price for each plan (Starter + Pro). The command creates or reuses the corresponding Stripe products/prices with a 7-day trial and writes the resulting configuration into `.env.local`.
 
 ## Prerequisites
 
@@ -12,7 +12,7 @@
 ## Running the script
 
 ```bash
-pnpm stripe:setup   # invokes python -m anything_agents.cli stripe setup
+pnpm stripe:setup   # invokes python -m starter_cli.cli stripe setup
 ```
 
 ### What happens during the run?
@@ -55,5 +55,5 @@ The FastAPI startup guard (STRIPE-01) still requires `STRIPE_SECRET_KEY`, `STRIP
 ## Extending the helper
 
 - STRIPE-03/04/05 build on the same configuration; no additional Stripe setup is required once this script completes successfully.
-- The script is intentionally idempotent: rerunning it reuses products/prices tagged with `metadata["anything_agents_plan_code"]` so you won’t accumulate duplicates.
-- Contributions welcome—see `anything_agents/cli/stripe_commands.py` for implementation details or to add additional plan types in the future.
+- The script is intentionally idempotent: rerunning it reuses products/prices tagged with `metadata["starter_cli_plan_code"]` so you won’t accumulate duplicates.
+- Contributions welcome—see `starter_cli/cli/stripe_commands.py` for implementation details or to add additional plan types in the future.

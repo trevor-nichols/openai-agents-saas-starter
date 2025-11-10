@@ -12,6 +12,8 @@ os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 os.environ["REDIS_URL"] = "redis://localhost:6379/0"
 os.environ.setdefault("AUTO_RUN_MIGRATIONS", "false")
 os.environ.setdefault("ENABLE_BILLING", "false")
+os.environ.setdefault("STARTER_CLI_SKIP_ENV", "true")
+os.environ.setdefault("STARTER_CLI_SKIP_VAULT_PROBE", "true")
 
 import pytest
 import sqlalchemy.ext.asyncio as sqla_async
@@ -32,6 +34,7 @@ from app.infrastructure.openai.sessions import (
     reset_sdk_session_store,
 )
 from app.services.conversation_service import conversation_service
+from starter_shared import config as shared_config
 
 config_module.get_settings.cache_clear()
 
@@ -110,10 +113,12 @@ def _configure_auth_settings(monkeypatch: pytest.MonkeyPatch) -> Generator[None,
     monkeypatch.setenv("AUTH_JWKS_ETAG_SALT", "test-jwks-salt")
     monkeypatch.setenv("AUTH_JWKS_MAX_AGE_SECONDS", "120")
     config_module.get_settings.cache_clear()
+    shared_config.get_settings.cache_clear()
     try:
         yield
     finally:
         config_module.get_settings.cache_clear()
+        shared_config.get_settings.cache_clear()
 
 
 @pytest.fixture(autouse=True)

@@ -11,6 +11,7 @@ import pytest
 from app.core import config as config_module
 from app.infrastructure.security import vault_kv
 from app.infrastructure.security.vault_kv import VaultKVSecretManagerClient
+from starter_shared import vault_kv as shared_vault_kv
 
 
 def test_vault_kv_client_read_success() -> None:
@@ -64,7 +65,7 @@ def test_configure_vault_secret_manager_registers(monkeypatch: pytest.MonkeyPatc
         captured["factory"] = factory
 
     monkeypatch.setattr(
-        vault_kv,
+        shared_vault_kv,
         "register_secret_manager_client",
         fake_register,  # type: ignore[arg-type]
     )

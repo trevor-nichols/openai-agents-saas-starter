@@ -503,12 +503,12 @@ class SetupWizard:
                 )
                 if should_seed:
                     self._run_subprocess(
-                        ["python", "-m", "anything_agents.cli", "stripe", "setup"],
+                        ["python", "-m", "starter_cli.cli", "stripe", "setup"],
                         topic="stripe",
                     )
             else:
                 console.warn(
-                    "Headless run detected. Run `python -m anything_agents.cli stripe setup` "
+                    "Headless run detected. Run `python -m starter_cli.cli stripe setup` "
                     "manually to seed plans.",
                     topic="stripe",
                 )

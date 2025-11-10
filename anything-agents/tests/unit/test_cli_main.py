@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from anything_agents.cli import main as cli_main
+from starter_cli.cli import main as cli_main
 from starter_shared import config as shared_config
 
 
@@ -16,7 +16,7 @@ class _FailingSettings:
 
 
 def test_cli_help_does_not_touch_settings(monkeypatch: pytest.MonkeyPatch, capsys) -> None:
-    """`python -m anything_agents.cli` without subcommands should not load settings."""
+    """`python -m starter_cli.cli` without subcommands should not load settings."""
 
     monkeypatch.setattr(shared_config, "get_settings", _FailingSettings())
 

@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Callable
 from urllib.parse import urlparse
 
 import httpx
 
 from ..common import CLIError
+
+_VAULT_PROBE_REQUEST: Callable[[str, dict[str, str]], httpx.Response] | None = None
 
 
 def validate_plan_map(raw: str) -> dict[str, str]:
@@ -107,11 +110,13 @@ def probe_vault_transit(
     key_name: str,
     request: Callable[[str, dict[str, str]], httpx.Response] | None = None,
 ) -> None:
+    if os.getenv("STARTER_CLI_SKIP_VAULT_PROBE", "false").lower() in {"1", "true", "yes"}:
+        return
     if not base_url or not token or not key_name:
         raise CLIError("Vault address, token, and transit key are required to verify connectivity.")
     target = f"{base_url.rstrip('/')}/v1/transit/keys/{key_name}"
     headers = {"X-Vault-Token": token}
-    sender = request or _default_vault_request
+    sender = request or _VAULT_PROBE_REQUEST or _default_vault_request
     response = sender(target, headers)
     if response.status_code >= 400:
         raise CLIError(
@@ -124,6 +129,11 @@ def _default_vault_request(url: str, headers: dict[str, str]) -> httpx.Response:
         return client.get(url, headers=headers)
 
 
+def set_vault_probe_request(factory: Callable[[str, dict[str, str]], httpx.Response] | None) -> None:
+    global _VAULT_PROBE_REQUEST
+    _VAULT_PROBE_REQUEST = factory
+
+
 __all__ = [
     "normalize_geoip_provider",
     "normalize_logging_sink",
@@ -131,4 +141,5 @@ __all__ = [
     "probe_vault_transit",
     "validate_plan_map",
     "validate_redis_url",
+    "set_vault_probe_request",
 ]

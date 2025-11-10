@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import httpx
 import pytest
-from anything_agents.cli.common import CLIError
-from anything_agents.cli.setup.validators import (
+from starter_cli.cli.common import CLIError
+from starter_cli.cli.setup.validators import (
     normalize_geoip_provider,
     normalize_logging_sink,
     parse_positive_int,
@@ -57,7 +57,8 @@ def test_parse_positive_int_enforces_minimum() -> None:
         parse_positive_int("3", field="rate", minimum=5)
 
 
-def test_probe_vault_transit_handles_non_200() -> None:
+def test_probe_vault_transit_handles_non_200(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("STARTER_CLI_SKIP_VAULT_PROBE", "false")
     def fake_request(url: str, headers: dict[str, str]):
         assert url == "https://vault.example/v1/transit/keys/auth-service"
         assert headers["X-Vault-Token"] == "token"
@@ -72,7 +73,8 @@ def test_probe_vault_transit_handles_non_200() -> None:
         )
 
 
-def test_probe_vault_transit_success() -> None:
+def test_probe_vault_transit_success(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("STARTER_CLI_SKIP_VAULT_PROBE", "false")
     def ok_request(url: str, headers: dict[str, str]):
         return httpx.Response(200, text="ok")
 

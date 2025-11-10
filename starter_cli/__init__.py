@@ -1,5 +1,4 @@
-"""
-Top-level package for the repo-scoped CLI utilities.
+"""Starter CLI package.
 
 This module also injects the backend source directory (``anything-agents``)
 into ``sys.path`` so that CLI commands can reuse the FastAPI project's

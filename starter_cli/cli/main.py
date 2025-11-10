@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from collections.abc import Callable, Sequence
 
 from . import auth_commands, setup_commands, stripe_commands
@@ -14,6 +15,7 @@ from .common import (
 from .console import console
 
 Handler = Callable[[argparse.Namespace, CLIContext], int]
+_SKIP_ENV_FLAG = "STARTER_CLI_SKIP_ENV"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -46,27 +48,25 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _resolve_env_files(args: argparse.Namespace) -> Sequence[str]:
-    env_files: list[str] = args.env_files or []
-    if args.skip_env:
-        return env_files
-    return env_files
-
-
 def _load_environment(args: argparse.Namespace) -> CLIContext:
-    custom_envs = _resolve_env_files(args)
-    env_files = None
-    if args.skip_env:
-        if custom_envs:
-            env_files = iter_env_files(custom_envs)
+    custom_envs = iter_env_files(args.env_files or [])
+    skip_env = args.skip_env or os.getenv(_SKIP_ENV_FLAG, "false").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+
+    env_files: Sequence[str] | Sequence[os.PathLike[str]] | None
+    if skip_env:
+        env_files = custom_envs if custom_envs else None
     else:
         default_paths = list(DEFAULT_ENV_FILES)
         if custom_envs:
-            default_paths.extend(iter_env_files(custom_envs))
+            default_paths.extend(custom_envs)
         env_files = default_paths
 
     ctx = build_context(env_files=env_files)
-    should_load_env = bool(custom_envs) or not args.skip_env
+    should_load_env = env_files is not None
     if should_load_env:
         ctx.load_environment(verbose=not args.quiet_env)
     return ctx

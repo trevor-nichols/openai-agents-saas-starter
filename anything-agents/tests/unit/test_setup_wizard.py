@@ -3,9 +3,11 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import httpx
 import pytest
-from anything_agents.cli.common import CLIContext
-from anything_agents.cli.setup import HeadlessInputProvider, SetupWizard
+from starter_cli.cli.common import CLIContext
+from starter_cli.cli.setup import HeadlessInputProvider, SetupWizard
+from starter_cli.cli.setup.validators import set_vault_probe_request
 
 
 @pytest.fixture()
@@ -268,7 +270,7 @@ def test_wizard_rotates_new_peppers(monkeypatch, temp_ctx: CLIContext) -> None:
     )
 
     monkeypatch.setattr(
-        "anything_agents.cli.setup.wizard.secrets.token_urlsafe",
+        "starter_cli.cli.setup.wizard.secrets.token_urlsafe",
         lambda n=32: "rotated-secret",
     )
 
@@ -364,13 +366,13 @@ def test_wizard_staging_verifies_vault(
     }
     called: dict[str, str] = {}
 
-    def fake_probe(**kwargs):
-        called.update(kwargs)
+    def fake_request(url: str, headers: dict[str, str]):
+        called["url"] = url
+        called["token"] = headers["X-Vault-Token"]
+        return httpx.Response(200, request=httpx.Request("GET", url))
 
-    monkeypatch.setattr(
-        "anything_agents.cli.setup.wizard.probe_vault_transit",
-        lambda **kwargs: fake_probe(**kwargs),
-    )
+    monkeypatch.setenv("STARTER_CLI_SKIP_VAULT_PROBE", "false")
+    set_vault_probe_request(fake_request)
 
     wizard = SetupWizard(
         ctx=temp_ctx,
@@ -380,6 +382,7 @@ def test_wizard_staging_verifies_vault(
     )
     wizard.execute()
 
-    assert called["base_url"] == "https://vault.example"
-    assert called["key_name"] == "auth-service"
+    assert called["url"] == "https://vault.example/v1/transit/keys/auth-service"
+    assert called["token"] == "token"
     _cleanup_env(snapshot)
+    set_vault_probe_request(None)

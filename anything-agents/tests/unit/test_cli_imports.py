@@ -36,17 +36,17 @@ class _FailingSettings:
 def test_cli_imports_do_not_pull_settings(monkeypatch: pytest.MonkeyPatch, env_snapshot) -> None:
     monkeypatch.setattr(shared_config, "get_settings", _FailingSettings())
 
-    for name in [m for m in list(sys.modules.keys()) if m.startswith("anything_agents.cli")]:
+    for name in [m for m in list(sys.modules.keys()) if m.startswith("starter_cli.cli")]:
         del sys.modules[name]
 
-    importlib.import_module("anything_agents.cli.main")
+    importlib.import_module("starter_cli.cli.main")
 
 
 def test_cli_context_loads_custom_env(tmp_path: Path, env_snapshot) -> None:
     env_file = tmp_path / ".env.cli"
     env_file.write_text("APP_PUBLIC_URL=https://cli.example\n", encoding="utf-8")
 
-    from anything_agents.cli.common import CLIContext
+    from starter_cli.cli.common import CLIContext
 
     ctx = CLIContext(project_root=tmp_path, env_files=(env_file,))
     ctx.load_environment(verbose=False)

@@ -5,10 +5,16 @@ import pytest
 from app.core.config import Settings
 
 
+def make_settings(**overrides) -> Settings:
+    """Instantiate Settings without loading repo env files."""
+
+    return Settings(_env_file=None, **overrides)
+
+
 def sanitized_settings(**overrides) -> Settings:
     """Return a Settings copy with deterministic, test-friendly values."""
 
-    base = Settings()
+    base = make_settings()
     defaults = {
         "stripe_secret_key": None,
         "stripe_webhook_secret": None,
@@ -25,7 +31,7 @@ def test_auth_audience_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.delenv("AUTH_AUDIENCE", raising=False)
 
-    settings = Settings()
+    settings = make_settings()
 
     assert settings.auth_audience == [
         "agent-api",
@@ -44,7 +50,7 @@ def test_auth_audience_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
         '["foo-service", "bar-service", "baz-service"]',
     )
 
-    settings = Settings()
+    settings = make_settings()
 
     assert settings.auth_audience == ["foo-service", "bar-service", "baz-service"]
 
@@ -54,7 +60,7 @@ def test_auth_audience_validation_errors(bad_value: object) -> None:
     """Invalid audience configuration raises a validation error."""
 
     with pytest.raises(ValueError):
-        Settings(auth_audience=bad_value)  # type: ignore[arg-type]
+        make_settings(auth_audience=bad_value)  # type: ignore[arg-type]
 
 
 def test_required_stripe_envs_missing_detects_blanks() -> None:
@@ -125,7 +131,7 @@ def test_stripe_configuration_summary_masks_tokens() -> None:
 def test_signup_settings_defaults() -> None:
     """Public signup toggles expose sensible defaults for starter deployments."""
 
-    settings = Settings()
+    settings = make_settings()
 
     assert settings.allow_public_signup is True
     assert settings.signup_rate_limit_per_hour == 20
@@ -137,7 +143,7 @@ def test_signup_rate_limit_requires_positive_values() -> None:
     """Negative signup rate limits are rejected."""
 
     with pytest.raises(ValueError):
-        Settings(signup_rate_limit_per_hour=-5)
+        make_settings(signup_rate_limit_per_hour=-5)
 
 
 def test_allowed_hosts_default_includes_local_and_test_hosts(
@@ -147,7 +153,7 @@ def test_allowed_hosts_default_includes_local_and_test_hosts(
 
     monkeypatch.delenv("ALLOWED_HOSTS", raising=False)
 
-    settings = Settings()
+    settings = make_settings()
 
     hosts = settings.get_allowed_hosts_list()
 
@@ -163,8 +169,9 @@ def test_allowed_hosts_env_override_respects_production_values(
 
     monkeypatch.setenv("ENVIRONMENT", "production")
     monkeypatch.setenv("ALLOWED_HOSTS", "api.example.com,docs.example.com")
+    monkeypatch.setenv("DEBUG", "false")
 
-    settings = Settings()
+    settings = make_settings()
 
     hosts = settings.get_allowed_hosts_list()
 
@@ -178,7 +185,7 @@ def test_allowed_origins_default_matches_frontend_pair(
 
     monkeypatch.delenv("ALLOWED_ORIGINS", raising=False)
 
-    settings = Settings()
+    settings = make_settings()
 
     assert settings.get_allowed_origins_list() == [
         "http://localhost:3000",

@@ -30,7 +30,7 @@ PLAN_CATALOG = (
     {"code": "starter", "name": "Starter", "default_cents": 2000},
     {"code": "pro", "name": "Pro", "default_cents": 9900},
 )
-PLAN_METADATA_KEY = "anything_agents_plan_code"
+PLAN_METADATA_KEY = "starter_cli_plan_code"
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:

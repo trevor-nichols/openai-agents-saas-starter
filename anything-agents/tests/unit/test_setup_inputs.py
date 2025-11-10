@@ -4,8 +4,8 @@ import json
 from pathlib import Path
 
 import pytest
-from anything_agents.cli.common import CLIError
-from anything_agents.cli.setup import (
+from starter_cli.cli.common import CLIError
+from starter_cli.cli.setup import (
     HeadlessInputProvider,
     InteractiveInputProvider,
     load_answers_files,

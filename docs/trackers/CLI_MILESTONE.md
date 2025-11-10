@@ -4,7 +4,7 @@ _Last updated: 2025-11-10_
 
 ## Purpose
 
-Document the outstanding deliverables for the Agent Starter CLI (ASC) so we can plan implementation work, staffing, and verification. All scope items below come directly from active/open tracker entries or specs that defer action to the CLI rather than the FastAPI backend.
+Document the outstanding deliverables for the Starter CLI (SC) so we can plan implementation work, staffing, and verification. All scope items below come directly from active/open tracker entries or specs that defer action to the CLI rather than the FastAPI backend.
 
 ## Milestone Summary
 
@@ -29,8 +29,8 @@ Document the outstanding deliverables for the Agent Starter CLI (ASC) so we can 
 
 ### Status Update – 2025-11-10
 
-- Phase 1→M0: Renaming to Agent Starter CLI is underway. Entry points (`hatch run cli`, `python -m agent_starter_cli`) are being updated alongside documentation, and a forbidden-import lint will land once the shared config module exists.
-- Phase 2: The setup wizard under `anything_agents/cli/setup/*` already supports headless execution via `--non-interactive` + `--answers-file`/`--var`, verifies Vault Transit connectivity, validates Redis/Stripe/Resend inputs, offers optional migration + seeding hooks, captures tenant slug/logging sink/GeoIP decisions, and records signup + worker policy posture (including retry-worker deployment mode).
+- Phase 1→M0: Renaming to the Starter CLI is underway. Entry points (`hatch run cli`, `python -m starter_cli.cli`) are being updated alongside documentation, and a forbidden-import lint will land once the shared config module exists.
+- Phase 2: The setup wizard under `starter_cli/cli/setup/*` already supports headless execution via `--non-interactive` + `--answers-file`/`--var`, verifies Vault Transit connectivity, validates Redis/Stripe/Resend inputs, offers optional migration + seeding hooks, captures tenant slug/logging sink/GeoIP decisions, and records signup + worker policy posture (including retry-worker deployment mode).
 - Reminder (2025-11-10): `auth-cli` and `scripts/stripe/setup.py` remain deprecated. Update automation to call the consolidated CLI entrypoint.
 - Next refinements: extract shared config/crypto helpers, extend the backend to consume the new logging/GeoIP settings, add CLI report exporters for infra audit trails. (Forbidden import guard shipped via `tests/unit/test_cli_forbidden_imports.py`.)
 

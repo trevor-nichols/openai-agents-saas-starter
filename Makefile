@@ -23,7 +23,7 @@ help:
 	@echo "  make test-stripe            # Run fixture-driven Stripe replay tests"
 	@echo "  make stripe-replay ARGS='...' # Invoke the Stripe replay CLI"
 	@echo "  make lint-stripe-fixtures   # Validate Stripe fixture JSON files"
-	@echo "  make cli CMD='...'          # Run the consolidated operator CLI (python -m anything_agents.cli)"
+	@echo "  make cli CMD='...'          # Run the consolidated operator CLI (python -m starter_cli.cli)"
 
 bootstrap:
 	@echo "Creating/refreshing the Hatch environment"
@@ -74,4 +74,4 @@ lint-stripe-fixtures:
 	@python scripts/stripe/replay_events.py validate-fixtures
 
 cli:
-	@python -m anything_agents.cli $(CMD)
+	@python -m starter_cli.cli $(CMD)
