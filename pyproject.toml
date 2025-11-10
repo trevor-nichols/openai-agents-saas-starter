@@ -114,11 +114,10 @@ exclude = [
 features = ["dev"]
 python = "3.11"
 [tool.hatch.envs.default.env-vars]
-PYTHONPATH = "anything-agents"
-PYTHONPATH_1 = "."
+PYTHONPATH = "."
 
 [tool.hatch.envs.default.scripts]
-serve = "uvicorn main:app --reload --app-dir anything-agents --host 127.0.0.1 --port 8000"
+serve = "uvicorn main:app --reload --app-dir anything-agents --reload-dir anything-agents --reload-dir starter_cli --reload-dir starter_shared --host 127.0.0.1 --port 8000"
 test = "pytest"
 lint = "ruff check anything-agents starter_cli starter_shared"
 format = "ruff format anything-agents starter_cli starter_shared"

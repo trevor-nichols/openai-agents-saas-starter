@@ -1,7 +1,4 @@
-# File: main.py
-# Purpose: FastAPI application entry point for anything-agents
-# Dependencies: app/core/config.py, app/api, app/presentation
-# Used by: uvicorn server to run the application
+"""FastAPI application entry point for anything-agents."""
 
 import logging
 from contextlib import asynccontextmanager
