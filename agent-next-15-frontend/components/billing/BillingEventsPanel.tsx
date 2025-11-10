@@ -2,7 +2,7 @@
 
 import React from 'react';
 
-import type { BillingEvent, BillingStreamStatus } from '@/hooks/useBillingStream';
+import type { BillingEvent, BillingStreamStatus } from '@/types/billing';
 
 interface BillingEventsPanelProps {
   events: BillingEvent[];

@@ -20,8 +20,8 @@ import { streamChat } from '@/lib/api/streaming';
 import ChatInterface, { ChatMessage } from '../../components/agent/ChatInterface';
 import ConversationSidebar from '../../components/agent/ConversationSidebar';
 import BillingEventsPanel from '../../components/billing/BillingEventsPanel';
-import { useConversations } from '../../hooks/useConversations';
-import { useBillingStream } from '../../hooks/useBillingStream';
+import { useConversations } from '@/lib/queries/conversations';
+import { useBillingStream } from '@/lib/queries/billing';
 
 // --- AgentPage Component (Container) ---
 export default function AgentPage() {
