@@ -26,14 +26,17 @@ from app.infrastructure.persistence.auth.models import (
 )
 from app.infrastructure.persistence.conversations.models import TenantAccount
 from app.observability.logging import log_event
-from app.services.auth_service import UserSessionTokens, auth_service
+from app.services.auth_service import AuthService, UserSessionTokens, get_auth_service
 from app.services.billing_service import (
     BillingError,
     BillingService,
     PaymentProviderError,
-    billing_service,
+    get_billing_service,
 )
-from app.services.email_verification_service import get_email_verification_service
+from app.services.email_verification_service import (
+    EmailVerificationService,
+    get_email_verification_service,
+)
 
 SlugGenerator = Callable[[str], str]
 
@@ -76,11 +79,36 @@ class SignupService:
         settings_factory: Callable[[], Settings] | None = None,
         slug_generator: SlugGenerator | None = None,
         session_factory: async_sessionmaker[AsyncSession] | None = None,
+        auth: AuthService | None = None,
+        email_verification_service: EmailVerificationService | None = None,
     ) -> None:
-        self._billing_service = billing or billing_service
+        self._billing_service = billing
         self._settings_factory = settings_factory or get_settings
         self._slug_generator = slug_generator or self._default_slugify
         self._session_factory = session_factory
+        self._auth_service = auth
+        self._email_verification_service = email_verification_service
+
+    def _get_settings(self) -> Settings:
+        return self._settings_factory()
+
+    def _get_auth_service(self) -> AuthService:
+        if self._auth_service is None:
+            self._auth_service = get_auth_service()
+        return self._auth_service
+
+    def _get_email_verification_service(self) -> EmailVerificationService:
+        if self._email_verification_service is None:
+            self._email_verification_service = get_email_verification_service()
+        return self._email_verification_service
+
+    def _get_billing_service(self) -> BillingService | None:
+        if self._billing_service is None:
+            try:
+                self._billing_service = get_billing_service()
+            except RuntimeError:
+                self._billing_service = None
+        return self._billing_service
 
     async def register(
         self,
@@ -94,7 +122,7 @@ class SignupService:
         ip_address: str | None,
         user_agent: str | None,
     ) -> SignupResult:
-        settings = self._settings_factory()
+        settings = self._get_settings()
         if not settings.allow_public_signup:
             raise PublicSignupDisabledError("Public signup is disabled.")
 
@@ -120,7 +148,7 @@ class SignupService:
             requested_trial_days=trial_days,
         )
 
-        tokens = await auth_service.login_user(
+        tokens = await self._get_auth_service().login_user(
             email=email,
             password=password,
             tenant_id=tenant_id,
@@ -157,7 +185,7 @@ class SignupService:
         user_agent: str | None,
     ) -> None:
         try:
-            service = get_email_verification_service()
+            service = self._get_email_verification_service()
             await service.send_verification_email(
                 user_id=user_id,
                 email=None,
@@ -270,7 +298,7 @@ class SignupService:
         billing_email: str,
         requested_trial_days: int | None,
     ) -> None:
-        settings = self._settings_factory()
+        settings = self._get_settings()
         if not plan_code or not settings.enable_billing:
             # Billing disabled or no plan requested; record telemetry only.
             log_event(
@@ -281,7 +309,7 @@ class SignupService:
             )
             return
 
-        service = self._billing_service
+        service = self._get_billing_service()
         if service is None:
             raise BillingProvisioningError("Billing service is not configured.")
 
@@ -317,7 +345,7 @@ class SignupService:
         plan_code: str | None,
         requested_trial_days: int | None,
     ) -> int | None:
-        settings = self._settings_factory()
+        settings = self._get_settings()
         plan_trial_days = await self._lookup_plan_trial_days(plan_code)
         max_allowed = (
             plan_trial_days
@@ -336,7 +364,7 @@ class SignupService:
     async def _lookup_plan_trial_days(self, plan_code: str | None) -> int | None:
         if not plan_code:
             return None
-        service = self._billing_service
+        service = self._get_billing_service()
         if service is None:
             return None
         try:
@@ -366,5 +394,57 @@ class SignupService:
         normalized = re.sub(r"[^a-z0-9]+", "-", normalized).strip("-")
         return normalized[:60] or "tenant"
 
+def build_signup_service(
+    *,
+    billing_service: BillingService | None = None,
+    auth_service: AuthService | None = None,
+    email_verification_service: EmailVerificationService | None = None,
+    settings_factory: Callable[[], Settings] | None = None,
+    slug_generator: SlugGenerator | None = None,
+    session_factory: async_sessionmaker[AsyncSession] | None = None,
+) -> SignupService:
+    return SignupService(
+        billing=billing_service,
+        settings_factory=settings_factory,
+        slug_generator=slug_generator,
+        session_factory=session_factory,
+        auth=auth_service,
+        email_verification_service=email_verification_service,
+    )
 
-signup_service = SignupService()
+
+def get_signup_service() -> SignupService:
+    from app.bootstrap.container import get_container
+
+    container = get_container()
+    if container.signup_service is None:
+        container.signup_service = build_signup_service()
+    return container.signup_service
+
+
+class _SignupServiceHandle:
+    def __getattr__(self, name: str):
+        return getattr(get_signup_service(), name)
+
+    def __setattr__(self, name: str, value):
+        setattr(get_signup_service(), name, value)
+
+    def __delattr__(self, name: str):
+        delattr(get_signup_service(), name)
+
+
+signup_service = _SignupServiceHandle()
+
+
+__all__ = [
+    "BillingProvisioningError",
+    "EmailAlreadyRegisteredError",
+    "SignupServiceError",
+    "PublicSignupDisabledError",
+    "SignupResult",
+    "SignupService",
+    "TenantSlugCollisionError",
+    "build_signup_service",
+    "get_signup_service",
+    "signup_service",
+]

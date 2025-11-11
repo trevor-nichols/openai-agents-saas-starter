@@ -21,6 +21,7 @@ The backend previously relied on pragmatic coupling via module-level singletons 
 | 5 | **Email verification service** – same approach as above; ensure signup flows receive the container-managed service. |  | ☑ Done | Container now owns `email_verification_service`; startup wires it with shared user repo (2025-11-11). |
 | 6 | **Session + service account helpers** – audit `app/services/auth/session_service.py` and `app/services/auth/service_account_service.py` for implicit globals (e.g., default registries, user service lookups) and route them through the container. |  | ☑ Done | Container now owns session + service-account services; AuthService consumes injected instances (2025-11-11). |
 | 7 | **Documentation + fixtures** – update `docs/frontend/data-access.md` (if impacted) and backend architecture docs to describe the container pattern; ensure pytest fixtures rely on `reset_container()` rather than monkeypatching. |  | ☑ Done | Added container guidelines to `docs/architecture/authentication-ed25519.md` and moved auth/unit fixtures to `get_container()` overrides (2025-11-11). |
+| 8 | **Agent/Signup services** – containerize `AgentService` and `SignupService`, add builders, and wire them via FastAPI lifespan. |  | ☑ Done | Both services now resolve through the application container; routers/tests interact with proxy handles and startup wiring configures concrete instances (2025-11-11). |
 
 ## Next Steps
 

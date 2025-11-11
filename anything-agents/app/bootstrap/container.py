@@ -23,7 +23,9 @@ if TYPE_CHECKING:  # pragma: no cover - type hints only
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
     from app.infrastructure.persistence.stripe.repository import StripeEventRepository
+    from app.services.agent_service import AgentService
     from app.services.auth_service import AuthService
+    from app.services.signup_service import SignupService
 
 
 @dataclass(slots=True)
@@ -49,6 +51,8 @@ class ApplicationContainer:
     email_verification_service: EmailVerificationService | None = None
     user_session_service: UserSessionService | None = None
     service_account_token_service: ServiceAccountTokenService | None = None
+    agent_service: AgentService | None = None
+    signup_service: SignupService | None = None
 
     async def shutdown(self) -> None:
         """Gracefully tear down managed services."""
@@ -67,6 +71,8 @@ class ApplicationContainer:
         self.email_verification_service = None
         self.user_session_service = None
         self.service_account_token_service = None
+        self.agent_service = None
+        self.signup_service = None
 
 
 _CONTAINER: ApplicationContainer | None = None

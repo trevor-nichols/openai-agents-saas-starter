@@ -38,6 +38,7 @@ from app.presentation import health as health_routes
 from app.presentation import metrics as metrics_routes
 from app.presentation import well_known as well_known_routes
 from app.presentation.webhooks import stripe as stripe_webhook
+from app.services.agent_service import build_agent_service
 from app.services.auth.builders import (
     build_service_account_token_service,
     build_session_service,
@@ -47,6 +48,7 @@ from app.services.billing_events import RedisBillingEventBackend
 from app.services.email_verification_service import build_email_verification_service
 from app.services.password_recovery_service import build_password_recovery_service
 from app.services.payment_gateway import stripe_gateway
+from app.services.signup_service import build_signup_service
 from app.services.user_service import build_user_service
 
 # =============================================================================
@@ -170,6 +172,18 @@ async def lifespan(app: FastAPI):
     container.email_verification_service = build_email_verification_service(
         settings=settings,
         repository=user_repository,
+    )
+
+    container.agent_service = build_agent_service(
+        conversation_service=container.conversation_service,
+    )
+
+    container.signup_service = build_signup_service(
+        billing_service=container.billing_service if settings.enable_billing else None,
+        auth_service=container.auth_service,
+        email_verification_service=container.email_verification_service,
+        settings_factory=lambda: settings,
+        session_factory=session_factory,
     )
 
     if settings.enable_billing:
