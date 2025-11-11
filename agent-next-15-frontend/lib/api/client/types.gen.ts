@@ -509,6 +509,106 @@ export type ServiceAccountIssueRequest = {
 };
 
 /**
+ * ServiceAccountTokenItem
+ *
+ * List view representation of a service-account refresh token.
+ */
+export type ServiceAccountTokenItem = {
+    /**
+     * Jti
+     *
+     * Refresh token unique identifier (JWT jti).
+     */
+    jti: string;
+    /**
+     * Account
+     *
+     * Service-account identifier owning the token.
+     */
+    account: string;
+    /**
+     * Tenant Id
+     *
+     * Tenant UUID when the token is tenant-scoped.
+     */
+    tenant_id?: string | null;
+    /**
+     * Scopes
+     *
+     * Authorized scopes.
+     */
+    scopes: Array<string>;
+    /**
+     * Issued At
+     *
+     * Issuance timestamp.
+     */
+    issued_at: string;
+    /**
+     * Expires At
+     *
+     * Expiration timestamp.
+     */
+    expires_at: string;
+    /**
+     * Revoked At
+     *
+     * Revocation timestamp, if applicable.
+     */
+    revoked_at: string | null;
+    /**
+     * Revoked Reason
+     *
+     * Optional reason recorded during revocation.
+     */
+    revoked_reason?: string | null;
+    /**
+     * Fingerprint
+     *
+     * Caller-provided fingerprint for auditing.
+     */
+    fingerprint?: string | null;
+    /**
+     * Signing Kid
+     *
+     * Key identifier used to sign the refresh token.
+     */
+    signing_kid: string;
+};
+
+/**
+ * ServiceAccountTokenListResponse
+ *
+ * Paginated response for service-account token listings.
+ */
+export type ServiceAccountTokenListResponse = {
+    /**
+     * Items
+     *
+     * Current page of results.
+     */
+    items: Array<ServiceAccountTokenItem>;
+    /**
+     * Total
+     *
+     * Total number of matching tokens across all pages.
+     */
+    total: number;
+    /**
+     * Limit
+     *
+     * Requested page size.
+     */
+    limit: number;
+    /**
+     * Offset
+     *
+     * Requested offset.
+     */
+    offset: number;
+};
+
+/**
  * ServiceAccountTokenResponse
  *
  * Response returned after issuing a service-account refresh token.
@@ -569,6 +669,25 @@ export type ServiceAccountTokenResponse = {
      */
     session_id?: string | null;
 };
+
+/**
+ * ServiceAccountTokenRevokeRequest
+ *
+ * Payload for revoking a service-account refresh token.
+ */
+export type ServiceAccountTokenRevokeRequest = {
+    /**
+     * Reason
+     *
+     * Human-readable explanation for auditing (required for operators).
+     */
+    reason?: string | null;
+};
+
+/**
+ * ServiceAccountTokenStatus
+ */
+export type ServiceAccountTokenStatus = 'active' | 'revoked' | 'all';
 
 /**
  * SessionClientInfo
@@ -1598,6 +1717,140 @@ export type IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponses =
 };
 
 export type IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponse = IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponses[keyof IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponses];
+
+export type ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Operator-Override
+         */
+        'X-Operator-Override'?: string | null;
+        /**
+         * X-Operator-Reason
+         */
+        'X-Operator-Reason'?: string | null;
+        /**
+         * X-Tenant-Id
+         */
+        'X-Tenant-Id'?: string | null;
+        /**
+         * X-Tenant-Role
+         */
+        'X-Tenant-Role'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Account
+         *
+         * Filter by service-account identifier (substring match).
+         */
+        account?: string | null;
+        /**
+         * Fingerprint
+         *
+         * Filter by stored fingerprint.
+         */
+        fingerprint?: string | null;
+        /**
+         * Token status filter (active, revoked, all).
+         */
+        status?: ServiceAccountTokenStatus;
+        /**
+         * Tenant Id
+         *
+         * Tenant UUID to filter (operator override only).
+         */
+        tenant_id?: string | null;
+        /**
+         * Include Global
+         *
+         * Include tenantless tokens (operator override only).
+         */
+        include_global?: boolean;
+        /**
+         * Limit
+         *
+         * Max tokens to return.
+         */
+        limit?: number;
+        /**
+         * Offset
+         *
+         * Offset for pagination.
+         */
+        offset?: number;
+    };
+    url: '/api/v1/auth/service-accounts/tokens';
+};
+
+export type ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetError = ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetErrors[keyof ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetErrors];
+
+export type ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ServiceAccountTokenListResponse;
+};
+
+export type ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetResponse = ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetResponses[keyof ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetResponses];
+
+export type RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostData = {
+    body: ServiceAccountTokenRevokeRequest;
+    headers?: {
+        /**
+         * X-Operator-Override
+         */
+        'X-Operator-Override'?: string | null;
+        /**
+         * X-Operator-Reason
+         */
+        'X-Operator-Reason'?: string | null;
+        /**
+         * X-Tenant-Id
+         */
+        'X-Tenant-Id'?: string | null;
+        /**
+         * X-Tenant-Role
+         */
+        'X-Tenant-Role'?: string | null;
+    };
+    path: {
+        /**
+         * Jti
+         *
+         * Refresh token identifier (JWT jti).
+         */
+        jti: string;
+    };
+    query?: never;
+    url: '/api/v1/auth/service-accounts/tokens/{jti}/revoke';
+};
+
+export type RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostError = RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostErrors[keyof RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostErrors];
+
+export type RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: SuccessResponse;
+};
+
+export type RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostResponse = RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostResponses[keyof RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostResponses];
 
 export type RegisterTenantApiV1AuthRegisterPostData = {
     body: UserRegisterRequest;

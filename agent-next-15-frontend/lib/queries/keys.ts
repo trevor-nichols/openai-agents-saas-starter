@@ -39,5 +39,10 @@ export const queryKeys = {
       list: (params: { limit: number; offset: number }) =>
         [...queryKeys.account.sessions.all(), params] as const,
     },
+    serviceAccounts: {
+      all: () => [...queryKeys.account.all, 'service-accounts'] as const,
+      list: (filters?: Record<string, unknown>) =>
+        [...queryKeys.account.serviceAccounts.all(), filters] as const,
+    },
   },
 } as const;

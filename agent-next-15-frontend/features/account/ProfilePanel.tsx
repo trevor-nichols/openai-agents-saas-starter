@@ -273,12 +273,17 @@ export function ProfilePanel() {
             </AccordionTrigger>
             <AccordionContent className="space-y-3">
               <p className="text-sm text-foreground/70">
-                Use the Starter CLI to issue or revoke service-account tokens for CI/CD workflows while the UI is
-                offline.
+                Audit and revoke automation tokens from the Automation tab. Issuing new credentials still flows through
+                the Starter CLI until Vault-backed self-serve flows launch.
               </p>
-              <Button asChild variant="secondary">
-                <Link href="/account?tab=automation">See instructions</Link>
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild variant="secondary">
+                  <Link href="/account?tab=automation">Open automation tab</Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href="/docs/frontend/features/account-service-accounts.md">CLI guide</Link>
+                </Button>
+              </div>
             </AccordionContent>
           </AccordionItem>
 

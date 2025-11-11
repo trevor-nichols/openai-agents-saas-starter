@@ -3,7 +3,7 @@
 Updated: 11 Nov 2025  
 Owner: Frontend Platform (Account & Security workstream)
 
-> **Status – 11 Nov 2025:** The account navigation no longer exposes this surface. Until backend list/revoke APIs exist, operators must continue using `starter_cli auth tokens issue-service-account`. Re-enable the UI only after FE-016 is unblocked.
+> **Status – 11 Nov 2025:** Automation tab restored. Token listing + revoke UX ships in `/account?tab=automation`; issuance now has a backend browser bridge (`POST /api/v1/auth/service-accounts/browser-issue`), but the frontend form/dialog is still TODO until we design the UI flow.
 
 ## 1. Context & Goals
 
@@ -26,16 +26,16 @@ Owner: Frontend Platform (Account & Security workstream)
 
 | Need | Source | Hook/Action | Notes |
 | ---- | ------ | ----------- | ----- |
-| List service accounts | `/api/auth/service-accounts` (assumed) or spec'd endpoint | `useServiceAccountsQuery` (new) | Confirm backend route; if not present, rely on CLI output? Need to verify actual API. |
-| Issue token | `/api/auth/service-accounts/issue` | `useIssueServiceAccountMutation` | Already exposed in `app/actions/.../service-accounts`; wrap in client helper. |
-| Revoke token | `/api/auth/service-accounts/revoke` or similar | `useRevokeServiceAccountMutation` | Need to confirm backend support for revocation endpoint. |
-| Token copy-to-clipboard | Client-only | `useClipboard` or built-in navigator | Provide one-time display after issuance. |
+| List service accounts | `/app/api/auth/service-accounts/tokens` → FastAPI `/api/v1/auth/service-accounts/tokens` | `useServiceAccountTokensQuery` + `DataTable` | Query params support `account`, `status`, pagination; response normalized to camelCase. |
+| Revoke token | `/app/api/auth/service-accounts/tokens/{jti}/revoke` | `useRevokeServiceAccountTokenMutation` | Confirms via AlertDialog + optional reason piped to backend for audits. |
+| Issue token | `/app/api/auth/service-accounts/browser-issue` → FastAPI `/api/v1/auth/service-accounts/browser-issue` | _Deferred UI_ | Requires tenant admin session + justification. Backend signs via Vault Transit and returns the usual token response; UI needs to add the dialog + copy moment. |
+| Token copy-to-clipboard | N/A (issuance deferred) | Future `useCopyToClipboard` helper | Only needed once web issuance is approved. |
 
 Implementation notes:
-- Reuse `lib/api/accountSecurity` pattern: new `lib/api/accountServiceAccounts.ts` + queries.
-- Data-table columns: name/account, scopes (badges), last used, created, status, actions.
-- Modal for issuing tokens uses `Dialog` + `Form` components with account name, optional description, scopes multi-select.
-- On success, show token string + warning (copy now, not stored).
+- `lib/api/accountServiceAccounts.ts` proxies the Next routes so client components only ever call `/app/api/...` endpoints.
+- `lib/server/services/auth/serviceAccounts.ts` centralizes SDK calls (list + revoke) with camelCase mapping for UI consumption.
+- Automation tab uses `DataTable` + TanStack Query for caching, and an `AlertDialog` flow to capture optional revoke reasons.
+- Issuance dialog intentionally omitted until we hook into the new browser bridge endpoint and finalize copy/telemetry requirements.
 
 ## 4. Component Layout
 

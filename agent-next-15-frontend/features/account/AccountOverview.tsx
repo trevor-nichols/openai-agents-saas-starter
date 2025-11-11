@@ -8,12 +8,12 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
-import { GlassPanel, SectionHeader } from '@/components/ui/foundation';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { SectionHeader } from '@/components/ui/foundation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 import { ProfilePanel } from './ProfilePanel';
 import { SecurityPanel } from './SecurityPanel';
+import { ServiceAccountsPanel } from './ServiceAccountsPanel';
 import { SessionsPanel } from './SessionsPanel';
 
 const TAB_OPTIONS = [
@@ -94,34 +94,9 @@ export function AccountOverview({ initialTab = 'profile' }: AccountOverviewProps
         </TabsContent>
 
         <TabsContent value="automation">
-          <AutomationPlaceholder />
+          <ServiceAccountsPanel />
         </TabsContent>
       </Tabs>
     </section>
-  );
-}
-
-function AutomationPlaceholder() {
-  return (
-    <GlassPanel className="space-y-4">
-      <SectionHeader
-        eyebrow="Automation"
-        title="Service-account UI coming soon"
-        description="Machine credential issuance stays in the CLI until the backend exposes list/revoke APIs."
-      />
-      <Alert>
-        <AlertTitle>Use the Starter CLI today</AlertTitle>
-        <AlertDescription className="space-y-2 text-sm text-foreground/70">
-          <p>
-            Generate or revoke service-account tokens via
-            <code className="ml-1 rounded bg-muted px-2 py-1 text-xs font-mono">starter_cli auth tokens issue-service-account</code>
-            while we finish the audited API surface.
-          </p>
-          <p>
-            Track progress in <Link className="underline" href="/docs">docs/trackers/ISSUE_TRACKER.md · FE-016</Link>.
-          </p>
-        </AlertDescription>
-      </Alert>
-    </GlassPanel>
   );
 }

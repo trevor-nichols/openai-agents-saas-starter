@@ -4,4 +4,5 @@
 export { AccountOverview } from './AccountOverview';
 export { ProfilePanel } from './ProfilePanel';
 export { SecurityPanel } from './SecurityPanel';
+export { ServiceAccountsPanel } from './ServiceAccountsPanel';
 export { SessionsPanel } from './SessionsPanel';
