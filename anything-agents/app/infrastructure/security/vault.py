@@ -22,6 +22,10 @@ class VaultClientUnavailable(VaultError):
     """Raised when Vault client cannot be initialized due to missing configuration."""
 
 
+class VaultSigningError(VaultError):
+    """Raised when Transit signing fails."""
+
+
 @dataclass
 class VaultTransitClient:
     base_url: str
@@ -56,6 +60,36 @@ class VaultTransitClient:
         if valid is False:
             return False
         raise VaultVerificationError("Vault verification response missing 'valid' flag.")
+
+    def sign_payload(
+        self,
+        payload_b64: str,
+        *,
+        signature_algorithm: str = "sha2-256",
+        transport: httpx.BaseTransport | None = None,
+    ) -> str:
+        """Sign the provided payload and return the Vault-formatted signature."""
+
+        url = f"{self.base_url.rstrip('/')}/v1/transit/sign/{self.key_name}"
+        headers = {"X-Vault-Token": self.token}
+        body = {"input": payload_b64, "signature_algorithm": signature_algorithm}
+
+        with httpx.Client(timeout=self.timeout, transport=transport) as client:
+            try:
+                response = client.post(url, json=body, headers=headers)
+            except httpx.HTTPError as exc:
+                raise VaultSigningError(f"Vault sign request failed: {exc}") from exc
+
+        if response.status_code >= 400:
+            raise VaultSigningError(
+                f"Vault signing request failed ({response.status_code}): {response.text}"
+            )
+
+        data: dict[str, Any] = response.json()
+        signature = data.get("data", {}).get("signature")
+        if isinstance(signature, str) and signature.strip():
+            return signature
+        raise VaultSigningError("Vault signing response missing signature.")
 
 
 def get_vault_transit_client() -> VaultTransitClient:

@@ -8,10 +8,15 @@ import json
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from fastapi.concurrency import run_in_threadpool
 
-from app.api.models.auth import ServiceAccountIssueRequest, ServiceAccountTokenResponse
+from app.api.dependencies.service_accounts import ServiceAccountActor, require_service_account_actor
+from app.api.models.auth import (
+    BrowserServiceAccountIssueRequest,
+    ServiceAccountIssueRequest,
+    ServiceAccountTokenResponse,
+)
 from app.infrastructure.security.nonce_store import get_nonce_store
 from app.infrastructure.security.vault import (
     VaultClientUnavailable,
@@ -25,6 +30,11 @@ from app.services.auth_service import (
     ServiceAccountRateLimitError,
     ServiceAccountValidationError,
     auth_service,
+)
+from app.services.service_account_bridge import (
+    BrowserIssuanceError,
+    ServiceAccountIssuanceBridge,
+    get_service_account_issuance_bridge,
 )
 
 router = APIRouter(tags=["auth"])
@@ -72,6 +82,23 @@ async def issue_service_account_token(
     if claims is not None:
         _validate_request_against_claims(claims, payload)
 
+    return ServiceAccountTokenResponse.model_validate(result)
+
+
+@router.post(
+    "/service-accounts/browser-issue",
+    response_model=ServiceAccountTokenResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def issue_service_account_token_from_browser(
+    payload: BrowserServiceAccountIssueRequest,
+    actor: ServiceAccountActor = Depends(require_service_account_actor),
+    bridge: ServiceAccountIssuanceBridge = Depends(get_service_account_issuance_bridge),
+) -> ServiceAccountTokenResponse:
+    try:
+        result = await bridge.issue_from_browser(actor=actor, request=payload)
+    except BrowserIssuanceError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     return ServiceAccountTokenResponse.model_validate(result)
 
 

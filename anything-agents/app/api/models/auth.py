@@ -194,6 +194,16 @@ class ServiceAccountIssueRequest(BaseModel):
     )
 
 
+class BrowserServiceAccountIssueRequest(ServiceAccountIssueRequest):
+    """Browser-initiated issuance request with justification."""
+
+    reason: str = Field(
+        min_length=10,
+        max_length=512,
+        description="Human-readable justification for auditing.",
+    )
+
+
 class ServiceAccountTokenResponse(BaseModel):
     """Response returned after issuing a service-account refresh token."""
 

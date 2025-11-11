@@ -1,0 +1,18 @@
+services:
+  vault-dev:
+    image: hashicorp/vault:1.17.5
+    container_name: vault-dev
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_ROOT_TOKEN_ID:-vault-dev-root}
+      VAULT_ADDR: http://127.0.0.1:8200
+    command: >
+      vault server
+      -dev
+      -dev-root-token-id=${VAULT_DEV_ROOT_TOKEN_ID:-vault-dev-root}
+      -dev-listen-address=0.0.0.0:8200
+    ports:
+      - "${VAULT_DEV_PORT:-18200}:8200"
+    volumes:
+      - ./scripts/vault:/vault:ro
