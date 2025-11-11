@@ -261,10 +261,10 @@ export function SecurityPanel() {
             />
             <div className="flex flex-wrap gap-3">
               <Button asChild variant="secondary">
-                <Link href="/account/sessions">View sessions</Link>
+                <Link href="/account?tab=sessions">View sessions</Link>
               </Button>
               <Button asChild variant="outline">
-                <Link href="/account/service-accounts">Manage service accounts</Link>
+                <Link href="/account?tab=automation">Service-account guidance</Link>
               </Button>
             </div>
           </>

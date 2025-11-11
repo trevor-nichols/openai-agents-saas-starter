@@ -218,7 +218,7 @@ export function ProfilePanel() {
                   <Link href="/billing">Open billing</Link>
                 </Button>
                 <Button asChild variant="outline">
-                  <Link href="/account/service-accounts">Service accounts</Link>
+                  <Link href="/account?tab=automation">Service accounts</Link>
                 </Button>
               </div>
             </>
@@ -273,10 +273,11 @@ export function ProfilePanel() {
             </AccordionTrigger>
             <AccordionContent className="space-y-3">
               <p className="text-sm text-foreground/70">
-                Issue or revoke service-account tokens for CI/CD workflows without reusing human credentials.
+                Use the Starter CLI to issue or revoke service-account tokens for CI/CD workflows while the UI is
+                offline.
               </p>
               <Button asChild variant="secondary">
-                <Link href="/account/service-accounts">Manage service accounts</Link>
+                <Link href="/account?tab=automation">See instructions</Link>
               </Button>
             </AccordionContent>
           </AccordionItem>
@@ -290,7 +291,7 @@ export function ProfilePanel() {
                 Review active devices, revoke stale sessions, and audit login activity.
               </p>
               <Button asChild variant="outline">
-                <Link href="/account/sessions">View sessions</Link>
+                <Link href="/account?tab=sessions">View sessions</Link>
               </Button>
             </AccordionContent>
           </AccordionItem>

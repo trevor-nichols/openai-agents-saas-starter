@@ -75,7 +75,7 @@ export default function LandingPage() {
             title: 'Security & Compliance',
             description:
               'Manage sessions, service accounts, and audit trails with patterns ready for SOC2-ready teams.',
-            href: '/account/security',
+            href: '/account?tab=security',
           },
         ].map((feature) => (
           <Link
@@ -120,4 +120,3 @@ export default function LandingPage() {
     </div>
   );
 }
-

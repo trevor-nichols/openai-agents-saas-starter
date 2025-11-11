@@ -3,6 +3,8 @@
 Updated: 11 Nov 2025  
 Owner: Frontend Platform (Account & Security workstream)
 
+> **Status – 11 Nov 2025:** The account navigation no longer exposes this surface. Until backend list/revoke APIs exist, operators must continue using `starter_cli auth tokens issue-service-account`. Re-enable the UI only after FE-016 is unblocked.
+
 ## 1. Context & Goals
 
 - Route: `app/(app)/account/service-accounts/page.tsx`

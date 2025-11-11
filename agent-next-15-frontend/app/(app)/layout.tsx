@@ -15,19 +15,14 @@ interface AppLayoutProps {
 // --- Navigation configuration ---
 const primaryNav = [
   { href: '/dashboard', label: 'Dashboard' },
-  { href: '/chat', label: 'Chat' },
+  { href: '/chat', label: 'Workspace' },
   { href: '/conversations', label: 'Conversations' },
   { href: '/agents', label: 'Agents' },
   { href: '/tools', label: 'Tools' },
   { href: '/billing', label: 'Billing' },
 ];
 
-const accountNav = [
-  { href: '/account/profile', label: 'Profile' },
-  { href: '/account/security', label: 'Security' },
-  { href: '/account/sessions', label: 'Sessions' },
-  { href: '/account/service-accounts', label: 'Service accounts' },
-];
+const accountNav = [{ href: '/account', label: 'Account' }];
 
 // --- AppLayout component ---
 export default function AppLayout({ children }: AppLayoutProps) {
