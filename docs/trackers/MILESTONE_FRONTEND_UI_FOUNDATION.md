@@ -141,6 +141,8 @@ Deliver a production-quality page architecture and component plan that maps ever
 - **Dashboard & Chat** – `features/dashboard` and `features/chat` consume the new kit: KPI/stat cards, glass chat workspace, InlineTag agent telemetry, and shared loading/error/empty states are live under the authenticated shell.
 - **Billing & Conversations** – `/billing` and `/conversations` now ship glass panels backed by live data (billing stream, TanStack conversations) with InlineTags, ScrollArea tables, and reusable Empty/Skeleton states, aligning all authenticated surfaces to the same Johnny Ive aesthetic.
 - **Marketing Shell** – Desktop + mobile navigation, command palette, theme toggle, and the live `/api/health` footer card now power every marketing route, giving `/`, `/pricing`, `/features`, and `/docs` a consistent chrome for design to build on.
+- **Shared systems** – `components/ui/data-table` now wraps `@tanstack/react-table` with skeleton/error states and optional pagination while `useToast` + the `Toaster` provider centralizes feedback, so future account/billing tables can reuse the same patterns without importing Sonner directly.
+- **Plan management** – `/billing/plans` now renders the plan catalog, opens a Shadcn dialog with billing metadata (email/seats/auto-renew), and invokes the start/update mutations tied to `useToast` so the billing summary stays in sync across the authenticated shell.
 
 <!-- SECTION: Workstreams -->
 ## Workstreams & Tasks
@@ -166,7 +168,7 @@ Deliver a production-quality page architecture and component plan that maps ever
   - [x] Display tool categories, usage instructions, and availability per agent. *Status (2025-11-11): Cards show tool badges via `useTools()`, with JSON export placeholder + copy actions documented in data access notes.*
 - **Billing & Subscription Hub**
   - [x] Surface subscription summary, next invoice, usage charts.
-  - [ ] Provide upgrade/downgrade controls (Shadcn dialog + form). *Deliverable: `/billing/plans` experience that lists plans via `useBillingPlans`, launches dialogs using `start/update/cancel` mutations from `lib/server/services/billing.ts`, and pipes results through the shared toast hook.*
+  - [x] Provide upgrade/downgrade controls (Shadcn dialog + form). *Status (2025-11-11): `/billing/plans` now presents the plan catalog, opens a `Dialog` with Shadcn forms, and drives `useStartSubscriptionMutation`/`useToast` for confirmations plus TanStack cache updates.*
   - [x] List recent billing events (reuse `BillingEventsPanel`, enhance styling).
 - **Account & Security**
   - [ ] Profile page (user info, tenant data, email verification state). *Deliverable: cards populated from `/api/auth/session` + `getCurrentUserProfile` with inline alerting for unverified email and tenant metadata.*
@@ -175,10 +177,10 @@ Deliver a production-quality page architecture and component plan that maps ever
 - **Marketing & Docs**
   - [ ] Ship marketing `/docs` route (and `/status` stub). *Deliverable: static/MDX-friendly docs page plus lightweight status placeholder so existing nav/footer links stop 404ing; reuse Marketing layout chrome.*
 - **Shared Systems**
-  - [ ] Toast/notification framework (centralized provider). *Plan: finish migrating all surfaces (chat, billing, future tables) to `useToast` so nothing imports `sonner` directly; document usage in `docs/frontend/data-access.md`.*
+  - [x] Toast/notification framework (centralized provider). *Status (2025-11-11): `app/providers.tsx` already mounts the `Toaster`, all features now import `useToast`, and we documented the expectation in `docs/frontend/data-access.md`.*
   - [x] Loading skeleton components (marketing + app).
   - [ ] Error boundary surfaces per route group. *Plan: compose marketing/auth/app `error.tsx` from `components/ui/states/ErrorState` with tailored recovery copy.*
-  - [ ] Data table kit (TanStack) for audits/sessions/billing. *Deliverable: install `@tanstack/react-table`, add `components/ui/data-table` wrapper, and migrate conversations + sessions tables for consistent sorting/pagination.*
+  - [x] Data table kit (TanStack) for audits/sessions/billing. *Status (2025-11-11): `components/ui/data-table` now exposes `DataTable`/`DataTablePagination`; conversations hub already consumes it with row actions, pagination toggles, and shared states.*
 
 <!-- SECTION: Risks -->
 ## Risks & Mitigations

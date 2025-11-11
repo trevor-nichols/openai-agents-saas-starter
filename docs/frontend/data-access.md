@@ -122,4 +122,9 @@ This layering mirrors the conversations stack, so future agent detail pages can 
 - [ ] Documentation (this file + AGENTS.md note) updated.  
 - [ ] `pnpm lint`, `pnpm type-check`, and `pnpm vitest run` executed locally.
 
+## Shared UI Helpers
+
+- **Global toast provider** – `app/providers.tsx` mounts the single `Toaster` instance from `components/ui/sonner` (styled with the graphite palette). Always import `useToast` from `components/ui/use-toast` inside feature code so every success/error loop routes through the same provider (avoid importing `sonner` directly in components).  
+- **Data table kit** – `components/ui/data-table` wraps `@tanstack/react-table` with consistent column rendering, skeleton/error states, pagination controls, and optional row callbacks. Pass your `ColumnDef<T>` array, data slice, and shared `EmptyState` or `ErrorState`, then render the resulting rows inside the authenticated shell. Use `DataTable` + `DataTablePagination` (or disable pagination for filtered archives) so conversations/billing/account tables share the same layout, keyboard handling, and toast-quality messaging.
+
 Following this blueprint keeps the frontend predictable, auditable, and testable as we add more domains.

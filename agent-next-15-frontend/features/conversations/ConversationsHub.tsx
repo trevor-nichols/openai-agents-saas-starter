@@ -5,16 +5,18 @@ import { useCallback, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Search } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
+import type { ColumnDef } from '@tanstack/react-table';
 
 import { Button } from '@/components/ui/button';
+import { DataTable } from '@/components/ui/data-table';
 import { GlassPanel, InlineTag, SectionHeader } from '@/components/ui/foundation';
-import { EmptyState, ErrorState, SkeletonPanel } from '@/components/ui/states';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { EmptyState } from '@/components/ui/states';
 import { Input } from '@/components/ui/input';
 import { useConversations } from '@/lib/queries/conversations';
 import { queryKeys } from '@/lib/queries/keys';
 import { fetchConversationHistory } from '@/lib/api/conversations';
 import { formatRelativeTime } from '@/lib/utils/time';
+import type { ConversationListItem } from '@/types/conversations';
 import { ConversationDetailDrawer } from './ConversationDetailDrawer';
 
 export function ConversationsHub() {
@@ -76,6 +78,61 @@ export function ConversationsHub() {
   const visibleCount = filteredConversations.length;
   const isSearching = Boolean(searchTerm.trim());
 
+  const columns = useMemo<ConversationColumn[]>(() => {
+    return [
+      {
+        id: 'title',
+        header: 'Title',
+        cell: ({ row }) => {
+          const conversation = row.original;
+          return (
+            <div className="font-semibold text-foreground">
+              {conversation.title ?? `Conversation ${conversation.id.substring(0, 8)}…`}
+            </div>
+          );
+        },
+      },
+      {
+        id: 'summary',
+        header: 'Summary',
+        cell: ({ row }) => (
+          <span className="text-foreground/70">
+            {row.original.last_message_summary ?? 'Awaiting summary'}
+          </span>
+        ),
+      },
+      {
+        id: 'updated',
+        header: 'Last activity',
+        cell: ({ row }) => (
+          <span className="text-foreground/60">{formatRelativeTime(row.original.updated_at)}</span>
+        ),
+      },
+    ];
+  }, []);
+
+  const tableEmptyState = isSearching ? (
+    <EmptyState
+      title="No results found"
+      description="Try a different search term or clear the filter to see all transcripts."
+      action={
+        <Button variant="ghost" onClick={() => setSearchTerm('')}>
+          Clear search
+        </Button>
+      }
+    />
+  ) : (
+    <EmptyState
+      title="No conversations yet"
+      description="Launch a chat to generate your first transcript."
+      action={
+        <Button asChild>
+          <Link href="/chat">Start chatting</Link>
+        </Button>
+      }
+    />
+  );
+
   return (
     <section className="space-y-8">
       <SectionHeader
@@ -101,94 +158,44 @@ export function ConversationsHub() {
         }
       />
 
-      <GlassPanel>
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-foreground">Conversations</p>
-              <p className="text-xs text-foreground/60">Chronological list of all transcripts.</p>
-            </div>
-            <div className="flex w-full gap-3 lg:w-auto">
-              <div className="relative flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/50" />
-                <Input
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="Search by title, summary, or ID"
-                  className="pl-9"
-                />
-              </div>
-              {isSearching ? (
-                <Button variant="secondary" onClick={() => setSearchTerm('')}>
-                  Clear
-                </Button>
-              ) : null}
-            </div>
+      <GlassPanel className="space-y-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-foreground">Conversations</p>
+            <p className="text-xs text-foreground/60">Chronological list of all transcripts.</p>
           </div>
-
-          <div className="rounded-2xl border border-white/10 bg-white/5">
-            {isLoadingConversations ? (
-              <SkeletonPanel lines={8} className="rounded-2xl border-0 bg-transparent" />
-            ) : error ? (
-              <ErrorState message={error} onRetry={loadConversations} />
-            ) : totalConversations === 0 ? (
-              <EmptyState
-                title="No conversations yet"
-                description="Launch a chat to generate your first transcript."
-                action={<Button asChild><Link href="/chat">Start chatting</Link></Button>}
+          <div className="flex w-full gap-3 lg:w-auto">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/50" />
+              <Input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Search by title, summary, or ID"
+                className="pl-9"
               />
-            ) : visibleCount === 0 ? (
-              <EmptyState
-                title="No results found"
-                description="Try a different search term or clear the filter to see all transcripts."
-                action={
-                  <Button variant="ghost" onClick={() => setSearchTerm('')}>
-                    Clear search
-                  </Button>
-                }
-              />
-            ) : (
-              <ScrollArea className="max-h-[480px]">
-                <table className="w-full text-sm text-foreground/80">
-                  <thead className="sticky top-0 bg-white/10 text-left text-xs uppercase tracking-[0.2em] text-foreground/50">
-                    <tr>
-                      <th className="px-4 py-3">Title</th>
-                      <th className="px-4 py-3">Summary</th>
-                      <th className="px-4 py-3">Last activity</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredConversations.map((conversation) => (
-                      <tr
-                        key={conversation.id}
-                        className="cursor-pointer border-t border-white/5 transition hover:bg-white/5 focus-visible:bg-white/10"
-                        onClick={() => handleSelectConversation(conversation.id)}
-                        onMouseEnter={() => handlePrefetch(conversation.id)}
-                        onFocus={() => handlePrefetch(conversation.id)}
-                        tabIndex={0}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            handleSelectConversation(conversation.id);
-                          }
-                        }}
-                        aria-label={`Open conversation ${conversation.title ?? conversation.id}`}
-                      >
-                        <td className="px-4 py-3 font-semibold text-foreground">
-                          {conversation.title ?? `Conversation ${conversation.id.substring(0, 8)}…`}
-                        </td>
-                        <td className="px-4 py-3 text-foreground/70">
-                          {conversation.last_message_summary ?? 'Awaiting summary'}
-                        </td>
-                        <td className="px-4 py-3 text-foreground/60">{formatRelativeTime(conversation.updated_at)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </ScrollArea>
-            )}
+            </div>
+            {isSearching ? (
+              <Button variant="secondary" onClick={() => setSearchTerm('')}>
+                Clear
+              </Button>
+            ) : null}
           </div>
         </div>
+
+        <DataTable
+          columns={columns}
+          data={filteredConversations}
+          className="rounded-2xl border border-white/10 bg-white/5"
+          isLoading={isLoadingConversations}
+          isError={Boolean(error)}
+          error={error ?? undefined}
+          emptyState={tableEmptyState}
+          onRowClick={(row) => handleSelectConversation(row.original.id)}
+          onRowMouseEnter={(row) => handlePrefetch(row.original.id)}
+          onRowFocus={(row) => handlePrefetch(row.original.id)}
+          enableSorting={false}
+          enablePagination={false}
+        />
       </GlassPanel>
 
       <ConversationDetailDrawer
@@ -200,3 +207,5 @@ export function ConversationsHub() {
     </section>
   );
 }
+
+type ConversationColumn = ColumnDef<ConversationListItem, unknown>;
