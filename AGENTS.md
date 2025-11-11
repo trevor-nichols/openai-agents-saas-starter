@@ -19,6 +19,9 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 - All hooks use TanStack Query
 - Use Shadcn components from components/ui/. DO NOT create custom components. If a component we need is not included yet, add it. Refer to `docs/frontend/ui/components.md` for the latest list of components.
 - Detailed frontend data-access patterns (SDK → services → API routes → hooks) live in `docs/frontend/data-access.md`. Review that doc before adding new queries or routes.
+- Separation of Concerns
+  - lib/queries/ = Server data (TanStack Query)
+  - hooks/ = UI logic, local state, browser APIs
 
 ## CLI Charter – Starter CLI (SC)
 - **Purpose:** The SC is the single operator entrypoint for provisioning secrets, wiring third-party providers, generating env files for both the FastAPI backend and the Next.js frontend, and exporting audit artifacts. It replaces the legacy “Anything Agents” branding.
@@ -45,6 +48,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 - Throughout the codebase, you will see `SNAPSHOT.md` files. `SNAPSHOT.md` files contain the full structure of the codebase at a given point in time. Refer to these files when you need understand the architecture or need help navigating the codebase.
 - Refer to `docs/trackers/` for the latest status of the codebase. Keep these trackers up to date with the latest changes and status of the codebase.
 - When applying database migrations or generating new ones, always use the Makefile targets (`make migrate`, `make migration-revision`) so your `.env.local`/`.env` secrets and `.env.compose` values are loaded consistently. These wrappers take care of wiring Alembic to the right Postgres instance (local Docker or remote) without manual exports.
+- Need to test Vault Transit locally? Use `make vault-up` to start the dev signer, `make verify-vault` to run the CLI issuance smoke test, and `make vault-down` when you’re done. Details live in `docs/security/vault-transit-signing.md`.
 
 # Codebase Patterns
 openai-agents-starter/
