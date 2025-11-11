@@ -59,14 +59,21 @@ export async function logoutSession(payload: UserLogoutRequest): Promise<void> {
   });
 }
 
-export async function logoutAllSessions(): Promise<void> {
+export async function logoutAllSessions(): Promise<SuccessResponse> {
   const { client, auth } = await getServerApiClient();
-  await logoutAllSessionsApiV1AuthLogoutAllPost({
+  const response = await logoutAllSessionsApiV1AuthLogoutAllPost({
     client,
     auth,
     responseStyle: 'fields',
     throwOnError: true,
   });
+
+  const payload = response.data;
+  if (!payload) {
+    throw new Error('Logout-all endpoint returned no data.');
+  }
+
+  return payload;
 }
 
 export async function revokeUserSession(sessionId: string): Promise<SuccessResponse> {
@@ -91,4 +98,3 @@ export async function revokeUserSession(sessionId: string): Promise<SuccessRespo
 
   return payload;
 }
-

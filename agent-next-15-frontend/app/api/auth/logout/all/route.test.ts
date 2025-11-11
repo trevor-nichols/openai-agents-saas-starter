@@ -14,15 +14,20 @@ vi.mock('@/lib/auth/session', () => ({
 }));
 
 describe('/api/auth/logout/all route', () => {
+  beforeEach(() => {
+    logoutAllSessions.mockResolvedValue({ success: true, data: { revoked: 1 } });
+  });
+
   afterEach(() => {
     vi.clearAllMocks();
   });
 
   it('logs out all sessions and clears cookies', async () => {
+    logoutAllSessions.mockResolvedValueOnce({ success: true, data: { revoked: 4 } });
     const response = await POST();
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ success: true });
+    await expect(response.json()).resolves.toEqual({ success: true, data: { revoked: 4 } });
     expect(logoutAllSessions).toHaveBeenCalledTimes(1);
     expect(destroySession).toHaveBeenCalledTimes(1);
   });
@@ -39,4 +44,3 @@ describe('/api/auth/logout/all route', () => {
     });
   });
 });
-

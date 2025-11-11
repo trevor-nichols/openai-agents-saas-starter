@@ -25,14 +25,14 @@ export async function logoutSessionAction(payload: UserLogoutRequest, { redirect
 }
 
 export async function logoutAllSessionsAction({ redirectTo }: { redirectTo?: string } = {}) {
-  await logoutAllSessions();
+  const payload = await logoutAllSessions();
   await destroySession();
   if (redirectTo) {
     redirect(redirectTo);
   }
+  return payload;
 }
 
 export async function revokeSessionAction(sessionId: string) {
   return revokeUserSession(sessionId);
 }
-

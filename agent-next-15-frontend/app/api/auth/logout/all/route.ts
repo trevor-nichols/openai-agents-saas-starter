@@ -13,13 +13,12 @@ function mapErrorToStatus(message: string): number {
 
 export async function POST() {
   try {
-    await logoutAllSessions();
+    const payload = await logoutAllSessions();
     await destroySession();
-    return NextResponse.json({ success: true }, { status: 200 });
+    return NextResponse.json(payload, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to logout all sessions.';
     const status = mapErrorToStatus(message);
     return NextResponse.json({ success: false, error: message }, { status });
   }
 }
-

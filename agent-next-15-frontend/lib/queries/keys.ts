@@ -31,4 +31,13 @@ export const queryKeys = {
     list: () => [...queryKeys.agents.all, 'list'] as const,
     detail: (agentName: string) => [...queryKeys.agents.all, 'detail', agentName] as const,
   },
+  account: {
+    all: ['account'] as const,
+    profile: () => [...queryKeys.account.all, 'profile'] as const,
+    sessions: {
+      all: () => [...queryKeys.account.all, 'sessions'] as const,
+      list: (params: { limit: number; offset: number }) =>
+        [...queryKeys.account.sessions.all(), params] as const,
+    },
+  },
 } as const;
