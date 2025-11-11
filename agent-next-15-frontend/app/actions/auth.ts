@@ -5,23 +5,18 @@ import { redirect } from 'next/navigation';
 import { getRefreshTokenFromCookies } from '@/lib/auth/cookies';
 import { destroySession, exchangeCredentials, refreshSessionWithBackend } from '@/lib/auth/session';
 
-interface ActionState {
-  error?: string;
+interface LoginActionInput {
+  email: string;
+  password: string;
+  tenantId?: string | null;
 }
 
-export async function loginAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const email = formData.get('email');
-  const password = formData.get('password');
-  const tenantId = formData.get('tenantId');
-  const redirectToRaw = (formData.get('redirectTo') as string) || '/';
-  const redirectTo = redirectToRaw.startsWith('/') ? redirectToRaw : '/';
-
-  if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
-    return { error: 'Email and password are required.' };
+export async function loginAction({ email, password, tenantId }: LoginActionInput): Promise<void> {
+  if (!email || !password) {
+    throw new Error('Email and password are required.');
   }
 
-  const tenantIdValue =
-    typeof tenantId === 'string' && tenantId.trim().length > 0 ? tenantId : null;
+  const tenantIdValue = tenantId && tenantId.trim().length > 0 ? tenantId.trim() : null;
 
   try {
     await exchangeCredentials({
@@ -30,10 +25,8 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
       tenant_id: tenantIdValue,
     });
   } catch (error) {
-    return { error: error instanceof Error ? error.message : 'Login failed.' };
+    throw new Error(error instanceof Error ? error.message : 'Login failed.');
   }
-
-  redirect(redirectTo);
 }
 
 export async function logoutAction(): Promise<void> {
@@ -49,4 +42,3 @@ export async function silentRefreshAction(): Promise<void> {
   }
   await refreshSessionWithBackend(refreshToken);
 }
-

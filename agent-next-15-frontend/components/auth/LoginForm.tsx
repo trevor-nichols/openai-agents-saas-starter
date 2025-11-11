@@ -1,75 +1,139 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useRouter } from 'next/navigation';
+import { z } from 'zod';
 
 import { loginAction } from '@/app/actions/auth';
+import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { useAuthForm } from '@/hooks/useAuthForm';
 
-const initialState = { error: '' };
+const loginSchema = z.object({
+  email: z.string().trim().min(1, 'Email is required.').email('Enter a valid email address.'),
+  password: z.string().min(8, 'Password must be at least 8 characters.'),
+  tenantId: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal('')),
+});
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <button
-      type="submit"
-      className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-      disabled={pending}
-    >
-      {pending ? 'Signing in…' : 'Sign In'}
-    </button>
-  );
-}
+type LoginFormValues = z.infer<typeof loginSchema>;
+const defaultValues: LoginFormValues = {
+  email: '',
+  password: '',
+  tenantId: '',
+};
 
 export function LoginForm({ redirectTo }: { redirectTo?: string }) {
-  const [state, formAction] = useFormState(loginAction, initialState);
+  const router = useRouter();
+  const safeRedirect = redirectTo && redirectTo.startsWith('/') ? redirectTo : '/dashboard';
+
+  const { form, onSubmit, isSubmitting, formError } = useAuthForm<typeof loginSchema>({
+    schema: loginSchema,
+    initialValues: defaultValues,
+    submitHandler: async (values) => {
+      await loginAction({
+        email: values.email,
+        password: values.password,
+        tenantId: values.tenantId?.trim() ? values.tenantId.trim() : undefined,
+      });
+    },
+    successToast: {
+      title: 'Signed in',
+      description: 'Redirecting you to your workspace.',
+    },
+    errorToast: {
+      title: 'Unable to sign in',
+      description: 'Please double-check your credentials and try again.',
+    },
+    onSuccess: () => {
+      router.push(safeRedirect);
+      router.refresh();
+    },
+  });
 
   return (
-    <form action={formAction} className="space-y-4 w-full max-w-sm">
-      <input type="hidden" name="redirectTo" value={redirectTo ?? '/dashboard'} />
-      <div>
-        <label className="block text-sm font-medium text-gray-700" htmlFor="email">
-          Email
-        </label>
-        <input
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-          type="email"
-          id="email"
+    <Form {...form}>
+      <form className="space-y-6" onSubmit={onSubmit} noValidate>
+        <FormField
+          control={form.control}
           name="email"
-          required
-          placeholder="you@example.com"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  type="email"
+                  inputMode="email"
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700" htmlFor="password">
-          Password
-        </label>
-        <input
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-          type="password"
-          id="password"
+
+        <FormField
+          control={form.control}
           name="password"
-          required
-          minLength={8}
-          placeholder="••••••••"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Password</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  type="password"
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700" htmlFor="tenantId">
-          Tenant ID (optional)
-        </label>
-        <input
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-          type="text"
-          id="tenantId"
+
+        <FormField
+          control={form.control}
           name="tenantId"
-          placeholder="UUID"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                Tenant ID <span className="text-muted-foreground">(optional)</span>
+              </FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  value={field.value ?? ''}
+                  placeholder="UUID or slug (if required)"
+                  autoComplete="organization"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
-      {state?.error && (
-        <p className="text-sm text-red-600" role="alert">
-          {state.error}
-        </p>
-      )}
-      <SubmitButton />
-    </form>
+
+        {formError ? (
+          <p className="text-sm font-medium text-destructive" role="alert">
+            {formError}
+          </p>
+        ) : null}
+
+        <Button type="submit" className="w-full" disabled={isSubmitting}>
+          {isSubmitting ? 'Signing in...' : 'Sign in'}
+        </Button>
+      </form>
+    </Form>
   );
 }

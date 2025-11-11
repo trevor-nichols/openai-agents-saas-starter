@@ -150,9 +150,9 @@ Deliver a production-quality page architecture and component plan that maps ever
   - [x] Design global header/footer IA (desktop + mobile). *Decision: desktop nav with CTA/theme toggle, mobile sheet + command palette, three-column footer with live metric card.*
   - [x] Define authenticated shell nav structure (primary tabs, quick actions). *Decision: 280px glass sidebar (Dashboard → Account subsections), top bar with breadcrumbs, command palette, toasts, theme toggle, and avatar menu.*
 - **Auth UX Enhancements**
-  - [ ] Add register, forgot/reset, email verification pages using existing actions.
-  - [ ] Implement form validation, error surfacing, success states.
-  - [ ] Ensure route guards redirect correctly (middleware + per-page metadata).
+  - [x] Add register, forgot/reset, email verification pages using existing actions. *Status (2025-11-11): Shared `AuthCard` + `useAuthForm` cover all flows, wired to server actions with toast feedback.*
+  - [x] Implement form validation, error surfacing, success states. *Status (2025-11-11): Zod + Shadcn forms now power login/register/forgot/reset/verify routes with shared toasts.*
+  - [x] Ensure route guards redirect correctly (middleware + per-page metadata). *Status (2025-11-11): Middleware now redirects authenticated users away from auth routes and captures full redirect targets for guests; auth pages export metadata for better context.*
 - **Chat Workspace Evolution**
   - [x] Promote current `app/(agent)/page.tsx` into `/(app)/chat` with shell layout.
   - [x] Add agent switcher, tool metadata sidebar, transcript export placeholder.

@@ -1,17 +1,29 @@
-// File Path: app/(auth)/password/forgot/page.tsx
-// Description: Placeholder page for requesting password reset emails.
-// Sections:
-// - ForgotPasswordPage component: Communicates upcoming UX work.
+import type { Metadata } from 'next';
+import Link from 'next/link';
+
+import { AuthCard } from '@/app/(auth)/_components/AuthCard';
+import { ForgotPasswordForm } from '@/components/auth/ForgotPasswordForm';
+
+export const metadata: Metadata = {
+  title: 'Forgot password · Anything Agents',
+  description: 'Request a secure password reset link for your Anything Agents account.',
+};
 
 export default function ForgotPasswordPage() {
   return (
-    <div className="space-y-4 text-center">
-      <h1 className="text-2xl font-semibold text-slate-900">Forgot your password?</h1>
-      <p className="text-sm text-slate-500">
-        We&apos;re preparing a guided password reset flow. You&apos;ll soon be able to request a reset link directly
-        from here.
-      </p>
-    </div>
+    <AuthCard
+      title="Forgot your password?"
+      description="We’ll send you a secure reset link so you can get back into your workspace."
+      footer={
+        <p className="text-center text-sm text-muted-foreground">
+          Remember it again?{' '}
+          <Link href="/login" className="font-medium text-primary hover:underline">
+            Back to login
+          </Link>
+        </p>
+      }
+    >
+      <ForgotPasswordForm />
+    </AuthCard>
   );
 }
-

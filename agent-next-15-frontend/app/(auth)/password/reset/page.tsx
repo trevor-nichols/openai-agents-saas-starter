@@ -1,27 +1,46 @@
-// File Path: app/(auth)/password/reset/page.tsx
-// Description: Placeholder page for redeeming password reset tokens.
-// Sections:
-// - ResetPasswordPage component: Placeholder until final form is implemented.
+import type { Metadata } from 'next';
+import Link from 'next/link';
+
+import { AuthCard } from '@/app/(auth)/_components/AuthCard';
+import { ResetPasswordForm } from '@/components/auth/ResetPasswordForm';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface ResetPasswordPageProps {
   searchParams?: Record<string, string | string[] | undefined>;
 }
 
+export const metadata: Metadata = {
+  title: 'Reset password · Anything Agents',
+  description: 'Choose a new password to secure your Anything Agents account.',
+};
+
 export default function ResetPasswordPage({ searchParams }: ResetPasswordPageProps) {
   const token = typeof searchParams?.token === 'string' ? searchParams.token : undefined;
 
   return (
-    <div className="space-y-4 text-center">
-      <h1 className="text-2xl font-semibold text-slate-900">Reset your password</h1>
-      <p className="text-sm text-slate-500">
-        The secure reset form will appear here. We&apos;ll validate your token and let you set a new password.
-      </p>
+    <AuthCard
+      title="Reset your password"
+      description="Choose a new password to secure your account."
+      footer={
+        <p className="text-center text-sm text-muted-foreground">
+          Ready to sign in?{' '}
+          <Link href="/login" className="font-medium text-primary hover:underline">
+            Return to login
+          </Link>
+        </p>
+      }
+    >
       {token ? (
-        <p className="text-xs text-slate-400">Token detected: {token.slice(0, 8)}…</p>
+        <ResetPasswordForm token={token} />
       ) : (
-        <p className="text-xs text-amber-500">No token present in the URL.</p>
+        <Alert variant="destructive">
+          <AlertTitle>Reset link missing</AlertTitle>
+          <AlertDescription>
+            We couldn&apos;t find a valid reset token in the URL. Please open the password reset link from your email or
+            request a new one.
+          </AlertDescription>
+        </Alert>
       )}
-    </div>
+    </AuthCard>
   );
 }
-

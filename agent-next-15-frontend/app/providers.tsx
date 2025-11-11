@@ -5,6 +5,8 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import { useState } from 'react';
 
+import { Toaster } from '@/components/ui/sonner';
+
 export function Providers({ children }: { children: React.ReactNode }) {
   // Create a client instance per component mount to avoid sharing state between requests
   const [queryClient] = useState(
@@ -25,6 +27,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <NextThemesProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
       <QueryClientProvider client={queryClient}>
         {children}
+        <Toaster richColors position="top-center" />
         <ReactQueryDevtools initialIsOpen={false} />
       </QueryClientProvider>
     </NextThemesProvider>

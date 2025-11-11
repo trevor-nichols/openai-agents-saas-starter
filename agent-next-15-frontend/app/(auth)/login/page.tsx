@@ -1,25 +1,41 @@
-// File Path: app/(auth)/login/page.tsx
-// Description: Sign-in page that renders within the shared auth layout.
-// Sections:
-// - LoginPage component: Passes redirect information to the LoginForm.
+import type { Metadata } from 'next';
+import Link from 'next/link';
 
+import { AuthCard } from '@/app/(auth)/_components/AuthCard';
 import { LoginForm } from '@/components/auth/LoginForm';
+
+export const metadata: Metadata = {
+  title: 'Sign in · Anything Agents',
+  description: 'Access your Anything Agents workspace with your organization credentials.',
+};
 
 interface LoginPageProps {
   searchParams?: Record<string, string | string[] | undefined>;
 }
 
 export default function LoginPage({ searchParams }: LoginPageProps) {
-  const redirectTo = typeof searchParams?.redirectTo === 'string' ? searchParams?.redirectTo : undefined;
+  const redirectParam = typeof searchParams?.redirectTo === 'string' ? searchParams.redirectTo : undefined;
+  const redirectTo = redirectParam && redirectParam.startsWith('/') ? redirectParam : undefined;
 
   return (
-    <div className="space-y-6 text-center">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold text-slate-900">Sign in to Anything Agents</h1>
-        <p className="text-sm text-slate-500">Use your organization credentials to continue.</p>
-      </header>
-
+    <AuthCard
+      title="Sign in to Anything Agents"
+      description="Use your organization credentials to continue."
+      footer={
+        <div className="flex flex-col gap-2 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
+          <p>
+            New here?{' '}
+            <Link href="/register" className="font-medium text-primary hover:underline">
+              Create an account
+            </Link>
+          </p>
+          <Link href="/password/forgot" className="text-sm text-muted-foreground hover:text-foreground">
+            Forgot password
+          </Link>
+        </div>
+      }
+    >
       <LoginForm redirectTo={redirectTo} />
-    </div>
+    </AuthCard>
   );
 }
