@@ -1,13 +1,16 @@
 // File Path: features/chat/components/ChatInterface.tsx
-// Description: Chat transcript + composer component used inside the chat workspace.
-// Sections:
-// - Component props: Expected data + callbacks from the orchestrator.
-// - UI: Conversation header, message list, and input form.
+// Description: Command-center chat interface aligned with the glass UI system.
 
 'use client';
 
 import React, { useEffect, useRef, useState, type FormEvent } from 'react';
 
+import { Button } from '@/components/ui/button';
+import { GlassPanel } from '@/components/ui/foundation';
+import { EmptyState, SkeletonPanel } from '@/components/ui/states';
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
+import { formatClockTime } from '@/lib/utils/time';
 import type { ChatMessage } from '@/lib/chat/types';
 
 interface ChatInterfaceProps {
@@ -18,6 +21,7 @@ interface ChatInterfaceProps {
   onClearConversation?: () => void | Promise<void>;
   isClearingConversation?: boolean;
   isLoadingHistory?: boolean;
+  className?: string;
 }
 
 export function ChatInterface({
@@ -28,92 +32,79 @@ export function ChatInterface({
   onClearConversation,
   isClearingConversation = false,
   isLoadingHistory = false,
+  className,
 }: ChatInterfaceProps) {
   const [messageInput, setMessageInput] = useState('');
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
+    const container = chatContainerRef.current;
+    if (!container) return;
+    container.scrollTop = container.scrollHeight;
   }, [messages]);
 
-  const handleLocalFormSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!messageInput.trim() || isSending || isLoadingHistory) {
-      return;
-    }
-
-    const textToSend = messageInput;
+    const value = messageInput.trim();
+    if (!value || isSending || isLoadingHistory) return;
     setMessageInput('');
-    await onSendMessage(textToSend);
+    await onSendMessage(value);
   };
 
   return (
-    <section className="flex h-full w-full flex-col overflow-hidden rounded-lg bg-white shadow dark:bg-gray-900">
-      <div className="flex items-start justify-between gap-4 border-b border-gray-200 p-4 dark:border-gray-700">
+    <GlassPanel className={cn('flex h-full flex-col overflow-hidden p-0', className)}>
+      <div className="flex items-start justify-between border-b border-white/5 px-6 py-4">
         <div>
-          <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-            {currentConversationId
-              ? `Conversation ${currentConversationId.substring(0, 12)}...`
-              : 'New conversation'}
+          <p className="text-xs uppercase tracking-[0.3em] text-foreground/50">Conversation</p>
+          <p className="text-lg font-semibold text-foreground">
+            {currentConversationId ? `#${currentConversationId.substring(0, 12)}…` : 'New conversation'}
           </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              {isLoadingHistory
-                ? 'Loading conversation history...'
-                : currentConversationId
-                  ? 'Messages loaded from history.'
-                  : 'Send a message to start a new conversation.'}
-            </p>
+          <p className="text-xs text-foreground/60">
+            {isLoadingHistory
+              ? 'Loading transcript…'
+              : currentConversationId
+                ? 'History synced from audit log.'
+                : 'Send a message to start a new thread.'}
+          </p>
         </div>
         {onClearConversation && currentConversationId ? (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
+            className="border border-white/10"
+            disabled={isClearingConversation || isLoadingHistory}
             onClick={() => {
               void onClearConversation();
             }}
-            disabled={isClearingConversation || isLoadingHistory}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-200 disabled:opacity-60 dark:border-gray-600 dark:text-gray-100 dark:hover:bg-gray-700"
           >
-            {isClearingConversation ? 'Clearing…' : 'Clear conversation'}
-          </button>
+            {isClearingConversation ? 'Clearing…' : 'Clear chat'}
+          </Button>
         ) : null}
       </div>
 
-      <div
-        ref={chatContainerRef}
-        className="flex-grow space-y-4 overflow-y-auto border-b border-gray-200 p-4 dark:border-gray-700"
-      >
+      <div ref={chatContainerRef} className="flex-1 space-y-4 overflow-y-auto px-6 py-6">
         {isLoadingHistory ? (
-          <div className="py-20 text-center text-gray-500 dark:text-gray-400">
-            <p>Loading conversation history...</p>
-          </div>
+          <SkeletonPanel lines={8} />
         ) : messages.length === 0 ? (
-          <div className="py-20 text-center text-gray-500 dark:text-gray-400">
-            <p>No messages yet.</p>
-            <p className="mt-1 text-xs">Send a message to start the chat.</p>
-          </div>
+          <EmptyState
+            title="No messages yet"
+            description="Compose a prompt below to brief your agent."
+          />
         ) : (
-          messages.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+          messages.map((message) => (
+            <div key={message.id} className={cn('flex w-full', message.role === 'user' ? 'justify-end' : 'justify-start')}>
               <div
-                className={`max-w-xl whitespace-pre-wrap rounded-lg px-4 py-2 shadow lg:max-w-2xl ${
-                  msg.role === 'user'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-                }`}
+                className={cn(
+                  'max-w-2xl rounded-2xl px-4 py-3 text-sm shadow-glass transition',
+                  message.role === 'user'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-white/10 text-foreground'
+                )}
               >
-                <p className="text-sm">
-                  {msg.content}
-                  {msg.isStreaming && msg.role === 'assistant' ? '' : ''}
-                </p>
-                {msg.timestamp && !msg.isStreaming ? (
-                  <p
-                    className={`mt-1 text-xs ${
-                      msg.role === 'user' ? 'text-blue-200' : 'text-gray-500 dark:text-gray-400'
-                    }`}
-                  >
-                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <p>{message.content}</p>
+                {message.timestamp && !message.isStreaming ? (
+                  <p className="mt-2 text-[11px] uppercase tracking-wide text-foreground/50">
+                    {formatClockTime(message.timestamp)}
                   </p>
                 ) : null}
               </div>
@@ -122,26 +113,27 @@ export function ChatInterface({
         )}
       </div>
 
-      <div className="flex-shrink-0 border-t border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
-        <form className="flex gap-2" onSubmit={handleLocalFormSubmit}>
-          <input
-            type="text"
-            placeholder={`Type message${currentConversationId ? ` to ${currentConversationId.substring(0, 8)}...` : '...'}`}
+      <form onSubmit={handleSubmit} className="border-t border-white/5 bg-white/5 px-6 py-4">
+        <div className="flex flex-col gap-3 md:flex-row">
+          <Textarea
             value={messageInput}
             onChange={(event) => setMessageInput(event.target.value)}
+            placeholder={
+              currentConversationId ? `Message ${currentConversationId.substring(0, 8)}…` : 'Ask your agent…'
+            }
             disabled={isSending || isLoadingHistory}
-            className="flex-grow rounded-lg border border-gray-300 bg-white p-3 text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700"
+            rows={2}
+            className="flex-1 resize-none border-white/10 bg-transparent text-sm placeholder:text-foreground/40"
           />
-          <button
+          <Button
             type="submit"
             disabled={isSending || isLoadingHistory || !messageInput.trim()}
-            className="rounded-lg bg-blue-600 px-6 py-3 text-white transition-colors duration-150 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-gray-800"
+            className="md:min-w-[140px]"
           >
-            {isSending ? 'Sending...' : 'Send'}
-          </button>
-        </form>
-      </div>
-    </section>
+            {isSending ? 'Sending…' : 'Send'}
+          </Button>
+        </div>
+      </form>
+    </GlassPanel>
   );
 }
-

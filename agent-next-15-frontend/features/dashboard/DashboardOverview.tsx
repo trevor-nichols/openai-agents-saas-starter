@@ -1,20 +1,55 @@
-// File Path: features/dashboard/DashboardOverview.tsx
-// Description: Placeholder dashboard overview with room for KPI widgets.
+'use client';
+
+import Link from 'next/link';
+
+import { Button } from '@/components/ui/button';
+import { SectionHeader } from '@/components/ui/foundation';
+
+import { BillingPreview } from './components/BillingPreview';
+import { KpiGrid } from './components/KpiGrid';
+import { QuickActions } from './components/QuickActions';
+import { RecentConversations } from './components/RecentConversations';
+import { useDashboardData } from './hooks/useDashboardData';
 
 export function DashboardOverview() {
-  return (
-    <section className="space-y-4">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold text-slate-900">Tenant overview</h1>
-        <p className="text-sm text-slate-500">
-          We&apos;ll populate this area with conversation stats, active agents, and quick actions.
-        </p>
-      </header>
+  const {
+    kpis,
+    isLoadingKpis,
+    kpiError,
+    recentConversations,
+    isLoadingConversations,
+    conversationsError,
+    billingPreview,
+    quickActions,
+    refreshConversations,
+  } = useDashboardData();
 
-      <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
-        Dashboard widgets coming soon. Reference the UI milestone to prioritize KPIs.
+  return (
+    <section className="space-y-10">
+      <SectionHeader
+        eyebrow="Overview"
+        title="Command center"
+        description="Monitor agents, conversations, and billing health from a single glass surface."
+        actions={
+          <Button asChild>
+            <Link href="/chat">New chat</Link>
+          </Button>
+        }
+      />
+
+      <KpiGrid kpis={kpis} isLoading={isLoadingKpis} error={kpiError} />
+
+      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+        <RecentConversations
+          conversations={recentConversations}
+          isLoading={isLoadingConversations}
+          error={conversationsError}
+          onRefresh={refreshConversations}
+        />
+        <BillingPreview preview={billingPreview} />
       </div>
+
+      <QuickActions actions={quickActions} />
     </section>
   );
 }
-

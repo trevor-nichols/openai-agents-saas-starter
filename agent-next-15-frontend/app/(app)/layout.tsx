@@ -13,7 +13,6 @@ interface AppLayoutProps {
 }
 
 // --- Navigation configuration ---
-// Central definition of primary navigation destinations inside the app shell.
 const primaryNav = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/chat', label: 'Chat' },
@@ -31,55 +30,73 @@ const accountNav = [
 ];
 
 // --- AppLayout component ---
-// Provides the authenticated chrome with silent session refresh and navigation.
 export default function AppLayout({ children }: AppLayoutProps) {
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900">
+    <div className="flex min-h-screen bg-background text-foreground">
       <SilentRefresh />
 
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 py-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-col gap-2">
-            <Link href="/dashboard" className="text-lg font-semibold">
-              Anything Agents Console
-            </Link>
-            <p className="text-xs text-slate-500">
-              Configure agents, monitor conversations, and manage your tenant—all in one console.
-            </p>
-          </div>
+      <aside className="relative hidden w-[280px] flex-col border-r border-white/10 bg-background/70 p-6 backdrop-blur-glass lg:flex">
+        <Link href="/dashboard" className="text-xl font-semibold tracking-tight">
+          Anything Agents
+        </Link>
+        <p className="mt-2 text-sm text-foreground/60">
+          Operate your AI agent stack with confidence.
+        </p>
 
-          <nav aria-label="Primary application navigation" className="flex flex-wrap items-center gap-4 text-sm font-medium">
-            {primaryNav.map((item) => (
+        <nav aria-label="Primary navigation" className="mt-8 flex flex-col gap-1 text-sm font-medium">
+          {primaryNav.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="rounded-lg px-3 py-2 text-foreground/70 transition duration-quick ease-apple hover:bg-white/5 hover:text-foreground"
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="mt-auto">
+          <p className="text-xs font-semibold uppercase tracking-wide text-foreground/50">Account</p>
+          <nav aria-label="Account navigation" className="mt-3 flex flex-col gap-1 text-sm">
+            {accountNav.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="rounded-md px-3 py-1.5 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+                className="rounded-lg px-3 py-2 text-foreground/70 transition duration-quick ease-apple hover:bg-white/5 hover:text-foreground"
               >
                 {item.label}
               </Link>
             ))}
           </nav>
         </div>
-      </header>
+      </aside>
 
-      <div className="flex flex-1 flex-col lg:flex-row">
-        <aside className="border-b border-slate-200 bg-white px-6 py-4 text-sm lg:w-64 lg:border-b-0 lg:border-r">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Account</h2>
-          <nav aria-label="Account navigation" className="mt-3 flex flex-col gap-2">
-            {accountNav.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="rounded-md px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-        </aside>
+      <div className="flex min-h-screen flex-1 flex-col">
+        <header className="sticky top-0 z-30 border-b border-white/10 bg-background/80 backdrop-blur-glass">
+          <div className="flex flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col gap-1">
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-foreground/50">Anything Agents Console</p>
+              <p className="text-sm text-foreground/70">
+                Configure agents, monitor conversations, and keep billing healthy.
+              </p>
+            </div>
 
-        <main className="flex-1 overflow-y-auto bg-slate-50 px-6 py-10">
-          <div className="mx-auto w-full max-w-6xl">
+            <nav aria-label="Primary navigation mobile" className="flex gap-2 overflow-x-auto text-sm font-medium lg:hidden">
+              {primaryNav.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="rounded-pill border border-white/10 px-3 py-1.5 text-foreground/70 transition duration-quick ease-apple hover:border-white/40 hover:text-foreground"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
+        </header>
+
+        <main className="relative flex-1 overflow-y-auto px-4 py-8 sm:px-6 lg:px-10">
+          <div className="mx-auto w-full max-w-6xl space-y-10">
             {children}
           </div>
         </main>
@@ -87,4 +104,3 @@ export default function AppLayout({ children }: AppLayoutProps) {
     </div>
   );
 }
-

@@ -114,6 +114,23 @@ Deliver a production-quality page architecture and component plan that maps ever
 - **Ownership split:** Engineering owns the shared hooks/services in `lib/**`; the design/UI team iterates inside `features/<domain>/components` using those hooks. Any new cross-feature logic graduates back into `lib/**` so other surfaces stay consistent.
 - **Testing:** Colocate unit/interaction tests with the orchestrator (`ChatWorkspace.test.tsx`). Promote reusable test helpers to existing shared testing utilities when multiple features need them.
 
+<!-- SECTION: Design Decisions -->
+## Design System Decisions (2025-11-10)
+
+- **Visual Language Tokens** – Adopt a graphite-to-porcelain palette (`#0F1115` primary, `#181B21` shell, elevated glass `rgba(255,255,255,0.06)`, stroke `rgba(255,255,255,0.08)`, accent `#6EB5FF`). Typography stack `SF Pro Display, SF Pro Text, Inter, -apple-system`. Set radii `--radius-xs:4px`, `--radius-sm:8px`, `--radius-lg:16px`, `--radius-pill:999px`. Motion tokens `--ease-apple: cubic-bezier(0.32,0.72,0,1)`, with durations `150ms` (hover), `220ms` (content), `320ms` (modal/sheet). Define CSS variables in `app/globals.css` and mirror them inside `tailwind.config.ts` theme tokens.
+- **Layout Behavior** – `app/(marketing)` uses a translucent top nav over full-width hero; `app/(auth)` centers a frosted card (max 480px) with glow; `app/(app)` keeps a 280px frosted sidebar that collapses to an icon rail ≤1024px plus a 64px top bar for breadcrumbs/actions. Workspace routes (chat) stretch edge-to-edge with resizable panels; admin/settings/billing routes constrain content width to 1200px for readability.
+- **Component Coverage** – Create a foundation kit under `components/ui/foundation/` (`GlassPanel`, `StatCard`, `SectionHeader`, `KeyValueList`, `InlineTag`) composed from existing Shadcn primitives. If needed primitives (e.g., `navigation-menu`) are missing, add them via the shadcn CLI and log the addition in `docs/frontend/ui/shadcn.md`.
+- **State Patterns** – Centralize skeletons/empty/error components under `components/ui/states/`. Styling: soft gradient background (`linear-gradient(135deg, rgba(255,255,255,0.08), rgba(110,181,255,0.12))`), thin border using the stroke token, and rounded corners derived from the new radii. Every feature route replaces ad-hoc placeholders with these shared components.
+- **Motion & Micro-Interactions** – Apply `--ease-apple` globally. Buttons gain subtle color fade + 2px press translation; the sidebar collapses over 240ms; modals/sheets fade & slide over 320ms with blur transitions. Hover states lighten the surface by ~6% and add a restrained shadow (`0 8px 24px rgba(0,0,0,0.25)`). Reserve parallax for marketing hero sections only.
+- **Content Density Guardrails** – Use an 8/12/20/32 spacing scale. Dashboards keep generous outer padding (32px) with denser card internals (16px). Tables default to 48px rows, with a compact 40px variant for billing/sessions. Chat transcripts maintain roomy bubbles, while metadata drawers use condensed typography with hairline separators (`rgba(255,255,255,0.08)`), balancing the Johnny Ive aesthetic with enterprise readability.
+
+<!-- SECTION: Progress -->
+## Progress Update (2025-11-10)
+
+- **Tokens & Foundation** – Global palette, motion, and radii tokens now live in `app/globals.css` + `tailwind.config.ts`, and the `components/ui/foundation` + `components/ui/states` kits power every refreshed route.
+- **Dashboard & Chat** – `features/dashboard` and `features/chat` consume the new kit: KPI/stat cards, glass chat workspace, InlineTag agent telemetry, and shared loading/error/empty states are live under the authenticated shell.
+- **Billing & Conversations** – `/billing` and `/conversations` now ship glass panels backed by live data (billing stream, TanStack conversations) with InlineTags, ScrollArea tables, and reusable Empty/Skeleton states, aligning all authenticated surfaces to the same Johnny Ive aesthetic.
+
 <!-- SECTION: Workstreams -->
 ## Workstreams & Tasks
 
@@ -126,27 +143,27 @@ Deliver a production-quality page architecture and component plan that maps ever
   - [ ] Implement form validation, error surfacing, success states.
   - [ ] Ensure route guards redirect correctly (middleware + per-page metadata).
 - **Chat Workspace Evolution**
-  - [ ] Promote current `app/(agent)/page.tsx` into `/(app)/chat` with shell layout.
-  - [ ] Add agent switcher, tool metadata sidebar, transcript export placeholder.
-  - [ ] Plan skeleton states and error toasts for streaming failures.
+  - [x] Promote current `app/(agent)/page.tsx` into `/(app)/chat` with shell layout.
+  - [x] Add agent switcher, tool metadata sidebar, transcript export placeholder.
+  - [x] Plan skeleton states and error toasts for streaming failures.
 - **Conversations & Audit Trails**
-  - [ ] Build `/(app)/conversations` list view (filter/sort, search).
+  - [x] Build `/(app)/conversations` list view (filter/sort, search).
   - [ ] Add detail drawer/page with metadata, delete/export actions.
-  - [ ] Wire to existing conversation endpoints + `useChatController`.
+  - [x] Wire to existing conversation endpoints + `useChatController`.
 - **Agent & Tool Catalog**
   - [ ] Create agent roster page with status badges and model metadata.
   - [ ] Display tool categories, usage instructions, and availability per agent.
 - **Billing & Subscription Hub**
-  - [ ] Surface subscription summary, next invoice, usage charts.
+  - [x] Surface subscription summary, next invoice, usage charts.
   - [ ] Provide upgrade/downgrade controls (Shadcn dialog + form).
-  - [ ] List recent billing events (reuse `BillingEventsPanel`, enhance styling).
+  - [x] List recent billing events (reuse `BillingEventsPanel`, enhance styling).
 - **Account & Security**
   - [ ] Profile page (user info, tenant data, email verification state).
   - [ ] Security page (password change form, MFA placeholder, last login).
   - [ ] Sessions table with revoke controls, service account token issuance flow.
 - **Shared Systems**
   - [ ] Toast/notification framework (centralized provider).
-  - [ ] Loading skeleton components (marketing + app).
+  - [x] Loading skeleton components (marketing + app).
   - [ ] Error boundary surfaces per route group.
 
 <!-- SECTION: Risks -->
@@ -163,5 +180,3 @@ Deliver a production-quality page architecture and component plan that maps ever
 - Shadcn component install list approved + added to backlog.  
 - Workstream checklist populated with owners/ETA and tracked via Linear/Jira.  
 - `pnpm lint`, `pnpm type-check`, `pnpm vitest run` pass after scaffolding updates.
-
-

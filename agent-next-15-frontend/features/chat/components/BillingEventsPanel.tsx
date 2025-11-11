@@ -1,181 +1,92 @@
 // File Path: features/chat/components/BillingEventsPanel.tsx
-// Description: Real-time billing event feed displayed beneath the chat workspace.
-// Sections:
-// - Component props: Billing stream data sourced from TanStack Query.
-// - Rendering helpers: Format subscription/invoice/usage details.
+// Description: Billing stream preview styled with glass components.
 
 'use client';
 
+import Link from 'next/link';
 import React from 'react';
 
+import { GlassPanel, InlineTag, SectionHeader } from '@/components/ui/foundation';
+import { EmptyState } from '@/components/ui/states';
+import { formatRelativeTime } from '@/lib/utils/time';
 import type { BillingEvent, BillingStreamStatus } from '@/types/billing';
 
 interface BillingEventsPanelProps {
   events: BillingEvent[];
   status: BillingStreamStatus;
+  className?: string;
 }
 
-export function BillingEventsPanel({ events, status }: BillingEventsPanelProps) {
+export function BillingEventsPanel({ events, status, className }: BillingEventsPanelProps) {
   return (
-    <section className="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-slate-900">Billing Activity</h2>
-        <span className="text-xs uppercase tracking-wide text-slate-500">{statusLabel(status)}</span>
-      </div>
-      {events.length === 0 ? (
-        <p className="mt-4 text-sm text-slate-500">No billing updates yet. Updates will appear here in real time.</p>
-      ) : (
-        <ul className="mt-4 space-y-2">
-          {events.map((event) => (
-            <li
-              key={event.stripe_event_id}
-              className="rounded-md border border-slate-100 px-3 py-2 text-sm text-slate-800"
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-medium capitalize">{formatEventType(event.event_type)}</span>
-                <span className="text-xs text-slate-400">{formatTimestamp(event.occurred_at)}</span>
-              </div>
-              {event.summary ? <p className="text-xs text-slate-500">{event.summary}</p> : null}
+    <GlassPanel className={className}>
+      <SectionHeader
+        eyebrow="Billing"
+        title="Live usage feed"
+        description="Stripe events mirrored in real time."
+        actions={<InlineTag tone={statusTone(status)}>{statusLabel(status)}</InlineTag>}
+      />
 
-              <div className="mt-2 space-y-2 text-xs text-slate-600">
-                {renderSubscription(event)}
-                {renderInvoice(event)}
-                {renderUsage(event)}
+      {events.length === 0 ? (
+        <EmptyState
+          title="Awaiting billing activity"
+          description="Usage, invoices, and subscription updates will appear here."
+        />
+      ) : (
+        <ul className="mt-6 space-y-3 text-sm text-foreground/80">
+          {events.map((event) => (
+            <li key={event.stripe_event_id} className="rounded-xl border border-white/5 bg-white/5 px-4 py-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-semibold capitalize">{event.summary ?? event.event_type.replace(/\./g, ' ')}</p>
+                <span className="text-xs text-foreground/50">{formatRelativeTime(event.occurred_at)}</span>
               </div>
+              {event.invoice?.amount_due_cents ? (
+                <p className="text-xs text-foreground/60">
+                  Invoice {event.invoice.invoice_id} ·
+                  {formatCurrency(event.invoice.amount_due_cents, event.invoice.currency ?? 'USD')}
+                </p>
+              ) : null}
+              {event.subscription ? (
+                <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-foreground/60">
+                  <span>Plan · {event.subscription.plan_code}</span>
+                  <span>Status · {event.subscription.status}</span>
+                </div>
+              ) : null}
+              {event.invoice?.hosted_invoice_url ? (
+                <div className="mt-2 text-xs">
+                  <Link href={event.invoice.hosted_invoice_url} className="text-primary underline-offset-4 hover:underline">
+                    View invoice
+                  </Link>
+                </div>
+              ) : null}
             </li>
           ))}
         </ul>
       )}
-    </section>
+    </GlassPanel>
   );
 }
 
-function statusLabel(status: BillingStreamStatus): string {
+function statusTone(status: BillingStreamStatus) {
+  if (status === 'error') return 'warning';
+  if (status === 'open') return 'positive';
+  return 'default';
+}
+
+function statusLabel(status: BillingStreamStatus) {
   switch (status) {
     case 'open':
       return 'live';
     case 'connecting':
       return 'connecting';
     case 'error':
-      return 'disconnected';
+      return 'error';
     default:
       return status;
   }
 }
 
-function formatEventType(value: string): string {
-  return value.replace(/\./g, ' ');
+function formatCurrency(amountCents: number | undefined, currency: string) {
+  if (amountCents == null) return '';
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amountCents / 100);
 }
-
-function formatTimestamp(value: string): string {
-  const date = new Date(value);
-  return date.toLocaleString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-function renderSubscription(event: BillingEvent) {
-  if (!event.subscription) return null;
-  const subscription = event.subscription;
-  return (
-    <div>
-      <h3 className="font-semibold text-slate-700">Subscription</h3>
-      <dl className="mt-1 grid grid-cols-2 gap-1">
-        <Detail label="Plan" value={subscription.plan_code} />
-        <Detail label="Status" value={subscription.status} />
-        <Detail label="Seats" value={subscription.seat_count ?? '—'} />
-        <Detail label="Auto renew" value={subscription.auto_renew ? 'Yes' : 'No'} />
-        <Detail label="Current period" value={formatPeriod(subscription.current_period_start, subscription.current_period_end)} />
-        <Detail label="Trial ends" value={formatDate(subscription.trial_ends_at)} />
-        <Detail label="Cancel at" value={formatDate(subscription.cancel_at)} />
-      </dl>
-    </div>
-  );
-}
-
-function renderInvoice(event: BillingEvent) {
-  if (!event.invoice) return null;
-  const invoice = event.invoice;
-  return (
-    <div>
-      <h3 className="font-semibold text-slate-700">Invoice</h3>
-      <dl className="mt-1 grid grid-cols-2 gap-1">
-        <Detail label="Status" value={invoice.status} />
-        <Detail label="Amount" value={formatCurrency(invoice.amount_due_cents, invoice.currency)} />
-        <Detail label="Reason" value={invoice.billing_reason ?? '—'} />
-        <Detail label="Collection" value={invoice.collection_method ?? '—'} />
-        <Detail label="Period" value={formatPeriod(invoice.period_start, invoice.period_end)} />
-        <Detail
-          label="Invoice"
-          value={
-            invoice.hosted_invoice_url ? (
-              <a className="text-blue-600 hover:underline" href={invoice.hosted_invoice_url} target="_blank" rel="noreferrer">
-                View invoice
-              </a>
-            ) : (
-              '—'
-            )
-          }
-        />
-      </dl>
-    </div>
-  );
-}
-
-function renderUsage(event: BillingEvent) {
-  if (!event.usage || event.usage.length === 0) return null;
-  return (
-    <div>
-      <h3 className="font-semibold text-slate-700">Usage</h3>
-      <ul className="mt-1 space-y-1">
-        {event.usage.map((record) => (
-          <li key={`${event.stripe_event_id}-${record.feature_key}`} className="rounded border border-slate-100 px-2 py-1">
-            <div className="flex items-center justify-between">
-              <span>{record.feature_key}</span>
-              <span className="font-semibold">{record.quantity}</span>
-            </div>
-            <div className="text-[11px] text-slate-500">
-              {formatPeriod(record.period_start, record.period_end)}
-              {record.amount_cents != null ? (
-                <span className="ml-2">
-                  {formatCurrency(record.amount_cents, event.invoice?.currency ?? 'usd')}
-                </span>
-              ) : null}
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-type DetailValue = React.ReactNode | string | number | null | undefined;
-
-function Detail({ label, value }: { label: string; value: DetailValue }) {
-  if (value === undefined || value === null || value === '') return null;
-  return (
-    <div>
-      <dt className="text-[11px] uppercase tracking-wide text-slate-400">{label}</dt>
-      <dd className="text-xs text-slate-600">{value}</dd>
-    </div>
-  );
-}
-
-function formatCurrency(amountCents: number, currency: string | undefined) {
-  const formatter = new Intl.NumberFormat(undefined, {
-    style: 'currency',
-    currency: (currency || 'usd').toUpperCase(),
-    minimumFractionDigits: 2,
-  });
-  return formatter.format((amountCents || 0) / 100);
-}
-
-function formatDate(value?: string | null): string {
-  if (!value) return '—';
-  return new Date(value).toLocaleDateString();
-}
-
-function formatPeriod(start?: string | null, end?: string | null): string {
-  if (!start && !end) return '—';
-  if (!start || !end) return formatDate(start ?? end ?? undefined);
-  return `${formatDate(start)} → ${formatDate(end)}`;
-}
-

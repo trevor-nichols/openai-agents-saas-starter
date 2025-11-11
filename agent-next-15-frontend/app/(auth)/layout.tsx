@@ -8,16 +8,18 @@ interface AuthLayoutProps {
 }
 
 // --- AuthLayout component ---
-// Wraps auth pages with a gradient background and constrained content width.
+// Wraps auth pages in a frosted glass card with centered composition.
 export default function AuthLayout({ children }: AuthLayoutProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 py-12">
-      <div className="mx-auto w-full max-w-md px-4">
-        <div className="rounded-3xl border border-slate-200 bg-white p-10 shadow-2xl">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background text-foreground">
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(110,181,255,0.18),_transparent_55%)]" />
+      <div className="pointer-events-none absolute inset-y-0 left-1/2 h-[120%] w-[75%] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,_rgba(75,209,123,0.12),_transparent_60%)] blur-3xl" />
+
+      <div className="relative w-full max-w-md px-4 py-16">
+        <div className="rounded-lg border border-white/10 bg-white/5 p-10 shadow-glass backdrop-blur-glass">
           {children}
         </div>
       </div>
     </div>
   );
 }
-
