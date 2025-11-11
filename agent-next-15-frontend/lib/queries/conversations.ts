@@ -11,8 +11,12 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 
-import type { ConversationListItem } from '@/types/conversations';
-import { fetchConversations, sortConversationsByDate } from '@/lib/api/conversations';
+import type { ConversationHistory, ConversationListItem } from '@/types/conversations';
+import {
+  fetchConversations,
+  fetchConversationHistory,
+  sortConversationsByDate,
+} from '@/lib/api/conversations';
 import { queryKeys } from './keys';
 
 interface UseConversationsReturn {
@@ -23,6 +27,14 @@ interface UseConversationsReturn {
   addConversationToList: (newConversation: ConversationListItem) => void;
   updateConversationInList: (updatedConversation: ConversationListItem) => void;
   removeConversationFromList: (conversationId: string) => void;
+}
+
+interface UseConversationDetailReturn {
+  conversationHistory: ConversationHistory | null;
+  isLoadingDetail: boolean;
+  isFetchingDetail: boolean;
+  detailError: string | null;
+  refetchDetail: () => Promise<void>;
 }
 
 /**
@@ -112,5 +124,30 @@ export function useConversations(): UseConversationsReturn {
     addConversationToList,
     updateConversationInList,
     removeConversationFromList,
+  };
+}
+
+export function useConversationDetail(conversationId: string | null): UseConversationDetailReturn {
+  const isEnabled = Boolean(conversationId);
+  const {
+    data,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: queryKeys.conversations.detail(conversationId ?? 'preview'),
+    queryFn: () => fetchConversationHistory(conversationId as string),
+    enabled: isEnabled,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+
+  return {
+    conversationHistory: data ?? null,
+    isLoadingDetail: isLoading && isEnabled,
+    isFetchingDetail: isFetching && isEnabled,
+    detailError: error?.message ?? null,
+    refetchDetail: () => refetch().then(() => undefined),
   };
 }

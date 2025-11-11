@@ -88,6 +88,25 @@ The chat experience combines TanStack Query with an orchestrator hook so UI comp
 
 When extending the chat domain, follow the same pattern: update helpers/hooks, keep controller logic pure, and document cache impacts in this section.
 
+## Conversations Archive Flow
+
+1. **List view** – `features/conversations/ConversationsHub.tsx` consumes `useConversations()` (TanStack Query) to fetch `/api/conversations`. Local search filters the cached list client-side, and each row prefetches its detail query for snappy drawers.
+2. **Detail drawer** – `ConversationDetailDrawer` calls `useConversationDetail(conversationId)` which wraps `fetchConversationHistory` (`/api/conversations/{id}`) and caches the transcript. The drawer exposes JSON export placeholders, ID/message copy actions, and delete flows that invalidate both the list cache and the selected detail query.
+3. **Deleting** – `deleteConversationById` hits the DELETE route, and the drawer invokes `removeConversationFromList` (from the list hook) so TanStack caches stay consistent without refetching the whole table.
+4. **Exports** – Until the backend delivers CSV/PDF, the drawer generates a JSON blob for quick downloads; once servers are ready we can swap the handler to call `/api/conversations/{id}/export` without touching UI code.
+
+This layering keeps the archive UX responsive and predictable, and the same hooks can be reused by upcoming admin/audit surfaces.
+
+## Agent Catalog Flow
+
+1. **Server services** – `lib/server/services/agents.ts` and `tools.ts` wrap the OpenAI Agents API so Next.js routes call FastAPI via the shared `getServerApiClient()` helper.
+2. **API routes** – `/app/api/agents` + `/app/api/tools` proxy the services and normalize `{ success, data }` payloads for the browser.
+3. **Client helpers** – `lib/api/agents.ts`/`tools.ts` fetch the App Router routes, throw descriptive errors, and keep responses typed via `types/agents.ts` + `types/tools.ts`.
+4. **Query layer** – `useAgents()` + `useTools()` (TanStack Query) provide cached data, loading/error flags, and refetch methods.
+5. **Feature UI** – `features/agents/AgentsOverview.tsx` renders the catalog using `GlassPanel` cards with status badges, last heartbeat, and tool lists. Rows stay keyboard-accessible, and shared toasts handle refresh/export states.
+
+This layering mirrors the conversations stack, so future agent detail pages can reuse the same hooks without touching UI components.
+
 ## Auth Boundary Rules
 
 - Only code in `lib/server/**` or Next.js server actions may touch Next `cookies()` or create SDK clients.  

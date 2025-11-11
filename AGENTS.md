@@ -17,7 +17,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 ## Frontend
 - The frontend uses the HeyAPI SDK to generate the API client. The API client is generated into the `lib/api/client` directory.
 - All hooks use TanStack Query
-- Use Shadcn components from components/ui/. DO NOT create custom components. If a component we need is not included yet, add it.
+- Use Shadcn components from components/ui/. DO NOT create custom components. If a component we need is not included yet, add it. Refer to `docs/frontend/ui/components.md` for the latest list of components.
 - Detailed frontend data-access patterns (SDK → services → API routes → hooks) live in `docs/frontend/data-access.md`. Review that doc before adding new queries or routes.
 
 ## CLI Charter – Starter CLI (SC)
@@ -34,6 +34,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 - **Fronted**: Run `pnpm lint` and `pnpm type-check` after all edits in frontend to ensure there are no errors
 - Keep FastAPI routers roughly ≤300 lines by default—split files when workflows/dependencies diverge, but it’s acceptable for a single router to exceed that limit when it embeds tightly coupled security or validation helpers; extract those helpers into shared modules only once they are reused elsewhere.
 - Avoid Pragmatic coupling
+
 # Test Environment Contract
 - `conftest.py` at the repository root forces the entire pytest run onto SQLite + fakeredis and disables billing/auto migrations. **Do not** remove or bypass this file; any new package (CLI included) must behave correctly when those overrides are in effect.
 - Any test that mutates `os.environ` must snapshot and restore the original values to avoid leaking state into other suites. Use the helpers in `anything-agents/tests/conftest.py` or mimic their pattern.

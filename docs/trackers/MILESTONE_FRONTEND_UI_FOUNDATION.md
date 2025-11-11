@@ -159,23 +159,26 @@ Deliver a production-quality page architecture and component plan that maps ever
   - [x] Plan skeleton states and error toasts for streaming failures.
 - **Conversations & Audit Trails**
   - [x] Build `/(app)/conversations` list view (filter/sort, search).
-  - [ ] Add detail drawer/page with metadata, delete/export actions.
+  - [x] Add detail drawer/page with metadata, delete/export actions. *Status (2025-11-11): Drawer now prefetches detail queries, supports JSON export placeholders, ID/message copy, and destructive delete wired to TanStack cache updates.*
   - [x] Wire to existing conversation endpoints + `useChatController`.
 - **Agent & Tool Catalog**
-  - [ ] Create agent roster page with status badges and model metadata.
-  - [ ] Display tool categories, usage instructions, and availability per agent.
+  - [x] Create agent roster page with status badges and model metadata. *Status (2025-11-11): `AgentsOverview` now renders cards with model info, heartbeat timestamps, and status badges sourced from `useAgents()`. Hover states prefetch detail queries for future drawers.*
+  - [x] Display tool categories, usage instructions, and availability per agent. *Status (2025-11-11): Cards show tool badges via `useTools()`, with JSON export placeholder + copy actions documented in data access notes.*
 - **Billing & Subscription Hub**
   - [x] Surface subscription summary, next invoice, usage charts.
-  - [ ] Provide upgrade/downgrade controls (Shadcn dialog + form).
+  - [ ] Provide upgrade/downgrade controls (Shadcn dialog + form). *Deliverable: `/billing/plans` experience that lists plans via `useBillingPlans`, launches dialogs using `start/update/cancel` mutations from `lib/server/services/billing.ts`, and pipes results through the shared toast hook.*
   - [x] List recent billing events (reuse `BillingEventsPanel`, enhance styling).
 - **Account & Security**
-  - [ ] Profile page (user info, tenant data, email verification state).
-  - [ ] Security page (password change form, MFA placeholder, last login).
-  - [ ] Sessions table with revoke controls, service account token issuance flow.
+  - [ ] Profile page (user info, tenant data, email verification state). *Deliverable: cards populated from `/api/auth/session` + `getCurrentUserProfile` with inline alerting for unverified email and tenant metadata.*
+  - [ ] Security page (password change form, MFA placeholder, last login). *Deliverable: Shadcn `form` wired to `changePassword`, plus recent auth activity timeline and future MFA CTA.*
+  - [ ] Sessions table with revoke controls, service account token issuance flow. *Deliverable: TanStack data-table over `listUserSessions`, inline revoke/all buttons, and modal that calls `/api/auth/service-accounts/issue` to mint tokens.*
+- **Marketing & Docs**
+  - [ ] Ship marketing `/docs` route (and `/status` stub). *Deliverable: static/MDX-friendly docs page plus lightweight status placeholder so existing nav/footer links stop 404ing; reuse Marketing layout chrome.*
 - **Shared Systems**
-  - [ ] Toast/notification framework (centralized provider). *Plan: wrap Sonner in `providers.tsx`, expose typed toast hook for features.*
+  - [ ] Toast/notification framework (centralized provider). *Plan: finish migrating all surfaces (chat, billing, future tables) to `useToast` so nothing imports `sonner` directly; document usage in `docs/frontend/data-access.md`.*
   - [x] Loading skeleton components (marketing + app).
   - [ ] Error boundary surfaces per route group. *Plan: compose marketing/auth/app `error.tsx` from `components/ui/states/ErrorState` with tailored recovery copy.*
+  - [ ] Data table kit (TanStack) for audits/sessions/billing. *Deliverable: install `@tanstack/react-table`, add `components/ui/data-table` wrapper, and migrate conversations + sessions tables for consistent sorting/pagination.*
 
 <!-- SECTION: Risks -->
 ## Risks & Mitigations

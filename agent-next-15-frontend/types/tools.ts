@@ -7,3 +7,9 @@ export interface ToolsResponse {
   tools?: ToolRegistry;
   error?: string;
 }
+
+export type ToolDefinition = {
+  name: string;
+  description?: string | null;
+  supported_agents?: string[];
+};
