@@ -1,414 +1,311 @@
 .
-├── app/                         # Next.js app directory containing all routes and layouts
-│   ├── (app)/                   # Route group for authenticated application pages
-│   │   ├── (workspace)/         # Route group for multi-column workspace layouts (e.g., chat)
-│   │   │   ├── chat/            # Chat interface route
-│   │   │   │   ├── actions.ts   # Server Actions for chat streaming and conversation management
-│   │   │   │   └── page.tsx     # Chat workspace page component
-│   │   │   └── layout.tsx       # Layout for workspace views providing common structure
-│   │   ├── account/             # Routes for user account management
-│   │   │   ├── profile/         # User profile page route
-│   │   │   │   └── page.tsx     # Page component for the user profile
-│   │   │   ├── security/        # User security settings page route
-│   │   │   │   └── page.tsx     # Page component for security settings
-│   │   │   ├── service-accounts/ # Service account management page route
-│   │   │   │   └── page.tsx     # Page component for managing service accounts
-│   │   │   └── sessions/        # User session management page route
-│   │   │       └── page.tsx     # Page component for managing active sessions
-│   │   ├── agents/              # Agents overview page route
-│   │   │   └── page.tsx         # Page component for the agents overview
-│   │   ├── billing/             # Billing-related page routes
-│   │   │   ├── page.tsx         # Main billing overview page component
-│   │   │   └── plans/           # Billing plan management page route
-│   │   │       └── page.tsx     # Page component for managing billing plans
-│   │   ├── conversations/       # Conversation history/archive page route
-│   │   │   └── page.tsx         # Page component for the conversations hub
-│   │   ├── dashboard/           # Main dashboard page route for authenticated users
-│   │   │   └── page.tsx         # Page component for the dashboard overview
-│   │   ├── layout.tsx           # Main layout for the authenticated app (sidebar, header)
-│   │   ├── page.tsx             # Root page for the authenticated app group, redirects to dashboard
-│   │   ├── settings/            # Application settings routes
-│   │   │   └── tenant/          # Tenant-specific settings route
-│   │   │       └── page.tsx     # Page component for tenant settings
-│   │   └── tools/               # Tool catalog page route
-│   │       └── page.tsx         # Page component for the tools catalog
-│   ├── (auth)/                  # Route group for authentication pages (login, register, etc.)
-│   │   ├── _components/         # Private components for the auth layout
-│   │   │   └── AuthCard.tsx     # A reusable card component for authentication forms
-│   │   ├── email/               # Routes for email-related actions like verification
-│   │   │   └── verify/          # Route for verifying a user's email address
-│   │   │       ├── VerifyEmailClient.tsx # Client component with logic for email verification
-│   │   │       └── page.tsx     # Page component for email verification
-│   │   ├── error.tsx            # Error boundary for the authentication route group
-│   │   ├── layout.tsx           # Layout for authentication pages (centered card with background)
-│   │   ├── loading.tsx          # Loading UI for the authentication route group
-│   │   ├── login/               # Login page route
-│   │   │   └── page.tsx         # Page component for the login form
-│   │   ├── password/            # Routes for password management
-│   │   │   ├── forgot/          # "Forgot password" page route
-│   │   │   │   └── page.tsx     # Page component for the forgot password form
-│   │   │   └── reset/           # "Reset password" page route
-│   │   │       └── page.tsx     # Page component for the reset password form
-│   │   └── register/            # Registration page route
-│   │       └── page.tsx         # Page component for the registration form
-│   ├── (marketing)/             # Route group for public-facing marketing pages
-│   │   ├── _components/         # Private components for marketing pages
+├── app/                        # Next.js app directory containing all routes and layouts
+│   ├── (app)/                  # Route group for authenticated application pages
+│   │   ├── (workspace)/        # Route group for multi-column workspace layouts (e.g., chat)
+│   │   │   ├── chat/           # Chat workspace route
+│   │   │   │   ├── actions.ts  # Server Actions for chat streaming and listing conversations
+│   │   │   │   └── page.tsx    # Page component for the main chat interface
+│   │   │   ├── layout.tsx      # Layout for workspace pages providing a flex container
+│   │   ├── account/            # Account management pages
+│   │   │   └── page.tsx        # Account overview page with tabbed navigation
+│   │   ├── agents/             # Agent management pages
+│   │   │   └── page.tsx        # Page to display the agent catalog
+│   │   ├── billing/            # Billing and subscription pages
+│   │   │   ├── page.tsx        # Main billing overview page
+│   │   │   └── plans/          # Page for managing billing plans
+│   │   │       └── page.tsx    # Renders the plan management interface
+│   │   ├── conversations/      # Conversation history pages
+│   │   │   └── page.tsx        # Page to display the conversation hub/archive
+│   │   ├── dashboard/          # Main dashboard for authenticated users
+│   │   │   └── page.tsx        # The primary dashboard page component
+│   │   ├── layout.tsx          # Main application layout with sidebar navigation for authenticated users
+│   │   ├── page.tsx            # Root page for the authenticated app, redirects to /dashboard
+│   │   ├── settings/           # Application settings routes
+│   │   │   └── tenant/         # Tenant-specific settings
+│   │   │       └── page.tsx    # Page for managing tenant settings
+│   │   └── tools/              # Tool management pages
+│   │       └── page.tsx        # Page to display the tool catalog
+│   ├── (auth)/                 # Route group for authentication pages (login, register, etc.)
+│   │   ├── _components/        # Private components for the auth route group
+│   │   │   └── AuthCard.tsx    # Reusable card component for authentication forms
+│   │   ├── email/              # Routes for email-related actions
+│   │   │   └── verify/         # Email verification route
+│   │   │       ├── VerifyEmailClient.tsx # Client component handling email verification logic
+│   │   │       └── page.tsx    # Page for email verification, reads token from URL
+│   │   ├── error.tsx           # Error boundary for the authentication route group
+│   │   ├── layout.tsx          # Layout for all authentication pages, providing a centered card UI
+│   │   ├── loading.tsx         # Loading UI for authentication routes
+│   │   ├── login/              # Login route
+│   │   │   └── page.tsx        # The user login page
+│   │   ├── password/           # Routes for password management
+│   │   │   ├── forgot/         # "Forgot password" route
+│   │   │   │   └── page.tsx    # Page for requesting a password reset link
+│   │   │   └── reset/          # "Reset password" route
+│   │   │       └── page.tsx    # Page for resetting password using a token
+│   │   └── register/           # User registration route
+│   │       └── page.tsx        # The user and tenant registration page
+│   ├── (marketing)/            # Route group for public-facing marketing pages
+│   │   ├── _components/        # Private components for the marketing route group
 │   │   │   ├── marketing-footer.tsx # Footer component for marketing pages
-│   │   │   ├── marketing-header.tsx # Header component for marketing pages
-│   │   │   └── nav-links.ts     # Defines navigation links for marketing pages
-│   │   ├── features/            # Features page route
-│   │   │   └── page.tsx         # Page component for the features overview
-│   │   ├── layout.tsx           # Layout for marketing pages, including header and footer
-│   │   ├── page.tsx             # The main landing page component
-│   │   └── pricing/             # Pricing page route
-│   │       └── page.tsx         # Page component for displaying pricing plans
-│   ├── actions/                 # Server Actions used by client and server components
-│   │   ├── auth/                # Authentication-related server actions
-│   │   │   ├── email.ts       # Server actions for email verification
-│   │   │   ├── passwords.ts   # Server actions for password management
-│   │   │   ├── sessions.ts    # Server actions for session management
-│   │   │   └── signup.ts      # Server action for new user/tenant registration
-│   │   └── auth.ts              # Core authentication server actions (login, logout, refresh)
-│   ├── api/                     # Next.js API route handlers acting as a proxy to the backend
-│   │   ├── agents/              # API routes related to agents
-│   │   │   ├── [agentName]/     # Dynamic routes for a specific agent
-│   │   │   │   └── status/      # Route to get agent status
-│   │   │   │       ├── route.test.ts # Test for the agent status API route
-│   │   │   │       └── route.ts # API route handler to get an agent's status
-│   │   │   ├── route.test.ts    # Test for the agent list API route
-│   │   │   └── route.ts         # API route handler to list all agents
-│   │   ├── auth/                # API routes for authentication and authorization
-│   │   │   ├── email/           # Routes for email-related actions
-│   │   │   │   ├── send/        # Route to send a verification email
-│   │   │   │   │   ├── route.test.ts # Test for sending verification email
-│   │   │   │   │   └── route.ts # API route handler to trigger sending verification email
-│   │   │   │   └── verify/      # Route to verify an email token
-│   │   │   │       ├── route.test.ts # Test for verifying email token
-│   │   │   │       └── route.ts # API route handler to verify an email token
-│   │   │   ├── logout/          # Routes for user logout
-│   │   │   │   ├── all/         # Route to log out from all sessions
-│   │   │   │   │   ├── route.test.ts # Test for logging out of all sessions
-│   │   │   │   │   └── route.ts # API route handler to log out of all sessions
-│   │   │   │   ├── route.test.ts # Test for logging out of a single session
-│   │   │   │   └── route.ts     # API route handler to log out of a single session
-│   │   │   ├── password/        # Routes for password management
-│   │   │   │   ├── change/      # Route to change a user's password
-│   │   │   │   │   ├── route.test.ts # Test for changing password
-│   │   │   │   │   └── route.ts # API route handler for changing password
-│   │   │   │   ├── confirm/     # Route to confirm a password reset with a token
-│   │   │   │   │   ├── route.test.ts # Test for confirming password reset
-│   │   │   │   │   └── route.ts # API route handler for confirming password reset
-│   │   │   │   ├── forgot/      # Route to request a password reset
-│   │   │   │   │   ├── route.test.ts # Test for requesting password reset
-│   │   │   │   │   └── route.ts # API route handler for requesting a password reset
-│   │   │   │   └── reset/       # Route for an admin to reset a user's password
-│   │   │   │       ├── route.test.ts # Test for admin password reset
-│   │   │   │       └── route.ts # API route handler for admin password reset
-│   │   │   ├── refresh/         # Route to refresh an authentication session
-│   │   │   │   └── route.ts     # API route handler for refreshing an access token
-│   │   │   ├── register/        # Route for new user registration
-│   │   │   │   ├── route.test.ts # Test for user registration
-│   │   │   │   └── route.ts     # API route handler for user registration
-│   │   │   ├── service-accounts/ # Routes for managing service accounts
-│   │   │   │   └── issue/       # Route to issue a new service account token
-│   │   │   │       ├── route.test.ts # Test for issuing a service account token
-│   │   │   │       └── route.ts # API route handler for issuing a service account token
-│   │   │   ├── session/         # Route to get current session information
-│   │   │   │   └── route.ts     # API route handler for getting current session info
-│   │   │   └── sessions/        # Routes for managing user sessions
+│   │   │   ├── marketing-header.tsx # Header component with navigation for marketing pages
+│   │   │   └── nav-links.ts    # Defines navigation links for marketing pages
+│   │   ├── features/           # Marketing page for product features
+│   │   │   └── page.tsx        # The "Features" page content
+│   │   ├── layout.tsx          # Layout for marketing pages, including header and footer
+│   │   ├── page.tsx            # The main marketing landing page
+│   │   └── pricing/            # Marketing page for pricing plans
+│   │       └── page.tsx        # The "Pricing" page content
+│   ├── actions/                # Server Actions for client components
+│   │   ├── auth/               # Authentication-related Server Actions
+│   │   │   ├── email.ts      # Server Actions for sending and verifying emails
+│   │   │   ├── passwords.ts  # Server Actions for password reset and change flows
+│   │   │   ├── sessions.ts   # Server Actions for listing and revoking user sessions
+│   │   │   └── signup.ts     # Server Action for user and tenant registration
+│   │   └── auth.ts             # Main Server Actions for login, logout, and silent refresh
+│   ├── api/                    # API routes (Next.js Route Handlers)
+│   │   ├── agents/             # API routes related to agents
+│   │   │   ├── [agentName]/    # Dynamic routes for a specific agent
+│   │   │   │   └── status/     # Agent status routes
+│   │   │   │       ├── route.test.ts # Tests for the agent status API route
+│   │   │   │       └── route.ts      # API route to get status of a specific agent
+│   │   │   ├── route.test.ts   # Tests for the list agents API route
+│   │   │   └── route.ts        # API route to list available agents
+│   │   ├── auth/               # API routes related to authentication
+│   │   │   ├── email/          # Email verification routes
+│   │   │   │   ├── send/       # Route to send a verification email
+│   │   │   │   │   ├── route.test.ts # Tests for sending verification email
+│   │   │   │   │   └── route.ts      # API route to trigger sending a verification email
+│   │   │   │   └── verify/     # Route to verify an email token
+│   │   │   │       ├── route.test.ts # Tests for verifying an email token
+│   │   │   │       └── route.ts      # API route to handle email verification
+│   │   │   ├── logout/         # Logout routes
+│   │   │   │   ├── all/        # Route to log out from all sessions
+│   │   │   │   │   ├── route.test.ts # Tests for logging out of all sessions
+│   │   │   │   │   └── route.ts      # API route to log out from all sessions
+│   │   │   │   ├── route.test.ts # Tests for logging out of a single session
+│   │   │   │   └── route.ts    # API route to log out of the current session
+│   │   │   ├── password/       # Password management routes
+│   │   │   │   ├── change/     # Route to change the current password
+│   │   │   │   │   ├── route.test.ts # Tests for the password change route
+│   │   │   │   │   └── route.ts      # API route to change the current user's password
+│   │   │   │   ├── confirm/    # Route to confirm a password reset
+│   │   │   │   │   ├── route.test.ts # Tests for confirming password reset
+│   │   │   │   │   └── route.ts      # API route to confirm a password reset with a token
+│   │   │   │   ├── forgot/     # Route to request a password reset
+│   │   │   │   │   ├── route.test.ts # Tests for the forgot password route
+│   │   │   │   │   └── route.ts      # API route to request a password reset email
+│   │   │   │   └── reset/      # Route for admin to reset a user's password
+│   │   │   │       ├── route.test.ts # Tests for admin password reset
+│   │   │   │       └── route.ts      # API route for an admin to reset a user password
+│   │   │   ├── refresh/        # Route to refresh the session
+│   │   │   │   └── route.ts    # API route to get a new access token using a refresh token
+│   │   │   ├── register/       # User registration route
+│   │   │   │   ├── route.test.ts # Tests for the registration route
+│   │   │   │   └── route.ts    # API route for user and tenant registration
+│   │   │   ├── session/        # Current session information route
+│   │   │   │   └── route.ts    # API route to get info about the current user's session
+│   │   │   └── sessions/       # Session management routes
 │   │   │       ├── [sessionId]/ # Dynamic route for a specific session
-│   │   │       │   ├── route.test.ts # Test for revoking a specific session
-│   │   │       │   └── route.ts # API route handler to revoke a specific session
-│   │   │       ├── route.test.ts # Test for listing user sessions
-│   │   │       └── route.ts     # API route handler to list user sessions
-│   │   ├── billing/             # API routes for billing information
-│   │   │   ├── plans/           # Route to get available billing plans
-│   │   │   │   └── route.ts     # API route handler to list billing plans
-│   │   │   ├── stream/          # SSE route for billing events
-│   │   │   │   └── route.ts     # API route handler for streaming billing events
-│   │   │   └── tenants/         # Routes for tenant-specific billing
-│   │   │       └── [tenantId]/  # Dynamic routes for a specific tenant
-│   │   │           ├── subscription/ # Routes for managing a tenant's subscription
-│   │   │           │   ├── cancel/ # Route to cancel a subscription
-│   │   │           │   │   ├── route.test.ts # Test for canceling a subscription
-│   │   │           │   │   └── route.ts # API route handler for canceling a subscription
-│   │   │           │   ├── route.test.ts # Test for subscription management
-│   │   │           │   └── route.ts # API route handlers to manage a subscription (GET, POST, PATCH)
-│   │   │           └── usage/       # Route for reporting metered usage
-│   │   │               ├── route.test.ts # Test for recording usage
-│   │   │               └── route.ts # API route handler for recording usage
-│   │   ├── chat/                # API routes for chat functionality
-│   │   │   ├── route.test.ts    # Test for the non-streaming chat endpoint
-│   │   │   ├── route.ts         # API route handler for non-streaming chat messages
-│   │   │   └── stream/          # SSE route for streaming chat messages
-│   │   │       └── route.ts     # API route handler for streaming chat responses
-│   │   ├── conversations/       # API routes for conversations
-│   │   │   ├── [conversationId]/ # Dynamic routes for a specific conversation
-│   │   │   │   ├── route.test.ts # Test for getting/deleting a conversation
-│   │   │   │   └── route.ts     # API route handlers to get or delete a conversation
-│   │   │   ├── route.test.ts    # Test for listing conversations
-│   │   │   └── route.ts         # API route handler to list conversations
-│   │   ├── health/              # API routes for health checks
-│   │   │   ├── ready/           # Route for readiness probe
-│   │   │   │   ├── route.test.ts # Test for the readiness probe
-│   │   │   │   └── route.ts     # API route handler for the readiness probe
-│   │   │   ├── route.test.ts    # Test for the liveness probe
-│   │   │   └── route.ts         # API route handler for the liveness probe
-│   │   └── tools/               # API routes for tools
-│   │       └── route.ts         # API route handler to list available tools
-│   ├── layout.tsx               # Root layout for the entire application
-│   └── providers.tsx            # Client-side context providers (React Query, Theme, etc.)
-├── components/                  # Shared, reusable UI components
-│   ├── auth/                    # Components specific to authentication flows
+│   │   │       │   ├── route.test.ts # Tests for revoking a specific session
+│   │   │       │   └── route.ts      # API route to revoke a specific user session
+│   │   │       ├── route.test.ts # Tests for listing user sessions
+│   │   │       └── route.ts    # API route to list all sessions for the current user
+│   │   ├── billing/            # API routes related to billing
+│   │   │   ├── plans/          # Billing plans route
+│   │   │   │   └── route.ts    # API route to list available billing plans
+│   │   │   ├── stream/         # Billing event stream route
+│   │   │   │   └── route.ts    # Server-Sent Events route for live billing events
+│   │   │   └── tenants/        # Tenant-specific billing routes
+│   │   │       └── [tenantId]/ # Dynamic route for a specific tenant
+│   │   │           ├── subscription/ # Subscription management routes
+│   │   │           │   ├── cancel/     # Route to cancel a subscription
+│   │   │           │   │   ├── route.test.ts # Tests for subscription cancellation
+│   │   │           │   │   └── route.ts      # API route to cancel a tenant's subscription
+│   │   │           │   ├── route.test.ts # Tests for subscription management (GET, POST, PATCH)
+│   │   │           │   └── route.ts    # API routes for managing a tenant's subscription
+│   │   │           └── usage/      # Usage recording route
+│   │   │               ├── route.test.ts # Tests for recording usage
+│   │   │               └── route.ts    # API route to record metered usage for a tenant
+│   │   ├── chat/               # API routes related to chat
+│   │   │   ├── route.test.ts   # Tests for the non-streaming chat API
+│   │   │   ├── route.ts        # API route for non-streaming chat messages
+│   │   │   └── stream/         # Streaming chat route
+│   │   │       └── route.ts    # Server-Sent Events route for streaming chat responses
+│   │   ├── conversations/      # API routes related to conversations
+│   │   │   ├── [conversationId]/ # Dynamic route for a specific conversation
+│   │   │   │   ├── route.test.ts # Tests for GET/DELETE a specific conversation
+│   │   │   │   └── route.ts    # API routes to get or delete a specific conversation
+│   │   │   ├── route.test.ts   # Tests for listing conversations
+│   │   │   └── route.ts        # API route to list all conversations for a user
+│   │   ├── health/             # Health check routes
+│   │   │   ├── ready/          # Readiness probe route
+│   │   │   │   ├── route.test.ts # Tests for the readiness probe
+│   │   │   │   └── route.ts    # API route for the readiness probe
+│   │   │   ├── route.test.ts   # Tests for the liveness probe
+│   │   │   └── route.ts        # API route for the liveness probe
+│   │   └── tools/              # API routes related to tools
+│   │       └── route.ts        # API route to list available tools
+│   ├── layout.tsx              # Root layout for the entire application
+│   └── providers.tsx           # Client-side providers (QueryClient, ThemeProvider)
+├── components/                 # Reusable UI components
+│   ├── auth/                   # Authentication-specific components
 │   │   ├── ForgotPasswordForm.tsx # Form for requesting a password reset
-│   │   ├── LoginForm.tsx      # Form for user login
-│   │   ├── LogoutButton.tsx   # Button component to trigger logout
-│   │   ├── RegisterForm.tsx   # Form for new user registration
-│   │   ├── ResetPasswordForm.tsx # Form for resetting password with a token
-│   │   └── SilentRefresh.tsx  # Client component to handle silent token refresh
-│   └── ui/                      # General-purpose UI components (e.g., from shadcn/ui)
-│       ├── accordion.tsx        # Accordion component
-│       ├── alert-dialog.tsx     # Alert dialog (modal) component
-│       ├── alert.tsx            # Alert message component
-│       ├── aspect-ratio.tsx     # Aspect ratio container component
-│       ├── avatar.tsx           # Avatar component
-│       ├── badge.tsx            # Badge component
-│       ├── breadcrumb.tsx       # Breadcrumb navigation component
-│       ├── button.tsx           # Button component
-│       ├── card.tsx             # Card component
-│       ├── carousel.tsx         # Carousel component
-│       ├── checkbox.tsx         # Checkbox component
-│       ├── collapsible.tsx      # Collapsible content component
-│       ├── command.tsx          # Command palette component
-│       ├── context-menu.tsx     # Context menu component
-│       ├── dialog.tsx           # Dialog (modal) component
-│       ├── dropdown-menu.tsx    # Dropdown menu component
-│       ├── form.tsx             # React Hook Form components and context
-│       ├── foundation/          # Custom, foundational UI components for the app's design system
-│       │   ├── GlassPanel.tsx   # A panel with a frosted glass effect
-│       │   ├── InlineTag.tsx    # A small, pill-shaped tag component
-│       │   ├── KeyValueList.tsx # A component for displaying key-value pairs
-│       │   ├── SectionHeader.tsx # A standardized header for content sections
-│       │   ├── StatCard.tsx     # A card for displaying a single statistic or KPI
-│       │   └── index.ts         # Barrel file exporting foundation components
-│       ├── hover-card.tsx       # Hover card component
-│       ├── input.tsx            # Input field component
-│       ├── label.tsx            # Label component for form elements
-│       ├── navigation-menu.tsx  # Navigation menu component
-│       ├── pagination.tsx       # Pagination component
-│       ├── popover.tsx          # Popover component
-│       ├── progress.tsx         # Progress bar component
-│       ├── radio-group.tsx      # Radio group component
-│       ├── resizable.tsx        # Resizable panel component
-│       ├── scroll-area.tsx      # Scroll area component with custom scrollbars
-│       ├── select.tsx           # Select (dropdown) component
-│       ├── separator.tsx        # A horizontal or vertical separator line
-│       ├── shadcn-io/           # Curated UI components from shadcn.io/ui and v0.dev
-│       │   ├── ai/              # Components specifically designed for AI/chat interfaces
-│       │   │   ├── actions.tsx  # Action buttons for chat messages
-│       │   │   ├── branch.tsx   # Component for displaying multiple AI response branches
-│       │   │   ├── code-block.tsx # A rich code block component with syntax highlighting
-│       │   │   ├── conversation.tsx # A scrollable container for chat messages
-│       │   │   ├── image.tsx    # Component for displaying AI-generated images
-│       │   │   ├── inline-citation.tsx # Component for showing inline citations
-│       │   │   ├── loader.tsx   # A loading spinner for AI actions
-│       │   │   ├── message.tsx  # Component for rendering a single chat message
-│       │   │   ├── prompt-input.tsx # A rich text input for user prompts
-│       │   │   ├── reasoning.tsx # A collapsible section to show AI's reasoning steps
-│       │   │   ├── response.tsx # Component for rendering Markdown AI responses
-│       │   │   ├── source.tsx   # Component for displaying citation sources
-│       │   │   ├── suggestion.tsx # Component for displaying suggested prompts
-│       │   │   ├── task.tsx     # Component to display an AI's task execution status
-│       │   │   ├── tool.tsx     # Component for displaying tool usage by the AI
-│       │   │   └── web-preview.tsx # Component for previewing web pages within the UI
-│       │   ├── animated-beam/       # Animated beam component for visualizing connections
-│       │   │   └── index.tsx    # Main component for the animated beam effect
-│       │   ├── animated-testimonials/ # Animated testimonials carousel
-│       │   │   └── index.tsx    # Main component for animated testimonials
-│       │   ├── animated-tooltip/    # Tooltip with animation effects
-│       │   │   └── index.tsx    # Main component for the animated tooltip
-│       │   ├── avatar-group/        # Component for displaying a group of avatars
-│       │   │   └── index.tsx    # Main component for the avatar group
-│       │   ├── code-block/          # A powerful code block component with Shiki for syntax highlighting
-│       │   │   ├── index.tsx    # Client-side implementation of the code block
-│       │   │   └── server.tsx   # Server-side implementation for pre-rendering highlighted code
-│       │   ├── copy-button/         # A dedicated copy-to-clipboard button
-│       │   │   └── index.tsx    # Main component for the copy button
-│       │   ├── dropzone/            # File dropzone component
-│       │   │   └── index.tsx    # Main component for the dropzone
-│       │   ├── magnetic/            # Component that creates a magnetic effect on mouse hover
-│       │   │   └── index.tsx    # Main component for the magnetic effect
-│       │   ├── marquee/             # A scrolling marquee component
-│       │   │   └── index.tsx    # Main component for the marquee
-│       │   ├── navbar-05/           # A specific style of navigation bar
-│       │   │   └── index.tsx    # Main component for the navbar style
-│       │   ├── spinner/             # Various spinner and loader components
-│       │   │   └── index.tsx    # Main component providing multiple spinner styles
-│       │   ├── status/              # A status indicator component
-│       │   │   └── index.tsx    # Main component for displaying status with an indicator
-│       │   └── video-player/        # A video player component
-│       │       └── index.tsx    # Main component for the video player
-│       ├── shape-landing-hero.tsx # A hero section component with animated shapes
-│       ├── sheet.tsx            # Sheet (slide-over panel) component
-│       ├── skeleton.tsx         # Skeleton loader component
-│       ├── sonner.tsx           # A wrapper for the Sonner toast notification library
-│       ├── states/              # Components for representing different UI states
-│       │   ├── EmptyState.tsx   # Component for displaying an empty state
-│       │   ├── ErrorState.tsx   # Component for displaying an error state
-│       │   ├── SkeletonPanel.tsx # A panel of skeleton loading placeholders
-│       │   └── index.ts         # Barrel file exporting state components
-│       ├── switch.tsx           # Switch toggle component
-│       ├── table.tsx            # Table components (Table, THead, TBody, etc.)
-│       ├── tabs.tsx             # Tabs component
-│       ├── textarea.tsx         # Textarea component
-│       ├── theme-toggle.tsx     # Button to toggle between light and dark themes
-│       ├── toggle.tsx           # Toggle button component
-│       └── tooltip.tsx          # Tooltip component
-│       └── use-toast.ts         # A hook to simplify showing toast notifications
-├── eslint.config.mjs            # ESLint configuration file
-├── features/                    # High-level feature modules that compose UI components and logic
-│   ├── account/                 # Feature components for account management
-│   │   ├── ProfilePanel.tsx     # The main panel for the user profile page
-│   │   ├── SecurityPanel.tsx    # The main panel for the security settings page
-│   │   ├── ServiceAccountsPanel.tsx # The main panel for managing service accounts
-│   │   ├── SessionsPanel.tsx    # The main panel for managing user sessions
-│   │   └── index.ts             # Barrel file exporting account feature components
-│   ├── agents/                  # Feature components for agent management
-│   │   ├── AgentsOverview.tsx   # The main component for the agents overview page
-│   │   └── index.ts             # Barrel file exporting agents feature components
-│   ├── billing/                 # Feature components for billing
-│   │   ├── BillingOverview.tsx  # The main component for the billing overview page
-│   │   ├── PlanManagement.tsx   # Component for managing subscription plans
-│   │   └── index.ts             # Barrel file exporting billing feature components
-│   ├── chat/                    # Components that orchestrate the chat feature
-│   │   ├── ChatWorkspace.tsx    # The main orchestrator component for the entire chat workspace
-│   │   ├── components/          # Sub-components specific to the chat workspace
-│   │   │   ├── AgentSwitcher.tsx # Component to select the active agent for a conversation
-│   │   │   ├── BillingEventsPanel.tsx # A panel to display live billing events within the chat UI
-│   │   │   ├── ChatInterface.tsx # The core chat UI with messages and input
+│   │   ├── LoginForm.tsx       # The main login form component
+│   │   ├── LogoutButton.tsx    # A simple button to log out the user
+│   │   ├── RegisterForm.tsx    # Form for new user and tenant registration
+│   │   ├── ResetPasswordForm.tsx # Form to set a new password using a reset token
+│   │   └── SilentRefresh.tsx   # Client component to trigger silent token refresh
+│   └── ui/                     # General-purpose UI components (from shadcn/ui and custom)
+├── eslint.config.mjs           # ESLint configuration file
+├── features/                   # High-level feature components (feature-sliced design)
+│   ├── account/                # Components for the account management feature
+│   │   ├── AccountOverview.tsx # Main component for the account page, managing tabs
+│   │   ├── ProfilePanel.tsx    # Panel for viewing and editing user profile information
+│   │   ├── SecurityPanel.tsx   # Panel for managing security settings like passwords
+│   │   ├── SessionsPanel.tsx   # Panel for viewing and managing active user sessions
+│   │   └── index.ts            # Barrel file exporting account feature components
+│   ├── agents/                 # Components for the agent management feature
+│   │   ├── AgentsOverview.tsx  # Main component displaying a catalog of available agents
+│   │   └── index.ts            # Barrel file exporting the agents feature component
+│   ├── billing/                # Components for the billing feature
+│   │   ├── BillingOverview.tsx # Main dashboard for billing information
+│   │   ├── PlanManagement.tsx  # Component for managing subscription plans
+│   │   └── index.ts            # Barrel file exporting billing feature components
+│   ├── chat/                   # Components for the main chat workspace feature
+│   │   ├── ChatWorkspace.tsx   # Orchestrator component for the entire chat UI
+│   │   ├── components/         # Sub-components for the chat feature
+│   │   │   ├── AgentSwitcher.tsx # Dropdown to select the active AI agent
+│   │   │   ├── BillingEventsPanel.tsx # Panel to display live billing events from the SSE stream
+│   │   │   ├── ChatInterface.tsx # The core chat message display and input area
 │   │   │   ├── ConversationSidebar.tsx # Sidebar for listing and managing conversations
-│   │   │   ├── ToolMetadataPanel.tsx # Panel showing metadata about available tools
-│   │   │   └── __tests__/       # Tests for chat components
-│   │   │       └── BillingEventsPanel.test.tsx # Test for the BillingEventsPanel component
-│   │   └── index.ts             # Barrel file exporting chat feature components
-│   ├── conversations/           # Feature components for browsing conversation history
-│   │   ├── ConversationDetailDrawer.tsx # Drawer to show the full transcript and details of a conversation
-│   │   ├── ConversationsHub.tsx # The main component for the conversations archive page
-│   │   └── index.ts             # Barrel file exporting conversations feature components
-│   ├── dashboard/               # Feature components for the main dashboard
-│   │   ├── DashboardOverview.tsx # The main orchestrator for the dashboard view
-│   │   ├── components/          # Sub-components specific to the dashboard
-│   │   │   ├── BillingPreview.tsx # A card that shows a preview of billing status
-│   │   │   ├── KpiGrid.tsx      # A grid of key performance indicator cards
-│   │   │   ├── QuickActions.tsx # A set of quick action links for common tasks
-│   │   │   └── RecentConversations.tsx # A list of the most recent conversations
-│   │   ├── constants.ts         # Constants used within the dashboard feature
-│   │   ├── hooks/               # Hooks specific to the dashboard feature
-│   │   │   └── useDashboardData.tsx # Hook to fetch and compose all data needed for the dashboard
-│   │   ├── index.ts             # Barrel file exporting dashboard components
-│   │   └── types.ts             # Type definitions for the dashboard feature
-│   ├── settings/                # Feature components for application settings
-│   │   ├── TenantSettingsPanel.tsx # The main panel for tenant-level settings
-│   │   └── index.ts             # Barrel file exporting settings feature components
-│   └── tools/                   # Feature components for the tools catalog
-│       ├── ToolsCatalog.tsx     # The main component for the tools catalog page
-│       └── index.ts             # Barrel file exporting tools feature components
-├── hooks/                       # Application-wide reusable React hooks
-│   ├── useAuthForm.ts           # A generic hook for handling authentication form state and submission
-│   ├── useBillingStream.ts      # Hook for subscribing to and managing the billing SSE stream
-│   └── useSilentRefresh.ts      # Hook for handling silent authentication token refresh
-├── lib/                         # Core logic, utilities, and external service interactions
-│   ├── api/                     # Client-side functions for interacting with the application's API
-│   │   ├── __tests__/           # Tests for API client functions
-│   │   │   └── chat.test.ts     # Tests for the client-side chat API functions
-│   │   ├── agents.ts            # Client-side API functions for fetching agent data
-│   │   ├── billing.ts           # Client-side API function for connecting to the billing stream
-│   │   ├── billingPlans.ts      # Client-side API function for fetching billing plans
-│   │   ├── chat.ts              # Client-side API functions for chat, including streaming logic
-│   │   ├── client/              # Auto-generated API client from an OpenAPI specification
-│   │   │   ├── client/          # Core generated client files
-│   │   │   │   ├── client.gen.ts # The main generated HTTP client logic
-│   │   │   │   ├── index.ts     # Barrel file for client exports
-│   │   │   │   ├── types.gen.ts # Generated type definitions for the client
+│   │   │   ├── ToolMetadataPanel.tsx # Panel showing tools available to the selected agent
+│   │   │   └── __tests__/      # Tests for chat components
+│   │   │       └── BillingEventsPanel.test.tsx # Unit test for the BillingEventsPanel
+│   │   └── index.ts            # Barrel file exporting chat feature components
+│   ├── conversations/          # Components for the conversation history feature
+│   │   ├── ConversationDetailDrawer.tsx # A slide-out drawer showing details of a conversation
+│   │   ├── ConversationsHub.tsx # The main view for browsing and searching conversations
+│   │   └── index.ts            # Barrel file exporting the conversations feature component
+│   ├── dashboard/              # Components for the main dashboard feature
+│   │   ├── DashboardOverview.tsx # The main orchestrator component for the dashboard
+│   │   ├── components/         # Sub-components for the dashboard
+│   │   │   ├── BillingPreview.tsx # Card showing a summary of billing status
+│   │   │   ├── KpiGrid.tsx     # A grid of key performance indicator cards
+│   │   │   ├── QuickActions.tsx # Cards for common user actions
+│   │   │   └── RecentConversations.tsx # A list of recent conversations
+│   │   ├── constants.ts        # Constants used within the dashboard feature
+│   │   ├── hooks/              # Hooks specific to the dashboard feature
+│   │   │   └── useDashboardData.tsx # Hook to fetch and aggregate all data for the dashboard
+│   │   ├── index.ts            # Barrel file exporting the dashboard feature component
+│   │   └── types.ts            # Type definitions for the dashboard feature
+│   ├── settings/               # Components for the settings feature
+│   │   ├── TenantSettingsPanel.tsx # Panel for managing tenant-level settings
+│   │   └── index.ts            # Barrel file exporting the settings feature component
+│   └── tools/                  # Components for the tool catalog feature
+│       ├── ToolsCatalog.tsx    # The main component for displaying available tools
+│       └── index.ts            # Barrel file exporting the tools feature component
+├── hooks/                      # Global, reusable React hooks
+│   ├── useAuthForm.ts          # A generic hook for handling authentication form logic
+│   ├── useBillingStream.ts     # Hook to connect to and manage the billing SSE stream
+│   └── useSilentRefresh.ts     # Hook to handle silent session token refreshing in the background
+├── lib/                        # Core application logic, utilities, and API interactions
+│   ├── api/                    # Functions for interacting with API routes and the backend
+│   │   ├── __tests__/          # Tests for API layer functions
+│   │   │   └── chat.test.ts    # Unit tests for chat API client functions
+│   │   ├── account.ts          # API client functions for fetching account and tenant data
+│   │   ├── accountSecurity.ts  # API client functions for security-related account actions
+│   │   ├── accountSessions.ts  # API client functions for managing user sessions
+│   │   ├── agents.ts           # API client functions for fetching agent data
+│   │   ├── billing.ts          # API client function for connecting to the billing SSE stream
+│   │   ├── billingPlans.ts     # API client function for fetching billing plans
+│   │   ├── chat.ts             # API client functions for sending and streaming chat messages
+│   │   ├── client/             # Auto-generated API client from OpenAPI spec
+│   │   │   ├── client/         # Core client logic for the generated client
+│   │   │   │   ├── client.gen.ts # The main generated client creation logic
+│   │   │   │   ├── index.ts    # Barrel file exporting core client utilities
+│   │   │   │   ├── types.gen.ts # Generated type definitions for the client's internal structure
 │   │   │   │   └── utils.gen.ts # Generated utility functions for the client
-│   │   │   ├── client.gen.ts    # Entry point for the generated client configuration
-│   │   │   ├── core/            # Core utilities for the generated client
-│   │   │   │   ├── auth.gen.ts  # Generated authentication helpers
-│   │   │   │   ├── bodySerializer.gen.ts # Generated body serialization helpers
-│   │   │   │   ├── params.gen.ts # Generated parameter building helpers
-│   │   │   │   ├── pathSerializer.gen.ts # Generated path serialization helpers
-│   │   │   │   ├── queryKeySerializer.gen.ts # Generated query key serialization helpers
-│   │   │   │   ├── serverSentEvents.gen.ts # Generated Server-Sent Events client logic
-│   │   │   │   ├── types.gen.ts # Generated core type definitions
-│   │   │   │   └── utils.gen.ts # Generated core utility functions
-│   │   │   ├── index.ts         # Barrel file exporting the generated client SDK and types
-│   │   │   ├── sdk.gen.ts       # Generated functions for each API endpoint
-│   │   │   └── types.gen.ts     # Generated TypeScript types from the OpenAPI schema
-│   │   ├── config.ts            # Configuration for the generated API client
-│   │   ├── conversations.ts     # Client-side API functions for fetching conversation data
-│   │   ├── session.ts           # Client-side API functions for managing the user session
-│   │   └── tools.ts             # Client-side API function for fetching tool data
-│   ├── auth/                    # Authentication-related utilities and server-side logic
-│   │   ├── clientMeta.ts        # Client-side helper to read session metadata from cookies
-│   │   ├── cookies.ts           # Server-side helpers for managing authentication cookies
-│   │   └── session.ts           # Server-side session management logic
-│   ├── chat/                    # Core logic for the chat feature
-│   │   ├── __tests__/           # Tests for chat hooks and utilities
-│   │   │   ├── testUtils.tsx    # Test utilities for chat feature tests
-│   │   │   ├── useChatController.integration.test.tsx # Integration test for the chat controller hook
-│   │   │   └── useChatController.test.tsx # Unit tests for the chat controller hook
-│   │   ├── types.ts             # Type definitions for chat functionality
-│   │   └── useChatController.ts # The core hook that manages all chat state and logic
-│   ├── config.ts                # Global application configuration constants
-│   ├── queries/                 # TanStack Query hooks for data fetching and caching
-│   │   ├── agents.ts            # Hooks for fetching agent data
-│   │   ├── billing.ts           # Hook for managing the billing event stream (custom implementation)
-│   │   ├── billingPlans.ts      # Hook for fetching billing plans
-│   │   ├── billingSubscriptions.ts # Hooks for managing billing subscriptions
-│   │   ├── chat.ts              # Mutation hook for sending chat messages
-│   │   ├── conversations.ts     # Hooks for fetching and managing conversations
-│   │   ├── keys.ts              # Centralized query keys for TanStack Query
-│   │   ├── session.ts           # Hook for silent session refresh (custom implementation)
-│   │   └── tools.ts             # Hook for fetching tool data
-│   ├── server/                  # Server-side only logic
-│   │   ├── apiClient.ts         # Factory for creating an authenticated API client for server-side use
-│   │   ├── services/            # Service layer abstracting direct backend API calls
-│   │   │   ├── agents.ts        # Service functions for agent-related API calls
-│   │   │   ├── auth/            # Authentication-related service functions
-│   │   │   │   ├── email.ts     # Service functions for email verification
+│   │   │   ├── client.gen.ts   # Initializes and exports the generated API client instance
+│   │   │   ├── core/           # Core utilities for the generated client
+│   │   │   │   ├── auth.gen.ts # Auth helpers for the generated client
+│   │   │   │   ├── bodySerializer.gen.ts # Body serialization logic
+│   │   │   │   ├── params.gen.ts # Parameter building logic
+│   │   │   │   ├── pathSerializer.gen.ts # Path serialization logic
+│   │   │   │   ├── queryKeySerializer.gen.ts # Utilities for serializing values for query keys
+│   │   │   │   ├── serverSentEvents.gen.ts # Logic for handling Server-Sent Events
+│   │   │   │   ├── types.gen.ts # Core type definitions for the client
+│   │   │   │   └── utils.gen.ts # Core utilities for URL building, etc.
+│   │   │   ├── index.ts        # Barrel file exporting generated types and SDK functions
+│   │   │   ├── sdk.gen.ts      # Generated SDK functions for each API endpoint
+│   │   │   └── types.gen.ts    # Generated TypeScript types from the OpenAPI schema
+│   │   ├── config.ts           # Exports the generated API client instance
+│   │   ├── conversations.ts    # API client functions for fetching and managing conversations
+│   │   ├── session.ts          # API client functions for fetching and refreshing user sessions
+│   │   └── tools.ts            # API client function for fetching available tools
+│   ├── auth/                   # Authentication-related logic
+│   │   ├── clientMeta.ts       # Client-side utility to read session metadata from a cookie
+│   │   ├── cookies.ts          # Server-side utilities for managing session cookies
+│   │   └── session.ts          # Server-side logic for session management
+│   ├── chat/                   # Client-side chat logic and hooks
+│   │   ├── __tests__/          # Tests for chat hooks and utilities
+│   │   │   ├── testUtils.tsx   # Test utilities, mocks, and wrappers for chat tests
+│   │   │   ├── useChatController.integration.test.tsx # Integration test for the main chat hook
+│   │   │   └── useChatController.test.tsx # Unit tests for the main chat hook
+│   │   ├── types.ts            # TypeScript types for chat functionality
+│   │   └── useChatController.ts # The core hook managing all client-side chat state and logic
+│   ├── config.ts               # Global application configuration constants
+│   ├── queries/                # TanStack Query hooks and keys
+│   │   ├── account.ts          # TanStack Query hooks for account profile data
+│   │   ├── accountSecurity.ts  # TanStack Query mutation hook for changing a password
+│   │   ├── accountSessions.ts  # TanStack Query hooks for managing user sessions
+│   │   ├── agents.ts           # TanStack Query hooks for fetching agent data
+│   │   ├── billing.ts          # Custom hook for the billing SSE stream
+│   │   ├── billingPlans.ts     # TanStack Query hook for fetching billing plans
+│   │   ├── billingSubscriptions.ts # TanStack Query hooks for managing tenant subscriptions
+│   │   ├── chat.ts             # TanStack Query mutation hook for sending chat messages
+│   │   ├── conversations.ts    # TanStack Query hooks for managing conversations
+│   │   ├── keys.ts             # Centralized definitions for all TanStack Query keys
+│   │   ├── session.ts          # Custom hook for handling silent session refresh
+│   │   └── tools.ts            # TanStack Query hook for fetching tools
+│   ├── server/                 # Server-side only logic
+│   │   ├── apiClient.ts        # Utilities for creating an authenticated API client instance on the server
+│   │   ├── services/           # Service layer wrapping the generated API SDK
+│   │   │   ├── agents.ts       # Service functions for agent-related operations
+│   │   │   ├── auth/           # Authentication-related service functions
+│   │   │   │   ├── email.ts    # Service functions for email verification
 │   │   │   │   ├── passwords.ts # Service functions for password management
-│   │   │   │   ├── serviceAccounts.ts # Service functions for service accounts
-│   │   │   │   ├── sessions.ts  # Service functions for session management
-│   │   │   │   └── signup.ts    # Service functions for user registration
-│   │   │   ├── auth.ts          # Top-level auth services (login, refresh, profile)
-│   │   │   ├── billing.ts       # Service functions for billing-related API calls
-│   │   │   ├── chat.ts          # Service functions for chat-related API calls
-│   │   │   ├── conversations.ts # Service functions for conversation-related API calls
-│   │   │   ├── health.ts        # Service functions for health checks
-│   │   │   └── tools.ts         # Service functions for tool-related API calls
-│   │   └── streaming/           # Server-side logic for handling streams
-│   │       └── chat.ts          # Server-side helper to stream chat from the backend
-│   ├── types/                   # Shared type definitions (mirrored in top-level `types/`)
-│   │   ├── auth.ts              # Authentication-related types
-│   │   └── billing.ts           # Billing-related types
-│   ├── utils/                   # General utility functions
-│   │   └── time.ts              # Time and date formatting utilities
-│   └── utils.ts                 # Main utility file, contains `cn` for Tailwind class merging
-├── middleware.ts                # Next.js middleware for handling authentication and redirects
-├── next.config.ts               # Next.js configuration file
-├── openapi-ts.config.ts         # Configuration for the OpenAPI to TypeScript client generator
-├── playwright.config.ts         # Configuration file for Playwright end-to-end tests
-├── pnpm-lock.yaml               # pnpm lockfile defining exact dependency versions
-├── postcss.config.mjs           # PostCSS configuration file for Tailwind CSS
-├── public/                      # Directory for static assets like images and fonts
-├── tailwind.config.ts           # Tailwind CSS theme and plugin configuration
-├── tests/                       # End-to-end tests
-│   └── auth-smoke.spec.ts       # A smoke test for the authentication flow
-├── types/                       # Global TypeScript type definitions for the application
-│   ├── agents.ts                # Type definitions for agents
-│   ├── billing.ts               # Type definitions for billing
-│   ├── conversations.ts         # Type definitions for conversations
-│   ├── session.ts               # Type definitions for user sessions
-│   └── tools.ts                 # Type definitions for tools
-├── vitest.config.ts             # Vitest configuration file for unit/integration tests
-└── vitest.setup.ts              # Setup file for Vitest tests (e.g., global mocks)
+│   │   │   │   ├── sessions.ts # Service functions for session management
+│   │   │   │   └── signup.ts   # Service function for user/tenant registration
+│   │   │   ├── auth.ts         # Top-level auth services (login, refresh, get profile)
+│   │   │   ├── billing.ts      # Service functions for billing operations
+│   │   │   ├── chat.ts         # Service functions for chat operations
+│   │   │   ├── conversations.ts # Service functions for conversation management
+│   │   │   ├── health.ts       # Service functions for health checks
+│   │   │   └── tools.ts        # Service function for listing tools
+│   │   └── streaming/          # Server-side streaming helpers
+│   │       └── chat.ts         # Server-side helper to stream chat responses from the backend
+│   ├── types/                  # Shared TypeScript type definitions (might be legacy)
+│   │   ├── auth.ts             # Types for authentication tokens and sessions
+│   │   └── billing.ts          # Types related to billing subscriptions and usage
+│   ├── utils/                  # General utility functions
+│   │   └── time.ts             # Utility functions for formatting dates and times
+│   └── utils.ts                # Main utility file, includes `cn` for Tailwind classes
+├── middleware.ts               # Next.js middleware for authentication and route protection
+├── next.config.ts              # Next.js configuration file
+├── openapi-ts.config.ts        # Configuration for generating the API client from an OpenAPI spec
+├── playwright.config.ts        # Configuration for Playwright end-to-end tests
+├── pnpm-lock.yaml              # PNPM lockfile for dependency management
+├── postcss.config.mjs          # PostCSS configuration file
+├── public/                     # Directory for static assets (empty)
+├── tailwind.config.ts          # Tailwind CSS configuration file
+├── tests/                      # End-to-end tests
+│   └── auth-smoke.spec.ts      # A Playwright smoke test for the login-chat-logout flow
+├── types/                      # Global or domain-specific TypeScript type definitions
+│   ├── account.ts              # Types related to user accounts and profiles
+│   ├── agents.ts               # Types related to AI agents
+│   ├── billing.ts              # Types related to billing events and plans
+│   ├── conversations.ts        # Types related to conversations
+│   ├── session.ts              # Types related to user sessions
+│   └── tools.ts                # Types related to agent tools
+├── vitest.config.ts            # Vitest configuration for unit and integration tests
+└── vitest.setup.ts             # Setup file for Vitest tests, extends jest-dom matchers
