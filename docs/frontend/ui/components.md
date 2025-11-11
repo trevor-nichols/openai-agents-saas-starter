@@ -137,5 +137,6 @@
     ├── table.tsx                # Components for creating and styling data tables.
     ├── tabs.tsx                 # A set of layered sections of content, known as tab panels, that are displayed one at a time.
     ├── textarea.tsx             # A multi-line text input component.
+    ├── theme-toggle.tsx         # A component to toggle the theme of the application.
     ├── toggle.tsx               # A two-state button that can be either on or off.
     └── tooltip.tsx              # A small pop-up that displays information when a user hovers over an element.

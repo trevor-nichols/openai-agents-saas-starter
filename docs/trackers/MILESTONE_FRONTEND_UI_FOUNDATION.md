@@ -69,6 +69,16 @@ Deliver a production-quality page architecture and component plan that maps ever
   - `app/(app)/(account)/` – settings-area layout with secondary nav.
 - Leverage Next.js `loading.tsx` and `error.tsx` per section for skeletons/error boundaries.
 
+### Confirmed Navigation & Chrome Decisions (2025-11-11)
+- **Marketing set** – `/`, `/pricing`, `/features`, and `/docs` all render live backend data (plans, metrics, testimonials). Each page follows the hero → proof → CTA → FAQ pattern so content can expand without new layouts. Optional cards pull from `/api/health` or other public endpoints to showcase real-time stats.
+- **Desktop header** – Left-aligned logo plus primary links (`Features`, `Pricing`, `Docs`, `Login`); right rail includes the “Get Started” CTA button, the upcoming theme toggle, and InlineTag-based badges for announcements.
+- **Mobile nav** – `navigation-menu` on desktop degrades to a `sheet`-driven drawer under 1024px with mirrored primary links, CTA, condensed footer links, and a `command` palette trigger for quick navigation.
+- **Footer IA** – Three-column grid (Product, Company, Legal) composed from `SectionHeader` + `KeyValueList`, plus a live metrics card. Social/CTA rows reuse foundation components to avoid bespoke styling.
+- **Authenticated sidebar** – 280px glass panel with sections: Dashboard, Chat, Conversations, Agents, Tools, Billing, Account (nesting Profile, Security, Sessions, Service Accounts). Collapsed mode becomes an icon rail with tooltip labels; mobile variants reuse the marketing sheet for parity.
+- **Top bar** – Breadcrumb + InlineTag environment indicator on the left, center-aligned command palette/search, and right-aligned notification bell (Sonner-backed), theme toggle, and user dropdown (`dropdown-menu`). Quick actions (e.g., “New Conversation”) live next to the palette trigger.
+- **Feedback systems** – `components/ui/sonner` becomes the global toast provider via `providers.tsx`, giving typed helpers for success/error/info. Route-group `error.tsx`/`loading.tsx` components reuse `components/ui/states/*` with tailored copy per section.
+- **Theme toggle** – Adopt the Shadcn theme switcher once installed; hook into the existing CSS variables so marketing/auth/app shells inherit light/dark tokens consistently.
+
 <!-- SECTION: Component Inventory -->
 ## Component Inventory (Shadcn + Custom)
 
@@ -125,19 +135,20 @@ Deliver a production-quality page architecture and component plan that maps ever
 - **Content Density Guardrails** – Use an 8/12/20/32 spacing scale. Dashboards keep generous outer padding (32px) with denser card internals (16px). Tables default to 48px rows, with a compact 40px variant for billing/sessions. Chat transcripts maintain roomy bubbles, while metadata drawers use condensed typography with hairline separators (`rgba(255,255,255,0.08)`), balancing the Johnny Ive aesthetic with enterprise readability.
 
 <!-- SECTION: Progress -->
-## Progress Update (2025-11-10)
+## Progress Update (2025-11-11)
 
 - **Tokens & Foundation** – Global palette, motion, and radii tokens now live in `app/globals.css` + `tailwind.config.ts`, and the `components/ui/foundation` + `components/ui/states` kits power every refreshed route.
 - **Dashboard & Chat** – `features/dashboard` and `features/chat` consume the new kit: KPI/stat cards, glass chat workspace, InlineTag agent telemetry, and shared loading/error/empty states are live under the authenticated shell.
 - **Billing & Conversations** – `/billing` and `/conversations` now ship glass panels backed by live data (billing stream, TanStack conversations) with InlineTags, ScrollArea tables, and reusable Empty/Skeleton states, aligning all authenticated surfaces to the same Johnny Ive aesthetic.
+- **Marketing Shell** – Desktop + mobile navigation, command palette, theme toggle, and the live `/api/health` footer card now power every marketing route, giving `/`, `/pricing`, `/features`, and `/docs` a consistent chrome for design to build on.
 
 <!-- SECTION: Workstreams -->
 ## Workstreams & Tasks
 
 - **IA & Navigation**
-  - [ ] Confirm marketing page set (landing, pricing, docs/FAQ) with product.
-  - [ ] Design global header/footer IA (desktop + mobile).
-  - [ ] Define authenticated shell nav structure (primary tabs, quick actions).
+  - [x] Confirm marketing page set (landing, pricing, docs/FAQ) with product. *Decision: `/`, `/pricing`, `/features`, `/docs` all ship with live data sources and shared content hierarchy.*
+  - [x] Design global header/footer IA (desktop + mobile). *Decision: desktop nav with CTA/theme toggle, mobile sheet + command palette, three-column footer with live metric card.*
+  - [x] Define authenticated shell nav structure (primary tabs, quick actions). *Decision: 280px glass sidebar (Dashboard → Account subsections), top bar with breadcrumbs, command palette, toasts, theme toggle, and avatar menu.*
 - **Auth UX Enhancements**
   - [ ] Add register, forgot/reset, email verification pages using existing actions.
   - [ ] Implement form validation, error surfacing, success states.
@@ -162,9 +173,9 @@ Deliver a production-quality page architecture and component plan that maps ever
   - [ ] Security page (password change form, MFA placeholder, last login).
   - [ ] Sessions table with revoke controls, service account token issuance flow.
 - **Shared Systems**
-  - [ ] Toast/notification framework (centralized provider).
+  - [ ] Toast/notification framework (centralized provider). *Plan: wrap Sonner in `providers.tsx`, expose typed toast hook for features.*
   - [x] Loading skeleton components (marketing + app).
-  - [ ] Error boundary surfaces per route group.
+  - [ ] Error boundary surfaces per route group. *Plan: compose marketing/auth/app `error.tsx` from `components/ui/states/ErrorState` with tailored recovery copy.*
 
 <!-- SECTION: Risks -->
 ## Risks & Mitigations
