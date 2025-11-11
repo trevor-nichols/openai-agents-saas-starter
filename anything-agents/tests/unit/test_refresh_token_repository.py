@@ -5,7 +5,12 @@ from datetime import UTC, datetime, timedelta
 from types import MethodType
 from uuid import uuid4
 
+from sqlalchemy import select
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.sql.elements import ColumnElement
+
 from app.core.config import Settings
+from app.domain.auth import ServiceAccountTokenStatus
 from app.infrastructure.persistence.auth import repository as repository_module
 from app.infrastructure.persistence.auth.models import ServiceAccountToken
 from app.infrastructure.persistence.auth.repository import PostgresRefreshTokenRepository
@@ -140,3 +145,48 @@ def test_rehydrate_user_token_preserves_user_subject(monkeypatch) -> None:
     record = repo._row_to_record(row)
     assert record is not None
     assert record.token == expected_token
+
+
+def _compile_where_sql(conditions: list[ColumnElement[bool]]) -> str:
+    stmt = select(ServiceAccountToken).where(*conditions)
+    return str(stmt.compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}))
+
+
+def test_build_list_conditions_enforces_active_tenant_scope() -> None:
+    repo = _build_repo()
+    tenant_id = str(uuid4())
+
+    sql = _compile_where_sql(
+        repo._build_list_conditions(
+            tenant_ids=[tenant_id],
+            include_global=False,
+            account_query=None,
+            fingerprint=None,
+            status=ServiceAccountTokenStatus.ACTIVE,
+        )
+    )
+
+    assert f"tenant_id IN ('{tenant_id}')" in sql
+    assert "tenant_id IS NULL" not in sql
+    assert "revoked_at IS NULL" in sql
+    assert "expires_at >" in sql
+
+
+def test_build_list_conditions_allows_operator_include_global_and_filters() -> None:
+    repo = _build_repo()
+    tenant_id = str(uuid4())
+
+    sql = _compile_where_sql(
+        repo._build_list_conditions(
+            tenant_ids=[tenant_id],
+            include_global=True,
+            account_query="batch",
+            fingerprint="runner",
+            status=ServiceAccountTokenStatus.REVOKED,
+        )
+    )
+
+    assert "tenant_id IN" in sql and "tenant_id IS NULL" in sql
+    assert "ILIKE '%%batch%%'" in sql
+    assert "fingerprint = 'runner'" in sql
+    assert "revoked_at IS NOT NULL" in sql

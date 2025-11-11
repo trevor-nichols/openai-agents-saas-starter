@@ -8,7 +8,12 @@ from uuid import UUID, uuid4
 
 import jwt
 
-from app.domain.auth import RefreshTokenRecord, RefreshTokenRepository
+from app.domain.auth import (
+    RefreshTokenRecord,
+    RefreshTokenRepository,
+    ServiceAccountTokenListResult,
+    ServiceAccountTokenStatus,
+)
 
 
 class RefreshTokenManager:
@@ -82,6 +87,31 @@ class RefreshTokenManager:
         if not repo:
             return 0
         return await repo.revoke_account(account, reason=reason)
+
+    async def list_tokens(
+        self,
+        *,
+        tenant_ids: Sequence[str] | None,
+        include_global: bool,
+        account_query: str | None,
+        fingerprint: str | None,
+        status: ServiceAccountTokenStatus,
+        limit: int,
+        offset: int,
+        require: bool = True,
+    ) -> ServiceAccountTokenListResult:
+        repo = self._get_repository(require=require)
+        if not repo:
+            return ServiceAccountTokenListResult(tokens=[], total=0)
+        return await repo.list_service_account_tokens(
+            tenant_ids=tenant_ids,
+            include_global=include_global,
+            account_query=account_query,
+            fingerprint=fingerprint,
+            status=status,
+            limit=limit,
+            offset=offset,
+        )
 
     def record_to_response(
         self, record: RefreshTokenRecord

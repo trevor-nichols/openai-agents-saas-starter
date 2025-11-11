@@ -16,6 +16,9 @@ from app.core.security import get_token_verifier
 from app.core.service_accounts import load_service_account_registry
 from app.domain.auth import (
     RefreshTokenRecord,
+    ServiceAccountTokenListResult,
+    ServiceAccountTokenStatus,
+    ServiceAccountTokenView,
     SessionClientDetails,
     UserSession,
     UserSessionListResult,
@@ -69,6 +72,34 @@ class FakeRefreshRepo:
             del self._records[key]
         self.revoked_accounts.append(account)
         return len(victims)
+
+    async def list_service_account_tokens(
+        self,
+        *,
+        tenant_ids: Sequence[str] | None,
+        include_global: bool,
+        account_query: str | None,
+        fingerprint: str | None,
+        status: ServiceAccountTokenStatus,
+        limit: int,
+        offset: int,
+    ) -> ServiceAccountTokenListResult:
+        tokens = [
+            ServiceAccountTokenView(
+                jti=record.jti,
+                account=record.account,
+                tenant_id=record.tenant_id,
+                scopes=record.scopes,
+                expires_at=record.expires_at,
+                issued_at=record.issued_at,
+                revoked_at=None,
+                revoked_reason=None,
+                fingerprint=record.fingerprint,
+                signing_kid=record.signing_kid or "unknown",
+            )
+            for record in self._records.values()
+        ]
+        return ServiceAccountTokenListResult(tokens=tokens, total=len(tokens))
 
 
 def _make_service(

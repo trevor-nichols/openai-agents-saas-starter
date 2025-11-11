@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 from typing import Protocol
 from uuid import UUID
 
@@ -51,6 +52,18 @@ class RefreshTokenRepository(Protocol):
     async def revoke(self, jti: str, *, reason: str | None = None) -> None: ...
 
     async def revoke_account(self, account: str, *, reason: str | None = None) -> int: ...
+
+    async def list_service_account_tokens(
+        self,
+        *,
+        tenant_ids: Sequence[str] | None,
+        include_global: bool,
+        account_query: str | None,
+        fingerprint: str | None,
+        status: ServiceAccountTokenStatus,
+        limit: int,
+        offset: int,
+    ) -> ServiceAccountTokenListResult: ...
 
 
 @dataclass(slots=True, frozen=True)
@@ -181,3 +194,33 @@ def verify_refresh_token(raw_token: str, hashed_token: str, *, pepper: str) -> b
 
     material = _pepperize(raw_token, pepper)
     return _REFRESH_TOKEN_CONTEXT.verify(material, hashed_token)
+
+
+class ServiceAccountTokenStatus(str, Enum):
+    ACTIVE = "active"
+    REVOKED = "revoked"
+    ALL = "all"
+
+
+@dataclass(slots=True, frozen=True)
+class ServiceAccountTokenView:
+    """Summary view of a stored service-account refresh token."""
+
+    jti: str
+    account: str
+    tenant_id: str | None
+    scopes: list[str]
+    expires_at: datetime
+    issued_at: datetime
+    revoked_at: datetime | None
+    revoked_reason: str | None
+    fingerprint: str | None
+    signing_kid: str
+
+
+@dataclass(slots=True, frozen=True)
+class ServiceAccountTokenListResult:
+    """Paginated listing result for service-account tokens."""
+
+    tokens: list[ServiceAccountTokenView]
+    total: int

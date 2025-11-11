@@ -18,6 +18,7 @@ from app.core.service_accounts import (
     ServiceAccountRegistry,
     get_default_service_account_registry,
 )
+from app.domain.auth import ServiceAccountTokenListResult, ServiceAccountTokenStatus
 from app.observability.logging import log_event
 from app.observability.metrics import observe_service_account_issuance
 
@@ -192,6 +193,52 @@ class ServiceAccountTokenService:
 
     async def revoke_token(self, jti: str, *, reason: str | None) -> None:
         await self._refresh_tokens.revoke(jti, reason=reason, require=False)
+
+    async def list_tokens(
+        self,
+        *,
+        tenant_ids: Sequence[str] | None,
+        include_global: bool,
+        account_query: str | None,
+        fingerprint: str | None,
+        status: ServiceAccountTokenStatus,
+        limit: int,
+        offset: int,
+    ) -> ServiceAccountTokenListResult:
+        started = perf_counter()
+        try:
+            result = await self._refresh_tokens.list_tokens(
+                tenant_ids=tenant_ids,
+                include_global=include_global,
+                account_query=account_query,
+                fingerprint=fingerprint,
+                status=status,
+                limit=limit,
+                offset=offset,
+                require=False,
+            )
+            log_event(
+                "service_account_tokens_list",
+                result="success",
+                tenant_scope="all" if tenant_ids is None else tenant_ids,
+                include_global=include_global,
+                account_query=bool(account_query),
+                fingerprint=bool(fingerprint),
+                status=status.value,
+                duration_ms=(perf_counter() - started) * 1000,
+            )
+            return result
+        except Exception as exc:  # pragma: no cover - logged & re-raised
+            log_event(
+                "service_account_tokens_list",
+                result="error",
+                reason=str(exc),
+                tenant_scope="all" if tenant_ids is None else tenant_ids,
+                include_global=include_global,
+                status=status.value,
+                duration_ms=(perf_counter() - started) * 1000,
+            )
+            raise
 
     def _validate_tenant(
         self, definition: ServiceAccountDefinition, tenant_id: str | None

@@ -8,6 +8,8 @@ from uuid import UUID
 from app.core.service_accounts import ServiceAccountRegistry
 from app.domain.auth import (
     RefreshTokenRepository,
+    ServiceAccountTokenListResult,
+    ServiceAccountTokenStatus,
     UserSessionListResult,
     UserSessionRepository,
     UserSessionTokens,
@@ -99,6 +101,27 @@ class AuthService:
         self, jti: str, *, reason: str | None = None
     ) -> None:
         await self._service_accounts.revoke_token(jti, reason=reason)
+
+    async def list_service_account_tokens(
+        self,
+        *,
+        tenant_ids: Sequence[str] | None,
+        include_global: bool,
+        account_query: str | None,
+        fingerprint: str | None,
+        status: ServiceAccountTokenStatus,
+        limit: int,
+        offset: int,
+    ) -> ServiceAccountTokenListResult:
+        return await self._service_accounts.list_tokens(
+            tenant_ids=tenant_ids,
+            include_global=include_global,
+            account_query=account_query,
+            fingerprint=fingerprint,
+            status=status,
+            limit=limit,
+            offset=offset,
+        )
 
     async def login_user(
         self,

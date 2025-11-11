@@ -113,6 +113,7 @@
 │   │   │   │   └── issue/               # Route to issue a new service account token.
 │   │   │   │       ├── route.test.ts    # Tests for the service account token issuance route.
 │   │   │   │       └── route.ts         # POST route to issue a new service account token.
+│   │   │   ├── routes_service_account_tokens.py # GET list + POST revoke endpoints for service-account tokens.
 │   │   │   ├── session/                 # API route to get current session info.
 │   │   │   │   └── route.ts             # GET route to retrieve current user session information.
 │   │   │   └── sessions/                # API routes for managing user sessions.
