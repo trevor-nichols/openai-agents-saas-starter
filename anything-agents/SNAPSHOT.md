@@ -1,317 +1,237 @@
 .
-├── app/                                 # Next.js App Router directory containing all routes and UI.
-│   ├── (app)/                           # Route group for authenticated application pages.
-│   │   ├── (workspace)/                 # Route group for multi-column workspace layouts like the chat UI.
-│   │   │   ├── chat/                    # Contains pages and server actions for the chat feature.
-│   │   │   │   ├── actions.ts           # Server Actions for streaming chat and listing conversations.
-│   │   │   │   └── page.tsx             # Renders the main chat workspace page.
-│   │   │   └── layout.tsx               # Provides a consistent layout wrapper for workspace pages.
-│   │   ├── account/                     # Contains pages for user account management.
-│   │   │   ├── profile/                 # Contains the user profile page.
-│   │   │   │   └── page.tsx             # Renders the user's profile settings page.
-│   │   │   ├── security/                # Contains the user security settings page.
-│   │   │   │   └── page.tsx             # Renders the user's security settings page.
-│   │   │   ├── service-accounts/        # Contains the service account management page.
-│   │   │   │   └── page.tsx             # Renders the service account management page.
-│   │   │   └── sessions/                # Contains the user session management page.
-│   │   │       └── page.tsx             # Renders the user's active sessions page.
-│   │   ├── agents/                      # Contains the agent management pages.
-│   │   │   └── page.tsx                 # Renders the agent overview and catalog page.
-│   │   ├── billing/                     # Contains pages related to billing and subscriptions.
-│   │   │   ├── page.tsx                 # Renders the main billing overview page.
-│   │   │   └── plans/                   # Contains the subscription plan management page.
-│   │   │       └── page.tsx             # Renders the subscription plan management page.
-│   │   ├── conversations/               # Contains pages for viewing conversation history.
-│   │   │   └── page.tsx                 # Renders the main conversations hub/archive page.
-│   │   ├── dashboard/                   # Contains the main user dashboard page.
-│   │   │   └── page.tsx                 # Renders the main dashboard for authenticated users.
-│   │   ├── layout.tsx                   # Main layout for authenticated users with sidebar and header.
-│   │   ├── page.tsx                     # Root page for the authenticated app, redirects to the dashboard.
-│   │   ├── settings/                    # Contains application and tenant settings pages.
-│   │   │   └── tenant/                  # Contains tenant-specific settings pages.
-│   │   │       └── page.tsx             # Renders the tenant settings page.
-│   │   └── tools/                       # Contains pages related to agent tools.
-│   │       └── page.tsx                 # Renders the tool catalog page.
-│   ├── (auth)/                          # Route group for authentication-related pages.
-│   │   ├── _components/                 # Private components for the auth layout.
-│   │   │   └── AuthCard.tsx             # Reusable UI card component for authentication forms.
-│   │   ├── email/                       # Contains email-related action pages.
-│   │   │   └── verify/                  # Contains the email verification flow pages.
-│   │   │       ├── VerifyEmailClient.tsx # Client component handling the logic for email verification.
-│   │   │       └── page.tsx             # Renders the email verification page.
-│   │   ├── error.tsx                    # Custom error boundary for authentication routes.
-│   │   ├── layout.tsx                   # Provides a centered, styled layout for authentication forms.
-│   │   ├── loading.tsx                  # Loading skeleton UI for authentication routes.
-│   │   ├── login/                       # Contains the user login page.
-│   │   │   └── page.tsx                 # Renders the user login page.
-│   │   ├── password/                    # Contains pages for password management flows.
-│   │   │   ├── forgot/                  # Contains the forgot password page.
-│   │   │   │   └── page.tsx             # Renders the "forgot password" form.
-│   │   │   └── reset/                   # Contains the password reset page.
-│   │   │       └── page.tsx             # Renders the password reset form using a token.
-│   │   └── register/                    # Contains the user registration page.
-│   │       └── page.tsx                 # Renders the user and tenant registration page.
-│   ├── (marketing)/                     # Route group for public-facing marketing pages.
-│   │   ├── _components/                 # Private components for the marketing layout.
-│   │   │   ├── marketing-footer.tsx     # Footer component for marketing pages, including API status.
-│   │   │   ├── marketing-header.tsx     # Header component for marketing pages with navigation.
-│   │   │   └── nav-links.ts             # Defines link constants for marketing navigation.
-│   │   ├── features/                    # Contains the marketing features page.
-│   │   │   └── page.tsx                 # Renders a page detailing product features.
-│   │   ├── layout.tsx                   # Provides the header and footer layout for marketing pages.
-│   │   ├── page.tsx                     # Renders the main marketing landing page.
-│   │   └── pricing/                     # Contains the marketing pricing page.
-│   │       └── page.tsx                 # Renders the product pricing page.
-│   ├── actions/                         # Contains Next.js Server Actions used by client components.
-│   │   ├── auth/                        # Grouped server actions related to authentication.
-│   │   │   ├── email.ts                 # Server actions for email verification.
-│   │   │   ├── passwords.ts             # Server actions for password management (forgot, reset, change).
-│   │   │   ├── sessions.ts              # Server actions for managing user sessions (list, revoke).
-│   │   │   └── signup.ts                # Server action for user and tenant registration.
-│   │   └── auth.ts                      # Core authentication server actions (login, logout, refresh).
-│   ├── api/                             # API routes (route handlers) that proxy requests to the backend.
-│   │   ├── agents/                      # API routes for agent management and status.
-│   │   │   ├── [agentName]/             # Dynamic routes for a specific agent.
-│   │   │   │   └── status/              # Agent status-related routes.
-│   │   │   │       ├── route.test.ts    # Tests for the agent status API route.
-│   │   │   │       └── route.ts         # GET route to fetch an agent's status.
-│   │   │   ├── route.test.ts            # Tests for the list agents API route.
-│   │   │   └── route.ts                 # GET route to list all available agents.
-│   │   ├── auth/                        # API routes for authentication and session management.
-│   │   │   ├── email/                   # Email verification related API routes.
-│   │   │   │   ├── send/                # Route to trigger sending a verification email.
-│   │   │   │   │   ├── route.test.ts    # Tests for the send verification email route.
-│   │   │   │   │   └── route.ts         # POST route to send a verification email.
-│   │   │   │   └── verify/              # Route to verify an email token.
-│   │   │   │       ├── route.test.ts    # Tests for the email verification route.
-│   │   │   │       └── route.ts         # POST route to verify an email token.
-│   │   │   ├── logout/                  # API routes for user logout.
-│   │   │   │   ├── all/                 # Route to log out from all sessions.
-│   │   │   │   │   ├── route.test.ts    # Tests for the logout-all-sessions route.
-│   │   │   │   │   └── route.ts         # POST route to log out of all user sessions.
-│   │   │   │   ├── route.test.ts        # Tests for the single-session logout route.
-│   │   │   │   └── route.ts             # POST route to log out of the current session.
-│   │   │   ├── password/                # API routes for password management.
-│   │   │   │   ├── change/              # Route for changing a user's password.
-│   │   │   │   │   ├── route.test.ts    # Tests for the change password route.
-│   │   │   │   │   └── route.ts         # POST route to change the current user's password.
-│   │   │   │   ├── confirm/             # Route to confirm a password reset with a token.
-│   │   │   │   │   ├── route.test.ts    # Tests for the password reset confirmation route.
-│   │   │   │   │   └── route.ts         # POST route to confirm a password reset.
-│   │   │   │   ├── forgot/              # Route to request a password reset link.
-│   │   │   │   │   ├── route.test.ts    # Tests for the forgot password route.
-│   │   │   │   │   └── route.ts         # POST route to request a password reset email.
-│   │   │   │   └── reset/               # Route for admin-initiated password reset.
-│   │   │   │       ├── route.test.ts    # Tests for the admin password reset route.
-│   │   │   │       └── route.ts         # POST route for an admin to reset a user's password.
-│   │   │   ├── refresh/                 # API route for refreshing an authentication session.
-│   │   │   │   └── route.ts             # POST route to refresh the session using a refresh token.
-│   │   │   ├── register/                # API route for user registration.
-│   │   │   │   ├── route.test.ts        # Tests for the user registration route.
-│   │   │   │   └── route.ts             # POST route to register a new user and tenant.
-│   │   │   ├── service-accounts/        # API routes for service account management.
-│   │   │   │   └── issue/               # Route to issue a new service account token.
-│   │   │   │       ├── route.test.ts    # Tests for the service account token issuance route.
-│   │   │   │       └── route.ts         # POST route to issue a new service account token.
-│   │   │   ├── routes_service_account_tokens.py # GET list + POST revoke endpoints for service-account tokens.
-│   │   │   ├── session/                 # API route to get current session info.
-│   │   │   │   └── route.ts             # GET route to retrieve current user session information.
-│   │   │   └── sessions/                # API routes for managing user sessions.
-│   │   │       ├── [sessionId]/         # Dynamic route for a specific session.
-│   │   │       │   ├── route.test.ts    # Tests for the single session management route.
-│   │   │       │   └── route.ts         # DELETE route to revoke a specific user session.
-│   │   │       ├── route.test.ts        # Tests for the list sessions route.
-│   │   │       └── route.ts             # GET route to list all sessions for the current user.
-│   │   ├── billing/                     # API routes for billing, plans, and usage.
-│   │   │   ├── plans/                   # Route to get available billing plans.
-│   │   │   │   └── route.ts             # GET route to list available billing plans.
-│   │   │   ├── stream/                  # Route for the real-time billing event stream.
-│   │   │   │   └── route.ts             # GET route to establish a Server-Sent Events (SSE) stream for billing.
-│   │   │   └── tenants/                 # Routes for tenant-specific billing information.
-│   │   │       └── [tenantId]/          # Dynamic route for a specific tenant.
-│   │   │           ├── subscription/    # Routes for managing a tenant's subscription.
-│   │   │           │   ├── cancel/      # Route to cancel a subscription.
-│   │   │           │   │   ├── route.test.ts # Tests for the cancel subscription route.
-│   │   │           │   │   └── route.ts # POST route to cancel a tenant's subscription.
-│   │   │           │   ├── route.test.ts # Tests for the subscription management routes.
-│   │   │           │   └── route.ts     # GET, POST, PATCH routes for tenant subscription management.
-│   │   │           └── usage/           # Route to record metered usage for a tenant.
-│   │   │               ├── route.test.ts # Tests for the usage recording route.
-│   │   │               └── route.ts     # POST route to record metered usage for a tenant.
-│   │   ├── chat/                        # API routes for chat functionality.
-│   │   │   ├── route.test.ts            # Tests for the non-streaming chat route.
-│   │   │   ├── route.ts                 # POST route for non-streaming chat requests.
-│   │   │   └── stream/                  # Route for real-time streaming chat responses.
-│   │   │       └── route.ts             # POST route to establish a Server-Sent Events (SSE) stream for chat.
-│   │   ├── conversations/               # API routes for managing conversation history.
-│   │   │   ├── [conversationId]/        # Dynamic route for a specific conversation.
-│   │   │   │   ├── route.test.ts        # Tests for single conversation management routes.
-│   │   │   │   └── route.ts             # GET and DELETE routes for a specific conversation.
-│   │   │   ├── route.test.ts            # Tests for the list conversations route.
-│   │   │   └── route.ts                 # GET route to list all conversations.
-│   │   ├── health/                      # API routes for health and readiness probes.
-│   │   │   ├── ready/                   # Route for the readiness probe.
-│   │   │   │   ├── route.test.ts        # Tests for the readiness probe route.
-│   │   │   │   └── route.ts             # GET route for the application readiness check.
-│   │   │   ├── route.test.ts            # Tests for the health check route.
-│   │   │   └── route.ts                 # GET route for the application health check.
-│   │   └── tools/                       # API route for agent tools.
-│   │       └── route.ts                 # GET route to list available agent tools.
-│   ├── layout.tsx                     # Root application layout, setting up HTML structure and global providers.
-│   └── providers.tsx                  # Client-side providers for theming, data fetching, and notifications.
-├── components/                          # Reusable UI components shared across the application.
-│   ├── auth/                            # Components used specifically for authentication forms.
-│   │   ├── ForgotPasswordForm.tsx       # The 'Forgot Password' form component.
-│   │   ├── LoginForm.tsx                # The user login form component.
-│   │   ├── LogoutButton.tsx             # A client component button to trigger the logout server action.
-│   │   ├── RegisterForm.tsx             # The user and tenant registration form component.
-│   │   ├── ResetPasswordForm.tsx        # The 'Reset Password' form component.
-│   │   └── SilentRefresh.tsx            # A client component that triggers the silent session refresh hook.
-│   └── ui/                              # General-purpose UI components, many from shadcn/ui.
-├── eslint.config.mjs                    # ESLint configuration for the project.
-├── features/                            # High-level feature modules that orchestrate UI components.
-│   ├── account/                         # Components that form the account management feature.
-│   │   ├── ProfilePanel.tsx             # The main panel for the user profile page.
-│   │   ├── SecurityPanel.tsx            # The main panel for the account security page.
-│   │   ├── ServiceAccountsPanel.tsx     # The main panel for the service accounts page.
-│   │   ├── SessionsPanel.tsx            # The main panel for the user sessions page.
-│   │   └── index.ts                     # Barrel file exporting all account feature components.
-│   ├── agents/                          # Components that form the agent management feature.
-│   │   ├── AgentsOverview.tsx           # The main component for displaying an overview of all agents.
-│   │   └── index.ts                     # Barrel file exporting the agents feature components.
-│   ├── billing/                         # Components for the billing feature.
-│   │   ├── BillingOverview.tsx          # The main component for the billing overview page.
-│   │   ├── PlanManagement.tsx           # The main component for managing subscription plans.
-│   │   └── index.ts                     # Barrel file exporting billing feature components.
-│   ├── chat/                            # The main chat workspace feature.
-│   │   ├── ChatWorkspace.tsx            # Orchestrator component for the entire chat interface.
-│   │   ├── components/                  # Sub-components used within the ChatWorkspace.
-│   │   │   ├── AgentSwitcher.tsx        # A dropdown to select the active agent for a chat.
-│   │   │   ├── BillingEventsPanel.tsx   # A panel to display real-time billing events.
-│   │   │   ├── ChatInterface.tsx        # The core chat message and input interface.
-│   │   │   ├── ConversationSidebar.tsx  # The sidebar for managing and navigating conversations.
-│   │   │   ├── ToolMetadataPanel.tsx    # A panel displaying metadata about available tools.
-│   │   │   └── __tests__/               # Tests for chat components.
-│   │   │       └── BillingEventsPanel.test.tsx # Unit test for the BillingEventsPanel component.
-│   │   └── index.ts                     # Barrel file exporting chat feature components.
-│   ├── conversations/                   # Components for the conversation history feature.
-│   │   ├── ConversationDetailDrawer.tsx # A drawer/sheet to show detailed conversation history.
-│   │   ├── ConversationsHub.tsx         # The main component for browsing and searching conversations.
-│   │   └── index.ts                     # Barrel file exporting conversations feature components.
-│   ├── dashboard/                       # Components that make up the main user dashboard.
-│   │   ├── DashboardOverview.tsx        # The main orchestrator component for the dashboard.
-│   │   ├── components/                  # Sub-components used within the DashboardOverview.
-│   │   │   ├── BillingPreview.tsx       # A component showing a summary of billing status.
-│   │   │   ├── KpiGrid.tsx              # A grid for displaying key performance indicators (KPIs).
-│   │   │   ├── QuickActions.tsx         # A set of cards for quick navigation to key features.
-│   │   │   └── RecentConversations.tsx  # A list of recently updated conversations.
-│   │   ├── constants.ts                 # Defines constant data for the dashboard, like quick actions.
-│   │   ├── hooks/                       # Custom hooks for the dashboard feature.
-│   │   │   └── useDashboardData.tsx     # A hook to fetch and aggregate all data needed for the dashboard.
-│   │   ├── index.ts                     # Barrel file exporting the dashboard feature component.
-│   │   └── types.ts                     # Type definitions specific to the dashboard feature.
-│   ├── settings/                        # Components for the settings feature.
-│   │   ├── TenantSettingsPanel.tsx      # The main panel for managing tenant settings.
-│   │   └── index.ts                     # Barrel file exporting settings feature components.
-│   └── tools/                           # Components for the tools catalog feature.
-│       ├── ToolsCatalog.tsx             # The main component for displaying the tool catalog.
-│       └── index.ts                     # Barrel file exporting the tools feature component.
-├── hooks/                               # Reusable custom React hooks.
-│   ├── useAuthForm.ts                   # A custom hook to manage authentication form logic and validation.
-│   ├── useBillingStream.ts              # A hook for connecting to the server-sent events billing stream.
-│   └── useSilentRefresh.ts              # A hook to handle silent session token refreshing.
-├── lib/                                 # Utilities, helpers, and core application logic.
-│   ├── api/                             # Abstraction layer for making API calls to the backend.
-│   │   ├── __tests__/                   # Tests for the API abstraction layer.
-│   │   │   └── chat.test.ts             # Unit tests for the chat API client functions.
-│   │   ├── agents.ts                    # Client-side functions for fetching agent data.
-│   │   ├── billing.ts                   # Client-side functions for connecting to the billing stream.
-│   │   ├── billingPlans.ts              # Client-side functions for fetching billing plan data.
-│   │   ├── chat.ts                      # Client-side functions for sending chat messages and streaming responses.
-│   │   ├── client/                      # Auto-generated API client from OpenAPI specification.
-│   │   │   ├── client/                  # Core files for the generated client.
-│   │   │   │   ├── client.gen.ts        # Generated API client instance and configuration.
-│   │   │   │   ├── index.ts             # Barrel file exporting client utilities.
-│   │   │   │   ├── types.gen.ts         # Generated core types for the API client.
-│   │   │   │   └── utils.gen.ts         # Generated utility functions for the API client.
-│   │   │   ├── client.gen.ts            # Generated API client initialization.
-│   │   │   ├── core/                    # Core utilities and types for the generated API client.
-│   │   │   │   ├── auth.gen.ts          # Generated authentication helpers.
-│   │   │   │   ├── bodySerializer.gen.ts # Generated body serialization helpers.
-│   │   │   │   ├── params.gen.ts        # Generated parameter building helpers.
-│   │   │   │   ├── pathSerializer.gen.ts # Generated path serialization helpers.
-│   │   │   │   ├── queryKeySerializer.gen.ts # Generated query key serialization helpers.
-│   │   │   │   ├── serverSentEvents.gen.ts # Generated SSE client helpers.
-│   │   │   │   ├── types.gen.ts         # Generated core types for the client.
-│   │   │   │   └── utils.gen.ts         # Generated core utility functions.
-│   │   │   ├── index.ts                 # Barrel file for the generated client, exporting types and SDK.
-│   │   │   ├── sdk.gen.ts               # Generated SDK functions for each API endpoint.
-│   │   │   └── types.gen.ts             # Generated TypeScript types from the OpenAPI schema.
-│   │   ├── config.ts                    # Exports the configured generated API client instance.
-│   │   ├── conversations.ts             # Client-side functions for fetching conversation data.
-│   │   ├── session.ts                   # Client-side functions for managing the user session.
-│   │   └── tools.ts                     # Client-side functions for fetching tool data.
-│   ├── auth/                            # Client-side and server-side authentication helpers.
-│   │   ├── clientMeta.ts                # Client-side utility to read session metadata from cookies.
-│   │   ├── cookies.ts                   # Server-side helpers for managing session cookies.
-│   │   └── session.ts                   # Server-side logic for session management (exchange, refresh, destroy).
-│   ├── chat/                            # Logic for the chat feature.
-│   │   ├── __tests__/                   # Tests for chat hooks and utilities.
-│   │   │   ├── testUtils.tsx            # Test utilities for chat feature tests.
-│   │   │   ├── useChatController.integration.test.tsx # Integration tests for the chat controller hook.
-│   │   │   └── useChatController.test.tsx # Unit tests for the chat controller hook.
-│   │   ├── types.ts                     # Type definitions for the chat feature.
-│   │   └── useChatController.ts         # The core state management hook for the entire chat experience.
-│   ├── config.ts                        # Application-wide configuration constants.
-│   ├── queries/                         # TanStack Query hooks for data fetching.
-│   │   ├── agents.ts                    # TanStack Query hooks for fetching agent data.
-│   │   ├── billing.ts                   # Custom hook for the real-time billing event stream.
-│   │   ├── billingPlans.ts              # TanStack Query hook for fetching billing plans.
-│   │   ├── billingSubscriptions.ts      # TanStack Query hooks and mutations for managing subscriptions.
-│   │   ├── chat.ts                      # TanStack Query mutation for sending chat messages.
-│   │   ├── conversations.ts             # TanStack Query hooks for fetching and managing conversations.
-│   │   ├── keys.ts                      # Centralized, typed query keys for TanStack Query.
-│   │   ├── session.ts                   # Custom hook for handling silent session refresh.
-│   │   └── tools.ts                     # TanStack Query hook for fetching available tools.
-│   ├── server/                          # Server-side logic (for Server Components, Actions, and API Routes).
-│   │   ├── apiClient.ts                 # Creates an authenticated API client instance for server-side use.
-│   │   ├── services/                    # Server-side functions that call the backend API.
-│   │   │   ├── agents.ts                # Server-side service for fetching agent data.
-│   │   │   ├── auth/                    # Server-side services for authentication flows.
-│   │   │   │   ├── email.ts             # Service functions for email verification.
-│   │   │   │   ├── passwords.ts         # Service functions for password management.
-│   │   │   │   ├── serviceAccounts.ts   # Service functions for service account management.
-│   │   │   │   ├── sessions.ts          # Service functions for user session management.
-│   │   │   │   └── signup.ts            # Service function for user/tenant registration.
-│   │   │   ├── auth.ts                  # Service functions for core authentication (login, refresh, profile).
-│   │   │   ├── billing.ts               # Service functions for interacting with the billing API.
-│   │   │   ├── chat.ts                  # Service functions for interacting with the chat API.
-│   │   │   ├── conversations.ts         # Service functions for interacting with the conversations API.
-│   │   │   ├── health.ts                # Service functions for checking backend health.
-│   │   │   └── tools.ts                 # Service functions for interacting with the tools API.
-│   │   └── streaming/                   # Server-side logic for handling streaming responses.
-│   │       └── chat.ts                  # Server-side helper to stream chat responses directly.
-│   ├── types/                           # Application-specific type definitions.
-│   │   ├── auth.ts                      # Type definitions for authentication and sessions.
-│   │   └── billing.ts                   # Type definitions for billing-related data structures.
-│   ├── utils/                           # General utility functions.
-│   │   └── time.ts                      # Utility functions for formatting time and dates.
-│   └── utils.ts                         # Utility function (`cn`) for merging Tailwind CSS classes.
-├── middleware.ts                        # Next.js middleware for authentication and route protection.
-├── next.config.ts                       # Next.js framework configuration.
-├── openapi-ts.config.ts                 # Configuration for generating the TypeScript API client from an OpenAPI spec.
-├── playwright.config.ts                 # Playwright end-to-end testing configuration.
-├── pnpm-lock.yaml                       # PNPM lockfile for reproducible dependency installations.
-├── postcss.config.mjs                   # PostCSS configuration, primarily for Tailwind CSS.
-├── public/                              # Directory for static assets like images and fonts.
-├── tailwind.config.ts                   # Tailwind CSS theme and plugin configuration.
-├── tests/                               # Directory for end-to-end tests.
-│   └── auth-smoke.spec.ts               # A Playwright smoke test for the authentication flow.
-├── types/                               # Global type definitions for application entities.
-│   ├── agents.ts                        # Type definitions for agent-related data.
-│   ├── billing.ts                       # Type definitions for billing-related data.
-│   ├── conversations.ts                 # Type definitions for conversation-related data.
-│   ├── session.ts                       # Type definitions for session-related data.
-│   └── tools.ts                         # Type definitions for tool-related data.
-├── vitest.config.ts                     # Vitest unit and integration test runner configuration.
-└── vitest.setup.ts                      # Setup file for Vitest tests, extending Jest DOM matchers.
+├── alembic/                   # Contains Alembic database migration scripts and configuration.
+│   ├── env.py                # Alembic's main configuration script, defines how migrations run.
+│   └── script.py.mako        # Template for generating new Alembic migration scripts.
+├── alembic.ini                # Configuration file for the Alembic database migration tool.
+├── app/                       # Main application source code directory.
+│   ├── __init__.py           # Initializes the 'app' package.
+│   ├── api/                   # Contains all API-related code (endpoints, schemas, dependencies).
+│   │   ├── __init__.py       # Initializes the 'api' subpackage.
+│   │   ├── dependencies/      # FastAPI dependencies for shared logic like auth, pagination, and tenancy.
+│   │   │   ├── __init__.py   # Exposes shared dependency helpers for easy import.
+│   │   │   ├── auth.py       # Dependencies for authentication, authorization, and scope enforcement.
+│   │   │   ├── common.py     # Shared dependencies like pagination parameters.
+│   │   │   ├── rate_limit.py # Helper to translate rate limit errors into HTTP 429 responses.
+│   │   │   ├── service_accounts.py # Dependencies for service account administration and actor resolution.
+│   │   │   └── tenant.py     # Dependencies for resolving and validating multi-tenant context.
+│   │   ├── errors.py          # Centralized exception handling for the API.
+│   │   ├── models/            # Pydantic models for API request/response bodies.
+│   │   │   ├── __init__.py   # Initializes the 'models' subpackage.
+│   │   │   ├── auth.py       # Pydantic models for authentication-related requests and responses.
+│   │   │   └── common.py     # Common API models like SuccessResponse and ErrorResponse.
+│   │   ├── router.py          # Top-level API router that aggregates versioned routers.
+│   │   └── v1/                # Contains the V1 version of the API.
+│   │       ├── __init__.py   # Initializes the 'v1' subpackage.
+│   │       ├── agents/       # API endpoints for managing and listing agents.
+│   │       │   ├── __init__.py # Initializes the 'agents' subpackage.
+│   │       │   ├── router.py # FastAPI router for agent catalog endpoints.
+│   │       │   └── schemas.py # Pydantic schemas for agent-related API models.
+│   │       ├── auth/         # API endpoints for authentication and authorization.
+│   │       │   ├── __init__.py # Initializes the 'auth' subpackage.
+│   │       │   ├── router.py # Aggregates all authentication-related routers.
+│   │       │   ├── routes_email.py # API routes for email verification.
+│   │       │   ├── routes_passwords.py # API routes for password management (forgot, reset, change).
+│   │       │   ├── routes_service_account_tokens.py # API routes for managing service account tokens (list, revoke).
+│   │       │   ├── routes_service_accounts.py # API route for issuing service account tokens.
+│   │       │   ├── routes_sessions.py # API routes for user session management (login, logout, refresh).
+│   │       │   ├── routes_signup.py # API route for public user and tenant registration.
+│   │       │   └── utils.py    # Utility functions for the auth API routes (e.g., IP extraction).
+│   │       ├── billing/      # API endpoints for billing and subscription management.
+│   │       │   ├── __init__.py # Initializes the 'billing' subpackage.
+│   │       │   ├── router.py # FastAPI router for billing, subscription, and usage endpoints.
+│   │       │   └── schemas.py # Pydantic schemas for billing-related API models.
+│   │       ├── chat/         # API endpoints for interacting with chat agents.
+│   │       │   ├── __init__.py # Initializes the 'chat' subpackage.
+│   │       │   ├── router.py # FastAPI router for chat and streaming chat endpoints.
+│   │       │   └── schemas.py # Pydantic schemas for chat request and response models.
+│   │       ├── conversations/ # API endpoints for managing conversation history.
+│   │       │   ├── __init__.py # Initializes the 'conversations' subpackage.
+│   │       │   ├── router.py # FastAPI router for listing, getting, and deleting conversations.
+│   │       │   └── schemas.py # Pydantic schemas for conversation history and messages.
+│   │       ├── router.py     # Aggregates all routers for the V1 API.
+│   │       └── tools/        # API endpoints for listing available agent tools.
+│   │           ├── __init__.py # Initializes the 'tools' subpackage.
+│   │           └── router.py # FastAPI router for listing available agent tools.
+│   ├── bootstrap/             # Application startup and dependency injection setup.
+│   │   ├── __init__.py       # Exposes the application container and its helpers.
+│   │   └── container.py      # Defines the central dependency injection container for the application.
+│   ├── cli/                   # Command-line interface utilities.
+│   │   └── __init__.py       # Initializes the 'cli' package.
+│   ├── core/                  # Core application logic, configuration, and security.
+│   │   ├── __init__.py       # Initializes the 'core' package.
+│   │   ├── config.py         # Pydantic-based application settings management.
+│   │   ├── keys.py           # Re-exports shared key management helpers.
+│   │   ├── password_policy.py # Centralized password strength validation logic.
+│   │   ├── security.py       # JWT, password hashing, and token signing/verification utilities.
+│   │   ├── service_accounts.py # Defines and loads the service account catalog.
+│   │   └── service_accounts.yaml # YAML definition of available service accounts and their scopes.
+│   ├── domain/                # Core business logic and domain models (DTOs, repository protocols).
+│   │   ├── __init__.py       # Initializes the 'domain' package.
+│   │   ├── auth.py           # Domain models and repository protocols for authentication.
+│   │   ├── billing.py        # Domain models and repository protocols for billing.
+│   │   ├── conversations.py  # Domain models and repository protocols for conversations.
+│   │   ├── email_verification.py # Domain models and store protocol for email verification tokens.
+│   │   ├── password_reset.py # Domain models and store protocol for password reset tokens.
+│   │   └── users.py          # Domain models and repository protocols for user management.
+│   ├── infrastructure/        # Adapters for external systems (database, caches, APIs).
+│   │   ├── __init__.py       # Initializes the 'infrastructure' package.
+│   │   ├── db/               # Database connection management (SQLAlchemy engine, sessions).
+│   │   │   ├── __init__.py   # Exposes database engine and session helpers.
+│   │   │   ├── engine.py     # Manages the SQLAlchemy async engine and migrations.
+│   │   │   └── session.py    # FastAPI dependency for providing database sessions.
+│   │   ├── notifications/     # Adapters for sending notifications like emails.
+│   │   │   ├── __init__.py   # Exposes notification adapters.
+│   │   │   └── resend.py     # Adapter for sending transactional emails via the Resend API.
+│   │   ├── openai/            # Wrappers for the OpenAI Agents SDK.
+│   │   │   ├── __init__.py   # Initializes the 'openai' subpackage.
+│   │   │   ├── runner.py     # Wrapper around the OpenAI Agents SDK `Runner` for executing agents.
+│   │   │   └── sessions.py   # Manages SQLAlchemy-backed sessions for the OpenAI Agents SDK.
+│   │   ├── persistence/       # Data persistence layer implementations (repositories).
+│   │   │   ├── __init__.py   # Initializes the 'persistence' subpackage.
+│   │   │   ├── auth/         # Persistence implementations for authentication-related data.
+│   │   │   │   ├── cache.py    # Redis-backed cache for refresh tokens.
+│   │   │   │   ├── models.py   # SQLAlchemy ORM models for users, tokens, and auth-related tables.
+│   │   │   │   ├── repository.py # Postgres-backed repository for refresh tokens.
+│   │   │   │   ├── session_repository.py # Postgres-backed repository for user session metadata.
+│   │   │   │   └── user_repository.py # Postgres-backed repository for user accounts.
+│   │   │   ├── billing/      # Persistence implementations for billing data.
+│   │   │   │   ├── __init__.py # Exposes billing persistence adapters.
+│   │   │   │   ├── models.py # SQLAlchemy ORM models for billing (plans, subscriptions, etc.).
+│   │   │   │   └── postgres.py # Postgres-backed repository for billing data.
+│   │   │   ├── conversations/ # Persistence implementations for conversation data.
+│   │   │   │   ├── __init__.py # Exposes conversation persistence adapters.
+│   │   │   │   ├── models.py # SQLAlchemy ORM models for tenants, conversations, and messages.
+│   │   │   │   └── postgres.py # Postgres-backed repository for conversation history.
+│   │   │   ├── models/       # Shared base models for persistence.
+│   │   │   │   └── base.py   # Shared SQLAlchemy declarative base and helper functions.
+│   │   │   ├── stripe/       # Persistence implementations for Stripe data.
+│   │   │   │   ├── models.py   # SQLAlchemy ORM models for Stripe events and dispatch records.
+│   │   │   │   └── repository.py # Repository for storing and managing Stripe webhook events.
+│   │   │   └── tenants/      # Directory for tenant persistence (currently empty).
+│   │   ├── security/          # Adapters for security-related stores (e.g., tokens, secrets).
+│   │   │   ├── email_verification_store.py # Redis-backed store for email verification tokens.
+│   │   │   ├── nonce_store.py # Redis-backed store for nonce replay protection.
+│   │   │   ├── password_reset_store.py # Redis-backed store for password reset tokens.
+│   │   │   ├── vault.py      # Client for HashiCorp Vault's Transit secret engine.
+│   │   │   └── vault_kv.py   # Re-exports shared Vault KV secret manager helpers.
+│   │   └── stripe/            # Adapters for interacting with the Stripe API.
+│   │       ├── __init__.py   # Exposes the Stripe client and its models.
+│   │       ├── client.py     # Typed client for interacting with the Stripe API.
+│   │       └── types.py      # Typing helpers and wrappers for the dynamic Stripe SDK.
+│   ├── middleware/            # Custom FastAPI middleware.
+│   │   ├── __init__.py       # Initializes the 'middleware' package.
+│   │   └── logging.py        # Middleware for logging HTTP requests and responses.
+│   ├── observability/         # Code for logging, metrics, and tracing.
+│   │   ├── __init__.py       # Initializes the 'observability' package.
+│   │   ├── logging.py        # Structured logging helper for application events.
+│   │   └── metrics.py        # Defines and exposes Prometheus metrics.
+│   ├── presentation/          # Code responsible for presenting data to external systems.
+│   │   ├── __init__.py       # Initializes the 'presentation' package.
+│   │   ├── emails/           # Utilities for rendering transactional email content.
+│   │   │   ├── __init__.py   # Exposes email template rendering functions.
+│   │   │   └── templates.py  # Renders HTML and text for transactional emails.
+│   │   ├── health.py         # Health and readiness check endpoints.
+│   │   ├── metrics.py        # Prometheus metrics scrape endpoint.
+│   │   ├── webhooks/         # Endpoints for receiving webhooks from external services.
+│   │   │   ├── __init__.py   # Initializes the 'webhooks' subpackage.
+│   │   │   └── stripe.py     # Webhook endpoint for receiving Stripe events.
+│   │   └── well_known.py     # Endpoints for /.well-known URIs, like JWKS.
+│   ├── services/              # Business logic layer, orchestrating domain models and infrastructure.
+│   │   ├── __init__.py       # Initializes the 'services' package.
+│   │   ├── agent_service.py  # Core service for orchestrating agent interactions.
+│   │   ├── auth/             # Sub-package for specialized authentication services.
+│   │   │   ├── __init__.py   # Exposes specialized auth services and errors.
+│   │   │   ├── builders.py   # Factory functions for constructing auth services.
+│   │   │   ├── errors.py     # Custom error types for authentication services.
+│   │   │   ├── refresh_token_manager.py # Manages the lifecycle of refresh tokens.
+│   │   │   ├── service_account_service.py # Service for issuing and managing service account tokens.
+│   │   │   ├── session_service.py # Service for managing human user sessions (login, refresh).
+│   │   │   └── session_store.py # High-level service for persisting user session metadata.
+│   │   ├── auth_service.py   # Facade that aggregates various authentication sub-services.
+│   │   ├── billing_events.py # Service for broadcasting and streaming billing events.
+│   │   ├── billing_service.py # Service for managing billing plans and subscriptions.
+│   │   ├── conversation_service.py # Service for managing conversation history.
+│   │   ├── email_verification_service.py # Service for handling email verification flows.
+│   │   ├── geoip_service.py  # Pluggable service for IP-based geolocation lookups.
+│   │   ├── password_recovery_service.py # Service for handling password reset flows.
+│   │   ├── payment_gateway.py # Abstraction for payment providers like Stripe.
+│   │   ├── rate_limit_service.py # Redis-backed service for rate limiting API requests.
+│   │   ├── signup_service.py # Service for orchestrating new user/tenant signups.
+│   │   ├── stripe_dispatcher.py # Service for routing Stripe webhook events to handlers.
+│   │   ├── stripe_event_models.py # Shared data classes for Stripe webhook dispatching.
+│   │   ├── stripe_retry_worker.py # Background worker for retrying failed Stripe event dispatches.
+│   │   └── user_service.py   # Service for managing user accounts, authentication, and policies.
+│   └── utils/                 # General utility functions and classes.
+│       ├── __init__.py       # Initializes the 'utils' package.
+│       ├── tools/            # Utilities for managing and registering agent tools.
+│       │   ├── __init__.py   # Exposes the tool registry and its helpers.
+│       │   ├── registry.py   # Central registry for managing agent tools.
+│       │   └── web_search.py # Implements a web search tool using the Tavily API.
+│       └── user_agent.py     # Lightweight parser for user-agent strings.
+├── main.py                    # Main FastAPI application entry point and configuration.
+└── tests/                     # Contains all tests for the application.
+    ├── __init__.py           # Initializes the 'tests' package.
+    ├── conftest.py            # Shared pytest fixtures and configuration for the test suite.
+    ├── contract/              # Tests for the application's external contracts (APIs).
+    │   ├── __init__.py       # Initializes the 'contract' test subpackage.
+    │   ├── test_agents_api.py # Contract tests for the agent and chat API endpoints.
+    │   ├── test_auth_service_account_tokens.py # Contract tests for service account token management endpoints.
+    │   ├── test_auth_service_accounts.py # Contract tests for the service account token issuance endpoint.
+    │   ├── test_auth_users.py # Contract tests for human user authentication endpoints.
+    │   ├── test_health_endpoints.py # Contract tests for the /health and /health/ready endpoints.
+    │   ├── test_metrics_endpoint.py # Contract tests for the /metrics endpoint.
+    │   ├── test_streaming_manual.py # Manual test script for verifying SSE streaming behavior.
+    │   └── test_well_known.py # Contract tests for the /.well-known/jwks.json endpoint.
+    ├── fixtures/              # Test fixture data.
+    │   ├── keysets/          # Keyset files for testing.
+    │   └── stripe/           # Stripe webhook event fixture files.
+    ├── integration/           # Tests that require external services like a real database.
+    │   ├── __init__.py       # Initializes the 'integration' test subpackage.
+    │   ├── test_billing_stream.py # Integration tests for the server-sent events billing stream.
+    │   ├── test_postgres_migrations.py # Integration tests to verify database migrations and repositories.
+    │   ├── test_stripe_replay_cli.py # Integration tests for the Stripe event replay CLI script.
+    │   └── test_stripe_webhook.py # Integration tests for the Stripe webhook endpoint.
+    ├── unit/                  # Fast, isolated unit tests with mocked dependencies.
+    │   ├── api/              # Unit tests for the API layer.
+    │   │   └── test_routes_service_account_tokens.py # Unit tests for service account token route logic.
+    │   ├── test_auth_domain.py # Unit tests for auth domain helpers like token hashing.
+    │   ├── test_auth_service.py # Unit tests for the `AuthService` facade.
+    │   ├── test_auth_vault_claims.py # Unit tests for Vault payload claim validation logic.
+    │   ├── test_billing_events.py # Unit tests for the billing events service.
+    │   ├── test_billing_service.py # Unit tests for the billing service logic.
+    │   ├── test_cli_forbidden_imports.py # Linter-style test to prevent backend imports in the CLI.
+    │   ├── test_cli_imports.py # Tests to ensure CLI modules import cleanly without side effects.
+    │   ├── test_cli_main.py  # Unit tests for the main CLI entrypoint.
+    │   ├── test_config.py    # Unit tests for the application settings class.
+    │   ├── test_email_templates.py # Unit tests for email template rendering.
+    │   ├── test_email_verification_service.py # Unit tests for the email verification service.
+    │   ├── test_keys.py      # Unit tests for key generation and management.
+    │   ├── test_keys_cli.py  # Unit tests for the key management CLI commands.
+    │   ├── test_metrics.py   # Unit tests for Prometheus metric helpers.
+    │   ├── test_nonce_store.py # Unit tests for the nonce store used in replay protection.
+    │   ├── test_password_recovery_service.py # Unit tests for the password recovery service.
+    │   ├── test_rate_limit_service.py # Unit tests for the rate limiting service.
+    │   ├── test_refresh_token_repository.py # Unit tests for the refresh token repository, especially rehydration.
+    │   ├── test_resend_adapter.py # Unit tests for the Resend email API adapter.
+    │   ├── test_scope_dependencies.py # Unit tests for API scope dependency helpers.
+    │   ├── test_secret_guard.py # Unit tests for production secret enforcement logic.
+    │   ├── test_security.py  # Unit tests for JWT signing, verification, and security dependencies.
+    │   ├── test_service_account_token_service.py # Unit tests for the service account token issuance service.
+    │   ├── test_setup_inputs.py # Unit tests for the CLI setup wizard's input providers.
+    │   ├── test_setup_validators.py # Unit tests for the CLI setup wizard's input validators.
+    │   ├── test_setup_wizard.py # Unit tests for the CLI setup wizard logic.
+    │   ├── test_signup_service.py # Unit tests for the user/tenant signup service.
+    │   ├── test_stripe_dispatcher.py # Unit tests for the Stripe event dispatcher service.
+    │   ├── test_stripe_events.py # Unit tests for the Stripe event repository.
+    │   ├── test_stripe_gateway.py # Unit tests for the Stripe payment gateway adapter.
+    │   ├── test_stripe_retry_worker.py # Unit tests for the Stripe dispatch retry worker.
+    │   ├── test_tenant_dependency.py # Unit tests for the tenant context API dependency.
+    │   ├── test_tools.py     # Unit tests for the agent tool registry and tools.
+    │   ├── test_user_models.py # Unit tests for user-related SQLAlchemy ORM models.
+    │   ├── test_user_repository.py # Unit tests for the user repository implementation.
+    │   ├── test_user_service.py # Unit tests for the user management service.
+    │   ├── test_vault_client.py # Unit tests for the Vault Transit client.
+    │   └── test_vault_kv.py  # Unit tests for the Vault KV secret manager client.
+    └── utils/                 # Utility functions for tests.
+        ├── fake_billing_backend.py # A fake, in-memory billing event backend for testing.
+        └── sqlalchemy.py     # Shared SQLAlchemy test helpers.

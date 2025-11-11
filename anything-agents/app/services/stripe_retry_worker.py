@@ -10,7 +10,7 @@ from uuid import UUID
 
 from app.infrastructure.persistence.stripe.models import StripeEventDispatch
 from app.observability.metrics import observe_dispatch_retry
-from app.services.stripe_dispatcher import stripe_event_dispatcher
+from app.services.stripe_dispatcher import get_stripe_event_dispatcher
 from app.services.stripe_event_models import DispatchResult
 
 logger = logging.getLogger("anything-agents.services.stripe_retry_worker")
@@ -56,7 +56,7 @@ class StripeDispatchRetryWorker:
         dispatcher: StripeDispatchExecutor | None = None,
     ) -> None:
         self._repository = repository
-        self._dispatcher = dispatcher or stripe_event_dispatcher
+        self._dispatcher = dispatcher or get_stripe_event_dispatcher()
 
     async def start(self) -> None:
         if self._task is not None:
@@ -148,6 +148,25 @@ class StripeDispatchRetryWorker:
         return self._stop_event
 
 
-stripe_dispatch_retry_worker = StripeDispatchRetryWorker()
+def get_stripe_dispatch_retry_worker() -> StripeDispatchRetryWorker:
+    """Resolve the configured Stripe dispatch retry worker."""
 
-__all__ = ["stripe_dispatch_retry_worker", "StripeDispatchRetryWorker"]
+    from app.bootstrap.container import get_container
+
+    return get_container().stripe_dispatch_retry_worker
+
+
+class _StripeDispatchRetryWorkerHandle:
+    """Proxy exposing the container-backed retry worker."""
+
+    def __getattr__(self, name: str):
+        return getattr(get_stripe_dispatch_retry_worker(), name)
+
+
+stripe_dispatch_retry_worker = _StripeDispatchRetryWorkerHandle()
+
+__all__ = [
+    "StripeDispatchRetryWorker",
+    "get_stripe_dispatch_retry_worker",
+    "stripe_dispatch_retry_worker",
+]

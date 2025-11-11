@@ -10,6 +10,7 @@ from uuid import uuid4
 
 import pytest
 
+from app.bootstrap import get_container
 from app.core.config import Settings
 from app.domain.billing import BillingPlan
 from app.services.auth_service import UserSessionTokens
@@ -63,14 +64,10 @@ class StubAuthService:
 
 
 @pytest.fixture(autouse=True)
-def mock_email_verification(monkeypatch: pytest.MonkeyPatch):
+def mock_email_verification():
     service = AsyncMock()
     service.send_verification_email = AsyncMock(return_value=True)
-
-    def _get_service():
-        return service
-
-    monkeypatch.setattr("app.services.signup_service.get_email_verification_service", _get_service)
+    cast(Any, get_container()).email_verification_service = service
     return service
 
 
@@ -126,7 +123,7 @@ async def test_register_uses_plan_trial_when_override_disallowed(
     )
     billing_stub = StubBillingService(plans=[plan])
     auth_stub = StubAuthService(tokens=_token_payload("user-1", "tenant-1"))
-    monkeypatch.setattr("app.services.signup_service.auth_service", auth_stub)
+    cast(Any, get_container()).auth_service = auth_stub
 
     service = SignupService(
         billing=cast(BillingService, billing_stub),
@@ -165,7 +162,7 @@ async def test_register_allows_shorter_trial_when_flag_enabled(
     )
     billing_stub = StubBillingService(plans=[plan])
     auth_stub = StubAuthService(tokens=_token_payload("user-flag", "tenant-flag"))
-    monkeypatch.setattr("app.services.signup_service.auth_service", auth_stub)
+    cast(Any, get_container()).auth_service = auth_stub
 
     service = SignupService(
         billing=cast(BillingService, billing_stub),
@@ -202,7 +199,7 @@ async def test_register_clamps_override_to_plan_cap(
     )
     billing_stub = StubBillingService(plans=[plan])
     auth_stub = StubAuthService(tokens=_token_payload("user-clamp", "tenant-clamp"))
-    monkeypatch.setattr("app.services.signup_service.auth_service", auth_stub)
+    cast(Any, get_container()).auth_service = auth_stub
 
     service = SignupService(
         billing=cast(BillingService, billing_stub),
@@ -228,7 +225,7 @@ async def test_register_clamps_override_to_plan_cap(
 async def test_register_propagates_duplicate_email(monkeypatch: pytest.MonkeyPatch) -> None:
     billing_stub = StubBillingService()
     auth_stub = StubAuthService(tokens=_token_payload("user-2", "tenant-2"))
-    monkeypatch.setattr("app.services.signup_service.auth_service", auth_stub)
+    cast(Any, get_container()).auth_service = auth_stub
 
     service = SignupService(
         billing=cast(BillingService, billing_stub),
@@ -259,7 +256,7 @@ async def test_register_surfaces_billing_plan_errors(monkeypatch: pytest.MonkeyP
 
     billing_stub = StubBillingService(error=PlanNotFoundError("unknown plan"))
     auth_stub = StubAuthService(tokens=_token_payload("user-3", "tenant-3"))
-    monkeypatch.setattr("app.services.signup_service.auth_service", auth_stub)
+    cast(Any, get_container()).auth_service = auth_stub
 
     service = SignupService(
         billing=cast(BillingService, billing_stub),

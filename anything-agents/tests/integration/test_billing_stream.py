@@ -12,6 +12,7 @@ from httpx import ASGITransport, AsyncClient
 
 from app.api.dependencies.auth import require_current_user
 from app.api.v1.billing.router import router as billing_router
+from app.bootstrap import get_container
 from app.core.config import get_settings
 from app.infrastructure.persistence.stripe.models import (
     StripeEvent,
@@ -38,19 +39,23 @@ def enable_stream(monkeypatch):
     get_settings.cache_clear()
 
 
-@pytest.mark.asyncio
-async def test_sse_emits_events(monkeypatch):
+@pytest.fixture
+def stub_billing_events_service():
     service = BillingEventsService()
     backend = QueueBillingEventBackend()
     service.configure(backend=backend, repository=None)
+    container = get_container()
+    original_service = container.billing_events_service
+    container.billing_events_service = service
+    try:
+        yield service, backend
+    finally:
+        container.billing_events_service = original_service
 
-    monkeypatch.setattr(
-        "app.services.billing_events._billing_events_service", service, raising=False
-    )
-    monkeypatch.setattr(
-        "app.services.billing_events.billing_events_service", service, raising=False
-    )
 
+@pytest.mark.asyncio
+async def test_sse_emits_events(stub_billing_events_service):
+    service, backend = stub_billing_events_service
     app = FastAPI()
     app.dependency_overrides[require_current_user] = _authorized_user
     app.include_router(billing_router, prefix="/api/v1")
@@ -79,17 +84,8 @@ async def test_sse_emits_events(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_stream_rejects_tenant_mismatch(monkeypatch):
-    service = BillingEventsService()
-    backend = QueueBillingEventBackend()
-    service.configure(backend=backend, repository=None)
-
-    monkeypatch.setattr(
-        "app.services.billing_events._billing_events_service", service, raising=False
-    )
-    monkeypatch.setattr(
-        "app.services.billing_events.billing_events_service", service, raising=False
-    )
+async def test_stream_rejects_tenant_mismatch(stub_billing_events_service):
+    service, _ = stub_billing_events_service
 
     app = FastAPI()
     app.dependency_overrides[require_current_user] = _authorized_user
@@ -105,17 +101,10 @@ async def test_stream_rejects_tenant_mismatch(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_context_tenant_override_publishes_to_correct_channel(monkeypatch):
-    service = BillingEventsService()
-    backend = QueueBillingEventBackend()
-    service.configure(backend=backend, repository=None)
-
-    monkeypatch.setattr(
-        "app.services.billing_events._billing_events_service", service, raising=False
-    )
-    monkeypatch.setattr(
-        "app.services.billing_events.billing_events_service", service, raising=False
-    )
+async def test_context_tenant_override_publishes_to_correct_channel(
+    stub_billing_events_service,
+):
+    service, backend = stub_billing_events_service
 
     # Event lacks tenant_hint but dispatcher context resolves the tenant.
     now = datetime.now(UTC)

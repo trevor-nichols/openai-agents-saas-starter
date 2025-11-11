@@ -10,6 +10,7 @@ from redis.asyncio import Redis
 
 from app.api.errors import register_exception_handlers
 from app.api.router import api_router
+from app.bootstrap import ApplicationContainer, set_container, shutdown_container
 from app.core.config import Settings, enforce_secret_overrides, get_settings
 from app.infrastructure.db import (
     dispose_engine,
@@ -18,8 +19,15 @@ from app.infrastructure.db import (
     init_engine,
 )
 from app.infrastructure.openai.sessions import configure_sdk_session_store
+from app.infrastructure.persistence.auth.repository import get_refresh_token_repository
+from app.infrastructure.persistence.auth.session_repository import (
+    get_user_session_repository,
+)
+from app.infrastructure.persistence.auth.user_repository import get_user_repository
 from app.infrastructure.persistence.billing import PostgresBillingRepository
-from app.infrastructure.persistence.conversations.postgres import PostgresConversationRepository
+from app.infrastructure.persistence.conversations.postgres import (
+    PostgresConversationRepository,
+)
 from app.infrastructure.persistence.stripe.repository import (
     StripeEventRepository,
     configure_stripe_event_repository,
@@ -30,13 +38,16 @@ from app.presentation import health as health_routes
 from app.presentation import metrics as metrics_routes
 from app.presentation import well_known as well_known_routes
 from app.presentation.webhooks import stripe as stripe_webhook
-from app.services.billing_events import RedisBillingEventBackend, billing_events_service
-from app.services.billing_service import billing_service
-from app.services.conversation_service import conversation_service
+from app.services.auth.builders import (
+    build_service_account_token_service,
+    build_session_service,
+)
+from app.services.auth_service import AuthService
+from app.services.billing_events import RedisBillingEventBackend
+from app.services.email_verification_service import build_email_verification_service
+from app.services.password_recovery_service import build_password_recovery_service
 from app.services.payment_gateway import stripe_gateway
-from app.services.rate_limit_service import rate_limiter
-from app.services.stripe_dispatcher import stripe_event_dispatcher
-from app.services.stripe_retry_worker import stripe_dispatch_retry_worker
+from app.services.user_service import build_user_service
 
 # =============================================================================
 # MODULE CONSTANTS
@@ -78,6 +89,8 @@ def _log_billing_configuration(settings: Settings) -> None:
 async def lifespan(app: FastAPI):
     """Handle application lifespan events."""
     settings = get_settings()
+    container = ApplicationContainer()
+    set_container(container)
     warnings = settings.secret_warnings()
     try:
         enforce_secret_overrides(settings)
@@ -92,12 +105,7 @@ async def lifespan(app: FastAPI):
             )
     configure_vault_secret_manager(settings)
 
-    session_factory = None
     stripe_repo: StripeEventRepository | None = None
-    redis_backend_configured = False
-    retry_worker_started = False
-    rate_limit_configured = False
-    rate_limit_client: Redis | None = None
 
     if settings.redis_url:
         rate_limit_client = Redis.from_url(
@@ -105,15 +113,14 @@ async def lifespan(app: FastAPI):
             encoding="utf-8",
             decode_responses=False,
         )
-        rate_limiter.configure(
+        container.rate_limiter.configure(
             redis=rate_limit_client,
             prefix=settings.rate_limit_key_prefix,
         )
-        rate_limit_configured = True
 
     if settings.enable_billing:
         _ensure_billing_prerequisites(settings)
-        billing_service.set_gateway(stripe_gateway)
+        container.billing_service.set_gateway(stripe_gateway)
 
     await init_engine(run_migrations=settings.auto_run_migrations)
     engine = get_engine()
@@ -121,20 +128,62 @@ async def lifespan(app: FastAPI):
         raise RuntimeError("Database engine failed to initialise; cannot configure sessions.")
     configure_sdk_session_store(engine)
     session_factory = get_async_sessionmaker()
+    container.session_factory = session_factory
     postgres_repository = PostgresConversationRepository(session_factory)
-    conversation_service.set_repository(postgres_repository)
+    container.conversation_service.set_repository(postgres_repository)
+
+    user_repository = get_user_repository(settings)
+    if user_repository is None:
+        raise RuntimeError(
+            "User repository is not configured. "
+            "Run Postgres migrations and provide DATABASE_URL."
+        )
+    container.user_service = build_user_service(
+        settings=settings,
+        repository=user_repository,
+    )
+
+    container.user_session_service = build_session_service(
+        settings=settings,
+        user_service=container.user_service,
+        geoip_service=container.geoip_service,
+    )
+    container.service_account_token_service = build_service_account_token_service(
+        settings=settings,
+    )
+
+    refresh_repo = get_refresh_token_repository()
+    session_repo = get_user_session_repository()
+    container.auth_service = AuthService(
+        refresh_repository=refresh_repo,
+        session_repository=session_repo,
+        user_service=container.user_service,
+        geoip_service=container.geoip_service,
+        session_service=container.user_session_service,
+        service_account_service=container.service_account_token_service,
+    )
+    container.password_recovery_service = build_password_recovery_service(
+        settings=settings,
+        repository=user_repository,
+        user_service=container.user_service,
+    )
+    container.email_verification_service = build_email_verification_service(
+        settings=settings,
+        repository=user_repository,
+    )
 
     if settings.enable_billing:
+        billing_service = container.billing_service
         billing_service.set_repository(PostgresBillingRepository(session_factory))
         stripe_repo = StripeEventRepository(session_factory)
         configure_stripe_event_repository(stripe_repo)
-        stripe_event_dispatcher.configure(repository=stripe_repo, billing=billing_service)
+        container.stripe_event_dispatcher.configure(repository=stripe_repo, billing=billing_service)
         if settings.enable_billing_retry_worker:
-            stripe_dispatch_retry_worker.configure(
-                repository=stripe_repo, dispatcher=stripe_event_dispatcher
+            worker = container.stripe_dispatch_retry_worker
+            worker.configure(
+                repository=stripe_repo, dispatcher=container.stripe_event_dispatcher
             )
-            await stripe_dispatch_retry_worker.start()
-            retry_worker_started = True
+            await worker.start()
         else:
             logger.info("Stripe dispatch retry worker disabled by configuration")
 
@@ -146,21 +195,16 @@ async def lifespan(app: FastAPI):
                 )
             redis_client = Redis.from_url(redis_url, encoding="utf-8", decode_responses=False)
             backend = RedisBillingEventBackend(redis_client)
-            billing_events_service.configure(backend=backend, repository=stripe_repo)
+            service = container.billing_events_service
+            service.configure(backend=backend, repository=stripe_repo)
             if settings.enable_billing_stream_replay:
-                await billing_events_service.startup()
-                redis_backend_configured = True
+                await service.startup()
             else:
                 logger.info("Billing stream replay/startup disabled by configuration")
     try:
         yield
     finally:
-        if redis_backend_configured:
-            await billing_events_service.shutdown()
-        if retry_worker_started:
-            await stripe_dispatch_retry_worker.shutdown()
-        if rate_limit_configured:
-            await rate_limiter.shutdown()
+        await shutdown_container()
         await dispose_engine()
 
 

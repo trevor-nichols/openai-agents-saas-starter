@@ -17,19 +17,19 @@ from app.domain.billing import (
     SubscriptionInvoiceRecord,
     TenantSubscription,
 )
-from app.infrastructure.persistence.conversations.models import (
+from app.infrastructure.persistence.billing.models import (
     BillingPlan as ORMPlan,
 )
-from app.infrastructure.persistence.conversations.models import (
+from app.infrastructure.persistence.billing.models import (
     PlanFeature as ORMPlanFeature,
 )
-from app.infrastructure.persistence.conversations.models import (
+from app.infrastructure.persistence.billing.models import (
     SubscriptionInvoice as ORMSubscriptionInvoice,
 )
-from app.infrastructure.persistence.conversations.models import (
+from app.infrastructure.persistence.billing.models import (
     SubscriptionUsage as ORMSubscriptionUsage,
 )
-from app.infrastructure.persistence.conversations.models import (
+from app.infrastructure.persistence.billing.models import (
     TenantSubscription as ORMTenantSubscription,
 )
 

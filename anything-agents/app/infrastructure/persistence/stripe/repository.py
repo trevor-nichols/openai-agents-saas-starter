@@ -290,22 +290,31 @@ class StripeEventRepository:
         return await self.get_dispatch(dispatch_id)
 
 
-_stripe_event_repository: StripeEventRepository | None = None
-
-
 def configure_stripe_event_repository(repository: StripeEventRepository) -> None:
-    global _stripe_event_repository
-    _stripe_event_repository = repository
+    """Install the provided Stripe event repository in the application container."""
+
+    from app.bootstrap.container import get_container
+
+    get_container().stripe_event_repository = repository
 
 
 def reset_stripe_event_repository() -> None:
-    global _stripe_event_repository
-    _stripe_event_repository = None
+    """Clear the configured repository (used in tests)."""
+
+    from app.bootstrap.container import get_container
+
+    container = get_container()
+    container.stripe_event_repository = None
 
 
 def get_stripe_event_repository() -> StripeEventRepository:
-    if _stripe_event_repository is None:
+    """Return the configured repository or raise if missing."""
+
+    from app.bootstrap.container import get_container
+
+    repository = get_container().stripe_event_repository
+    if repository is None:
         raise RuntimeError(
             "StripeEventRepository is not configured. Ensure ENABLE_BILLING=true on startup."
         )
-    return _stripe_event_repository
+    return repository

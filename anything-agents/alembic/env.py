@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import importlib
 import sys
 from logging.config import fileConfig
 from pathlib import Path
@@ -19,6 +20,11 @@ if str(BASE_DIR) not in sys.path:
 
 from app.core.config import get_settings  # noqa: E402
 from app.infrastructure.persistence.models.base import Base  # noqa: E402
+
+# Ensure all ORM metadata is registered before Alembic inspects Base metadata.
+importlib.import_module("app.infrastructure.persistence.auth.models")
+importlib.import_module("app.infrastructure.persistence.conversations.models")
+importlib.import_module("app.infrastructure.persistence.billing.models")
 
 config = context.config
 

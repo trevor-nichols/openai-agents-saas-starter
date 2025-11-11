@@ -20,13 +20,9 @@ class NullGeoIPService:
         return None
 
 
-_GEOIP_SINGLETON: GeoIPService | None = None
-
-
 def get_geoip_service() -> GeoIPService:
     """Return the configured GeoIP service (defaults to a no-op implementation)."""
 
-    global _GEOIP_SINGLETON
-    if _GEOIP_SINGLETON is None:
-        _GEOIP_SINGLETON = NullGeoIPService()
-    return _GEOIP_SINGLETON
+    from app.bootstrap.container import get_container
+
+    return get_container().geoip_service

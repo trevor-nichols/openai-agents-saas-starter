@@ -95,4 +95,19 @@ class ConversationService:
         await self._require_repository().upsert_session_state(conversation_id, state)
 
 
-conversation_service = ConversationService()
+def get_conversation_service() -> ConversationService:
+    """Resolve the container-backed conversation service."""
+
+    from app.bootstrap.container import get_container
+
+    return get_container().conversation_service
+
+
+class _ConversationServiceHandle:
+    """Proxy exposing the active conversation service instance."""
+
+    def __getattr__(self, name: str):
+        return getattr(get_conversation_service(), name)
+
+
+conversation_service = _ConversationServiceHandle()

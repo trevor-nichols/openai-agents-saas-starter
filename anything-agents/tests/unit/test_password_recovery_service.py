@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
+from app.bootstrap import get_container
 from app.domain.users import TenantMembershipDTO, UserRecord, UserRepository, UserStatus
 from app.services.password_recovery_service import (
     InvalidPasswordResetTokenError,
@@ -103,9 +104,9 @@ def sample_user() -> UserRecord:
 
 
 @pytest.fixture
-def fake_auth(monkeypatch: pytest.MonkeyPatch) -> FakeAuthService:
+def fake_auth() -> FakeAuthService:
     fake = FakeAuthService()
-    monkeypatch.setattr("app.services.password_recovery_service.auth_service", fake)
+    cast(Any, get_container()).auth_service = fake
     return fake
 
 

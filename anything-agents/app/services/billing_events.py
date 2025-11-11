@@ -471,16 +471,19 @@ class BillingEventsService:
         return value.isoformat()
 
 
-_billing_events_service = BillingEventsService()
-
-
-def configure_billing_events_service(service: BillingEventsService) -> None:
-    global _billing_events_service
-    _billing_events_service = service
-
-
 def get_billing_events_service() -> BillingEventsService:
-    return _billing_events_service
+    """Resolve the container-backed billing events service."""
+
+    from app.bootstrap.container import get_container
+
+    return get_container().billing_events_service
 
 
-billing_events_service = _billing_events_service
+class _BillingEventsServiceHandle:
+    """Proxy exposing the configured billing events service."""
+
+    def __getattr__(self, name: str):
+        return getattr(get_billing_events_service(), name)
+
+
+billing_events_service = _BillingEventsServiceHandle()

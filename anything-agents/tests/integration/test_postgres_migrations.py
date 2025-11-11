@@ -26,10 +26,10 @@ from alembic import command
 from alembic.config import Config
 from app.domain.billing import TenantSubscription
 from app.domain.conversations import ConversationMessage, ConversationMetadata
-from app.infrastructure.persistence.billing.postgres import PostgresBillingRepository
-from app.infrastructure.persistence.conversations.models import (
+from app.infrastructure.persistence.billing.models import (
     SubscriptionUsage as ORMSubscriptionUsage,
 )
+from app.infrastructure.persistence.billing.postgres import PostgresBillingRepository
 from app.infrastructure.persistence.conversations.postgres import (
     PostgresConversationRepository,
 )

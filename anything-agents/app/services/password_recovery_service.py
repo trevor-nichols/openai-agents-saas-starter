@@ -277,27 +277,35 @@ class PasswordRecoveryService:
         return pepper
 
 
-def build_password_recovery_service() -> PasswordRecoveryService:
-    settings = get_settings()
-    repository = get_user_repository(settings)
-    if repository is None:
+def build_password_recovery_service(
+    *,
+    settings: Settings | None = None,
+    repository: UserRepository | None = None,
+    token_store: PasswordResetTokenStore | None = None,
+    notifier: PasswordResetNotifier | None = None,
+    user_service: UserService | None = None,
+) -> PasswordRecoveryService:
+    resolved_settings = settings or get_settings()
+    resolved_repository = repository or get_user_repository(resolved_settings)
+    if resolved_repository is None:
         raise RuntimeError("User repository is not configured; password reset unavailable.")
-    token_store = get_password_reset_token_store(settings)
-    notifier: PasswordResetNotifier
-    if settings.enable_resend_email_delivery:
-        adapter = get_resend_email_adapter(settings)
-        notifier = ResendPasswordResetNotifier(adapter, settings)
+    resolved_token_store = token_store or get_password_reset_token_store(resolved_settings)
+    resolved_notifier: PasswordResetNotifier
+    if notifier is not None:
+        resolved_notifier = notifier
+    elif resolved_settings.enable_resend_email_delivery:
+        adapter = get_resend_email_adapter(resolved_settings)
+        resolved_notifier = ResendPasswordResetNotifier(adapter, resolved_settings)
     else:
-        notifier = LoggingPasswordResetNotifier()
+        resolved_notifier = LoggingPasswordResetNotifier()
+
     return PasswordRecoveryService(
-        repository,
-        token_store,
-        notifier,
-        settings=settings,
+        resolved_repository,
+        resolved_token_store,
+        resolved_notifier,
+        settings=resolved_settings,
+        user_service=user_service,
     )
-
-
-_DEFAULT_SERVICE: PasswordRecoveryService | None = None
 
 
 __all__ = [
@@ -311,7 +319,11 @@ __all__ = [
 
 
 def get_password_recovery_service() -> PasswordRecoveryService:
-    global _DEFAULT_SERVICE
-    if _DEFAULT_SERVICE is None:
-        _DEFAULT_SERVICE = build_password_recovery_service()
-    return _DEFAULT_SERVICE
+    from app.bootstrap.container import get_container
+
+    container = get_container()
+    if container.password_recovery_service is None:
+        container.password_recovery_service = build_password_recovery_service(
+            user_service=container.user_service
+        )
+    return container.password_recovery_service

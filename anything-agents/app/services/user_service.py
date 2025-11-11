@@ -486,26 +486,38 @@ class RedisLoginThrottle(LoginThrottle):
         return f"auth:ip:block:{token}"
 
 
-_DEFAULT_SERVICE: UserService | None = None
+def build_user_service(
+    *,
+    settings: Settings | None = None,
+    repository: UserRepository | None = None,
+    ip_throttler: LoginThrottle | None = None,
+) -> UserService:
+    """Construct a UserService with explicit dependencies."""
+
+    resolved_settings = settings or get_settings()
+    resolved_repository = repository or get_user_repository(resolved_settings)
+    if resolved_repository is None:
+        raise RuntimeError(
+            "User repository is not configured. "
+            "Run Postgres migrations and provide DATABASE_URL."
+        )
+    resolved_throttler = ip_throttler or build_ip_throttler(resolved_settings)
+    return UserService(
+        resolved_repository,
+        settings=resolved_settings,
+        ip_throttler=resolved_throttler,
+    )
 
 
 def get_user_service() -> UserService:
-    global _DEFAULT_SERVICE
-    if _DEFAULT_SERVICE is None:
-        settings = get_settings()
-        repository = get_user_repository(settings)
-        if repository is None:
-            raise RuntimeError(
-                "User repository is not configured. "
-                "Run Postgres migrations and provide DATABASE_URL."
-            )
-        ip_throttler = build_ip_throttler(settings)
-        _DEFAULT_SERVICE = UserService(
-            repository,
-            settings=settings,
-            ip_throttler=ip_throttler,
-        )
-    return _DEFAULT_SERVICE
+    """Fetch the configured user service from the application container."""
+
+    from app.bootstrap.container import get_container
+
+    container = get_container()
+    if container.user_service is None:
+        container.user_service = build_user_service()
+    return container.user_service
 
 
 def build_ip_throttler(settings: Settings) -> LoginThrottle:
