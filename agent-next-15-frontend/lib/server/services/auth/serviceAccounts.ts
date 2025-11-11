@@ -10,10 +10,13 @@ import type {
   SuccessResponse,
 } from '@/lib/api/client/types.gen';
 import type {
+  ServiceAccountIssuePayload,
+  ServiceAccountIssueResult,
   ServiceAccountTokenListResult,
   ServiceAccountTokenQueryParams,
   ServiceAccountTokenSummary,
 } from '@/types/serviceAccounts';
+import { API_BASE_URL } from '@/lib/config';
 
 import { getServerApiClient } from '../../apiClient';
 
@@ -91,6 +94,62 @@ export async function revokeServiceAccountToken(
   }
 
   return response.data;
+}
+
+export async function issueServiceAccountToken(
+  payload: ServiceAccountIssuePayload,
+): Promise<ServiceAccountIssueResult> {
+  const { auth } = await getServerApiClient();
+  const token = auth();
+  const baseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+
+  const response = await fetch(`${baseUrl}/api/v1/auth/service-accounts/browser-issue`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      account: payload.account,
+      scopes: payload.scopes,
+      tenant_id: payload.tenantId ?? undefined,
+      lifetime_minutes: payload.lifetimeMinutes,
+      fingerprint: payload.fingerprint,
+      force: payload.force ?? false,
+      reason: payload.reason,
+    }),
+  });
+
+  const data = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+
+  if (!response.ok || !data) {
+    const message = typeof data?.detail === 'string' ? data.detail : typeof data?.error === 'string' ? data.error : 'Failed to issue service-account token.';
+    throw new Error(message);
+  }
+
+  const refreshToken = typeof data.refresh_token === 'string' ? data.refresh_token : '';
+  if (!refreshToken) {
+    throw new Error('Server did not return a refresh token.');
+  }
+
+  const expiresAt = typeof data.expires_at === 'string' ? data.expires_at : '';
+  const issuedAt = typeof data.issued_at === 'string' ? data.issued_at : '';
+  const kid = typeof data.kid === 'string' ? data.kid : 'unknown';
+  const account = typeof data.account === 'string' ? data.account : payload.account;
+  const tokenUse = typeof data.token_use === 'string' ? data.token_use : 'refresh';
+
+  return {
+    refreshToken,
+    account,
+    tenantId: (data.tenant_id as string | null | undefined) ?? payload.tenantId ?? null,
+    scopes: Array.isArray(data.scopes)
+      ? (data.scopes as string[])
+      : payload.scopes,
+    expiresAt,
+    issuedAt,
+    kid,
+    tokenUse,
+  };
 }
 
 function mapTokenItem(item: ServiceAccountTokenItem): ServiceAccountTokenSummary {

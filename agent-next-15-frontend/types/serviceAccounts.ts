@@ -33,3 +33,24 @@ export interface ServiceAccountTokenQueryParams {
 }
 
 export type ServiceAccountTokenRow = ServiceAccountTokenSummary;
+
+export interface ServiceAccountIssuePayload {
+  account: string;
+  scopes: string[];
+  tenantId: string | null;
+  lifetimeMinutes?: number | null;
+  fingerprint?: string | null;
+  force?: boolean;
+  reason: string;
+}
+
+export interface ServiceAccountIssueResult {
+  refreshToken: string;
+  account: string;
+  tenantId: string | null;
+  scopes: string[];
+  expiresAt: string;
+  issuedAt: string;
+  kid: string;
+  tokenUse: string;
+}

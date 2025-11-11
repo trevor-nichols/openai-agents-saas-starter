@@ -3,7 +3,7 @@
 Updated: 11 Nov 2025  
 Owner: Frontend Platform (Account & Security workstream)
 
-> **Status – 11 Nov 2025:** Automation tab restored. Token listing + revoke UX ships in `/account?tab=automation`; issuance now has a backend browser bridge (`POST /api/v1/auth/service-accounts/browser-issue`), but the frontend form/dialog is still TODO until we design the UI flow.
+> **Status – 12 Nov 2025:** Automation tab now lists, revokes, and issues tokens. The Issue Token dialog in `/account?tab=automation` calls `/app/api/auth/service-accounts/browser-issue`, which proxies the FastAPI bridge (`POST /api/v1/auth/service-accounts/browser-issue`) and requires a justification string for auditing.
 
 ## 1. Context & Goals
 
@@ -28,14 +28,14 @@ Owner: Frontend Platform (Account & Security workstream)
 | ---- | ------ | ----------- | ----- |
 | List service accounts | `/app/api/auth/service-accounts/tokens` → FastAPI `/api/v1/auth/service-accounts/tokens` | `useServiceAccountTokensQuery` + `DataTable` | Query params support `account`, `status`, pagination; response normalized to camelCase. |
 | Revoke token | `/app/api/auth/service-accounts/tokens/{jti}/revoke` | `useRevokeServiceAccountTokenMutation` | Confirms via AlertDialog + optional reason piped to backend for audits. |
-| Issue token | `/app/api/auth/service-accounts/browser-issue` → FastAPI `/api/v1/auth/service-accounts/browser-issue` | _Deferred UI_ | Requires tenant admin session + justification. Backend signs via Vault Transit and returns the usual token response; UI needs to add the dialog + copy moment. |
+| Issue token | `/app/api/auth/service-accounts/browser-issue` → FastAPI `/api/v1/auth/service-accounts/browser-issue` | `useIssueServiceAccountTokenMutation` | Tenant admins enter account, scopes, optional metadata, and a justification. The bridge signs via Vault Transit and returns the refresh token once; the dialog renders the copy-once UX. |
 | Token copy-to-clipboard | N/A (issuance deferred) | Future `useCopyToClipboard` helper | Only needed once web issuance is approved. |
 
 Implementation notes:
 - `lib/api/accountServiceAccounts.ts` proxies the Next routes so client components only ever call `/app/api/...` endpoints.
 - `lib/server/services/auth/serviceAccounts.ts` centralizes SDK calls (list + revoke) with camelCase mapping for UI consumption.
 - Automation tab uses `DataTable` + TanStack Query for caching, and an `AlertDialog` flow to capture optional revoke reasons.
-- Issuance dialog intentionally omitted until we hook into the new browser bridge endpoint and finalize copy/telemetry requirements.
+- Issuance dialog uses the shared mutation + dialog component; copy guidance and telemetry auto-log via the backend bridge. Update the UI copy only if security requirements change.
 
 ## 4. Component Layout
 

@@ -2,11 +2,16 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   fetchServiceAccountTokens,
+  issueServiceAccountTokenRequest,
   revokeServiceAccountTokenRequest,
   type ServiceAccountTokenQueryParams,
 } from '@/lib/api/accountServiceAccounts';
 import { queryKeys } from '@/lib/queries/keys';
-import type { ServiceAccountTokenListResult } from '@/types/serviceAccounts';
+import type {
+  ServiceAccountIssuePayload,
+  ServiceAccountIssueResult,
+  ServiceAccountTokenListResult,
+} from '@/types/serviceAccounts';
 
 const DEFAULT_LIMIT = 50;
 
@@ -32,6 +37,16 @@ export function useRevokeServiceAccountTokenMutation() {
   return useMutation({
     mutationFn: ({ tokenId, reason }: { tokenId: string; reason?: string }) =>
       revokeServiceAccountTokenRequest(tokenId, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.account.serviceAccounts.all() });
+    },
+  });
+}
+
+export function useIssueServiceAccountTokenMutation() {
+  const queryClient = useQueryClient();
+  return useMutation<ServiceAccountIssueResult, Error, ServiceAccountIssuePayload>({
+    mutationFn: (payload) => issueServiceAccountTokenRequest(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.account.serviceAccounts.all() });
     },

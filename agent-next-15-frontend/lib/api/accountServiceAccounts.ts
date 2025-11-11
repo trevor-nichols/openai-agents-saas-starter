@@ -1,4 +1,9 @@
-import type { ServiceAccountTokenListResult, ServiceAccountTokenQueryParams } from '@/types/serviceAccounts';
+import type {
+  ServiceAccountIssuePayload,
+  ServiceAccountIssueResult,
+  ServiceAccountTokenListResult,
+  ServiceAccountTokenQueryParams,
+} from '@/types/serviceAccounts';
 
 interface TokensApiResponse {
   success: boolean;
@@ -14,6 +19,12 @@ interface RevokeApiResponse {
   data?: {
     jti: string;
   };
+  error?: string;
+}
+
+interface IssueApiResponse {
+  success: boolean;
+  data?: ServiceAccountIssueResult;
   error?: string;
 }
 
@@ -92,4 +103,32 @@ export async function revokeServiceAccountTokenRequest(
   if (!response.ok || payload.success === false) {
     throw new Error(payload.error || 'Failed to revoke service-account token.');
   }
+}
+
+export async function issueServiceAccountTokenRequest(
+  payload: ServiceAccountIssuePayload,
+): Promise<ServiceAccountIssueResult> {
+  const response = await fetch('/api/auth/service-accounts/browser-issue', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      account: payload.account,
+      scopes: payload.scopes,
+      tenant_id: payload.tenantId,
+      lifetime_minutes: payload.lifetimeMinutes,
+      fingerprint: payload.fingerprint,
+      force: payload.force ?? false,
+      reason: payload.reason,
+    }),
+    cache: 'no-store',
+  });
+
+  const result = (await response.json().catch(() => ({}))) as IssueApiResponse;
+  if (!response.ok || result.success === false || !result.data) {
+    throw new Error(result.error || 'Failed to issue service-account token.');
+  }
+
+  return result.data;
 }

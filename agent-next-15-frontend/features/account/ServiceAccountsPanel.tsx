@@ -1,7 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ComponentProps,
+  type Dispatch,
+  type FormEvent,
+  type SetStateAction,
+} from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -22,12 +31,22 @@ import { Input } from '@/components/ui/input';
 import { EmptyState, ErrorState } from '@/components/ui/states';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
+import { useAccountProfileQuery } from '@/lib/queries/account';
 import {
+  useIssueServiceAccountTokenMutation,
   useRevokeServiceAccountTokenMutation,
   useServiceAccountTokensQuery,
 } from '@/lib/queries/accountServiceAccounts';
-import type { ServiceAccountStatusFilter, ServiceAccountTokenRow } from '@/types/serviceAccounts';
+import type { ServiceAccountIssueResult, ServiceAccountStatusFilter, ServiceAccountTokenRow } from '@/types/serviceAccounts';
+import {
+  buildIssuePayload,
+  createDefaultIssueForm,
+  type ServiceAccountIssueFormValues,
+} from './serviceAccountIssueHelpers';
 
 const DEFAULT_LIMIT = 50;
 const STATUS_OPTIONS: { label: string; value: ServiceAccountStatusFilter }[] = [
@@ -38,6 +57,8 @@ const STATUS_OPTIONS: { label: string; value: ServiceAccountStatusFilter }[] = [
 
 export function ServiceAccountsPanel() {
   const toast = useToast();
+  const { profile } = useAccountProfileQuery();
+  const defaultTenantId = profile?.tenant?.id ?? null;
   const [accountSearch, setAccountSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<ServiceAccountStatusFilter>('active');
   const debouncedAccount = useDebouncedValue(accountSearch, 350);
@@ -54,11 +75,23 @@ export function ServiceAccountsPanel() {
 
   const tokensQuery = useServiceAccountTokensQuery(queryFilters);
   const revokeMutation = useRevokeServiceAccountTokenMutation();
+  const issueMutation = useIssueServiceAccountTokenMutation();
 
   const [dialogState, setDialogState] = useState<{
     token: ServiceAccountTokenRow | null;
     reason: string;
   }>({ token: null, reason: '' });
+
+  const [issueDialogOpen, setIssueDialogOpen] = useState(false);
+  const [issueForm, setIssueForm] = useState<ServiceAccountIssueFormValues>(() => createDefaultIssueForm(defaultTenantId));
+  const [issuedToken, setIssuedToken] = useState<ServiceAccountIssueResult | null>(null);
+  const [issueFormError, setIssueFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!issueDialogOpen && defaultTenantId && !issueForm.tenantId) {
+      setIssueForm((current) => ({ ...current, tenantId: defaultTenantId }));
+    }
+  }, [defaultTenantId, issueDialogOpen, issueForm.tenantId]);
 
   const openRevokeDialog = useCallback((token: ServiceAccountTokenRow) => {
     setDialogState({ token, reason: '' });
@@ -87,6 +120,31 @@ export function ServiceAccountsPanel() {
       });
     }
   }, [closeDialog, dialogState.reason, dialogState.token, revokeMutation, toast]);
+
+  const handleIssueSubmit = useCallback(async () => {
+    setIssueFormError(null);
+    let payload;
+    try {
+      payload = buildIssuePayload(issueForm, defaultTenantId);
+    } catch (error) {
+      setIssueFormError(error instanceof Error ? error.message : 'Check the form and try again.');
+      return;
+    }
+
+    try {
+      const result = await issueMutation.mutateAsync(payload);
+      setIssuedToken(result);
+      toast.success({
+        title: 'Token issued',
+        description: 'Copy the refresh token now. It will not be shown again.',
+      });
+    } catch (error) {
+      toast.error({
+        title: 'Unable to issue token',
+        description: error instanceof Error ? error.message : 'Try again shortly.',
+      });
+    }
+  }, [defaultTenantId, issueForm, issueMutation, toast]);
 
   const columns = useMemo<ColumnDef<ServiceAccountTokenRow>[]>(
     () => [
@@ -158,6 +216,19 @@ export function ServiceAccountsPanel() {
         eyebrow="Automation"
         title="Service-account tokens"
         description="Inspect automation credentials, audit scopes, and revoke stale tokens."
+        actions={
+          <Button
+            size="sm"
+            onClick={() => {
+              setIssueForm(createDefaultIssueForm(defaultTenantId));
+              setIssuedToken(null);
+              setIssueFormError(null);
+              setIssueDialogOpen(true);
+            }}
+          >
+            Issue token
+          </Button>
+        }
       />
 
       <GlassPanel className="space-y-4">
@@ -215,15 +286,15 @@ export function ServiceAccountsPanel() {
       </GlassPanel>
 
       <Alert>
-        <AlertTitle>Issuing tokens</AlertTitle>
+        <AlertTitle>Need to run this in CI?</AlertTitle>
         <AlertDescription className="space-y-2 text-sm text-foreground/70">
           <p>
-            Use the Starter CLI to mint tokens with Vault-signed credentials. Run
+            This form issues tokens using the authenticated admin session. Pipelines can still use the CLI via
             <code className="ml-1 rounded bg-muted px-2 py-1 text-xs font-mono">starter_cli auth tokens issue-service-account</code>
-            and the resulting refresh token will appear in this table within a few seconds.
+            if you prefer headless workflows.
           </p>
           <p>
-            Review the latest rollout notes in
+            Latest rollout status lives in
             <Link className="ml-1 underline" href="/docs/frontend/features/account-service-accounts.md">
               docs/frontend/features/account-service-accounts.md
             </Link>
@@ -260,6 +331,26 @@ export function ServiceAccountsPanel() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <IssueTokenDialog
+        open={issueDialogOpen}
+        form={issueForm}
+        onFormChange={setIssueForm}
+        issuedToken={issuedToken}
+        isSubmitting={issueMutation.isPending}
+        formError={issueFormError}
+        onSubmit={handleIssueSubmit}
+        onDismiss={() => {
+          setIssueDialogOpen(false);
+          setIssueForm(createDefaultIssueForm(defaultTenantId));
+          setIssueFormError(null);
+          setIssuedToken(null);
+        }}
+        onIssueAnother={() => {
+          setIssuedToken(null);
+          setIssueForm(createDefaultIssueForm(defaultTenantId));
+          setIssueFormError(null);
+        }}
+      />
     </section>
   );
 }
@@ -301,4 +392,211 @@ function useDebouncedValue<T>(value: T, delay: number): T {
   }, [value, delay]);
 
   return debounced;
+}
+
+interface IssueTokenDialogProps {
+  open: boolean;
+  form: ServiceAccountIssueFormValues;
+  onFormChange: Dispatch<SetStateAction<ServiceAccountIssueFormValues>>;
+  issuedToken: ServiceAccountIssueResult | null;
+  isSubmitting: boolean;
+  formError: string | null;
+  onSubmit: () => void | Promise<void>;
+  onDismiss: () => void;
+  onIssueAnother: () => void;
+}
+
+function IssueTokenDialog({
+  open,
+  form,
+  onFormChange,
+  issuedToken,
+  isSubmitting,
+  formError,
+  onSubmit,
+  onDismiss,
+  onIssueAnother,
+}: IssueTokenDialogProps) {
+  const handleOpenChange = (next: boolean) => {
+    if (!next) {
+      onDismiss();
+    }
+  };
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSubmit();
+  };
+
+  const updateField = <K extends keyof ServiceAccountIssueFormValues>(field: K, value: ServiceAccountIssueFormValues[K]) => {
+    onFormChange((current) => ({ ...current, [field]: value }));
+  };
+
+  const renderForm = () => (
+    <form className="space-y-4" onSubmit={handleSubmit}>
+      <DialogHeader>
+        <DialogTitle>Issue a new service-account token</DialogTitle>
+        <DialogDescription>Fill in the account details and describe why you need this credential. The token is shown once.</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="issue-account">Account</Label>
+          <Input
+            id="issue-account"
+            placeholder="analytics-batch"
+            value={form.account}
+            onChange={(event) => updateField('account', event.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="issue-scopes">Scopes</Label>
+          <Textarea
+            id="issue-scopes"
+            placeholder="conversations:read, billing:use"
+            value={form.scopes}
+            onChange={(event) => updateField('scopes', event.target.value)}
+          />
+          <p className="text-xs text-foreground/60">Separate scopes with commas or newlines.</p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="issue-tenant">Tenant ID</Label>
+          <Input
+            id="issue-tenant"
+            placeholder="Tenant UUID"
+            value={form.tenantId ?? ''}
+            onChange={(event) => updateField('tenantId', event.target.value || null)}
+          />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="issue-lifetime">Lifetime (minutes)</Label>
+            <Input
+              id="issue-lifetime"
+              type="number"
+              min={1}
+              placeholder="1440"
+              value={form.lifetimeMinutes ?? ''}
+              onChange={(event) =>
+                updateField('lifetimeMinutes', event.target.value ? Number(event.target.value) : undefined)
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="issue-fingerprint">Fingerprint (optional)</Label>
+            <Input
+              id="issue-fingerprint"
+              placeholder="ci-runner-01"
+              value={form.fingerprint ?? ''}
+              onChange={(event) => updateField('fingerprint', event.target.value)}
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-3 rounded-lg border border-white/10 p-3">
+          <div className="flex-1">
+            <Label htmlFor="issue-force" className="text-sm font-medium">
+              Force issuance
+            </Label>
+            <p className="text-xs text-foreground/60">Mint a new token even if one already exists for this account.</p>
+          </div>
+          <Switch
+            id="issue-force"
+            checked={Boolean(form.force)}
+            onCheckedChange={(checked) => updateField('force', checked)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="issue-reason">Reason</Label>
+          <Textarea
+            id="issue-reason"
+            placeholder="Explain why this automation token is needed."
+            value={form.reason}
+            onChange={(event) => updateField('reason', event.target.value)}
+          />
+          <p className="text-xs text-foreground/60">Minimum 10 characters. Displayed in audit logs.</p>
+        </div>
+        {formError ? (
+          <p className="text-sm font-medium text-destructive" role="alert">
+            {formError}
+          </p>
+        ) : null}
+      </div>
+      <DialogFooter>
+        <Button type="button" variant="ghost" onClick={onDismiss} disabled={isSubmitting}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Issuing…' : 'Issue token'}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        {issuedToken ? (
+          <IssuedTokenView token={issuedToken} onDone={onDismiss} onIssueAnother={onIssueAnother} />
+        ) : (
+          renderForm()
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface IssuedTokenViewProps {
+  token: ServiceAccountIssueResult;
+  onDone: () => void;
+  onIssueAnother: () => void;
+}
+
+function IssuedTokenView({ token, onDone, onIssueAnother }: IssuedTokenViewProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(token.refreshToken);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      setCopied(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <DialogHeader>
+        <DialogTitle>Copy your token now</DialogTitle>
+        <DialogDescription>This refresh token is only shown once. Store it in your secret manager.</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-3">
+        <Textarea readOnly value={token.refreshToken} className="font-mono text-sm" rows={4} />
+        <Button type="button" variant="outline" onClick={handleCopy}>
+          {copied ? 'Copied!' : 'Copy token'}
+        </Button>
+      </div>
+      <div className="rounded-lg border border-white/10 p-3 text-sm text-foreground/70">
+        <p className="font-medium text-foreground">Details</p>
+        <ul className="mt-2 space-y-1">
+          <li>
+            <span className="text-foreground/60">Account:</span> {token.account}
+          </li>
+          <li>
+            <span className="text-foreground/60">Scopes:</span> {token.scopes.join(', ')}
+          </li>
+          <li>
+            <span className="text-foreground/60">Expires:</span> {formatDate(token.expiresAt)}
+          </li>
+        </ul>
+      </div>
+      <DialogFooter className="flex flex-wrap gap-2">
+        <Button type="button" variant="secondary" onClick={onIssueAnother}>
+          Issue another
+        </Button>
+        <Button type="button" onClick={onDone}>
+          Done
+        </Button>
+      </DialogFooter>
+    </div>
+  );
 }
