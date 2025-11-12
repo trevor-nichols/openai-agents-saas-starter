@@ -925,6 +925,36 @@ export type StartSubscriptionRequest = {
 };
 
 /**
+ * StatusIncidentResendRequest
+ */
+export type StatusIncidentResendRequest = {
+    /**
+     * Severity
+     *
+     * Incident severity used to filter subscriptions.
+     */
+    severity?: 'all' | 'major' | 'maintenance';
+    /**
+     * Tenant Id
+     *
+     * Restrict delivery to a specific tenant context.
+     */
+    tenant_id?: string | null;
+};
+
+/**
+ * StatusIncidentResendResponse
+ */
+export type StatusIncidentResendResponse = {
+    /**
+     * Dispatched
+     *
+     * Number of subscriptions notified.
+     */
+    dispatched: number;
+};
+
+/**
  * StatusOverviewSchema
  */
 export type StatusOverviewSchema = {
@@ -946,6 +976,120 @@ export type StatusOverviewSchema = {
      * Timestamp of the last health aggregation.
      */
     updated_at: string;
+};
+
+/**
+ * StatusSubscriptionChallengeRequest
+ */
+export type StatusSubscriptionChallengeRequest = {
+    /**
+     * Token
+     *
+     * Webhook challenge token.
+     */
+    token: string;
+};
+
+/**
+ * StatusSubscriptionCreateRequest
+ */
+export type StatusSubscriptionCreateRequest = {
+    /**
+     * Channel
+     */
+    channel: 'email' | 'webhook';
+    /**
+     * Target
+     */
+    target: string;
+    /**
+     * Severity Filter
+     *
+     * Incident severity filter.
+     */
+    severity_filter?: 'all' | 'major' | 'maintenance' | null;
+    /**
+     * Metadata
+     *
+     * Optional metadata labels.
+     */
+    metadata?: {
+        [key: string]: unknown;
+    } | null;
+};
+
+/**
+ * StatusSubscriptionListResponse
+ */
+export type StatusSubscriptionListResponse = {
+    /**
+     * Items
+     */
+    items: Array<StatusSubscriptionResponse>;
+    /**
+     * Next Cursor
+     */
+    next_cursor?: string | null;
+};
+
+/**
+ * StatusSubscriptionResponse
+ */
+export type StatusSubscriptionResponse = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Channel
+     */
+    channel: string;
+    /**
+     * Severity Filter
+     */
+    severity_filter: string;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Target Masked
+     */
+    target_masked: string;
+    /**
+     * Tenant Id
+     */
+    tenant_id?: string | null;
+    /**
+     * Created By
+     */
+    created_by: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+    /**
+     * Webhook Secret
+     *
+     * Signing secret for webhook deliveries (returned on creation only).
+     */
+    webhook_secret?: string | null;
+};
+
+/**
+ * StatusSubscriptionVerifyRequest
+ */
+export type StatusSubscriptionVerifyRequest = {
+    /**
+     * Token
+     *
+     * Email verification token.
+     */
+    token: string;
 };
 
 /**
@@ -2340,6 +2484,188 @@ export type GetPlatformStatusRssApiV1StatusRssGetResponses = {
      */
     200: unknown;
 };
+
+export type ListStatusSubscriptionsApiV1StatusSubscriptionsGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Cursor
+         */
+        cursor?: string | null;
+        /**
+         * Tenant Id
+         *
+         * Tenant identifier to inspect (operators only).
+         */
+        tenant_id?: string | null;
+    };
+    url: '/api/v1/status/subscriptions';
+};
+
+export type ListStatusSubscriptionsApiV1StatusSubscriptionsGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListStatusSubscriptionsApiV1StatusSubscriptionsGetError = ListStatusSubscriptionsApiV1StatusSubscriptionsGetErrors[keyof ListStatusSubscriptionsApiV1StatusSubscriptionsGetErrors];
+
+export type ListStatusSubscriptionsApiV1StatusSubscriptionsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: StatusSubscriptionListResponse;
+};
+
+export type ListStatusSubscriptionsApiV1StatusSubscriptionsGetResponse = ListStatusSubscriptionsApiV1StatusSubscriptionsGetResponses[keyof ListStatusSubscriptionsApiV1StatusSubscriptionsGetResponses];
+
+export type CreateStatusSubscriptionApiV1StatusSubscriptionsPostData = {
+    body: StatusSubscriptionCreateRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/status/subscriptions';
+};
+
+export type CreateStatusSubscriptionApiV1StatusSubscriptionsPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateStatusSubscriptionApiV1StatusSubscriptionsPostError = CreateStatusSubscriptionApiV1StatusSubscriptionsPostErrors[keyof CreateStatusSubscriptionApiV1StatusSubscriptionsPostErrors];
+
+export type CreateStatusSubscriptionApiV1StatusSubscriptionsPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: StatusSubscriptionResponse;
+};
+
+export type CreateStatusSubscriptionApiV1StatusSubscriptionsPostResponse = CreateStatusSubscriptionApiV1StatusSubscriptionsPostResponses[keyof CreateStatusSubscriptionApiV1StatusSubscriptionsPostResponses];
+
+export type VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostData = {
+    body: StatusSubscriptionVerifyRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/status/subscriptions/verify';
+};
+
+export type VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostError = VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostErrors[keyof VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostErrors];
+
+export type VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: StatusSubscriptionResponse;
+};
+
+export type VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostResponse = VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostResponses[keyof VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostResponses];
+
+export type ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostData = {
+    body: StatusSubscriptionChallengeRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/status/subscriptions/challenge';
+};
+
+export type ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostError = ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostErrors[keyof ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostErrors];
+
+export type ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: StatusSubscriptionResponse;
+};
+
+export type ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostResponse = ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostResponses[keyof ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostResponses];
+
+export type RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteData = {
+    body?: never;
+    path: {
+        /**
+         * Subscription Id
+         */
+        subscription_id: string;
+    };
+    query?: {
+        /**
+         * Token
+         *
+         * Unsubscribe token for email subscribers.
+         */
+        token?: string | null;
+    };
+    url: '/api/v1/status/subscriptions/{subscription_id}';
+};
+
+export type RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteError = RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteErrors[keyof RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteErrors];
+
+export type RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteResponse = RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteResponses[keyof RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteResponses];
+
+export type ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostData = {
+    body: StatusIncidentResendRequest;
+    path: {
+        /**
+         * Incident Id
+         */
+        incident_id: string;
+    };
+    query?: never;
+    url: '/api/v1/status/incidents/{incident_id}/resend';
+};
+
+export type ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostError = ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostErrors[keyof ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostErrors];
+
+export type ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponses = {
+    /**
+     * Successful Response
+     */
+    202: StatusIncidentResendResponse;
+};
+
+export type ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponse = ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponses[keyof ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponses];
 
 export type ListBillingPlansApiV1BillingPlansGetData = {
     body?: never;

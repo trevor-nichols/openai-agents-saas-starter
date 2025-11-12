@@ -1,40 +1,16 @@
-export interface RawStatusOverview {
-  state: string;
-  description: string;
-  updated_at: string;
-}
+import type {
+  IncidentSchema,
+  PlatformStatusResponse,
+  ServiceStatusSchema,
+  StatusOverviewSchema,
+  UptimeMetricSchema,
+} from '@/lib/api/client/types.gen';
 
-export interface RawServiceStatus {
-  name: string;
-  status: string;
-  description: string;
-  owner: string;
-  last_incident_at?: string | null;
-}
-
-export interface RawIncidentRecord {
-  incident_id: string;
-  service: string;
-  occurred_at: string;
-  impact: string;
-  state: string;
-}
-
-export interface RawUptimeMetric {
-  label: string;
-  value: string;
-  helper_text: string;
-  trend_value: string;
-  trend_tone: string;
-}
-
-export interface RawPlatformStatusResponse {
-  generated_at: string;
-  overview: RawStatusOverview;
-  services: RawServiceStatus[];
-  incidents: RawIncidentRecord[];
-  uptime_metrics: RawUptimeMetric[];
-}
+export type RawStatusOverview = StatusOverviewSchema;
+export type RawServiceStatus = ServiceStatusSchema;
+export type RawIncidentRecord = IncidentSchema;
+export type RawUptimeMetric = UptimeMetricSchema;
+export type RawPlatformStatusResponse = PlatformStatusResponse;
 
 export interface StatusOverview {
   state: string;

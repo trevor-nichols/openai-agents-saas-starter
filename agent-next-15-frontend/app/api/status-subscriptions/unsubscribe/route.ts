@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { API_BASE_URL } from '@/lib/config';
+import {
+  StatusSubscriptionServiceError,
+  unsubscribeStatusSubscriptionViaToken,
+} from '@/lib/server/services/statusSubscriptions';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,27 +17,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const url = new URL(
-      `/api/v1/status/subscriptions/${encodeURIComponent(subscriptionId)}`,
-      API_BASE_URL
-    );
-    url.searchParams.set('token', token);
-
-    const response = await fetch(url, {
-      method: 'DELETE',
-      cache: 'no-store',
+    await unsubscribeStatusSubscriptionViaToken({
+      subscriptionId,
+      token,
     });
 
-    if (response.status === 204) {
-      return NextResponse.json({ success: true }, { status: 200 });
-    }
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (error) {
+    const status =
+      error instanceof StatusSubscriptionServiceError ? error.status : 500;
+    const message =
+      error instanceof Error ? error.message : 'Unable to unsubscribe.';
 
-    const payload = await response.json().catch(() => null);
-    return NextResponse.json(payload ?? {}, { status: response.status });
-  } catch (_error) {
-    return NextResponse.json(
-      { success: false, error: 'Unable to unsubscribe.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: message }, { status });
   }
 }

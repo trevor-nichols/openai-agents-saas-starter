@@ -1,18 +1,25 @@
 'use server';
 
 import { getPlatformStatusApiV1StatusGet } from '@/lib/api/client/sdk.gen';
+import type { PlatformStatusResponse } from '@/lib/api/client/types.gen';
 import { createApiClient } from '@/lib/server/apiClient';
-import type { RawPlatformStatusResponse } from '@/types/status';
 
 /**
  * Fetch the latest platform status snapshot from the FastAPI backend.
  */
-export async function fetchPlatformStatusSnapshot(): Promise<RawPlatformStatusResponse> {
+export async function fetchPlatformStatusSnapshot(): Promise<PlatformStatusResponse> {
   const client = createApiClient();
 
-  return (await getPlatformStatusApiV1StatusGet({
+  const response = await getPlatformStatusApiV1StatusGet({
     client,
-    responseStyle: 'data',
+    responseStyle: 'fields',
     throwOnError: true,
-  })) as unknown as RawPlatformStatusResponse;
+  });
+
+  const payload = response.data;
+  if (!payload) {
+    throw new Error('Status endpoint returned empty response.');
+  }
+
+  return payload;
 }

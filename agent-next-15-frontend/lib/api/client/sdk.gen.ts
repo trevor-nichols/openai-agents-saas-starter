@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AdminResetPasswordApiV1AuthPasswordResetPostData, AdminResetPasswordApiV1AuthPasswordResetPostErrors, AdminResetPasswordApiV1AuthPasswordResetPostResponses, BillingEventStreamApiV1BillingStreamGetData, BillingEventStreamApiV1BillingStreamGetErrors, BillingEventStreamApiV1BillingStreamGetResponses, CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostData, CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostErrors, CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostResponses, ChangePasswordApiV1AuthPasswordChangePostData, ChangePasswordApiV1AuthPasswordChangePostErrors, ChangePasswordApiV1AuthPasswordChangePostResponses, ChatWithAgentApiV1ChatPostData, ChatWithAgentApiV1ChatPostErrors, ChatWithAgentApiV1ChatPostResponses, ConfirmPasswordResetApiV1AuthPasswordConfirmPostData, ConfirmPasswordResetApiV1AuthPasswordConfirmPostErrors, ConfirmPasswordResetApiV1AuthPasswordConfirmPostResponses, DeleteConversationApiV1ConversationsConversationIdDeleteData, DeleteConversationApiV1ConversationsConversationIdDeleteErrors, DeleteConversationApiV1ConversationsConversationIdDeleteResponses, GetAgentStatusApiV1AgentsAgentNameStatusGetData, GetAgentStatusApiV1AgentsAgentNameStatusGetErrors, GetAgentStatusApiV1AgentsAgentNameStatusGetResponses, GetConversationApiV1ConversationsConversationIdGetData, GetConversationApiV1ConversationsConversationIdGetErrors, GetConversationApiV1ConversationsConversationIdGetResponses, GetCurrentUserInfoApiV1AuthMeGetData, GetCurrentUserInfoApiV1AuthMeGetResponses, GetPlatformStatusApiV1StatusGetData, GetPlatformStatusApiV1StatusGetResponses, GetPlatformStatusRssApiV1StatusRssGetData, GetPlatformStatusRssApiV1StatusRssGetResponses, GetTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGetData, GetTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGetErrors, GetTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGetResponses, HandleStripeWebhookWebhooksStripePostData, HandleStripeWebhookWebhooksStripePostResponses, HealthCheckHealthGetData, HealthCheckHealthGetResponses, IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostData, IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostErrors, IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponses, IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostData, IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostErrors, IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostResponses, ListAvailableAgentsApiV1AgentsGetData, ListAvailableAgentsApiV1AgentsGetResponses, ListAvailableToolsApiV1ToolsGetData, ListAvailableToolsApiV1ToolsGetResponses, ListBillingPlansApiV1BillingPlansGetData, ListBillingPlansApiV1BillingPlansGetResponses, ListConversationsApiV1ConversationsGetData, ListConversationsApiV1ConversationsGetResponses, ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetData, ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetErrors, ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetResponses, ListUserSessionsApiV1AuthSessionsGetData, ListUserSessionsApiV1AuthSessionsGetErrors, ListUserSessionsApiV1AuthSessionsGetResponses, LoginForAccessTokenApiV1AuthTokenPostData, LoginForAccessTokenApiV1AuthTokenPostErrors, LoginForAccessTokenApiV1AuthTokenPostResponses, LogoutAllSessionsApiV1AuthLogoutAllPostData, LogoutAllSessionsApiV1AuthLogoutAllPostResponses, LogoutSessionApiV1AuthLogoutPostData, LogoutSessionApiV1AuthLogoutPostErrors, LogoutSessionApiV1AuthLogoutPostResponses, ReadinessCheckHealthReadyGetData, ReadinessCheckHealthReadyGetResponses, RecordUsageApiV1BillingTenantsTenantIdUsagePostData, RecordUsageApiV1BillingTenantsTenantIdUsagePostErrors, RecordUsageApiV1BillingTenantsTenantIdUsagePostResponses, RefreshAccessTokenApiV1AuthRefreshPostData, RefreshAccessTokenApiV1AuthRefreshPostErrors, RefreshAccessTokenApiV1AuthRefreshPostResponses, RegisterTenantApiV1AuthRegisterPostData, RegisterTenantApiV1AuthRegisterPostErrors, RegisterTenantApiV1AuthRegisterPostResponses, RequestPasswordResetApiV1AuthPasswordForgotPostData, RequestPasswordResetApiV1AuthPasswordForgotPostErrors, RequestPasswordResetApiV1AuthPasswordForgotPostResponses, RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostData, RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostErrors, RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostResponses, RevokeUserSessionApiV1AuthSessionsSessionIdDeleteData, RevokeUserSessionApiV1AuthSessionsSessionIdDeleteErrors, RevokeUserSessionApiV1AuthSessionsSessionIdDeleteResponses, RootGetData, RootGetResponses, SendEmailVerificationApiV1AuthEmailSendPostData, SendEmailVerificationApiV1AuthEmailSendPostResponses, StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostData, StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostErrors, StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponses, StreamChatWithAgentApiV1ChatStreamPostData, StreamChatWithAgentApiV1ChatStreamPostErrors, StreamChatWithAgentApiV1ChatStreamPostResponses, UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchData, UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchErrors, UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchResponses, VerifyEmailTokenApiV1AuthEmailVerifyPostData, VerifyEmailTokenApiV1AuthEmailVerifyPostErrors, VerifyEmailTokenApiV1AuthEmailVerifyPostResponses } from './types.gen';
+import type { AdminResetPasswordApiV1AuthPasswordResetPostData, AdminResetPasswordApiV1AuthPasswordResetPostErrors, AdminResetPasswordApiV1AuthPasswordResetPostResponses, BillingEventStreamApiV1BillingStreamGetData, BillingEventStreamApiV1BillingStreamGetErrors, BillingEventStreamApiV1BillingStreamGetResponses, CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostData, CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostErrors, CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostResponses, ChangePasswordApiV1AuthPasswordChangePostData, ChangePasswordApiV1AuthPasswordChangePostErrors, ChangePasswordApiV1AuthPasswordChangePostResponses, ChatWithAgentApiV1ChatPostData, ChatWithAgentApiV1ChatPostErrors, ChatWithAgentApiV1ChatPostResponses, ConfirmPasswordResetApiV1AuthPasswordConfirmPostData, ConfirmPasswordResetApiV1AuthPasswordConfirmPostErrors, ConfirmPasswordResetApiV1AuthPasswordConfirmPostResponses, ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostData, ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostErrors, ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostResponses, CreateStatusSubscriptionApiV1StatusSubscriptionsPostData, CreateStatusSubscriptionApiV1StatusSubscriptionsPostErrors, CreateStatusSubscriptionApiV1StatusSubscriptionsPostResponses, DeleteConversationApiV1ConversationsConversationIdDeleteData, DeleteConversationApiV1ConversationsConversationIdDeleteErrors, DeleteConversationApiV1ConversationsConversationIdDeleteResponses, GetAgentStatusApiV1AgentsAgentNameStatusGetData, GetAgentStatusApiV1AgentsAgentNameStatusGetErrors, GetAgentStatusApiV1AgentsAgentNameStatusGetResponses, GetConversationApiV1ConversationsConversationIdGetData, GetConversationApiV1ConversationsConversationIdGetErrors, GetConversationApiV1ConversationsConversationIdGetResponses, GetCurrentUserInfoApiV1AuthMeGetData, GetCurrentUserInfoApiV1AuthMeGetResponses, GetPlatformStatusApiV1StatusGetData, GetPlatformStatusApiV1StatusGetResponses, GetPlatformStatusRssApiV1StatusRssGetData, GetPlatformStatusRssApiV1StatusRssGetResponses, GetTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGetData, GetTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGetErrors, GetTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGetResponses, HandleStripeWebhookWebhooksStripePostData, HandleStripeWebhookWebhooksStripePostResponses, HealthCheckHealthGetData, HealthCheckHealthGetResponses, IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostData, IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostErrors, IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponses, IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostData, IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostErrors, IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostResponses, ListAvailableAgentsApiV1AgentsGetData, ListAvailableAgentsApiV1AgentsGetResponses, ListAvailableToolsApiV1ToolsGetData, ListAvailableToolsApiV1ToolsGetResponses, ListBillingPlansApiV1BillingPlansGetData, ListBillingPlansApiV1BillingPlansGetResponses, ListConversationsApiV1ConversationsGetData, ListConversationsApiV1ConversationsGetResponses, ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetData, ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetErrors, ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetResponses, ListStatusSubscriptionsApiV1StatusSubscriptionsGetData, ListStatusSubscriptionsApiV1StatusSubscriptionsGetErrors, ListStatusSubscriptionsApiV1StatusSubscriptionsGetResponses, ListUserSessionsApiV1AuthSessionsGetData, ListUserSessionsApiV1AuthSessionsGetErrors, ListUserSessionsApiV1AuthSessionsGetResponses, LoginForAccessTokenApiV1AuthTokenPostData, LoginForAccessTokenApiV1AuthTokenPostErrors, LoginForAccessTokenApiV1AuthTokenPostResponses, LogoutAllSessionsApiV1AuthLogoutAllPostData, LogoutAllSessionsApiV1AuthLogoutAllPostResponses, LogoutSessionApiV1AuthLogoutPostData, LogoutSessionApiV1AuthLogoutPostErrors, LogoutSessionApiV1AuthLogoutPostResponses, ReadinessCheckHealthReadyGetData, ReadinessCheckHealthReadyGetResponses, RecordUsageApiV1BillingTenantsTenantIdUsagePostData, RecordUsageApiV1BillingTenantsTenantIdUsagePostErrors, RecordUsageApiV1BillingTenantsTenantIdUsagePostResponses, RefreshAccessTokenApiV1AuthRefreshPostData, RefreshAccessTokenApiV1AuthRefreshPostErrors, RefreshAccessTokenApiV1AuthRefreshPostResponses, RegisterTenantApiV1AuthRegisterPostData, RegisterTenantApiV1AuthRegisterPostErrors, RegisterTenantApiV1AuthRegisterPostResponses, RequestPasswordResetApiV1AuthPasswordForgotPostData, RequestPasswordResetApiV1AuthPasswordForgotPostErrors, RequestPasswordResetApiV1AuthPasswordForgotPostResponses, ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostData, ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostErrors, ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponses, RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostData, RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostErrors, RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostResponses, RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteData, RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteErrors, RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteResponses, RevokeUserSessionApiV1AuthSessionsSessionIdDeleteData, RevokeUserSessionApiV1AuthSessionsSessionIdDeleteErrors, RevokeUserSessionApiV1AuthSessionsSessionIdDeleteResponses, RootGetData, RootGetResponses, SendEmailVerificationApiV1AuthEmailSendPostData, SendEmailVerificationApiV1AuthEmailSendPostResponses, StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostData, StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostErrors, StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponses, StreamChatWithAgentApiV1ChatStreamPostData, StreamChatWithAgentApiV1ChatStreamPostErrors, StreamChatWithAgentApiV1ChatStreamPostResponses, UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchData, UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchErrors, UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchResponses, VerifyEmailTokenApiV1AuthEmailVerifyPostData, VerifyEmailTokenApiV1AuthEmailVerifyPostErrors, VerifyEmailTokenApiV1AuthEmailVerifyPostResponses, VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostData, VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostErrors, VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -535,6 +535,106 @@ export const getPlatformStatusRssApiV1StatusRssGet = <ThrowOnError extends boole
     return (options?.client ?? client).get<GetPlatformStatusRssApiV1StatusRssGetResponses, unknown, ThrowOnError>({
         url: '/api/v1/status/rss',
         ...options
+    });
+};
+
+/**
+ * List Status Subscriptions
+ */
+export const listStatusSubscriptionsApiV1StatusSubscriptionsGet = <ThrowOnError extends boolean = false>(options?: Options<ListStatusSubscriptionsApiV1StatusSubscriptionsGetData, ThrowOnError>) => {
+    return (options?.client ?? client).get<ListStatusSubscriptionsApiV1StatusSubscriptionsGetResponses, ListStatusSubscriptionsApiV1StatusSubscriptionsGetErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            }
+        ],
+        url: '/api/v1/status/subscriptions',
+        ...options
+    });
+};
+
+/**
+ * Create Status Subscription
+ */
+export const createStatusSubscriptionApiV1StatusSubscriptionsPost = <ThrowOnError extends boolean = false>(options: Options<CreateStatusSubscriptionApiV1StatusSubscriptionsPostData, ThrowOnError>) => {
+    return (options.client ?? client).post<CreateStatusSubscriptionApiV1StatusSubscriptionsPostResponses, CreateStatusSubscriptionApiV1StatusSubscriptionsPostErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            }
+        ],
+        url: '/api/v1/status/subscriptions',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Verify Status Subscription
+ */
+export const verifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPost = <ThrowOnError extends boolean = false>(options: Options<VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostData, ThrowOnError>) => {
+    return (options.client ?? client).post<VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostResponses, VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostErrors, ThrowOnError>({
+        url: '/api/v1/status/subscriptions/verify',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Confirm Webhook Challenge
+ */
+export const confirmWebhookChallengeApiV1StatusSubscriptionsChallengePost = <ThrowOnError extends boolean = false>(options: Options<ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostData, ThrowOnError>) => {
+    return (options.client ?? client).post<ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostResponses, ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostErrors, ThrowOnError>({
+        url: '/api/v1/status/subscriptions/challenge',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Revoke Status Subscription
+ */
+export const revokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDelete = <ThrowOnError extends boolean = false>(options: Options<RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteData, ThrowOnError>) => {
+    return (options.client ?? client).delete<RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteResponses, RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            }
+        ],
+        url: '/api/v1/status/subscriptions/{subscription_id}',
+        ...options
+    });
+};
+
+/**
+ * Resend Status Incident
+ */
+export const resendStatusIncidentApiV1StatusIncidentsIncidentIdResendPost = <ThrowOnError extends boolean = false>(options: Options<ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostData, ThrowOnError>) => {
+    return (options.client ?? client).post<ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponses, ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            }
+        ],
+        url: '/api/v1/status/incidents/{incident_id}/resend',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
     });
 };
 

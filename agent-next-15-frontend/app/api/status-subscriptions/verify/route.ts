@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { API_BASE_URL } from '@/lib/config';
+import { StatusSubscriptionServiceError, verifyStatusSubscriptionToken } from '@/lib/server/services/statusSubscriptions';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,19 +14,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/v1/status/subscriptions/verify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token }),
-      cache: 'no-store',
-    });
-
-    const payload = await response.json().catch(() => null);
-    return NextResponse.json(payload ?? {}, { status: response.status });
-  } catch (_error) {
-    return NextResponse.json(
-      { success: false, error: 'Unable to verify subscription.' },
-      { status: 500 }
-    );
+    const payload = await verifyStatusSubscriptionToken(token);
+    return NextResponse.json(payload, { status: 200 });
+  } catch (error) {
+    const status =
+      error instanceof StatusSubscriptionServiceError ? error.status : 500;
+    const message =
+      error instanceof Error ? error.message : 'Unable to verify subscription.';
+    return NextResponse.json({ success: false, error: message }, { status });
   }
 }
