@@ -1,21 +1,22 @@
-import { describe, expect, it, vi, afterEach, type MockedFunction } from 'vitest';
+import { describe, expect, it, vi, afterEach } from 'vitest';
 
-import { useQuery } from '@tanstack/react-query';
+import type { UseQueryOptions } from '@tanstack/react-query';
 
 import { useUserSessionsQuery } from '@/lib/queries/accountSessions';
 import { queryKeys } from '@/lib/queries/keys';
 
+type UseQueryOptionsParam = UseQueryOptions<unknown, unknown, unknown, readonly unknown[]>;
+type UseQueryFn = (options?: UseQueryOptionsParam) => unknown;
+const mockedUseQuery = vi.fn<UseQueryFn>();
+
 vi.mock('@tanstack/react-query', () => ({
-  useQuery: vi.fn(),
+  useQuery: mockedUseQuery,
 }));
 
 const fetchUserSessions = vi.fn();
 vi.mock('@/lib/api/accountSessions', () => ({
   fetchUserSessions: (...args: unknown[]) => fetchUserSessions(...args),
 }));
-
-type UseQueryOptionsParam = Parameters<typeof useQuery>[0];
-const mockedUseQuery = useQuery as unknown as MockedFunction<typeof useQuery>;
 
 describe('useUserSessionsQuery', () => {
   afterEach(() => {
@@ -24,11 +25,8 @@ describe('useUserSessionsQuery', () => {
   });
 
   it('includes tenantId in query key and fetch params when provided', () => {
-    mockedUseQuery.mockImplementation((options: UseQueryOptionsParam) => {
-      if (options?.queryFn) {
-        void options.queryFn();
-      }
-      return {} as unknown as ReturnType<typeof useQuery>;
+    mockedUseQuery.mockImplementation(() => {
+      return {};
     });
 
     useUserSessionsQuery({ limit: 10, offset: 5, includeRevoked: true, tenantId: 'tenant-123' });
@@ -53,11 +51,8 @@ describe('useUserSessionsQuery', () => {
   });
 
   it('defaults to all tenants when no filter is supplied', () => {
-    mockedUseQuery.mockImplementation((options: UseQueryOptionsParam) => {
-      if (options?.queryFn) {
-        void options.queryFn();
-      }
-      return {} as unknown as ReturnType<typeof useQuery>;
+    mockedUseQuery.mockImplementation(() => {
+      return {};
     });
 
     useUserSessionsQuery();

@@ -170,15 +170,15 @@ Deliver a production-quality page architecture and component plan that maps ever
   - [x] Provide upgrade/downgrade controls (Shadcn dialog + form). *Status (2025-11-11): `/billing/plans` now presents the plan catalog, opens a `Dialog` with Shadcn forms, and drives `useStartSubscriptionMutation`/`useToast` for confirmations plus TanStack cache updates.*
   - [x] List recent billing events (reuse `BillingEventsPanel`, enhance styling).
 - **Account & Security**
-  - [ ] Profile page (user info, tenant data, email verification state). *Deliverable: cards populated from `/api/auth/session` + `getCurrentUserProfile` with inline alerting for unverified email and tenant metadata.*
-  - [ ] Security page (password change form, MFA placeholder, last login). *Deliverable: Shadcn `form` wired to `changePassword`, plus recent auth activity timeline and future MFA CTA.*
-  - [ ] Sessions table with revoke controls, service account token issuance flow. *Deliverable: TanStack data-table over `listUserSessions`, inline revoke/all buttons, and modal that calls `/api/auth/service-accounts/issue` to mint tokens.*
+  - [x] Profile page (user info, tenant data, email verification state). *Status (2025-11-12): `features/account/ProfilePanel` now consumes `useAccountProfileQuery`, renders GlassPanel cards with `Avatar`, `InlineTag`, and `Alert` components, and wires resend verification via `useResendVerificationMutation`.*
+  - [x] Security page (password change form, MFA placeholder, last login). *Status (2025-11-12): `features/account/SecurityPanel` ships a Shadcn `Form` + `Input` flow backed by `useChangePasswordMutation`, surfaces last-login metadata, and documents MFA via tooltip/CTA placeholders.*
+  - [x] Sessions table with revoke controls, service account token issuance flow. *Status (2025-11-12): `features/account/SessionsPanel` + `ServiceAccountsPanel` reuse the shared `DataTable` kit for session management and bind issuance to `/api/auth/service-accounts/issue`, leaving only design polish for badges/modals.*
 - **Marketing & Docs**
-  - [ ] Ship marketing `/docs` route (and `/status` stub). *Deliverable: static/MDX-friendly docs page plus lightweight status placeholder so existing nav/footer links stop 404ing; reuse Marketing layout chrome.*
+  - [ ] Ship marketing `/docs` route (and `/status` stub). *Deliverable: author a content-driven page that reuses existing `app/(marketing)` layout, composes `navigation-menu`, `accordion`, `card`, and `badge` components from `components/ui`, and loads MDX or static copy blocks for guides/FAQs. Add a `/status` stub that uses `InlineTag`, `GlassPanel`, and `Table` to show uptime placeholders so header/footer links resolve without 404s.*
 - **Shared Systems**
   - [x] Toast/notification framework (centralized provider). *Status (2025-11-11): `app/providers.tsx` already mounts the `Toaster`, all features now import `useToast`, and we documented the expectation in `docs/frontend/data-access.md`.*
   - [x] Loading skeleton components (marketing + app).
-  - [ ] Error boundary surfaces per route group. *Plan: compose marketing/auth/app `error.tsx` from `components/ui/states/ErrorState` with tailored recovery copy.*
+  - [ ] Error boundary surfaces per route group. *Deliverable: add `error.tsx` files under `app/(marketing)`, `app/(auth)`, and `app/(app)` that wrap `components/ui/states/ErrorState` with context-specific copy/actions, offer a `Button` to refetch via `useRouter().refresh()`, and optionally expose a `Dialog`/`Sheet` (via existing `dialog.tsx`/`sheet.tsx`) for diagnostic details so failures stay on-brand.*
   - [x] Data table kit (TanStack) for audits/sessions/billing. *Status (2025-11-11): `components/ui/data-table` now exposes `DataTable`/`DataTablePagination`; conversations hub already consumes it with row actions, pagination toggles, and shared states.*
 
 <!-- SECTION: Risks -->

@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { AgentSwitcher } from './components/AgentSwitcher';
 import { BillingEventsPanel } from './components/BillingEventsPanel';
 import { ChatInterface } from './components/ChatInterface';
+import { ConversationDetailDrawer } from './components/ConversationDetailDrawer';
 import { ConversationSidebar } from './components/ConversationSidebar';
 import { ToolMetadataPanel } from './components/ToolMetadataPanel';
 
@@ -55,6 +56,7 @@ export function ChatWorkspace() {
   });
   const { tools, isLoading: isLoadingTools, error: toolsError, refetch: refetchTools } = useTools();
   const [toolDrawerOpen, setToolDrawerOpen] = useState(false);
+  const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
 
   const handleSelectConversation = useCallback(
     (conversationId: string) => {
@@ -103,6 +105,12 @@ export function ChatWorkspace() {
     });
     clearError();
   }, [clearError, errorMessage]);
+
+  useEffect(() => {
+    if (!currentConversationId) {
+      setDetailDrawerOpen(false);
+    }
+  }, [currentConversationId]);
 
   return (
     <>
@@ -166,6 +174,14 @@ export function ChatWorkspace() {
                 error={agentsError}
               />
               <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!currentConversationId}
+                  onClick={() => setDetailDrawerOpen(true)}
+                >
+                  Conversation details
+                </Button>
                 <Button variant="outline" size="sm" onClick={handleExportTranscript}>
                   Export transcript
                 </Button>
@@ -214,6 +230,13 @@ export function ChatWorkspace() {
           />
         </div>
       </div>
+
+      <ConversationDetailDrawer
+        open={detailDrawerOpen}
+        onOpenChange={setDetailDrawerOpen}
+        conversationId={currentConversationId}
+        onDeleteConversation={deleteConversation}
+      />
     </>
   );
 }
