@@ -34,6 +34,9 @@ describe('buildIssuePayload', () => {
     fingerprint: 'runner-1',
     force: true,
     reason: 'Rotate weekly CI credential',
+    mode: 'browser',
+    vaultAuthorization: '',
+    vaultPayload: '',
   };
 
   it('returns normalized payload when valid', () => {
@@ -52,5 +55,34 @@ describe('buildIssuePayload', () => {
     expect(() => buildIssuePayload({ ...baseForm, account: ' ' }, null)).toThrow();
     expect(() => buildIssuePayload({ ...baseForm, scopes: '' }, null)).toThrow('Add at least one scope');
     expect(() => buildIssuePayload({ ...baseForm, reason: 'short' }, null)).toThrow('Reason must be at least 10 characters.');
+  });
+
+  it('requires Vault headers in vault mode', () => {
+    expect(() =>
+      buildIssuePayload(
+        {
+          ...baseForm,
+          mode: 'vault',
+          vaultAuthorization: '',
+        },
+        null,
+      ),
+    ).toThrow('Provide the Vault Authorization header value.');
+
+    const payload = buildIssuePayload(
+      {
+        ...baseForm,
+        mode: 'vault',
+        vaultAuthorization: 'vault:v1:test',
+        vaultPayload: 'payload',
+      },
+      null,
+    );
+
+    expect(payload).toMatchObject({
+      mode: 'vault',
+      vaultAuthorization: 'vault:v1:test',
+      vaultPayload: 'payload',
+    });
   });
 });

@@ -11,14 +11,31 @@ import { Input } from '@/components/ui/input';
 import { EmptyState, ErrorState } from '@/components/ui/states';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/components/ui/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAccountProfileQuery } from '@/lib/queries/account';
 import { useLogoutAllSessionsMutation, useRevokeSessionMutation, useUserSessionsQuery, type SessionRow } from '@/lib/queries/accountSessions';
 
 const DEFAULT_LIMIT = 50;
 
+type TenantFilterOption = 'all' | 'current' | 'custom';
+
 export function SessionsPanel() {
   const { profile } = useAccountProfileQuery();
-  const sessionsQuery = useUserSessionsQuery({ limit: DEFAULT_LIMIT });
+  const [tenantFilterMode, setTenantFilterMode] = useState<TenantFilterOption>('all');
+  const [customTenantId, setCustomTenantId] = useState('');
+
+  const resolvedTenantId = useMemo(() => {
+    if (tenantFilterMode === 'current') {
+      return profile?.tenant?.id ?? null;
+    }
+    if (tenantFilterMode === 'custom') {
+      const value = customTenantId.trim();
+      return value.length > 0 ? value : null;
+    }
+    return null;
+  }, [customTenantId, tenantFilterMode, profile?.tenant?.id]);
+
+  const sessionsQuery = useUserSessionsQuery({ limit: DEFAULT_LIMIT, tenantId: resolvedTenantId });
   const revokeSession = useRevokeSessionMutation();
   const logoutAll = useLogoutAllSessionsMutation();
   const toast = useToast();
@@ -148,11 +165,28 @@ export function SessionsPanel() {
 
       <GlassPanel className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Input
-            className="w-full max-w-xs"
-            placeholder="Search (coming soon)"
-            disabled
-          />
+          <div className="flex flex-wrap items-center gap-3">
+            <Select value={tenantFilterMode} onValueChange={(value) => setTenantFilterMode(value as TenantFilterOption)}>
+              <SelectTrigger className="w-[220px]">
+                <SelectValue placeholder="Tenant filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All tenants</SelectItem>
+                <SelectItem value="current" disabled={!profile?.tenant?.id}>
+                  Current tenant
+                </SelectItem>
+                <SelectItem value="custom">Specific tenant ID</SelectItem>
+              </SelectContent>
+            </Select>
+            {tenantFilterMode === 'custom' ? (
+              <Input
+                className="w-full max-w-xs"
+                placeholder="Tenant UUID"
+                value={customTenantId}
+                onChange={(event) => setCustomTenantId(event.target.value)}
+              />
+            ) : null}
+          </div>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -169,6 +203,10 @@ export function SessionsPanel() {
             </Tooltip>
           </TooltipProvider>
         </div>
+
+        <p className="text-xs text-foreground/60">
+          Viewing {resolvedTenantId ? `sessions scoped to tenant ${resolvedTenantId}` : 'sessions across all tenants'}.
+        </p>
 
         {loadError && !isLoading ? (
           <ErrorState title="Unable to load sessions" message={loadError} onRetry={() => sessionsQuery.refetch()} />

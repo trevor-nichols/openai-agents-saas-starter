@@ -242,8 +242,8 @@ export function ServiceAccountsPanel() {
           </Button>
         </div>
         <p className="text-sm text-foreground/60">
-          Issuance still runs through the Starter CLI so Vault-signed credentials never hit the browser. Use this table to
-          audit and revoke tokens instantly without leaving the dashboard.
+          Issue tokens directly from this dashboard (browser mode) or provide Vault headers for the compliance-approved
+          issuance flow. Use the table below to audit and revoke credentials at any time.
         </p>
       </GlassPanel>
 
@@ -289,9 +289,9 @@ export function ServiceAccountsPanel() {
         <AlertTitle>Need to run this in CI?</AlertTitle>
         <AlertDescription className="space-y-2 text-sm text-foreground/70">
           <p>
-            This form issues tokens using the authenticated admin session. Pipelines can still use the CLI via
-            <code className="ml-1 rounded bg-muted px-2 py-1 text-xs font-mono">starter_cli auth tokens issue-service-account</code>
-            if you prefer headless workflows.
+            Browser mode signs requests with your admin session. Switch to the Vault-signed mode if your organization
+            requires pre-signed headers from Vault Transit. CI pipelines can continue using the CLI via
+            <code className="ml-1 rounded bg-muted px-2 py-1 text-xs font-mono">starter_cli auth tokens issue-service-account</code>.
           </p>
           <p>
             Latest rollout status lives in
@@ -440,6 +440,22 @@ function IssueTokenDialog({
       </DialogHeader>
       <div className="space-y-4">
         <div className="space-y-2">
+          <Label htmlFor="issue-mode">Issuance method</Label>
+          <Select value={form.mode} onValueChange={(value) => updateField('mode', value as ServiceAccountIssueFormValues['mode'])}>
+            <SelectTrigger id="issue-mode">
+              <SelectValue placeholder="Select issuance mode" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="browser">Browser (signed via session)</SelectItem>
+              <SelectItem value="vault">Vault-signed (headers supplied)</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-foreground/60">
+            Browser mode signs on your behalf. Vault mode forwards the Vault Authorization + payload headers that you
+            capture from Vault Transit or the Starter CLI.
+          </p>
+        </div>
+        <div className="space-y-2">
           <Label htmlFor="issue-account">Account</Label>
           <Input
             id="issue-account"
@@ -514,6 +530,34 @@ function IssueTokenDialog({
           />
           <p className="text-xs text-foreground/60">Minimum 10 characters. Displayed in audit logs.</p>
         </div>
+        {form.mode === 'vault' ? (
+          <div className="space-y-4 rounded-lg border border-white/10 p-3">
+            <p className="text-sm text-foreground/70">
+              Provide the Vault headers captured from the Starter CLI or your Vault workflow. These are forwarded verbatim
+              to the FastAPI `/service-accounts/issue` endpoint.
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="issue-vault-authorization">Vault Authorization header</Label>
+              <Input
+                id="issue-vault-authorization"
+                placeholder="vault:v1:transit/..."
+                value={form.vaultAuthorization ?? ''}
+                onChange={(event) => updateField('vaultAuthorization', event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="issue-vault-payload">Vault payload (base64)</Label>
+              <Textarea
+                id="issue-vault-payload"
+                placeholder="Base64 payload emitted by Vault transit sign"
+                value={form.vaultPayload ?? ''}
+                onChange={(event) => updateField('vaultPayload', event.target.value)}
+                rows={3}
+              />
+              <p className="text-xs text-foreground/60">Optional for dev-local mode. Required when sending real Vault signatures.</p>
+            </div>
+          </div>
+        ) : null}
         {formError ? (
           <p className="text-sm font-medium text-destructive" role="alert">
             {formError}

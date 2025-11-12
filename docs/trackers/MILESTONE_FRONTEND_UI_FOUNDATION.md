@@ -15,7 +15,6 @@ Deliver a production-quality page architecture and component plan that maps ever
 
 <!-- SECTION: Out of Scope -->
 ## Out of Scope
-- Visual design, theming, and spacing decisions (handled by the UI team).
 - Net-new backend endpoints or schema changes.
 - Storybook/visual regression setup (track separately if needed).
 - Copywriting for marketing content (placeholder text acceptable for now).

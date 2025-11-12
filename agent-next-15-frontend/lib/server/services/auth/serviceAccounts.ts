@@ -1,20 +1,23 @@
 'use server';
 
 import {
+  issueServiceAccountTokenApiV1AuthServiceAccountsIssuePost,
   listServiceAccountTokensApiV1AuthServiceAccountsTokensGet,
   revokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePost,
 } from '@/lib/api/client/sdk.gen';
 import type {
+  ServiceAccountTokenResponse,
   ServiceAccountTokenItem,
   ServiceAccountTokenRevokeRequest,
   SuccessResponse,
 } from '@/lib/api/client/types.gen';
 import type {
-  ServiceAccountIssuePayload,
+  BrowserServiceAccountIssuePayload,
   ServiceAccountIssueResult,
   ServiceAccountTokenListResult,
   ServiceAccountTokenQueryParams,
   ServiceAccountTokenSummary,
+  VaultServiceAccountIssuePayload,
 } from '@/types/serviceAccounts';
 import { API_BASE_URL } from '@/lib/config';
 
@@ -97,7 +100,7 @@ export async function revokeServiceAccountToken(
 }
 
 export async function issueServiceAccountToken(
-  payload: ServiceAccountIssuePayload,
+  payload: BrowserServiceAccountIssuePayload,
 ): Promise<ServiceAccountIssueResult> {
   const { auth } = await getServerApiClient();
   const token = auth();
@@ -127,29 +130,41 @@ export async function issueServiceAccountToken(
     throw new Error(message);
   }
 
-  const refreshToken = typeof data.refresh_token === 'string' ? data.refresh_token : '';
-  if (!refreshToken) {
-    throw new Error('Server did not return a refresh token.');
+  return mapServiceAccountResponse(data, payload);
+}
+
+export async function issueVaultServiceAccountToken(
+  payload: VaultServiceAccountIssuePayload,
+): Promise<ServiceAccountIssueResult> {
+  if (!payload.vaultAuthorization) {
+    throw new Error('Vault authorization header is required.');
   }
 
-  const expiresAt = typeof data.expires_at === 'string' ? data.expires_at : '';
-  const issuedAt = typeof data.issued_at === 'string' ? data.issued_at : '';
-  const kid = typeof data.kid === 'string' ? data.kid : 'unknown';
-  const account = typeof data.account === 'string' ? data.account : payload.account;
-  const tokenUse = typeof data.token_use === 'string' ? data.token_use : 'refresh';
+  const { client } = await getServerApiClient();
 
-  return {
-    refreshToken,
-    account,
-    tenantId: (data.tenant_id as string | null | undefined) ?? payload.tenantId ?? null,
-    scopes: Array.isArray(data.scopes)
-      ? (data.scopes as string[])
-      : payload.scopes,
-    expiresAt,
-    issuedAt,
-    kid,
-    tokenUse,
-  };
+  const response = await issueServiceAccountTokenApiV1AuthServiceAccountsIssuePost({
+    client,
+    responseStyle: 'fields',
+    throwOnError: true,
+    headers: {
+      Authorization: payload.vaultAuthorization,
+      'X-Vault-Payload': payload.vaultPayload ?? undefined,
+    },
+    body: {
+      account: payload.account,
+      scopes: payload.scopes,
+      tenant_id: payload.tenantId ?? undefined,
+      lifetime_minutes: payload.lifetimeMinutes ?? undefined,
+      fingerprint: payload.fingerprint ?? undefined,
+      force: payload.force ?? false,
+    },
+  });
+
+  if (!response.data) {
+    throw new Error('Service-account issue endpoint returned no data.');
+  }
+
+  return mapServiceAccountResponse(response.data, payload);
 }
 
 function mapTokenItem(item: ServiceAccountTokenItem): ServiceAccountTokenSummary {
@@ -179,4 +194,40 @@ function clampOffset(value?: number | null): number {
     return 0;
   }
   return Math.max(0, Math.trunc(value));
+}
+
+function mapServiceAccountResponse(
+  data: Record<string, unknown> | Partial<ServiceAccountTokenResponse>,
+  fallback: {
+    account: string;
+    tenantId: string | null;
+    scopes: string[];
+  },
+): ServiceAccountIssueResult {
+  const refreshToken = typeof data.refresh_token === 'string' ? data.refresh_token : '';
+  if (!refreshToken) {
+    throw new Error('Server did not return a refresh token.');
+  }
+
+  const expiresAt = typeof data.expires_at === 'string' ? data.expires_at : '';
+  const issuedAt = typeof data.issued_at === 'string' ? data.issued_at : '';
+  const kid = typeof data.kid === 'string' ? data.kid : 'unknown';
+  const account = typeof data.account === 'string' ? data.account : fallback.account;
+  const tokenUse = typeof data.token_use === 'string' ? data.token_use : 'refresh';
+  const tenantId =
+    typeof data.tenant_id === 'string' || data.tenant_id === null
+      ? (data.tenant_id as string | null)
+      : fallback.tenantId;
+  const scopes = Array.isArray(data.scopes) ? (data.scopes as string[]) : fallback.scopes;
+
+  return {
+    refreshToken,
+    account,
+    tenantId,
+    scopes,
+    expiresAt,
+    issuedAt,
+    kid,
+    tokenUse,
+  };
 }

@@ -1,4 +1,7 @@
-import type { ServiceAccountIssuePayload } from '@/types/serviceAccounts';
+import type {
+  ServiceAccountIssueMode,
+  ServiceAccountIssuePayload,
+} from '@/types/serviceAccounts';
 
 export type ServiceAccountIssueFormValues = {
   account: string;
@@ -8,6 +11,9 @@ export type ServiceAccountIssueFormValues = {
   fingerprint?: string;
   force?: boolean;
   reason: string;
+  mode: ServiceAccountIssueMode;
+  vaultAuthorization?: string;
+  vaultPayload?: string;
 };
 
 export function createDefaultIssueForm(tenantId: string | null = null): ServiceAccountIssueFormValues {
@@ -19,6 +25,9 @@ export function createDefaultIssueForm(tenantId: string | null = null): ServiceA
     fingerprint: undefined,
     force: false,
     reason: '',
+    mode: 'browser',
+    vaultAuthorization: '',
+    vaultPayload: '',
   };
 }
 
@@ -53,7 +62,7 @@ export function buildIssuePayload(
 
   const tenantId = form.tenantId ?? fallbackTenantId ?? null;
 
-  return {
+  const base = {
     account,
     scopes,
     tenantId,
@@ -61,6 +70,25 @@ export function buildIssuePayload(
     fingerprint: sanitizeOptionalString(form.fingerprint),
     force: Boolean(form.force),
     reason,
+  };
+
+  if (form.mode === 'vault') {
+    const authorization = sanitizeOptionalString(form.vaultAuthorization);
+    if (!authorization) {
+      throw new Error('Provide the Vault Authorization header value.');
+    }
+
+    return {
+      ...base,
+      mode: 'vault',
+      vaultAuthorization: authorization,
+      vaultPayload: sanitizeOptionalString(form.vaultPayload),
+    };
+  }
+
+  return {
+    ...base,
+    mode: 'browser',
   };
 }
 

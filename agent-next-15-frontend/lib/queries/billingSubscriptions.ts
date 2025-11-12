@@ -8,12 +8,12 @@ import type {
   UsageRecordPayload,
 } from '@/lib/types/billing';
 import {
-  getTenantSubscription,
-  startTenantSubscription,
-  updateTenantSubscription,
-  cancelTenantSubscription,
-  recordTenantUsage,
-} from '@/lib/server/services/billing';
+  cancelSubscriptionRequest,
+  fetchTenantSubscription,
+  recordUsageRequest,
+  startSubscriptionRequest,
+  updateSubscriptionRequest,
+} from '@/lib/api/billingSubscriptions';
 import { queryKeys } from './keys';
 
 interface SubscriptionOptions {
@@ -29,7 +29,7 @@ export function useTenantSubscription(options: SubscriptionOptions) {
     queryKey: tenantId
       ? [...queryKeys.billing.all, 'subscription', tenantId]
       : [...queryKeys.billing.all, 'subscription'],
-    queryFn: () => getTenantSubscription(tenantId as string, { tenantRole }),
+    queryFn: () => fetchTenantSubscription(tenantId as string, { tenantRole }),
     enabled,
     staleTime: 30 * 1000,
   });
@@ -51,7 +51,7 @@ export function useStartSubscriptionMutation(options: SubscriptionOptions) {
       if (!tenantId) {
         throw new Error('Tenant id required');
       }
-      return startTenantSubscription(tenantId, payload, { tenantRole });
+      return startSubscriptionRequest(tenantId, payload, { tenantRole });
     },
     onSuccess: (subscription) => {
       if (!tenantId) return;
@@ -72,7 +72,7 @@ export function useUpdateSubscriptionMutation(options: SubscriptionOptions) {
       if (!tenantId) {
         throw new Error('Tenant id required');
       }
-      return updateTenantSubscription(tenantId, payload, { tenantRole });
+      return updateSubscriptionRequest(tenantId, payload, { tenantRole });
     },
     onSuccess: (subscription) => {
       if (!tenantId) return;
@@ -93,7 +93,7 @@ export function useCancelSubscriptionMutation(options: SubscriptionOptions) {
       if (!tenantId) {
         throw new Error('Tenant id required');
       }
-      return cancelTenantSubscription(tenantId, payload, { tenantRole });
+      return cancelSubscriptionRequest(tenantId, payload, { tenantRole });
     },
     onSuccess: (subscription) => {
       if (!tenantId) return;
@@ -113,8 +113,7 @@ export function useUsageRecordMutation(options: SubscriptionOptions) {
       if (!tenantId) {
         throw new Error('Tenant id required');
       }
-      await recordTenantUsage(tenantId, payload, { tenantRole });
+      await recordUsageRequest(tenantId, payload, { tenantRole });
     },
   });
 }
-

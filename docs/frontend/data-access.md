@@ -54,14 +54,25 @@ This document codifies how the Next.js frontend talks to the FastAPI backend. Ev
    - Reuse shared types from `agent-next-15-frontend/types`.
 
 5. **Update docs/tests**  
-   - Add any domain-specific notes here or in `docs/<domain>/`.  
-   - Cover fetch helpers with unit tests or integration tests where it adds value.
+- Add any domain-specific notes here or in `docs/<domain>/`.  
+- Cover fetch helpers with unit tests or integration tests where it adds value.
+
+### Choosing Between Server Services and `/api` Fetchers
+
+- **Server components/actions** call domain services directly. Example: server actions in the chat workspace invoke `lib/server/services/chat.ts` so the SDK never leaks to the browser.  
+- **Browser code (React Query, plain hooks, client components)** must call `/app/api/...` routes via fetch helpers under `lib/api/*`. Never import `lib/server/**` modules or `getServerApiClient()` from the browser bundle—those files include `use server` directives and will crash the build.  
+- When a feature has both server and browser consumers, expose it twice:
+  - Keep the domain service for server-side orchestration.
+  - Add a lightweight API route + fetch helper for browser access.  
+- Example: billing subscription flows now share `lib/api/billingSubscriptions.ts`, and `lib/queries/billingSubscriptions.ts` exclusively calls those helpers. Server components that need the same data can still import `lib/server/services/billing.ts`.  
+- If a hook only ever runs in a server component, prefer a server action instead of creating a redundant `/api` route.
 
 ## Streaming Guidance
 
 - Server-only streaming (e.g., chat) should use helpers under `lib/server/streaming/*`, which call the corresponding service and yield parsed chunks. Server actions can then yield directly to UI consumers.  
 - Browser-accessible streams (billing events, chat fallback) live behind `/app/api/...` proxy routes that pipe the SSE response and enforce cookie auth.  
 - Client-side streaming utilities (`lib/api/streaming.ts`) only talk to our API routes to avoid leaking tokens.
+- Hooks exposed to client components must come from `lib/queries/*`. For example, import `useBillingStream` from `lib/queries/billing` and `useSilentRefresh` from `lib/queries/session`; the legacy `hooks/*` versions have been removed to keep a single source of truth.
 
 ## Chat Data Flow
 

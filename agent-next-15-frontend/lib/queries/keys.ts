@@ -36,7 +36,7 @@ export const queryKeys = {
     profile: () => [...queryKeys.account.all, 'profile'] as const,
     sessions: {
       all: () => [...queryKeys.account.all, 'sessions'] as const,
-      list: (params: { limit: number; offset: number }) =>
+      list: (params: { limit: number; offset: number; tenantId: string | null; includeRevoked: boolean }) =>
         [...queryKeys.account.sessions.all(), params] as const,
     },
     serviceAccounts: {

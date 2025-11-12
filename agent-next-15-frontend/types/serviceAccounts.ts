@@ -34,7 +34,9 @@ export interface ServiceAccountTokenQueryParams {
 
 export type ServiceAccountTokenRow = ServiceAccountTokenSummary;
 
-export interface ServiceAccountIssuePayload {
+export type ServiceAccountIssueMode = 'browser' | 'vault';
+
+interface ServiceAccountIssueBasePayload {
   account: string;
   scopes: string[];
   tenantId: string | null;
@@ -43,6 +45,20 @@ export interface ServiceAccountIssuePayload {
   force?: boolean;
   reason: string;
 }
+
+export interface BrowserServiceAccountIssuePayload extends ServiceAccountIssueBasePayload {
+  mode: 'browser';
+}
+
+export interface VaultServiceAccountIssuePayload extends ServiceAccountIssueBasePayload {
+  mode: 'vault';
+  vaultAuthorization: string;
+  vaultPayload?: string | null;
+}
+
+export type ServiceAccountIssuePayload =
+  | BrowserServiceAccountIssuePayload
+  | VaultServiceAccountIssuePayload;
 
 export interface ServiceAccountIssueResult {
   refreshToken: string;

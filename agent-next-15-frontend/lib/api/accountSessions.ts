@@ -4,6 +4,7 @@ export interface SessionListParams {
   limit?: number;
   offset?: number;
   includeRevoked?: boolean;
+  tenantId?: string | null;
 }
 
 export type SessionListPayload = UserSessionListResponse;
@@ -26,6 +27,9 @@ export async function fetchUserSessions(params: SessionListParams = {}): Promise
   }
   if (typeof params.includeRevoked === 'boolean') {
     search.set('include_revoked', String(params.includeRevoked));
+  }
+  if (params.tenantId) {
+    search.set('tenant_id', params.tenantId);
   }
 
   const response = await fetch(`/api/auth/sessions?${search.toString()}`, { cache: 'no-store' });

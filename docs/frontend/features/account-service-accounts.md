@@ -11,7 +11,7 @@ Owner: Frontend Platform (Account & Security workstream)
 - Objective: expose a self-serve way to list existing service-account tokens and issue/revoke them without touching the CLI.
 - Success signals:
   - Operators can see existing service-account refresh tokens (name, scopes, last used, created).
-  - Issuing a token runs through the existing `/api/auth/service-accounts/issue` endpoint with success copy + copy-to-clipboard moment.
+- Issuing a token can use browser mode or forward Vault headers, both of which end up in `/api/auth/service-accounts/issue` so the canonical endpoint stays covered, with the UX still providing the copy-once moment.
   - Revoking tokens updates the table immediately.
   - Empty/error states reuse shared components; no bespoke UI.
 
@@ -28,11 +28,11 @@ Owner: Frontend Platform (Account & Security workstream)
 | ---- | ------ | ----------- | ----- |
 | List service accounts | `/app/api/auth/service-accounts/tokens` → FastAPI `/api/v1/auth/service-accounts/tokens` | `useServiceAccountTokensQuery` + `DataTable` | Query params support `account`, `status`, pagination; response normalized to camelCase. |
 | Revoke token | `/app/api/auth/service-accounts/tokens/{jti}/revoke` | `useRevokeServiceAccountTokenMutation` | Confirms via AlertDialog + optional reason piped to backend for audits. |
-| Issue token | `/app/api/auth/service-accounts/browser-issue` → FastAPI `/api/v1/auth/service-accounts/browser-issue` | `useIssueServiceAccountTokenMutation` | Tenant admins enter account, scopes, optional metadata, and a justification. The bridge signs via Vault Transit and returns the refresh token once; the dialog renders the copy-once UX. |
+| Issue token | `/app/api/auth/service-accounts/browser-issue` (session-signed) **or** `/app/api/auth/service-accounts/issue` (Vault headers) → FastAPI `/api/v1/auth/service-accounts/browser-issue` / `/api/v1/auth/service-accounts/issue` | `useIssueServiceAccountTokenMutation` | Browser mode signs via the logged-in admin session. Vault mode forwards `X-Vault-Authorization` + payload headers captured from Vault Transit/CLI so the canonical issuance endpoint is exercised. |
 | Token copy-to-clipboard | N/A (issuance deferred) | Future `useCopyToClipboard` helper | Only needed once web issuance is approved. |
 
 Implementation notes:
-- `lib/api/accountServiceAccounts.ts` proxies the Next routes so client components only ever call `/app/api/...` endpoints.
+- `lib/api/accountServiceAccounts.ts` proxies the Next routes so client components only ever call `/app/api/...` endpoints (including the Vault header passthrough).
 - `lib/server/services/auth/serviceAccounts.ts` centralizes SDK calls (list + revoke) with camelCase mapping for UI consumption.
 - Automation tab uses `DataTable` + TanStack Query for caching, and an `AlertDialog` flow to capture optional revoke reasons.
 - Issuance dialog uses the shared mutation + dialog component; copy guidance and telemetry auto-log via the backend bridge. Update the UI copy only if security requirements change.

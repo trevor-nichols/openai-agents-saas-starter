@@ -65,6 +65,8 @@ To keep Vault credentials off the browser entirely, `/api/v1/auth/service-accoun
 
 The original `/service-accounts/issue` route (requiring `Authorization: Bearer vault:<signature>`) remains available for headless automation via the CLI. In other words: browsers go through the bridge, automation keeps using Vault-signed HTTP requests.
 
+For cases where we explicitly need to exercise the canonical HTTP endpoint from the web tier (e.g., to replay a Vault-signed request captured from CI), the Next.js frontend now exposes `/app/api/auth/service-accounts/issue`. That proxy requires authenticated human sessions plus the `X-Vault-Authorization`/`X-Vault-Payload` headers obtained from Vault Transit, then forwards them verbatim to FastAPI `/api/v1/auth/service-accounts/issue`.
+
 ## 3. Request & Response Formats
 
 ### 3.1 CLI Payload (pre-signing JSON)

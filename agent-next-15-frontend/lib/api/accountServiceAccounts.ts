@@ -1,8 +1,10 @@
 import type {
+  BrowserServiceAccountIssuePayload,
   ServiceAccountIssuePayload,
   ServiceAccountIssueResult,
   ServiceAccountTokenListResult,
   ServiceAccountTokenQueryParams,
+  VaultServiceAccountIssuePayload,
 } from '@/types/serviceAccounts';
 
 interface TokensApiResponse {
@@ -108,6 +110,13 @@ export async function revokeServiceAccountTokenRequest(
 export async function issueServiceAccountTokenRequest(
   payload: ServiceAccountIssuePayload,
 ): Promise<ServiceAccountIssueResult> {
+  if (payload.mode === 'vault') {
+    return issueVaultToken(payload);
+  }
+  return issueBrowserToken(payload);
+}
+
+async function issueBrowserToken(payload: BrowserServiceAccountIssuePayload): Promise<ServiceAccountIssueResult> {
   const response = await fetch('/api/auth/service-accounts/browser-issue', {
     method: 'POST',
     headers: {
@@ -123,6 +132,38 @@ export async function issueServiceAccountTokenRequest(
       reason: payload.reason,
     }),
     cache: 'no-store',
+  });
+
+  const result = (await response.json().catch(() => ({}))) as IssueApiResponse;
+  if (!response.ok || result.success === false || !result.data) {
+    throw new Error(result.error || 'Failed to issue service-account token.');
+  }
+
+  return result.data;
+}
+
+async function issueVaultToken(payload: VaultServiceAccountIssuePayload): Promise<ServiceAccountIssueResult> {
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    'X-Vault-Authorization': payload.vaultAuthorization,
+  };
+  if (payload.vaultPayload) {
+    headers['X-Vault-Payload'] = payload.vaultPayload;
+  }
+
+  const response = await fetch('/api/auth/service-accounts/issue', {
+    method: 'POST',
+    headers,
+    cache: 'no-store',
+    body: JSON.stringify({
+      account: payload.account,
+      scopes: payload.scopes,
+      tenant_id: payload.tenantId,
+      lifetime_minutes: payload.lifetimeMinutes,
+      fingerprint: payload.fingerprint,
+      force: payload.force ?? false,
+      reason: payload.reason,
+    }),
   });
 
   const result = (await response.json().catch(() => ({}))) as IssueApiResponse;
