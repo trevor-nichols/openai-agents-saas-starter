@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,10 +11,22 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { usePlatformStatusQuery } from '@/lib/queries/status';
+import { unsubscribeStatusSubscription, verifyStatusSubscriptionToken } from '@/lib/api/statusSubscriptions';
 
 const DEFAULT_STATUS_DESCRIPTION = 'FastAPI, Next.js, and the async workers are all reporting healthy.';
 
 export default function StatusPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const verificationToken = searchParams.get('token');
+  const verificationParam = searchParams.get('verification');
+  const unsubscribeToken = searchParams.get('unsubscribe_token');
+  const unsubscribeParam = searchParams.get('unsubscribe');
+  const subscriptionIdentifier = searchParams.get('subscription_id');
+  const verificationAttemptedRef = useRef(false);
+  const unsubscribeAttemptedRef = useRef(false);
+  const [verificationInProgress, setVerificationInProgress] = useState(false);
+  const [unsubscribeInProgress, setUnsubscribeInProgress] = useState(false);
   const { status, isLoading, error, refetch } = usePlatformStatusQuery();
 
   const overview = status?.overview;
@@ -25,8 +39,133 @@ export default function StatusPage() {
   const showMetricSkeletons = isLoading && uptimeMetrics.length === 0;
   const showIncidentSkeletons = isLoading && incidents.length === 0;
 
+  useEffect(() => {
+    if (!verificationToken || verificationAttemptedRef.current) {
+      return;
+    }
+
+    verificationAttemptedRef.current = true;
+    setVerificationInProgress(true);
+
+    const redirectWithStatus = (state: 'success' | 'error') => {
+      const params = new URLSearchParams(window.location.search);
+      params.delete('token');
+      params.delete('subscription_id');
+      params.set('verification', state);
+      const search = params.toString();
+      router.replace(search ? `/status?${search}` : '/status', { scroll: false });
+    };
+
+    verifyStatusSubscriptionToken(verificationToken)
+      .then(() => {
+        redirectWithStatus('success');
+      })
+      .catch(() => {
+        redirectWithStatus('error');
+      })
+      .finally(() => {
+        setVerificationInProgress(false);
+      });
+  }, [verificationToken, router]);
+
+  useEffect(() => {
+    if (!unsubscribeToken || unsubscribeAttemptedRef.current) {
+      return;
+    }
+    const redirectWithStatus = (state: 'success' | 'error') => {
+      const params = new URLSearchParams(window.location.search);
+      params.delete('unsubscribe_token');
+      if (state === 'success' || !subscriptionIdentifier) {
+        params.delete('subscription_id');
+      }
+      params.set('unsubscribe', state);
+      const search = params.toString();
+      router.replace(search ? `/status?${search}` : '/status', { scroll: false });
+    };
+
+    if (!subscriptionIdentifier) {
+      unsubscribeAttemptedRef.current = true;
+      redirectWithStatus('error');
+      return;
+    }
+
+    unsubscribeAttemptedRef.current = true;
+    setUnsubscribeInProgress(true);
+
+    unsubscribeStatusSubscription(unsubscribeToken, subscriptionIdentifier)
+      .then(() => {
+        redirectWithStatus('success');
+      })
+      .catch(() => {
+        redirectWithStatus('error');
+      })
+      .finally(() => {
+        setUnsubscribeInProgress(false);
+      });
+  }, [unsubscribeToken, subscriptionIdentifier, router]);
+
+  const verificationBanner = useMemo(() => {
+    if (verificationInProgress) {
+      return {
+        tone: 'default' as const,
+        title: 'Confirming subscription…',
+        description: 'Hang tight while we verify your email link.',
+      };
+    }
+
+    if (unsubscribeInProgress) {
+      return {
+        tone: 'default' as const,
+        title: 'Updating preferences…',
+        description: 'Processing your unsubscribe request.',
+      };
+    }
+
+    if (verificationParam === 'success') {
+      return {
+        tone: 'positive' as const,
+        title: 'Subscription confirmed',
+        description: 'You will now receive email alerts whenever status changes.',
+      };
+    }
+
+    if (verificationParam === 'error') {
+      return {
+        tone: 'warning' as const,
+        title: 'Unable to confirm subscription',
+        description: 'The verification link may have expired. Request a new email to try again.',
+      };
+    }
+
+    if (unsubscribeParam === 'success') {
+      return {
+        tone: 'positive' as const,
+        title: 'Subscription removed',
+        description: 'You will no longer receive email updates from this list.',
+      };
+    }
+
+    if (unsubscribeParam === 'error') {
+      return {
+        tone: 'warning' as const,
+        title: 'Unable to unsubscribe',
+        description: 'The unsubscribe link may have expired. Request a fresh email to try again.',
+      };
+    }
+
+    return null;
+  }, [verificationParam, unsubscribeParam, verificationInProgress, unsubscribeInProgress]);
+
   return (
     <div className="space-y-10">
+      {verificationBanner ? (
+        <GlassPanel className="flex flex-col gap-2 border-white/10 bg-white/10">
+          <div className="flex items-center gap-3">
+            <InlineTag tone={verificationBanner.tone}>{verificationBanner.title}</InlineTag>
+          </div>
+          <p className="text-sm text-foreground/80">{verificationBanner.description}</p>
+        </GlassPanel>
+      ) : null}
       <SectionHeader
         eyebrow="Status"
         title="Operational visibility"

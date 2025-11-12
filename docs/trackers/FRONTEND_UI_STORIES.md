@@ -30,15 +30,15 @@ Capture every remaining high-priority UI story across the marketing, chat, billi
 | UI-004 | Account Profile | Show verification alert, tenant metadata, and action buttons inside `GlassPanel` grids. | `GlassPanel`, `Avatar`, `InlineTag`, `Alert`, `Button` | Done | @platform | `features/account/ProfilePanel.tsx` now renders verification alert + tenant snapshot. |
 | UI-005 | Account Security | Style password form + MFA CTA with `Form`, `Input`, `Tooltip`, `KeyValueList`. | `Form`, `Input`, `Tooltip`, `KeyValueList`, `SkeletonPanel` | Done | @platform | `features/account/SecurityPanel.tsx` ships password rotation + requirements copy. |
 | UI-006 | Sessions / Service Accounts | Render TanStack-powered table with revoke buttons, modal token issuance, and success toasts. | `DataTable`, `Button`, `Dialog`, `Tooltip` | Done | @platform | `SessionsPanel` + `ServiceAccountsPanel` expose revoke + issue flows. |
-| UI-007 | Marketing `/docs` | Compose hero/nav, section cards, resource panel, and FAQ accordion using navigation/menu components. | `NavigationMenu`, `Card`, `GlassPanel`, `Accordion`, `InlineTag` | Implemented | @platform | Review copy & design with UI team. |
+| UI-007 | Marketing `/docs` | Compose hero/nav, section cards, resource panel, and FAQ accordion using navigation/menu components. | `NavigationMenu`, `GlassPanel`, `Accordion`, `InlineTag`, `KeyValueList` | Done | @platform | `/docs` now ships live nav anchors, doc stats, deep-dive cards, and external resource links aligned with the glass system. |
 | UI-008 | Marketing `/status` | Build status cards, uptime stats, incident log table, and alert CTA; reuse `StatCard`, `InlineTag`, `Table`. | `StatCard`, `Table`, `GlassPanel`, `InlineTag` | Done | @platform | JSON + RSS feeds now proxy live FastAPI status data through the BFF + TanStack hook. |
 | UI-009 | Error boundaries | Create `error.tsx` for marketing/auth/app route groups that use `ErrorState`, `Button`, and optional `Dialog`. | `ErrorState`, `Button`, `Dialog`, `Sheet` | Done | @platform | Auth, app, and marketing route groups now render branded `ErrorState` components. |
-| UI-010 | Component inventory | Log new Shadcn installs in `docs/frontend/ui/components.md` and ensure the nav/header tooling is available. | `navigation-menu`, `dialog`, `command`, `data-table` | Ongoing | @platform | Keep tracker in sync with additions. |
+| UI-010 | Component inventory | Log new Shadcn installs in `docs/frontend/ui/components.md` and ensure the nav/header tooling is available. | `navigation-menu`, `dialog`, `command`, `data-table` | Done | @platform | Inventory doc now mirrors the installed primitives and glass foundation kit as of 2025-11-12. |
 
 ## Next Steps
-1. Land the marketing `/docs` copy/design review (`UI-007`) so the hero + FAQ content match the brand voice.
-2. Keep the Shadcn component inventory (`UI-010`) in sync every time new primitives are added or promoted to shared UI.
-3. Scope the alert subscription endpoints for `/status` (email/webhook) now that the JSON + RSS feeds are live.
+1. Scope the alert subscription endpoints for `/status` (email/webhook) now that the JSON + RSS feeds are live.
+2. Partner with marketing to instrument `/docs` link click analytics once product approves the telemetry plan.
+3. Draft CTA placement/copy for the upcoming status alert subscription flow so design can plug it into `/status` once the API is ready.
 
 ## Coordination Notes
 - Update this tracker as each story moves to “In progress” or “Done” so stakeholders know exactly which visual threads remain.

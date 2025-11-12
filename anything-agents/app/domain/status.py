@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal, Protocol
+from uuid import UUID
 
 StatusState = Literal["operational", "degraded", "maintenance", "incident"]
 IncidentState = Literal["investigating", "identified", "monitoring", "resolved"]
 TrendTone = Literal["positive", "neutral", "negative"]
+SubscriptionChannel = Literal["email", "webhook"]
+SubscriptionSeverity = Literal["all", "major", "maintenance"]
+SubscriptionStatus = Literal["pending_verification", "active", "revoked"]
 
 
 @dataclass(frozen=True)
@@ -70,4 +74,135 @@ class PlatformStatusRepository(Protocol):
 
     async def fetch_snapshot(self) -> PlatformStatusSnapshot:
         """Return the latest snapshot to expose externally."""
+        ...
+
+
+@dataclass(frozen=True)
+class StatusSubscription:
+    """Domain representation of a status-alert subscription."""
+
+    id: UUID
+    channel: SubscriptionChannel
+    target_masked: str
+    severity_filter: SubscriptionSeverity
+    status: SubscriptionStatus
+    tenant_id: UUID | None
+    metadata: Mapping[str, object]
+    created_by: str
+    created_at: datetime
+    updated_at: datetime
+    verification_expires_at: datetime | None
+    revoked_at: datetime | None
+    unsubscribe_token_hash: str | None
+
+
+@dataclass(frozen=True)
+class StatusSubscriptionCreate:
+    """Payload required to persist a new subscription."""
+
+    channel: SubscriptionChannel
+    target: str
+    target_hash: str
+    target_masked: str
+    severity_filter: SubscriptionSeverity
+    metadata: Mapping[str, object]
+    tenant_id: UUID | None
+    created_by: str
+    verification_token_hash: str | None
+    verification_expires_at: datetime | None
+    challenge_token_hash: str | None
+    webhook_secret: str | None
+    status: SubscriptionStatus
+    unsubscribe_token_hash: str | None
+    unsubscribe_token: str | None
+
+
+@dataclass(frozen=True)
+class StatusSubscriptionListResult:
+    """Paginated list of subscriptions."""
+
+    items: Sequence[StatusSubscription]
+    next_cursor: str | None
+
+
+class StatusSubscriptionRepository(Protocol):
+    """Persistence contract for status subscriptions."""
+
+    async def create(self, payload: StatusSubscriptionCreate) -> StatusSubscription:
+        ...
+
+    async def find_by_id(self, subscription_id: UUID) -> StatusSubscription | None:
+        ...
+
+    async def find_by_verification_hash(
+        self, token_hash: str
+    ) -> StatusSubscription | None:
+        ...
+
+    async def find_by_challenge_hash(
+        self, token_hash: str
+    ) -> StatusSubscription | None:
+        ...
+
+    async def find_by_unsubscribe_hash(
+        self, token_hash: str
+    ) -> StatusSubscription | None:
+        ...
+
+    async def list_subscriptions(
+        self,
+        *,
+        tenant_id: UUID | None,
+        status: SubscriptionStatus | None,
+        limit: int,
+        cursor: str | None,
+    ) -> StatusSubscriptionListResult:
+        ...
+
+    async def mark_active(self, subscription_id: UUID) -> StatusSubscription | None:
+        ...
+
+    async def mark_revoked(
+        self,
+        subscription_id: UUID,
+        *,
+        reason: str | None = None,
+    ) -> StatusSubscription | None:
+        ...
+
+    async def update_verification_token(
+        self,
+        subscription_id: UUID,
+        *,
+        token_hash: str | None,
+        expires_at: datetime | None,
+    ) -> StatusSubscription | None:
+        ...
+
+    async def get_delivery_target(self, subscription_id: UUID) -> str | None:
+        ...
+
+    async def get_webhook_secret(self, subscription_id: UUID) -> str | None:
+        ...
+
+    async def find_active_by_target(
+        self,
+        *,
+        channel: SubscriptionChannel,
+        target_hash: str,
+        severity_filter: SubscriptionSeverity,
+        tenant_id: UUID | None,
+    ) -> StatusSubscription | None:
+        ...
+
+    async def get_unsubscribe_token(self, subscription_id: UUID) -> str | None:
+        ...
+
+    async def set_unsubscribe_token(
+        self,
+        subscription_id: UUID,
+        *,
+        token_hash: str,
+        token: str,
+    ) -> bool:
         ...

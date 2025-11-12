@@ -28,6 +28,7 @@ from app.infrastructure.persistence.billing import PostgresBillingRepository
 from app.infrastructure.persistence.conversations.postgres import (
     PostgresConversationRepository,
 )
+from app.infrastructure.persistence.status import get_status_subscription_repository
 from app.infrastructure.persistence.stripe.repository import (
     StripeEventRepository,
     configure_stripe_event_repository,
@@ -49,6 +50,8 @@ from app.services.email_verification_service import build_email_verification_ser
 from app.services.password_recovery_service import build_password_recovery_service
 from app.services.payment_gateway import stripe_gateway
 from app.services.signup_service import build_signup_service
+from app.services.status_alert_dispatcher import build_status_alert_dispatcher
+from app.services.status_subscription_service import build_status_subscription_service
 from app.services.user_service import build_user_service
 
 # =============================================================================
@@ -185,6 +188,17 @@ async def lifespan(app: FastAPI):
         settings_factory=lambda: settings,
         session_factory=session_factory,
     )
+
+    status_repo = get_status_subscription_repository(settings)
+    if status_repo:
+        container.status_subscription_service = build_status_subscription_service(
+            repository=status_repo,
+            settings=settings,
+        )
+        container.status_alert_dispatcher = build_status_alert_dispatcher(
+            repository=status_repo,
+            settings=settings,
+        )
 
     if settings.enable_billing:
         billing_service = container.billing_service

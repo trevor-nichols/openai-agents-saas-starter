@@ -10,9 +10,9 @@ import type { RawPlatformStatusResponse } from '@/types/status';
 export async function fetchPlatformStatusSnapshot(): Promise<RawPlatformStatusResponse> {
   const client = createApiClient();
 
-  return getPlatformStatusApiV1StatusGet({
+  return (await getPlatformStatusApiV1StatusGet({
     client,
     responseStyle: 'data',
     throwOnError: true,
-  });
+  })) as unknown as RawPlatformStatusResponse;
 }

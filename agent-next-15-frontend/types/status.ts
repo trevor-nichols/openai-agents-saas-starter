@@ -9,7 +9,7 @@ export interface RawServiceStatus {
   status: string;
   description: string;
   owner: string;
-  last_incident_at: string | null;
+  last_incident_at?: string | null;
 }
 
 export interface RawIncidentRecord {
@@ -87,7 +87,7 @@ export function mapPlatformStatusResponse(raw: RawPlatformStatusResponse): Platf
       status: service.status,
       description: service.description,
       owner: service.owner,
-      lastIncidentAt: service.last_incident_at,
+      lastIncidentAt: service.last_incident_at ?? null,
     })),
     incidents: raw.incidents.map((incident) => ({
       id: incident.incident_id,

@@ -4,7 +4,7 @@ import argparse
 import os
 from collections.abc import Callable, Sequence
 
-from . import auth_commands, setup_commands, stripe_commands
+from . import auth_commands, setup_commands, status_commands, stripe_commands
 from .common import (
     DEFAULT_ENV_FILES,
     CLIContext,
@@ -44,6 +44,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command")
     auth_commands.register(subparsers)
     stripe_commands.register(subparsers)
+    status_commands.register(subparsers)
     setup_commands.register(subparsers)
     return parser
 

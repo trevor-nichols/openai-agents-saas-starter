@@ -15,6 +15,8 @@ from app.services.email_verification_service import EmailVerificationService
 from app.services.geoip_service import GeoIPService, NullGeoIPService
 from app.services.password_recovery_service import PasswordRecoveryService
 from app.services.rate_limit_service import RateLimiter
+from app.services.status_alert_dispatcher import StatusAlertDispatcher
+from app.services.status_subscription_service import StatusSubscriptionService
 from app.services.stripe_dispatcher import StripeEventDispatcher
 from app.services.stripe_retry_worker import StripeDispatchRetryWorker
 from app.services.user_service import UserService
@@ -53,6 +55,8 @@ class ApplicationContainer:
     service_account_token_service: ServiceAccountTokenService | None = None
     agent_service: AgentService | None = None
     signup_service: SignupService | None = None
+    status_subscription_service: StatusSubscriptionService | None = None
+    status_alert_dispatcher: StatusAlertDispatcher | None = None
 
     async def shutdown(self) -> None:
         """Gracefully tear down managed services."""
@@ -73,6 +77,8 @@ class ApplicationContainer:
         self.service_account_token_service = None
         self.agent_service = None
         self.signup_service = None
+        self.status_subscription_service = None
+        self.status_alert_dispatcher = None
 
 
 _CONTAINER: ApplicationContainer | None = None
