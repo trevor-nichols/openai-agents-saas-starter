@@ -23,6 +23,34 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
   - lib/queries/ = Server data (TanStack Query)
   - hooks/ = UI logic, local state, browser APIs
 
+### Frontend Component Architecture Pattern
+
+- **Feature-centric directories** live under `features/<domain>/` (e.g., `features/chat`, `features/billing`, `features/account`). Each exports a single orchestrator consumed by the page.
+- **Directory shape per feature:**
+
+  ```
+  features/chat/
+    index.ts              // public exports for the feature
+    ChatWorkspace.tsx     // orchestrator/container (client component)
+    components/
+      MessageList.tsx
+      MessageInput.tsx
+      ConversationHeader.tsx
+      index.ts
+    constants.ts          // copy, layout config, status labels
+    types.ts              // view-specific types (domain types remain in /types)
+    hooks/
+      useMessageFocus.ts  // purely view-level composition
+      index.ts
+    utils/
+      formatMessage.ts    // pure helpers scoped to this feature
+  ```
+
+- **Pages stay lean:** `app/.../page.tsx` imports the feature orchestrator and handles only layout/metadata. Shared chrome for a route group belongs in `_components/` next to the layout, while the feature content stays within `features/**`.
+- **Data layer remains centralized:** Continue using `lib/api`, `lib/queries`, `lib/chat`, and `/types` for network/data contracts. Feature hooks only compose those primitives; anything broadly useful graduates to `components/ui/` or `components/shared/`.
+- **Ownership split:** Engineering owns the shared hooks/services in `lib/**`; the design/UI team iterates inside `features/<domain>/components` using those hooks. Any new cross-feature logic graduates back into `lib/**` so other surfaces stay consistent.
+- **Testing:** Colocate unit/interaction tests with the orchestrator (`ChatWorkspace.test.tsx`). Promote reusable test helpers to existing shared testing utilities when multiple features need them.
+
 ## CLI Charter – Starter CLI (SC)
 - **Purpose:** The SC is the single operator entrypoint for provisioning secrets, wiring third-party providers, generating env files for both the FastAPI backend and the Next.js frontend, and exporting audit artifacts. It replaces the legacy “Anything Agents” branding.
 - **Boundaries:** SC never imports `anything-agents/app` modules directly. Shared logic (key generation, schema validation) must live in neutral `starter_shared/*` modules to keep imports acyclic and to allow the CLI to run without initializing the server stack.
