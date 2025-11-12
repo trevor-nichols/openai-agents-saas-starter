@@ -31,14 +31,14 @@ Capture every remaining high-priority UI story across the marketing, chat, billi
 | UI-005 | Account Security | Style password form + MFA CTA with `Form`, `Input`, `Tooltip`, `KeyValueList`. | `Form`, `Input`, `Tooltip`, `KeyValueList`, `SkeletonPanel` | Done | @platform | `features/account/SecurityPanel.tsx` ships password rotation + requirements copy. |
 | UI-006 | Sessions / Service Accounts | Render TanStack-powered table with revoke buttons, modal token issuance, and success toasts. | `DataTable`, `Button`, `Dialog`, `Tooltip` | Done | @platform | `SessionsPanel` + `ServiceAccountsPanel` expose revoke + issue flows. |
 | UI-007 | Marketing `/docs` | Compose hero/nav, section cards, resource panel, and FAQ accordion using navigation/menu components. | `NavigationMenu`, `Card`, `GlassPanel`, `Accordion`, `InlineTag` | Implemented | @platform | Review copy & design with UI team. |
-| UI-008 | Marketing `/status` | Build status cards, uptime stats, incident log table, and alert CTA; reuse `StatCard`, `InlineTag`, `Table`. | `StatCard`, `Table`, `GlassPanel`, `InlineTag` | Implemented | @platform | Need to hook RSS/email endpoints. |
+| UI-008 | Marketing `/status` | Build status cards, uptime stats, incident log table, and alert CTA; reuse `StatCard`, `InlineTag`, `Table`. | `StatCard`, `Table`, `GlassPanel`, `InlineTag` | Done | @platform | JSON + RSS feeds now proxy live FastAPI status data through the BFF + TanStack hook. |
 | UI-009 | Error boundaries | Create `error.tsx` for marketing/auth/app route groups that use `ErrorState`, `Button`, and optional `Dialog`. | `ErrorState`, `Button`, `Dialog`, `Sheet` | Done | @platform | Auth, app, and marketing route groups now render branded `ErrorState` components. |
 | UI-010 | Component inventory | Log new Shadcn installs in `docs/frontend/ui/components.md` and ensure the nav/header tooling is available. | `navigation-menu`, `dialog`, `command`, `data-table` | Ongoing | @platform | Keep tracker in sync with additions. |
 
 ## Next Steps
-1. Prioritize `UI-001`/`UI-002` to polish the chat workspace before the other surfaces.
-2. Iterate `UI-004`-`UI-006` so the account tab matches the data layer that’s already shipping.
-3. Fill any gaps noted in `UI-009`/`UI-010` once error boundaries or new components are required.
+1. Land the marketing `/docs` copy/design review (`UI-007`) so the hero + FAQ content match the brand voice.
+2. Keep the Shadcn component inventory (`UI-010`) in sync every time new primitives are added or promoted to shared UI.
+3. Scope the alert subscription endpoints for `/status` (email/webhook) now that the JSON + RSS feeds are live.
 
 ## Coordination Notes
 - Update this tracker as each story moves to “In progress” or “Done” so stakeholders know exactly which visual threads remain.

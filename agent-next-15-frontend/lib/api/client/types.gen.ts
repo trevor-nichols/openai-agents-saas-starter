@@ -189,6 +189,56 @@ export type BillingPlanResponse = {
 };
 
 /**
+ * BrowserServiceAccountIssueRequest
+ *
+ * Browser-initiated issuance request with justification.
+ */
+export type BrowserServiceAccountIssueRequest = {
+    /**
+     * Account
+     *
+     * Service-account identifier.
+     */
+    account: string;
+    /**
+     * Scopes
+     *
+     * Scopes requested for the service account.
+     */
+    scopes: Array<string>;
+    /**
+     * Tenant Id
+     *
+     * Tenant UUID when required by the service account.
+     */
+    tenant_id?: string | null;
+    /**
+     * Lifetime Minutes
+     *
+     * Optional refresh token lifetime in minutes.
+     */
+    lifetime_minutes?: number | null;
+    /**
+     * Fingerprint
+     *
+     * Optional machine or pipeline identifier for auditing.
+     */
+    fingerprint?: string | null;
+    /**
+     * Force
+     *
+     * Force new token creation even when an active token exists.
+     */
+    force?: boolean;
+    /**
+     * Reason
+     *
+     * Human-readable justification for auditing.
+     */
+    reason: string;
+};
+
+/**
  * CancelSubscriptionRequest
  */
 export type CancelSubscriptionRequest = {
@@ -361,6 +411,42 @@ export type HealthResponse = {
 };
 
 /**
+ * IncidentSchema
+ */
+export type IncidentSchema = {
+    /**
+     * Incident Id
+     *
+     * Internal incident identifier.
+     */
+    incident_id: string;
+    /**
+     * Service
+     *
+     * Impacted service name.
+     */
+    service: string;
+    /**
+     * Occurred At
+     *
+     * When the incident was recorded.
+     */
+    occurred_at: string;
+    /**
+     * Impact
+     *
+     * External-facing description of the impact.
+     */
+    impact: string;
+    /**
+     * State
+     *
+     * Current incident lifecycle state.
+     */
+    state: string;
+};
+
+/**
  * PasswordChangeRequest
  *
  * Self-service password change payload.
@@ -462,6 +548,31 @@ export type PlanFeatureResponse = {
      * Is Metered
      */
     is_metered?: boolean;
+};
+
+/**
+ * PlatformStatusResponse
+ */
+export type PlatformStatusResponse = {
+    /**
+     * Generated At
+     *
+     * Server-side generation timestamp for the snapshot.
+     */
+    generated_at: string;
+    overview: StatusOverviewSchema;
+    /**
+     * Services
+     */
+    services: Array<ServiceStatusSchema>;
+    /**
+     * Incidents
+     */
+    incidents: Array<IncidentSchema>;
+    /**
+     * Uptime Metrics
+     */
+    uptime_metrics: Array<UptimeMetricSchema>;
 };
 
 /**
@@ -690,6 +801,42 @@ export type ServiceAccountTokenRevokeRequest = {
 export type ServiceAccountTokenStatus = 'active' | 'revoked' | 'all';
 
 /**
+ * ServiceStatusSchema
+ */
+export type ServiceStatusSchema = {
+    /**
+     * Name
+     *
+     * Service or subsystem name.
+     */
+    name: string;
+    /**
+     * Status
+     *
+     * Operational status label.
+     */
+    status: string;
+    /**
+     * Description
+     *
+     * Short explanation of the service scope.
+     */
+    description: string;
+    /**
+     * Owner
+     *
+     * Team responsible for the service.
+     */
+    owner: string;
+    /**
+     * Last Incident At
+     *
+     * Timestamp of the most recent incident involving the service.
+     */
+    last_incident_at?: string | null;
+};
+
+/**
  * SessionClientInfo
  *
  * Details about the client/browser reported for a session.
@@ -775,6 +922,30 @@ export type StartSubscriptionRequest = {
      * Optional explicit seat count override.
      */
     seat_count?: number | null;
+};
+
+/**
+ * StatusOverviewSchema
+ */
+export type StatusOverviewSchema = {
+    /**
+     * State
+     *
+     * Human-readable health summary.
+     */
+    state: string;
+    /**
+     * Description
+     *
+     * Contextual description displayed on the status page.
+     */
+    description: string;
+    /**
+     * Updated At
+     *
+     * Timestamp of the last health aggregation.
+     */
+    updated_at: string;
 };
 
 /**
@@ -881,6 +1052,32 @@ export type UpdateSubscriptionRequest = {
      * Adjust allocated seats.
      */
     seat_count?: number | null;
+};
+
+/**
+ * UptimeMetricSchema
+ */
+export type UptimeMetricSchema = {
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Value
+     */
+    value: string;
+    /**
+     * Helper Text
+     */
+    helper_text: string;
+    /**
+     * Trend Value
+     */
+    trend_value: string;
+    /**
+     * Trend Tone
+     */
+    trend_tone: string;
 };
 
 /**
@@ -1718,6 +1915,49 @@ export type IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponses =
 
 export type IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponse = IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponses[keyof IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponses];
 
+export type IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostData = {
+    body: BrowserServiceAccountIssueRequest;
+    headers?: {
+        /**
+         * X-Operator-Override
+         */
+        'X-Operator-Override'?: string | null;
+        /**
+         * X-Operator-Reason
+         */
+        'X-Operator-Reason'?: string | null;
+        /**
+         * X-Tenant-Id
+         */
+        'X-Tenant-Id'?: string | null;
+        /**
+         * X-Tenant-Role
+         */
+        'X-Tenant-Role'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/service-accounts/browser-issue';
+};
+
+export type IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostError = IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostErrors[keyof IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostErrors];
+
+export type IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostResponses = {
+    /**
+     * Successful Response
+     */
+    201: ServiceAccountTokenResponse;
+};
+
+export type IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostResponse = IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostResponses[keyof IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostResponses];
+
 export type ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetData = {
     body?: never;
     headers?: {
@@ -2070,6 +2310,36 @@ export type ListAvailableToolsApiV1ToolsGetResponses = {
 };
 
 export type ListAvailableToolsApiV1ToolsGetResponse = ListAvailableToolsApiV1ToolsGetResponses[keyof ListAvailableToolsApiV1ToolsGetResponses];
+
+export type GetPlatformStatusApiV1StatusGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/status';
+};
+
+export type GetPlatformStatusApiV1StatusGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: PlatformStatusResponse;
+};
+
+export type GetPlatformStatusApiV1StatusGetResponse = GetPlatformStatusApiV1StatusGetResponses[keyof GetPlatformStatusApiV1StatusGetResponses];
+
+export type GetPlatformStatusRssApiV1StatusRssGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/status/rss';
+};
+
+export type GetPlatformStatusRssApiV1StatusRssGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
 
 export type ListBillingPlansApiV1BillingPlansGetData = {
     body?: never;

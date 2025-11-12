@@ -48,6 +48,10 @@
 │   │       │   ├── __init__.py # Initializes the 'conversations' subpackage.
 │   │       │   ├── router.py # FastAPI router for listing, getting, and deleting conversations.
 │   │       │   └── schemas.py # Pydantic schemas for conversation history and messages.
+│   │       ├── status/       # API endpoints exposing platform status snapshots.
+│   │       │   ├── __init__.py # Initializes the 'status' subpackage.
+│   │       │   ├── router.py # FastAPI router for JSON + RSS status feeds.
+│   │       │   └── schemas.py # Pydantic schemas for platform status responses.
 │   │       ├── router.py     # Aggregates all routers for the V1 API.
 │   │       └── tools/        # API endpoints for listing available agent tools.
 │   │           ├── __init__.py # Initializes the 'tools' subpackage.
@@ -72,6 +76,7 @@
 │   │   ├── conversations.py  # Domain models and repository protocols for conversations.
 │   │   ├── email_verification.py # Domain models and store protocol for email verification tokens.
 │   │   ├── password_reset.py # Domain models and store protocol for password reset tokens.
+│   │   ├── status.py         # Domain models and repository protocol for platform status snapshots.
 │   │   └── users.py          # Domain models and repository protocols for user management.
 │   ├── infrastructure/        # Adapters for external systems (database, caches, APIs).
 │   │   ├── __init__.py       # Initializes the 'infrastructure' package.
@@ -114,6 +119,9 @@
 │   │   │   ├── password_reset_store.py # Redis-backed store for password reset tokens.
 │   │   │   ├── vault.py      # Client for HashiCorp Vault's Transit secret engine.
 │   │   │   └── vault_kv.py   # Re-exports shared Vault KV secret manager helpers.
+│   │   ├── status/            # Adapters for sourcing platform status snapshots.
+│   │   │   ├── __init__.py   # Initializes the 'status' infrastructure package.
+│   │   │   └── repository.py # Static/in-memory repository returning the latest platform status.
 │   │   └── stripe/            # Adapters for interacting with the Stripe API.
 │   │       ├── __init__.py   # Exposes the Stripe client and its models.
 │   │       ├── client.py     # Typed client for interacting with the Stripe API.
@@ -156,6 +164,7 @@
 │   │   ├── password_recovery_service.py # Service for handling password reset flows.
 │   │   ├── payment_gateway.py # Abstraction for payment providers like Stripe.
 │   │   ├── rate_limit_service.py # Redis-backed service for rate limiting API requests.
+│   │   ├── status_service.py # Service façade exposing platform status snapshots.
 │   │   ├── signup_service.py # Service for orchestrating new user/tenant signups.
 │   │   ├── stripe_dispatcher.py # Service for routing Stripe webhook events to handlers.
 │   │   ├── stripe_event_models.py # Shared data classes for Stripe webhook dispatching.
@@ -181,6 +190,7 @@
     │   ├── test_health_endpoints.py # Contract tests for the /health and /health/ready endpoints.
     │   ├── test_metrics_endpoint.py # Contract tests for the /metrics endpoint.
     │   ├── test_streaming_manual.py # Manual test script for verifying SSE streaming behavior.
+    │   ├── test_status_api.py # Contract tests for the platform status JSON and RSS feeds.
     │   └── test_well_known.py # Contract tests for the /.well-known/jwks.json endpoint.
     ├── fixtures/              # Test fixture data.
     │   ├── keysets/          # Keyset files for testing.

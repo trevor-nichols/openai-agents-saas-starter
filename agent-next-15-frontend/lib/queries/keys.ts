@@ -31,6 +31,10 @@ export const queryKeys = {
     list: () => [...queryKeys.agents.all, 'list'] as const,
     detail: (agentName: string) => [...queryKeys.agents.all, 'detail', agentName] as const,
   },
+  status: {
+    all: ['status'] as const,
+    snapshot: () => [...queryKeys.status.all, 'snapshot'] as const,
+  },
   account: {
     all: ['account'] as const,
     profile: () => [...queryKeys.account.all, 'profile'] as const,
