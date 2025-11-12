@@ -32,7 +32,7 @@ Capture every remaining high-priority UI story across the marketing, chat, billi
 | UI-006 | Sessions / Service Accounts | Render TanStack-powered table with revoke buttons, modal token issuance, and success toasts. | `DataTable`, `Button`, `Dialog`, `Tooltip` | Done | @platform | `SessionsPanel` + `ServiceAccountsPanel` expose revoke + issue flows. |
 | UI-007 | Marketing `/docs` | Compose hero/nav, section cards, resource panel, and FAQ accordion using navigation/menu components. | `NavigationMenu`, `Card`, `GlassPanel`, `Accordion`, `InlineTag` | Implemented | @platform | Review copy & design with UI team. |
 | UI-008 | Marketing `/status` | Build status cards, uptime stats, incident log table, and alert CTA; reuse `StatCard`, `InlineTag`, `Table`. | `StatCard`, `Table`, `GlassPanel`, `InlineTag` | Implemented | @platform | Need to hook RSS/email endpoints. |
-| UI-009 | Error boundaries | Create `error.tsx` for marketing/auth/app route groups that use `ErrorState`, `Button`, and optional `Dialog`. | `ErrorState`, `Button`, `Dialog`, `Sheet` | In progress | @platform | Auth boundary exists; app + marketing variants landing now. |
+| UI-009 | Error boundaries | Create `error.tsx` for marketing/auth/app route groups that use `ErrorState`, `Button`, and optional `Dialog`. | `ErrorState`, `Button`, `Dialog`, `Sheet` | Done | @platform | Auth, app, and marketing route groups now render branded `ErrorState` components. |
 | UI-010 | Component inventory | Log new Shadcn installs in `docs/frontend/ui/components.md` and ensure the nav/header tooling is available. | `navigation-menu`, `dialog`, `command`, `data-table` | Ongoing | @platform | Keep tracker in sync with additions. |
 
 ## Next Steps
