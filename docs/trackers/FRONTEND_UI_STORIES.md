@@ -1,7 +1,7 @@
 ---
 title: Frontend UI Story Tracker
 owner: Platform Foundations
-last_updated: 2025-11-12
+last_updated: 2025-11-13
 status: in-progress
 tags:
   - frontend
@@ -34,6 +34,7 @@ Capture every remaining high-priority UI story across the marketing, chat, billi
 | UI-008 | Marketing `/status` | Build status cards, uptime stats, incident log table, and alert CTA; reuse `StatCard`, `InlineTag`, `Table`. | `StatCard`, `Table`, `GlassPanel`, `InlineTag` | Done | @platform | JSON + RSS feeds now proxy live FastAPI status data through the BFF + TanStack hook. |
 | UI-009 | Error boundaries | Create `error.tsx` for marketing/auth/app route groups that use `ErrorState`, `Button`, and optional `Dialog`. | `ErrorState`, `Button`, `Dialog`, `Sheet` | Done | @platform | Auth, app, and marketing route groups now render branded `ErrorState` components. |
 | UI-010 | Component inventory | Log new Shadcn installs in `docs/frontend/ui/components.md` and ensure the nav/header tooling is available. | `navigation-menu`, `dialog`, `command`, `data-table` | Done | @platform | Inventory doc now mirrors the installed primitives and glass foundation kit as of 2025-11-12. |
+| UI-011 | Agents Workspace | Consolidate catalog, chat, tooling, and transcript archive into a single page orchestrator following the feature-pattern spec. | `GlassPanel`, `SectionHeader`, `AgentSwitcher`, `DataTable`, `ScrollArea`, `ConversationDetailDrawer` | Done | @platform | `/agents` now renders `AgentWorkspace` which composes the new panels/hook structure and replaces the standalone `/tools` + `/conversations` routes. |
 
 ## Next Steps
 1. Scope the alert subscription endpoints for `/status` (email/webhook) now that the JSON + RSS feeds are live.

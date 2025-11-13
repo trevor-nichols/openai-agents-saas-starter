@@ -1,5 +1,5 @@
-// File Path: features/conversations/ConversationDetailDrawer.tsx
-// Description: Slide-over drawer that surfaces full transcript metadata for a selected conversation.
+// File Path: components/shared/conversations/ConversationDetailDrawer.tsx
+// Description: Shared slide-over drawer that surfaces full transcript metadata for a selected conversation.
 
 'use client';
 
@@ -35,10 +35,23 @@ interface ConversationDetailDrawerProps {
   conversationId: string | null;
   open: boolean;
   onClose: () => void;
-  onDeleted: (conversationId: string) => void;
+  /**
+   * Optional hook that allows parent features to keep list state in sync once a transcript is deleted.
+   */
+  onDeleted?: (conversationId: string) => void;
+  /**
+   * Override deletion logic (e.g., use controller-aware mutation inside chat workspace).
+   */
+  onDeleteConversation?: (conversationId: string) => Promise<void>;
 }
 
-export function ConversationDetailDrawer({ conversationId, open, onClose, onDeleted }: ConversationDetailDrawerProps) {
+export function ConversationDetailDrawer({
+  conversationId,
+  open,
+  onClose,
+  onDeleted,
+  onDeleteConversation,
+}: ConversationDetailDrawerProps) {
   const {
     conversationHistory,
     isLoadingDetail,
@@ -84,12 +97,13 @@ export function ConversationDetailDrawer({ conversationId, open, onClose, onDele
     }
     setIsDeleting(true);
     try {
-      await deleteConversationById(conversationId);
+      const deleteFn = onDeleteConversation ?? deleteConversationById;
+      await deleteFn(conversationId);
       success({
         title: 'Conversation deleted',
         description: 'The transcript has been removed from the archive.',
       });
-      onDeleted(conversationId);
+      onDeleted?.(conversationId);
       onClose();
     } catch (err) {
       error({
@@ -99,7 +113,7 @@ export function ConversationDetailDrawer({ conversationId, open, onClose, onDele
     } finally {
       setIsDeleting(false);
     }
-  }, [conversationId, error, onClose, onDeleted, success]);
+  }, [conversationId, error, onClose, onDeleteConversation, onDeleted, success]);
 
   const handleExport = useCallback(async () => {
     if (!conversationHistory) {

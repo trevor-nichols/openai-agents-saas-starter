@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 import { AgentSwitcher } from './components/AgentSwitcher';
 import { BillingEventsPanel } from './components/BillingEventsPanel';
 import { ChatInterface } from './components/ChatInterface';
-import { ConversationDetailDrawer } from './components/ConversationDetailDrawer';
+import { ConversationDetailDrawer } from '@/components/shared/conversations/ConversationDetailDrawer';
 import { ConversationSidebar } from './components/ConversationSidebar';
 import { ToolMetadataPanel } from './components/ToolMetadataPanel';
 
@@ -233,7 +233,7 @@ export function ChatWorkspace() {
 
       <ConversationDetailDrawer
         open={detailDrawerOpen}
-        onOpenChange={setDetailDrawerOpen}
+        onClose={() => setDetailDrawerOpen(false)}
         conversationId={currentConversationId}
         onDeleteConversation={deleteConversation}
       />

@@ -34,7 +34,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     id: 'explore-tools',
     label: 'Explore tool catalog',
     description: 'Pair your agents with first-party and custom billing-aware tools.',
-    href: '/tools',
+    href: '/agents',
     icon: Sparkles,
   },
 ];

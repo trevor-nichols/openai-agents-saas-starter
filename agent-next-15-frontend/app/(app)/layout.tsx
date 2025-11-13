@@ -16,9 +16,7 @@ interface AppLayoutProps {
 const primaryNav = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/chat', label: 'Workspace' },
-  { href: '/conversations', label: 'Conversations' },
   { href: '/agents', label: 'Agents' },
-  { href: '/tools', label: 'Tools' },
   { href: '/billing', label: 'Billing' },
 ];
 

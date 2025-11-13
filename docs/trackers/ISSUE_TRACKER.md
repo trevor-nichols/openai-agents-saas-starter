@@ -2,6 +2,7 @@
 
 | ID | Title | Description | Status | Owner | Notes |
 |----|-------|-------------|--------|-------|-------|
+| FE-001 | Feature directory pattern parity | Audit every `features/<domain>` module against the documented orchestrator/components/hooks/utils pattern, refactor any drift, and spawn follow-up tickets so new work stays aligned. | In Progress | *@codex* | Agents workspace now follows the orchestrator/components/hooks/utils breakdown; next pass should cover billing/dashboard/tenant features with the same checklist. |
 | BE-001 | SSE stream endpoint mismatch | Frontend streams against `/api/v1/agents/chat/stream` while FastAPI exposes `/api/v1/chat/stream`, breaking real-time updates. | Resolved | *@codex* | Frontend + smoke test now target `/api/v1/chat/stream`. |
 | BE-002 | Conversation history lacked durable storage | Conversation history now persists via Postgres-backed repositories, and the legacy in-memory adapter/flag have been removed. | Completed | *@codex* | `.env.compose` ships `DATABASE_URL`, the FastAPI lifespan always boots the async engine, and readiness probes fail fast if Postgres is unavailable. |
 | BE-003 | Tool registry lacks agent-specific scoping | `ToolRegistry.get_core_tools()` returns the same tool set for every agent, preventing specialization as catalog grows. | Resolved | *@codex* | Tool metadata now tracks `core`, `agents`, and `capabilities`, `get_tools_for_agent()` filters by that metadata, AgentRegistry requests scoped tool lists, tests/docs updated. |

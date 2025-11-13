@@ -179,7 +179,7 @@ Deliver a production-quality page architecture and component plan that maps ever
 - **Shared Systems**
   - [x] Toast/notification framework (centralized provider). *Status (2025-11-11): `app/providers.tsx` already mounts the `Toaster`, all features now import `useToast`, and we documented the expectation in `docs/frontend/data-access.md`.*
   - [x] Loading skeleton components (marketing + app).
-  - [ ] Error boundary surfaces per route group. *Deliverable: add `error.tsx` files under `app/(marketing)`, `app/(auth)`, and `app/(app)` that wrap `components/ui/states/ErrorState` with context-specific copy/actions, offer a `Button` to refetch via `useRouter().refresh()`, and optionally expose a `Dialog`/`Sheet` (via existing `dialog.tsx`/`sheet.tsx`) for diagnostic details so failures stay on-brand.*
+  - [x] Error boundary surfaces per route group. *Status (2025-11-13): `app/(marketing)/error.tsx`, `app/(auth)/error.tsx`, and `app/(app)/error.tsx` now wrap `ErrorState` with contextual copy, reset buttons, and status/navigation fallbacks, satisfying the branded recovery requirement.*
   - [x] Data table kit (TanStack) for audits/sessions/billing. *Status (2025-11-11): `components/ui/data-table` now exposes `DataTable`/`DataTablePagination`; conversations hub already consumes it with row actions, pagination toggles, and shared states.*
 
 <!-- SECTION: Risks -->
