@@ -1,0 +1,1 @@
+export { TenantSettingsWorkspace } from './TenantSettingsWorkspace';

@@ -19,6 +19,7 @@ from app.services.status_alert_dispatcher import StatusAlertDispatcher
 from app.services.status_subscription_service import StatusSubscriptionService
 from app.services.stripe_dispatcher import StripeEventDispatcher
 from app.services.stripe_retry_worker import StripeDispatchRetryWorker
+from app.services.tenant_settings_service import TenantSettingsService
 from app.services.user_service import UserService
 
 if TYPE_CHECKING:  # pragma: no cover - type hints only
@@ -57,6 +58,9 @@ class ApplicationContainer:
     signup_service: SignupService | None = None
     status_subscription_service: StatusSubscriptionService | None = None
     status_alert_dispatcher: StatusAlertDispatcher | None = None
+    tenant_settings_service: TenantSettingsService = field(
+        default_factory=TenantSettingsService
+    )
 
     async def shutdown(self) -> None:
         """Gracefully tear down managed services."""

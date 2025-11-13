@@ -1,16 +1,20 @@
-// File Path: app/(app)/settings/tenant/page.tsx
-// Description: Placeholder tenant settings page.
-// Sections:
-// - Imports: Settings feature orchestrator.
-// - TenantSettingsPage component: Thin wrapper for the tenant settings view.
+import { redirect } from 'next/navigation';
 
-import { TenantSettingsPanel } from '@/features/settings';
+import { TenantSettingsWorkspace } from '@/features/settings';
+import { getSessionMetaFromCookies } from '@/lib/auth/cookies';
 
 export const metadata = {
   title: 'Tenant Settings | Anything Agents',
 };
 
-export default function TenantSettingsPage() {
-  return <TenantSettingsPanel />;
-}
+export default async function TenantSettingsPage() {
+  const session = await getSessionMetaFromCookies();
+  const scopes = session?.scopes ?? [];
+  const canManageBilling = scopes.includes('billing:manage');
 
+  if (!session?.tenantId || !canManageBilling) {
+    redirect('/dashboard');
+  }
+
+  return <TenantSettingsWorkspace />;
+}

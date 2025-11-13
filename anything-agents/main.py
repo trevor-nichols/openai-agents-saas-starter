@@ -33,6 +33,7 @@ from app.infrastructure.persistence.stripe.repository import (
     StripeEventRepository,
     configure_stripe_event_repository,
 )
+from app.infrastructure.persistence.tenants import PostgresTenantSettingsRepository
 from app.infrastructure.security.vault_kv import configure_vault_secret_manager
 from app.middleware.logging import LoggingMiddleware
 from app.presentation import health as health_routes
@@ -136,6 +137,9 @@ async def lifespan(app: FastAPI):
     container.session_factory = session_factory
     postgres_repository = PostgresConversationRepository(session_factory)
     container.conversation_service.set_repository(postgres_repository)
+    container.tenant_settings_service.set_repository(
+        PostgresTenantSettingsRepository(session_factory)
+    )
 
     user_repository = get_user_repository(settings)
     if user_repository is None:

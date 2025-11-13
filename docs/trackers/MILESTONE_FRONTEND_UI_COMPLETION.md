@@ -35,7 +35,7 @@ Re-align the frontend tracker with the current state of the Next.js 15 surface, 
 | # | Task | Owner | Status | Target |
 | - | ---- | ----- | ------ | ------ |
 | 1 | Replace tools catalog placeholder with live registry view (search, grouping, counts). | Frontend | In Review | Nov 20 |
-| 2 | Implement tenant settings forms (billing contacts, webhook URL, plan metadata) backed by existing billing/Tenant APIs. | Frontend + Backend | Todo | Nov 27 |
+| 2 | Implement tenant settings forms (billing contacts, webhook URL, plan metadata) backed by existing billing/Tenant APIs. | Frontend + Backend | In Review | Nov 27 |
 | 3 | Expand Playwright suite to cover billing plan changes, service-account issue/revoke, and chat transcript export. | QA | In Progress | Dec 4 |
 | 4 | Finalize marketing copy + CTAs and add analytics hooks for `/`, `/pricing`, `/features`, `/docs`. | Product Marketing | Todo | Dec 4 |
 | 5 | Establish weekly tracker review ritual (15 mins in Frontend Sync) to keep status current. | Frontend Lead | Scheduled | Ongoing |
@@ -48,6 +48,7 @@ Re-align the frontend tracker with the current state of the Next.js 15 surface, 
 ## Changelog
 - **2025-11-13**: Agents workspace now bundles catalog, chat, tools panel, and conversation archive; removed standalone `/tools` + `/conversations` routes.
 - **2025-11-13**: Tracker reset to reflect current implementation; previous tracker archived under `docs/trackers/complete/MILESTONE_FRONTEND_UI_FOUNDATION_2025-11-13.md`.
+- **2025-11-13**: Tenant settings surface ships with billing contacts, webhook, plan metadata, and feature flag forms backed by the new FastAPI `/tenants/settings` endpoints.
 
 
 <!-- SECTION: Layout Strategy -->

@@ -19,6 +19,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
         UserAccount,
     )
     from app.infrastructure.persistence.billing.models import TenantSubscription
+    from app.infrastructure.persistence.tenants.models import TenantSettingsModel
 
 
 class TenantAccount(Base):
@@ -51,6 +52,13 @@ class TenantAccount(Base):
     )
     conversations: Mapped[list[AgentConversation]] = relationship(
         back_populates="tenant", cascade="all, delete-orphan"
+    )
+    settings: Mapped[TenantSettingsModel | None] = relationship(
+        "TenantSettingsModel",
+        back_populates="tenant",
+        cascade="all, delete-orphan",
+        uselist=False,
+        single_parent=True,
     )
 
 

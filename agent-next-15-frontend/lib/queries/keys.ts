@@ -49,4 +49,8 @@ export const queryKeys = {
         [...queryKeys.account.serviceAccounts.all(), filters] as const,
     },
   },
+  tenant: {
+    all: ['tenant'] as const,
+    settings: () => [...queryKeys.tenant.all, 'settings'] as const,
+  },
 } as const;
