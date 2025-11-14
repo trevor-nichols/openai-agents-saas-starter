@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 
 from app.api.dependencies import raise_rate_limit_http_error
@@ -17,6 +17,8 @@ from app.api.dependencies.tenant import (
 )
 from app.api.models.common import SuccessResponse
 from app.api.v1.billing.schemas import (
+    BillingEventHistoryResponse,
+    BillingEventResponse,
     BillingPlanResponse,
     CancelSubscriptionRequest,
     StartSubscriptionRequest,
@@ -25,6 +27,7 @@ from app.api.v1.billing.schemas import (
     UsageRecordRequest,
 )
 from app.core.config import get_settings
+from app.infrastructure.persistence.stripe.models import StripeEventStatus
 from app.services.billing_events import get_billing_events_service
 from app.services.billing_service import (
     BillingError,
@@ -206,6 +209,47 @@ async def record_usage(
     except BillingError as exc:  # pragma: no cover - translated below
         _handle_billing_error(exc)
     return SuccessResponse(success=True, message="Usage recorded.")
+
+
+@router.get(
+    "/tenants/{tenant_id}/events",
+    response_model=BillingEventHistoryResponse,
+)
+async def list_billing_events(
+    tenant_id: str,
+    limit: int = Query(default=25, ge=1, le=100, description="Number of events to return."),
+    cursor: str | None = Query(
+        default=None, description="Opaque cursor returned from the previous page."
+    ),
+    event_type: str | None = Query(default=None, description="Filter by Stripe event type."),
+    processing_status: StripeEventStatus | None = Query(
+        default=None,
+        description="Filter by processing outcome (received/processed/failed).",
+    ),
+    context: TenantContext = Depends(
+        require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.VIEWER)
+    ),
+) -> BillingEventHistoryResponse:
+    """Page through the tenant's historical billing events."""
+
+    _assert_same_tenant(context, tenant_id)
+
+    service = get_billing_events_service()
+    try:
+        history = await service.list_history(
+            tenant_id=tenant_id,
+            limit=limit,
+            cursor=cursor,
+            event_type=event_type,
+            status=processing_status,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    return BillingEventHistoryResponse(
+        items=[BillingEventResponse.from_payload(item) for item in history.items],
+        next_cursor=history.next_cursor,
+    )
 
 
 @router.get("/stream")

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
@@ -14,11 +15,12 @@ from app.api.dependencies.auth import require_current_user
 from app.api.v1.billing.router import router as billing_router
 from app.bootstrap import get_container
 from app.core.config import get_settings
-from app.infrastructure.persistence.stripe.models import (
-    StripeEvent,
-    StripeEventStatus,
+from app.infrastructure.persistence.stripe.models import StripeEvent, StripeEventStatus
+from app.services.billing_events import (
+    BillingEventHistoryPage,
+    BillingEventPayload,
+    BillingEventsService,
 )
-from app.services.billing_events import BillingEventsService
 from app.services.stripe_event_models import (
     DispatchBroadcastContext,
     InvoiceSnapshotView,
@@ -138,6 +140,43 @@ async def test_context_tenant_override_publishes_to_correct_channel(
     payload = json.loads(published)
     assert payload["tenant_id"] == override_tenant
     assert payload["event_type"] == "invoice.payment_succeeded"
+
+
+@pytest.mark.asyncio
+async def test_history_endpoint_returns_events(stub_billing_events_service):
+    service, _ = stub_billing_events_service
+    original = service.list_history
+    sample_event = BillingEventPayload(
+        tenant_id="tenant-123",
+        event_type="invoice.payment_succeeded",
+        stripe_event_id="evt_history",
+        occurred_at=datetime.now(UTC).isoformat(),
+        summary="Invoice paid",
+        status="processed",
+        subscription=None,
+        invoice=None,
+        usage=[],
+    )
+    service.list_history = AsyncMock(
+        return_value=BillingEventHistoryPage(items=[sample_event], next_cursor=None)
+    )
+
+    app = FastAPI()
+    app.dependency_overrides[require_current_user] = _authorized_user
+    app.include_router(billing_router, prefix="/api/v1")
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.get(
+            "/api/v1/billing/tenants/tenant-123/events",
+            headers={"X-Tenant-Id": "tenant-123", "X-Tenant-Role": "owner"},
+        )
+
+    service.list_history = original
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["items"][0]["stripe_event_id"] == "evt_history"
 
 
 async def _publish_invoice_event(service: BillingEventsService) -> None:

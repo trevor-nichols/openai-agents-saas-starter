@@ -210,6 +210,7 @@ async def lifespan(app: FastAPI):
         stripe_repo = StripeEventRepository(session_factory)
         configure_stripe_event_repository(stripe_repo)
         container.stripe_event_dispatcher.configure(repository=stripe_repo, billing=billing_service)
+        container.billing_events_service.configure(repository=stripe_repo)
         if settings.enable_billing_retry_worker:
             worker = container.stripe_dispatch_retry_worker
             worker.configure(
@@ -228,7 +229,7 @@ async def lifespan(app: FastAPI):
             redis_client = Redis.from_url(redis_url, encoding="utf-8", decode_responses=False)
             backend = RedisBillingEventBackend(redis_client)
             service = container.billing_events_service
-            service.configure(backend=backend, repository=stripe_repo)
+            service.configure(backend=backend)
             if settings.enable_billing_stream_replay:
                 await service.startup()
             else:

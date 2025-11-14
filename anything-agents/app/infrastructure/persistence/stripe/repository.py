@@ -6,7 +6,7 @@ import logging
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import or_, select, update
+from sqlalchemy import and_, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -125,6 +125,49 @@ class StripeEventRepository:
                     status.value if isinstance(status, StripeEventStatus) else str(status)
                 )
                 stmt = stmt.where(StripeEvent.processing_outcome == status_value)
+            result = await session.execute(stmt)
+            return list(result.scalars())
+
+    async def list_tenant_events(
+        self,
+        *,
+        tenant_id: str,
+        limit: int = 50,
+        cursor_received_at: datetime | None = None,
+        cursor_event_id: uuid.UUID | None = None,
+        event_type: str | None = None,
+        status: StripeEventStatus | str | None = None,
+    ) -> list[StripeEvent]:
+        """Return a tenant-scoped slice of Stripe events ordered by recency."""
+
+        async with self._session_factory() as session:
+            stmt = (
+                select(StripeEvent)
+                .where(StripeEvent.tenant_hint == tenant_id)
+                .order_by(StripeEvent.received_at.desc(), StripeEvent.id.desc())
+                .limit(max(1, limit))
+            )
+
+            if event_type:
+                stmt = stmt.where(StripeEvent.event_type == event_type)
+
+            if status:
+                status_value = (
+                    status.value if isinstance(status, StripeEventStatus) else str(status)
+                )
+                stmt = stmt.where(StripeEvent.processing_outcome == status_value)
+
+            if cursor_received_at is not None and cursor_event_id is not None:
+                stmt = stmt.where(
+                    or_(
+                        StripeEvent.received_at < cursor_received_at,
+                        and_(
+                            StripeEvent.received_at == cursor_received_at,
+                            StripeEvent.id < cursor_event_id,
+                        ),
+                    )
+                )
+
             result = await session.execute(stmt)
             return list(result.scalars())
 

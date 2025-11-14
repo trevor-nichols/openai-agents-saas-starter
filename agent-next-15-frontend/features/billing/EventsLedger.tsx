@@ -2,6 +2,7 @@
 
 import type { ColumnDef } from '@tanstack/react-table';
 
+import { Button } from '@/components/ui/button';
 import { InlineTag, SectionHeader } from '@/components/ui/foundation';
 import { DataTable } from '@/components/ui/data-table';
 import { EmptyState } from '@/components/ui/states';
@@ -68,7 +69,8 @@ const eventsColumns: ColumnDef<BillingEvent>[] = [
 ];
 
 export function EventsLedger() {
-  const { events } = useBillingOverviewData();
+  const { events, historyState } = useBillingOverviewData();
+  const isInitialLoading = historyState.isLoading && events.length === 0;
 
   return (
     <section className="space-y-8">
@@ -81,9 +83,24 @@ export function EventsLedger() {
       <DataTable
         columns={eventsColumns}
         data={events}
+        isLoading={isInitialLoading}
         emptyState={<EmptyState title="No events recorded" description="Stripe events will appear here once billing activity occurs." />}
         enablePagination
       />
+
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          onClick={historyState.loadMore}
+          disabled={!historyState.hasNextPage || historyState.isFetchingMore}
+        >
+          {historyState.isFetchingMore
+            ? 'Loading…'
+            : historyState.hasNextPage
+              ? 'Load older events'
+              : 'No older events'}
+        </Button>
+      </div>
     </section>
   );
 }

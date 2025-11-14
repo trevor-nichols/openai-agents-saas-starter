@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 
-import type { BillingEventUsage } from '@/types/billing';
+import type { BillingEvent, BillingEventUsage } from '@/types/billing';
 import { useBillingStream } from '@/lib/queries/billing';
+import { useBillingHistory } from '@/lib/queries/billingHistory';
 
 import type { BillingOverviewData, PlanSnapshot, UsageRow } from '../types';
 import { formatCurrency, formatDate, formatPeriod, formatStatusLabel, resolveStatusTone } from '../utils/formatters';
@@ -19,10 +20,19 @@ function mapUsageRow(usage: BillingEventUsage, currency: string, index: number):
 }
 
 export function useBillingOverviewData(): BillingOverviewData {
-  const { events, status } = useBillingStream();
+  const { events: streamEvents, status } = useBillingStream();
+  const {
+    events: historyEvents,
+    isLoading: isHistoryLoading,
+    isFetchingMore,
+    hasNextPage,
+    loadMore,
+  } = useBillingHistory({ pageSize: 25 });
 
-  const subscriptionEvent = useMemo(() => events.find((event) => event.subscription), [events]);
-  const invoiceEvent = useMemo(() => events.find((event) => event.invoice), [events]);
+  const mergedEvents = useMemo(() => mergeEvents(historyEvents, streamEvents), [historyEvents, streamEvents]);
+
+  const subscriptionEvent = useMemo(() => mergedEvents.find((event) => event.subscription), [mergedEvents]);
+  const invoiceEvent = useMemo(() => mergedEvents.find((event) => event.invoice), [mergedEvents]);
 
   const planSnapshot = useMemo<PlanSnapshot>(() => {
     const subscription = subscriptionEvent?.subscription;
@@ -46,10 +56,10 @@ export function useBillingOverviewData(): BillingOverviewData {
 
   const usageRows = useMemo(() => {
     const currency = invoiceEvent?.invoice?.currency ?? DEFAULT_CURRENCY;
-    return events
+    return mergedEvents
       .flatMap((event) => event.usage ?? [])
       .map((usage, index) => mapUsageRow(usage, currency, index));
-  }, [events, invoiceEvent]);
+  }, [mergedEvents, invoiceEvent]);
 
   const invoiceSummary = useMemo(() => {
     const invoice = invoiceEvent?.invoice;
@@ -71,7 +81,28 @@ export function useBillingOverviewData(): BillingOverviewData {
     allUsageRows: usageRows,
     usageCount: usageRows.length,
     invoiceSummary,
-    events,
+    events: mergedEvents,
     streamStatus: status,
+    historyState: {
+      isLoading: isHistoryLoading,
+      isFetchingMore,
+      hasNextPage,
+      loadMore,
+    },
   };
+}
+
+function mergeEvents(history: BillingEvent[], stream: BillingEvent[]): BillingEvent[] {
+  const seen = new Map<string, BillingEvent>();
+  const combined = [...stream, ...history];
+
+  for (const event of combined) {
+    if (!seen.has(event.stripe_event_id)) {
+      seen.set(event.stripe_event_id, event);
+    }
+  }
+
+  return Array.from(seen.values()).sort((a, b) => {
+    return new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime();
+  });
 }

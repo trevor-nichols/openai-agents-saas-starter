@@ -56,3 +56,9 @@ export interface BillingPlanListResponse {
   plans?: BillingPlan[];
   error?: string;
 }
+
+export interface BillingEventHistoryResponse {
+  items: BillingEvent[];
+  next_cursor: string | null;
+  message?: string;
+}

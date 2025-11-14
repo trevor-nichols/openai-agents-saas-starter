@@ -37,6 +37,12 @@ export interface BillingOverviewData {
   invoiceSummary: InvoiceSummary | null;
   events: BillingEvent[];
   streamStatus: BillingStreamStatus;
+  historyState: {
+    isLoading: boolean;
+    isFetchingMore: boolean;
+    hasNextPage: boolean;
+    loadMore: () => Promise<void>;
+  };
 }
 
 export interface PlanFormValues {

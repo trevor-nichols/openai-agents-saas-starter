@@ -21,6 +21,8 @@ export const queryKeys = {
     all: ['billing'] as const,
     stream: () => [...queryKeys.billing.all, 'stream'] as const,
     plans: () => [...queryKeys.billing.all, 'plans'] as const,
+    history: (tenantId: string | null, filters?: Record<string, unknown>) =>
+      [...queryKeys.billing.all, 'history', tenantId ?? 'unknown', filters] as const,
   },
   tools: {
     all: ['tools'] as const,

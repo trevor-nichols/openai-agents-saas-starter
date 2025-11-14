@@ -17,6 +17,7 @@ import type {
   CancelSubscriptionRequest,
   UsageRecordRequest,
 } from '@/lib/api/client/types.gen';
+import type { BillingEventHistoryResponse } from '@/types/billing';
 
 import { USE_API_MOCK } from '@/lib/config';
 
@@ -30,6 +31,14 @@ const STREAM_HEADERS = {
 
 export interface BillingStreamOptions {
   signal: AbortSignal;
+  tenantRole?: string | null;
+}
+
+export interface ListTenantBillingEventsOptions {
+  limit?: number;
+  cursor?: string | null;
+  eventType?: string | null;
+  processingStatus?: string | null;
   tenantRole?: string | null;
 }
 
@@ -76,6 +85,49 @@ export async function openBillingStream(options: BillingStreamOptions): Promise<
     statusText: upstream.response.statusText,
     headers: responseHeaders,
   });
+}
+
+export async function listTenantBillingEvents(
+  tenantId: string,
+  options?: ListTenantBillingEventsOptions,
+): Promise<BillingEventHistoryResponse> {
+  if (!tenantId) {
+    throw new Error('Tenant id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+  const query: Record<string, string | number | undefined> = {
+    limit: options?.limit,
+    cursor: options?.cursor ?? undefined,
+    event_type: options?.eventType ?? undefined,
+    processing_status: options?.processingStatus ?? undefined,
+  };
+
+  const response = await client.request<BillingEventHistoryResponse>({
+    method: 'GET',
+    url: '/api/v1/billing/tenants/{tenant_id}/events',
+    path: {
+      tenant_id: tenantId,
+    },
+    query,
+    headers: {
+      ...(options?.tenantRole ? { 'X-Tenant-Role': options.tenantRole } : {}),
+    },
+    auth,
+    security: [
+      {
+        scheme: 'bearer',
+        type: 'http',
+      },
+    ],
+    responseStyle: 'data',
+  });
+
+  if (!('data' in response) || !response.data) {
+    throw new Error('Failed to load billing events.');
+  }
+
+  return response.data;
 }
 
 /**
