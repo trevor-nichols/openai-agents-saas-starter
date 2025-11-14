@@ -4,7 +4,9 @@ import { Button } from '@/components/ui/button';
 import { GlassPanel, InlineTag, SectionHeader } from '@/components/ui/foundation';
 import { formatRelativeTime } from '@/lib/utils/time';
 
+import { DASHBOARD_COPY } from '../constants';
 import type { BillingPreviewSummary } from '../types';
+import { formatCurrency } from '../utils/formatters';
 
 interface BillingPreviewProps {
   preview: BillingPreviewSummary;
@@ -27,12 +29,12 @@ export function BillingPreview({ preview }: BillingPreviewProps) {
   return (
     <GlassPanel className="space-y-6">
       <SectionHeader
-        eyebrow="Billing"
-        title="Plan overview"
-        description="Live subscription state streamed from Stripe."
+        eyebrow={DASHBOARD_COPY.billingPreview.eyebrow}
+        title={DASHBOARD_COPY.billingPreview.title}
+        description={DASHBOARD_COPY.billingPreview.description}
         actions={
           <Button asChild size="sm" variant="ghost">
-            <Link href="/billing">Manage plan</Link>
+            <Link href="/billing">{DASHBOARD_COPY.billingPreview.ctaLabel}</Link>
           </Button>
         }
       />
@@ -60,7 +62,7 @@ export function BillingPreview({ preview }: BillingPreviewProps) {
         <p className="text-xs font-semibold uppercase tracking-[0.3em] text-foreground/50">Latest events</p>
         {latestEvents.length === 0 ? (
           <div className="rounded-lg border border-dashed border-white/10 px-4 py-6 text-center text-sm text-foreground/60">
-            Usage, invoices, and subscription updates will land here once activity starts.
+            {DASHBOARD_COPY.billingPreview.emptyEvents}
           </div>
         ) : (
           <ul className="space-y-2 text-sm">
@@ -72,11 +74,8 @@ export function BillingPreview({ preview }: BillingPreviewProps) {
                 </div>
                 {event.invoice?.amount_due_cents ? (
                   <p className="text-xs text-foreground/60">
-                    Invoice {event.invoice.invoice_id} · 
-                    {new Intl.NumberFormat('en-US', {
-                      style: 'currency',
-                      currency: event.invoice.currency ?? 'USD',
-                    }).format((event.invoice.amount_due_cents ?? 0) / 100)}
+                    Invoice {event.invoice.invoice_id} ·
+                    {formatCurrency(event.invoice.amount_due_cents, event.invoice.currency ?? 'USD')}
                   </p>
                 ) : null}
               </li>

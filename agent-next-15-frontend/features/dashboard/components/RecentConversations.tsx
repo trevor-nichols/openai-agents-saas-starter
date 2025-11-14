@@ -6,6 +6,7 @@ import { EmptyState, ErrorState, SkeletonPanel } from '@/components/ui/states';
 import { formatRelativeTime } from '@/lib/utils/time';
 
 import type { RecentConversationSummary } from '../types';
+import { DASHBOARD_COPY } from '../constants';
 
 interface RecentConversationsProps {
   conversations: RecentConversationSummary[];
@@ -26,11 +27,11 @@ export function RecentConversations({ conversations, isLoading, error, onRefresh
   if (!conversations.length) {
     return (
       <EmptyState
-        title="No recent conversations"
-        description="Once messages start flowing, they will show up here for quick inspection."
+        title={DASHBOARD_COPY.recentConversations.emptyTitle}
+        description={DASHBOARD_COPY.recentConversations.emptyDescription}
         action={
           <Button asChild>
-            <Link href="/chat">Open chat workspace</Link>
+            <Link href="/chat">{DASHBOARD_COPY.header.ctaLabel}</Link>
           </Button>
         }
       />
@@ -41,8 +42,8 @@ export function RecentConversations({ conversations, isLoading, error, onRefresh
     <GlassPanel className="space-y-6">
       <SectionHeader
         eyebrow="Activity"
-        title="Recent conversations"
-        description="Audit summaries from the last few sessions."
+        title={DASHBOARD_COPY.recentConversations.title}
+        description={DASHBOARD_COPY.recentConversations.description}
         actions={
           onRefresh ? (
             <Button variant="ghost" size="sm" onClick={onRefresh}>

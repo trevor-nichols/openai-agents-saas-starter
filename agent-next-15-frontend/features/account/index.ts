@@ -2,7 +2,7 @@
 // Description: Public exports for account-related feature surfaces.
 
 export { AccountOverview } from './AccountOverview';
-export { ProfilePanel } from './ProfilePanel';
-export { SecurityPanel } from './SecurityPanel';
-export { ServiceAccountsPanel } from './ServiceAccountsPanel';
-export { SessionsPanel } from './SessionsPanel';
+export { ProfilePanel } from './components/ProfilePanel';
+export { SecurityPanel } from './components/SecurityPanel';
+export { ServiceAccountsPanel } from './components/ServiceAccountsPanel';
+export { SessionsPanel } from './components/SessionsPanel';

@@ -3,38 +3,33 @@
 
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { InlineTag, SectionHeader } from '@/components/ui/foundation';
 import { ErrorState } from '@/components/ui/states';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { useChatController } from '@/lib/chat/useChatController';
-import { useAgents } from '@/lib/queries/agents';
-import { useBillingStream } from '@/lib/queries/billing';
-import { useConversations } from '@/lib/queries/conversations';
-import { useTools } from '@/lib/queries/tools';
-import { toast } from 'sonner';
+
+import { ConversationDetailDrawer } from '@/components/shared/conversations/ConversationDetailDrawer';
 
 import { AgentSwitcher } from './components/AgentSwitcher';
 import { BillingEventsPanel } from './components/BillingEventsPanel';
 import { ChatInterface } from './components/ChatInterface';
-import { ConversationDetailDrawer } from '@/components/shared/conversations/ConversationDetailDrawer';
 import { ConversationSidebar } from './components/ConversationSidebar';
 import { ToolMetadataPanel } from './components/ToolMetadataPanel';
+import { CHAT_COPY } from './constants';
+import { useChatWorkspace } from './hooks/useChatWorkspace';
+import { formatConversationLabel } from './utils/formatters';
 
 export function ChatWorkspace() {
   const {
     conversationList,
     isLoadingConversations,
-    addConversationToList,
-    updateConversationInList,
-    removeConversationFromList,
-    loadConversations,
-  } = useConversations();
-  const { events: billingEvents, status: billingStreamStatus } = useBillingStream();
-  const { agents, isLoadingAgents, agentsError } = useAgents();
-  const {
+    billingEvents,
+    billingStreamStatus,
+    agents,
+    isLoadingAgents,
+    agentsError,
     messages,
     isSending,
     isLoadingHistory,
@@ -42,83 +37,42 @@ export function ChatWorkspace() {
     errorMessage,
     currentConversationId,
     selectedAgent,
-    setSelectedAgent,
-    clearError,
+    selectedAgentLabel,
+    toolDrawerOpen,
+    setToolDrawerOpen,
+    detailDrawerOpen,
+    setDetailDrawerOpen,
+    isLoadingTools,
+    tools,
+    toolsError,
+    refetchTools,
+    activeAgents,
+    handleSelectConversation,
+    handleNewConversation,
+    handleDeleteConversation,
+    handleExportTranscript,
+    handleWorkspaceError,
     sendMessage,
-    selectConversation,
-    startNewConversation,
-    deleteConversation,
-  } = useChatController({
-    onConversationAdded: addConversationToList,
-    onConversationUpdated: updateConversationInList,
-    onConversationRemoved: removeConversationFromList,
-    reloadConversations: loadConversations,
-  });
-  const { tools, isLoading: isLoadingTools, error: toolsError, refetch: refetchTools } = useTools();
-  const [toolDrawerOpen, setToolDrawerOpen] = useState(false);
-  const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
-
-  const handleSelectConversation = useCallback(
-    (conversationId: string) => {
-      void selectConversation(conversationId);
-    },
-    [selectConversation],
-  );
-
-  const handleNewConversation = useCallback(() => {
-    startNewConversation();
-  }, [startNewConversation]);
-
-  const handleDeleteConversation = useCallback(
-    async (conversationId: string) => {
-      if (!conversationId) {
-        return;
-      }
-
-      const shouldDelete =
-        typeof window === 'undefined' ? true : window.confirm('Delete this conversation permanently?');
-      if (!shouldDelete) {
-        return;
-      }
-
-      await deleteConversation(conversationId);
-    },
-    [deleteConversation],
-  );
-
-  const activeAgents = useMemo(() => agents.filter((agent) => agent.status === 'active').length, [agents]);
-  const selectedAgentLabel = useMemo(() => selectedAgent.replace(/_/g, ' '), [selectedAgent]);
-
-  const handleExportTranscript = useCallback(() => {
-    toast.info('Transcript export is on the roadmap', {
-      description: 'We will notify you once CSV/PDF export is available.',
-    });
-  }, []);
+    setSelectedAgent,
+  } = useChatWorkspace();
 
   useEffect(() => {
-    if (!errorMessage) {
-      return;
-    }
-
-    toast.error('Chat workspace error', {
-      description: errorMessage,
-    });
-    clearError();
-  }, [clearError, errorMessage]);
+    handleWorkspaceError();
+  }, [handleWorkspaceError]);
 
   useEffect(() => {
     if (!currentConversationId) {
       setDetailDrawerOpen(false);
     }
-  }, [currentConversationId]);
+  }, [currentConversationId, setDetailDrawerOpen]);
 
   return (
     <>
       <Sheet open={toolDrawerOpen} onOpenChange={setToolDrawerOpen}>
         <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md">
           <SheetHeader>
-            <SheetTitle>Agent tools</SheetTitle>
-            <SheetDescription>Registry context for {selectedAgentLabel}.</SheetDescription>
+            <SheetTitle>{CHAT_COPY.toolDrawer.title}</SheetTitle>
+            <SheetDescription>{CHAT_COPY.toolDrawer.description(selectedAgentLabel)}</SheetDescription>
           </SheetHeader>
           <div className="mt-4">
             <ToolMetadataPanel
@@ -146,13 +100,9 @@ export function ChatWorkspace() {
         <div className="flex w-full flex-1 flex-col gap-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <SectionHeader
-              eyebrow="Workspace"
-              title="Anything Agent Chat"
-              description={
-                currentConversationId
-                  ? `Conversation ${currentConversationId.substring(0, 12)}…`
-                  : 'Start a new conversation to brief your agent.'
-              }
+              eyebrow={CHAT_COPY.header.eyebrow}
+              title={CHAT_COPY.header.title}
+              description={formatConversationLabel(currentConversationId)}
               actions={
                 <InlineTag tone={agentsError ? 'warning' : activeAgents ? 'positive' : 'default'}>
                   {isLoadingAgents
@@ -235,7 +185,7 @@ export function ChatWorkspace() {
         open={detailDrawerOpen}
         onClose={() => setDetailDrawerOpen(false)}
         conversationId={currentConversationId}
-        onDeleteConversation={deleteConversation}
+        onDeleteConversation={handleDeleteConversation}
       />
     </>
   );

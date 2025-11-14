@@ -3,15 +3,30 @@
 
 'use client';
 
-import React, { useEffect, useRef, useState, type FormEvent } from 'react';
+import type { FormEvent } from 'react';
+import React, { useMemo, useState } from 'react';
+import type { ChatStatus } from 'ai';
 
 import { Button } from '@/components/ui/button';
 import { GlassPanel, InlineTag } from '@/components/ui/foundation';
 import { EmptyState, SkeletonPanel } from '@/components/ui/states';
-import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { formatClockTime } from '@/lib/utils/time';
 import type { ChatMessage } from '@/lib/chat/types';
+import {
+  Conversation,
+  ConversationContent,
+  ConversationScrollButton,
+} from '@/components/ui/shadcn-io/ai/conversation';
+import { Message, MessageAvatar, MessageContent } from '@/components/ui/shadcn-io/ai/message';
+import {
+  PromptInput,
+  PromptInputButton,
+  PromptInputSubmit,
+  PromptInputTextarea,
+  PromptInputToolbar,
+  PromptInputTools,
+} from '@/components/ui/shadcn-io/ai/prompt-input';
 
 interface ChatInterfaceProps {
   messages: ChatMessage[];
@@ -35,13 +50,11 @@ export function ChatInterface({
   className,
 }: ChatInterfaceProps) {
   const [messageInput, setMessageInput] = useState('');
-  const chatContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const container = chatContainerRef.current;
-    if (!container) return;
-    container.scrollTop = container.scrollHeight;
-  }, [messages]);
+  const chatStatus = useMemo<ChatStatus | undefined>(() => {
+    if (isClearingConversation || isLoadingHistory) return 'submitted';
+    if (isSending) return 'streaming';
+    return undefined;
+  }, [isClearingConversation, isLoadingHistory, isSending]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -83,36 +96,20 @@ export function ChatInterface({
         </div>
       </div>
 
-      <div
-        ref={chatContainerRef}
-        className="flex-1 overflow-y-auto px-6 py-6"
-      >
-        {isLoadingHistory ? (
-          <SkeletonPanel lines={9} />
-        ) : messages.length === 0 ? (
-          <EmptyState
-            title="No messages yet"
-            description="Compose a prompt below to brief your agent."
-            className="border border-white/5 bg-white/5"
-          />
-        ) : (
-          <div className="space-y-4">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={cn(
-                  'flex w-full',
-                  message.role === 'user' ? 'justify-end' : 'justify-start'
-                )}
-              >
-                <div
-                  className={cn(
-                    'max-w-2xl rounded-2xl px-4 py-3 text-sm shadow-glass transition duration-150',
-                    message.role === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-white/10 text-foreground'
-                  )}
-                >
+      <Conversation className="flex-1">
+        <ConversationContent className="space-y-4 px-6 py-6">
+          {isLoadingHistory ? (
+            <SkeletonPanel lines={9} />
+          ) : messages.length === 0 ? (
+            <EmptyState
+              title="No messages yet"
+              description="Compose a prompt below to brief your agent."
+              className="border border-white/5 bg-white/5"
+            />
+          ) : (
+            messages.map((message) => (
+              <Message key={message.id} from={message.role}>
+                <MessageContent>
                   <div className="flex items-center justify-between gap-3">
                     <InlineTag tone={message.role === 'user' ? 'positive' : 'default'}>
                       {message.role === 'user' ? 'You' : 'Agent'}
@@ -127,38 +124,50 @@ export function ChatInterface({
                       </span>
                     )}
                   </div>
-                  <p className="mt-2 leading-relaxed"> {message.content} </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+                  <p className="mt-2 leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                </MessageContent>
+                <MessageAvatar
+                  src=""
+                  name={message.role === 'user' ? 'You' : 'Agent'}
+                />
+              </Message>
+            ))
+          )}
+        </ConversationContent>
+        <ConversationScrollButton />
+      </Conversation>
 
-      <form onSubmit={handleSubmit} className="border-t border-white/5 bg-white/5 px-6 py-4">
-        <div className="flex flex-col gap-3 md:flex-row">
-          <Textarea
-            value={messageInput}
-            onChange={(event) => setMessageInput(event.target.value)}
-            placeholder={
-              currentConversationId ? `Message ${currentConversationId.substring(0, 8)}…` : 'Ask your agent…'
-            }
-            disabled={isSending || isLoadingHistory}
-            rows={2}
-            className="flex-1 resize-none border border-white/10 bg-transparent text-sm placeholder:text-foreground/40"
-          />
-          <Button
-            type="submit"
-            disabled={isSending || isLoadingHistory || !messageInput.trim()}
-            className="md:min-w-[140px]"
-          >
-            {isSending ? 'Sending…' : 'Send'}
-          </Button>
-        </div>
-        <p className="mt-3 text-xs text-foreground/50">
-          Streaming chat powered by OpenAI Agents SDK — transcripts update in real-time.
-        </p>
-      </form>
+      <PromptInput onSubmit={handleSubmit} className="border-t border-white/5 bg-white/5">
+        <PromptInputTextarea
+          value={messageInput}
+          onChange={(event) => setMessageInput(event.target.value)}
+          placeholder={currentConversationId ? `Message ${currentConversationId.substring(0, 8)}…` : 'Ask your agent…'}
+          disabled={isSending || isLoadingHistory}
+          rows={2}
+        />
+        <PromptInputToolbar className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
+          <PromptInputTools>
+            {onClearConversation && currentConversationId ? (
+              <PromptInputButton
+                variant="ghost"
+                onClick={() => {
+                  void onClearConversation();
+                }}
+                disabled={isClearingConversation || isLoadingHistory}
+              >
+                {isClearingConversation ? 'Clearing…' : 'Clear chat'}
+              </PromptInputButton>
+            ) : null}
+          </PromptInputTools>
+          <div className="flex items-center gap-2">
+            <InlineTag tone="default">{chatStatus ?? 'idle'}</InlineTag>
+            <PromptInputSubmit
+              status={chatStatus}
+              disabled={isSending || isLoadingHistory || !messageInput.trim()}
+            />
+          </div>
+        </PromptInputToolbar>
+      </PromptInput>
     </GlassPanel>
   );
 }

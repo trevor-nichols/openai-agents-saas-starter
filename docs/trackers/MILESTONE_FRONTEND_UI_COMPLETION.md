@@ -17,13 +17,14 @@ Re-align the frontend tracker with the current state of the Next.js 15 surface, 
 | Agents & tools | ✅ Complete | Agents page now hosts the consolidated workspace (catalog + chat + tools + archive). |
 | Account & security | ✅ Complete | Profile/security/sessions/service-accounts fully wired with TanStack Query. |
 | Tenant settings | ✅ Complete | Billing contacts, webhook, metadata, and flag controls shipped. |
-| Marketing surfaces | ⚠️ In progress | All marketing routes (landing, pricing, features, docs, status) use orchestrators + analytics; awaiting final copy/telemetry sign-off. |
+| Marketing surfaces | ⚠️ In progress | Landing, pricing, features, docs, and the newly extracted `/status` `StatusExperience` orchestrator are live; final copy + telemetry sign-off still pending. |
 | QA coverage | ⚠️ Limited | Vitest covers chat + billing routes; E2E only tests auth happy path. |
 
 ## Completed Work
 - **Architecture**: Route groups, middleware, and layout structure mirror the IA in the archived tracker.
 - **Data layer**: All client data flows adhere to the documented layering (server services → `/api` routes → `lib/api` → `lib/queries`).
 - **Core features**: Chat workspace, dashboard widgets, billing stream hook, conversations archive, account/security suite, and status page are production-ready.
+- **Feature directories**: Chat, account, billing, and dashboard modules now follow the orchestrator/components/hooks pattern (FE-001 closed).
 
 ## Outstanding Gaps & Risks
 1. **QA depth** — Only one Playwright smoke test exists; high-risk flows (billing plan changes, service-account issuance, tool refresh) lack automation.

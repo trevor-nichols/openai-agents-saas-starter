@@ -3,78 +3,39 @@
 
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { SectionHeader } from '@/components/ui/foundation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-import { ProfilePanel } from './ProfilePanel';
-import { SecurityPanel } from './SecurityPanel';
-import { ServiceAccountsPanel } from './ServiceAccountsPanel';
-import { SessionsPanel } from './SessionsPanel';
-
-const TAB_OPTIONS = [
-  { key: 'profile', label: 'Profile' },
-  { key: 'security', label: 'Security' },
-  { key: 'sessions', label: 'Sessions' },
-  { key: 'automation', label: 'Automation' },
-] as const;
-
-type TabKey = (typeof TAB_OPTIONS)[number]['key'];
-
-function isTabKey(value: string): value is TabKey {
-  return TAB_OPTIONS.some((option) => option.key === value);
-}
-
-interface AccountOverviewProps {
-  initialTab?: string;
-}
+import { ProfilePanel } from './components/ProfilePanel';
+import { SecurityPanel } from './components/SecurityPanel';
+import { ServiceAccountsPanel } from './components/ServiceAccountsPanel';
+import { SessionsPanel } from './components/SessionsPanel';
+import { ACCOUNT_COPY, ACCOUNT_TABS } from './constants';
+import { useAccountTabs } from './hooks/useAccountTabs';
+import type { AccountOverviewProps } from './types';
 
 export function AccountOverview({ initialTab = 'profile' }: AccountOverviewProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  const sanitizedTab = useMemo(() => (isTabKey(initialTab) ? initialTab : 'profile'), [initialTab]);
-  const [tab, setTab] = useState<TabKey>(sanitizedTab);
-
-  useEffect(() => {
-    setTab(sanitizedTab);
-  }, [sanitizedTab]);
-
-  const handleTabChange = (value: string) => {
-    if (!isTabKey(value)) return;
-    setTab(value);
-
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    const params = new URLSearchParams(searchParams?.toString());
-    params.set('tab', value);
-    const nextUrl = `${pathname}?${params.toString()}`;
-    router.replace(nextUrl, { scroll: false });
-  };
+  const { tab, handleTabChange } = useAccountTabs(initialTab);
 
   return (
     <section className="space-y-8">
       <SectionHeader
-        eyebrow="Account"
-        title="Manage your workspace profile"
-        description="Update profile metadata, tighten security controls, and review session activity in one place."
+        eyebrow={ACCOUNT_COPY.header.eyebrow}
+        title={ACCOUNT_COPY.header.title}
+        description={ACCOUNT_COPY.header.description}
         actions={
           <Button variant="outline" size="sm" asChild>
-            <Link href="/billing">Billing settings</Link>
+            <Link href="/billing">{ACCOUNT_COPY.header.ctaLabel}</Link>
           </Button>
         }
       />
 
       <Tabs value={tab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList className="flex flex-wrap gap-2 bg-transparent p-0">
-          {TAB_OPTIONS.map((option) => (
+          {ACCOUNT_TABS.map((option) => (
             <TabsTrigger key={option.key} value={option.key} className="rounded-full px-4 py-2">
               {option.label}
             </TabsTrigger>

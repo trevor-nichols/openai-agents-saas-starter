@@ -46,7 +46,7 @@ import {
   buildIssuePayload,
   createDefaultIssueForm,
   type ServiceAccountIssueFormValues,
-} from './serviceAccountIssueHelpers';
+} from '../utils/serviceAccountIssueHelpers';
 
 const DEFAULT_LIMIT = 50;
 const STATUS_OPTIONS: { label: string; value: ServiceAccountStatusFilter }[] = [

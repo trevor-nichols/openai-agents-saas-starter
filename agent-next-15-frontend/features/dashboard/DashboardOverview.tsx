@@ -9,6 +9,7 @@ import { BillingPreview } from './components/BillingPreview';
 import { KpiGrid } from './components/KpiGrid';
 import { QuickActions } from './components/QuickActions';
 import { RecentConversations } from './components/RecentConversations';
+import { DASHBOARD_COPY } from './constants';
 import { useDashboardData } from './hooks/useDashboardData';
 
 export function DashboardOverview() {
@@ -27,12 +28,12 @@ export function DashboardOverview() {
   return (
     <section className="space-y-10">
       <SectionHeader
-        eyebrow="Overview"
-        title="Command center"
-        description="Monitor agents, conversations, and billing health from a single glass surface."
+        eyebrow={DASHBOARD_COPY.header.eyebrow}
+        title={DASHBOARD_COPY.header.title}
+        description={DASHBOARD_COPY.header.description}
         actions={
           <Button asChild>
-            <Link href="/chat">New chat</Link>
+            <Link href="/chat">{DASHBOARD_COPY.header.ctaLabel}</Link>
           </Button>
         }
       />
