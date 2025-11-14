@@ -47,8 +47,20 @@ from main import app
 
 
 @pytest.fixture
-def client() -> Generator[TestClient, None, None]:
+def client(
+    fake_auth_service,
+    fake_user_service,
+    fake_password_recovery_service,
+    fake_email_verification_service,
+) -> Generator[TestClient, None, None]:
+    """Spin up the FastAPI test client and install mocked services."""
+
     with TestClient(app) as test_client:
+        container = cast(Any, get_container())
+        container.auth_service = fake_auth_service
+        container.user_service = fake_user_service
+        container.password_recovery_service = fake_password_recovery_service
+        container.email_verification_service = fake_email_verification_service
         yield test_client
 
 
@@ -76,7 +88,6 @@ def fake_auth_service():
     mock_service.logout_user_session = AsyncMock(return_value=True)
     mock_service.list_user_sessions = AsyncMock()
     mock_service.revoke_user_session_by_id = AsyncMock(return_value=True)
-    cast(Any, get_container()).auth_service = mock_service
     return mock_service
 
 
@@ -85,7 +96,6 @@ def fake_password_recovery_service():
     service = AsyncMock()
     service.request_password_reset = AsyncMock()
     service.confirm_password_reset = AsyncMock()
-    cast(Any, get_container()).password_recovery_service = service
     return service
 
 
@@ -94,7 +104,6 @@ def fake_email_verification_service():
     service = AsyncMock()
     service.send_verification_email = AsyncMock(return_value=True)
     service.verify_token = AsyncMock()
-    cast(Any, get_container()).email_verification_service = service
     return service
 
 
@@ -103,7 +112,6 @@ def fake_user_service():
     stub = AsyncMock()
     stub.change_password = AsyncMock()
     stub.admin_reset_password = AsyncMock()
-    cast(Any, get_container()).user_service = stub
     return stub
 
 
