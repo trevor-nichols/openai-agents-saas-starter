@@ -200,7 +200,9 @@ class EphemeralConversationRepository(ConversationRepository):
 
 
 @pytest.fixture(autouse=True)
-def _configure_conversation_repo() -> Generator[None, None, None]:
+def _configure_conversation_repo(
+    _reset_application_container,
+) -> Generator[None, None, None]:
     """Ensure services/tests share a deterministic conversation repository."""
 
     repository = EphemeralConversationRepository()

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock
 
@@ -13,6 +14,15 @@ from app.services.service_account_bridge import (
     ServiceAccountIssuanceBridge,
     SignedVaultPayload,
 )
+
+
+@pytest.fixture(autouse=True)
+def _stub_bridge_auth(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
+    """Prevent tests from instantiating the real AuthService stack."""
+
+    stub = SimpleNamespace(issue_service_account_refresh_token=AsyncMock())
+    monkeypatch.setattr("app.services.service_account_bridge.auth_service", stub)
+    return stub
 
 
 class _StubSigner:
