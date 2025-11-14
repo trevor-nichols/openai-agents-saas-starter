@@ -7,12 +7,22 @@ on:
       - "pyproject.toml"
       - "run.py"
       - "anything-agents/**"
+      - "starter_cli/**"
+      - "starter_shared/**"
+      - "scripts/**"
+      - "docs/**/*.md"
+      - "Makefile"
       - ".github/workflows/backend-ci.yml"
   pull_request:
     paths:
       - "pyproject.toml"
       - "run.py"
       - "anything-agents/**"
+      - "starter_cli/**"
+      - "starter_shared/**"
+      - "scripts/**"
+      - "docs/**/*.md"
+      - "Makefile"
 
 jobs:
   quality:

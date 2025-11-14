@@ -1,0 +1,54 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "agent-next-15-frontend/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "tsconfig.*"
+      - ".github/workflows/frontend-ci.yml"
+  pull_request:
+    paths:
+      - "agent-next-15-frontend/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "tsconfig.*"
+      - ".github/workflows/frontend-ci.yml"
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+          cache-dependency-path: agent-next-15-frontend/pnpm-lock.yaml
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+
+      - name: Install dependencies
+        working-directory: agent-next-15-frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        working-directory: agent-next-15-frontend
+        run: pnpm lint
+
+      - name: Type check
+        working-directory: agent-next-15-frontend
+        run: pnpm type-check
