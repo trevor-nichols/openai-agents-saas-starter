@@ -1,5 +1,3 @@
-'use server';
-
 import { createClient, createConfig, type Client } from '@/lib/api/client/client';
 import { API_BASE_URL } from '@/lib/config';
 import { getAccessTokenFromCookies } from '@/lib/auth/cookies';

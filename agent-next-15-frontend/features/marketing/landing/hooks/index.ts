@@ -1,0 +1,1 @@
+export { useLandingContent } from './useLandingContent';

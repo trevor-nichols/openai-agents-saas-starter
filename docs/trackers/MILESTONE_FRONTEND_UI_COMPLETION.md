@@ -16,8 +16,8 @@ Re-align the frontend tracker with the current state of the Next.js 15 surface, 
 | Conversations archive | ✅ Complete | Searchable table w/ prefetch + drawer export hooks shipped. |
 | Agents & tools | ✅ Complete | Agents page now hosts the consolidated workspace (catalog + chat + tools + archive). |
 | Account & security | ✅ Complete | Profile/security/sessions/service-accounts fully wired with TanStack Query. |
-| Tenant settings | ❌ Not started | Placeholder panel only. |
-| Marketing surfaces | ⚠️ In progress | Landing/pricing/docs/status exist; need final copy + CTA wiring. |
+| Tenant settings | ✅ Complete | Billing contacts, webhook, metadata, and flag controls shipped. |
+| Marketing surfaces | ⚠️ In progress | All marketing routes (landing, pricing, features, docs, status) use orchestrators + analytics; awaiting final copy/telemetry sign-off. |
 | QA coverage | ⚠️ Limited | Vitest covers chat + billing routes; E2E only tests auth happy path. |
 
 ## Completed Work
@@ -26,28 +26,29 @@ Re-align the frontend tracker with the current state of the Next.js 15 surface, 
 - **Core features**: Chat workspace, dashboard widgets, billing stream hook, conversations archive, account/security suite, and status page are production-ready.
 
 ## Outstanding Gaps & Risks
-1. **Tenant settings placeholder** — No wiring to billing/tenant APIs, leaving owners without a place to edit metadata or webhooks.
-2. **QA depth** — Only one Playwright smoke test exists; high-risk flows (billing plan changes, service-account issuance, tool refresh) lack automation.
-3. **Marketing polish** — Copy/CTA placeholders remain, and there is no analytics or lead capture instrumentation.
+1. **QA depth** — Only one Playwright smoke test exists; high-risk flows (billing plan changes, service-account issuance, tool refresh) lack automation.
+2. **Marketing polish** — Copy/CTA placeholders remain, and there is no analytics or lead capture instrumentation.
+3. **Status alert + analytics instrumentation** — `/status`, `/docs`, and landing CTAs still lack telemetry and the upcoming alert subscription UX.
 4. **Tracker hygiene** — Need a rolling cadence to update this document as work lands so other teams trust it as source of truth.
 
 ## Next Actions
 | # | Task | Owner | Status | Target |
 | - | ---- | ----- | ------ | ------ |
-| 1 | Replace tools catalog placeholder with live registry view (search, grouping, counts). | Frontend | In Review | Nov 20 |
-| 2 | Implement tenant settings forms (billing contacts, webhook URL, plan metadata) backed by existing billing/Tenant APIs. | Frontend + Backend | In Review | Nov 27 |
+| 1 | Replace tools catalog placeholder with live registry view (search, grouping, counts). | Frontend | Complete | Shipped Nov 13 |
+| 2 | Implement tenant settings forms (billing contacts, webhook URL, plan metadata) backed by existing billing/Tenant APIs. | Frontend + Backend | Complete | Shipped Nov 13 |
 | 3 | Expand Playwright suite to cover billing plan changes, service-account issue/revoke, and chat transcript export. | QA | In Progress | Dec 4 |
 | 4 | Finalize marketing copy + CTAs and add analytics hooks for `/`, `/pricing`, `/features`, `/docs`. | Product Marketing | Todo | Dec 4 |
 | 5 | Establish weekly tracker review ritual (15 mins in Frontend Sync) to keep status current. | Frontend Lead | Scheduled | Ongoing |
 
 ## Risk Log
 - **Workspace onboarding**: The consolidated agents surface adds cognitive load; we still need onboarding copy/video to guide customers. _Mitigation_: Add inline coach marks + docs once analytics prove adoption.
-- **Admin blind spots**: Without tenant settings UI, CS/Ops must fall back to CLI calls. _Mitigation_: Task #2 + add interim docs.
+- **Admin blind spots**: Newly shipped tenant settings lack inline guidance and guardrails, so CS/Ops could misconfigure plan metadata or webhooks. _Mitigation_: Layer contextual copy, validation states, and ship the companion runbook.
 - **Regression exposure**: Minimal E2E coverage increases risk as more enterprise flows ship. _Mitigation_: Task #3.
 
 ## Changelog
 - **2025-11-13**: Agents workspace now bundles catalog, chat, tools panel, and conversation archive; removed standalone `/tools` + `/conversations` routes.
 - **2025-11-13**: Tracker reset to reflect current implementation; previous tracker archived under `docs/trackers/complete/MILESTONE_FRONTEND_UI_FOUNDATION_2025-11-13.md`.
+- **2025-11-13**: Landing, pricing, features, and docs routes now use feature modules with TanStack data + CTA instrumentation (status alert lead capture live on `/`).
 - **2025-11-13**: Tenant settings surface ships with billing contacts, webhook, plan metadata, and feature flag forms backed by the new FastAPI `/tenants/settings` endpoints.
 
 

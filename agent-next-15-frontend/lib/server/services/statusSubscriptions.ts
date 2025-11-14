@@ -1,6 +1,7 @@
 'use server';
 
 import {
+  createStatusSubscriptionApiV1StatusSubscriptionsPost,
   listStatusSubscriptionsApiV1StatusSubscriptionsGet,
   resendStatusIncidentApiV1StatusIncidentsIncidentIdResendPost,
   revokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDelete,
@@ -9,6 +10,7 @@ import {
 import type {
   StatusIncidentResendRequest,
   StatusIncidentResendResponse,
+  StatusSubscriptionCreateRequest,
   StatusSubscriptionListResponse,
   StatusSubscriptionResponse,
 } from '@/lib/api/client/types.gen';
@@ -122,6 +124,33 @@ export async function unsubscribeStatusSubscriptionViaToken(params: {
   })) as ApiFieldsResult<void>;
 
   assertNoError(result, 'Unable to unsubscribe from alerts.');
+}
+
+type CreateSubscriptionAuthMode = 'public' | 'session';
+
+export async function createStatusSubscription(
+  payload: StatusSubscriptionCreateRequest,
+  options?: { tenantRole?: string | null; authMode?: CreateSubscriptionAuthMode },
+): Promise<StatusSubscriptionResponse> {
+  const authMode: CreateSubscriptionAuthMode = options?.authMode ?? 'public';
+  const requiresAuth = authMode === 'session' || payload.channel === 'webhook';
+
+  const context = requiresAuth ? await getServerApiClient() : null;
+  const client = context?.client ?? createApiClient();
+
+  const result = (await createStatusSubscriptionApiV1StatusSubscriptionsPost({
+    client,
+    auth: context?.auth,
+    responseStyle: 'fields',
+    throwOnError: false,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options?.tenantRole ? { 'X-Tenant-Role': options.tenantRole } : {}),
+    },
+    body: payload,
+  })) as ApiFieldsResult<StatusSubscriptionResponse>;
+
+  return unwrapData(result, 'Unable to create status subscription.');
 }
 
 /**

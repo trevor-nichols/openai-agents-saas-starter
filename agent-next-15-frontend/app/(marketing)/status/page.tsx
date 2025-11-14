@@ -12,6 +12,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { usePlatformStatusQuery } from '@/lib/queries/status';
 import { unsubscribeStatusSubscription, verifyStatusSubscriptionToken } from '@/lib/api/statusSubscriptions';
+import { StatusAlertsCard } from '@/features/marketing/components';
+import { useMarketingAnalytics } from '@/features/marketing/hooks/useMarketingAnalytics';
 
 const DEFAULT_STATUS_DESCRIPTION = 'FastAPI, Next.js, and the async workers are all reporting healthy.';
 
@@ -28,6 +30,7 @@ export default function StatusPage() {
   const [verificationInProgress, setVerificationInProgress] = useState(false);
   const [unsubscribeInProgress, setUnsubscribeInProgress] = useState(false);
   const { status, isLoading, error, refetch } = usePlatformStatusQuery();
+  const { trackLeadSubmit } = useMarketingAnalytics();
 
   const overview = status?.overview;
   const services = status?.services ?? [];
@@ -196,6 +199,11 @@ export default function StatusPage() {
           <span>• Workers: Stripe dispatcher, retry worker</span>
         </div>
       </GlassPanel>
+
+      <StatusAlertsCard
+        onLeadSubmit={(payload) => trackLeadSubmit(payload)}
+        source="status-page"
+      />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)]">
         <div className="space-y-6">
