@@ -26,6 +26,9 @@ jobs:
     env:
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
+      - name: Enable Corepack
+        run: corepack enable
+
       - name: Check out repository
         uses: actions/checkout@v4
 
@@ -36,10 +39,8 @@ jobs:
           cache: pnpm
           cache-dependency-path: agent-next-15-frontend/pnpm-lock.yaml
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.15.0
+      - name: Use pnpm 10.15.0
+        run: corepack prepare pnpm@10.15.0 --activate
 
       - name: Install dependencies
         working-directory: agent-next-15-frontend
