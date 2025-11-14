@@ -1,0 +1,1 @@
+export { useDocsContent } from './useDocsContent';

@@ -1,0 +1,37 @@
+export const BILLING_COPY = {
+  overview: {
+    eyebrow: 'Billing',
+    title: 'Subscription hub',
+    description: 'Monitor plans, invoices, usage, and live events in one glass surface.',
+    usageTableTitle: 'Recent usage entries',
+    usageTableEmptyTitle: 'No usage recorded',
+    usageTableEmptyDescription: 'Metered features will populate this ledger once they emit events.',
+    eventsTitle: 'Live billing events',
+    eventsEmptyTitle: 'Awaiting activity',
+    eventsEmptyDescription: 'Stripe events, invoices, and usage will show up here.',
+    subscribeLabel: 'Manage plan',
+    usageCtaLabel: 'View full usage log',
+    eventsCtaLabel: 'View event history',
+  },
+  planManagement: {
+    eyebrow: 'Billing',
+    title: 'Plan management',
+    description: 'See your current subscription, choose a new plan, and adjust billing contact or seat counts.',
+    emptyTenantTitle: 'Tenant context missing',
+    emptyTenantDescription: 'Please refresh or sign back in so we can load your subscription.',
+    catalogTitle: 'Available plans',
+    catalogDescription: 'Choose the tier that best fits your team. You can change plans or adjust seats at any time.',
+    catalogEmptyTitle: 'No plans configured',
+    catalogEmptyDescription: 'Reach out to platform ops to seed plan data.',
+  },
+  usagePage: {
+    eyebrow: 'Billing',
+    title: 'Usage ledger',
+    description: 'Review the full metered usage history streaming from the billing pipeline.',
+  },
+  eventsPage: {
+    eyebrow: 'Billing',
+    title: 'Event history',
+    description: 'Browse the full log of Stripe events, invoices, and usage notifications.',
+  },
+} as const;

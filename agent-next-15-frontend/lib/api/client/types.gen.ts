@@ -189,6 +189,56 @@ export type BillingPlanResponse = {
 };
 
 /**
+ * BrowserServiceAccountIssueRequest
+ *
+ * Browser-initiated issuance request with justification.
+ */
+export type BrowserServiceAccountIssueRequest = {
+    /**
+     * Account
+     *
+     * Service-account identifier.
+     */
+    account: string;
+    /**
+     * Scopes
+     *
+     * Scopes requested for the service account.
+     */
+    scopes: Array<string>;
+    /**
+     * Tenant Id
+     *
+     * Tenant UUID when required by the service account.
+     */
+    tenant_id?: string | null;
+    /**
+     * Lifetime Minutes
+     *
+     * Optional refresh token lifetime in minutes.
+     */
+    lifetime_minutes?: number | null;
+    /**
+     * Fingerprint
+     *
+     * Optional machine or pipeline identifier for auditing.
+     */
+    fingerprint?: string | null;
+    /**
+     * Force
+     *
+     * Force new token creation even when an active token exists.
+     */
+    force?: boolean;
+    /**
+     * Reason
+     *
+     * Human-readable justification for auditing.
+     */
+    reason: string;
+};
+
+/**
  * CancelSubscriptionRequest
  */
 export type CancelSubscriptionRequest = {
@@ -361,6 +411,42 @@ export type HealthResponse = {
 };
 
 /**
+ * IncidentSchema
+ */
+export type IncidentSchema = {
+    /**
+     * Incident Id
+     *
+     * Internal incident identifier.
+     */
+    incident_id: string;
+    /**
+     * Service
+     *
+     * Impacted service name.
+     */
+    service: string;
+    /**
+     * Occurred At
+     *
+     * When the incident was recorded.
+     */
+    occurred_at: string;
+    /**
+     * Impact
+     *
+     * External-facing description of the impact.
+     */
+    impact: string;
+    /**
+     * State
+     *
+     * Current incident lifecycle state.
+     */
+    state: string;
+};
+
+/**
  * PasswordChangeRequest
  *
  * Self-service password change payload.
@@ -465,6 +551,31 @@ export type PlanFeatureResponse = {
 };
 
 /**
+ * PlatformStatusResponse
+ */
+export type PlatformStatusResponse = {
+    /**
+     * Generated At
+     *
+     * Server-side generation timestamp for the snapshot.
+     */
+    generated_at: string;
+    overview: StatusOverviewSchema;
+    /**
+     * Services
+     */
+    services: Array<ServiceStatusSchema>;
+    /**
+     * Incidents
+     */
+    incidents: Array<IncidentSchema>;
+    /**
+     * Uptime Metrics
+     */
+    uptime_metrics: Array<UptimeMetricSchema>;
+};
+
+/**
  * ServiceAccountIssueRequest
  *
  * Request payload for service-account refresh token issuance.
@@ -506,6 +617,106 @@ export type ServiceAccountIssueRequest = {
      * Force new token creation even when an active token exists.
      */
     force?: boolean;
+};
+
+/**
+ * ServiceAccountTokenItem
+ *
+ * List view representation of a service-account refresh token.
+ */
+export type ServiceAccountTokenItem = {
+    /**
+     * Jti
+     *
+     * Refresh token unique identifier (JWT jti).
+     */
+    jti: string;
+    /**
+     * Account
+     *
+     * Service-account identifier owning the token.
+     */
+    account: string;
+    /**
+     * Tenant Id
+     *
+     * Tenant UUID when the token is tenant-scoped.
+     */
+    tenant_id?: string | null;
+    /**
+     * Scopes
+     *
+     * Authorized scopes.
+     */
+    scopes: Array<string>;
+    /**
+     * Issued At
+     *
+     * Issuance timestamp.
+     */
+    issued_at: string;
+    /**
+     * Expires At
+     *
+     * Expiration timestamp.
+     */
+    expires_at: string;
+    /**
+     * Revoked At
+     *
+     * Revocation timestamp, if applicable.
+     */
+    revoked_at: string | null;
+    /**
+     * Revoked Reason
+     *
+     * Optional reason recorded during revocation.
+     */
+    revoked_reason?: string | null;
+    /**
+     * Fingerprint
+     *
+     * Caller-provided fingerprint for auditing.
+     */
+    fingerprint?: string | null;
+    /**
+     * Signing Kid
+     *
+     * Key identifier used to sign the refresh token.
+     */
+    signing_kid: string;
+};
+
+/**
+ * ServiceAccountTokenListResponse
+ *
+ * Paginated response for service-account token listings.
+ */
+export type ServiceAccountTokenListResponse = {
+    /**
+     * Items
+     *
+     * Current page of results.
+     */
+    items: Array<ServiceAccountTokenItem>;
+    /**
+     * Total
+     *
+     * Total number of matching tokens across all pages.
+     */
+    total: number;
+    /**
+     * Limit
+     *
+     * Requested page size.
+     */
+    limit: number;
+    /**
+     * Offset
+     *
+     * Requested offset.
+     */
+    offset: number;
 };
 
 /**
@@ -568,6 +779,61 @@ export type ServiceAccountTokenResponse = {
      * Optional session identifier when linked to a human session.
      */
     session_id?: string | null;
+};
+
+/**
+ * ServiceAccountTokenRevokeRequest
+ *
+ * Payload for revoking a service-account refresh token.
+ */
+export type ServiceAccountTokenRevokeRequest = {
+    /**
+     * Reason
+     *
+     * Human-readable explanation for auditing (required for operators).
+     */
+    reason?: string | null;
+};
+
+/**
+ * ServiceAccountTokenStatus
+ */
+export type ServiceAccountTokenStatus = 'active' | 'revoked' | 'all';
+
+/**
+ * ServiceStatusSchema
+ */
+export type ServiceStatusSchema = {
+    /**
+     * Name
+     *
+     * Service or subsystem name.
+     */
+    name: string;
+    /**
+     * Status
+     *
+     * Operational status label.
+     */
+    status: string;
+    /**
+     * Description
+     *
+     * Short explanation of the service scope.
+     */
+    description: string;
+    /**
+     * Owner
+     *
+     * Team responsible for the service.
+     */
+    owner: string;
+    /**
+     * Last Incident At
+     *
+     * Timestamp of the most recent incident involving the service.
+     */
+    last_incident_at?: string | null;
 };
 
 /**
@@ -656,6 +922,174 @@ export type StartSubscriptionRequest = {
      * Optional explicit seat count override.
      */
     seat_count?: number | null;
+};
+
+/**
+ * StatusIncidentResendRequest
+ */
+export type StatusIncidentResendRequest = {
+    /**
+     * Severity
+     *
+     * Incident severity used to filter subscriptions.
+     */
+    severity?: 'all' | 'major' | 'maintenance';
+    /**
+     * Tenant Id
+     *
+     * Restrict delivery to a specific tenant context.
+     */
+    tenant_id?: string | null;
+};
+
+/**
+ * StatusIncidentResendResponse
+ */
+export type StatusIncidentResendResponse = {
+    /**
+     * Dispatched
+     *
+     * Number of subscriptions notified.
+     */
+    dispatched: number;
+};
+
+/**
+ * StatusOverviewSchema
+ */
+export type StatusOverviewSchema = {
+    /**
+     * State
+     *
+     * Human-readable health summary.
+     */
+    state: string;
+    /**
+     * Description
+     *
+     * Contextual description displayed on the status page.
+     */
+    description: string;
+    /**
+     * Updated At
+     *
+     * Timestamp of the last health aggregation.
+     */
+    updated_at: string;
+};
+
+/**
+ * StatusSubscriptionChallengeRequest
+ */
+export type StatusSubscriptionChallengeRequest = {
+    /**
+     * Token
+     *
+     * Webhook challenge token.
+     */
+    token: string;
+};
+
+/**
+ * StatusSubscriptionCreateRequest
+ */
+export type StatusSubscriptionCreateRequest = {
+    /**
+     * Channel
+     */
+    channel: 'email' | 'webhook';
+    /**
+     * Target
+     */
+    target: string;
+    /**
+     * Severity Filter
+     *
+     * Incident severity filter.
+     */
+    severity_filter?: 'all' | 'major' | 'maintenance' | null;
+    /**
+     * Metadata
+     *
+     * Optional metadata labels.
+     */
+    metadata?: {
+        [key: string]: unknown;
+    } | null;
+};
+
+/**
+ * StatusSubscriptionListResponse
+ */
+export type StatusSubscriptionListResponse = {
+    /**
+     * Items
+     */
+    items: Array<StatusSubscriptionResponse>;
+    /**
+     * Next Cursor
+     */
+    next_cursor?: string | null;
+};
+
+/**
+ * StatusSubscriptionResponse
+ */
+export type StatusSubscriptionResponse = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Channel
+     */
+    channel: string;
+    /**
+     * Severity Filter
+     */
+    severity_filter: string;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Target Masked
+     */
+    target_masked: string;
+    /**
+     * Tenant Id
+     */
+    tenant_id?: string | null;
+    /**
+     * Created By
+     */
+    created_by: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+    /**
+     * Webhook Secret
+     *
+     * Signing secret for webhook deliveries (returned on creation only).
+     */
+    webhook_secret?: string | null;
+};
+
+/**
+ * StatusSubscriptionVerifyRequest
+ */
+export type StatusSubscriptionVerifyRequest = {
+    /**
+     * Token
+     *
+     * Email verification token.
+     */
+    token: string;
 };
 
 /**
@@ -762,6 +1196,32 @@ export type UpdateSubscriptionRequest = {
      * Adjust allocated seats.
      */
     seat_count?: number | null;
+};
+
+/**
+ * UptimeMetricSchema
+ */
+export type UptimeMetricSchema = {
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Value
+     */
+    value: string;
+    /**
+     * Helper Text
+     */
+    helper_text: string;
+    /**
+     * Trend Value
+     */
+    trend_value: string;
+    /**
+     * Trend Tone
+     */
+    trend_tone: string;
 };
 
 /**
@@ -1599,6 +2059,183 @@ export type IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponses =
 
 export type IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponse = IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponses[keyof IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponses];
 
+export type IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostData = {
+    body: BrowserServiceAccountIssueRequest;
+    headers?: {
+        /**
+         * X-Operator-Override
+         */
+        'X-Operator-Override'?: string | null;
+        /**
+         * X-Operator-Reason
+         */
+        'X-Operator-Reason'?: string | null;
+        /**
+         * X-Tenant-Id
+         */
+        'X-Tenant-Id'?: string | null;
+        /**
+         * X-Tenant-Role
+         */
+        'X-Tenant-Role'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/service-accounts/browser-issue';
+};
+
+export type IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostError = IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostErrors[keyof IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostErrors];
+
+export type IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostResponses = {
+    /**
+     * Successful Response
+     */
+    201: ServiceAccountTokenResponse;
+};
+
+export type IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostResponse = IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostResponses[keyof IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostResponses];
+
+export type ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Operator-Override
+         */
+        'X-Operator-Override'?: string | null;
+        /**
+         * X-Operator-Reason
+         */
+        'X-Operator-Reason'?: string | null;
+        /**
+         * X-Tenant-Id
+         */
+        'X-Tenant-Id'?: string | null;
+        /**
+         * X-Tenant-Role
+         */
+        'X-Tenant-Role'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Account
+         *
+         * Filter by service-account identifier (substring match).
+         */
+        account?: string | null;
+        /**
+         * Fingerprint
+         *
+         * Filter by stored fingerprint.
+         */
+        fingerprint?: string | null;
+        /**
+         * Token status filter (active, revoked, all).
+         */
+        status?: ServiceAccountTokenStatus;
+        /**
+         * Tenant Id
+         *
+         * Tenant UUID to filter (operator override only).
+         */
+        tenant_id?: string | null;
+        /**
+         * Include Global
+         *
+         * Include tenantless tokens (operator override only).
+         */
+        include_global?: boolean;
+        /**
+         * Limit
+         *
+         * Max tokens to return.
+         */
+        limit?: number;
+        /**
+         * Offset
+         *
+         * Offset for pagination.
+         */
+        offset?: number;
+    };
+    url: '/api/v1/auth/service-accounts/tokens';
+};
+
+export type ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetError = ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetErrors[keyof ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetErrors];
+
+export type ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ServiceAccountTokenListResponse;
+};
+
+export type ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetResponse = ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetResponses[keyof ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetResponses];
+
+export type RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostData = {
+    body: ServiceAccountTokenRevokeRequest;
+    headers?: {
+        /**
+         * X-Operator-Override
+         */
+        'X-Operator-Override'?: string | null;
+        /**
+         * X-Operator-Reason
+         */
+        'X-Operator-Reason'?: string | null;
+        /**
+         * X-Tenant-Id
+         */
+        'X-Tenant-Id'?: string | null;
+        /**
+         * X-Tenant-Role
+         */
+        'X-Tenant-Role'?: string | null;
+    };
+    path: {
+        /**
+         * Jti
+         *
+         * Refresh token identifier (JWT jti).
+         */
+        jti: string;
+    };
+    query?: never;
+    url: '/api/v1/auth/service-accounts/tokens/{jti}/revoke';
+};
+
+export type RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostError = RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostErrors[keyof RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostErrors];
+
+export type RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: SuccessResponse;
+};
+
+export type RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostResponse = RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostResponses[keyof RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostResponses];
+
 export type RegisterTenantApiV1AuthRegisterPostData = {
     body: UserRegisterRequest;
     path?: never;
@@ -1817,6 +2454,218 @@ export type ListAvailableToolsApiV1ToolsGetResponses = {
 };
 
 export type ListAvailableToolsApiV1ToolsGetResponse = ListAvailableToolsApiV1ToolsGetResponses[keyof ListAvailableToolsApiV1ToolsGetResponses];
+
+export type GetPlatformStatusApiV1StatusGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/status';
+};
+
+export type GetPlatformStatusApiV1StatusGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: PlatformStatusResponse;
+};
+
+export type GetPlatformStatusApiV1StatusGetResponse = GetPlatformStatusApiV1StatusGetResponses[keyof GetPlatformStatusApiV1StatusGetResponses];
+
+export type GetPlatformStatusRssApiV1StatusRssGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/status/rss';
+};
+
+export type GetPlatformStatusRssApiV1StatusRssGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type ListStatusSubscriptionsApiV1StatusSubscriptionsGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Cursor
+         */
+        cursor?: string | null;
+        /**
+         * Tenant Id
+         *
+         * Tenant identifier to inspect (operators only).
+         */
+        tenant_id?: string | null;
+    };
+    url: '/api/v1/status/subscriptions';
+};
+
+export type ListStatusSubscriptionsApiV1StatusSubscriptionsGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListStatusSubscriptionsApiV1StatusSubscriptionsGetError = ListStatusSubscriptionsApiV1StatusSubscriptionsGetErrors[keyof ListStatusSubscriptionsApiV1StatusSubscriptionsGetErrors];
+
+export type ListStatusSubscriptionsApiV1StatusSubscriptionsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: StatusSubscriptionListResponse;
+};
+
+export type ListStatusSubscriptionsApiV1StatusSubscriptionsGetResponse = ListStatusSubscriptionsApiV1StatusSubscriptionsGetResponses[keyof ListStatusSubscriptionsApiV1StatusSubscriptionsGetResponses];
+
+export type CreateStatusSubscriptionApiV1StatusSubscriptionsPostData = {
+    body: StatusSubscriptionCreateRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/status/subscriptions';
+};
+
+export type CreateStatusSubscriptionApiV1StatusSubscriptionsPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateStatusSubscriptionApiV1StatusSubscriptionsPostError = CreateStatusSubscriptionApiV1StatusSubscriptionsPostErrors[keyof CreateStatusSubscriptionApiV1StatusSubscriptionsPostErrors];
+
+export type CreateStatusSubscriptionApiV1StatusSubscriptionsPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: StatusSubscriptionResponse;
+};
+
+export type CreateStatusSubscriptionApiV1StatusSubscriptionsPostResponse = CreateStatusSubscriptionApiV1StatusSubscriptionsPostResponses[keyof CreateStatusSubscriptionApiV1StatusSubscriptionsPostResponses];
+
+export type VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostData = {
+    body: StatusSubscriptionVerifyRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/status/subscriptions/verify';
+};
+
+export type VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostError = VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostErrors[keyof VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostErrors];
+
+export type VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: StatusSubscriptionResponse;
+};
+
+export type VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostResponse = VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostResponses[keyof VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostResponses];
+
+export type ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostData = {
+    body: StatusSubscriptionChallengeRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/status/subscriptions/challenge';
+};
+
+export type ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostError = ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostErrors[keyof ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostErrors];
+
+export type ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: StatusSubscriptionResponse;
+};
+
+export type ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostResponse = ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostResponses[keyof ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostResponses];
+
+export type RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteData = {
+    body?: never;
+    path: {
+        /**
+         * Subscription Id
+         */
+        subscription_id: string;
+    };
+    query?: {
+        /**
+         * Token
+         *
+         * Unsubscribe token for email subscribers.
+         */
+        token?: string | null;
+    };
+    url: '/api/v1/status/subscriptions/{subscription_id}';
+};
+
+export type RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteError = RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteErrors[keyof RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteErrors];
+
+export type RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteResponse = RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteResponses[keyof RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteResponses];
+
+export type ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostData = {
+    body: StatusIncidentResendRequest;
+    path: {
+        /**
+         * Incident Id
+         */
+        incident_id: string;
+    };
+    query?: never;
+    url: '/api/v1/status/incidents/{incident_id}/resend';
+};
+
+export type ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostError = ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostErrors[keyof ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostErrors];
+
+export type ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponses = {
+    /**
+     * Successful Response
+     */
+    202: StatusIncidentResendResponse;
+};
+
+export type ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponse = ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponses[keyof ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponses];
 
 export type ListBillingPlansApiV1BillingPlansGetData = {
     body?: never;

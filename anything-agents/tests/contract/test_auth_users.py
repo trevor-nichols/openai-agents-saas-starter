@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
+from typing import Any, cast
 from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
 
@@ -14,6 +15,7 @@ from fastapi.testclient import TestClient
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 
+from app.bootstrap import get_container
 from app.core.config import get_settings
 from app.core.security import get_token_signer
 from app.domain.auth import (
@@ -45,8 +47,20 @@ from main import app
 
 
 @pytest.fixture
-def client() -> Generator[TestClient, None, None]:
+def client(
+    fake_auth_service,
+    fake_user_service,
+    fake_password_recovery_service,
+    fake_email_verification_service,
+) -> Generator[TestClient, None, None]:
+    """Spin up the FastAPI test client and install mocked services."""
+
     with TestClient(app) as test_client:
+        container = cast(Any, get_container())
+        container.auth_service = fake_auth_service
+        container.user_service = fake_user_service
+        container.password_recovery_service = fake_password_recovery_service
+        container.email_verification_service = fake_email_verification_service
         yield test_client
 
 
@@ -68,58 +82,36 @@ def _make_session_tokens() -> UserSessionTokens:
 
 
 @pytest.fixture
-def fake_auth_service(monkeypatch: pytest.MonkeyPatch):
+def fake_auth_service():
     mock_service = AsyncMock()
     mock_service.revoke_user_sessions = AsyncMock(return_value=0)
     mock_service.logout_user_session = AsyncMock(return_value=True)
     mock_service.list_user_sessions = AsyncMock()
     mock_service.revoke_user_session_by_id = AsyncMock(return_value=True)
-    monkeypatch.setattr("app.api.v1.auth.routes_sessions.auth_service", mock_service)
-    monkeypatch.setattr("app.api.v1.auth.routes_passwords.auth_service", mock_service)
     return mock_service
 
 
 @pytest.fixture
-def fake_password_recovery_service(monkeypatch: pytest.MonkeyPatch):
+def fake_password_recovery_service():
     service = AsyncMock()
     service.request_password_reset = AsyncMock()
     service.confirm_password_reset = AsyncMock()
-
-    def _get_service():
-        return service
-
-    monkeypatch.setattr(
-        "app.api.v1.auth.routes_passwords.get_password_recovery_service", _get_service
-    )
     return service
 
 
 @pytest.fixture
-def fake_email_verification_service(monkeypatch: pytest.MonkeyPatch):
+def fake_email_verification_service():
     service = AsyncMock()
     service.send_verification_email = AsyncMock(return_value=True)
     service.verify_token = AsyncMock()
-
-    def _get_service():
-        return service
-
-    monkeypatch.setattr(
-        "app.api.v1.auth.routes_email.get_email_verification_service",
-        _get_service,
-    )
     return service
 
 
 @pytest.fixture
-def fake_user_service(monkeypatch: pytest.MonkeyPatch):
+def fake_user_service():
     stub = AsyncMock()
     stub.change_password = AsyncMock()
     stub.admin_reset_password = AsyncMock()
-
-    def _get_service():
-        return stub
-
-    monkeypatch.setattr("app.api.v1.auth.routes_passwords.get_user_service", _get_service)
     return stub
 
 

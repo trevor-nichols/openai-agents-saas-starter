@@ -1,21 +1,41 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+
+import { AuthCard } from '@/app/(auth)/_components/AuthCard';
 import { LoginForm } from '@/components/auth/LoginForm';
+
+export const metadata: Metadata = {
+  title: 'Sign in · Anything Agents',
+  description: 'Access your Anything Agents workspace with your organization credentials.',
+};
 
 interface LoginPageProps {
   searchParams?: Record<string, string | string[] | undefined>;
 }
 
 export default function LoginPage({ searchParams }: LoginPageProps) {
-  const redirectTo = typeof searchParams?.redirectTo === 'string' ? searchParams?.redirectTo : undefined;
+  const redirectParam = typeof searchParams?.redirectTo === 'string' ? searchParams.redirectTo : undefined;
+  const redirectTo = redirectParam && redirectParam.startsWith('/') ? redirectParam : undefined;
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl">
-        <div className="mb-6 text-center">
-          <h1 className="text-2xl font-semibold text-gray-900">Sign in to Anything Agents</h1>
-          <p className="text-sm text-gray-500">Use your organization credentials to continue.</p>
+    <AuthCard
+      title="Sign in to Anything Agents"
+      description="Use your organization credentials to continue."
+      footer={
+        <div className="flex flex-col gap-2 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
+          <p>
+            New here?{' '}
+            <Link href="/register" className="font-medium text-primary hover:underline">
+              Create an account
+            </Link>
+          </p>
+          <Link href="/password/forgot" className="text-sm text-muted-foreground hover:text-foreground">
+            Forgot password
+          </Link>
         </div>
-        <LoginForm redirectTo={redirectTo} />
-      </div>
-    </main>
+      }
+    >
+      <LoginForm redirectTo={redirectTo} />
+    </AuthCard>
   );
 }

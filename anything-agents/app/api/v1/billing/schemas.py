@@ -7,6 +7,12 @@ from typing import Annotated
 from pydantic import BaseModel, EmailStr, Field
 
 from app.domain.billing import BillingPlan, PlanFeature, TenantSubscription
+from app.services.billing_events import (
+    BillingEventInvoice,
+    BillingEventPayload,
+    BillingEventSubscription,
+    BillingEventUsage,
+)
 
 PositiveSeatCount = Annotated[int, Field(gt=0)]
 PositiveUsageQuantity = Annotated[int, Field(gt=0)]
@@ -128,4 +134,114 @@ class CancelSubscriptionRequest(BaseModel):
     cancel_at_period_end: bool = Field(
         default=True,
         description="If true, cancellation occurs at the current period end.",
+    )
+
+
+class BillingEventSubscriptionResponse(BaseModel):
+    plan_code: str
+    status: str
+    seat_count: int | None = None
+    auto_renew: bool
+    current_period_start: str | None = None
+    current_period_end: str | None = None
+    trial_ends_at: str | None = None
+    cancel_at: str | None = None
+
+    @classmethod
+    def from_payload(cls, payload: BillingEventSubscription) -> BillingEventSubscriptionResponse:
+        return cls(
+            plan_code=payload.plan_code,
+            status=payload.status,
+            seat_count=payload.seat_count,
+            auto_renew=payload.auto_renew,
+            current_period_start=payload.current_period_start,
+            current_period_end=payload.current_period_end,
+            trial_ends_at=payload.trial_ends_at,
+            cancel_at=payload.cancel_at,
+        )
+
+
+class BillingEventInvoiceResponse(BaseModel):
+    invoice_id: str
+    status: str
+    amount_due_cents: int
+    currency: str
+    billing_reason: str | None = None
+    hosted_invoice_url: str | None = None
+    collection_method: str | None = None
+    period_start: str | None = None
+    period_end: str | None = None
+
+    @classmethod
+    def from_payload(cls, payload: BillingEventInvoice) -> BillingEventInvoiceResponse:
+        return cls(
+            invoice_id=payload.invoice_id,
+            status=payload.status,
+            amount_due_cents=payload.amount_due_cents,
+            currency=payload.currency,
+            billing_reason=payload.billing_reason,
+            hosted_invoice_url=payload.hosted_invoice_url,
+            collection_method=payload.collection_method,
+            period_start=payload.period_start,
+            period_end=payload.period_end,
+        )
+
+
+class BillingEventUsageResponse(BaseModel):
+    feature_key: str
+    quantity: int
+    period_start: str | None = None
+    period_end: str | None = None
+    amount_cents: int | None = None
+
+    @classmethod
+    def from_payload(cls, payload: BillingEventUsage) -> BillingEventUsageResponse:
+        return cls(
+            feature_key=payload.feature_key,
+            quantity=payload.quantity,
+            period_start=payload.period_start,
+            period_end=payload.period_end,
+            amount_cents=payload.amount_cents,
+        )
+
+
+class BillingEventResponse(BaseModel):
+    tenant_id: str
+    event_type: str
+    stripe_event_id: str
+    occurred_at: str
+    summary: str | None = None
+    status: str
+    subscription: BillingEventSubscriptionResponse | None = None
+    invoice: BillingEventInvoiceResponse | None = None
+    usage: list[BillingEventUsageResponse] = Field(default_factory=list)
+
+    @classmethod
+    def from_payload(cls, payload: BillingEventPayload) -> BillingEventResponse:
+        return cls(
+            tenant_id=payload.tenant_id,
+            event_type=payload.event_type,
+            stripe_event_id=payload.stripe_event_id,
+            occurred_at=payload.occurred_at,
+            summary=payload.summary,
+            status=payload.status,
+            subscription=(
+                BillingEventSubscriptionResponse.from_payload(payload.subscription)
+                if payload.subscription
+                else None
+            ),
+            invoice=(
+                BillingEventInvoiceResponse.from_payload(payload.invoice)
+                if payload.invoice
+                else None
+            ),
+            usage=[BillingEventUsageResponse.from_payload(entry) for entry in payload.usage],
+        )
+
+
+class BillingEventHistoryResponse(BaseModel):
+    items: list[BillingEventResponse] = Field(default_factory=list)
+    next_cursor: str | None = Field(
+        default=None,
+        description="Opaque cursor for the next page. Null when no additional events exist.",
     )

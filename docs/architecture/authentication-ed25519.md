@@ -172,3 +172,10 @@ Any other exception bubbles up as a 500 and emits the `signup.*` structured log 
 - **Service-account issuance**: Non-interactive consumers obtain tenant-scoped refresh tokens via AuthService using managed Vault credentials and a CLI/CI helper; no STS exchange required in v1.
 
 > **Next Action:** Review in AUTH-001 workshop, assign owners to answer open questions, and update this blueprint before implementation sprints begin.
+
+## 10. Service Wiring & Testing Guidelines
+
+- **Application container:** Auth-adjacent services (user service, session service, service-account token service, password recovery, email verification, rate limiter, etc.) are registered on the global `ApplicationContainer` (`app/bootstrap/container.py`). Each module exposes a `get_*` helper that simply returns `get_container().<service>`; startup wiring in `main.py` is responsible for building the concrete instances via the helper builders in `app/services/**/builders.py`.
+- **Explicit builders:** When adding a service, provide a `build_*` helper that accepts explicit dependencies (settings, repositories, Redis clients). Startup code should call the builder, store the result on the container, and routes should access it through the `get_*` proxy. This keeps wiring deterministic while preserving clean architecture boundaries.
+- **Testing pattern:** `tests/conftest.py` calls `reset_container()` before every test. Fixtures should override dependencies by assigning to the container (e.g., `get_container().auth_service = FakeAuthService()`), rather than monkeypatching `app.services.*` globals. This mirrors production wiring and prevents hidden state from leaking between tests.
+- **Failure modes:** Container accessors raise `RuntimeError` if a requested service hasn’t been configured. Ensure new services are wired in `main.py` (or in the relevant test fixture) before calling their proxies so failures occur during startup rather than mid-request.

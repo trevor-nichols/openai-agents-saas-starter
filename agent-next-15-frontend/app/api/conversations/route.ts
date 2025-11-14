@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { listConversationsAction } from '../../(agent)/actions';
+import { listConversationsAction } from '../../(app)/(workspace)/chat/actions';
 
 export async function GET() {
   const result = await listConversationsAction();

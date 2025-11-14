@@ -254,29 +254,40 @@ class EmailVerificationService:
         return digest.hexdigest()
 
 
-def build_email_verification_service() -> EmailVerificationService:
-    settings = get_settings()
-    repository = get_user_repository(settings)
-    if repository is None:
+def build_email_verification_service(
+    *,
+    settings: Settings | None = None,
+    repository: UserRepository | None = None,
+    token_store: EmailVerificationTokenStore | None = None,
+    notifier: EmailVerificationNotifier | None = None,
+) -> EmailVerificationService:
+    resolved_settings = settings or get_settings()
+    resolved_repository = repository or get_user_repository(resolved_settings)
+    if resolved_repository is None:
         raise RuntimeError("User repository is not configured; email verification unavailable.")
-    token_store = get_email_verification_token_store(settings)
-    notifier: EmailVerificationNotifier
-    if settings.enable_resend_email_delivery:
-        adapter = get_resend_email_adapter(settings)
-        notifier = ResendEmailVerificationNotifier(adapter, settings)
+    resolved_token_store = token_store or get_email_verification_token_store(resolved_settings)
+    if notifier is not None:
+        resolved_notifier = notifier
+    elif resolved_settings.enable_resend_email_delivery:
+        adapter = get_resend_email_adapter(resolved_settings)
+        resolved_notifier = ResendEmailVerificationNotifier(adapter, resolved_settings)
     else:
-        notifier = LoggingEmailVerificationNotifier()
-    return EmailVerificationService(repository, token_store, notifier, settings=settings)
-
-
-_DEFAULT_SERVICE: EmailVerificationService | None = None
+        resolved_notifier = LoggingEmailVerificationNotifier()
+    return EmailVerificationService(
+        resolved_repository,
+        resolved_token_store,
+        resolved_notifier,
+        settings=resolved_settings,
+    )
 
 
 def get_email_verification_service() -> EmailVerificationService:
-    global _DEFAULT_SERVICE
-    if _DEFAULT_SERVICE is None:
-        _DEFAULT_SERVICE = build_email_verification_service()
-    return _DEFAULT_SERVICE
+    from app.bootstrap.container import get_container
+
+    container = get_container()
+    if container.email_verification_service is None:
+        container.email_verification_service = build_email_verification_service()
+    return container.email_verification_service
 
 
 __all__ = [

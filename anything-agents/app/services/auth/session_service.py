@@ -20,7 +20,6 @@ from app.services.user_service import (
     UserDisabledError,
     UserLockedError,
     UserService,
-    get_user_service,
 )
 
 from .errors import UserAuthenticationError, UserLogoutError, UserRefreshError
@@ -408,7 +407,12 @@ class UserSessionService:
 
     def _require_user_service(self) -> UserService:
         if self._user_service is None:
-            self._user_service = get_user_service()
+            from app.bootstrap.container import get_container
+
+            container = get_container()
+            if container.user_service is None:
+                raise RuntimeError("UserService has not been configured.")
+            self._user_service = container.user_service
         return self._user_service
 
     def _parse_uuid(self, value: str) -> UUID:

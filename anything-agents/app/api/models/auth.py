@@ -194,6 +194,16 @@ class ServiceAccountIssueRequest(BaseModel):
     )
 
 
+class BrowserServiceAccountIssueRequest(ServiceAccountIssueRequest):
+    """Browser-initiated issuance request with justification."""
+
+    reason: str = Field(
+        min_length=10,
+        max_length=512,
+        description="Human-readable justification for auditing.",
+    )
+
+
 class ServiceAccountTokenResponse(BaseModel):
     """Response returned after issuing a service-account refresh token."""
 
@@ -211,6 +221,46 @@ class ServiceAccountTokenResponse(BaseModel):
     session_id: str | None = Field(
         default=None,
         description="Optional session identifier when linked to a human session.",
+    )
+
+
+class ServiceAccountTokenItem(BaseModel):
+    """List view representation of a service-account refresh token."""
+
+    jti: str = Field(description="Refresh token unique identifier (JWT jti).")
+    account: str = Field(description="Service-account identifier owning the token.")
+    tenant_id: str | None = Field(
+        default=None, description="Tenant UUID when the token is tenant-scoped."
+    )
+    scopes: list[str] = Field(description="Authorized scopes.")
+    issued_at: datetime = Field(description="Issuance timestamp.")
+    expires_at: datetime = Field(description="Expiration timestamp.")
+    revoked_at: datetime | None = Field(description="Revocation timestamp, if applicable.")
+    revoked_reason: str | None = Field(
+        default=None, description="Optional reason recorded during revocation."
+    )
+    fingerprint: str | None = Field(
+        default=None, description="Caller-provided fingerprint for auditing."
+    )
+    signing_kid: str = Field(description="Key identifier used to sign the refresh token.")
+
+
+class ServiceAccountTokenListResponse(BaseModel):
+    """Paginated response for service-account token listings."""
+
+    items: list[ServiceAccountTokenItem] = Field(description="Current page of results.")
+    total: int = Field(description="Total number of matching tokens across all pages.")
+    limit: int = Field(ge=1, le=100, description="Requested page size.")
+    offset: int = Field(ge=0, description="Requested offset.")
+
+
+class ServiceAccountTokenRevokeRequest(BaseModel):
+    """Payload for revoking a service-account refresh token."""
+
+    reason: str | None = Field(
+        default=None,
+        max_length=256,
+        description="Human-readable explanation for auditing (required for operators).",
     )
 
 

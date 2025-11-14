@@ -376,4 +376,19 @@ def _to_utc(dt: datetime) -> datetime:
     return dt.astimezone(UTC)
 
 
-billing_service = BillingService()
+def get_billing_service() -> BillingService:
+    """Resolve the active billing service from the application container."""
+
+    from app.bootstrap.container import get_container
+
+    return get_container().billing_service
+
+
+class _BillingServiceHandle:
+    """Proxy exposing the container-backed billing service."""
+
+    def __getattr__(self, name: str):
+        return getattr(get_billing_service(), name)
+
+
+billing_service = _BillingServiceHandle()

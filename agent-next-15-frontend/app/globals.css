@@ -2,20 +2,111 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
 
-@media (prefers-color-scheme: dark) {
+
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: dark;
+
+    --background: 220 16% 7%;
+    --foreground: 218 28% 95%;
+
+    --card: 220 16% 11%;
+    --card-foreground: 218 28% 95%;
+
+    --popover: 220 16% 13%;
+    --popover-foreground: 218 28% 95%;
+
+    --primary: 211 100% 72%;
+    --primary-foreground: 220 33% 12%;
+
+    --secondary: 220 16% 16%;
+    --secondary-foreground: 218 25% 90%;
+
+    --muted: 220 15% 20%;
+    --muted-foreground: 218 15% 68%;
+
+    --accent: 206 100% 82%;
+    --accent-foreground: 220 40% 12%;
+
+    --destructive: 0 86% 64%;
+    --destructive-foreground: 0 0% 8%;
+
+    --success: 142 60% 56%;
+    --warning: 38 92% 62%;
+
+    --border: 220 13% 26%;
+    --input: 220 13% 26%;
+    --ring: 211 100% 72%;
+
+    --chart-1: 211 100% 72%;
+    --chart-2: 142 60% 56%;
+    --chart-3: 38 92% 62%;
+    --chart-4: 270 55% 70%;
+    --chart-5: 0 86% 64%;
+
+    --glass: 0 0% 100% / 0.06;
+    --glass-strong: 0 0% 100% / 0.12;
+
+    --radius-xs: 4px;
+    --radius-sm: 8px;
+    --radius-lg: 16px;
+    --radius-pill: 999px;
+    --radius: 1rem;
+
+    --ease-apple: cubic-bezier(0.32, 0.72, 0, 1);
+    --duration-quick: 150ms;
+    --duration-base: 220ms;
+    --duration-slow: 320ms;
+
+    --blur-glass: 18px;
+  }
+
+  .light {
+    color-scheme: light;
+
+    --background: 220 12% 96%;
+    --foreground: 220 25% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 25% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 25% 10%;
+    --primary: 211 100% 52%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 12% 92%;
+    --secondary-foreground: 220 25% 10%;
+    --muted: 220 10% 88%;
+    --muted-foreground: 220 10% 35%;
+    --accent: 211 100% 62%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 0 78% 56%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 14% 85%;
+    --input: 220 14% 85%;
+    --ring: 211 100% 52%;
+  }
+
+  .dark {
+    color-scheme: dark;
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    min-height: 100vh;
+    font-family: var(--font-geist-sans), "SF Pro Display", "SF Pro Text", "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    background-image: radial-gradient(circle at 20% 20%, rgba(110, 181, 255, 0.14), transparent 45%),
+      radial-gradient(circle at 80% 0%, rgba(75, 209, 123, 0.12), transparent 35%);
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background-color: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+  }
 }

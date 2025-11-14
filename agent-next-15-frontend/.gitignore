@@ -42,3 +42,6 @@ next-env.d.ts
 
 # generated code (opt-in)
 # Previously ignored to keep local SDKs only; we now track the Hey API client
+
+# snapshot files
+SNAPSHOT.md

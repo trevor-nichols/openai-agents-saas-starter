@@ -3,16 +3,18 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import logging
+import uuid
 from collections import deque
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
-from typing import Protocol
+from typing import Any, Protocol
 
 from redis.asyncio import Redis
 
-from app.infrastructure.persistence.stripe.models import StripeEvent
+from app.infrastructure.persistence.stripe.models import StripeEvent, StripeEventStatus
 from app.infrastructure.persistence.stripe.repository import StripeEventRepository
 from app.observability.metrics import (
     observe_stripe_webhook_event,
@@ -74,6 +76,12 @@ class BillingEventUsage:
     period_start: str | None
     period_end: str | None
     amount_cents: int | None
+
+
+@dataclass(slots=True)
+class BillingEventHistoryPage:
+    items: list[BillingEventPayload]
+    next_cursor: str | None
 
 
 class BillingEventStream(Protocol):
@@ -252,12 +260,14 @@ class BillingEventsService:
     def configure(
         self,
         *,
-        backend: BillingEventBackend,
-        repository: StripeEventRepository | None,
+        backend: BillingEventBackend | None = None,
+        repository: StripeEventRepository | None = None,
     ) -> None:
-        self._backend = backend
-        self._repository = repository
-        self._enabled = True
+        if backend is not None:
+            self._backend = backend
+            self._enabled = True
+        if repository is not None:
+            self._repository = repository
 
     async def shutdown(self) -> None:
         if self._backend:
@@ -384,8 +394,205 @@ class BillingEventsService:
             raise RuntimeError("Billing events backend not configured.")
         await self._backend.publish(self._channel(tenant_id), json.dumps(message))
 
+    async def list_history(
+        self,
+        *,
+        tenant_id: str,
+        limit: int = 25,
+        cursor: str | None = None,
+        event_type: str | None = None,
+        status: StripeEventStatus | str | None = None,
+    ) -> BillingEventHistoryPage:
+        """Return a cursor-paginated slice of historical billing events."""
+
+        if limit <= 0:
+            raise ValueError("Limit must be positive.")
+
+        repository = self._require_repository()
+        cursor_values = self._decode_cursor(cursor) if cursor else None
+        repo_status = status.value if isinstance(status, StripeEventStatus) else status
+        page_size = max(1, limit)
+
+        fetch_limit = page_size + 1
+        events = await repository.list_tenant_events(
+            tenant_id=tenant_id,
+            limit=fetch_limit,
+            cursor_received_at=cursor_values.received_at if cursor_values else None,
+            cursor_event_id=cursor_values.event_id if cursor_values else None,
+            event_type=event_type,
+            status=repo_status,
+        )
+
+        trimmed_events = events[:page_size]
+
+        payloads: list[BillingEventPayload] = []
+        for record in trimmed_events:
+            normalized = self._normalize_payload(record, record.payload, None)
+            if normalized:
+                payloads.append(normalized)
+
+        next_cursor = None
+        has_more = len(events) > page_size
+
+        if has_more and trimmed_events:
+            tail = trimmed_events[-1]
+            next_cursor = self._encode_cursor(tail.received_at, tail.id)
+
+        return BillingEventHistoryPage(items=payloads, next_cursor=next_cursor)
+
     def _channel(self, tenant_id: str) -> str:
         return f"{self._channel_prefix}{tenant_id}"
+
+    def _require_repository(self) -> StripeEventRepository:
+        if self._repository is None:
+            raise RuntimeError(
+                "StripeEventRepository is not configured for billing events service."
+            )
+        return self._repository
+
+    def _derive_artifacts_from_payload(
+        self, event_type: str, data_object: dict
+    ) -> tuple[
+        BillingEventSubscription | None,
+        BillingEventInvoice | None,
+        list[BillingEventUsage],
+    ]:
+        subscription = None
+        invoice = None
+        usage: list[BillingEventUsage] = []
+        normalized_type = event_type or ""
+        if normalized_type.startswith("customer.subscription"):
+            subscription = self._subscription_payload_from_object(data_object)
+        if normalized_type.startswith("invoice."):
+            invoice = self._invoice_payload_from_object(data_object)
+            usage = self._usage_from_invoice_object(data_object)
+        return subscription, invoice, usage
+
+    def _subscription_payload_from_object(
+        self, data_obj: dict
+    ) -> BillingEventSubscription | None:
+        if not data_obj:
+            return None
+        plan_code = self._extract_plan_code(data_obj) or "unknown-plan"
+        quantity = self._extract_quantity(data_obj)
+        return BillingEventSubscription(
+            plan_code=plan_code,
+            status=str(data_obj.get("status") or "unknown"),
+            seat_count=quantity,
+            auto_renew=not bool(data_obj.get("cancel_at_period_end")),
+            current_period_start=self._iso(
+                self._coerce_datetime(data_obj.get("current_period_start"))
+            ),
+            current_period_end=self._iso(
+                self._coerce_datetime(data_obj.get("current_period_end"))
+            ),
+            trial_ends_at=self._iso(self._coerce_datetime(data_obj.get("trial_end"))),
+            cancel_at=self._iso(self._coerce_datetime(data_obj.get("cancel_at"))),
+        )
+
+    def _invoice_payload_from_object(self, invoice_obj: dict) -> BillingEventInvoice | None:
+        if not invoice_obj:
+            return None
+        amount_due = invoice_obj.get("amount_due")
+        if amount_due is None:
+            amount_due = invoice_obj.get("total")
+        amount_value = self._coerce_int(amount_due, default=0)
+        return BillingEventInvoice(
+            invoice_id=str(invoice_obj.get("id") or "invoice"),
+            status=str(invoice_obj.get("status") or "unknown"),
+            amount_due_cents=amount_value,
+            currency=str(invoice_obj.get("currency") or "usd"),
+            billing_reason=invoice_obj.get("billing_reason"),
+            hosted_invoice_url=
+                invoice_obj.get("hosted_invoice_url") or invoice_obj.get("invoice_pdf"),
+            collection_method=invoice_obj.get("collection_method"),
+            period_start=self._iso(self._coerce_datetime(invoice_obj.get("period_start"))),
+            period_end=self._iso(self._coerce_datetime(invoice_obj.get("period_end"))),
+        )
+
+    def _usage_from_invoice_object(self, invoice_obj: dict) -> list[BillingEventUsage]:
+        lines = ((invoice_obj.get("lines") or {}).get("data")) or []
+        usage_entries: list[BillingEventUsage] = []
+        for index, line in enumerate(lines):
+            price = line.get("price") or {}
+            recurring = price.get("recurring") or {}
+            metadata = {
+                **(price.get("metadata") or {}),
+                **(line.get("metadata") or {}),
+            }
+            usage_type = recurring.get("usage_type")
+            is_metered = usage_type == "metered" or bool(line.get("usage_record_summary"))
+            if not is_metered:
+                continue
+            feature_key = (
+                metadata.get("feature_key")
+                or metadata.get("plan_feature")
+                or price.get("nickname")
+                or line.get("description")
+                or f"feature-{index}"
+            )
+            quantity_raw = line.get("quantity")
+            if quantity_raw in (None, 0):
+                summary = line.get("usage_record_summary") or {}
+                quantity_raw = summary.get("total_usage")
+            quantity = self._maybe_int(quantity_raw)
+            if quantity is None:
+                continue
+            period = line.get("period") or {}
+            usage_entries.append(
+                BillingEventUsage(
+                    feature_key=str(feature_key),
+                    quantity=quantity,
+                    period_start=self._iso(self._coerce_datetime(period.get("start"))),
+                    period_end=self._iso(self._coerce_datetime(period.get("end"))),
+                    amount_cents=self._coerce_int(line.get("amount"), default=0),
+                )
+            )
+        return usage_entries
+
+    def _extract_plan_code(self, data_obj: dict) -> str | None:
+        items = ((data_obj.get("items") or {}).get("data")) or []
+        if items:
+            price = items[0].get("price") or {}
+            metadata = price.get("metadata") or {}
+            return (
+                metadata.get("plan_code")
+                or metadata.get("starter_cli_plan_code")
+                or price.get("nickname")
+                or price.get("id")
+            )
+        plan = data_obj.get("plan") or {}
+        metadata = plan.get("metadata") or {}
+        return (
+            metadata.get("plan_code")
+            or metadata.get("starter_cli_plan_code")
+            or plan.get("nickname")
+            or plan.get("id")
+        )
+
+    def _extract_quantity(self, data_obj: dict) -> int | None:
+        items = ((data_obj.get("items") or {}).get("data")) or []
+        if items:
+            quantity = items[0].get("quantity")
+            quantity_val = self._maybe_int(quantity)
+            if quantity_val is not None:
+                return quantity_val
+        quantity = data_obj.get("quantity")
+        return self._maybe_int(quantity)
+
+    def _encode_cursor(self, received_at: datetime, event_id: uuid.UUID) -> str:
+        payload = json.dumps({"r": received_at.isoformat(), "e": str(event_id)})
+        return base64.urlsafe_b64encode(payload.encode("utf-8")).decode("utf-8")
+
+    def _decode_cursor(self, token: str) -> _HistoryCursor:
+        try:
+            raw = base64.urlsafe_b64decode(token.encode("utf-8")).decode("utf-8")
+            data = json.loads(raw)
+            received_at = datetime.fromisoformat(str(data["r"]))
+            event_id = uuid.UUID(str(data["e"]))
+        except (KeyError, ValueError, json.JSONDecodeError) as exc:
+            raise ValueError("Invalid cursor provided.") from exc
+        return _HistoryCursor(received_at=received_at, event_id=event_id)
 
     def _normalize_payload(
         self,
@@ -412,6 +619,19 @@ class BillingEventsService:
                 invoice = self._invoice_payload_from_context(context.invoice)
             if context.usage:
                 usage = [self._usage_payload_from_context(item) for item in context.usage]
+
+        if subscription is None or invoice is None or not usage:
+            (
+                derived_subscription,
+                derived_invoice,
+                derived_usage,
+            ) = self._derive_artifacts_from_payload(record.event_type, data_object)
+            if subscription is None:
+                subscription = derived_subscription
+            if invoice is None:
+                invoice = derived_invoice
+            if not usage:
+                usage = derived_usage
         return BillingEventPayload(
             tenant_id=tenant_id,
             event_type=record.event_type,
@@ -470,17 +690,53 @@ class BillingEventsService:
             value = value.astimezone(UTC)
         return value.isoformat()
 
+    @staticmethod
+    def _coerce_datetime(value: Any) -> datetime | None:
+        if value in (None, ""):
+            return None
+        if isinstance(value, datetime):
+            if value.tzinfo is None:
+                return value.replace(tzinfo=UTC)
+            return value.astimezone(UTC)
+        try:
+            return datetime.fromtimestamp(float(value), tz=UTC)
+        except (TypeError, ValueError):
+            return None
 
-_billing_events_service = BillingEventsService()
+    @staticmethod
+    def _coerce_int(value: Any, default: int = 0) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
 
-
-def configure_billing_events_service(service: BillingEventsService) -> None:
-    global _billing_events_service
-    _billing_events_service = service
+    @staticmethod
+    def _maybe_int(value: Any) -> int | None:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
 
 
 def get_billing_events_service() -> BillingEventsService:
-    return _billing_events_service
+    """Resolve the container-backed billing events service."""
+
+    from app.bootstrap.container import get_container
+
+    return get_container().billing_events_service
 
 
-billing_events_service = _billing_events_service
+@dataclass(slots=True)
+class _HistoryCursor:
+    received_at: datetime
+    event_id: uuid.UUID
+
+
+class _BillingEventsServiceHandle:
+    """Proxy exposing the configured billing events service."""
+
+    def __getattr__(self, name: str):
+        return getattr(get_billing_events_service(), name)
+
+
+billing_events_service = _BillingEventsServiceHandle()

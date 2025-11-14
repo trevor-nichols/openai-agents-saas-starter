@@ -1,0 +1,1 @@
+export { useFeaturesContent } from './useFeaturesContent';

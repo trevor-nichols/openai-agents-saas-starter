@@ -6,7 +6,7 @@ import { GET } from './route';
 
 const listConversationsAction = vi.hoisted(() => vi.fn());
 
-vi.mock('../../(agent)/actions', () => ({
+vi.mock('../../(app)/(workspace)/chat/actions', () => ({
   listConversationsAction,
 }));
 

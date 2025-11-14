@@ -1,6 +1,8 @@
 'use server';
 
-import { API_BASE_URL, USE_API_MOCK } from '../config';
+import type { UserLoginRequest, UserRefreshRequest } from '@/lib/api/client/types.gen';
+import { loginWithCredentials, refreshSessionTokens } from '@/lib/server/services/auth';
+import { USE_API_MOCK } from '../config';
 import type { SessionSummary, UserSessionTokens } from '../types/auth';
 import {
   clearSessionCookies,
@@ -10,25 +12,14 @@ import {
 } from './cookies';
 
 export async function exchangeCredentials(
-  payload: Record<string, unknown>,
+  payload: UserLoginRequest,
 ): Promise<UserSessionTokens> {
   if (USE_API_MOCK) {
     const tokens = createMockTokens();
     persistSessionCookies(tokens);
     return tokens;
   }
-  const response = await fetch(`${API_BASE_URL}/api/v1/auth/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-    cache: 'no-store',
-  });
-
-  if (!response.ok) {
-    throw new Error(await response.text());
-  }
-
-  const tokens = (await response.json()) as UserSessionTokens;
+  const tokens = await loginWithCredentials(payload);
   persistSessionCookies(tokens);
   return tokens;
 }
@@ -39,26 +30,20 @@ export async function refreshSessionWithBackend(refreshToken: string): Promise<U
     persistSessionCookies(tokens);
     return tokens;
   }
-  const response = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refresh_token: refreshToken }),
-    cache: 'no-store',
-  });
-  if (!response.ok) {
-    throw new Error(await response.text());
-  }
-  const tokens = (await response.json()) as UserSessionTokens;
+  const payload: UserRefreshRequest = {
+    refresh_token: refreshToken,
+  };
+  const tokens = await refreshSessionTokens(payload);
   persistSessionCookies(tokens);
   return tokens;
 }
 
 export async function loadSessionSummary(): Promise<SessionSummary | null> {
-  const accessToken = getAccessTokenFromCookies();
+  const accessToken = await getAccessTokenFromCookies();
   if (!accessToken) {
     return null;
   }
-  const meta = getSessionMetaFromCookies();
+  const meta = await getSessionMetaFromCookies();
   if (!meta) {
     return null;
   }
@@ -70,8 +55,8 @@ export async function loadSessionSummary(): Promise<SessionSummary | null> {
   };
 }
 
-export function destroySession(): void {
-  clearSessionCookies();
+export async function destroySession(): Promise<void> {
+  await clearSessionCookies();
 }
 
 function createMockTokens(): UserSessionTokens {

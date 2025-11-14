@@ -8,6 +8,8 @@ from uuid import UUID
 from app.core.service_accounts import ServiceAccountRegistry
 from app.domain.auth import (
     RefreshTokenRepository,
+    ServiceAccountTokenListResult,
+    ServiceAccountTokenStatus,
     UserSessionListResult,
     UserSessionRepository,
     UserSessionTokens,
@@ -30,7 +32,7 @@ from app.services.auth.errors import (
     UserRefreshError,
 )
 from app.services.geoip_service import GeoIPService, get_geoip_service
-from app.services.user_service import UserService
+from app.services.user_service import UserService, get_user_service
 
 
 class AuthService:
@@ -44,18 +46,20 @@ class AuthService:
         user_service: UserService | None = None,
         session_repository: UserSessionRepository | None = None,
         geoip_service: GeoIPService | None = None,
+        session_service: UserSessionService | None = None,
+        service_account_service: ServiceAccountTokenService | None = None,
     ) -> None:
         refresh_repo = refresh_repository or get_refresh_token_repository()
         session_repo = session_repository or get_user_session_repository()
         geoip = geoip_service or get_geoip_service()
         refresh_tokens = RefreshTokenManager(refresh_repo)
         session_store = SessionStore(session_repo, geoip)
-        self._service_accounts = ServiceAccountTokenService(
+        self._service_accounts = service_account_service or ServiceAccountTokenService(
             registry=registry,
             refresh_tokens=refresh_tokens,
         )
-        self._sessions = UserSessionService(
-            refresh_tokens=refresh_tokens,
+        self._sessions = session_service or UserSessionService(
+            refresh_tokens=RefreshTokenManager(refresh_repo),
             session_store=session_store,
             user_service=user_service,
         )
@@ -99,6 +103,27 @@ class AuthService:
         self, jti: str, *, reason: str | None = None
     ) -> None:
         await self._service_accounts.revoke_token(jti, reason=reason)
+
+    async def list_service_account_tokens(
+        self,
+        *,
+        tenant_ids: Sequence[str] | None,
+        include_global: bool,
+        account_query: str | None,
+        fingerprint: str | None,
+        status: ServiceAccountTokenStatus,
+        limit: int,
+        offset: int,
+    ) -> ServiceAccountTokenListResult:
+        return await self._service_accounts.list_tokens(
+            tenant_ids=tenant_ids,
+            include_global=include_global,
+            account_query=account_query,
+            fingerprint=fingerprint,
+            status=status,
+            limit=limit,
+            offset=offset,
+        )
 
     async def login_user(
         self,
@@ -198,11 +223,30 @@ class AuthService:
         )
 
 
-auth_service = AuthService()
+def get_auth_service() -> AuthService:
+    """Return the configured AuthService from the application container."""
+
+    from app.bootstrap.container import get_container
+
+    container = get_container()
+    if container.auth_service is None:
+        container.auth_service = AuthService(user_service=get_user_service())
+    return container.auth_service
+
+
+class _AuthServiceHandle:
+    """Proxy exposing the active AuthService instance."""
+
+    def __getattr__(self, name: str):
+        return getattr(get_auth_service(), name)
+
+
+auth_service = _AuthServiceHandle()
 
 __all__ = [
     "AuthService",
     "auth_service",
+    "get_auth_service",
     "ServiceAccountError",
     "ServiceAccountValidationError",
     "ServiceAccountRateLimitError",

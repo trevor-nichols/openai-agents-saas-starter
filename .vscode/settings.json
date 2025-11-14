@@ -1,5 +1,6 @@
 {
     "files.associations": {
         "*.cursorrules": "markdown"
-    }
+    },
+    "workbench.activityBar.orientation": "horizontal"
 }

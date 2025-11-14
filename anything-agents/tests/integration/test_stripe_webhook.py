@@ -14,6 +14,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import Table
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.bootstrap import get_container
 from app.core.config import get_settings
 from app.infrastructure.persistence.auth import models as auth_models
 from app.infrastructure.persistence.conversations import models as conversation_models
@@ -89,17 +90,17 @@ def webhook_app():
 
 
 @pytest.fixture
-def fake_billing_events(monkeypatch):
+def fake_billing_events():
     service = BillingEventsService()
     backend = QueueBillingEventBackend()
     service.configure(backend=backend, repository=None)
-    monkeypatch.setattr(
-        "app.services.billing_events._billing_events_service", service, raising=False
-    )
-    monkeypatch.setattr(
-        "app.services.billing_events.billing_events_service", service, raising=False
-    )
-    return service
+    container = get_container()
+    original_service = container.billing_events_service
+    container.billing_events_service = service
+    try:
+        yield service
+    finally:
+        container.billing_events_service = original_service
 
 
 def _signature(payload: str, secret: str) -> str:

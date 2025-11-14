@@ -3,24 +3,31 @@ import type { NextRequest } from 'next/server';
 
 import { ACCESS_TOKEN_COOKIE } from '@/lib/config';
 
-const PUBLIC_PATHS = ['/login', '/favicon.ico', '/_next', '/api'];
+const PUBLIC_EXACT_PATHS = new Set(['/', '/pricing', '/features', '/docs', '/login', '/register']);
+const PUBLIC_PREFIXES = ['/password', '/email', '/api', '/_next', '/favicon.ico'];
+const AUTH_EXACT_PATHS = new Set(['/login', '/register']);
+const AUTH_PREFIXES = ['/password', '/email'];
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, search } = request.nextUrl;
 
-  const isPublic = PUBLIC_PATHS.some((path) => pathname.startsWith(path));
+  const isPublic =
+    PUBLIC_EXACT_PATHS.has(pathname) || PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  const isAuthRoute =
+    AUTH_EXACT_PATHS.has(pathname) || AUTH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
   const hasSession = Boolean(request.cookies.get(ACCESS_TOKEN_COOKIE)?.value);
 
   if (!hasSession && !isPublic) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = '/login';
-    loginUrl.searchParams.set('redirectTo', pathname);
+    const intendedPath = `${pathname}${search}` || '/dashboard';
+    loginUrl.searchParams.set('redirectTo', intendedPath);
     return NextResponse.redirect(loginUrl);
   }
 
-  if (hasSession && pathname === '/login') {
+  if (hasSession && isAuthRoute) {
     const homeUrl = request.nextUrl.clone();
-    homeUrl.pathname = '/';
+    homeUrl.pathname = '/dashboard';
     return NextResponse.redirect(homeUrl);
   }
 

@@ -201,4 +201,19 @@ class RateLimiter:
             yield (part or "unknown").replace(" ", "_")
 
 
-rate_limiter = RateLimiter()
+def get_rate_limiter() -> RateLimiter:
+    """Resolve the configured rate limiter instance."""
+
+    from app.bootstrap.container import get_container
+
+    return get_container().rate_limiter
+
+
+class _RateLimiterHandle:
+    """Proxy exposing the active rate limiter."""
+
+    def __getattr__(self, name: str):
+        return getattr(get_rate_limiter(), name)
+
+
+rate_limiter = _RateLimiterHandle()

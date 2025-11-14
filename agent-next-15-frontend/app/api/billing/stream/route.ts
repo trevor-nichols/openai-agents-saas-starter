@@ -1,54 +1,20 @@
 import type { NextRequest } from 'next/server';
 
-import { API_BASE_URL } from '@/lib/config';
-import { getAccessTokenFromCookies } from '@/lib/auth/cookies';
+import { openBillingStream } from '@/lib/server/services/billing';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
-  const accessToken = getAccessTokenFromCookies();
-
-  if (!accessToken) {
-    return new Response('Unauthorized', { status: 401 });
-  }
-
-  const abortController = new AbortController();
-  const abortListener = () => abortController.abort();
-  request.signal.addEventListener('abort', abortListener);
-
   try {
-    const upstream = await fetch(`${API_BASE_URL}/api/v1/billing/stream`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        ...(request.headers.has('x-tenant-role')
-          ? { 'X-Tenant-Role': request.headers.get('x-tenant-role') ?? undefined }
-          : {}),
-      },
-      cache: 'no-store',
-      signal: abortController.signal,
+    return await openBillingStream({
+      signal: request.signal,
+      tenantRole: request.headers.get('x-tenant-role'),
     });
-
-    if (!upstream.body) {
-      return new Response('Upstream stream unavailable.', {
-        status: upstream.status,
-        statusText: upstream.statusText,
-      });
-    }
-
-    const headers = new Headers();
-    headers.set('Content-Type', upstream.headers.get('Content-Type') ?? 'text/event-stream');
-    headers.set('Cache-Control', 'no-cache');
-    headers.set('Connection', 'keep-alive');
-    headers.set('Transfer-Encoding', 'chunked');
-
-    return new Response(upstream.body, {
-      status: upstream.status,
-      statusText: upstream.statusText,
-      headers,
-    });
-  } finally {
-    request.signal.removeEventListener('abort', abortListener);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Failed to open billing stream.';
+    const status = message.toLowerCase().includes('missing access token') ? 401 : 502;
+    return new Response(message, { status });
   }
 }

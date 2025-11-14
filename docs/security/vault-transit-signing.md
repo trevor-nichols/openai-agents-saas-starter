@@ -42,6 +42,31 @@ AuthService
  ├─ Proceed with service-account issuance logic
 ```
 
+### 2.1 Local dev quickstart (Docker + Make)
+
+To exercise this flow without provisioning a real Vault cluster, use the new dev-only helper:
+
+1. `make vault-up` – starts `hashicorp/vault` in dev mode on `http://127.0.0.1:18200`, enables the Transit engine, and prints the env vars you need to export (`VAULT_ADDR`, `VAULT_TOKEN`, `VAULT_TRANSIT_KEY`, `VAULT_VERIFY_ENABLED=true`).
+2. Update your shell or `.env.local` with those exports so both FastAPI and the Starter CLI talk to the dev signer.
+3. Run the API (`make api`) and then `make verify-vault` to execute `starter_cli auth tokens issue-service-account` against the running backend. That command uses the Vault dev signer and will fail if the signature or backend wiring regresses.
+4. When finished, `make vault-down` tears the container down; `make vault-logs` tails the Vault output for troubleshooting.
+
+> ⚠️ This Compose stack is for local testing only. The dev image stores everything in-memory, has no TLS, and uses a static root token. Production/staging deployments must still bring a hardened Vault/KMS setup per the remainder of this document.
+
+### 2.2 Browser issuance bridge
+
+To keep Vault credentials off the browser entirely, `/api/v1/auth/service-accounts/browser-issue` now acts as the signing bridge:
+
+- Tenant admins (or platform operators with override headers) call this endpoint with the same fields as `/service-accounts/issue` plus a required `reason` string.
+- FastAPI validates the session, builds the Vault Transit payload server-side, signs it via the configured Vault client, and immediately calls `auth_service.issue_service_account_refresh_token`. The signature never leaves the server, so browsers can’t replay or tamper with it.
+- The endpoint returns the usual `ServiceAccountTokenResponse`, so the frontend can show the “copy once” UI just like the CLI. Errors from the signer (missing Vault config, rate limits, catalog issues) map to the same HTTP codes as the CLI route (400/429/503).
+- Tenant admins are hard-scoped to their current tenant; the backend automatically injects the tenant ID into the Vault payload and rejects any cross-tenant attempts with HTTP 403. Platform operators with override headers remain exempt so they can troubleshoot customers.
+- All bridge calls are logged via `service_account_browser_issue` events (stage `sign` + `issue`) with the account, tenant, actor, and justification for auditing.
+
+The original `/service-accounts/issue` route (requiring `Authorization: Bearer vault:<signature>`) remains available for headless automation via the CLI. In other words: browsers go through the bridge, automation keeps using Vault-signed HTTP requests.
+
+For cases where we explicitly need to exercise the canonical HTTP endpoint from the web tier (e.g., to replay a Vault-signed request captured from CI), the Next.js frontend now exposes `/app/api/auth/service-accounts/issue`. That proxy requires authenticated human sessions plus the `X-Vault-Authorization`/`X-Vault-Payload` headers obtained from Vault Transit, then forwards them verbatim to FastAPI `/api/v1/auth/service-accounts/issue`.
+
 ## 3. Request & Response Formats
 
 ### 3.1 CLI Payload (pre-signing JSON)

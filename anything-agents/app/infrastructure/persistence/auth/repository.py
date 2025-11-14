@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import jwt
-from sqlalchemy import select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.config import Settings, get_settings
@@ -17,6 +17,9 @@ from app.core.keys import KeyMaterial, load_keyset
 from app.domain.auth import (
     RefreshTokenRecord,
     RefreshTokenRepository,
+    ServiceAccountTokenListResult,
+    ServiceAccountTokenStatus,
+    ServiceAccountTokenView,
     hash_refresh_token,
     make_scope_key,
     verify_refresh_token,
@@ -170,6 +173,79 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
             await self._cache.invalidate(row.account, tenant, row.scope_key)
         return len(rows)
 
+    async def list_service_account_tokens(
+        self,
+        *,
+        tenant_ids: Sequence[str] | None,
+        include_global: bool,
+        account_query: str | None,
+        fingerprint: str | None,
+        status: ServiceAccountTokenStatus,
+        limit: int,
+        offset: int,
+    ) -> ServiceAccountTokenListResult:
+        async with self._session_factory() as session:
+            conditions = self._build_list_conditions(
+                tenant_ids=tenant_ids,
+                include_global=include_global,
+                account_query=account_query,
+                fingerprint=fingerprint,
+                status=status,
+            )
+
+            total_stmt = select(func.count()).select_from(ServiceAccountToken).where(*conditions)
+            total_result = await session.execute(total_stmt)
+            total = int(total_result.scalar_one())
+
+            query = (
+                select(ServiceAccountToken)
+                .where(*conditions)
+                .order_by(ServiceAccountToken.issued_at.desc())
+                .limit(limit)
+                .offset(offset)
+            )
+            rows = (await session.execute(query)).scalars().all()
+
+        tokens = [self._row_to_view(row) for row in rows]
+        return ServiceAccountTokenListResult(tokens=tokens, total=total)
+
+    def _build_list_conditions(
+        self,
+        *,
+        tenant_ids: Sequence[str] | None,
+        include_global: bool,
+        account_query: str | None,
+        fingerprint: str | None,
+        status: ServiceAccountTokenStatus,
+    ) -> list[Any]:
+        conditions: list[Any] = []
+
+        tenant_filters: list[Any] = []
+        if tenant_ids:
+            uuid_filters = [uuid.UUID(value) for value in tenant_ids if value]
+            if uuid_filters:
+                tenant_filters.append(ServiceAccountToken.tenant_id.in_(uuid_filters))
+        if include_global:
+            tenant_filters.append(ServiceAccountToken.tenant_id.is_(None))
+        if tenant_filters:
+            conditions.append(or_(*tenant_filters))
+
+        if account_query:
+            pattern = f"%{account_query.strip()}%"
+            conditions.append(ServiceAccountToken.account.ilike(pattern))
+
+        if fingerprint:
+            conditions.append(ServiceAccountToken.fingerprint == fingerprint)
+
+        now = datetime.now(UTC)
+        if status == ServiceAccountTokenStatus.ACTIVE:
+            conditions.append(ServiceAccountToken.revoked_at.is_(None))
+            conditions.append(ServiceAccountToken.expires_at > now)
+        elif status == ServiceAccountTokenStatus.REVOKED:
+            conditions.append(ServiceAccountToken.revoked_at.is_not(None))
+
+        return conditions
+
     async def _revoke_existing(
         self,
         session: AsyncSession,
@@ -210,6 +286,21 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
             fingerprint=row.fingerprint,
             signing_kid=row.signing_kid,
             session_id=row.session_id,
+        )
+
+    @staticmethod
+    def _row_to_view(row: ServiceAccountToken) -> ServiceAccountTokenView:
+        return ServiceAccountTokenView(
+            jti=row.refresh_jti,
+            account=row.account,
+            tenant_id=str(row.tenant_id) if row.tenant_id else None,
+            scopes=list(row.scopes),
+            expires_at=row.expires_at,
+            issued_at=row.issued_at,
+            revoked_at=row.revoked_at,
+            revoked_reason=row.revoked_reason,
+            fingerprint=row.fingerprint,
+            signing_kid=row.signing_kid,
         )
 
     def _rehydrate_token(self, row: ServiceAccountToken) -> str | None:

@@ -17,6 +17,39 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 ## Frontend
 - The frontend uses the HeyAPI SDK to generate the API client. The API client is generated into the `lib/api/client` directory.
 - All hooks use TanStack Query
+- Use Shadcn components from components/ui/. DO NOT create custom components. If a component we need is not included yet, add it. Refer to `docs/frontend/ui/components.md` for the latest list of components.
+- Detailed frontend data-access patterns (SDK → services → API routes → hooks) live in `docs/frontend/data-access.md`. Review that doc before adding new queries or routes.
+- Separation of Concerns
+  - lib/queries/ = Server data (TanStack Query)
+  - hooks/ = UI logic, local state, browser APIs
+
+### Frontend Component Architecture Pattern
+
+- **Feature-centric directories** live under `features/<domain>/` (e.g., `features/chat`, `features/billing`, `features/account`). Each exports a single orchestrator consumed by the page.
+- **Directory shape per feature:**
+
+  ```
+  features/chat/
+    index.ts              // public exports for the feature
+    ChatWorkspace.tsx     // orchestrator/container (client component)
+    components/
+      MessageList.tsx
+      MessageInput.tsx
+      ConversationHeader.tsx
+      index.ts
+    constants.ts          // copy, layout config, status labels
+    types.ts              // view-specific types (domain types remain in /types)
+    hooks/
+      useMessageFocus.ts  // purely view-level composition
+      index.ts
+    utils/
+      formatMessage.ts    // pure helpers scoped to this feature
+  ```
+
+- **Pages stay lean:** `app/.../page.tsx` imports the feature orchestrator and handles only layout/metadata. Shared chrome for a route group belongs in `_components/` next to the layout, while the feature content stays within `features/**`.
+- **Data layer remains centralized:** Continue using `lib/api`, `lib/queries`, `lib/chat`, and `/types` for network/data contracts. Feature hooks only compose those primitives; anything broadly useful graduates to `components/ui/` or `components/shared/`.
+- **Ownership split:** Engineering owns the shared hooks/services in `lib/**`; the design/UI team iterates inside `features/<domain>/components` using those hooks. Any new cross-feature logic graduates back into `lib/**` so other surfaces stay consistent.
+- **Testing:** Colocate unit/interaction tests with the orchestrator (`ChatWorkspace.test.tsx`). Promote reusable test helpers to existing shared testing utilities when multiple features need them.
 
 ## CLI Charter – Starter CLI (SC)
 - **Purpose:** The SC is the single operator entrypoint for provisioning secrets, wiring third-party providers, generating env files for both the FastAPI backend and the Next.js frontend, and exporting audit artifacts. It replaces the legacy “Anything Agents” branding.
@@ -28,8 +61,10 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 # Development Guidelines
 - You must maintain a professional clean architecture, referring to the documentations of the OpenAI Agents SDK and the `docs/openai-agents-sdk` directory whenever needed in order to ensure you abide by the latest API framework. 
 - Avoid feature gates/flags and any backwards compability changes - since our app is still unreleased
-- **Backend**: Run `hatch run lint` and `hatch run pyright` after all edits to ensure there are no errors
+- **Backend**: Run `hatch run lint` and `hatch run pyright` after all edits in backend to ensure there are no errors
+- **Fronted**: Run `pnpm lint` and `pnpm type-check` after all edits in frontend to ensure there are no errors
 - Keep FastAPI routers roughly ≤300 lines by default—split files when workflows/dependencies diverge, but it’s acceptable for a single router to exceed that limit when it embeds tightly coupled security or validation helpers; extract those helpers into shared modules only once they are reused elsewhere.
+- Avoid Pragmatic coupling
 
 # Test Environment Contract
 - `conftest.py` at the repository root forces the entire pytest run onto SQLite + fakeredis and disables billing/auto migrations. **Do not** remove or bypass this file; any new package (CLI included) must behave correctly when those overrides are in effect.
@@ -41,6 +76,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 - Throughout the codebase, you will see `SNAPSHOT.md` files. `SNAPSHOT.md` files contain the full structure of the codebase at a given point in time. Refer to these files when you need understand the architecture or need help navigating the codebase.
 - Refer to `docs/trackers/` for the latest status of the codebase. Keep these trackers up to date with the latest changes and status of the codebase.
 - When applying database migrations or generating new ones, always use the Makefile targets (`make migrate`, `make migration-revision`) so your `.env.local`/`.env` secrets and `.env.compose` values are loaded consistently. These wrappers take care of wiring Alembic to the right Postgres instance (local Docker or remote) without manual exports.
+- Need to test Vault Transit locally? Use `make vault-up` to start the dev signer, `make verify-vault` to run the CLI issuance smoke test, and `make vault-down` when you’re done. Details live in `docs/security/vault-transit-signing.md`.
 
 # Codebase Patterns
 openai-agents-starter/

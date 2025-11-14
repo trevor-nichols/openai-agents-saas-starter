@@ -328,6 +328,39 @@ class Settings(BaseSettings):
         description="Optional Resend template ID for password reset messages.",
         alias="RESEND_PASSWORD_RESET_TEMPLATE_ID",
     )
+    status_subscription_token_ttl_minutes: int = Field(
+        default=60,
+        description="Status subscription email verification token lifetime in minutes.",
+        alias="STATUS_SUBSCRIPTION_TOKEN_TTL_MINUTES",
+    )
+    status_subscription_email_rate_limit_per_hour: int = Field(
+        default=5,
+        description="Email subscription attempts per IP per hour.",
+        alias="STATUS_SUBSCRIPTION_EMAIL_RATE_LIMIT_PER_HOUR",
+    )
+    status_subscription_ip_rate_limit_per_hour: int = Field(
+        default=20,
+        description="Webhook subscription attempts per IP per hour.",
+        alias="STATUS_SUBSCRIPTION_IP_RATE_LIMIT_PER_HOUR",
+    )
+    status_subscription_token_pepper: str = Field(
+        default="status-subscription-token-pepper",
+        description="Pepper used to hash status subscription verification tokens.",
+        alias="STATUS_SUBSCRIPTION_TOKEN_PEPPER",
+    )
+    status_subscription_encryption_key: str | None = Field(
+        default=None,
+        description=(
+            "Override secret used to encrypt subscription targets and webhook secrets. "
+            "Defaults to SECRET_KEY when unset."
+        ),
+        alias="STATUS_SUBSCRIPTION_ENCRYPTION_KEY",
+    )
+    status_subscription_webhook_timeout_seconds: int = Field(
+        default=5,
+        description="HTTP timeout applied when delivering webhook challenges (seconds).",
+        alias="STATUS_SUBSCRIPTION_WEBHOOK_TIMEOUT_SECONDS",
+    )
     auth_lockout_threshold: int = Field(
         default=5,
         description="Failed login attempts allowed before locking the account.",

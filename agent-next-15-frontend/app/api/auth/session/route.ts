@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
-import { authenticatedFetch } from '@/lib/auth/http';
 import { loadSessionSummary } from '@/lib/auth/session';
+import { getCurrentUserProfile } from '@/lib/server/services/auth';
 
 export async function GET() {
   const summary = await loadSessionSummary();
@@ -10,13 +10,9 @@ export async function GET() {
   }
 
   try {
-    const response = await authenticatedFetch('/api/v1/auth/me', {
-      method: 'GET',
-    });
-    const data = await response.json();
     return NextResponse.json({
       ...summary,
-      profile: data?.data ?? data,
+      profile: await getCurrentUserProfile(),
     });
   } catch (error) {
     return NextResponse.json(

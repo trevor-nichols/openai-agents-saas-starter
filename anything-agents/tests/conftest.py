@@ -22,6 +22,7 @@ from sqlalchemy.dialects.postgresql import CITEXT, JSONB
 from sqlalchemy.ext.compiler import compiles
 from starter_shared import config as shared_config
 
+from app.bootstrap import reset_container
 from app.core import config as config_module
 from app.domain.conversations import (
     ConversationMessage,
@@ -85,6 +86,14 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     for item in items:
         if "stripe_replay" in item.keywords:
             item.add_marker(skip_marker)
+
+
+@pytest.fixture(autouse=True)
+def _reset_application_container() -> Generator[None, None, None]:
+    """Ensure each test starts with a fresh dependency container."""
+
+    reset_container()
+    yield
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -191,7 +200,9 @@ class EphemeralConversationRepository(ConversationRepository):
 
 
 @pytest.fixture(autouse=True)
-def _configure_conversation_repo() -> Generator[None, None, None]:
+def _configure_conversation_repo(
+    _reset_application_container,
+) -> Generator[None, None, None]:
     """Ensure services/tests share a deterministic conversation repository."""
 
     repository = EphemeralConversationRepository()

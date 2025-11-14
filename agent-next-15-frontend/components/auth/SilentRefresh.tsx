@@ -1,6 +1,6 @@
 'use client';
 
-import { useSilentRefresh } from '@/hooks/useSilentRefresh';
+import { useSilentRefresh } from '@/lib/queries/session';
 
 export function SilentRefresh() {
   useSilentRefresh();

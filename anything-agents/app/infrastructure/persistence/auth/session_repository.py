@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import base64
 import hashlib
 import ipaddress
 from datetime import UTC, datetime
 from typing import Any, cast
 from uuid import UUID
 
-from cryptography.fernet import Fernet
 from sqlalchemy import func, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -24,6 +22,7 @@ from app.domain.auth import (
 )
 from app.infrastructure.db import get_async_sessionmaker
 from app.infrastructure.persistence.auth.models import UserSession as UserSessionModel
+from app.infrastructure.security.cipher import build_cipher, encrypt_optional
 
 
 class PostgresUserSessionRepository(UserSessionRepository):
@@ -38,7 +37,8 @@ class PostgresUserSessionRepository(UserSessionRepository):
         self._hash_salt = (settings.auth_session_ip_hash_salt or settings.secret_key or "").encode(
             "utf-8"
         )
-        self._cipher = self._build_cipher(settings)
+        secret = settings.auth_session_encryption_key or settings.secret_key
+        self._cipher = build_cipher(secret)
 
     async def upsert_session(
         self,
@@ -256,17 +256,7 @@ class PostgresUserSessionRepository(UserSessionRepository):
         return digest
 
     def _encrypt_ip(self, value: str | None) -> bytes | None:
-        if not value or not self._cipher:
-            return None
-        return self._cipher.encrypt(value.encode("utf-8"))
-
-    def _build_cipher(self, settings: Settings) -> Fernet | None:
-        secret = settings.auth_session_encryption_key or settings.secret_key
-        if not secret:
-            return None
-        digest = hashlib.sha256(secret.encode("utf-8")).digest()
-        key = base64.urlsafe_b64encode(digest)
-        return Fernet(key)
+        return encrypt_optional(self._cipher, value)
 
     def _normalize_ip(self, value: str | None) -> str | None:
         if not value:

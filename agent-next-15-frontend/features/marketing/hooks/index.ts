@@ -1,0 +1,1 @@
+export { useMarketingAnalytics } from './useMarketingAnalytics';

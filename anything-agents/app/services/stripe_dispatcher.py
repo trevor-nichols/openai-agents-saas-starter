@@ -385,6 +385,25 @@ def _coerce_datetime(value) -> datetime | None:
         return None
 
 
-stripe_event_dispatcher = StripeEventDispatcher()
+def get_stripe_event_dispatcher() -> StripeEventDispatcher:
+    """Resolve the configured Stripe event dispatcher."""
 
-__all__ = ["stripe_event_dispatcher", "StripeEventDispatcher"]
+    from app.bootstrap.container import get_container
+
+    return get_container().stripe_event_dispatcher
+
+
+class _StripeEventDispatcherHandle:
+    """Proxy exposing the container-backed dispatcher."""
+
+    def __getattr__(self, name: str):
+        return getattr(get_stripe_event_dispatcher(), name)
+
+
+stripe_event_dispatcher = _StripeEventDispatcherHandle()
+
+__all__ = [
+    "StripeEventDispatcher",
+    "get_stripe_event_dispatcher",
+    "stripe_event_dispatcher",
+]

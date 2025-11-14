@@ -1,0 +1,61 @@
+import Link from 'next/link';
+
+import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList } from '@/components/ui/navigation-menu';
+import { Button } from '@/components/ui/button';
+import { GlassPanel, InlineTag } from '@/components/ui/foundation';
+
+import type { CtaLink } from '@/features/marketing/types';
+import type { FeatureNavItem } from '../types';
+
+interface FeatureHeroProps {
+  eyebrow: string;
+  title: string;
+  description: string;
+  primaryCta: CtaLink;
+  secondaryCta: CtaLink;
+  navItems: FeatureNavItem[];
+  onCtaClick: (meta: { location: string; cta: CtaLink }) => void;
+}
+
+export function FeatureHero({ eyebrow, title, description, primaryCta, secondaryCta, navItems, onCtaClick }: FeatureHeroProps) {
+  const handleClick = (cta: CtaLink, location: string) => () => onCtaClick({ location, cta });
+
+  return (
+    <section className="space-y-8">
+      <InlineTag tone="default">{eyebrow}</InlineTag>
+      <div className="space-y-4">
+        <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">{title}</h1>
+        <p className="text-lg text-foreground/70">{description}</p>
+      </div>
+      <div className="flex flex-wrap gap-4">
+        <Button size="lg" onClick={handleClick(primaryCta, 'features-hero-primary')} asChild>
+          <Link href={primaryCta.href}>{primaryCta.label}</Link>
+        </Button>
+        <Button size="lg" variant="outline" onClick={handleClick(secondaryCta, 'features-hero-secondary')} asChild>
+          <Link href={secondaryCta.href}>{secondaryCta.label}</Link>
+        </Button>
+      </div>
+      <GlassPanel className="space-y-3 border border-white/10">
+        <p className="text-xs uppercase tracking-[0.3em] text-foreground/50">Jump to a pillar</p>
+        <NavigationMenu>
+          <NavigationMenuList>
+            {navItems.map((item) => {
+              const navCta: CtaLink = { label: item.label, href: `#${item.id}`, intent: 'secondary' };
+              return (
+                <NavigationMenuItem key={item.id}>
+                  <NavigationMenuLink
+                    href={navCta.href}
+                    className="text-sm font-semibold text-foreground hover:text-primary"
+                    onClick={() => onCtaClick({ location: `features-nav-${item.id}`, cta: navCta })}
+                  >
+                    {item.label}
+                  </NavigationMenuLink>
+                </NavigationMenuItem>
+              );
+            })}
+          </NavigationMenuList>
+        </NavigationMenu>
+      </GlassPanel>
+    </section>
+  );
+}

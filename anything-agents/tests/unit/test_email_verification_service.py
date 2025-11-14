@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from typing import cast
+from typing import Any, cast
 from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
 
 import pytest
 
+from app.bootstrap import get_container
 from app.domain.email_verification import (
     EmailVerificationTokenRecord,
     EmailVerificationTokenStore,
@@ -82,16 +83,14 @@ def sample_user() -> UserRecord:
 
 
 @pytest.mark.asyncio
-async def test_send_verification_email_saves_token(
-    monkeypatch: pytest.MonkeyPatch, sample_user: UserRecord
-) -> None:
+async def test_send_verification_email_saves_token(sample_user: UserRecord) -> None:
     repo = FakeUserRepository(sample_user)
     store = FakeTokenStore()
     notifier = FakeNotifier()
 
     fake_auth = AsyncMock()
     fake_auth.revoke_user_sessions = AsyncMock(return_value=None)
-    monkeypatch.setattr("app.services.email_verification_service.auth_service", fake_auth)
+    cast(Any, get_container()).auth_service = fake_auth
 
     service = EmailVerificationService(
         cast(UserRepository, repo),
@@ -132,16 +131,14 @@ async def test_send_verification_skips_when_verified(sample_user: UserRecord) ->
 
 
 @pytest.mark.asyncio
-async def test_verify_token_updates_user(
-    monkeypatch: pytest.MonkeyPatch, sample_user: UserRecord
-) -> None:
+async def test_verify_token_updates_user(sample_user: UserRecord) -> None:
     repo = FakeUserRepository(sample_user)
     store = FakeTokenStore()
     notifier = FakeNotifier()
 
     fake_auth = AsyncMock()
     fake_auth.revoke_user_sessions = AsyncMock(return_value=None)
-    monkeypatch.setattr("app.services.email_verification_service.auth_service", fake_auth)
+    cast(Any, get_container()).auth_service = fake_auth
 
     service = EmailVerificationService(
         cast(UserRepository, repo),

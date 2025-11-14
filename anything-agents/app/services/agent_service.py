@@ -24,9 +24,8 @@ from app.domain.conversations import (
 )
 from app.infrastructure.openai import runner as agent_runner
 from app.infrastructure.openai.sessions import build_conversation_session
+from app.services.conversation_service import ConversationService, get_conversation_service
 from app.utils.tools import ToolRegistry, initialize_tools
-
-from .conversation_service import conversation_service
 
 
 @function_tool
@@ -40,7 +39,7 @@ async def get_current_time() -> str:
 async def search_conversations(query: str) -> str:
     """Search cached conversations for a query string."""
 
-    results = await conversation_service.search(query)
+    results = await get_conversation_service().search(query)
     if not results:
         return "No conversations contained the requested text."
 
@@ -159,9 +158,15 @@ class AgentRegistry:
 class AgentService:
     """Core façade that orchestrates agent interactions."""
 
-    def __init__(self, conversation_repo: ConversationRepository | None = None):
+    def __init__(
+        self,
+        *,
+        conversation_repo: ConversationRepository | None = None,
+        conversation_service: ConversationService | None = None,
+    ) -> None:
+        self._conversation_service = conversation_service or get_conversation_service()
         if conversation_repo is not None:
-            conversation_service.set_repository(conversation_repo)
+            self._conversation_service.set_repository(conversation_repo)
 
         self._tool_registry = initialize_tools()
         self._agent_registry = AgentRegistry(self._tool_registry)
@@ -174,7 +179,7 @@ class AgentService:
         agent_name, agent = self._resolve_agent(preferred_agent)
 
         user_message = ConversationMessage(role="user", content=request.message)
-        await conversation_service.append_message(
+        await self._conversation_service.append_message(
             conversation_id,
             user_message,
             metadata=ConversationMetadata(
@@ -196,7 +201,7 @@ class AgentService:
             role="assistant",
             content=str(result.final_output),
         )
-        await conversation_service.append_message(
+        await self._conversation_service.append_message(
             conversation_id,
             assistant_message,
             metadata=ConversationMetadata(
@@ -228,7 +233,7 @@ class AgentService:
         agent_name, agent = self._resolve_agent(preferred_agent)
 
         user_message = ConversationMessage(role="user", content=request.message)
-        await conversation_service.append_message(
+        await self._conversation_service.append_message(
             conversation_id,
             user_message,
             metadata=ConversationMetadata(
@@ -274,7 +279,7 @@ class AgentService:
             role="assistant",
             content=complete_response,
         )
-        await conversation_service.append_message(
+        await self._conversation_service.append_message(
             conversation_id,
             assistant_message,
             metadata=ConversationMetadata(
@@ -286,7 +291,7 @@ class AgentService:
         await self._sync_session_state(conversation_id, session_id)
 
     async def get_conversation_history(self, conversation_id: str) -> ConversationHistory:
-        messages = await conversation_service.get_messages(conversation_id)
+        messages = await self._conversation_service.get_messages(conversation_id)
         if not messages:
             raise ValueError(f"Conversation {conversation_id} not found")
 
@@ -301,7 +306,7 @@ class AgentService:
     async def list_conversations(self) -> list[ConversationSummary]:
         summaries: list[ConversationSummary] = []
 
-        for record in await conversation_service.iterate_conversations():
+        for record in await self._conversation_service.iterate_conversations():
             if not record.messages:
                 continue
 
@@ -320,13 +325,13 @@ class AgentService:
         return summaries
 
     async def clear_conversation(self, conversation_id: str) -> None:
-        await conversation_service.clear_conversation(conversation_id)
+        await self._conversation_service.clear_conversation(conversation_id)
 
     @property
     def conversation_repository(self):
         """Expose the underlying repository for integration/testing scenarios."""
 
-        return conversation_service.repository
+        return self._conversation_service.repository
 
     def list_available_agents(self) -> list[AgentSummary]:
         return [
@@ -364,7 +369,7 @@ class AgentService:
         return "triage", fallback
 
     async def _acquire_sdk_session(self, conversation_id: str) -> tuple[str, SQLAlchemySession]:
-        state = await conversation_service.get_session_state(conversation_id)
+        state = await self._conversation_service.get_session_state(conversation_id)
         if state and state.sdk_session_id:
             session_id = state.sdk_session_id
         else:
@@ -373,7 +378,7 @@ class AgentService:
         return session_id, session_handle
 
     async def _sync_session_state(self, conversation_id: str, session_id: str) -> None:
-        await conversation_service.update_session_state(
+        await self._conversation_service.update_session_state(
             conversation_id,
             ConversationSessionState(
                 sdk_session_id=session_id,
@@ -389,5 +394,47 @@ class AgentService:
             timestamp=message.timestamp.isoformat(),
         )
 
+def build_agent_service(
+    *,
+    conversation_service: ConversationService | None = None,
+    conversation_repository: ConversationRepository | None = None,
+) -> AgentService:
+    return AgentService(
+        conversation_repo=conversation_repository,
+        conversation_service=conversation_service,
+    )
 
-agent_service = AgentService()
+
+def get_agent_service() -> AgentService:
+    from app.bootstrap.container import get_container
+
+    container = get_container()
+    if container.agent_service is None:
+        container.agent_service = build_agent_service(
+            conversation_service=container.conversation_service,
+            conversation_repository=None,
+        )
+    return container.agent_service
+
+
+class _AgentServiceHandle:
+    def __getattr__(self, name: str):
+        return getattr(get_agent_service(), name)
+
+    def __setattr__(self, name: str, value):
+        setattr(get_agent_service(), name, value)
+
+    def __delattr__(self, name: str):
+        delattr(get_agent_service(), name)
+
+
+agent_service = _AgentServiceHandle()
+
+
+__all__ = [
+    "AgentRegistry",
+    "AgentService",
+    "agent_service",
+    "build_agent_service",
+    "get_agent_service",
+]

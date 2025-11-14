@@ -9,7 +9,7 @@ from datetime import UTC, datetime, timedelta
 from time import perf_counter
 from uuid import uuid4
 
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 from app.core.security import TokenSignerError, get_token_signer
 from app.core.service_accounts import (
     ServiceAccountCatalogError,
@@ -18,6 +18,7 @@ from app.core.service_accounts import (
     ServiceAccountRegistry,
     get_default_service_account_registry,
 )
+from app.domain.auth import ServiceAccountTokenListResult, ServiceAccountTokenStatus
 from app.observability.logging import log_event
 from app.observability.metrics import observe_service_account_issuance
 
@@ -29,6 +30,11 @@ from .errors import (
 )
 from .refresh_token_manager import RefreshTokenManager
 
+ACCOUNT_WINDOW_SECONDS = 60
+ACCOUNT_BURST_LIMIT = 5
+GLOBAL_WINDOW_SECONDS = 60
+GLOBAL_BURST_LIMIT = 30
+
 
 class ServiceAccountTokenService:
     """Issues refresh tokens for machine-to-machine accounts with rate limiting."""
@@ -38,6 +44,7 @@ class ServiceAccountTokenService:
         *,
         registry: ServiceAccountRegistry | None,
         refresh_tokens: RefreshTokenManager,
+        settings: Settings | None = None,
     ) -> None:
         if registry is None:
             try:
@@ -49,6 +56,7 @@ class ServiceAccountTokenService:
         self._lock = asyncio.Lock()
         self._per_account_window: dict[str, deque[datetime]] = {}
         self._global_window: deque[datetime] = deque()
+        self._settings = settings or get_settings()
 
     async def issue_refresh_token(
         self,
@@ -96,7 +104,6 @@ class ServiceAccountTokenService:
 
             issued_at = now
             expires_at = issued_at + timedelta(minutes=ttl_minutes)
-            settings = get_settings()
             payload = {
                 "sub": f"service-account:{account}",
                 "account": account,
@@ -106,14 +113,14 @@ class ServiceAccountTokenService:
                 "iat": int(issued_at.timestamp()),
                 "nbf": int(issued_at.timestamp()),
                 "exp": int(expires_at.timestamp()),
-                "iss": settings.app_name,
+                "iss": self._settings.app_name,
             }
             if tenant_id and definition.requires_tenant:
                 payload["tenant_id"] = tenant_id
             if fingerprint:
                 payload["fingerprint"] = fingerprint
 
-            signer = get_token_signer(settings)
+            signer = get_token_signer(self._settings)
             try:
                 signed = signer.sign(payload)
             except TokenSignerError as exc:
@@ -193,6 +200,52 @@ class ServiceAccountTokenService:
     async def revoke_token(self, jti: str, *, reason: str | None) -> None:
         await self._refresh_tokens.revoke(jti, reason=reason, require=False)
 
+    async def list_tokens(
+        self,
+        *,
+        tenant_ids: Sequence[str] | None,
+        include_global: bool,
+        account_query: str | None,
+        fingerprint: str | None,
+        status: ServiceAccountTokenStatus,
+        limit: int,
+        offset: int,
+    ) -> ServiceAccountTokenListResult:
+        started = perf_counter()
+        try:
+            result = await self._refresh_tokens.list_tokens(
+                tenant_ids=tenant_ids,
+                include_global=include_global,
+                account_query=account_query,
+                fingerprint=fingerprint,
+                status=status,
+                limit=limit,
+                offset=offset,
+                require=False,
+            )
+            log_event(
+                "service_account_tokens_list",
+                result="success",
+                tenant_scope="all" if tenant_ids is None else tenant_ids,
+                include_global=include_global,
+                account_query=bool(account_query),
+                fingerprint=bool(fingerprint),
+                status=status.value,
+                duration_ms=(perf_counter() - started) * 1000,
+            )
+            return result
+        except Exception as exc:  # pragma: no cover - logged & re-raised
+            log_event(
+                "service_account_tokens_list",
+                result="error",
+                reason=str(exc),
+                tenant_scope="all" if tenant_ids is None else tenant_ids,
+                include_global=include_global,
+                status=status.value,
+                duration_ms=(perf_counter() - started) * 1000,
+            )
+            raise
+
     def _validate_tenant(
         self, definition: ServiceAccountDefinition, tenant_id: str | None
     ) -> None:
@@ -233,16 +286,17 @@ class ServiceAccountTokenService:
         return requested_ttl
 
     def _enforce_rate_limits(self, account: str, now: datetime) -> None:
-        cutoff = now - timedelta(minutes=1)
+        cutoff = now - timedelta(seconds=ACCOUNT_WINDOW_SECONDS)
 
         queue = self._per_account_window.setdefault(account, deque())
         while queue and queue[0] <= cutoff:
             queue.popleft()
 
-        while self._global_window and self._global_window[0] <= cutoff:
+        global_cutoff = now - timedelta(seconds=GLOBAL_WINDOW_SECONDS)
+        while self._global_window and self._global_window[0] <= global_cutoff:
             self._global_window.popleft()
 
-        if len(queue) >= 5:
+        if len(queue) >= ACCOUNT_BURST_LIMIT:
             log_event(
                 "service_account_rate_limit",
                 level="warning",
@@ -254,7 +308,7 @@ class ServiceAccountTokenService:
                 f"Issuance rate limit exceeded for account '{account}'. Retry later."
             )
 
-        if len(self._global_window) >= 30:
+        if len(self._global_window) >= GLOBAL_BURST_LIMIT:
             log_event(
                 "service_account_rate_limit",
                 level="warning",

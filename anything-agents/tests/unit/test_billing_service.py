@@ -10,8 +10,9 @@ from sqlalchemy import Table, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.infrastructure.persistence.auth import models as auth_models  # noqa: F401
+from app.infrastructure.persistence.billing import models as billing_models
 from app.infrastructure.persistence.billing.postgres import PostgresBillingRepository
-from app.infrastructure.persistence.conversations import models as persistence_models
+from app.infrastructure.persistence.conversations import models as conversation_models
 from app.services.billing_service import (
     BillingService,
     PaymentProviderError,
@@ -104,12 +105,12 @@ class ErrorGateway(FakeGateway):
 TABLES_TO_CREATE = cast(
     tuple[Table, ...],
     (
-        persistence_models.TenantAccount.__table__,
-        persistence_models.BillingPlan.__table__,
-        persistence_models.PlanFeature.__table__,
-        persistence_models.TenantSubscription.__table__,
-        persistence_models.SubscriptionInvoice.__table__,
-        persistence_models.SubscriptionUsage.__table__,
+        conversation_models.TenantAccount.__table__,
+        billing_models.BillingPlan.__table__,
+        billing_models.PlanFeature.__table__,
+        billing_models.TenantSubscription.__table__,
+        billing_models.SubscriptionInvoice.__table__,
+        billing_models.SubscriptionUsage.__table__,
     ),
 )
 
@@ -126,7 +127,7 @@ async def billing_context():
 
     async with session_factory() as session:
         session.add(
-            persistence_models.TenantAccount(
+            conversation_models.TenantAccount(
                 id=tenant_id,
                 slug="tenant",
                 name="Test Tenant",
@@ -149,7 +150,7 @@ async def billing_context():
 
 
 def _default_plans():
-    starter = persistence_models.BillingPlan(
+    starter = billing_models.BillingPlan(
         code="starter",
         name="Starter",
         interval="monthly",
@@ -160,7 +161,7 @@ def _default_plans():
         seat_included=1,
         feature_toggles={"enable_web_search": False},
     )
-    pro = persistence_models.BillingPlan(
+    pro = billing_models.BillingPlan(
         code="pro",
         name="Pro",
         interval="monthly",
@@ -246,12 +247,12 @@ async def test_ingest_invoice_snapshot_records_invoice_and_usage(billing_context
 
     async with billing_context.session_factory() as session:
         invoice = await session.scalar(
-            select(persistence_models.SubscriptionInvoice).where(
-                persistence_models.SubscriptionInvoice.external_invoice_id == "in_local"
+            select(billing_models.SubscriptionInvoice).where(
+                billing_models.SubscriptionInvoice.external_invoice_id == "in_local"
             )
         )
         assert invoice is not None
-        usage = await session.scalar(select(persistence_models.SubscriptionUsage))
+        usage = await session.scalar(select(billing_models.SubscriptionUsage))
         assert usage is not None
         assert usage.quantity == 5
 
@@ -301,7 +302,7 @@ async def test_record_usage_logs_entry(billing_context):
     )
 
     async with billing_context.session_factory() as session:
-        rows = await session.execute(select(persistence_models.SubscriptionUsage))
+        rows = await session.execute(select(billing_models.SubscriptionUsage))
         usage = rows.scalar_one()
         assert usage.quantity == 5
 

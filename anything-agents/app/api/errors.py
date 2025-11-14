@@ -18,9 +18,11 @@ def _http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
         message=exc.detail if isinstance(exc.detail, str) else str(exc.detail),
         details=getattr(exc, "headers", None),
     )
+    body = payload.model_dump()
+    body.setdefault("detail", payload.message)
     return JSONResponse(
         status_code=exc.status_code,
-        content=payload.model_dump(),
+        content=body,
         headers=getattr(exc, "headers", None),
     )
 

@@ -7,26 +7,30 @@
 // Dependents:
 // - All page.tsx files in the application will be wrapped by this layout.
 
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css"; // Import global styles
+import type { Metadata } from 'next';
+import { Geist, Geist_Mono } from 'next/font/google';
+
+import { cn } from '@/lib/utils';
+
+import './globals.css'; // Import global styles
+import { Providers } from './providers';
 
 const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+  variable: '--font-geist-sans',
+  subsets: ['latin'],
 });
 
 const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  variable: '--font-geist-mono',
+  subsets: ['latin'],
 });
 
 // --- Metadata Configuration ---
 // Defines the default metadata for the application (e.g., title, description).
 // This can be overridden by individual pages.
 export const metadata: Metadata = {
-  title: "Anything Agents Frontend",
-  description: "A modern frontend for interacting with Anything Agents API.",
+  title: 'Anything Agents Frontend',
+  description: 'A modern frontend for interacting with Anything Agents API.',
 };
 
 // --- RootLayout Component ---
@@ -37,12 +41,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {/* children represents the content of the currently active page or nested layout */}
-        {children}
+    <html lang="en" suppressHydrationWarning>
+      <body className={cn(geistSans.variable, geistMono.variable, 'min-h-screen bg-background text-foreground antialiased')}>
+        <Providers>
+          {/* children represents the content of the currently active page or nested layout */}
+          {children}
+        </Providers>
       </body>
     </html>
   );
