@@ -6,8 +6,9 @@ import type { MarketingFaqItem, CtaConfig } from '@/features/marketing/types';
 export const DOCS_HERO = {
   eyebrow: 'Documentation',
   title: 'Guides that match the architecture',
-  description: 'Starter CLI runbooks, API references, and ops checklists live alongside the codebase so your team ships faster.',
-  lastUpdated: 'November 13, 2025',
+  description:
+    'Starter CLI playbooks, auth runbooks, billing references, and status tooling live inside the repo so shipping never depends on tribal knowledge.',
+  lastUpdated: 'November 14, 2025',
 } as const;
 
 export const DOC_NAV_ITEMS: DocNavItem[] = [
@@ -21,35 +22,35 @@ export const DOC_SECTIONS: DocSectionEntry[] = [
   {
     id: 'getting-started',
     title: 'Getting started',
-    summary: 'Clone the repo, hydrate envs via Starter CLI, and boot both stacks with predictable defaults.',
+    summary: 'Prep local + cloud environments with the Starter CLI, Make targets, and Docker workflow.',
     bullets: [
-      'Starter CLI env sync and answers files',
-      'Docker + Make targets for local dev',
-      'Shared JWT keys + Postgres migrations',
+      'Starter CLI env sync + answers files',
+      'Docker + Make commands for dev/prod parity',
+      'Shared JWT keys, Postgres migrations, and seed data',
     ],
     badge: 'Foundation',
-    cta: { label: 'Starter CLI guide', href: 'https://github.com/openai/openai-agents-starter/blob/main/docs/trackers/complete/MILESTONE_CLI.md', intent: 'primary' },
+    cta: { label: 'Starter CLI quickstart', href: 'https://github.com/openai/openai-agents-starter/blob/main/docs/trackers/complete/MILESTONE_CLI.md', intent: 'primary' },
   },
   {
     id: 'auth-billing',
     title: 'Auth & billing',
-    summary: 'Ed25519 JWT auth, service accounts, and Stripe-compatible billing orchestration.',
+    summary: 'Ed25519 JWT issuance, service accounts, Stripe billing orchestration, and tenant settings.',
     bullets: [
-      'Auth cookbooks + threat models',
-      'Stripe runbook + billing dispatcher',
-      'Tenant settings + plan metadata docs',
+      'Auth threat models + token pipeline',
+      'Stripe dispatcher + usage/billing APIs',
+      'Tenant settings schema + form contracts',
     ],
     badge: 'Security',
-    cta: { label: 'Auth cookbook', href: 'https://github.com/openai/openai-agents-starter/blob/main/docs/security/auth-threat-model.md', intent: 'secondary' },
+    cta: { label: 'Auth + billing playbook', href: 'https://github.com/openai/openai-agents-starter/blob/main/docs/security/auth-threat-model.md', intent: 'secondary' },
   },
   {
     id: 'agents-chat',
     title: 'Agents & chat',
-    summary: 'GPT-5 Agents SDK sessions, multi-agent handoffs, and chat orchestration patterns.',
+    summary: 'GPT-5 Agents SDK sessions, tool registry guidance, and feature directory walkthroughs.',
     bullets: [
-      'Agents SDK table of contents',
+      'Agents SDK index + reasoning examples',
       'Tool registry + MCP integration docs',
-      'Chat workspace feature directory guide',
+      'Chat workspace structure + testing notes',
     ],
     badge: 'Agents',
     cta: { label: 'Agents SDK guide', href: 'https://github.com/openai/openai-agents-starter/blob/main/docs/openai-agents-sdk/table-of-contents.md', intent: 'secondary' },
@@ -57,11 +58,11 @@ export const DOC_SECTIONS: DocSectionEntry[] = [
   {
     id: 'operations',
     title: 'Operations & observability',
-    summary: 'Vault transit, status alert subscriptions, and CLI workflows for ops teams.',
+    summary: 'Status feeds, alert subscriptions, metrics, Vault transit, and Starter CLI ops workflows.',
     bullets: [
-      'Vault transit signing runbook',
-      'Status alert subscription contract',
-      'Observability + health endpoint docs',
+      'Vault transit signing + key rotation runbook',
+      'Status alert subscription API contract',
+      'Observability + health endpoint reference',
     ],
     badge: 'Ops',
     cta: { label: 'Operations checklist', href: 'https://github.com/openai/openai-agents-starter/blob/main/docs/security/vault-transit-signing.md', intent: 'secondary' },
@@ -98,7 +99,7 @@ export const DOC_RESOURCES: DocResourceLink[] = [
 export const DOC_GUIDES: DocGuideCard[] = [
   {
     title: 'Starter CLI playbook',
-    description: 'Provision secrets and env files via interactive prompts or headless runs.',
+    description: 'Hydrate env files, rotate keys, and export audit bundles via interactive or headless runs.',
     href: 'https://github.com/openai/openai-agents-starter/blob/main/docs/trackers/complete/MILESTONE_CLI.md',
     minutes: '10 min read',
     updated: 'Updated Nov 2025',
@@ -107,7 +108,7 @@ export const DOC_GUIDES: DocGuideCard[] = [
   },
   {
     title: 'Stripe billing runbook',
-    description: 'Connect plan catalogs, usage events, and SSE dashboards.',
+    description: 'Connect plan catalogs, usage events, SSE dashboards, and retry-safe workers.',
     href: 'https://github.com/openai/openai-agents-starter/blob/main/docs/billing/stripe-runbook.md',
     minutes: '12 min read',
     updated: 'Updated Oct 2025',
@@ -116,7 +117,7 @@ export const DOC_GUIDES: DocGuideCard[] = [
   },
   {
     title: 'Agents SDK integration',
-    description: 'Wire GPT-5 Agents, tools, and transcript persistence.',
+    description: 'Wire GPT-5 Agents, tools, conversations, and memory persistence.',
     href: 'https://github.com/openai/openai-agents-starter/blob/main/docs/openai-agents-sdk/table-of-contents.md',
     minutes: '15 min read',
     updated: 'Updated Nov 2025',
@@ -126,38 +127,38 @@ export const DOC_GUIDES: DocGuideCard[] = [
 ];
 
 export const DOC_METRICS: DocMetric[] = [
-  { label: 'Doc tracks', value: '10 tracks', hint: 'architecture, auth, billing…' },
-  { label: 'Guided playbooks', value: '4 live', hint: 'CLI, billing, agents, security' },
-  { label: 'Live trackers', value: '3 dashboards', hint: 'Frontend UI, Issue tracker, UI milestone' },
-  { label: 'SDK kits', value: '10 kits', hint: 'Agents, Tools, Memory…' },
+  { label: 'Doc tracks', value: '10 tracks', hint: 'architecture · auth · billing · ops' },
+  { label: 'Guided playbooks', value: '4 live', hint: 'CLI · billing · agents · security' },
+  { label: 'Live trackers', value: '3 dashboards', hint: 'UI milestone · issue tracker · CLI roadmap' },
+  { label: 'SDK kits', value: '10 kits', hint: 'Agents · tools · memory · handoffs' },
 ];
 
 export const DOCS_FAQ: MarketingFaqItem[] = [
   {
     question: 'How do I regenerate the HeyAPI client?',
-    answer: 'Run `pnpm generate` in `agent-next-15-frontend`. Keep `openapi-ts.config.ts` synced with backend schema changes.',
+    answer: 'Run `pnpm generate` from `agent-next-15-frontend`. The script reads the FastAPI OpenAPI schema and rewrites the client + types.',
   },
   {
-    question: 'Where do new Shadcn components live?',
-    answer: 'Use `pnpm shadcn add` from the frontend root and log the addition in `docs/frontend/ui/components.md`.',
+    question: 'Where should new UI primitives be documented?',
+    answer: 'Add shadcn components via `pnpm shadcn add` and log them in `docs/frontend/ui/components.md` so design + eng stay aligned.',
   },
   {
-    question: 'What is the source of truth for env vars?',
-    answer: 'The Starter CLI and Make targets. Avoid manual `.env` edits to stay aligned with CI.',
+    question: 'What keeps env vars consistent?',
+    answer: 'The Starter CLI owns env generation. Use the CLI or the supplied Make targets; avoid editing `.env` files manually so CI, local, and prod stay in sync.',
   },
 ];
 
 export const DOCS_CTA: CtaConfig = {
   eyebrow: 'Docs',
-  title: 'Ready to put the starter to work?',
-  description: 'Follow the guides, wire your providers, and invite your first customers with confidence.',
+  title: 'Build with guidance baked in.',
+  description: 'Every workflow—CLI, auth, billing, agents, ops—is documented here. Keep the docs open while you ship.',
   primaryCta: {
     label: 'Clone the repo',
     href: 'https://github.com/openai/openai-agents-starter',
     intent: 'primary',
   },
   secondaryCta: {
-    label: 'Open Starter CLI',
+    label: 'Browse the guides',
     href: '/docs',
     intent: 'secondary',
   },

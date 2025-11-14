@@ -3,17 +3,17 @@ import { Sparkles, Shield, BarChart3, Cable } from 'lucide-react';
 import type { CtaConfig, FaqItem, FeatureHighlight, ProofPoint } from './types';
 
 export const HERO_COPY = {
-  eyebrow: 'Anything Agents',
-  title: 'Launch an AI agent console your customers can trust.',
+  eyebrow: 'OpenAI Agent Starter',
+  title: 'Ship your GPT-5 agent console without rebuilding the stack.',
   description:
-    'Bundle a GPT-5 powered workspace, enterprise auth, and billing-ready APIs into one shippable SaaS starter. Drop in your brand and keep scaling.',
+    'Use the production FastAPI + Next.js 15 starter that already wires GPT-5 agents, Ed25519 auth, billing, and ops tooling. Clone it, drop in your brand, and launch.',
   primaryCta: {
-    label: 'Book a console demo',
+    label: 'Launch the console',
     href: '/register',
     intent: 'primary',
   },
   secondaryCta: {
-    label: 'Explore the docs',
+    label: 'Preview the docs',
     href: '/docs',
     intent: 'secondary',
   },
@@ -21,16 +21,16 @@ export const HERO_COPY = {
 
 export const PROOF_POINTS: ProofPoint[] = [
   {
-    label: 'Backed by FastAPI + Next.js 15',
-    value: 'Modern stack with shared auth and telemetry.',
+    label: 'Full-stack acceleration',
+    value: 'Shared auth, telemetry, and CLI scripts across FastAPI + Next.js 15.',
   },
   {
-    label: 'Agents SDK v0.5.0',
-    value: 'GPT-5 reasoning, handoffs, and memory baked in.',
+    label: 'Security-first defaults',
+    value: 'Ed25519 JWTs, tenant RBAC, service accounts, and Vault-ready keys.',
   },
   {
-    label: 'Stripe-ready billing',
-    value: 'Plan catalog + usage + retry workers wired.',
+    label: 'Billing + usage automation',
+    value: 'Stripe catalog, usage APIs, and SSE dashboards already enabled.',
   },
 ];
 
@@ -38,62 +38,62 @@ export const FEATURE_HIGHLIGHTS: FeatureHighlight[] = [
   {
     icon: Sparkles,
     title: 'Agent workspace',
-    description: 'Streaming chat, conversation archive, and tool telemetry unified inside the agents feature directory.',
-    bullets: ['Multi-agent routing + GPT-5 sessions', 'Drawer exports + audit trails', 'Tool registry insights'],
+    description: 'Chat streaming, catalog search, transcripts, and tool telemetry live in one feature directory.',
+    bullets: ['Multi-agent routing + GPT-5 memory', 'Drawer exports + audit trails', 'Tool registry insights'],
   },
   {
     icon: Shield,
     title: 'Enterprise guardrails',
-    description: 'Ed25519 auth, JWT refresh, tenant-scoped RBAC, and service-account lifecycle automation.',
-    bullets: ['Verified scopes on every API router', 'Redis-backed refresh token cache', 'Service accounts with CLI tooling'],
+    description: 'Ed25519 auth, refresh tokens, tenant RBAC, and service-account lifecycle automation.',
+    bullets: ['Verified scopes on every router', 'Redis-backed refresh tokens', 'CLI-managed service accounts'],
   },
   {
     icon: BarChart3,
-    title: 'Billing + analytics',
-    description: 'Plan catalogs, usage metering, SSE billing streams, and dashboard widgets ready for your KPIs.',
-    bullets: ['Async Stripe dispatcher + retry worker', 'Usage recording API + UI', 'TanStack Query billing hooks'],
+    title: 'Billing & analytics',
+    description: 'Plan catalogs, usage metering, SSE billing streams, and KPI-ready UI panels.',
+    bullets: ['Async Stripe dispatcher + retry worker', 'Usage recording API and hooks', 'Dashboard widgets powered by TanStack'],
   },
   {
     icon: Cable,
     title: 'Operations toolkit',
-    description: 'Health checks, status page, and CLI workflows keep ops-aware teams in sync from day zero.',
-    bullets: ['Status snapshot + RSS feeds', 'Starter CLI env + key rotation', 'Observability middleware + metrics'],
+    description: 'Health checks, status page, and Starter CLI run side-by-side so ops is never an afterthought.',
+    bullets: ['Status snapshot + RSS feeds', 'Starter CLI env + key rotation', 'Observability middleware + Prom metrics'],
   },
 ];
 
 export const FAQ_ITEMS: FaqItem[] = [
   {
-    question: 'Can I self-host the backend + frontend?',
+    question: 'How fast can I launch with this starter?',
     answer:
-      'Yes. The repo ships Docker + Compose targets plus the Starter CLI to hydrate env files in dev, preview, and prod. Deploy both stacks anywhere Docker + Postgres run.',
+      'Clone the repo, run the Starter CLI to hydrate env files, and deploy the FastAPI + Next.js stacks with Docker or your preferred CI. Most teams see a branded console live in under a week.',
   },
   {
-    question: 'How customizable is the UI kit?',
+    question: 'Can I swap GPT-5 or add my own tools?',
     answer:
-      'All surfaces use shadcn/ui primitives, Tailwind tokens, and the glass foundation kit. Extend components under `components/ui` or feature-scoped directories without fighting bespoke CSS.',
+      'Yes. Agents register through the OpenAI Agents SDK config and tools flow through the registry. You can point to other LLM endpoints or custom MCP tools without touching the UI.',
   },
   {
-    question: 'What’s the story for pricing + billing integrations?',
+    question: 'Is Stripe required?',
     answer:
-      'Stripe adapters, plan catalogs, usage APIs, and SSE-powered dashboards are implemented today. Swap in a different billing provider by extending the repository contracts.',
+      'Stripe adapters ship ready-to-use, but the billing repositories are provider-agnostic. Implement your gateway behind the same interfaces and the UI keeps working.',
   },
   {
-    question: 'Do you support enterprise security reviews?',
+    question: 'Does ops tooling ship in the box?',
     answer:
-      'The project documents threat models, Vault transit workflows, and SOC2-aligned controls. Service accounts, audit logs, and tenant settings panels are already wired.',
+      'Health checks, status page, metrics, and the Starter CLI are part of the repo. You can enable alert subscriptions via the provided API and surface them on the marketing pages immediately.',
   },
 ];
 
 export const CTA_CONFIG: CtaConfig = {
-  title: 'Ready to deploy your agent platform?',
-  description: 'Clone the repo, run the Starter CLI, and go live with auth, billing, and GPT-5 agents already wired.',
+  title: 'Spin up your agent platform today.',
+  description: 'Register for the console and deploy the starter with GPT-5 agents, billing, and observability pre-wired.',
   primaryCta: {
-    label: 'Get started',
+    label: 'Create an account',
     href: '/register',
     intent: 'primary',
   },
   secondaryCta: {
-    label: 'Chat with us',
+    label: 'See it in action',
     href: '/agents',
     intent: 'secondary',
   },

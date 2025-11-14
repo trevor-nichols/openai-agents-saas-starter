@@ -30,7 +30,7 @@ export function StatusExperience() {
   const [verificationInProgress, setVerificationInProgress] = useState(false);
   const [unsubscribeInProgress, setUnsubscribeInProgress] = useState(false);
   const { status, isLoading, error, refetch } = usePlatformStatusQuery();
-  const { trackLeadSubmit } = useMarketingAnalytics();
+  const { trackLeadSubmit, trackCtaClick } = useMarketingAnalytics();
 
   const overview = status?.overview;
   const services = status?.services ?? [];
@@ -240,10 +240,30 @@ export function StatusExperience() {
             <p className="text-sm text-foreground/70">Hook this status feed into your tooling via RSS or our CLI.</p>
             <div className="flex flex-wrap gap-2">
               <Button asChild size="sm">
-                <Link href="/api/status/rss">RSS Feed</Link>
+                <Link
+                  href="/api/status/rss"
+                  onClick={() =>
+                    trackCtaClick({
+                      location: 'status-rss',
+                      cta: { label: 'RSS Feed', href: '/api/status/rss', intent: 'secondary' },
+                    })
+                  }
+                >
+                  RSS Feed
+                </Link>
               </Button>
               <Button asChild size="sm" variant="outline">
-                <Link href="mailto:status@anything.agents">Email ops</Link>
+                <Link
+                  href="mailto:status@anything.agents"
+                  onClick={() =>
+                    trackCtaClick({
+                      location: 'status-email-ops',
+                      cta: { label: 'Email ops', href: 'mailto:status@anything.agents', intent: 'secondary' },
+                    })
+                  }
+                >
+                  Email ops
+                </Link>
               </Button>
             </div>
           </GlassPanel>

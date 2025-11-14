@@ -12,32 +12,32 @@ export const FEATURE_NAV: FeatureNavItem[] = [
 export const FEATURE_PILLARS: FeaturePillar[] = [
   {
     id: 'agents',
-    title: 'Agent orchestration',
-    description: 'Bundle GPT-5 triage, tool routing, and transcript exports inside a single workspace.',
+    title: 'Agents & chat control center',
+    description: 'A feature-sliced workspace for GPT-5 conversations, catalog management, and tool visibility.',
     bullets: [
-      'Multi-agent handoffs with reasoning traces',
-      'Streaming UI with TanStack + server actions',
-      'Conversation archive + tool telemetry drawers',
+      'Multi-agent routing with GPT-5 sessions + handoffs',
+      'Streaming UI powered by server actions + TanStack Query',
+      'Conversation drawers with export + audit history',
     ],
     icon: MessageSquare,
     cta: {
-      label: 'Explore agents workspace',
+      label: 'Open agents workspace',
       href: '/agents',
       intent: 'primary',
     },
   },
   {
     id: 'billing',
-    title: 'Subscription + usage billing',
-    description: 'Stripe-ready plan catalogs, SSE dashboards, and optimistic plan management flows.',
+    title: 'Billing & usage automation',
+    description: 'Stripe-ready plans, usage APIs, and optimistic UI flows backed by shared repositories.',
     bullets: [
-      'Catalog + usage APIs wired to FastAPI',
-      'SSE billing events for live dashboards',
-      'Tenant settings surface with metadata + flags',
+      'Plan catalogs + usage hooks reusing FastAPI contracts',
+      'SSE billing stream for dashboards and alerts',
+      'Tenant settings form manages metadata and webhooks',
     ],
     icon: WalletMinimal,
     cta: {
-      label: 'Review billing console',
+      label: 'Review billing hub',
       href: '/billing',
       intent: 'secondary',
     },
@@ -45,11 +45,11 @@ export const FEATURE_PILLARS: FeaturePillar[] = [
   {
     id: 'operations',
     title: 'Operations & security',
-    description: 'Health endpoints, status page, CLI workflows, and Ed25519 auth ready from day one.',
+    description: 'Status, health, Starter CLI, and Vault-ready keys so ops stays in lockstep with product.',
     bullets: [
-      'Marketing status page + alert subscriptions',
-      'Starter CLI for envs, keys, and secrets',
-      'Ed25519 JWT auth with service accounts',
+      'Status page + alert subscriptions share one API',
+      'Starter CLI provisions secrets, envs, and keys',
+      'Vault transit + Ed25519 key rotation runbooks',
     ],
     icon: ShieldCheck,
     cta: {
@@ -64,63 +64,63 @@ export const SHOWCASE_TABS: ShowcaseTab[] = [
   {
     id: 'agents',
     label: 'Agents workspace',
-    title: 'Chat, catalog, and tool telemetry',
-    description: 'Switch between agents, audit tools, and inspect transcripts without leaving the workspace.',
-    bullets: ['Agent catalog with tool counts', 'Conversation detail drawers', 'Streaming GPT-5 reasoning'],
+    title: 'Command center for every agent',
+    description: 'Toggle between catalog, chat, and telemetry panes with zero glue code.',
+    bullets: ['Agent catalog with tool counts + filters', 'Conversation drawers with exports + retention tags', 'Streaming GPT-5 reasoning + event timeline'],
   },
   {
     id: 'billing',
     label: 'Billing control hub',
-    title: 'Live plan management & usage',
-    description: 'Start subscriptions, record usage, and stream billing events via SSE for real-time dashboards.',
-    bullets: ['Plan catalog queries', 'Usage recording API', 'Retry-safe dispatcher workers'],
+    title: 'Live plan + usage visibility',
+    description: 'Manage subscriptions, log usage, and merge SSE streams into analytics instantly.',
+    bullets: ['Plan catalog + usage mutations share hooks', 'Billing events stream into TanStack caches', 'Retry-safe dispatcher + worker tooling'],
   },
   {
     id: 'operations',
     label: 'Operations toolkit',
-    title: 'Status, health, and CLI workflows',
-    description: 'Marketing status page, RSS feed, and CLI commands keep customers informed without extra tooling.',
-    bullets: ['Status subscriptions', 'Starter CLI env sync', 'Vault transit integration'],
+    title: 'Status, health, and CLI automation',
+    description: 'Expose customer-facing status while operators run Starter CLI workflows behind the scenes.',
+    bullets: ['Status alerts + RSS feeds reuse FastAPI endpoints', 'Starter CLI handles env sync + secrets rotation', 'Vault transit + Ed25519 key lifecycle docs'],
   },
 ];
 
 export const FEATURES_FAQ: MarketingFaqItem[] = [
   {
-    question: 'Do I need to wire my own auth?',
-    answer: 'No. The FastAPI stack ships with Ed25519 JWTs, refresh tokens, session management, and service accounts ready to use.',
+    question: 'Do I need to implement auth or billing myself?',
+    answer: 'No. Auth, billing, conversations, and status APIs already exist with tests and docs. You focus on brand + product decisions.',
   },
   {
-    question: 'Can I add new agents or tools?',
-    answer: 'Yes. Register agents in the Agents SDK config and attach tools via the registry helpers. The UI auto-renders the new entries.',
+    question: 'How do new agents or tools show up in the UI?',
+    answer: 'Register them with the Agents SDK + tool registry and the orchestrator automatically renders updated catalogs, drawers, and badges.',
   },
   {
-    question: 'How customizable is the chat workspace?',
-    answer: 'Panels follow the feature directory spec, so you can replace components, add tabs, or introduce new drawers without touching shared hooks.',
+    question: 'Can I change the UI layout?',
+    answer: 'Yes. Each feature uses the orchestrator/components/hooks pattern. Swap panels or add tabs without touching global providers.',
   },
   {
-    question: 'What deployment options exist?',
-    answer: 'Docker + Compose files are included. Use the Starter CLI to hydrate secrets and deploy to any environment running Postgres + Redis.',
+    question: 'What about deployments?',
+    answer: 'Use Docker/Compose locally and promote builds through CI. The Starter CLI wires env files for dev, preview, and prod, and Vault transit handles key signing.',
   },
 ];
 
 export const FEATURES_CTA: CtaConfig = {
-  eyebrow: 'Build faster',
-  title: 'Launch your AI agent SaaS with confidence',
-  description: 'Clone, configure, and deploy with GPT-5 agents, billing, and observability already dialed in.',
+  eyebrow: 'Feature tour',
+  title: 'Own every pillar of your AI agent SaaS',
+  description: 'Agents, billing, operations, and marketing surfaces stay in sync because they all share the same starter.',
   primaryCta: {
-    label: 'Get started',
+    label: 'Start building',
     href: '/register',
     intent: 'primary',
   },
   secondaryCta: {
-    label: 'Schedule a demo',
-    href: 'mailto:founders@anythingagents.com',
+    label: 'Inspect the workspace',
+    href: '/agents',
     intent: 'secondary',
   },
 };
 
 export const FEATURES_TESTIMONIAL: Testimonial = {
-  quote: '“Anything Agents let us ship a branded GPT-5 agent console in under two weeks. The plans, auth, and tooling were already enterprise-ready.”',
+  quote: '“We replaced months of platform plumbing with Anything Agents. GPT-5 routing, billing events, and ops dashboards landed together, so our team focused on the product.”',
   author: 'Priya Sharma',
   role: 'Head of Platform, Northwind Ops',
 };

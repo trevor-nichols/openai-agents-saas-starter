@@ -44,13 +44,20 @@ export function DocsHero({ eyebrow, title, description, updatedAt, navItems, pri
         <p className="text-xs uppercase tracking-[0.3em] text-foreground/50">Jump to section</p>
         <NavigationMenu>
           <NavigationMenuList>
-            {navItems.map((item) => (
-              <NavigationMenuItem key={item.id}>
-                <NavigationMenuLink href={`#${item.id}`} className="text-sm font-semibold text-foreground hover:text-primary">
-                  {item.label}
-                </NavigationMenuLink>
-              </NavigationMenuItem>
-            ))}
+            {navItems.map((item) => {
+              const navCta: CtaLink = { label: item.label, href: `#${item.id}`, intent: 'secondary' };
+              return (
+                <NavigationMenuItem key={item.id}>
+                  <NavigationMenuLink
+                    href={navCta.href}
+                    className="text-sm font-semibold text-foreground hover:text-primary"
+                    onClick={() => onCtaClick({ location: `docs-nav-${item.id}`, cta: navCta })}
+                  >
+                    {item.label}
+                  </NavigationMenuLink>
+                </NavigationMenuItem>
+              );
+            })}
           </NavigationMenuList>
         </NavigationMenu>
       </GlassPanel>

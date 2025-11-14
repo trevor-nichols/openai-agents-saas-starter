@@ -15,6 +15,12 @@ interface HeroSectionProps {
 }
 
 export function HeroSection({ copy, statusSummary, onCtaClick }: HeroSectionProps) {
+  const statusCta: CtaLink = {
+    label: 'Explore status',
+    href: '/status',
+    intent: 'secondary',
+  };
+
   const handleClick = (cta: CtaLink, location: string) => () => {
     onCtaClick({ cta, location });
   };
@@ -61,8 +67,8 @@ export function HeroSection({ copy, statusSummary, onCtaClick }: HeroSectionProp
             Live status, billing telemetry, and agents SDK sessions all ship ready for your brand.
           </p>
         )}
-        <Button variant="ghost" className="px-0" asChild onClick={handleClick(copy.secondaryCta, 'hero-status')}>
-          <Link href="/status">Explore status</Link>
+        <Button variant="ghost" className="px-0" asChild onClick={handleClick(statusCta, 'hero-status')}>
+          <Link href={statusCta.href}>{statusCta.label}</Link>
         </Button>
       </GlassPanel>
     </section>

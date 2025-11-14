@@ -31,9 +31,15 @@ export function DocsExperience() {
         onCtaClick={({ location, cta }) => trackCtaClick({ location, cta })}
       />
 
-      <ResourceLinks resources={content.resources} />
+      <ResourceLinks
+        resources={content.resources}
+        onResourceClick={({ location, cta }) => trackCtaClick({ location, cta })}
+      />
 
-      <GuideGrid guides={content.guides} />
+      <GuideGrid
+        guides={content.guides}
+        onGuideClick={({ location, cta }) => trackCtaClick({ location, cta })}
+      />
 
       <FaqSection items={content.faq} title="Docs & tooling" eyebrow="FAQ" />
 

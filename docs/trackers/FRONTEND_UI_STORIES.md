@@ -38,9 +38,10 @@ Capture every remaining high-priority UI story across the marketing, chat, billi
 | UI-012 | Tenant Settings | Build billing contacts, webhook URL, plan metadata, and flag forms with TanStack Query + react-hook-form, wired to FastAPI `/tenants/settings`. | `Form`, `Input`, `Switch`, `GlassPanel`, `SectionHeader`, `EmptyState` | Done | @platform | Server + client stack now offers a routed UI instead of CLI-only tenant settings; optimistic updates + route guard shipped. |
 
 ## Next Steps
-1. Scope the alert subscription endpoints for `/status` (email/webhook) now that the JSON + RSS feeds are live.
-2. Partner with marketing to instrument `/docs` link click analytics once product approves the telemetry plan.
-3. Draft CTA placement/copy for the upcoming status alert subscription flow so design can plug it into `/status` once the API is ready.
+1. Finalize the marketing copy + CTA matrix (hero text, FAQs, CTA targets) across landing/features/pricing/docs constants.
+2. Extend `useMarketingAnalytics` wiring so every CTA, nav pill, resource link, and plan card logs the same structured event payload.
+3. Polish the shared `StatusAlertsCard` UX (validation copy, success state, banners) and update `/status` hero messaging accordingly.
+4. Capture the voice/analytics guidelines in `docs/marketing/README.md` so new surfaces follow the same rules.
 
 ## Coordination Notes
 - Update this tracker as each story moves to “In progress” or “Done” so stakeholders know exactly which visual threads remain.

@@ -2,12 +2,14 @@ import { GlassPanel } from '@/components/ui/foundation';
 import { Button } from '@/components/ui/button';
 
 import type { DocGuideCard } from '../types';
+import type { CtaLink } from '@/features/marketing/types';
 
 interface GuideGridProps {
   guides: DocGuideCard[];
+  onGuideClick: (meta: { location: string; cta: CtaLink }) => void;
 }
 
-export function GuideGrid({ guides }: GuideGridProps) {
+export function GuideGrid({ guides, onGuideClick }: GuideGridProps) {
   if (!guides.length) {
     return null;
   }
@@ -31,7 +33,17 @@ export function GuideGrid({ guides }: GuideGridProps) {
             <p className="text-sm text-foreground/70">{guide.description}</p>
             <p className="text-xs text-foreground/60">{guide.minutes} • {guide.updated}</p>
             <Button variant="outline" asChild>
-              <a href={guide.href} target="_blank" rel="noreferrer noopener">
+              <a
+                href={guide.href}
+                target="_blank"
+                rel="noreferrer noopener"
+                onClick={() =>
+                  onGuideClick({
+                    location: `docs-guide-${guide.badge.toLowerCase()}`,
+                    cta: { label: guide.title, href: guide.href, intent: 'secondary' },
+                  })
+                }
+              >
                 Open guide
               </a>
             </Button>

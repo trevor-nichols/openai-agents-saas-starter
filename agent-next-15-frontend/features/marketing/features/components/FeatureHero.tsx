@@ -39,13 +39,20 @@ export function FeatureHero({ eyebrow, title, description, primaryCta, secondary
         <p className="text-xs uppercase tracking-[0.3em] text-foreground/50">Jump to a pillar</p>
         <NavigationMenu>
           <NavigationMenuList>
-            {navItems.map((item) => (
-              <NavigationMenuItem key={item.id}>
-                <NavigationMenuLink href={`#${item.id}`} className="text-sm font-semibold text-foreground hover:text-primary">
-                  {item.label}
-                </NavigationMenuLink>
-              </NavigationMenuItem>
-            ))}
+            {navItems.map((item) => {
+              const navCta: CtaLink = { label: item.label, href: `#${item.id}`, intent: 'secondary' };
+              return (
+                <NavigationMenuItem key={item.id}>
+                  <NavigationMenuLink
+                    href={navCta.href}
+                    className="text-sm font-semibold text-foreground hover:text-primary"
+                    onClick={() => onCtaClick({ location: `features-nav-${item.id}`, cta: navCta })}
+                  >
+                    {item.label}
+                  </NavigationMenuLink>
+                </NavigationMenuItem>
+              );
+            })}
           </NavigationMenuList>
         </NavigationMenu>
       </GlassPanel>

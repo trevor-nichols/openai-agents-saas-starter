@@ -2,16 +2,16 @@ import type { CtaConfig, MarketingFaqItem } from '@/features/marketing/types';
 
 export const PRICING_HERO_COPY = {
   eyebrow: 'Pricing',
-  title: 'Scale from prototype to enterprise without rewriting your stack.',
+  title: 'Pick the runway that matches your launch.',
   description:
-    'Choose a plan that matches your launch stage. Every tier ships GPT-5 agents, FastAPI auth, and billing automation out of the box.',
+    'Every tier includes GPT-5 agents, FastAPI auth, billing, Starter CLI, and the full marketing surface. Choose the plan that fits today and upgrade without migrations.',
   primaryCta: {
     label: 'Start building',
     href: '/register',
     intent: 'primary',
   },
   secondaryCta: {
-    label: 'Talk to us',
+    label: 'Chat with the team',
     href: 'mailto:founders@anythingagents.com',
     intent: 'secondary',
   },
@@ -19,34 +19,38 @@ export const PRICING_HERO_COPY = {
 
 export const PRICING_FAQ: MarketingFaqItem[] = [
   {
-    question: 'Can I change plans later?',
-    answer: 'Yes. Tenants can upgrade/downgrade directly from the billing workspace. Plan proration and usage limits are enforced through the billing services.',
+    question: 'Can I move between plans without downtime?',
+    answer:
+      'Yes. Upgrades/downgrades are handled inside the billing workspace with optimistic UI and plan proration so tenants keep working.',
   },
   {
-    question: 'Do you support annual contracts?',
-    answer: 'Annual and multi-year agreements are handled via the Scale plan. Use the contact CTA to reach the team and lock in custom terms.',
+    question: 'Do I pay extra for billing automation?',
+    answer:
+      'No. Usage APIs, SSE dashboards, dispatcher workers, and retry tooling are included with every license.',
   },
   {
-    question: 'What payment providers are supported?',
-    answer: 'Stripe is wired today, but the billing repository pattern lets you plug in your provider of choice while keeping the UI untouched.',
+    question: 'What if I need annual or usage-only contracts?',
+    answer:
+      'Annual, commit, or usage-only deals are modeled as metadata on the Scale plan. Use the contact CTA to provision custom plan definitions.',
   },
   {
-    question: 'How are agent message limits enforced?',
-    answer: 'Usage records flow through the billing usage API and appear in the dashboard widgets. Exports + retries are handled by the async worker.',
+    question: 'Can I run my own payment provider?',
+    answer:
+      'Stripe ships by default, but you can implement any provider by extending the billing repository interfaces while keeping the UI intact.',
   },
 ];
 
 export const PRICING_CTA: CtaConfig = {
   eyebrow: 'Deploy',
-  title: 'Ready to upgrade your agent platform?',
-  description: 'Provision the console in minutes, wire your providers, and invite your first customers with enterprise guardrails already enabled.',
+  title: 'Go live with predictable costs.',
+  description: 'Provision the starter, invite your first users, and keep scaling with the same stack.',
   primaryCta: {
-    label: 'Launch the console',
+    label: 'Pick a plan',
     href: '/register',
     intent: 'primary',
   },
   secondaryCta: {
-    label: 'Schedule a walkthrough',
+    label: 'See the console',
     href: '/agents',
     intent: 'secondary',
   },

@@ -3,12 +3,14 @@ import { Button } from '@/components/ui/button';
 import { ArrowUpRight } from 'lucide-react';
 
 import type { DocResourceLink } from '../types';
+import type { CtaLink } from '@/features/marketing/types';
 
 interface ResourceLinksProps {
   resources: DocResourceLink[];
+  onResourceClick: (meta: { location: string; cta: CtaLink }) => void;
 }
 
-export function ResourceLinks({ resources }: ResourceLinksProps) {
+export function ResourceLinks({ resources, onResourceClick }: ResourceLinksProps) {
   if (!resources.length) {
     return null;
   }
@@ -28,7 +30,17 @@ export function ResourceLinks({ resources }: ResourceLinksProps) {
                 <h3 className="text-lg font-semibold text-foreground">{resource.label}</h3>
               </div>
               <Button size="icon" variant="ghost" asChild>
-                <a href={resource.href} target="_blank" rel="noreferrer noopener">
+                <a
+                  href={resource.href}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  onClick={() =>
+                    onResourceClick({
+                      location: `docs-resource-${resource.badge.toLowerCase()}`,
+                      cta: { label: resource.label, href: resource.href, intent: 'secondary' },
+                    })
+                  }
+                >
                   <ArrowUpRight className="h-4 w-4" />
                 </a>
               </Button>
