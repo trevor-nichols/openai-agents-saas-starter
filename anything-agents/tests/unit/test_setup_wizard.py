@@ -278,7 +278,7 @@ def test_wizard_rotates_new_peppers(monkeypatch, temp_ctx: CLIContext) -> None:
     )
 
     monkeypatch.setattr(
-        "starter_cli.cli.setup.wizard.secrets.token_urlsafe",
+        "starter_cli.cli.setup._wizard.context.secrets.token_urlsafe",
         lambda n=32: "rotated-secret",
     )
 

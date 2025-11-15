@@ -15,10 +15,8 @@ class _StubSMClient:
     def get_secret_value(self, SecretId: str):  # type: ignore[N802]
         self.calls.append(SecretId)
         if SecretId == "arn:signing":
-            return {
-                "SecretString": "aws-secret-value",
-            }
-        return {"SecretString": "other"}
+            return "aws-secret-value"
+        return "other"
 
     def describe_secret(self, SecretId: str):  # type: ignore[N802]
         self.calls.append(f"describe:{SecretId}")

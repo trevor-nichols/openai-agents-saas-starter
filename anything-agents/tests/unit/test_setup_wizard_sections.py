@@ -129,6 +129,9 @@ def test_frontend_section_writes_env_values(cli_ctx: CLIContext, tmp_path: Path)
 def test_audit_sections_flag_missing_values(cli_ctx: CLIContext) -> None:
     context = _build_context(cli_ctx, profile="production")
     context.set_backend("OPENAI_API_KEY", "sk-test", mask=True)
+    # Ensure peppers aren't already present from other tests
+    context.unset_backend("AUTH_PASSWORD_PEPPER")
+    context.unset_backend("AUTH_REFRESH_TOKEN_PEPPER")
 
     sections = audit.build_sections(context)
 
