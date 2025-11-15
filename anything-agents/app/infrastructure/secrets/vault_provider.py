@@ -98,6 +98,7 @@ def build_vault_secret_provider(settings: Settings) -> SecretProviderProtocol:
         base_url=config.addr,
         token=config.token,
         key_name=config.transit_key,
+        namespace=config.namespace,
     )
     return VaultSecretProvider(client=client)
 

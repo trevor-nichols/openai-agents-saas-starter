@@ -24,6 +24,16 @@ class MockTransport(httpx.BaseTransport):
         )
 
 
+class HeaderCaptureTransport(httpx.BaseTransport):
+    def __init__(self, expected_namespace: str):
+        self.expected_namespace = expected_namespace
+        self.last_request: httpx.Request | None = None
+
+    def handle_request(self, request: httpx.Request) -> httpx.Response:  # type: ignore[override]
+        self.last_request = request
+        return httpx.Response(status_code=500, json={"errors": ["forced"]}, request=request)
+
+
 def test_vault_verify_success(monkeypatch: pytest.MonkeyPatch) -> None:
     transport = MockTransport(200, {"data": {"valid": True}})
 
@@ -45,3 +55,20 @@ def test_vault_verify_error(monkeypatch: pytest.MonkeyPatch) -> None:
 
     with pytest.raises(VaultVerificationError):
         client.verify_signature("payload", "signature", transport=transport)
+
+
+def test_vault_namespace_header(monkeypatch: pytest.MonkeyPatch) -> None:
+    transport = HeaderCaptureTransport(expected_namespace="admin/tenant")
+    client = VaultTransitClient(
+        base_url="https://vault",
+        token="token",
+        key_name="auth-service",
+        namespace="admin/tenant",
+    )
+
+    with pytest.raises(VaultVerificationError):
+        client.verify_signature("payload", "signature", transport=transport)
+
+    assert transport.last_request is not None
+    headers = transport.last_request.headers
+    assert headers.get("X-Vault-Namespace") == "admin/tenant"

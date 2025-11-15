@@ -32,6 +32,7 @@ class VaultTransitClient:
     token: str
     key_name: str
     timeout: float = 5.0
+    namespace: str | None = None
 
     def verify_signature(
         self, payload_b64: str, signature: str, transport: httpx.BaseTransport | None = None
@@ -40,6 +41,8 @@ class VaultTransitClient:
 
         url = f"{self.base_url.rstrip('/')}/v1/transit/verify/{self.key_name}"
         headers = {"X-Vault-Token": self.token}
+        if self.namespace:
+            headers["X-Vault-Namespace"] = self.namespace
         body = {"input": payload_b64, "signature": signature}
 
         with httpx.Client(timeout=self.timeout, transport=transport) as client:
@@ -72,6 +75,8 @@ class VaultTransitClient:
 
         url = f"{self.base_url.rstrip('/')}/v1/transit/sign/{self.key_name}"
         headers = {"X-Vault-Token": self.token}
+        if self.namespace:
+            headers["X-Vault-Namespace"] = self.namespace
         body = {"input": payload_b64, "signature_algorithm": signature_algorithm}
 
         with httpx.Client(timeout=self.timeout, transport=transport) as client:
@@ -102,4 +107,5 @@ def get_vault_transit_client() -> VaultTransitClient:
         base_url=settings.vault_addr,
         token=settings.vault_token,
         key_name=settings.vault_transit_key,
+        namespace=settings.vault_namespace,
     )
