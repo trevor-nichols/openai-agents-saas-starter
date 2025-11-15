@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 
 from starter_cli.cli.common import CLIError
 from starter_cli.cli.console import console
 from starter_cli.cli.setup._wizard.context import WizardContext
+from starter_cli.cli.setup.automation import AutomationPhase, AutomationStatus
 from starter_cli.cli.setup.inputs import InputProvider
 from starter_cli.cli.setup.validators import validate_plan_map, validate_redis_url
 
@@ -178,24 +180,7 @@ def _collect_billing(context: WizardContext, provider: InputProvider) -> None:
         json.dumps(validated, separators=(",", ":")),
     )
 
-    if context.is_headless:
-        console.warn(
-            "Headless run detected. Run `python -m starter_cli.cli stripe setup` manually to seed "
-            "plans.",
-            topic="stripe",
-        )
-        return
-
-    should_seed = provider.prompt_bool(
-        key="RUN_STRIPE_SEED",
-        prompt="Run the Stripe setup helper now?",
-        default=False,
-    )
-    if should_seed:
-        context.run_subprocess(
-            ["python", "-m", "starter_cli.cli", "stripe", "setup"],
-            topic="stripe",
-        )
+    _maybe_run_stripe_setup(context, provider)
 
 
 def _collect_email(context: WizardContext, provider: InputProvider) -> None:
@@ -253,3 +238,92 @@ def _maybe_run_migrations(context: WizardContext, provider: InputProvider) -> No
     )
     if run_now:
         context.run_migrations()
+def _maybe_run_stripe_setup(context: WizardContext, provider: InputProvider) -> None:
+    record = context.automation.get(AutomationPhase.STRIPE)
+    if record.enabled:
+        if record.status == AutomationStatus.BLOCKED:
+            console.warn(
+                f"Stripe automation blocked: {record.note or 'unmet prerequisites.'}",
+                topic="stripe",
+            )
+            return
+        if context.is_headless:
+            console.warn(
+                "Stripe automation skipped in headless mode; run the setup command manually.",
+                topic="stripe",
+            )
+            context.automation.update(
+                AutomationPhase.STRIPE,
+                AutomationStatus.SKIPPED,
+                "Headless mode skips Stripe automation.",
+            )
+            return
+        context.automation.update(
+            AutomationPhase.STRIPE,
+            AutomationStatus.RUNNING,
+            "Running `stripe setup` helper.",
+        )
+        console.info("Running embedded Stripe setup flow …", topic="stripe")
+        try:
+            context.run_subprocess(
+                ["python", "-m", "starter_cli.cli", "stripe", "setup"],
+                topic="stripe",
+            )
+        except (CLIError, subprocess.CalledProcessError) as exc:
+            context.automation.update(
+                AutomationPhase.STRIPE,
+                AutomationStatus.FAILED,
+                f"Stripe setup failed: {exc}",
+            )
+            raise
+        else:
+            context.automation.update(
+                AutomationPhase.STRIPE,
+                AutomationStatus.SUCCEEDED,
+                "Stripe setup completed.",
+            )
+            context.record_verification(
+                provider="stripe",
+                identifier="stripe_setup",
+                status="passed",
+                detail="Plans seeded via CLI.",
+                source="wizard",
+            )
+        return
+
+    if context.is_headless:
+        console.warn(
+            "Headless run detected. Run `python -m starter_cli.cli stripe setup` manually to seed "
+            "plans.",
+            topic="stripe",
+        )
+        return
+
+    should_seed = provider.prompt_bool(
+        key="RUN_STRIPE_SEED",
+        prompt="Run the Stripe setup helper now?",
+        default=False,
+    )
+    if should_seed:
+        try:
+            context.run_subprocess(
+                ["python", "-m", "starter_cli.cli", "stripe", "setup"],
+                topic="stripe",
+            )
+        except (CLIError, subprocess.CalledProcessError) as exc:
+            context.record_verification(
+                provider="stripe",
+                identifier="stripe_setup",
+                status="failed",
+                detail=str(exc),
+                source="wizard",
+            )
+            raise
+        else:
+            context.record_verification(
+                provider="stripe",
+                identifier="stripe_setup",
+                status="passed",
+                detail="Plans seeded via CLI.",
+                source="wizard",
+            )

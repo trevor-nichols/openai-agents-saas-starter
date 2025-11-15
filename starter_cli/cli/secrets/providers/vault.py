@@ -7,6 +7,7 @@ from starter_shared.secrets.models import SecretsProviderLiteral
 from ...common import CLIContext
 from ...console import console
 from ...setup.inputs import InputProvider
+from ...verification import VerificationArtifact
 from ..models import OnboardResult, SecretsWorkflowOptions
 
 
@@ -70,11 +71,22 @@ def run_vault_dev(
         )
     ]
 
+    artifacts = [
+        VerificationArtifact(
+            provider="vault_dev",
+            identifier=transit_key,
+            status="pending",
+            detail=f"{addr} (manual verification required)",
+            source="secrets.onboard",
+        )
+    ]
+
     return OnboardResult(
         provider=SecretsProviderLiteral.VAULT_DEV,
         env_updates=env_updates,
         steps=steps,
         warnings=warnings,
+        artifacts=artifacts,
     )
 
 
@@ -145,11 +157,22 @@ def run_vault_hcp(
         "Store the Vault token/AppRole secret in your password manager or secure secret store.",
     ]
 
+    artifacts = [
+        VerificationArtifact(
+            provider="vault_hcp",
+            identifier=f"{namespace}:{transit_key}",
+            status="pending",
+            detail=f"{addr} (manual verification required)",
+            source="secrets.onboard",
+        )
+    ]
+
     return OnboardResult(
         provider=SecretsProviderLiteral.VAULT_HCP,
         env_updates=env_updates,
         steps=steps,
         warnings=warnings,
+        artifacts=artifacts,
     )
 
 

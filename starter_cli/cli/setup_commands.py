@@ -12,6 +12,7 @@ from .setup import (
     load_answers_files,
     merge_answer_overrides,
 )
+from .setup.automation import AutomationPhase
 from .setup.wizard import PROFILE_CHOICES
 
 
@@ -65,6 +66,59 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
             " Defaults to var/reports/setup-summary.json when omitted."
         ),
     )
+    wizard_parser.add_argument(
+        "--markdown-summary-path",
+        metavar="PATH",
+        help=(
+            "Write a Markdown one-stop recap to PATH. Defaults to "
+            "var/reports/cli-one-stop-summary.md."
+        ),
+    )
+    wizard_parser.add_argument(
+        "--auto-infra",
+        dest="auto_infra",
+        action="store_const",
+        const=True,
+        default=None,
+        help="Automatically run Docker compose + Vault helpers during setup (overrides prompts).",
+    )
+    wizard_parser.add_argument(
+        "--no-auto-infra",
+        dest="auto_infra",
+        action="store_const",
+        const=False,
+        help="Explicitly disable infra automation.",
+    )
+    wizard_parser.add_argument(
+        "--auto-secrets",
+        dest="auto_secrets",
+        action="store_const",
+        const=True,
+        default=None,
+        help="Automatically manage the Vault dev signer (start/stop) when Vault verification is enabled.",
+    )
+    wizard_parser.add_argument(
+        "--no-auto-secrets",
+        dest="auto_secrets",
+        action="store_const",
+        const=False,
+        help="Explicitly disable secrets automation.",
+    )
+    wizard_parser.add_argument(
+        "--auto-stripe",
+        dest="auto_stripe",
+        action="store_const",
+        const=True,
+        default=None,
+        help="Automatically run Stripe provisioning after providers are configured.",
+    )
+    wizard_parser.add_argument(
+        "--no-auto-stripe",
+        dest="auto_stripe",
+        action="store_const",
+        const=False,
+        help="Explicitly disable Stripe automation.",
+    )
     wizard_parser.set_defaults(handler=handle_setup_wizard)
 
 
@@ -83,11 +137,25 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
     else:
         provider = InteractiveInputProvider(prefill=dict(answers))
 
+    automation_overrides = {
+        phase: value
+        for phase, value in {
+            AutomationPhase.INFRA: args.auto_infra,
+            AutomationPhase.SECRETS: args.auto_secrets,
+            AutomationPhase.STRIPE: args.auto_stripe,
+        }.items()
+        if value is not None
+    }
+
     wizard = SetupWizard(
         ctx=ctx,
         profile=args.profile,
         output_format=args.output,
         input_provider=provider,
+        markdown_summary_path=Path(args.markdown_summary_path).expanduser()
+        if args.markdown_summary_path
+        else None,
+        automation_overrides=automation_overrides,
     )
     if args.summary_path:
         wizard.summary_path = Path(args.summary_path).expanduser()
@@ -99,6 +167,10 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
             default_summary = ctx.project_root / "var/reports/setup-summary.json"
             default_summary.parent.mkdir(parents=True, exist_ok=True)
             wizard.summary_path = default_summary
+        if wizard.markdown_summary_path is None:
+            default_md = ctx.project_root / "var/reports/cli-one-stop-summary.md"
+            default_md.parent.mkdir(parents=True, exist_ok=True)
+            wizard.markdown_summary_path = default_md
         wizard.execute()
     return 0
 

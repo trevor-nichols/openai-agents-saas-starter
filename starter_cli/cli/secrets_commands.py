@@ -21,6 +21,7 @@ from .setup.inputs import (
     load_answers_files,
     merge_answer_overrides,
 )
+from .verification import append_verification_artifact
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -86,6 +87,14 @@ def handle_onboard(args: argparse.Namespace, ctx: CLIContext) -> int:
     result = runner(ctx, input_provider, options=options)
     render_onboard_result(result)
     emit_cli_telemetry(result.provider.value, success=True)
+    if result.artifacts:
+        log_path = ctx.project_root / "var/reports/verification-artifacts.json"
+        for artifact in result.artifacts:
+            append_verification_artifact(log_path, artifact)
+        console.info(
+            f"Logged {len(result.artifacts)} verification artifact(s) to {log_path}",
+            topic="secrets",
+        )
     return 0
 
 

@@ -78,7 +78,7 @@ def test_probe_vault_transit_success(monkeypatch: pytest.MonkeyPatch) -> None:
     def ok_request(url: str, headers: dict[str, str]):
         return httpx.Response(200, text="ok")
 
-    probe_vault_transit(
+    assert probe_vault_transit(
         base_url="https://vault.example",
         token="token",
         key_name="auth-service",

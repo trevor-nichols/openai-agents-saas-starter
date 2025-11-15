@@ -13,6 +13,7 @@ from starter_shared.secrets.models import SecretsProviderLiteral
 from ...common import CLIContext
 from ...console import console
 from ...setup.inputs import InputProvider
+from ...verification import VerificationArtifact
 from ..models import OnboardResult, SecretsWorkflowOptions
 
 
@@ -109,12 +110,40 @@ def run_azure_kv(
             "or managed identity permissions."
         )
 
+    artifacts = [
+        VerificationArtifact(
+            provider="azure_kv",
+            identifier=f"{vault_url}:{secret_name}",
+            status="passed" if verified else "failed",
+            detail=_format_azure_detail(tenant_id, client_id, managed_identity_client_id),
+            source="secrets.onboard",
+        )
+    ]
+
     return OnboardResult(
         provider=SecretsProviderLiteral.AZURE_KV,
         env_updates=env_updates,
         steps=steps,
         warnings=warnings,
+        artifacts=artifacts,
     )
+
+
+def _format_azure_detail(
+    tenant_id: str | None,
+    client_id: str | None,
+    managed_identity_client_id: str | None,
+) -> str | None:
+    parts = []
+    if tenant_id:
+        parts.append(f"tenant={tenant_id}")
+    if client_id:
+        parts.append(f"app={client_id}")
+    if managed_identity_client_id:
+        parts.append(f"managedIdentity={managed_identity_client_id}")
+    if parts:
+        return ", ".join(parts)
+    return None
 
 
 def _probe_azure_secret(

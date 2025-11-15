@@ -66,6 +66,14 @@ All commands run via `python -m starter_cli.cli …` or `make cli CMD='…'`.
 
 Refer to `starter_cli/README.md` for detailed flags, answers-file formats, and contribution rules (imports must stay side-effect free; new env knobs require inventory + tracker updates).
 
+## Automation & Reporting
+- `setup wizard` now supports automation toggles (`--auto-infra`, `--auto-secrets`, `--auto-stripe`) plus dependency-aware gating so you can spin up Docker/Redis, manage the local Vault dev signer, and run Stripe provisioning directly from the CLI.
+- Every run emits:
+  - `var/reports/setup-summary.json` — machine-readable milestone report.
+  - `var/reports/cli-one-stop-summary.md` — resume-ready Markdown recap (profile, automation status, verification snapshot).
+  - `var/reports/verification-artifacts.json` — append-only ledger of provider verification artifacts (Vault transit probes, AWS/Azure/Infisical checks, Stripe seeding).
+- Use these artifacts to prove the environment was bootstrapped correctly (attach the Markdown snippet to onboarding tickets or demos).
+
 ## Development Workflow
 - Keep FastAPI routers <300 lines; extract shared helpers once reused.
 - Redis is dual-use: refresh-token cache and billing event transport. Coordinate settings through the wizard or `.env.local`.

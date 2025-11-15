@@ -6,6 +6,7 @@ import shutil
 import subprocess
 from collections.abc import Iterable
 from dataclasses import dataclass
+from typing import Callable
 
 from .common import CLIContext, CLIError
 from .console import console
@@ -34,7 +35,27 @@ _DEPENDENCY_CHECKS: tuple[tuple[str, tuple[str, ...], str], ...] = (
     ("Hatch", ("hatch",), "Install via `pipx install hatch` or `pip install --user hatch`."),
     ("Node.js", ("node",), "Install Node.js 20+ from nodejs.org or fnm/nvm."),
     ("pnpm", ("pnpm",), "Install via `npm install -g pnpm` or the pnpm installer."),
+    ("Stripe CLI", ("stripe",), "Install from https://stripe.com/docs/stripe-cli."),
 )
+
+_VERSION_PROBES: dict[str, Callable[[tuple[str, ...]], tuple[str, ...]]] = {}
+
+
+def _register_default_version_probes() -> None:
+    def default(command: tuple[str, ...]) -> tuple[str, ...]:
+        return (*command, "--version")
+
+    def compose(command: tuple[str, ...]) -> tuple[str, ...]:
+        if len(command) == 1:
+            return (*command, "--version")
+        return (*command, "version")
+
+    for name, *_ in _DEPENDENCY_CHECKS:
+        _VERSION_PROBES[name] = default
+    _VERSION_PROBES["Docker Compose v2"] = compose
+
+
+_register_default_version_probes()
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -77,15 +98,28 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
 
 
 @dataclass(slots=True)
-class _DependencyStatus:
+class DependencyStatus:
     name: str
     binaries: tuple[str, ...]
-    path: str | None
+    command: tuple[str, ...] | None
     hint: str
+    version: str | None = None
 
     @property
     def status(self) -> str:
-        return "ok" if self.path else "missing"
+        return "ok" if self.command else "missing"
+
+    @property
+    def path(self) -> str | None:
+        if not self.command:
+            return None
+        return self.command[0]
+
+    @property
+    def command_display(self) -> str:
+        if not self.command:
+            return ""
+        return " ".join(self.command)
 
 
 def handle_compose(args: argparse.Namespace, ctx: CLIContext) -> int:
@@ -105,25 +139,37 @@ def handle_vault(args: argparse.Namespace, ctx: CLIContext) -> int:
 
 
 def handle_deps(args: argparse.Namespace, _ctx: CLIContext) -> int:
-    statuses = list(_collect_dependency_statuses())
+    statuses = list(collect_dependency_statuses())
     if args.format == "json":
         payload = [
             {
                 "name": status.name,
                 "status": status.status,
+                "version": status.version or "",
                 "path": status.path,
+                "command": status.command,
                 "hint": status.hint if status.status != "ok" else "",
             }
             for status in statuses
         ]
-        json.dump(payload, console.stream, indent=2)
+        json.dump(
+            {
+                "dependencies": payload,
+                "missing": [status.name for status in statuses if status.status != "ok"],
+                "ok": [status.name for status in statuses if status.status == "ok"],
+            },
+            console.stream,
+            indent=2,
+        )
         console.stream.write("\n")
         return 1 if any(status.status != "ok" for status in statuses) else 0
 
     console.info("Checking local prerequisites …", topic="deps")
     for status in statuses:
         if status.status == "ok":
-            console.success(f"{status.name}: {status.path}", topic="deps")
+            version = f" ({status.version})" if status.version else ""
+            location = status.path or status.command_display
+            console.success(f"{status.name}: {location}{version}", topic="deps")
         else:
             console.warn(f"{status.name}: missing. {status.hint}", topic="deps")
     console.info(
@@ -133,25 +179,27 @@ def handle_deps(args: argparse.Namespace, _ctx: CLIContext) -> int:
     return 0
 
 
-def _collect_dependency_statuses() -> Iterable[_DependencyStatus]:
+def collect_dependency_statuses() -> Iterable[DependencyStatus]:
     for name, binaries, hint in _DEPENDENCY_CHECKS:
         if name == "Docker Compose v2":
-            path = _detect_compose_binary()
+            command = _detect_compose_command()
         else:
-            path = _first_existing_binary(binaries)
-        yield _DependencyStatus(
+            command = _first_existing_binary(binaries)
+        version = _detect_version(name, command)
+        yield DependencyStatus(
             name=name,
             binaries=binaries,
-            path=path,
+            command=command,
             hint=hint,
+            version=version,
         )
 
 
-def _first_existing_binary(candidates: Iterable[str]) -> str | None:
+def _first_existing_binary(candidates: Iterable[str]) -> tuple[str, ...] | None:
     for binary in candidates:
         path = shutil.which(binary)
         if path:
-            return path
+            return (path,)
     return None
 
 
@@ -161,10 +209,10 @@ def _run_make(ctx: CLIContext, target: str) -> None:
     subprocess.run(cmd, cwd=ctx.project_root, check=True)
 
 
-def _detect_compose_binary() -> str | None:
+def _detect_compose_command() -> tuple[str, ...] | None:
     legacy = shutil.which("docker-compose")
     if legacy:
-        return legacy
+        return (legacy,)
     docker = shutil.which("docker")
     if not docker:
         return None
@@ -177,7 +225,30 @@ def _detect_compose_binary() -> str | None:
         )
     except (OSError, subprocess.CalledProcessError):
         return None
-    return f"{docker} compose"
+    return (docker, "compose")
 
 
-__all__ = ["register"]
+def _detect_version(name: str, command: tuple[str, ...] | None) -> str | None:
+    if not command:
+        return None
+    probe = _VERSION_PROBES.get(name)
+    if not probe:
+        return None
+    try:
+        version_cmd = probe(command)
+    except Exception:  # pragma: no cover - defensive
+        return None
+    try:
+        result = subprocess.run(
+            version_cmd,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    output = (result.stdout or result.stderr).strip()
+    return output or None
+
+
+__all__ = ["register", "collect_dependency_statuses", "DependencyStatus"]

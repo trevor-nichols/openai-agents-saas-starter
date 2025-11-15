@@ -109,9 +109,9 @@ def probe_vault_transit(
     token: str,
     key_name: str,
     request: Callable[[str, dict[str, str]], httpx.Response] | None = None,
-) -> None:
+) -> bool:
     if os.getenv("STARTER_CLI_SKIP_VAULT_PROBE", "false").lower() in {"1", "true", "yes"}:
-        return
+        return True
     if not base_url or not token or not key_name:
         raise CLIError("Vault address, token, and transit key are required to verify connectivity.")
     target = f"{base_url.rstrip('/')}/v1/transit/keys/{key_name}"
@@ -122,6 +122,7 @@ def probe_vault_transit(
         raise CLIError(
             f"Vault transit check failed ({response.status_code}): {response.text.strip()}"
         )
+    return True
 
 
 def _default_vault_request(url: str, headers: dict[str, str]) -> httpx.Response:

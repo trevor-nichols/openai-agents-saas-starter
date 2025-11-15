@@ -6,6 +6,7 @@ from starter_cli.cli.auth_commands import handle_keys_rotate
 from starter_cli.cli.common import CLIError
 from starter_cli.cli.console import console
 from starter_cli.cli.setup._wizard.context import WizardContext
+from starter_cli.cli.setup.automation import AutomationPhase, AutomationStatus
 from starter_cli.cli.setup.inputs import InputProvider
 from starter_cli.cli.setup.validators import probe_vault_transit
 
@@ -22,14 +23,46 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     if rotate:
         _rotate_signing_keys(context)
 
-    _collect_vault(context, provider)
-    if context.current_bool("VAULT_VERIFY_ENABLED", False):
-        probe_vault_transit(
-            base_url=context.require_env("VAULT_ADDR"),
-            token=context.require_env("VAULT_TOKEN"),
-            key_name=context.require_env("VAULT_TRANSIT_KEY"),
-        )
-        console.success("Vault transit key verified.", topic="vault")
+    enable_vault = _collect_vault(context, provider)
+    if context.infra_session:
+        context.infra_session.ensure_vault(enabled=enable_vault)
+    else:
+        record = context.automation.get(AutomationPhase.SECRETS)
+        if record.enabled and not enable_vault:
+            context.automation.update(
+                AutomationPhase.SECRETS,
+                AutomationStatus.SKIPPED,
+                "Vault automation skipped (verification disabled).",
+            )
+
+    if enable_vault:
+        base_url = context.require_env("VAULT_ADDR")
+        token = context.require_env("VAULT_TOKEN")
+        key_name = context.require_env("VAULT_TRANSIT_KEY")
+        try:
+            probe_vault_transit(
+                base_url=base_url,
+                token=token,
+                key_name=key_name,
+            )
+        except CLIError as exc:
+            context.record_verification(
+                provider=context.current("SECRETS_PROVIDER") or "vault",
+                identifier=key_name,
+                status="failed",
+                detail=str(exc),
+                source="wizard",
+            )
+            raise
+        else:
+            context.record_verification(
+                provider=context.current("SECRETS_PROVIDER") or "vault",
+                identifier=key_name,
+                status="passed",
+                detail=base_url,
+                source="wizard",
+            )
+            console.success("Vault transit key verified.", topic="vault")
 
 
 def _collect_secrets(context: WizardContext, provider: InputProvider) -> None:
@@ -63,7 +96,7 @@ def _collect_secrets(context: WizardContext, provider: InputProvider) -> None:
         context.set_backend("AUTH_SESSION_IP_HASH_SALT", salt_value)
 
 
-def _collect_vault(context: WizardContext, provider: InputProvider) -> None:
+def _collect_vault(context: WizardContext, provider: InputProvider) -> bool:
     require_vault = context.profile in {"staging", "production"}
     enable_vault = provider.prompt_bool(
         key="VAULT_VERIFY_ENABLED",
@@ -95,6 +128,7 @@ def _collect_vault(context: WizardContext, provider: InputProvider) -> None:
         context.set_backend("VAULT_ADDR", addr)
         context.set_backend("VAULT_TOKEN", token, mask=True)
         context.set_backend("VAULT_TRANSIT_KEY", transit)
+    return enable_vault
 
 
 def _rotate_signing_keys(context: WizardContext) -> None:

@@ -6,6 +6,7 @@ from starter_shared.secrets.models import SecretsProviderLiteral
 from ...common import CLIContext
 from ...console import console
 from ...setup.inputs import InputProvider
+from ...verification import VerificationArtifact
 from ..models import OnboardResult, SecretsWorkflowOptions
 
 
@@ -146,12 +147,22 @@ def _run_infisical_flow(
         if prompt_ca_bundle
         else SecretsProviderLiteral.INFISICAL_CLOUD
     )
+    artifacts = [
+        VerificationArtifact(
+            provider=provider_literal.value,
+            identifier=f"{project_id}:{secret_path}:{signing_secret}",
+            status="passed" if verified else "failed",
+            detail=f"{base_url} ({environment})",
+            source="secrets.onboard",
+        )
+    ]
 
     return OnboardResult(
         provider=provider_literal,
         env_updates=env_updates,
         steps=steps,
         warnings=warnings,
+        artifacts=artifacts,
     )
 
 

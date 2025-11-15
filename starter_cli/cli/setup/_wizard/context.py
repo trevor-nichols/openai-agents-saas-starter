@@ -3,15 +3,26 @@ from __future__ import annotations
 import os
 import secrets
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from starter_shared.config import get_settings
 
 from starter_cli.cli.common import CLIContext, CLIError
 from starter_cli.cli.console import console
 from starter_cli.cli.env import EnvFile
+from starter_cli.cli.infra_commands import DependencyStatus
+from starter_cli.cli.setup.automation import AutomationState
 from starter_cli.cli.setup.inputs import InputProvider
+from starter_cli.cli.verification import (
+    VerificationArtifact,
+    append_verification_artifact,
+    load_verification_artifacts,
+)
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from starter_cli.cli.setup.infra import InfraSession
 
 FRONTEND_ENV_RELATIVE = Path("agent-next-15-frontend/.env.local")
 
@@ -28,6 +39,19 @@ class WizardContext:
     api_base_url: str = "http://127.0.0.1:8000"
     is_headless: bool = False
     summary_path: Path | None = None
+    markdown_summary_path: Path | None = None
+    dependency_statuses: list[DependencyStatus] = field(default_factory=list)
+    automation: AutomationState = field(default_factory=AutomationState)
+    infra_session: "InfraSession | None" = None
+    verification_artifacts: list[VerificationArtifact] = field(default_factory=list)
+    verification_log_path: Path = field(init=False)
+    historical_verifications: list[VerificationArtifact] = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.verification_log_path = (
+            self.cli_ctx.project_root / "var/reports/verification-artifacts.json"
+        )
+        self.historical_verifications = load_verification_artifacts(self.verification_log_path)
 
     # ------------------------------------------------------------------
     # Env helpers
@@ -148,6 +172,27 @@ class WizardContext:
 
     def run_migrations(self) -> None:
         self.run_subprocess(["make", "migrate"], topic="migrate")
+
+    def record_verification(
+        self,
+        *,
+        provider: str,
+        identifier: str,
+        status: str,
+        detail: str | None = None,
+        source: str = "wizard",
+    ) -> VerificationArtifact:
+        artifact = VerificationArtifact(
+            provider=provider,
+            identifier=identifier,
+            status=status,
+            detail=detail,
+            source=source,
+        )
+        self.verification_artifacts.append(artifact)
+        self.historical_verifications.append(artifact)
+        append_verification_artifact(self.verification_log_path, artifact)
+        return artifact
 
 
 def build_env_files(cli_ctx: CLIContext) -> tuple[EnvFile, EnvFile | None, Path | None]:

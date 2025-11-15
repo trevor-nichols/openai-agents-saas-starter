@@ -55,6 +55,15 @@ Flags:
 - `--report-only` skips prompts and prints the milestone audit without modifying env files.
 - `--output {summary,json}` selects console format.
 - `--summary-path PATH` writes the audit JSON (defaults to `var/reports/setup-summary.json`).
+- `--auto-infra/--no-auto-infra`, `--auto-secrets/--no-auto-secrets`, and `--auto-stripe/--no-auto-stripe` opt in or out of the automation hooks. Today that covers Docker compose (Postgres/Redis), the local Vault dev signer used for transit verification, and the embedded Stripe provisioning flow. When omitted, the wizard prompts for each phase and records the decision in the audit.
+- `--markdown-summary-path PATH` writes a Markdown recap (defaults to `var/reports/cli-one-stop-summary.md`). Use it when you want to drop the summary into issues or onboarding docs.
+
+Artifacts generated per run:
+
+- `var/reports/setup-summary.json` — serialized milestone + automation summary.
+- `var/reports/cli-one-stop-summary.md` — Markdown snippet with automation status, verification notes, and milestone table.
+- `var/reports/verification-artifacts.json` — append-only ledger of provider verifications (Vault, AWS, Azure, Infisical, Stripe). This is cumulative across runs.
+
 
 After prompting, the wizard reloads the environment and clears cached settings so subsequent CLI
 commands see the fresh values.

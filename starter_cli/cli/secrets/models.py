@@ -9,6 +9,7 @@ from starter_shared.secrets.models import SecretsProviderLiteral
 from ..common import TELEMETRY_ENV, CLIContext
 from ..console import console
 from ..setup.inputs import InputProvider
+from ..verification import VerificationArtifact
 
 
 @dataclass(slots=True)
@@ -25,6 +26,7 @@ class OnboardResult:
     env_updates: dict[str, str]
     steps: list[str]
     warnings: list[str]
+    artifacts: list[VerificationArtifact] | None = None
 
 
 @dataclass(slots=True)
@@ -64,6 +66,16 @@ def render_onboard_result(result: OnboardResult) -> None:
         console.newline()
         for warning in result.warnings:
             console.warn(warning, topic="secrets")
+
+    if result.artifacts:
+        console.newline()
+        console.info("Verification artifacts:", topic="secrets")
+        for artifact in result.artifacts:
+            detail = f" ({artifact.detail})" if artifact.detail else ""
+            console.info(
+                f"- {artifact.provider}: {artifact.status} — {artifact.identifier}{detail}",
+                topic="secrets",
+            )
 
 
 def emit_cli_telemetry(provider: str, *, success: bool) -> None:

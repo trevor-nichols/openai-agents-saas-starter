@@ -7,6 +7,7 @@ from starter_shared.secrets.models import SecretsProviderLiteral
 from ...common import CLIContext, CLIError
 from ...console import console
 from ...setup.inputs import InputProvider
+from ...verification import VerificationArtifact
 from ..models import OnboardResult, SecretsWorkflowOptions
 
 
@@ -118,11 +119,22 @@ def run_aws_sm(
             "Failed to read the signing secret via Secrets Manager. Check IAM credentials or ARN."
         )
 
+    artifacts = [
+        VerificationArtifact(
+            provider="aws_sm",
+            identifier=secret_arn,
+            status="passed" if verified else "failed",
+            detail=f"region={region}",
+            source="secrets.onboard",
+        )
+    ]
+
     return OnboardResult(
         provider=SecretsProviderLiteral.AWS_SM,
         env_updates=env_updates,
         steps=steps,
         warnings=warnings,
+        artifacts=artifacts,
     )
 
 

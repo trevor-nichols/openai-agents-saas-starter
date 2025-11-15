@@ -7,6 +7,7 @@ from starter_cli.cli.console import console
 from starter_cli.cli.inventory import WIZARD_PROMPTED_ENV_VARS
 from starter_cli.cli.setup._wizard.context import WizardContext
 from starter_cli.cli.setup.models import CheckResult, SectionResult
+from starter_cli.cli.verification import artifacts_to_dict
 
 
 def build_sections(context: WizardContext) -> list[SectionResult]:
@@ -14,7 +15,7 @@ def build_sections(context: WizardContext) -> list[SectionResult]:
     env_snapshot = context.env_snapshot()
     return [
         _secrets_section(context.profile, settings, env_snapshot),
-        _providers_section(settings, env_snapshot),
+        _providers_section(context, settings, env_snapshot),
         _tenant_observability_section(env_snapshot),
         _signup_worker_section(settings, env_snapshot),
     ]
@@ -101,6 +102,8 @@ def write_summary(context: WizardContext, sections: list[SectionResult]) -> None
         "api_base_url": context.api_base_url,
         "backend_env_path": str(context.backend_env.path),
         "frontend_env_path": str(context.frontend_path) if context.frontend_path else None,
+        "current_run_verification_artifacts": artifacts_to_dict(context.verification_artifacts),
+        "verification_artifacts": artifacts_to_dict(context.historical_verifications),
         "milestones": [
             {
                 "milestone": section.milestone,
@@ -122,6 +125,59 @@ def write_summary(context: WizardContext, sections: list[SectionResult]) -> None
     context.summary_path.parent.mkdir(parents=True, exist_ok=True)
     context.summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     console.success(f"Summary written to {context.summary_path}", topic="wizard")
+
+
+def write_markdown_summary(context: WizardContext, sections: list[SectionResult]) -> None:
+    path = context.markdown_summary_path
+    if not path:
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines: list[str] = []
+    lines.append("# One-Stop Setup Summary")
+    lines.append("")
+    lines.append(f"- **Profile**: `{context.profile}`")
+    lines.append(f"- **API Base URL**: `{context.api_base_url}`")
+    lines.append(
+        f"- **Backend env**: `{context.backend_env.path}`"
+        + (f" — Frontend: `{context.frontend_path}`" if context.frontend_path else "")
+    )
+    lines.append("")
+    lines.append("## Automation Status")
+    lines.append("")
+    lines.append("| Phase | Status | Note |")
+    lines.append("| --- | --- | --- |")
+    if context.automation.records:
+        for phase, record in context.automation.records.items():
+            note = record.note or ""
+            lines.append(f"| {phase.value} | {record.status.value} | {note} |")
+    else:
+        lines.append("| _none_ | — | — |")
+    lines.append("")
+    lines.append("## Current Verification Artifacts")
+    lines.append("")
+    artifacts = context.verification_artifacts or []
+    if artifacts:
+        for artifact in artifacts:
+            detail = f" — {artifact.detail}" if artifact.detail else ""
+            lines.append(
+                f"- **{artifact.provider}** `{artifact.identifier}` → {artifact.status}{detail}"
+            )
+    else:
+        lines.append("No verification artifacts recorded in this run.")
+    lines.append("")
+    lines.append(
+        "_Full ledger saved to_ "
+        f"`{context.verification_log_path}`"
+    )
+    lines.append("")
+    lines.append("## Milestones")
+    lines.append("")
+    lines.append("| Milestone | Status | Focus |")
+    lines.append("| --- | --- | --- |")
+    for section in sections:
+        lines.append(f"| {section.milestone} | {section.overall_status} | {section.focus} |")
+    path.write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
+    console.success(f"Markdown summary written to {path}", topic="wizard")
 
 
 def _secrets_section(profile: str, settings, env_snapshot: dict[str, str]) -> SectionResult:
@@ -173,7 +229,11 @@ def _secrets_section(profile: str, settings, env_snapshot: dict[str, str]) -> Se
     return section
 
 
-def _providers_section(settings, env_snapshot: dict[str, str]) -> SectionResult:
+def _providers_section(
+    context: WizardContext,
+    settings,
+    env_snapshot: dict[str, str],
+) -> SectionResult:
     section = SectionResult(
         "M2 - Provider & Infra Provisioning",
         "Validate third-party credentials & database.",
@@ -205,6 +265,16 @@ def _providers_section(settings, env_snapshot: dict[str, str]) -> SectionResult:
                 status="missing",
                 required=False,
                 detail="Review STRIPE_PRODUCT_PRICE_MAP.",
+            )
+        )
+    stripe_artifact = _latest_artifact(context, provider="stripe")
+    if stripe_artifact:
+        section.checks.append(
+            CheckResult(
+                name="stripe_automation",
+                status="ok" if stripe_artifact.status == "passed" else "warning",
+                required=False,
+                detail=stripe_artifact.detail or stripe_artifact.identifier,
             )
         )
     return section
@@ -259,6 +329,18 @@ def _signup_worker_section(settings, env_snapshot: dict[str, str]) -> SectionRes
             )
         )
     return section
+
+
+def _latest_artifact(
+    context: WizardContext,
+    *,
+    provider: str,
+):
+    combined = context.verification_artifacts + context.historical_verifications
+    for artifact in reversed(combined):
+        if artifact.provider == provider:
+            return artifact
+    return None
 
 
 def _env_presence(key: str, env: dict[str, str], *, required: bool = True) -> CheckResult:
