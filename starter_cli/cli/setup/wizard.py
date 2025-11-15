@@ -15,6 +15,7 @@ from ..auth_commands import handle_keys_rotate
 from ..common import CLIContext, CLIError
 from ..console import console
 from ..env import EnvFile
+from ..inventory import WIZARD_PROMPTED_ENV_VARS
 from .inputs import InputProvider
 from .models import CheckResult, SectionResult
 from .validators import (
@@ -41,6 +42,7 @@ class SetupWizard:
     frontend_path: Path | None = field(init=False)
     api_base_url: str = field(init=False, default="http://127.0.0.1:8000")
     _is_headless: bool = field(init=False, default=False)
+    summary_path: Path | None = None
 
     def __post_init__(self) -> None:
         backend_path = self.ctx.project_root / ".env.local"
@@ -84,6 +86,8 @@ class SetupWizard:
         self._refresh_settings_cache()
         sections = self._build_sections()
         self._render(sections)
+        self._render_schema_summary()
+        self._write_summary(sections)
 
     def render_report(self) -> None:
         sections = self._build_sections()
@@ -185,6 +189,7 @@ class SetupWizard:
 
     def _run_m2(self, provider: InputProvider) -> None:
         console.info("[M2] Providers & Infra", topic="wizard")
+        self._collect_database(provider)
         self._collect_ai_providers(provider)
         self._collect_redis(provider)
         self._collect_billing(provider)
@@ -372,6 +377,34 @@ class SetupWizard:
         )
         if salt_value:
             self._set_backend("AUTH_SESSION_IP_HASH_SALT", salt_value)
+
+    def _collect_database(self, provider: InputProvider) -> None:
+        existing_url = self._current("DATABASE_URL") or os.getenv("DATABASE_URL")
+        if self.profile == "local":
+            default_url = (
+                existing_url
+                or "postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents"
+            )
+        else:
+            default_url = existing_url
+        required = self.profile != "local"
+        db_url = provider.prompt_string(
+            key="DATABASE_URL",
+            prompt="Primary Postgres connection URL (DATABASE_URL)",
+            default=default_url,
+            required=required,
+        )
+        if db_url:
+            self._set_backend("DATABASE_URL", db_url)
+            return
+        if required:
+            raise CLIError("DATABASE_URL is required outside local profiles.")
+
+        console.warn(
+            "DATABASE_URL left blank; Compose defaults will be used for local dev.",
+            topic="database",
+        )
+        self._unset_backend("DATABASE_URL")
 
     def _collect_ai_providers(self, provider: InputProvider) -> None:
         openai_key = provider.prompt_secret(
@@ -666,6 +699,65 @@ class SetupWizard:
             return
         cache_clear()
 
+    def _render_schema_summary(self) -> None:
+        """Highlight which env vars remain manual after running the wizard."""
+
+        settings = self.ctx.optional_settings()
+        if not settings:
+            console.warn(
+                "Unable to load settings for inventory summary; run "
+                "`starter_cli config dump-schema` manually.",
+                topic="wizard",
+            )
+            return
+        fields = getattr(settings.__class__, "model_fields", {})
+        aliases = { (field.alias or name).upper() for name, field in fields.items() }
+        wizard_coverage = len(aliases & WIZARD_PROMPTED_ENV_VARS)
+        total = len(aliases)
+        remaining = sorted(aliases - WIZARD_PROMPTED_ENV_VARS)
+        console.info(
+            f"Wizard prompts now cover {wizard_coverage}/{total} backend env vars.",
+            topic="wizard",
+        )
+        if remaining:
+            preview = ", ".join(remaining[:5])
+            suffix = " …" if len(remaining) > 5 else ""
+            console.info(
+                f"Review remaining variables via `starter_cli config dump-schema` "
+                f"or docs/trackers/CLI_ENV_INVENTORY.md (next: {preview}{suffix}).",
+                topic="wizard",
+            )
+
+    def _write_summary(self, sections: list[SectionResult]) -> None:
+        if not self.summary_path:
+            return
+        summary = {
+            "profile": self.profile,
+            "api_base_url": self.api_base_url,
+            "backend_env_path": str(self.backend_env.path),
+            "frontend_env_path": str(self.frontend_path) if self.frontend_path else None,
+            "milestones": [
+                {
+                    "milestone": section.milestone,
+                    "focus": section.focus,
+                    "status": section.overall_status,
+                    "checks": [
+                        {
+                            "name": check.name,
+                            "status": check.status,
+                            "required": check.required,
+                            "detail": check.detail,
+                        }
+                        for check in section.checks
+                    ],
+                }
+                for section in sections
+            ],
+        }
+        self.summary_path.parent.mkdir(parents=True, exist_ok=True)
+        self.summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+        console.success(f"Summary written to {self.summary_path}", topic="wizard")
+
     # ------------------------------------------------------------------
     # Audit helpers (shared with report)
     # ------------------------------------------------------------------
@@ -940,6 +1032,11 @@ class SetupWizard:
         os.environ[key] = value
         display = "***" if mask else value
         console.info(f"{key} => {display}", topic="env")
+
+    def _unset_backend(self, key: str) -> None:
+        self.backend_env.delete(key)
+        os.environ.pop(key, None)
+        console.info(f"{key} => <removed>", topic="env")
 
     def _set_backend_bool(self, key: str, value: bool) -> None:
         self._set_backend(key, "true" if value else "false")

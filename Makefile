@@ -32,6 +32,7 @@ help:
 	@echo "  make test-stripe            # Run fixture-driven Stripe replay tests"
 	@echo "  make stripe-replay ARGS='...' # Invoke the Stripe replay CLI"
 	@echo "  make lint-stripe-fixtures   # Validate Stripe fixture JSON files"
+	@echo "  make cli-verify-env         # Check docs/trackers/CLI_ENV_INVENTORY.md vs runtime settings"
 	@echo "  make cli CMD='...'          # Run the consolidated operator CLI (python -m starter_cli.cli)"
 
 bootstrap:
@@ -101,6 +102,9 @@ stripe-replay:
 
 lint-stripe-fixtures:
 	@python scripts/stripe/replay_events.py validate-fixtures
+
+cli-verify-env:
+	@python -m scripts.cli.verify_env_inventory
 
 cli:
 	@python -m starter_cli.cli $(CMD)

@@ -46,6 +46,14 @@ class EnvFile:
             self.lines[idx] = entry
         self._dirty = True
 
+    def delete(self, key: str) -> None:
+        idx = self._index.pop(key, None)
+        if idx is None:
+            return
+        self.lines.pop(idx)
+        self._dirty = True
+        self._reindex()
+
     def save(self) -> None:
         if not self._dirty:
             return
