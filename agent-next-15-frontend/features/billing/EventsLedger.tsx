@@ -1,5 +1,6 @@
 'use client';
 
+import { useDeferredValue, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 
 import { Button } from '@/components/ui/button';
@@ -7,10 +8,11 @@ import { InlineTag, SectionHeader } from '@/components/ui/foundation';
 import { DataTable } from '@/components/ui/data-table';
 import { EmptyState } from '@/components/ui/states';
 import { formatRelativeTime } from '@/lib/utils/time';
-import type { BillingEvent } from '@/types/billing';
+import type { BillingEvent, BillingEventProcessingStatus } from '@/types/billing';
 
 import { BILLING_COPY } from './constants';
-import { useBillingOverviewData } from './hooks/useBillingOverviewData';
+import { BillingEventFilters } from './components/BillingEventFilters';
+import { useBillingEventsFeed } from './hooks/useBillingEventsFeed';
 import { formatCurrency, formatStatusLabel, resolveStatusTone } from './utils/formatters';
 
 const eventsColumns: ColumnDef<BillingEvent>[] = [
@@ -69,8 +71,22 @@ const eventsColumns: ColumnDef<BillingEvent>[] = [
 ];
 
 export function EventsLedger() {
-  const { events, historyState } = useBillingOverviewData();
-  const isInitialLoading = historyState.isLoading && events.length === 0;
+  const [statusFilter, setStatusFilter] = useState<BillingEventProcessingStatus | 'all'>('all');
+  const [eventTypeFilter, setEventTypeFilter] = useState('');
+  const deferredEventType = useDeferredValue(eventTypeFilter);
+  const {
+    events,
+    isLoading,
+    isFetchingMore,
+    hasNextPage,
+    loadMore,
+    streamStatus,
+  } = useBillingEventsFeed({
+    pageSize: 25,
+    processingStatus: statusFilter,
+    eventType: deferredEventType.trim() ? deferredEventType.trim() : null,
+  });
+  const isInitialLoading = isLoading && events.length === 0;
 
   return (
     <section className="space-y-8">
@@ -79,6 +95,18 @@ export function EventsLedger() {
         title={BILLING_COPY.eventsPage.title}
         description={BILLING_COPY.eventsPage.description}
       />
+
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <BillingEventFilters
+          processingStatus={statusFilter}
+          onProcessingStatusChange={setStatusFilter}
+          eventType={eventTypeFilter}
+          onEventTypeChange={setEventTypeFilter}
+        />
+        <InlineTag tone={streamStatus === 'open' ? 'positive' : streamStatus === 'error' ? 'warning' : 'default'}>
+          Stream: {streamStatus}
+        </InlineTag>
+      </div>
 
       <DataTable
         columns={eventsColumns}
@@ -91,12 +119,12 @@ export function EventsLedger() {
       <div className="flex justify-end">
         <Button
           variant="outline"
-          onClick={historyState.loadMore}
-          disabled={!historyState.hasNextPage || historyState.isFetchingMore}
+          onClick={loadMore}
+          disabled={!hasNextPage || isFetchingMore}
         >
-          {historyState.isFetchingMore
+          {isFetchingMore
             ? 'Loading…'
-            : historyState.hasNextPage
+            : hasNextPage
               ? 'Load older events'
               : 'No older events'}
         </Button>

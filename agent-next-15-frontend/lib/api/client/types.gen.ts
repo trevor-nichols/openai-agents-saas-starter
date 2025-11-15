@@ -137,6 +137,190 @@ export type AgentSummary = {
 };
 
 /**
+ * BillingContactModel
+ */
+export type BillingContactModel = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Email
+     */
+    email: string;
+    /**
+     * Role
+     */
+    role?: string | null;
+    /**
+     * Phone
+     */
+    phone?: string | null;
+    /**
+     * Notify Billing
+     */
+    notify_billing?: boolean;
+};
+
+/**
+ * BillingEventHistoryResponse
+ */
+export type BillingEventHistoryResponse = {
+    /**
+     * Items
+     */
+    items?: Array<BillingEventResponse>;
+    /**
+     * Next Cursor
+     *
+     * Opaque cursor for the next page. Null when no additional events exist.
+     */
+    next_cursor?: string | null;
+};
+
+/**
+ * BillingEventInvoiceResponse
+ */
+export type BillingEventInvoiceResponse = {
+    /**
+     * Invoice Id
+     */
+    invoice_id: string;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Amount Due Cents
+     */
+    amount_due_cents: number;
+    /**
+     * Currency
+     */
+    currency: string;
+    /**
+     * Billing Reason
+     */
+    billing_reason?: string | null;
+    /**
+     * Hosted Invoice Url
+     */
+    hosted_invoice_url?: string | null;
+    /**
+     * Collection Method
+     */
+    collection_method?: string | null;
+    /**
+     * Period Start
+     */
+    period_start?: string | null;
+    /**
+     * Period End
+     */
+    period_end?: string | null;
+};
+
+/**
+ * BillingEventResponse
+ */
+export type BillingEventResponse = {
+    /**
+     * Tenant Id
+     */
+    tenant_id: string;
+    /**
+     * Event Type
+     */
+    event_type: string;
+    /**
+     * Stripe Event Id
+     */
+    stripe_event_id: string;
+    /**
+     * Occurred At
+     */
+    occurred_at: string;
+    /**
+     * Summary
+     */
+    summary?: string | null;
+    /**
+     * Status
+     */
+    status: string;
+    subscription?: BillingEventSubscriptionResponse | null;
+    invoice?: BillingEventInvoiceResponse | null;
+    /**
+     * Usage
+     */
+    usage?: Array<BillingEventUsageResponse>;
+};
+
+/**
+ * BillingEventSubscriptionResponse
+ */
+export type BillingEventSubscriptionResponse = {
+    /**
+     * Plan Code
+     */
+    plan_code: string;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Seat Count
+     */
+    seat_count?: number | null;
+    /**
+     * Auto Renew
+     */
+    auto_renew: boolean;
+    /**
+     * Current Period Start
+     */
+    current_period_start?: string | null;
+    /**
+     * Current Period End
+     */
+    current_period_end?: string | null;
+    /**
+     * Trial Ends At
+     */
+    trial_ends_at?: string | null;
+    /**
+     * Cancel At
+     */
+    cancel_at?: string | null;
+};
+
+/**
+ * BillingEventUsageResponse
+ */
+export type BillingEventUsageResponse = {
+    /**
+     * Feature Key
+     */
+    feature_key: string;
+    /**
+     * Quantity
+     */
+    quantity: number;
+    /**
+     * Period Start
+     */
+    period_start?: string | null;
+    /**
+     * Period End
+     */
+    period_end?: string | null;
+    /**
+     * Amount Cents
+     */
+    amount_cents?: number | null;
+};
+
+/**
  * BillingPlanResponse
  */
 export type BillingPlanResponse = {
@@ -1093,6 +1277,11 @@ export type StatusSubscriptionVerifyRequest = {
 };
 
 /**
+ * StripeEventStatus
+ */
+export type StripeEventStatus = 'received' | 'processed' | 'failed';
+
+/**
  * SuccessResponse
  *
  * Standard success response envelope.
@@ -1116,6 +1305,66 @@ export type SuccessResponse = {
      * Optional payload containing the result.
      */
     data?: unknown | null;
+};
+
+/**
+ * TenantSettingsResponse
+ */
+export type TenantSettingsResponse = {
+    /**
+     * Tenant Id
+     */
+    tenant_id: string;
+    /**
+     * Billing Contacts
+     */
+    billing_contacts: Array<BillingContactModel>;
+    /**
+     * Billing Webhook Url
+     */
+    billing_webhook_url?: string | null;
+    /**
+     * Plan Metadata
+     */
+    plan_metadata: {
+        [key: string]: string;
+    };
+    /**
+     * Flags
+     */
+    flags: {
+        [key: string]: boolean;
+    };
+    /**
+     * Updated At
+     */
+    updated_at?: string | null;
+};
+
+/**
+ * TenantSettingsUpdateRequest
+ */
+export type TenantSettingsUpdateRequest = {
+    /**
+     * Billing Contacts
+     */
+    billing_contacts: Array<BillingContactModel>;
+    /**
+     * Billing Webhook Url
+     */
+    billing_webhook_url?: string | null;
+    /**
+     * Plan Metadata
+     */
+    plan_metadata: {
+        [key: string]: string;
+    };
+    /**
+     * Flags
+     */
+    flags: {
+        [key: string]: boolean;
+    };
 };
 
 /**
@@ -2667,6 +2916,90 @@ export type ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponse
 
 export type ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponse = ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponses[keyof ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponses];
 
+export type GetPlatformStatusRssAliasApiV1StatusRssGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/status.rss';
+};
+
+export type GetPlatformStatusRssAliasApiV1StatusRssGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type GetTenantSettingsApiV1TenantsSettingsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Tenant-Id
+         */
+        'X-Tenant-Id'?: string | null;
+        /**
+         * X-Tenant-Role
+         */
+        'X-Tenant-Role'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/tenants/settings';
+};
+
+export type GetTenantSettingsApiV1TenantsSettingsGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetTenantSettingsApiV1TenantsSettingsGetError = GetTenantSettingsApiV1TenantsSettingsGetErrors[keyof GetTenantSettingsApiV1TenantsSettingsGetErrors];
+
+export type GetTenantSettingsApiV1TenantsSettingsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: TenantSettingsResponse;
+};
+
+export type GetTenantSettingsApiV1TenantsSettingsGetResponse = GetTenantSettingsApiV1TenantsSettingsGetResponses[keyof GetTenantSettingsApiV1TenantsSettingsGetResponses];
+
+export type UpdateTenantSettingsApiV1TenantsSettingsPutData = {
+    body: TenantSettingsUpdateRequest;
+    headers?: {
+        /**
+         * X-Tenant-Id
+         */
+        'X-Tenant-Id'?: string | null;
+        /**
+         * X-Tenant-Role
+         */
+        'X-Tenant-Role'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/tenants/settings';
+};
+
+export type UpdateTenantSettingsApiV1TenantsSettingsPutErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateTenantSettingsApiV1TenantsSettingsPutError = UpdateTenantSettingsApiV1TenantsSettingsPutErrors[keyof UpdateTenantSettingsApiV1TenantsSettingsPutErrors];
+
+export type UpdateTenantSettingsApiV1TenantsSettingsPutResponses = {
+    /**
+     * Successful Response
+     */
+    200: TenantSettingsResponse;
+};
+
+export type UpdateTenantSettingsApiV1TenantsSettingsPutResponse = UpdateTenantSettingsApiV1TenantsSettingsPutResponses[keyof UpdateTenantSettingsApiV1TenantsSettingsPutResponses];
+
 export type ListBillingPlansApiV1BillingPlansGetData = {
     body?: never;
     path?: never;
@@ -2884,6 +3217,71 @@ export type RecordUsageApiV1BillingTenantsTenantIdUsagePostResponses = {
 };
 
 export type RecordUsageApiV1BillingTenantsTenantIdUsagePostResponse = RecordUsageApiV1BillingTenantsTenantIdUsagePostResponses[keyof RecordUsageApiV1BillingTenantsTenantIdUsagePostResponses];
+
+export type ListBillingEventsApiV1BillingTenantsTenantIdEventsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Tenant-Id
+         */
+        'X-Tenant-Id'?: string | null;
+        /**
+         * X-Tenant-Role
+         */
+        'X-Tenant-Role'?: string | null;
+    };
+    path: {
+        /**
+         * Tenant Id
+         */
+        tenant_id: string;
+    };
+    query?: {
+        /**
+         * Limit
+         *
+         * Number of events to return.
+         */
+        limit?: number;
+        /**
+         * Cursor
+         *
+         * Opaque cursor returned from the previous page.
+         */
+        cursor?: string | null;
+        /**
+         * Event Type
+         *
+         * Filter by Stripe event type.
+         */
+        event_type?: string | null;
+        /**
+         * Processing Status
+         *
+         * Filter by processing outcome (received/processed/failed).
+         */
+        processing_status?: StripeEventStatus | null;
+    };
+    url: '/api/v1/billing/tenants/{tenant_id}/events';
+};
+
+export type ListBillingEventsApiV1BillingTenantsTenantIdEventsGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListBillingEventsApiV1BillingTenantsTenantIdEventsGetError = ListBillingEventsApiV1BillingTenantsTenantIdEventsGetErrors[keyof ListBillingEventsApiV1BillingTenantsTenantIdEventsGetErrors];
+
+export type ListBillingEventsApiV1BillingTenantsTenantIdEventsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: BillingEventHistoryResponse;
+};
+
+export type ListBillingEventsApiV1BillingTenantsTenantIdEventsGetResponse = ListBillingEventsApiV1BillingTenantsTenantIdEventsGetResponses[keyof ListBillingEventsApiV1BillingTenantsTenantIdEventsGetResponses];
 
 export type BillingEventStreamApiV1BillingStreamGetData = {
     body?: never;

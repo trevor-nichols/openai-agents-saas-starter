@@ -3,11 +3,13 @@ import { useMemo } from 'react';
 
 import { fetchBillingHistory } from '@/lib/api/billingHistory';
 import { readClientSessionMeta } from '@/lib/auth/clientMeta';
-import type { BillingEvent } from '@/types/billing';
+import type { BillingEvent, BillingEventProcessingStatus } from '@/types/billing';
 import { queryKeys } from './keys';
 
 interface UseBillingHistoryOptions {
   pageSize?: number;
+  eventType?: string | null;
+  processingStatus?: BillingEventProcessingStatus | 'all';
 }
 
 interface UseBillingHistoryResult {
@@ -23,9 +25,18 @@ export function useBillingHistory(options?: UseBillingHistoryOptions): UseBillin
   const meta = readClientSessionMeta();
   const tenantId = meta?.tenantId ?? null;
   const pageSize = options?.pageSize ?? 25;
+  const processingStatus =
+    options?.processingStatus && options.processingStatus !== 'all'
+      ? options.processingStatus
+      : null;
+  const eventType = options?.eventType ?? null;
 
   const queryResult = useInfiniteQuery({
-    queryKey: queryKeys.billing.history(tenantId, { pageSize }),
+    queryKey: queryKeys.billing.history(tenantId, {
+      pageSize,
+      eventType,
+      processingStatus,
+    }),
     queryFn: ({ pageParam }) => {
       if (!tenantId) {
         return Promise.resolve({ items: [], next_cursor: null });
@@ -34,6 +45,8 @@ export function useBillingHistory(options?: UseBillingHistoryOptions): UseBillin
         tenantId,
         limit: pageSize,
         cursor: typeof pageParam === 'string' ? pageParam : null,
+        eventType,
+        processingStatus,
       });
     },
     enabled: Boolean(tenantId),

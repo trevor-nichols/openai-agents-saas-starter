@@ -1,13 +1,11 @@
+import type { BillingContact, TenantSettings, TenantSettingsUpdateInput } from '@/types/tenantSettings';
 import type {
-  BillingContact,
-  BillingContactDto,
-  TenantSettings,
-  TenantSettingsResponseDto,
-  TenantSettingsUpdateDto,
-  TenantSettingsUpdateInput,
-} from '@/types/tenantSettings';
+  BillingContactModel,
+  TenantSettingsResponse,
+  TenantSettingsUpdateRequest,
+} from '@/lib/api/client/types.gen';
 
-function mapContact(dto: BillingContactDto, index: number): BillingContact {
+function mapContact(dto: BillingContactModel, index: number): BillingContact {
   const idSeat = dto.email ? `${dto.email}:${index}` : `contact-${index}`;
   return {
     id: idSeat,
@@ -19,18 +17,18 @@ function mapContact(dto: BillingContactDto, index: number): BillingContact {
   };
 }
 
-function mapDto(dto: TenantSettingsResponseDto): TenantSettings {
+function mapDto(dto: TenantSettingsResponse): TenantSettings {
   return {
     tenantId: dto.tenant_id,
     billingContacts: dto.billing_contacts.map(mapContact),
-    billingWebhookUrl: dto.billing_webhook_url,
+    billingWebhookUrl: dto.billing_webhook_url ?? null,
     planMetadata: dto.plan_metadata ?? {},
     flags: dto.flags ?? {},
-    updatedAt: dto.updated_at,
+    updatedAt: dto.updated_at ?? null,
   };
 }
 
-function mapContactToDto(contact: BillingContact): BillingContactDto {
+function mapContactToDto(contact: BillingContact): BillingContactModel {
   return {
     name: contact.name,
     email: contact.email,
@@ -40,7 +38,7 @@ function mapContactToDto(contact: BillingContact): BillingContactDto {
   };
 }
 
-function buildUpdateDto(payload: TenantSettingsUpdateInput): TenantSettingsUpdateDto {
+function buildUpdateDto(payload: TenantSettingsUpdateInput): TenantSettingsUpdateRequest {
   return {
     billing_contacts: payload.billingContacts.map(mapContactToDto),
     billing_webhook_url: payload.billingWebhookUrl,
@@ -72,7 +70,7 @@ function extractErrorMessage(payload: unknown): string | undefined {
 }
 
 export async function fetchTenantSettings(): Promise<TenantSettings> {
-  const response = await fetch('/api/settings/tenant', { cache: 'no-store' });
+  const response = await fetch('/api/v1/tenants/settings', { cache: 'no-store' });
   const payload = await parseJson<unknown>(response);
   if (!response.ok) {
     throw createError(
@@ -81,13 +79,13 @@ export async function fetchTenantSettings(): Promise<TenantSettings> {
       extractErrorMessage(payload),
     );
   }
-  return mapDto(payload as TenantSettingsResponseDto);
+  return mapDto(payload as TenantSettingsResponse);
 }
 
 export async function updateTenantSettings(
   payload: TenantSettingsUpdateInput,
 ): Promise<TenantSettings> {
-  const response = await fetch('/api/settings/tenant', {
+  const response = await fetch('/api/v1/tenants/settings', {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -102,5 +100,5 @@ export async function updateTenantSettings(
       extractErrorMessage(body),
     );
   }
-  return mapDto(body as TenantSettingsResponseDto);
+  return mapDto(body as TenantSettingsResponse);
 }

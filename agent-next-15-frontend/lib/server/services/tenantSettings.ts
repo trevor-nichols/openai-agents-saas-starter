@@ -1,16 +1,15 @@
 'use server';
 
-import { API_BASE_URL } from '@/lib/config';
-import type { TenantSettingsResponseDto, TenantSettingsUpdateDto } from '@/types/tenantSettings';
+import {
+  getTenantSettingsApiV1TenantsSettingsGet,
+  updateTenantSettingsApiV1TenantsSettingsPut,
+} from '@/lib/api/client/sdk.gen';
+import type { TenantSettingsResponse, TenantSettingsUpdateRequest } from '@/lib/api/client/types.gen';
 
 import { getServerApiClient } from '../apiClient';
 
 interface TenantSettingsOptions {
   tenantRole?: string | null;
-}
-
-function resolveBaseUrl(): string {
-  return API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
 }
 
 function mapErrorMessage(payload: unknown): string {
@@ -33,54 +32,70 @@ export class TenantSettingsApiError extends Error {
   }
 }
 
-async function authorizedFetch(
-  path: string,
-  init: RequestInit,
-  options?: TenantSettingsOptions,
-): Promise<Response> {
-  const { auth } = await getServerApiClient();
-  const token = auth();
-  const headers = new Headers(init.headers);
-  headers.set('Authorization', `Bearer ${token}`);
-  if (options?.tenantRole) {
-    headers.set('X-Tenant-Role', options.tenantRole);
+type SdkFieldsResult<T> =
+  | {
+      data: T;
+      error: undefined;
+      response: Response;
+    }
+  | {
+      data: undefined;
+      error: unknown;
+      response: Response;
+    };
+
+function resolveHeaders(options?: TenantSettingsOptions): Headers | undefined {
+  if (!options?.tenantRole) {
+    return undefined;
   }
-  return fetch(`${resolveBaseUrl()}${path}`, {
-    ...init,
-    headers,
-    cache: 'no-store',
-  });
+  const headers = new Headers();
+  headers.set('X-Tenant-Role', options.tenantRole);
+  return headers;
+}
+
+function unwrapSdkResult<T>(
+  result: SdkFieldsResult<T>,
+  fallbackMessage: string,
+): T {
+  if (result.error) {
+    throw new TenantSettingsApiError(result.response.status, mapErrorMessage(result.error));
+  }
+
+  if (!result.data) {
+    throw new TenantSettingsApiError(result.response.status ?? 500, fallbackMessage);
+  }
+
+  return result.data;
 }
 
 export async function getTenantSettingsFromApi(
   options?: TenantSettingsOptions,
-): Promise<TenantSettingsResponseDto> {
-  const response = await authorizedFetch('/api/v1/tenants/settings', { method: 'GET' }, options);
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new TenantSettingsApiError(response.status, mapErrorMessage(payload));
-  }
-  return payload as TenantSettingsResponseDto;
+): Promise<TenantSettingsResponse> {
+  const { client, auth } = await getServerApiClient();
+  const result = await getTenantSettingsApiV1TenantsSettingsGet({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: false,
+    headers: resolveHeaders(options),
+  });
+
+  return unwrapSdkResult(result as SdkFieldsResult<TenantSettingsResponse>, 'Tenant settings request failed.');
 }
 
 export async function updateTenantSettingsInApi(
-  body: TenantSettingsUpdateDto,
+  body: TenantSettingsUpdateRequest,
   options?: TenantSettingsOptions,
-): Promise<TenantSettingsResponseDto> {
-  const response = await authorizedFetch(
-    '/api/v1/tenants/settings',
-    {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    },
-    options,
-  );
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new TenantSettingsApiError(response.status, mapErrorMessage(payload));
-  }
-  return payload as TenantSettingsResponseDto;
+): Promise<TenantSettingsResponse> {
+  const { client, auth } = await getServerApiClient();
+  const result = await updateTenantSettingsApiV1TenantsSettingsPut({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: false,
+    headers: resolveHeaders(options),
+    body,
+  });
+
+  return unwrapSdkResult(result as SdkFieldsResult<TenantSettingsResponse>, 'Tenant settings request failed.');
 }

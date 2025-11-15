@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
 import { listTenantBillingEvents } from '@/lib/server/services/billing';
+import type { StripeEventStatus } from '@/lib/api/client/types.gen';
 
 interface RouteContext {
   params: {
@@ -15,6 +16,17 @@ function resolveTenantId(context: RouteContext): string | null {
 
 function resolveTenantRole(request: NextRequest): string | null {
   return request.headers.get('x-tenant-role');
+}
+
+const VALID_PROCESSING_STATUSES: StripeEventStatus[] = ['received', 'processed', 'failed'];
+
+function normalizeProcessingStatus(value: string | null): StripeEventStatus | null {
+  if (!value) {
+    return null;
+  }
+  return VALID_PROCESSING_STATUSES.includes(value as StripeEventStatus)
+    ? (value as StripeEventStatus)
+    : null;
 }
 
 function mapErrorToStatus(message: string): number {
@@ -38,8 +50,16 @@ export async function GET(request: NextRequest, context: RouteContext) {
   const limitParam = searchParams.get('limit');
   const cursor = searchParams.get('cursor');
   const eventType = searchParams.get('event_type');
-  const processingStatus =
-    searchParams.get('processing_status') ?? searchParams.get('status');
+  const rawProcessingStatus = searchParams.get('processing_status') ?? searchParams.get('status');
+  const processingStatus = normalizeProcessingStatus(rawProcessingStatus);
+  if (rawProcessingStatus && !processingStatus) {
+    return NextResponse.json(
+      {
+        message: `processing_status must be one of: ${VALID_PROCESSING_STATUSES.join(', ')}.`,
+      },
+      { status: 400 },
+    );
+  }
 
   const limit = limitParam ? Number(limitParam) : undefined;
   if (limit !== undefined && Number.isNaN(limit)) {

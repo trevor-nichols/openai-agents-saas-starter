@@ -4,6 +4,7 @@ import {
   billingEventStreamApiV1BillingStreamGet,
   cancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPost,
   getTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGet,
+  listBillingEventsApiV1BillingTenantsTenantIdEventsGet,
   listBillingPlansApiV1BillingPlansGet,
   recordUsageApiV1BillingTenantsTenantIdUsagePost,
   startSubscriptionApiV1BillingTenantsTenantIdSubscriptionPost,
@@ -16,6 +17,7 @@ import type {
   UpdateSubscriptionRequest,
   CancelSubscriptionRequest,
   UsageRecordRequest,
+  StripeEventStatus,
 } from '@/lib/api/client/types.gen';
 import type { BillingEventHistoryResponse } from '@/types/billing';
 
@@ -40,6 +42,17 @@ export interface ListTenantBillingEventsOptions {
   eventType?: string | null;
   processingStatus?: string | null;
   tenantRole?: string | null;
+}
+
+const VALID_PROCESSING_STATUSES: StripeEventStatus[] = ['received', 'processed', 'failed'];
+
+function normalizeProcessingStatus(status?: string | null): StripeEventStatus | undefined {
+  if (!status) {
+    return undefined;
+  }
+  return VALID_PROCESSING_STATUSES.includes(status as StripeEventStatus)
+    ? (status as StripeEventStatus)
+    : undefined;
 }
 
 /**
@@ -96,38 +109,37 @@ export async function listTenantBillingEvents(
   }
 
   const { client, auth } = await getServerApiClient();
-  const query: Record<string, string | number | undefined> = {
-    limit: options?.limit,
-    cursor: options?.cursor ?? undefined,
-    event_type: options?.eventType ?? undefined,
-    processing_status: options?.processingStatus ?? undefined,
-  };
-
-  const response = await client.request<BillingEventHistoryResponse>({
-    method: 'GET',
-    url: '/api/v1/billing/tenants/{tenant_id}/events',
-    path: {
-      tenant_id: tenantId,
-    },
-    query,
+  const response = await listBillingEventsApiV1BillingTenantsTenantIdEventsGet({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
     headers: {
       ...(options?.tenantRole ? { 'X-Tenant-Role': options.tenantRole } : {}),
     },
-    auth,
-    security: [
-      {
-        scheme: 'bearer',
-        type: 'http',
-      },
-    ],
-    responseStyle: 'data',
+    path: {
+      tenant_id: tenantId,
+    },
+    query: {
+      limit: options?.limit,
+      cursor: options?.cursor ?? undefined,
+      event_type: options?.eventType ?? undefined,
+      processing_status: normalizeProcessingStatus(options?.processingStatus ?? undefined),
+    },
   });
 
-  if (!('data' in response) || !response.data) {
+  const payload = response.data;
+  if (!payload) {
     throw new Error('Failed to load billing events.');
   }
 
-  return response.data;
+  const normalized: BillingEventHistoryResponse = {
+    ...payload,
+    items: payload.items ?? [],
+    next_cursor: payload.next_cursor ?? null,
+  };
+
+  return normalized;
 }
 
 /**

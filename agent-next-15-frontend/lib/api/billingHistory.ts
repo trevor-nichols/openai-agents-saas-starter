@@ -1,3 +1,4 @@
+import type { StripeEventStatus } from '@/lib/api/client/types.gen';
 import type { BillingEventHistoryResponse } from '@/types/billing';
 
 export interface FetchBillingHistoryParams {
@@ -5,7 +6,7 @@ export interface FetchBillingHistoryParams {
   limit?: number;
   cursor?: string | null;
   eventType?: string | null;
-  processingStatus?: string | null;
+  processingStatus?: StripeEventStatus | null;
   signal?: AbortSignal;
 }
 

@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
 
-import type { BillingEvent, BillingEventUsage } from '@/types/billing';
+import type { BillingEventUsage } from '@/types/billing';
 import { useBillingStream } from '@/lib/queries/billing';
 import { useBillingHistory } from '@/lib/queries/billingHistory';
+import { mergeBillingEvents } from '../utils/mergeEvents';
 
 import type { BillingOverviewData, PlanSnapshot, UsageRow } from '../types';
 import { formatCurrency, formatDate, formatPeriod, formatStatusLabel, resolveStatusTone } from '../utils/formatters';
@@ -29,7 +30,7 @@ export function useBillingOverviewData(): BillingOverviewData {
     loadMore,
   } = useBillingHistory({ pageSize: 25 });
 
-  const mergedEvents = useMemo(() => mergeEvents(historyEvents, streamEvents), [historyEvents, streamEvents]);
+  const mergedEvents = useMemo(() => mergeBillingEvents(historyEvents, streamEvents), [historyEvents, streamEvents]);
 
   const subscriptionEvent = useMemo(() => mergedEvents.find((event) => event.subscription), [mergedEvents]);
   const invoiceEvent = useMemo(() => mergedEvents.find((event) => event.invoice), [mergedEvents]);
@@ -90,19 +91,4 @@ export function useBillingOverviewData(): BillingOverviewData {
       loadMore,
     },
   };
-}
-
-function mergeEvents(history: BillingEvent[], stream: BillingEvent[]): BillingEvent[] {
-  const seen = new Map<string, BillingEvent>();
-  const combined = [...stream, ...history];
-
-  for (const event of combined) {
-    if (!seen.has(event.stripe_event_id)) {
-      seen.set(event.stripe_event_id, event);
-    }
-  }
-
-  return Array.from(seen.values()).sort((a, b) => {
-    return new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime();
-  });
 }
