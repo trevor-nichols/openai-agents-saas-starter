@@ -3,21 +3,7 @@ name: Frontend CI
 on:
   push:
     branches: [main]
-    paths:
-      - "agent-next-15-frontend/**"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - "tsconfig.*"
-      - ".github/workflows/frontend-ci.yml"
   pull_request:
-    paths:
-      - "agent-next-15-frontend/**"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - "tsconfig.*"
-      - ".github/workflows/frontend-ci.yml"
 
 jobs:
   quality:

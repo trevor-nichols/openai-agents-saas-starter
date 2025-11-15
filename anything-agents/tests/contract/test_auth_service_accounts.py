@@ -16,19 +16,40 @@ from starter_cli.cli.auth_commands import build_parser, handle_issue_service_acc
 
 from app.core import config as config_module
 from app.core.keys import load_keyset
-from app.core.security import get_token_verifier
-from app.core.security import get_token_signer
+from app.core.security import get_token_signer, get_token_verifier
+from app.domain.secrets import (
+    SecretProviderHealth,
+    SecretProviderStatus,
+    SecretPurpose,
+    SignedPayload,
+)
 from app.infrastructure.security.nonce_store import RedisNonceStore
 from main import app
 
 
-class FakeVaultClient:
+class FakeSecretProvider:
     def __init__(self) -> None:
-        self.calls: list[tuple[str, str]] = []
+        self.calls: list[tuple[bytes, str, SecretPurpose]] = []
 
-    def verify_signature(self, payload_b64: str, signature: str) -> bool:
-        self.calls.append((payload_b64, signature))
+    async def get_secret(self, key: str, *, scope=None) -> str:  # pragma: no cover - unused
+        raise NotImplementedError
+
+    async def get_secrets(self, keys, *, scope=None) -> dict[str, str]:  # pragma: no cover - unused
+        raise NotImplementedError
+
+    async def sign(
+        self, payload: bytes, *, purpose: SecretPurpose
+    ) -> SignedPayload:  # pragma: no cover - unused
+        raise NotImplementedError
+
+    async def verify(
+        self, payload: bytes, signature: str, *, purpose: SecretPurpose
+    ) -> bool:
+        self.calls.append((payload, signature, purpose))
         return True
+
+    async def health_check(self) -> SecretProviderHealth:  # pragma: no cover - unused
+        return SecretProviderHealth(status=SecretProviderStatus.HEALTHY, details={})
 
 
 @pytest.fixture(autouse=True)
@@ -115,11 +136,11 @@ def test_cli_roundtrip_enforces_nonce_reuse(
         monkeypatch.setenv("VAULT_TOKEN", "test-token")
         config_module.get_settings.cache_clear()
 
-        fake_client = FakeVaultClient()
+        fake_provider = FakeSecretProvider()
         fake_server = FakeServer()
         monkeypatch.setattr(
-            "app.api.v1.auth.routes_service_accounts.get_vault_transit_client",
-            lambda: fake_client,
+            "app.api.v1.auth.routes_service_accounts.get_secret_provider",
+            lambda: fake_provider,
         )
         monkeypatch.setattr(
             "app.api.v1.auth.routes_service_accounts.get_nonce_store",
@@ -150,10 +171,16 @@ def test_cli_roundtrip_enforces_nonce_reuse(
         monkeypatch.setattr("starter_cli.cli.common._build_vault_envelope", fake_envelope)
         monkeypatch.setattr("starter_cli.cli.common._vault_sign_payload", fake_sign)
 
-        def fake_build_vault_headers(payload: dict[str, Any], _settings: Any) -> tuple[str, dict[str, str]]:
+        def fake_build_vault_headers(
+            payload: dict[str, Any], _settings: Any
+        ) -> tuple[str, dict[str, str]]:
             envelope = fake_envelope(payload)
             payload_json = json.dumps(envelope, separators=(",", ":"))
-            payload_b64 = base64.urlsafe_b64encode(payload_json.encode("utf-8")).decode("utf-8").rstrip("=")
+            payload_b64 = (
+                base64.urlsafe_b64encode(payload_json.encode("utf-8"))
+                .decode("utf-8")
+                .rstrip("=")
+            )
             signature = fake_sign(payload_b64=payload_b64)
             return f"Bearer vault:{signature}", {"X-Vault-Payload": payload_b64}
 
@@ -187,14 +214,17 @@ def test_cli_roundtrip_enforces_nonce_reuse(
 
         assert first_exit == 0
         assert '"refresh_token"' in first_output.out
-        assert fake_client.calls, "Vault verification was not invoked."
+        assert fake_provider.calls, "Vault verification was not invoked."
         assert len(signed_payloads) == 1
 
         second_exit = handle_issue_service_account(args)
         second_output = capsys.readouterr()
 
         assert second_exit == 1
-        assert "error: Issuance failed (401): Vault payload nonce already used." in second_output.err
+        assert (
+            "error: Issuance failed (401): Vault payload nonce already used."
+            in second_output.err
+        )
         assert len(signed_payloads) == 2
         assert signed_payloads[0] == signed_payloads[1]
 

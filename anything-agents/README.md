@@ -160,9 +160,20 @@ Prefer not to edit env files manually? Run the consolidated operator CLI:
 ```bash
 python -m starter_cli.cli setup wizard        # full interactive flow
 make cli CMD="setup wizard --profile=production"  # helper wrapper
+python -m starter_cli.cli infra deps          # check Docker/Hatch/Node/pnpm availability
+python -m starter_cli.cli infra compose up    # start Postgres + Redis via docker compose
+python -m starter_cli.cli infra vault up      # run the Vault dev signer helper
 ```
 
 The wizard now walks through profiles (local/staging/production), captures required vs. optional secrets, verifies Vault Transit connectivity before enabling service-account issuance, validates Stripe/Redis/Resend inputs (with optional migration + seeding helpers), and records tenant/logging/GeoIP/signup policies so auditors can trace every decision. It writes `.env.local` + `agent-next-15-frontend/.env.local`, then emits a milestone-aligned report. Stripe provisioning and auth tooling now live exclusively under the consolidated CLI (`python -m starter_cli.cli stripe …`, `python -m starter_cli.cli auth …`).
+
+After the wizard, use the new `infra` command group instead of raw Make targets:
+
+- `python -m starter_cli.cli infra compose up|down|logs|ps` – wraps `make dev-*` helpers for Docker Compose.
+- `python -m starter_cli.cli infra vault up|down|logs|verify` – manages the Vault dev signer lifecycle.
+- `python -m starter_cli.cli config dump-schema --format table` – lists every backend env var, its default, and whether the wizard collected it. The full inventory also lives in `docs/trackers/CLI_ENV_INVENTORY.md`.
+- `make cli-verify-env` – runs the inventory verification script to ensure the markdown table stays in sync with the runtime schema (useful in CI or before merging infra changes).
+- Every wizard run writes a JSON audit report (default `var/reports/setup-summary.json`; override via `--summary-path`) so you can archive the collected inputs alongside deployment artifacts.
 
 ### 4. Run the Application
 

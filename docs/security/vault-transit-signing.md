@@ -6,6 +6,9 @@
 
 ---
 
+> **Need a comparison of all supported secrets providers?**  
+> See `docs/security/secrets-providers.md` for the full matrix and onboarding runbooks.
+
 ## 1. Goal
 
 Enable the AuthService CLI and backend to authenticate service-account issuance requests using Vault Transit–signed JWTs. This replaces static tokens and aligns with our security posture for staging/production.

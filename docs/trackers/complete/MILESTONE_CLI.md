@@ -34,6 +34,14 @@ Document the outstanding deliverables for the Starter CLI (SC) so we can plan im
 - Reminder (2025-11-10): `auth-cli` and `scripts/stripe/setup.py` remain deprecated. Update automation to call the consolidated CLI entrypoint.
 - Next refinements: extract shared config/crypto helpers, extend the backend to consume the new logging/GeoIP settings, add CLI report exporters for infra audit trails. (Forbidden import guard shipped via `tests/unit/test_cli_forbidden_imports.py`.)
 
+### Status Update – 2025-11-14
+
+- Added a machine-readable inventory of every backend env var (`docs/trackers/CLI_ENV_INVENTORY.md`) plus a new `starter_cli config dump-schema` command so operators (and CI automation) can diff wizard coverage versus the full Pydantic settings model.
+- Introduced `starter_cli infra compose|vault|deps` so the CLI can bootstrap Docker Compose stacks, manage the Vault dev signer, and verify local dependencies without dropping back to raw Make targets. Tests now cover these wrappers via `test_cli_infra_commands.py`.
+- The setup wizard now prompts for `DATABASE_URL` and prints a “schema coverage” summary pointing operators to the inventory/dump-schema tooling for any remaining manual knobs.
+- Added `scripts/cli/verify_env_inventory.py` (wired via `make cli-verify-env`) so CI can fail fast if docs/trackers/CLI_ENV_INVENTORY.md drifts from the runtime settings schema or wizard coverage flags.
+- The setup wizard now emits a JSON summary (default `var/reports/setup-summary.json`, override via `--summary-path`) which captures milestone checks + env paths for audit logs or deployment artifacts.
+
 ## Detailed Scope
 
 ### M1 – Secrets & Key Management (SEC-007, SEC-008)

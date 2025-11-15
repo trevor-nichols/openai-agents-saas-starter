@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 
 from .common import CLIContext
 from .console import console
@@ -56,6 +57,14 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         metavar="KEY=VALUE",
         help="Override a specific prompt answer (repeatable).",
     )
+    wizard_parser.add_argument(
+        "--summary-path",
+        metavar="PATH",
+        help=(
+            "Write a JSON summary of collected values + audit checks to PATH."
+            " Defaults to var/reports/setup-summary.json when omitted."
+        ),
+    )
     wizard_parser.set_defaults(handler=handle_setup_wizard)
 
 
@@ -80,10 +89,16 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
         output_format=args.output,
         input_provider=provider,
     )
+    if args.summary_path:
+        wizard.summary_path = Path(args.summary_path).expanduser()
 
     if args.report_only:
         wizard.render_report()
     else:
+        if not args.summary_path:
+            default_summary = ctx.project_root / "var/reports/setup-summary.json"
+            default_summary.parent.mkdir(parents=True, exist_ok=True)
+            wizard.summary_path = default_summary
         wizard.execute()
     return 0
 

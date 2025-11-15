@@ -10,9 +10,18 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import boto3
 import httpx
+from azure.identity import (
+    ChainedTokenCredential,
+    ClientSecretCredential,
+    DefaultAzureCredential,
+    ManagedIdentityCredential,
+)
+from azure.keyvault.secrets import SecretClient
 from dotenv import load_dotenv
 from starter_shared.config import StarterSettingsProtocol, get_settings
+from starter_shared.secrets.models import SecretsProviderLiteral
 
 from .console import console
 
@@ -28,6 +37,7 @@ DEFAULT_ENV_FILES: tuple[Path, ...] = (
     PROJECT_ROOT / ".env",
     PROJECT_ROOT / ".env.local",
 )
+TELEMETRY_ENV = "STARTER_CLI_TELEMETRY_OPT_IN"
 
 
 @dataclass(slots=True)
@@ -93,18 +103,33 @@ def build_vault_headers(
     """
 
     dev_mode = os.getenv("AUTH_CLI_DEV_AUTH_MODE", "vault").lower() == "local"
-    if dev_mode or not settings or not settings.vault_addr or not settings.vault_token:
+    if dev_mode:
         return "Bearer dev-local", {}
 
-    payload_json = json.dumps(_build_vault_envelope(request_payload), separators=(",", ":"))
-    payload_b64 = base64.urlsafe_b64encode(payload_json.encode("utf-8")).decode("utf-8").rstrip("=")
+    envelope = _build_vault_envelope(request_payload)
+    payload_json = json.dumps(envelope, separators=(",", ":"))
+    payload_bytes = payload_json.encode("utf-8")
+    payload_b64 = base64.urlsafe_b64encode(payload_bytes).decode("utf-8").rstrip("=")
 
-    signature = _vault_sign_payload(
-        base_url=settings.vault_addr,
-        token=settings.vault_token,
-        key_name=settings.vault_transit_key,
-        payload_b64=payload_b64,
+    provider = (
+        settings.secrets_provider if settings else SecretsProviderLiteral.VAULT_DEV
     )
+
+    if provider in (SecretsProviderLiteral.VAULT_DEV, SecretsProviderLiteral.VAULT_HCP):
+        if not settings or not settings.vault_addr or not settings.vault_token:
+            return "Bearer dev-local", {}
+        signature = _vault_sign_payload(
+            base_url=settings.vault_addr,
+            token=settings.vault_token,
+            key_name=settings.vault_transit_key,
+            payload_b64=payload_b64,
+        )
+    else:
+        signature = _sign_with_hmac_provider(
+            provider=provider,
+            payload_bytes=payload_bytes,
+            settings=settings,
+        )
 
     headers = {"X-Vault-Payload": payload_b64}
     return f"Bearer vault:{signature}", headers
@@ -157,6 +182,124 @@ def _vault_sign_payload(
     if not signature:
         raise CLIError("Vault sign response missing signature.")
 
-    if signature.startswith("vault:v1:"):
-        signature = signature.split(":", 2)[-1]
     return signature
+
+
+def _sign_with_hmac_provider(
+    *,
+    provider: SecretsProviderLiteral,
+    payload_bytes: bytes,
+    settings: StarterSettingsProtocol | None,
+) -> str:
+    if settings is None:
+        raise CLIError("Application settings unavailable; cannot sign payload.")
+    if provider in (
+        SecretsProviderLiteral.INFISICAL_CLOUD,
+        SecretsProviderLiteral.INFISICAL_SELF_HOST,
+    ):
+        secret = _fetch_infisical_secret(settings)
+    elif provider is SecretsProviderLiteral.AWS_SM:
+        secret = _fetch_aws_secret(settings)
+    elif provider is SecretsProviderLiteral.AZURE_KV:
+        secret = _fetch_azure_secret(settings)
+    else:
+        raise CLIError(f"Unsupported secrets provider: {provider.value}")
+
+    import hmac
+    from hashlib import sha256
+
+    signature = hmac.new(
+        secret.encode("utf-8"),
+        payload_bytes,
+        sha256,
+    ).hexdigest()
+    return signature
+
+
+def _fetch_infisical_secret(settings: StarterSettingsProtocol) -> str:
+    inf = settings.infisical_settings
+    if not (
+        inf.base_url
+        and inf.service_token
+        and inf.project_id
+        and inf.environment
+        and inf.signing_secret_name
+    ):
+        raise CLIError("Infisical configuration is incomplete; rerun secrets onboarding.")
+
+    params = {
+        "environment": inf.environment,
+        "workspaceId": inf.project_id,
+        "type": "shared",
+        "path": inf.secret_path or "/",
+    }
+    url = f"{inf.base_url.rstrip('/')}/api/v4/secrets/{inf.signing_secret_name}"
+    headers = {"Authorization": f"Bearer {inf.service_token}"}
+    with httpx.Client(timeout=5.0, verify=inf.ca_bundle_path or True) as client:
+        response = client.get(url, headers=headers, params=params)
+    if response.status_code >= 400:
+        raise CLIError(f"Infisical secret fetch failed ({response.status_code}): {response.text}")
+    payload = response.json()
+    secret = payload.get("secret", {}).get("secretValue")
+    if not isinstance(secret, str):
+        raise CLIError("Infisical response missing secret value.")
+    return secret
+
+
+def _fetch_aws_secret(settings: StarterSettingsProtocol) -> str:
+    aws = settings.aws_settings
+    if not (aws.region and aws.signing_secret_arn):
+        raise CLIError("AWS configuration is incomplete; rerun secrets onboarding.")
+    session = boto3.Session(
+        profile_name=aws.profile,
+        aws_access_key_id=aws.access_key_id,
+        aws_secret_access_key=aws.secret_access_key,
+        aws_session_token=aws.session_token,
+        region_name=aws.region,
+    )
+    client = session.client("secretsmanager")
+    try:
+        response = client.get_secret_value(SecretId=aws.signing_secret_arn)
+    except Exception as exc:  # pragma: no cover - boto handles detail
+        raise CLIError(f"AWS secret fetch failed: {exc}") from exc
+    if "SecretString" in response and isinstance(response["SecretString"], str):
+        return response["SecretString"]
+    if "SecretBinary" in response:
+        value = response["SecretBinary"]
+        if isinstance(value, (bytes, bytearray)):  # noqa: UP038
+            return value.decode("utf-8")
+    raise CLIError("AWS secret missing string payload.")
+
+
+def _fetch_azure_secret(settings: StarterSettingsProtocol) -> str:
+    az = settings.azure_settings
+    if not (az.vault_url and az.signing_secret_name):
+        raise CLIError("Azure Key Vault configuration is incomplete; rerun secrets onboarding.")
+
+    credentials = []
+    if az.tenant_id and az.client_id and az.client_secret:
+        credentials.append(
+            ClientSecretCredential(
+                tenant_id=az.tenant_id,
+                client_id=az.client_id,
+                client_secret=az.client_secret,
+            )
+        )
+    if az.managed_identity_client_id:
+        credentials.append(
+            ManagedIdentityCredential(client_id=az.managed_identity_client_id)
+        )
+    credentials.append(DefaultAzureCredential(exclude_interactive_browser_credential=True))
+    credential = (
+        credentials[0]
+        if len(credentials) == 1
+        else ChainedTokenCredential(*credentials)
+    )
+    client = SecretClient(vault_url=az.vault_url, credential=credential)
+    try:
+        secret = client.get_secret(az.signing_secret_name)
+    except Exception as exc:  # pragma: no cover - azure sdk handles detail
+        raise CLIError(f"Azure Key Vault secret fetch failed: {exc}") from exc
+    if not secret.value:
+        raise CLIError("Azure Key Vault secret has no value.")
+    return secret.value

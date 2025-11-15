@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
 import httpx
 import pytest
-from starter_cli.cli.common import CLIContext
+from starter_cli.cli.common import CLIContext, CLIError
 from starter_cli.cli.setup import HeadlessInputProvider, SetupWizard
+from starter_cli.cli.setup._wizard import audit
+from starter_cli.cli.setup._wizard.sections import providers as provider_section
+from starter_cli.cli.setup.models import CheckResult, SectionResult
 from starter_cli.cli.setup.validators import set_vault_probe_request
 
 
@@ -35,6 +39,7 @@ def test_wizard_headless_local_generates_env(temp_ctx: CLIContext) -> None:
         "ALLOWED_HOSTS": "localhost",
         "ALLOWED_ORIGINS": "http://localhost:3000",
         "AUTO_RUN_MIGRATIONS": "false",
+        "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents",
         "API_BASE_URL": "http://127.0.0.1:8001",
         "ROTATE_SIGNING_KEYS": "false",
         "VAULT_VERIFY_ENABLED": "false",
@@ -98,6 +103,7 @@ def test_wizard_refreshes_cached_settings(temp_ctx: CLIContext) -> None:
         "ALLOWED_HOSTS": "localhost",
         "ALLOWED_ORIGINS": "http://localhost:3000",
         "AUTO_RUN_MIGRATIONS": "false",
+        "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents",
         "API_BASE_URL": "http://127.0.0.1:8001",
         "ROTATE_SIGNING_KEYS": "false",
         "VAULT_VERIFY_ENABLED": "false",
@@ -162,6 +168,7 @@ def test_wizard_clears_optional_provider_keys(temp_ctx: CLIContext) -> None:
         "ALLOWED_HOSTS": "localhost",
         "ALLOWED_ORIGINS": "http://localhost:3000",
         "AUTO_RUN_MIGRATIONS": "false",
+        "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents",
         "API_BASE_URL": "http://127.0.0.1:8000",
         "ROTATE_SIGNING_KEYS": "false",
         "VAULT_VERIFY_ENABLED": "false",
@@ -217,6 +224,7 @@ def test_wizard_does_not_leak_env_values(temp_ctx: CLIContext) -> None:
         "ALLOWED_HOSTS": "localhost",
         "ALLOWED_ORIGINS": "http://localhost:3000",
         "AUTO_RUN_MIGRATIONS": "false",
+        "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents",
         "API_BASE_URL": "http://127.0.0.1:8000",
         "ROTATE_SIGNING_KEYS": "false",
         "VAULT_VERIFY_ENABLED": "false",
@@ -270,7 +278,7 @@ def test_wizard_rotates_new_peppers(monkeypatch, temp_ctx: CLIContext) -> None:
     )
 
     monkeypatch.setattr(
-        "starter_cli.cli.setup.wizard.secrets.token_urlsafe",
+        "starter_cli.cli.setup._wizard.context.secrets.token_urlsafe",
         lambda n=32: "rotated-secret",
     )
 
@@ -282,6 +290,7 @@ def test_wizard_rotates_new_peppers(monkeypatch, temp_ctx: CLIContext) -> None:
         "ALLOWED_HOSTS": "localhost",
         "ALLOWED_ORIGINS": "http://localhost:3000",
         "AUTO_RUN_MIGRATIONS": "false",
+        "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents",
         "API_BASE_URL": "http://127.0.0.1:8000",
         "ROTATE_SIGNING_KEYS": "false",
         "VAULT_VERIFY_ENABLED": "false",
@@ -335,6 +344,7 @@ def test_wizard_staging_verifies_vault(
         "ALLOWED_HOSTS": "staging.example.com",
         "ALLOWED_ORIGINS": "https://staging.example.com",
         "AUTO_RUN_MIGRATIONS": "false",
+        "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@staging-db:5432/anything_agents",
         "API_BASE_URL": "https://api.staging.example.com",
         "ROTATE_SIGNING_KEYS": "false",
         "VAULT_VERIFY_ENABLED": "true",
@@ -386,3 +396,70 @@ def test_wizard_staging_verifies_vault(
     assert called["token"] == "token"
     _cleanup_env(snapshot)
     set_vault_probe_request(None)
+
+
+def test_wizard_summary_writes_milestones(temp_ctx: CLIContext) -> None:
+    wizard = SetupWizard(
+        ctx=temp_ctx,
+        profile="local",
+        output_format="summary",
+        input_provider=None,
+    )
+    summary_path = temp_ctx.project_root / "summary.json"
+    wizard.summary_path = summary_path
+
+    sections = [
+        SectionResult(
+            milestone="M-test",
+            focus="Prove summary output uses section fields",
+            checks=[
+                CheckResult(
+                    name="example",
+                    status="ok",
+                    required=True,
+                    detail="all good",
+                )
+            ],
+        )
+    ]
+
+    audit.write_summary(wizard.context, sections)
+    data = json.loads(summary_path.read_text(encoding="utf-8"))
+    assert data["milestones"][0]["milestone"] == "M-test"
+    assert data["milestones"][0]["focus"].startswith("Prove summary")
+    assert data["milestones"][0]["checks"][0]["name"] == "example"
+
+
+def test_collect_database_allows_clearing_local(temp_ctx: CLIContext) -> None:
+    env_path = temp_ctx.project_root / ".env.local"
+    env_path.write_text(
+        "DATABASE_URL=postgresql+asyncpg://remote.example/anything_agents\n",
+        encoding="utf-8",
+    )
+    wizard = SetupWizard(
+        ctx=temp_ctx,
+        profile="local",
+        output_format="summary",
+        input_provider=None,
+    )
+    snapshot = dict(os.environ)
+    provider = HeadlessInputProvider(answers={"DATABASE_URL": ""})
+    provider_section.collect_database(wizard.context, provider)
+    assert wizard.context.backend_env.get("DATABASE_URL") is None
+    assert "DATABASE_URL" not in os.environ
+    _cleanup_env(snapshot)
+
+
+def test_collect_database_requires_non_local_value(temp_ctx: CLIContext) -> None:
+    snapshot = dict(os.environ)
+    os.environ.pop("DATABASE_URL", None)
+    wizard = SetupWizard(
+        ctx=temp_ctx,
+        profile="staging",
+        output_format="summary",
+        input_provider=None,
+    )
+    provider = HeadlessInputProvider(answers={})
+    with pytest.raises(CLIError):
+        provider_section.collect_database(wizard.context, provider)
+    _cleanup_env(snapshot)

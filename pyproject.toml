@@ -47,6 +47,9 @@ dependencies = [
   "tavily-python>=0.3.3,<0.4.0",
   "prometheus-client>=0.20.0,<0.21.0",
   "zxcvbn-python>=4.4.0,<5.0.0",
+  "boto3>=1.35.0,<2.0.0",
+  "azure-identity>=1.17.0,<2.0.0",
+  "azure-keyvault-secrets>=4.9.0,<5.0.0",
 ]
 
 [project.optional-dependencies]
@@ -173,7 +176,7 @@ pythonVersion = "3.11"
 extraPaths = ["anything-agents", "starter_cli", "starter_shared"]
 
 [tool.pytest.ini_options]
-pythonpath = ["anything-agents", "starter_cli", "."]
+pythonpath = ["anything-agents", "."]
 testpaths = ["anything-agents/tests"]
 asyncio_mode = "auto"
 addopts = "--strict-markers --disable-warnings"
