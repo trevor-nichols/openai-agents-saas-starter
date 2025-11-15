@@ -30,6 +30,7 @@ def test_aws_sm_with_profile(cli_ctx, monkeypatch) -> None:
 
     assert result.env_updates["AWS_PROFILE"] == "dev"
     assert result.env_updates["AWS_SM_CACHE_TTL_SECONDS"] == "120"
+    assert result.env_updates["VAULT_VERIFY_ENABLED"] == "true"
     assert result.steps[0].startswith("Validated")
 
 

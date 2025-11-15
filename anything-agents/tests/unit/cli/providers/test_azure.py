@@ -29,6 +29,8 @@ def test_azure_kv_success(cli_ctx, monkeypatch) -> None:
 
     assert result.env_updates["SECRETS_PROVIDER"] == "azure_kv"
     assert result.env_updates["AZURE_CLIENT_SECRET"] == "secret"
+    assert result.env_updates["AZURE_KV_SIGNING_SECRET_NAME"] == "auth-secret"
+    assert result.env_updates["VAULT_VERIFY_ENABLED"] == "true"
     assert result.steps[0].startswith("Validated")
 
 
@@ -50,3 +52,4 @@ def test_azure_kv_warns_when_probe_fails(cli_ctx, monkeypatch) -> None:
     )
 
     assert result.warnings
+    assert result.env_updates["VAULT_VERIFY_ENABLED"] == "true"

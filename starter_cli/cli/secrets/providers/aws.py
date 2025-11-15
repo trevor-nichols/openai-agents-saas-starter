@@ -94,6 +94,7 @@ def run_aws_sm(
         "AWS_REGION": region,
         "AWS_SM_SIGNING_SECRET_ARN": secret_arn,
         "AWS_SM_CACHE_TTL_SECONDS": str(cache_ttl),
+        "VAULT_VERIFY_ENABLED": "true",
     }
     if profile:
         env_updates["AWS_PROFILE"] = profile

@@ -80,7 +80,8 @@ def run_azure_kv(
     env_updates = {
         "SECRETS_PROVIDER": SecretsProviderLiteral.AZURE_KV.value,
         "AZURE_KEY_VAULT_URL": vault_url,
-        "AZURE_KEY_VAULT_SECRET_NAME": secret_name,
+        "AZURE_KV_SIGNING_SECRET_NAME": secret_name,
+        "VAULT_VERIFY_ENABLED": "true",
     }
     if tenant_id:
         env_updates["AZURE_TENANT_ID"] = tenant_id
