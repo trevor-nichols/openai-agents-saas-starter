@@ -8,6 +8,8 @@ import httpx
 import pytest
 from starter_cli.cli.common import CLIContext, CLIError
 from starter_cli.cli.setup import HeadlessInputProvider, SetupWizard
+from starter_cli.cli.setup._wizard import audit
+from starter_cli.cli.setup._wizard.sections import providers as provider_section
 from starter_cli.cli.setup.models import CheckResult, SectionResult
 from starter_cli.cli.setup.validators import set_vault_probe_request
 
@@ -421,7 +423,7 @@ def test_wizard_summary_writes_milestones(temp_ctx: CLIContext) -> None:
         )
     ]
 
-    wizard._write_summary(sections)
+    audit.write_summary(wizard.context, sections)
     data = json.loads(summary_path.read_text(encoding="utf-8"))
     assert data["milestones"][0]["milestone"] == "M-test"
     assert data["milestones"][0]["focus"].startswith("Prove summary")
@@ -442,8 +444,8 @@ def test_collect_database_allows_clearing_local(temp_ctx: CLIContext) -> None:
     )
     snapshot = dict(os.environ)
     provider = HeadlessInputProvider(answers={"DATABASE_URL": ""})
-    wizard._collect_database(provider)
-    assert wizard.backend_env.get("DATABASE_URL") is None
+    provider_section.collect_database(wizard.context, provider)
+    assert wizard.context.backend_env.get("DATABASE_URL") is None
     assert "DATABASE_URL" not in os.environ
     _cleanup_env(snapshot)
 
@@ -459,5 +461,5 @@ def test_collect_database_requires_non_local_value(temp_ctx: CLIContext) -> None
     )
     provider = HeadlessInputProvider(answers={})
     with pytest.raises(CLIError):
-        wizard._collect_database(provider)
+        provider_section.collect_database(wizard.context, provider)
     _cleanup_env(snapshot)
