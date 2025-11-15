@@ -37,17 +37,17 @@ jobs:
         run: |
           hatch run python -m starter_cli.cli infra deps --format json > deps-status.json || true
           hatch run python - <<'PY'
-import json, sys
-with open("deps-status.json", "r", encoding="utf-8") as fh:
-    statuses = json.load(fh)
-missing = [entry for entry in statuses if entry["status"] != "ok"]
-if missing:
-    print("Missing dependencies detected:")
-    for entry in missing:
-        print(f" - {entry['name']}: {entry['hint']}")
-    sys.exit(1)
-print("All CLI prerequisites are present.")
-PY
+          import json, sys
+          with open("deps-status.json", "r", encoding="utf-8") as fh:
+              statuses = json.load(fh)
+          missing = [entry for entry in statuses if entry["status"] != "ok"]
+          if missing:
+              print("Missing dependencies detected:")
+              for entry in missing:
+                  print(f" - {entry['name']}: {entry['hint']}")
+              sys.exit(1)
+          print("All CLI prerequisites are present.")
+          PY
       - name: Upload deps status
         if: always()
         uses: actions/upload-artifact@v4

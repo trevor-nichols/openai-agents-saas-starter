@@ -34,7 +34,7 @@ def run_azure_kv(
         defaults.signing_secret_name if defaults and defaults.signing_secret_name else None
     )
     secret_name = provider.prompt_string(
-        key="AZURE_KEY_VAULT_SECRET_NAME",
+        key="AZURE_KV_SIGNING_SECRET_NAME",
         prompt="Signing secret name",
         default=secret_name_default or "auth-signing-secret",
         required=True,

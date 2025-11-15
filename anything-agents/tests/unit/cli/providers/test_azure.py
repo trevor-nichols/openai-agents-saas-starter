@@ -13,7 +13,7 @@ def test_azure_kv_success(cli_ctx, monkeypatch) -> None:
     provider = StubInputProvider(
         strings={
             "AZURE_KEY_VAULT_URL": "https://vault.vault.azure.net/",
-            "AZURE_KEY_VAULT_SECRET_NAME": "auth-secret",
+            "AZURE_KV_SIGNING_SECRET_NAME": "auth-secret",
             "AZURE_TENANT_ID": "tenant",
             "AZURE_CLIENT_ID": "client",
             "AZURE_MANAGED_IDENTITY_CLIENT_ID": "managed",
@@ -41,7 +41,7 @@ def test_azure_kv_warns_when_probe_fails(cli_ctx, monkeypatch) -> None:
     provider = StubInputProvider(
         strings={
             "AZURE_KEY_VAULT_URL": "https://vault.vault.azure.net/",
-            "AZURE_KEY_VAULT_SECRET_NAME": "auth-secret",
+            "AZURE_KV_SIGNING_SECRET_NAME": "auth-secret",
         },
     )
 
