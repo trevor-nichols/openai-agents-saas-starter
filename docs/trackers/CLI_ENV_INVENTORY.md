@@ -146,7 +146,6 @@ Legend: `✅` = prompted during wizard, `⚠️` = optional/backfilled warning, 
 | `CHAT_STREAM_CONCURRENT_LIMIT` | `int` | 5 | ❌ | Simultaneous streaming chat sessions allowed per user. |
 | `CHAT_STREAM_RATE_LIMIT_PER_MINUTE` | `int` | 30 | ❌ | Maximum streaming chat sessions started per user per minute. |
 | `RATE_LIMIT_KEY_PREFIX` | `str` | rate-limit | ❌ | Redis key namespace used by the rate limiter service. |
-
 ## Secrets providers
 
 | Env Var | Type | Default | Wizard? | Description |
@@ -176,6 +175,7 @@ Legend: `✅` = prompted during wizard, `⚠️` = optional/backfilled warning, 
 | `AZURE_MANAGED_IDENTITY_CLIENT_ID` | `str | None` | None | ❌ | User-assigned managed identity client ID for MSI authentication. |
 | `AZURE_KV_CACHE_TTL_SECONDS` | `int` | 60 | ❌ | TTL (seconds) for cached Azure Key Vault secret reads. |
 | `ENABLE_SECRETS_PROVIDER_TELEMETRY` | `bool` | False | ❌ | Emit structured telemetry about selected secrets providers (no payload contents). |
+
 
 ## Vault
 
