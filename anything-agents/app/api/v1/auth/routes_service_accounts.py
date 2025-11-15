@@ -9,7 +9,6 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
-from fastapi.concurrency import run_in_threadpool
 
 from app.api.dependencies.service_accounts import ServiceAccountActor, require_service_account_actor
 from app.api.models.auth import (
@@ -17,12 +16,10 @@ from app.api.models.auth import (
     ServiceAccountIssueRequest,
     ServiceAccountTokenResponse,
 )
+from app.domain.secrets import SecretPurpose
+from app.infrastructure.secrets import get_secret_provider
 from app.infrastructure.security.nonce_store import get_nonce_store
-from app.infrastructure.security.vault import (
-    VaultClientUnavailable,
-    VaultVerificationError,
-    get_vault_transit_client,
-)
+from app.infrastructure.security.vault import VaultClientUnavailable, VaultVerificationError
 from app.observability.logging import log_event
 from app.observability.metrics import record_nonce_cache_result
 from app.services.auth_service import (
@@ -153,7 +150,8 @@ async def _validate_vault_payload(
 
     assert vault_payload is not None  # satisfied by require_vault_signature
 
-    claims = _decode_vault_payload(vault_payload)
+    payload_bytes = _decode_vault_payload_bytes(vault_payload)
+    claims = _parse_vault_payload(payload_bytes)
     _validate_claims_shape(claims)
     _validate_claims_against_request(claims, request_payload)
 
@@ -163,33 +161,37 @@ async def _validate_vault_payload(
             detail="Vault verification disabled; cannot accept vault credentials.",
         )
 
-    await _verify_vault_signature(authorization, vault_payload)
+    await _verify_vault_signature(authorization, payload_bytes)
 
     await _enforce_nonce(claims)
     _enforce_timestamps(claims)
     return claims
 
 
-async def _verify_vault_signature(authorization: str, vault_payload: str) -> None:
+async def _verify_vault_signature(authorization: str, payload_bytes: bytes) -> None:
     signature = _extract_signature(authorization)
 
     try:
-        client = get_vault_transit_client()
-    except VaultClientUnavailable as exc:
+        provider = get_secret_provider()
+    except (VaultClientUnavailable, RuntimeError) as exc:
         log_event(
             "vault_signature_verify",
             level="error",
             result="error",
-            reason="client_unavailable",
+            reason="provider_unavailable",
             detail=str(exc),
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Vault client not configured.",
+            detail="Secrets provider not configured for Vault verification.",
         ) from exc
 
     try:
-        valid = await run_in_threadpool(client.verify_signature, vault_payload, signature)
+        valid = await provider.verify(
+            payload_bytes,
+            signature,
+            purpose=SecretPurpose.SERVICE_ACCOUNT_ISSUANCE,
+        )
     except VaultVerificationError as exc:
         log_event(
             "vault_signature_verify",
@@ -201,6 +203,18 @@ async def _verify_vault_signature(authorization: str, vault_payload: str) -> Non
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Vault verification failed: {exc}",
+        ) from exc
+    except RuntimeError as exc:
+        log_event(
+            "vault_signature_verify",
+            level="error",
+            result="error",
+            reason="provider_error",
+            detail=str(exc),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Secrets provider cannot verify signatures.",
         ) from exc
 
     if not valid:
@@ -392,16 +406,18 @@ def _extract_signature(authorization: str) -> str:
     )
 
 
-def _decode_vault_payload(vault_payload: str) -> dict[str, Any]:
+def _decode_vault_payload_bytes(vault_payload: str) -> bytes:
     padded = vault_payload + "=" * (-len(vault_payload) % 4)
     try:
-        decoded = base64.urlsafe_b64decode(padded.encode("utf-8"))
+        return base64.urlsafe_b64decode(padded.encode("utf-8"))
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid Vault payload encoding: {exc}",
         ) from exc
 
+
+def _parse_vault_payload(decoded: bytes) -> dict[str, Any]:
     try:
         data = json.loads(decoded)
     except json.JSONDecodeError as exc:
@@ -416,6 +432,10 @@ def _decode_vault_payload(vault_payload: str) -> dict[str, Any]:
             detail="Unexpected Vault payload shape.",
         )
     return data
+
+
+def _decode_vault_payload(vault_payload: str) -> dict[str, Any]:
+    return _parse_vault_payload(_decode_vault_payload_bytes(vault_payload))
 
 
 def _digest_nonce(value: str) -> str:

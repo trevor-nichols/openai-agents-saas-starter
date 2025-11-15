@@ -11,15 +11,12 @@ from typing import Any, Protocol
 from uuid import uuid4
 
 from fastapi import status
-from fastapi.concurrency import run_in_threadpool
 
 from app.api.dependencies.service_accounts import ServiceAccountActor, ServiceAccountActorType
 from app.api.models.auth import BrowserServiceAccountIssueRequest
-from app.infrastructure.security.vault import (
-    VaultClientUnavailable,
-    VaultSigningError,
-    get_vault_transit_client,
-)
+from app.domain.secrets import SecretProviderProtocol, SecretPurpose
+from app.infrastructure.secrets import get_secret_provider
+from app.infrastructure.security.vault import VaultClientUnavailable, VaultSigningError
 from app.observability.logging import log_event
 from app.services.auth.errors import (
     ServiceAccountCatalogUnavailable,
@@ -54,19 +51,34 @@ class ServiceAccountSigner(Protocol):
         ...
 
 
-class VaultTransitSigner(ServiceAccountSigner):
+class SecretProviderSigner(ServiceAccountSigner):
+    """Signs payloads via the configured SecretProvider."""
+
+    def __init__(self) -> None:
+        self._provider: SecretProviderProtocol | None = None
+
     async def sign(self, payload: dict[str, Any]) -> SignedVaultPayload:
-        payload_b64 = _encode_payload(payload)
-        client = get_vault_transit_client()
-        signature = await run_in_threadpool(client.sign_payload, payload_b64)
-        return SignedVaultPayload(payload_b64=payload_b64, signature=signature)
+        provider = self._get_provider()
+        payload_bytes = _serialize_payload(payload)
+        payload_b64 = _encode_payload_bytes(payload_bytes)
+        signed = await provider.sign(
+            payload_bytes,
+            purpose=SecretPurpose.SERVICE_ACCOUNT_ISSUANCE,
+        )
+        payload_b64 = signed.metadata.get("payload_b64") or payload_b64
+        return SignedVaultPayload(payload_b64=payload_b64, signature=signed.signature)
+
+    def _get_provider(self) -> SecretProviderProtocol:
+        if self._provider is None:
+            self._provider = get_secret_provider()
+        return self._provider
 
 
 class ServiceAccountIssuanceBridge:
     """Coordinates Vault signing + auth-service issuance for browser clients."""
 
     def __init__(self, signer: ServiceAccountSigner | None = None) -> None:
-        self._signer = signer or VaultTransitSigner()
+        self._signer = signer or SecretProviderSigner()
 
     async def issue_from_browser(
         self,
@@ -91,7 +103,7 @@ class ServiceAccountIssuanceBridge:
             raise BrowserIssuanceError(
                 "Vault Transit client is not configured.", status.HTTP_503_SERVICE_UNAVAILABLE
             ) from exc
-        except VaultSigningError as exc:
+        except (VaultSigningError, RuntimeError) as exc:
             raise BrowserIssuanceError(
                 "Vault Transit signing failed.", status.HTTP_503_SERVICE_UNAVAILABLE
             ) from exc
@@ -108,13 +120,13 @@ class ServiceAccountIssuanceBridge:
 
         try:
             result = await auth_service.issue_service_account_refresh_token(
-            account=request.account,
-            scopes=request.scopes,
-            tenant_id=tenant_id,
-            requested_ttl_minutes=request.lifetime_minutes,
-            fingerprint=request.fingerprint,
-            force=request.force,
-        )
+                account=request.account,
+                scopes=request.scopes,
+                tenant_id=tenant_id,
+                requested_ttl_minutes=request.lifetime_minutes,
+                fingerprint=request.fingerprint,
+                force=request.force,
+            )
         except ServiceAccountValidationError as exc:
             raise BrowserIssuanceError(str(exc), status.HTTP_400_BAD_REQUEST) from exc
         except ServiceAccountRateLimitError as exc:
@@ -195,9 +207,13 @@ class ServiceAccountIssuanceBridge:
         return actor_tenant_id
 
 
-def _encode_payload(payload: dict[str, Any]) -> str:
+def _serialize_payload(payload: dict[str, Any]) -> bytes:
     document = json.dumps(payload, separators=(",", ":"), sort_keys=True)
-    encoded = base64.urlsafe_b64encode(document.encode("utf-8")).decode("ascii")
+    return document.encode("utf-8")
+
+
+def _encode_payload_bytes(payload: bytes) -> str:
+    encoded = base64.urlsafe_b64encode(payload).decode("ascii")
     return encoded.rstrip("=")
 
 
@@ -222,8 +238,8 @@ def get_service_account_issuance_bridge() -> ServiceAccountIssuanceBridge:
 
 __all__ = [
     "BrowserIssuanceError",
+    "SecretProviderSigner",
     "ServiceAccountIssuanceBridge",
     "SignedVaultPayload",
-    "VaultTransitSigner",
     "get_service_account_issuance_bridge",
 ]

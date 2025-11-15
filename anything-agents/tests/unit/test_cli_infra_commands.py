@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import io
-
 import json
 
-from starter_cli.cli import main as cli_main
 from starter_cli.cli import infra_commands
+from starter_cli.cli import main as cli_main
 from starter_cli.cli.console import console as cli_console
 
 

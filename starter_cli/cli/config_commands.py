@@ -5,7 +5,6 @@ import json
 from dataclasses import dataclass
 from typing import Any, get_args, get_origin
 
-from pydantic.fields import FieldInfo
 from pydantic_core import PydanticUndefined
 
 from .common import CLIContext
@@ -95,7 +94,7 @@ def _format_annotation(annotation: Any) -> str:
         inner = ", ".join(_format_annotation(arg) for arg in args) or "Any"
         return f"{origin.__name__}[{inner}]"
     if origin is dict:
-        key_type, value_type = (args + ("Any", "Any"))[:2]
+        key_type, value_type = (*args, "Any", "Any")[:2]
         return f"dict[{_format_annotation(key_type)}, {_format_annotation(value_type)}]"
     if origin is type(None):  # pragma: no cover - defensive
         return "None"

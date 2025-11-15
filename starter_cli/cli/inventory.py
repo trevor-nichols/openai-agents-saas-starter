@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Shared configuration metadata used across Starter CLI commands."""
+
+from __future__ import annotations
 
 from typing import Final
 

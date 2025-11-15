@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import json
 import shutil
 import subprocess
-import json
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 from .common import CLIContext, CLIError
 from .console import console
@@ -104,7 +104,7 @@ def handle_vault(args: argparse.Namespace, ctx: CLIContext) -> int:
     return 0
 
 
-def handle_deps(args: argparse.Namespace, ctx: CLIContext) -> int:  # noqa: ARG001 - ctx reserved
+def handle_deps(args: argparse.Namespace, _ctx: CLIContext) -> int:
     statuses = list(_collect_dependency_statuses())
     if args.format == "json":
         payload = [
