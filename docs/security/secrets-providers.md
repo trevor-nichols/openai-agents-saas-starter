@@ -44,6 +44,12 @@
 | `AZURE_MANAGED_IDENTITY_CLIENT_ID` | — | — | Optional | User-assigned managed identity client ID. |
 | `AZURE_KV_CACHE_TTL_SECONDS` | — | — | Optional | Local cache TTL for Azure secrets. |
 
+> **Hardening requirement (Nov 2025):** FastAPI now refuses to start when `ENVIRONMENT`
+> is anything other than `development/dev/local/test` (and `DEBUG` is false) unless
+> `VAULT_VERIFY_ENABLED=true`. The Starter CLI wizard sets this automatically for
+> `--profile staging` and `--profile production`, so providers must be fully configured
+> before those profiles can complete.
+
 ## 3. Operational Runbooks
 
 ### 3.1 Vault Dev

@@ -144,14 +144,14 @@ RESEND_BASE_URL=https://api.resend.com
 RESEND_EMAIL_VERIFICATION_TEMPLATE_ID=
 RESEND_PASSWORD_RESET_TEMPLATE_ID=
 
-# Vault Transit (optional locally, required when vault verification is enabled)
+# Vault Transit (Starter CLI sets true for staging/production)
 VAULT_VERIFY_ENABLED=false
 VAULT_ADDR=
 VAULT_TOKEN=
 VAULT_TRANSIT_KEY=auth-service
 ```
 
-Flip `RESEND_EMAIL_ENABLED=true` only after you have verified the sender domain inside Resend and populated both `RESEND_API_KEY` and `RESEND_DEFAULT_FROM`. Leave the template ID and Vault fields empty for local development—the backend uses safe defaults until you enable those features—but treat every pepper/secret as mandatory before staging or production. The upcoming setup CLI surfaces these required vs. optional values, prompting for high-risk inputs (peppers, Stripe/Resend keys, Vault credentials) and explicitly calling out when defaults are acceptable.
+Flip `RESEND_EMAIL_ENABLED=true` only after you have verified the sender domain inside Resend and populated both `RESEND_API_KEY` and `RESEND_DEFAULT_FROM`. Leave the template ID and Vault fields empty for local development—the backend uses safe defaults until you enable those features—but treat every pepper/secret as mandatory before staging or production. As of November 2025 the API refuses to boot with `ENVIRONMENT` other than `development/dev/local/test` (or with `DEBUG=false`) unless `VAULT_VERIFY_ENABLED=true` **and** the Vault fields are populated. The Starter CLI wizard enforces this automatically for `--profile staging|production` runs, prompting for Vault Transit connectivity and writing the necessary env vars.
 
 ### Unified CLI (backend + frontend tooling)
 

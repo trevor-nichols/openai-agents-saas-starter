@@ -4,7 +4,7 @@ import argparse
 import json
 import os
 import sys
-from typing import Any, TypeAlias
+from typing import TYPE_CHECKING, Any, TypeAlias
 
 import httpx
 from starter_shared.keys import (
@@ -18,8 +18,12 @@ from starter_shared.vault_kv import configure_vault_secret_manager
 from .common import CLIContext, CLIError, build_context, build_vault_headers
 from .console import console
 
-# `_SubParsersAction` is not parametrized on Python 3.11, so keep the alias untyped.
-ParserSubparsers: TypeAlias = argparse._SubParsersAction
+# `_SubParsersAction` is not parametrized at runtime on Python 3.11, so provide a
+# typed alias only when running type checkers.
+if TYPE_CHECKING:
+    ParserSubparsers: TypeAlias = argparse._SubParsersAction[argparse.ArgumentParser]
+else:  # pragma: no cover - runtime stub
+    ParserSubparsers = argparse._SubParsersAction
 
 
 def register(subparsers: ParserSubparsers) -> None:

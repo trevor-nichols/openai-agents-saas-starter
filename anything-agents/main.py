@@ -12,7 +12,12 @@ from redis.asyncio import Redis
 from app.api.errors import register_exception_handlers
 from app.api.router import api_router
 from app.bootstrap import ApplicationContainer, set_container, shutdown_container
-from app.core.config import Settings, enforce_secret_overrides, get_settings
+from app.core.config import (
+    Settings,
+    enforce_secret_overrides,
+    enforce_vault_verification,
+    get_settings,
+)
 from app.infrastructure.db import (
     dispose_engine,
     get_async_sessionmaker,
@@ -111,6 +116,7 @@ async def lifespan(app: FastAPI):
                 settings.environment,
                 "; ".join(warnings),
             )
+    enforce_vault_verification(settings)
     configure_vault_secret_manager(settings)
 
     stripe_repo: StripeEventRepository | None = None

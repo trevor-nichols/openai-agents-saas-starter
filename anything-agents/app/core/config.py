@@ -28,6 +28,10 @@ PLACEHOLDER_SECRET_KEY = "change-me"
 PLACEHOLDER_PASSWORD_PEPPER = "change-me-too"
 PLACEHOLDER_REFRESH_TOKEN_PEPPER = "change-me-again"
 _SAFE_ENVIRONMENTS = {"development", "dev", "local", "test"}
+_VAULT_PROVIDER_KEYS = {
+    SecretsProviderLiteral.VAULT_DEV,
+    SecretsProviderLiteral.VAULT_HCP,
+}
 
 # =============================================================================
 # SETTINGS CLASS
@@ -910,6 +914,11 @@ class Settings(BaseSettings):
         env = (self.environment or "").lower()
         return not self.debug and env not in _SAFE_ENVIRONMENTS
 
+    def should_require_vault_verification(self) -> bool:
+        """Return True when the deployment must enforce signed requests."""
+
+        return self.vault_verify_enabled or self.should_enforce_secret_overrides()
+
     # =============================================================================
     # CONFIGURATION
     # =============================================================================
@@ -1071,4 +1080,36 @@ def enforce_secret_overrides(settings: Settings, *, force: bool = False) -> None
         raise RuntimeError(
             "Production environment cannot start with default secrets. "
             f"Fix the following: {formatted}"
+        )
+
+
+def enforce_vault_verification(settings: Settings) -> None:
+    """Ensure hardened environments cannot run without signed service-account requests."""
+
+    if not settings.should_require_vault_verification():
+        return
+
+    if not settings.vault_verify_enabled:
+        raise RuntimeError(
+            "Vault verification is required outside local/dev environments. "
+            "Set VAULT_VERIFY_ENABLED=true via the Starter CLI or env files."
+        )
+
+    if settings.secrets_provider not in _VAULT_PROVIDER_KEYS:
+        # Non-Vault providers (Infisical/AWS/Azure) own their own validation paths.
+        return
+
+    missing: list[str] = []
+    if not settings.vault_addr:
+        missing.append("VAULT_ADDR")
+    if not settings.vault_token:
+        missing.append("VAULT_TOKEN")
+    if not settings.vault_transit_key:
+        missing.append("VAULT_TRANSIT_KEY")
+
+    if missing:
+        joined = ", ".join(missing)
+        raise RuntimeError(
+            "Vault verification is enabled but incomplete. "
+            f"Configure {joined} or rerun the Starter CLI wizard."
         )

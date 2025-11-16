@@ -39,6 +39,11 @@ DEFAULT_ENV_FILES: tuple[Path, ...] = (
     PROJECT_ROOT / ".env.local",
 )
 TELEMETRY_ENV = "STARTER_CLI_TELEMETRY_OPT_IN"
+_SAFE_ENVIRONMENTS = {"development", "dev", "local", "test"}
+_VAULT_PROVIDERS = {
+    SecretsProviderLiteral.VAULT_DEV,
+    SecretsProviderLiteral.VAULT_HCP,
+}
 
 
 @dataclass(slots=True)
@@ -104,26 +109,49 @@ def build_vault_headers(
     """
 
     dev_mode = os.getenv("AUTH_CLI_DEV_AUTH_MODE", "vault").lower() == "local"
+    hardened = _requires_vault_verification(settings)
+
+    if dev_mode and hardened:
+        raise CLIError(
+            "AUTH_CLI_DEV_AUTH_MODE=local is not permitted when Vault verification is required."
+        )
     if dev_mode:
         return "Bearer dev-local", {}
+
+    if settings is None and not hardened:
+        return "Bearer dev-local", {}
+    if settings is None and hardened:
+        raise CLIError(
+            "Application settings unavailable; cannot sign service-account requests in "
+            "staging/production. Load env files or rerun the setup wizard."
+        )
+
+    assert settings is not None  # mypy appeasement
+    provider = settings.secrets_provider
 
     envelope = _build_vault_envelope(request_payload)
     payload_json = json.dumps(envelope, separators=(",", ":"))
     payload_bytes = payload_json.encode("utf-8")
     payload_b64 = base64.urlsafe_b64encode(payload_bytes).decode("utf-8").rstrip("=")
 
-    provider = (
-        settings.secrets_provider if settings else SecretsProviderLiteral.VAULT_DEV
-    )
-
-    if provider in (SecretsProviderLiteral.VAULT_DEV, SecretsProviderLiteral.VAULT_HCP):
-        if not settings or not settings.vault_addr or not settings.vault_token:
+    if provider in _VAULT_PROVIDERS:
+        config = _resolve_vault_config(settings)
+        if config is None:
+            missing = _missing_vault_config(settings)
+            if hardened:
+                joined = ", ".join(missing)
+                raise CLIError(
+                    "Vault signing requires complete configuration. "
+                    f"Set {joined} or run the setup wizard."
+                )
             return "Bearer dev-local", {}
+        base_url, token, key_name = config
         signature = _vault_sign_payload(
-            base_url=settings.vault_addr,
-            token=settings.vault_token,
-            key_name=settings.vault_transit_key,
+            base_url=base_url,
+            token=token,
+            key_name=key_name,
             payload_b64=payload_b64,
+            namespace=settings.vault_namespace,
         )
     else:
         signature = _sign_with_hmac_provider(
@@ -167,9 +195,12 @@ def _vault_sign_payload(
     token: str,
     key_name: str,
     payload_b64: str,
+    namespace: str | None = None,
 ) -> str:
     url = f"{base_url.rstrip('/')}/v1/transit/sign/{key_name}"
     headers = {"X-Vault-Token": token}
+    if namespace:
+        headers["X-Vault-Namespace"] = namespace
     body = {"input": payload_b64, "signature_algorithm": "sha2-256"}
 
     with httpx.Client(timeout=5.0) as client:
@@ -215,6 +246,40 @@ def _sign_with_hmac_provider(
         sha256,
     ).hexdigest()
     return signature
+
+
+def _requires_vault_verification(settings: StarterSettingsProtocol | None) -> bool:
+    env = (settings.environment if settings else os.getenv("ENVIRONMENT", "development")).lower()
+    debug = (
+        settings.debug
+        if settings is not None
+        else os.getenv("DEBUG", "false").lower() in {"1", "true", "yes"}
+    )
+    enabled_flag = (
+        settings.vault_verify_enabled
+        if settings is not None
+        else os.getenv("VAULT_VERIFY_ENABLED", "false").lower() in {"1", "true", "yes"}
+    )
+    return enabled_flag or (env not in _SAFE_ENVIRONMENTS and not debug)
+
+
+def _missing_vault_config(settings: StarterSettingsProtocol) -> list[str]:
+    missing: list[str] = []
+    if not settings.vault_addr:
+        missing.append("VAULT_ADDR")
+    if not settings.vault_token:
+        missing.append("VAULT_TOKEN")
+    if not settings.vault_transit_key:
+        missing.append("VAULT_TRANSIT_KEY")
+    return missing
+
+
+def _resolve_vault_config(
+    settings: StarterSettingsProtocol,
+) -> tuple[str, str, str] | None:
+    if settings.vault_addr and settings.vault_token and settings.vault_transit_key:
+        return settings.vault_addr, settings.vault_token, settings.vault_transit_key
+    return None
 
 
 def _fetch_infisical_secret(settings: StarterSettingsProtocol) -> str:

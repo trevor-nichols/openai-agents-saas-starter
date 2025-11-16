@@ -4,7 +4,7 @@ from typing import Any, cast
 
 import pytest
 
-from app.core.config import Settings
+from app.core.config import Settings, enforce_vault_verification
 
 
 def make_settings(**overrides) -> Settings:
@@ -185,7 +185,7 @@ def test_allowed_origins_default_matches_frontend_pair(
 ) -> None:
     """The default CORS list aligns with local frontend + API ports."""
 
-    monkeypatch.delenv("ALLOWED_ORIGINS", raising=False)
+    monkeypatch.setenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8000")
 
     settings = make_settings()
 
@@ -193,3 +193,41 @@ def test_allowed_origins_default_matches_frontend_pair(
         "http://localhost:3000",
         "http://localhost:8000",
     ]
+
+
+def test_enforce_vault_verification_allows_local_defaults() -> None:
+    settings = make_settings(
+        ENVIRONMENT="development",
+        debug=False,
+        VAULT_VERIFY_ENABLED=False,
+    )
+
+    # Should not raise
+    enforce_vault_verification(settings)
+
+
+def test_enforce_vault_verification_requires_enabled_flag_in_prod() -> None:
+    settings = make_settings(
+        ENVIRONMENT="production",
+        debug=False,
+        VAULT_VERIFY_ENABLED=False,
+    )
+
+    with pytest.raises(RuntimeError):
+        enforce_vault_verification(settings)
+
+
+def test_enforce_vault_verification_requires_vault_config_when_enabled() -> None:
+    settings = make_settings(
+        ENVIRONMENT="production",
+        debug=False,
+        VAULT_VERIFY_ENABLED=True,
+        VAULT_ADDR=None,
+        VAULT_TOKEN=None,
+        VAULT_TRANSIT_KEY="",
+    )
+
+    with pytest.raises(RuntimeError) as exc:
+        enforce_vault_verification(settings)
+
+    assert "VAULT_ADDR" in str(exc.value)

@@ -2,19 +2,20 @@ from __future__ import annotations
 
 import argparse
 
+from starter_shared.secrets.models import SecretsProviderLiteral
+
 from starter_cli.cli.auth_commands import handle_keys_rotate
 from starter_cli.cli.common import CLIError
 from starter_cli.cli.console import console
-from typing import TYPE_CHECKING
-
-from starter_shared.secrets.models import SecretsProviderLiteral
 from starter_cli.cli.setup._wizard.context import WizardContext
 from starter_cli.cli.setup.automation import AutomationPhase, AutomationStatus
 from starter_cli.cli.setup.inputs import HeadlessInputProvider, InputProvider
 from starter_cli.cli.setup.validators import probe_vault_transit
 
-if TYPE_CHECKING:  # pragma: no cover
-    from starter_cli.cli.secrets.models import SecretsWorkflowOptions
+_VAULT_PROVIDERS = {
+    SecretsProviderLiteral.VAULT_DEV,
+    SecretsProviderLiteral.VAULT_HCP,
+}
 
 
 def run(context: WizardContext, provider: InputProvider) -> None:
@@ -22,6 +23,8 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     _collect_secrets(context, provider)
     selected_provider = _collect_provider_choice(context, provider)
     context.set_backend("SECRETS_PROVIDER", selected_provider.value)
+    if selected_provider not in _VAULT_PROVIDERS:
+        _force_verification_flag(context)
 
     telemetry = provider.prompt_bool(
         key="ENABLE_SECRETS_PROVIDER_TELEMETRY",
@@ -78,18 +81,28 @@ def _collect_provider_choice(
 ) -> SecretsProviderLiteral:
     default_provider = context.current("SECRETS_PROVIDER") or SecretsProviderLiteral.VAULT_DEV.value
     while True:
-        choice = provider.prompt_string(
-            key="SECRETS_PROVIDER",
-            prompt="Secrets provider (vault_dev/vault_hcp/infisical_cloud/infisical_self_host/aws_sm/azure_kv)",
-            default=default_provider,
-            required=True,
-        ).strip().lower()
+        choice = (
+            provider.prompt_string(
+                key="SECRETS_PROVIDER",
+                prompt=(
+                    "Secrets provider "
+                    "(vault_dev/vault_hcp/infisical_cloud/infisical_self_host/aws_sm/azure_kv)"
+                ),
+                default=default_provider,
+                required=True,
+            )
+            .strip()
+            .lower()
+        )
         try:
             return SecretsProviderLiteral(choice)
         except ValueError:
             if isinstance(provider, HeadlessInputProvider):
-                raise CLIError(f"Invalid secrets provider '{choice}'.")
-            console.warn("Invalid secrets provider. Please choose a supported value.", topic="secrets")
+                raise CLIError(f"Invalid secrets provider '{choice}'.") from None
+            console.warn(
+                "Invalid secrets provider. Please choose a supported value.",
+                topic="secrets",
+            )
 
 
 def _run_provider_workflow(
@@ -97,7 +110,7 @@ def _run_provider_workflow(
     provider: InputProvider,
     literal: SecretsProviderLiteral,
 ) -> None:
-    if literal in {SecretsProviderLiteral.VAULT_DEV, SecretsProviderLiteral.VAULT_HCP}:
+    if literal in _VAULT_PROVIDERS:
         enable_vault = _collect_vault(context, provider)
         if literal == SecretsProviderLiteral.VAULT_HCP:
             namespace = provider.prompt_string(
@@ -112,8 +125,6 @@ def _run_provider_workflow(
         if enable_vault:
             _verify_vault_transit(context)
         return
-
-    from starter_cli.cli.secrets import registry
 
     from starter_cli.cli.secrets import registry
     from starter_cli.cli.secrets.models import SecretsWorkflowOptions
@@ -196,6 +207,14 @@ def _collect_vault(context: WizardContext, provider: InputProvider) -> bool:
         context.set_backend("VAULT_TOKEN", token, mask=True)
         context.set_backend("VAULT_TRANSIT_KEY", transit)
     return enable_vault
+
+
+def _force_verification_flag(context: WizardContext) -> None:
+    require_vault = context.profile in {"staging", "production"}
+    if require_vault:
+        context.set_backend_bool("VAULT_VERIFY_ENABLED", True)
+    elif context.current("VAULT_VERIFY_ENABLED") is None:
+        context.set_backend_bool("VAULT_VERIFY_ENABLED", False)
 
 
 def _rotate_signing_keys(context: WizardContext) -> None:

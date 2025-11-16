@@ -198,7 +198,10 @@ def _configure_authentication(context: WizardContext, provider: InputProvider) -
         if secret_required and not secret_name:
             if _is_headless(provider):
                 raise CLIError("AUTH_KEY_SECRET_NAME is required when using secret-manager.")
-            console.warn("AUTH_KEY_SECRET_NAME is required when using secret-manager.", topic="wizard")
+            console.warn(
+                "AUTH_KEY_SECRET_NAME is required when using secret-manager.",
+                topic="wizard",
+            )
             continue
         break
     if secret_name:
@@ -327,7 +330,7 @@ def _prompt_positive_int(
             value = int(raw)
         except ValueError:
             if _is_headless(provider):
-                raise CLIError(f"{key} must be an integer.")
+                raise CLIError(f"{key} must be an integer.") from None
             console.warn(f"{key} must be an integer.", topic="wizard")
             continue
         if value <= 0:
@@ -358,7 +361,7 @@ def _prompt_positive_float(
             value = float(raw)
         except ValueError:
             if _is_headless(provider):
-                raise CLIError(f"{key} must be a number.")
+                raise CLIError(f"{key} must be a number.") from None
             console.warn(f"{key} must be a number.", topic="wizard")
             continue
         if value <= 0:
@@ -372,7 +375,3 @@ def _prompt_positive_float(
 
 def _is_headless(provider: InputProvider) -> bool:
     return isinstance(provider, HeadlessInputProvider)
-    _configure_branding(context, provider)
-    _configure_authentication(context, provider)
-    _configure_database(context, provider)
-    _configure_logging(context, provider)

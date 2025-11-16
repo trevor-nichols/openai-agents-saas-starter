@@ -30,6 +30,9 @@ class StarterSettingsProtocol(Protocol):
     vault_token: str | None
     vault_transit_key: str
     vault_namespace: str | None
+    environment: str
+    debug: bool
+    vault_verify_enabled: bool
     infisical_base_url: str | None
     infisical_service_token: str | None
     infisical_project_id: str | None

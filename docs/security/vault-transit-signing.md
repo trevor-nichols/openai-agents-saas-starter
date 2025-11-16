@@ -1,7 +1,7 @@
 # Vault Transit Signing Integration Plan
 
-**Status:** Draft for implementation  
-**Last Updated:** 2025-11-06  
+**Status:** Implemented  
+**Last Updated:** 2025-11-16  
 **Owners:** Backend Auth Pod · Platform Security Guild
 
 ---
@@ -11,7 +11,7 @@
 
 ## 1. Goal
 
-Enable the AuthService CLI and backend to authenticate service-account issuance requests using Vault Transit–signed JWTs. This replaces static tokens and aligns with our security posture for staging/production.
+Enable the AuthService CLI and backend to authenticate service-account issuance requests using Vault Transit–signed JWTs. This replaces static tokens and aligns with our security posture for staging/production. As of Nov 16 2025, the FastAPI app refuses to boot in non-local environments unless Vault (or an approved signing provider) is fully configured and `VAULT_VERIFY_ENABLED=true`.
 
 ## 2. Handshake Overview
 
@@ -49,7 +49,7 @@ AuthService
 
 To exercise this flow without provisioning a real Vault cluster, use the new dev-only helper:
 
-1. `make vault-up` – starts `hashicorp/vault` in dev mode on `http://127.0.0.1:18200`, enables the Transit engine, and prints the env vars you need to export (`VAULT_ADDR`, `VAULT_TOKEN`, `VAULT_TRANSIT_KEY`, `VAULT_VERIFY_ENABLED=true`).
+1. `make vault-up` – starts `hashicorp/vault` in dev mode on `http://127.0.0.1:18200`, enables the Transit engine, and prints the env vars you need to export (`VAULT_ADDR`, `VAULT_TOKEN`, `VAULT_TRANSIT_KEY`, `VAULT_VERIFY_ENABLED=true`). The backend now enforces these values whenever `ENVIRONMENT` is not one of `development/dev/local/test`.
 2. Update your shell or `.env.local` with those exports so both FastAPI and the Starter CLI talk to the dev signer.
 3. Run the API (`make api`) and then `make verify-vault` to execute `starter_cli auth tokens issue-service-account` against the running backend. That command uses the Vault dev signer and will fail if the signature or backend wiring regresses.
 4. When finished, `make vault-down` tears the container down; `make vault-logs` tails the Vault output for troubleshooting.

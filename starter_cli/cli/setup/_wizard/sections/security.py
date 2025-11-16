@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import secrets
-from typing import Sequence
+from collections.abc import Sequence
 
 from starter_cli.cli.common import CLIError
 from starter_cli.cli.console import console
@@ -183,7 +183,7 @@ def _prompt_positive_int(
             parsed = int(raw_value)
         except ValueError:
             if isinstance(provider, HeadlessInputProvider):
-                raise CLIError(f"{key} must be an integer.")
+                raise CLIError(f"{key} must be an integer.") from None
             console.warn(f"{key} must be an integer.", topic="wizard")
             continue
         if parsed <= 0:

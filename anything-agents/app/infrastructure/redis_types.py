@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, TypeAlias
+
 from redis.asyncio import Redis
 
-# redis-py 5.x no longer exposes Redis as a Generic, so we keep runtime aliases
-# for str/bytes use while preserving intent for type checkers.
-RedisStrClient = Redis
-RedisBytesClient = Redis
+if TYPE_CHECKING:
+    RedisStrClient: TypeAlias = Redis[str]
+    RedisBytesClient: TypeAlias = Redis[bytes]
+else:  # pragma: no cover - runtime alias without generics
+    RedisStrClient = Redis
+    RedisBytesClient = Redis
 
 __all__ = ["RedisStrClient", "RedisBytesClient"]

@@ -8,11 +8,11 @@ from starter_cli.cli.common import CLIContext, CLIError
 from starter_cli.cli.env import EnvFile
 from starter_cli.cli.secrets import registry as secrets_registry
 from starter_cli.cli.secrets.models import OnboardResult
-from starter_shared.secrets.models import SecretsProviderLiteral
 from starter_cli.cli.setup._wizard import audit
 from starter_cli.cli.setup._wizard.context import WizardContext
 from starter_cli.cli.setup._wizard.sections import core, frontend, secrets, security
 from starter_cli.cli.setup.inputs import InputProvider
+from starter_shared.secrets.models import SecretsProviderLiteral
 
 
 @dataclass(slots=True)
@@ -233,3 +233,23 @@ def test_secrets_section_runs_non_vault_provider(monkeypatch, cli_ctx: CLIContex
 
     assert context.backend_env.get("SECRETS_PROVIDER") == "infisical_cloud"
     assert context.backend_env.get("INFISICAL_BASE_URL") == "https://app.infisical.dev"
+
+
+def test_secrets_section_forces_flag_in_production(monkeypatch, cli_ctx: CLIContext) -> None:
+    context = _build_context(cli_ctx, profile="production")
+    provider = StubProvider(strings={"SECRETS_PROVIDER": "infisical_cloud"})
+
+    def fake_runner(ctx, input_provider, *, options):
+        return OnboardResult(
+            provider=SecretsProviderLiteral.INFISICAL_CLOUD,
+            env_updates={"SECRETS_PROVIDER": "infisical_cloud"},
+            steps=[],
+            warnings=[],
+            artifacts=None,
+        )
+
+    monkeypatch.setattr(secrets_registry, "get_runner", lambda literal: fake_runner)
+
+    secrets.run(context, provider)
+
+    assert context.backend_env.get("VAULT_VERIFY_ENABLED") == "true"
