@@ -18,7 +18,8 @@ from starter_shared.vault_kv import configure_vault_secret_manager
 from .common import CLIContext, CLIError, build_context, build_vault_headers
 from .console import console
 
-ParserSubparsers: TypeAlias = argparse._SubParsersAction[argparse.ArgumentParser]
+# `_SubParsersAction` is not parametrized on Python 3.11, so keep the alias untyped.
+ParserSubparsers: TypeAlias = argparse._SubParsersAction
 
 
 def register(subparsers: ParserSubparsers) -> None:

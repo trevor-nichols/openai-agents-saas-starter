@@ -6,9 +6,12 @@ from pathlib import Path
 import pytest
 from starter_cli.cli.common import CLIContext, CLIError
 from starter_cli.cli.env import EnvFile
+from starter_cli.cli.secrets import registry as secrets_registry
+from starter_cli.cli.secrets.models import OnboardResult
+from starter_shared.secrets.models import SecretsProviderLiteral
 from starter_cli.cli.setup._wizard import audit
 from starter_cli.cli.setup._wizard.context import WizardContext
-from starter_cli.cli.setup._wizard.sections import core, frontend, secrets
+from starter_cli.cli.setup._wizard.sections import core, frontend, secrets, security
 from starter_cli.cli.setup.inputs import InputProvider
 
 
@@ -85,6 +88,53 @@ def test_core_section_sets_api_base_url(cli_ctx: CLIContext) -> None:
     assert context.backend_env.get("DEBUG") == "true"
 
 
+def test_core_section_extended_prompts(cli_ctx: CLIContext) -> None:
+    context = _build_context(cli_ctx)
+    provider = StubProvider(
+        strings={
+            "ENVIRONMENT": "staging",
+            "PORT": "9000",
+            "APP_PUBLIC_URL": "https://example.com",
+            "ALLOWED_HOSTS": "example.com",
+            "ALLOWED_ORIGINS": "https://example.com",
+            "ALLOWED_METHODS": "GET,POST",
+            "ALLOWED_HEADERS": "Content-Type,Authorization",
+            "API_BASE_URL": "https://api.example.com",
+            "APP_NAME": "Acme AI",
+            "APP_DESCRIPTION": "Acme Agents Backend",
+            "APP_VERSION": "2.1.0",
+            "AUTH_AUDIENCE": "agent-api,billing",
+            "JWT_ALGORITHM": "EdDSA",
+            "AUTH_KEY_STORAGE_BACKEND": "secret-manager",
+            "AUTH_KEY_STORAGE_PATH": "/secrets/keyset",
+            "AUTH_KEY_SECRET_NAME": "kv/signing",
+            "DATABASE_POOL_SIZE": "12",
+            "DATABASE_MAX_OVERFLOW": "4",
+            "DATABASE_POOL_RECYCLE": "900",
+            "DATABASE_POOL_TIMEOUT": "45.5",
+            "DATABASE_HEALTH_TIMEOUT": "7.5",
+            "LOG_LEVEL": "DEBUG",
+        },
+        bools={
+            "DEBUG": False,
+            "AUTO_RUN_MIGRATIONS": True,
+            "DATABASE_ECHO": True,
+        },
+    )
+
+    core.run(context, provider)
+
+    env = context.backend_env
+    assert env.get("APP_NAME") == "Acme AI"
+    assert env.get("ALLOWED_METHODS") == "GET,POST"
+    assert env.get("AUTH_AUDIENCE") == "agent-api,billing"
+    assert env.get("AUTH_KEY_STORAGE_BACKEND") == "secret-manager"
+    assert env.get("AUTH_KEY_SECRET_NAME") == "kv/signing"
+    assert env.get("DATABASE_POOL_SIZE") == "12"
+    assert env.get("DATABASE_POOL_TIMEOUT") == "45.5"
+    assert env.get("LOG_LEVEL") == "DEBUG"
+
+
 def test_secrets_section_generates_missing_peppers(cli_ctx: CLIContext) -> None:
     context = _build_context(cli_ctx)
     provider = StubProvider(strings={"AUTH_SESSION_IP_HASH_SALT": ""})
@@ -94,6 +144,7 @@ def test_secrets_section_generates_missing_peppers(cli_ctx: CLIContext) -> None:
     assert context.backend_env.get("SECRET_KEY")
     assert context.backend_env.get("AUTH_PASSWORD_PEPPER")
     assert context.backend_env.get("AUTH_SESSION_ENCRYPTION_KEY")
+    assert context.backend_env.get("SECRETS_PROVIDER") == "vault_dev"
 
 
 def test_frontend_section_writes_env_values(cli_ctx: CLIContext, tmp_path: Path) -> None:
@@ -126,6 +177,26 @@ def test_frontend_section_writes_env_values(cli_ctx: CLIContext, tmp_path: Path)
     assert frontend_env.get("AGENT_ALLOW_INSECURE_COOKIES") == "false"
 
 
+def test_security_section_populates_limits_and_secrets(cli_ctx: CLIContext) -> None:
+    context = _build_context(cli_ctx)
+    provider = StubProvider(
+        strings={
+            "AUTH_IP_LOCKOUT_THRESHOLD": "25",
+            "CHAT_RATE_LIMIT_PER_MINUTE": "120",
+            "RATE_LIMIT_KEY_PREFIX": "enterprise",
+        }
+    )
+
+    security.run(context, provider)
+
+    assert context.backend_env.get("AUTH_IP_LOCKOUT_THRESHOLD") == "25"
+    assert context.backend_env.get("CHAT_RATE_LIMIT_PER_MINUTE") == "120"
+    assert context.backend_env.get("RATE_LIMIT_KEY_PREFIX") == "enterprise"
+    assert context.backend_env.get("AUTH_JWKS_ETAG_SALT")
+    assert context.backend_env.get("STATUS_SUBSCRIPTION_ENCRYPTION_KEY")
+    assert context.backend_env.get("STATUS_SUBSCRIPTION_TOKEN_PEPPER")
+
+
 def test_audit_sections_flag_missing_values(cli_ctx: CLIContext) -> None:
     context = _build_context(cli_ctx, profile="production")
     context.set_backend("OPENAI_API_KEY", "sk-test", mask=True)
@@ -139,3 +210,26 @@ def test_audit_sections_flag_missing_values(cli_ctx: CLIContext) -> None:
     statuses = {check.name: check.status for check in secrets_section.checks}
     assert statuses["AUTH_PASSWORD_PEPPER"] in {"warning", "missing"}
     assert statuses["VAULT_ADDR"] == "missing"
+def test_secrets_section_runs_non_vault_provider(monkeypatch, cli_ctx: CLIContext) -> None:
+    context = _build_context(cli_ctx)
+    provider = StubProvider(strings={"SECRETS_PROVIDER": "infisical_cloud"})
+
+    def fake_runner(ctx, input_provider, *, options):
+        assert options.skip_make
+        return OnboardResult(
+            provider=SecretsProviderLiteral.INFISICAL_CLOUD,
+            env_updates={
+                "SECRETS_PROVIDER": "infisical_cloud",
+                "INFISICAL_BASE_URL": "https://app.infisical.dev",
+            },
+            steps=[],
+            warnings=[],
+            artifacts=None,
+        )
+
+    monkeypatch.setattr(secrets_registry, "get_runner", lambda literal: fake_runner)
+
+    secrets.run(context, provider)
+
+    assert context.backend_env.get("SECRETS_PROVIDER") == "infisical_cloud"
+    assert context.backend_env.get("INFISICAL_BASE_URL") == "https://app.infisical.dev"

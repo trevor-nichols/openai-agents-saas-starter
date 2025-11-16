@@ -7,7 +7,15 @@ from ..common import CLIContext, CLIError
 from ..console import console
 from ._wizard import audit
 from ._wizard.context import FRONTEND_ENV_RELATIVE, WizardContext, build_env_files
-from ._wizard.sections import core, frontend, observability, providers, secrets, signup
+from ._wizard.sections import (
+    core,
+    frontend,
+    observability,
+    providers,
+    secrets,
+    security,
+    signup,
+)
 from .automation import ALL_AUTOMATION_PHASES, AutomationPhase
 from .infra import InfraSession
 from .inputs import InputProvider
@@ -91,6 +99,7 @@ class SetupWizard:
 
             core.run(self.context, provider)
             secrets.run(self.context, provider)
+            security.run(self.context, provider)
             providers.run(self.context, provider)
             observability.run(self.context, provider)
             signup.run(self.context, provider)
