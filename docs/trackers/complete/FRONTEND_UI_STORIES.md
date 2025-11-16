@@ -1,8 +1,8 @@
 ---
 title: Frontend UI Story Tracker
 owner: Platform Foundations
-last_updated: 2025-11-13
-status: in-progress
+last_updated: 2025-11-16
+status: complete
 tags:
   - frontend
   - ui
@@ -38,10 +38,7 @@ Capture every remaining high-priority UI story across the marketing, chat, billi
 | UI-012 | Tenant Settings | Build billing contacts, webhook URL, plan metadata, and flag forms with TanStack Query + react-hook-form, wired to FastAPI `/tenants/settings`. | `Form`, `Input`, `Switch`, `GlassPanel`, `SectionHeader`, `EmptyState` | Done | @platform | Server + client stack now offers a routed UI instead of CLI-only tenant settings; optimistic updates + route guard shipped. |
 
 ## Next Steps
-1. Finalize the marketing copy + CTA matrix (hero text, FAQs, CTA targets) across landing/features/pricing/docs constants.
-2. Extend `useMarketingAnalytics` wiring so every CTA, nav pill, resource link, and plan card logs the same structured event payload.
-3. Polish the shared `StatusAlertsCard` UX (validation copy, success state, banners) and update `/status` hero messaging accordingly.
-4. Capture the voice/analytics guidelines in `docs/marketing/README.md` so new surfaces follow the same rules.
+- Marketing copy + CTA matrices, analytics instrumentation, StatusAlertsCard polish, and the marketing voice/analytics guide all landed as of November 16, 2025. No additional UI stories remain on this tracker; future polish now lives inside `MILESTONE_FRONTEND_UI_COMPLETION.md` and the planned Playwright test work.
 
 ## Coordination Notes
 - Update this tracker as each story moves to “In progress” or “Done” so stakeholders know exactly which visual threads remain.
