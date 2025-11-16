@@ -7,7 +7,6 @@ from typing import cast
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from redis.asyncio import Redis
 
 from app.api.errors import register_exception_handlers
 from app.api.router import api_router
@@ -44,6 +43,7 @@ from app.infrastructure.persistence.stripe.repository import (
     configure_stripe_event_repository,
 )
 from app.infrastructure.persistence.tenants import PostgresTenantSettingsRepository
+from app.infrastructure.redis.factory import get_redis_factory
 from app.infrastructure.redis_types import RedisBytesClient
 from app.infrastructure.security.vault_kv import configure_vault_secret_manager
 from app.middleware.logging import LoggingMiddleware
@@ -126,19 +126,23 @@ async def lifespan(app: FastAPI):
     configure_vault_secret_manager(settings)
 
     stripe_repo: StripeEventRepository | None = None
+    redis_factory = get_redis_factory(settings)
 
-    if settings.redis_url:
+    rate_limit_url = settings.resolve_rate_limit_redis_url()
+    if rate_limit_url:
         rate_limit_client = cast(
             RedisBytesClient,
-            Redis.from_url(
-                settings.redis_url,
-                encoding="utf-8",
-                decode_responses=False,
-            ),
+            redis_factory.get_client("rate_limit"),
         )
         container.rate_limiter.configure(
             redis=rate_limit_client,
             prefix=settings.rate_limit_key_prefix,
+            owns_client=False,
+        )
+    else:
+        logger.warning(
+            "Rate limiter disabled; RATE_LIMIT_REDIS_URL/REDIS_URL not configured.",
+            extra={"environment": settings.environment},
         )
 
     if settings.enable_billing:
@@ -251,13 +255,16 @@ async def lifespan(app: FastAPI):
             logger.info("Stripe dispatch retry worker disabled by configuration")
 
         if settings.enable_billing_stream:
-            redis_url = settings.billing_events_redis_url or settings.redis_url
+            redis_url = settings.resolve_billing_events_redis_url()
             if not redis_url:
                 raise RuntimeError(
                     "ENABLE_BILLING_STREAM requires BILLING_EVENTS_REDIS_URL or REDIS_URL"
                 )
-            redis_client = Redis.from_url(redis_url, encoding="utf-8", decode_responses=False)
-            backend = RedisBillingEventBackend(redis_client)
+            redis_client = cast(
+                RedisBytesClient,
+                redis_factory.get_client("billing_events"),
+            )
+            backend = RedisBillingEventBackend(redis_client, owns_client=False)
             service = container.billing_events_service
             service.configure(backend=backend)
             if settings.enable_billing_stream_replay:

@@ -7,7 +7,6 @@ import uuid
 from datetime import UTC, datetime
 from typing import Protocol, cast
 
-from redis.asyncio import Redis
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -35,6 +34,7 @@ from app.infrastructure.persistence.auth.models import (
 from app.infrastructure.persistence.auth.models import (
     UserStatus as DBUserStatus,
 )
+from app.infrastructure.redis.factory import get_redis_factory
 from app.infrastructure.redis_types import RedisBytesClient
 
 logger = logging.getLogger("anything-agents.persistence.users")
@@ -358,15 +358,14 @@ class PostgresUserRepository(UserRepository):
 
 
 def build_lockout_store(settings: Settings) -> LockoutStore:
-    if not settings.redis_url:
-        raise RuntimeError("redis_url is required to build the lockout store.")
+    redis_url = settings.resolve_auth_cache_redis_url()
+    if not redis_url:
+        raise RuntimeError(
+            "AUTH_CACHE_REDIS_URL (or REDIS_URL) is required to build the lockout store."
+        )
     client = cast(
         RedisBytesClient,
-        Redis.from_url(
-            settings.redis_url,
-            encoding="utf-8",
-            decode_responses=False,
-        ),
+        get_redis_factory(settings).get_client("auth_cache"),
     )
     return RedisLockoutStore(client)
 

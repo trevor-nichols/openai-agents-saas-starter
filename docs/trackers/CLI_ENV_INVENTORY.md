@@ -69,6 +69,9 @@ Legend: `✅` = prompted during wizard, `⚠️` = optional/backfilled warning, 
 | `ALLOWED_ORIGINS` | `str` | http://localhost:3000,http://localhost:8000 | ✅ | CORS allowed origins (comma-separated). |
 | `DATABASE_URL` | `str | None` | None | ✅ | Async SQLAlchemy URL for the primary Postgres database |
 | `REDIS_URL` | `str` | redis://localhost:6379/0 | ✅ | Redis connection URL used across services. |
+| `RATE_LIMIT_REDIS_URL` | `str | None` | None | ✅ | Dedicated Redis URL for rate limiting (falls back to REDIS_URL when unset). |
+| `AUTH_CACHE_REDIS_URL` | `str | None` | None | ✅ | Redis URL for auth/session caches (lockouts, refresh tokens) with fallback to REDIS_URL. |
+| `SECURITY_TOKEN_REDIS_URL` | `str | None` | None | ✅ | Redis URL for nonce + security token stores (defaults to REDIS_URL). |
 
 ## AI providers & tools
 

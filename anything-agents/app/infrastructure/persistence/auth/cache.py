@@ -7,10 +7,9 @@ from datetime import UTC, datetime
 from typing import Protocol, cast
 from uuid import UUID
 
-from redis.asyncio import Redis
-
 from app.core.config import Settings
 from app.domain.auth import RefreshTokenRecord
+from app.infrastructure.redis.factory import get_redis_factory
 from app.infrastructure.redis_types import RedisBytesClient
 
 
@@ -100,14 +99,11 @@ class RedisRefreshTokenCache:
 
 
 def build_refresh_token_cache(settings: Settings) -> RefreshTokenCache:
-    if not settings.redis_url:
+    redis_url = settings.resolve_auth_cache_redis_url()
+    if not redis_url:
         return NullRefreshTokenCache()
     client = cast(
         RedisBytesClient,
-        Redis.from_url(
-            settings.redis_url,
-            encoding="utf-8",
-            decode_responses=False,
-        ),
+        get_redis_factory(settings).get_client("auth_cache"),
     )
     return RedisRefreshTokenCache(client)

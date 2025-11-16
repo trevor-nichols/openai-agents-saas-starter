@@ -210,8 +210,10 @@ class RedisBillingEventBackend:
         stream_max_length: int = 1024,
         stream_ttl_seconds: int = 86400,
         backlog_batch_size: int = 128,
+        owns_client: bool = True,
     ) -> None:
         self._redis = redis
+        self._owns_client = owns_client
         self._stream_max_length = stream_max_length
         self._stream_ttl_seconds = stream_ttl_seconds
         self._backlog_batch_size = backlog_batch_size
@@ -245,7 +247,8 @@ class RedisBillingEventBackend:
         return str(raw)
 
     async def close(self) -> None:
-        await self._redis.close()
+        if self._owns_client:
+            await self._redis.close()
 
 
 class BillingEventsService:

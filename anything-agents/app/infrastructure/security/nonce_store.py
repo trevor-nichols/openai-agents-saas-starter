@@ -6,9 +6,8 @@ import asyncio
 from threading import Lock
 from typing import Protocol, cast
 
-from redis.asyncio import Redis
-
 from app.core.config import Settings, get_settings
+from app.infrastructure.redis.factory import get_redis_factory
 from app.infrastructure.redis_types import RedisBytesClient
 
 
@@ -37,16 +36,15 @@ class RedisNonceStore:
 _STORE_CACHE_LOCK = Lock()
 
 
-def _build_nonce_store(redis_url: str) -> RedisNonceStore:
+def _build_nonce_store(settings: Settings) -> RedisNonceStore:
+    redis_url = settings.resolve_security_token_redis_url()
     if not redis_url:
-        raise RuntimeError("redis_url is required for nonce storage.")
+        raise RuntimeError(
+            "SECURITY_TOKEN_REDIS_URL (or REDIS_URL) is required for nonce storage."
+        )
     client = cast(
         RedisBytesClient,
-        Redis.from_url(
-            redis_url,
-            encoding="utf-8",
-            decode_responses=False,
-        ),
+        get_redis_factory(settings).get_client("security_tokens"),
     )
     return RedisNonceStore(client)
 
@@ -64,8 +62,13 @@ def get_nonce_store(settings: Settings | None = None) -> NonceStore:
         loop._nonce_store_cache = cache  # type: ignore[attr-defined]
 
     with _STORE_CACHE_LOCK:
-        store = cache.get(settings.redis_url)
+        redis_url = settings.resolve_security_token_redis_url()
+        if not redis_url:
+            raise RuntimeError(
+                "SECURITY_TOKEN_REDIS_URL (or REDIS_URL) is required for nonce storage."
+            )
+        store = cache.get(redis_url)
         if store is None:
-            store = _build_nonce_store(settings.redis_url)
-            cache[settings.redis_url] = store
+            store = _build_nonce_store(settings)
+            cache[redis_url] = store
         return store

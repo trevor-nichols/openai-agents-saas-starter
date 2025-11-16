@@ -14,6 +14,9 @@ from fastapi.testclient import TestClient
 
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
+os.environ.setdefault("RATE_LIMIT_REDIS_URL", os.environ["REDIS_URL"])
+os.environ.setdefault("AUTH_CACHE_REDIS_URL", os.environ["REDIS_URL"])
+os.environ.setdefault("SECURITY_TOKEN_REDIS_URL", os.environ["REDIS_URL"])
 
 from app.bootstrap import get_container
 from app.core.config import get_settings

@@ -7,10 +7,9 @@ from datetime import UTC, datetime
 from typing import Final, cast
 from uuid import UUID
 
-from redis.asyncio import Redis
-
 from app.core.config import Settings, get_settings
 from app.domain.password_reset import PasswordResetTokenRecord, PasswordResetTokenStore
+from app.infrastructure.redis.factory import get_redis_factory
 from app.infrastructure.redis_types import RedisStrClient
 
 
@@ -62,19 +61,17 @@ _STORE_CACHE: dict[str, PasswordResetTokenStore] = {}
 
 def get_password_reset_token_store(settings: Settings | None = None) -> PasswordResetTokenStore:
     settings = settings or get_settings()
-    redis_url = settings.redis_url
+    redis_url = settings.resolve_security_token_redis_url()
     if not redis_url:
-        raise RuntimeError("redis_url is required for password reset tokens.")
+        raise RuntimeError(
+            "SECURITY_TOKEN_REDIS_URL (or REDIS_URL) is required for password reset tokens."
+        )
     cached = _STORE_CACHE.get(redis_url)
     if cached:
         return cached
     client = cast(
         RedisStrClient,
-        Redis.from_url(
-            redis_url,
-            encoding="utf-8",
-            decode_responses=True,
-        ),
+        get_redis_factory(settings).get_client("security_tokens", decode_responses=True),
     )
     store = RedisPasswordResetTokenStore(client)
     _STORE_CACHE[redis_url] = store

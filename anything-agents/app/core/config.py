@@ -105,6 +105,24 @@ class Settings(BaseSettings):
     # =============================================================================
 
     redis_url: str = Field(default="redis://localhost:6379/0", description="Redis connection URL")
+    rate_limit_redis_url: str | None = Field(
+        default=None,
+        description="Redis URL dedicated to rate limiting (defaults to REDIS_URL when unset).",
+        alias="RATE_LIMIT_REDIS_URL",
+    )
+    auth_cache_redis_url: str | None = Field(
+        default=None,
+        description="Redis URL dedicated to auth/session caches like refresh tokens and lockouts.",
+        alias="AUTH_CACHE_REDIS_URL",
+    )
+    security_token_redis_url: str | None = Field(
+        default=None,
+        description=(
+            "Redis URL dedicated to nonce/email/password token stores "
+            "(falls back to REDIS_URL)."
+        ),
+        alias="SECURITY_TOKEN_REDIS_URL",
+    )
 
     # =============================================================================
     # RATE LIMITING SETTINGS
@@ -818,6 +836,42 @@ class Settings(BaseSettings):
         """Get allowed headers as a list."""
         return [header.strip() for header in self.allowed_headers.split(",") if header.strip()]
 
+    @staticmethod
+    def _normalize_url(value: str | None) -> str | None:
+        if value is None:
+            return None
+        trimmed = value.strip()
+        return trimmed or None
+
+    def resolve_rate_limit_redis_url(self) -> str | None:
+        """Return the configured Redis URL for rate limiting workloads."""
+
+        return self._normalize_url(self.rate_limit_redis_url) or self._normalize_url(self.redis_url)
+
+    def resolve_auth_cache_redis_url(self) -> str | None:
+        """Return the configured Redis URL for auth/session caches."""
+
+        return self._normalize_url(self.auth_cache_redis_url) or self._normalize_url(self.redis_url)
+
+    def resolve_security_token_redis_url(self) -> str | None:
+        """Return the configured Redis URL for nonce + token stores."""
+
+        return self._normalize_url(self.security_token_redis_url) or self._normalize_url(
+            self.redis_url
+        )
+
+    def resolve_billing_events_redis_url(self) -> str | None:
+        """Return the Redis URL backing billing event streams."""
+
+        return self._normalize_url(self.billing_events_redis_url) or self._normalize_url(
+            self.redis_url
+        )
+
+    def require_hardened_redis(self) -> bool:
+        """Return True when Redis connections must enforce TLS + auth."""
+
+        return self.should_enforce_secret_overrides()
+
     def required_stripe_envs_missing(self) -> list[str]:
         """Return the list of Stripe environment variables missing when billing is enabled."""
         missing: list[str] = []
@@ -833,11 +887,11 @@ class Settings(BaseSettings):
         """Return a masked summary of the active Stripe configuration for logging."""
         price_map = self.stripe_product_price_map or {}
         plan_codes = sorted(price_map.keys())
-        redis_source = (
-            "BILLING_EVENTS_REDIS_URL"
-            if self.billing_events_redis_url
-            else ("REDIS_URL" if self.redis_url else "<unset>")
-        )
+        redis_source = "<unset>"
+        if self.billing_events_redis_url:
+            redis_source = "BILLING_EVENTS_REDIS_URL"
+        elif self.resolve_billing_events_redis_url():
+            redis_source = "REDIS_URL"
         return {
             "stripe_secret_key": self._mask_secret(self.stripe_secret_key),
             "stripe_webhook_secret": self._mask_secret(self.stripe_webhook_secret),

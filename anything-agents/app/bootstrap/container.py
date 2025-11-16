@@ -6,6 +6,7 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from app.infrastructure.redis.factory import reset_redis_factory, shutdown_redis_factory
 from app.services.auth.service_account_service import ServiceAccountTokenService
 from app.services.auth.session_service import UserSessionService
 from app.services.billing_events import BillingEventsService
@@ -75,6 +76,7 @@ class ApplicationContainer:
             self.rate_limiter.shutdown(),
             return_exceptions=False,
         )
+        await shutdown_redis_factory()
         self.session_factory = None
         self.stripe_event_repository = None
         self.user_service = None
@@ -124,6 +126,7 @@ async def shutdown_container() -> None:
 def reset_container() -> ApplicationContainer:
     """Reset the container to a fresh, unconfigured instance (used in tests)."""
 
+    reset_redis_factory()
     container = ApplicationContainer()
     set_container(container)
     return container

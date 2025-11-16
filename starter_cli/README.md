@@ -43,7 +43,7 @@ The flow covers four milestones plus frontend wiring:
 | Milestone | Focus | Key outputs |
 | --- | --- | --- |
 | M1 Secrets & Vault | Generate peppers/keys, optionally rotate Ed25519 material, enforce Vault transit verification | `SECRET_KEY`, `AUTH_*` peppers, `VAULT_*` vars |
-| M2 Providers & Infra | Database URL, AI providers, Redis, Stripe, Resend, migrations | `DATABASE_URL`, `OPENAI_API_KEY`, `REDIS_URL`, `STRIPE_*`, `RESEND_*` |
+| M2 Providers & Infra | Database URL, AI providers, Redis pools, Stripe, Resend, migrations | `DATABASE_URL`, `OPENAI_API_KEY`, `REDIS_URL`, `RATE_LIMIT_REDIS_URL`, `AUTH_CACHE_REDIS_URL`, `SECURITY_TOKEN_REDIS_URL`, `BILLING_EVENTS_REDIS_URL`, `STRIPE_*`, `RESEND_*` |
 | M3 Tenant & Observability | Tenant defaults, logging sinks, GeoIP providers | `TENANT_DEFAULT_SLUG`, `LOGGING_*`, `GEOIP_*` |
 | M4 Signup & Worker policy | Signup posture (policy + throttles) plus billing retry worker | `SIGNUP_ACCESS_POLICY`, `ALLOW_PUBLIC_SIGNUP`, `SIGNUP_RATE_LIMIT_PER_*`, `SIGNUP_CONCURRENT_REQUESTS_LIMIT`, `ENABLE_BILLING_RETRY_WORKER` |
 | Frontend | Next.js runtime config | `NEXT_PUBLIC_API_URL`, Playwright URL, cookie flags |

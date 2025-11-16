@@ -258,6 +258,10 @@ def _providers_section(
             _env_presence("RESEND_API_KEY", env_snapshot, required=False),
             _env_presence("DATABASE_URL", env_snapshot, required=False),
             _env_presence("REDIS_URL", env_snapshot),
+            _env_presence("RATE_LIMIT_REDIS_URL", env_snapshot, required=False),
+            _env_presence("AUTH_CACHE_REDIS_URL", env_snapshot, required=False),
+            _env_presence("SECURITY_TOKEN_REDIS_URL", env_snapshot, required=False),
+            _env_presence("BILLING_EVENTS_REDIS_URL", env_snapshot, required=False),
         ]
     )
 

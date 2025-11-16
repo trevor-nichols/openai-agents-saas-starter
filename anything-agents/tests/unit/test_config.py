@@ -215,6 +215,30 @@ def test_signup_additional_limit_validation(monkeypatch: pytest.MonkeyPatch) -> 
         make_settings()
 
 
+def test_redis_resolvers_fall_back_to_primary_url() -> None:
+    settings = make_settings(redis_url="redis://shared:6379/0")
+
+    assert settings.resolve_rate_limit_redis_url() == "redis://shared:6379/0"
+    assert settings.resolve_auth_cache_redis_url() == "redis://shared:6379/0"
+    assert settings.resolve_security_token_redis_url() == "redis://shared:6379/0"
+    assert settings.resolve_billing_events_redis_url() == "redis://shared:6379/0"
+
+
+def test_redis_resolvers_prefer_dedicated_urls() -> None:
+    settings = make_settings(
+        redis_url="redis://shared:6379/0",
+        rate_limit_redis_url="redis://ratelimit:6379/1",
+        auth_cache_redis_url="redis://auth:6379/2",
+        security_token_redis_url="redis://security:6379/3",
+        billing_events_redis_url="redis://billing:6379/4",
+    )
+
+    assert settings.resolve_rate_limit_redis_url() == "redis://ratelimit:6379/1"
+    assert settings.resolve_auth_cache_redis_url() == "redis://auth:6379/2"
+    assert settings.resolve_security_token_redis_url() == "redis://security:6379/3"
+    assert settings.resolve_billing_events_redis_url() == "redis://billing:6379/4"
+
+
 def test_allowed_hosts_default_includes_local_and_test_hosts(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

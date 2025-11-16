@@ -9,8 +9,6 @@ from datetime import UTC, datetime
 from typing import Literal, Protocol, cast
 from uuid import UUID
 
-from redis.asyncio import Redis
-
 from app.core.config import Settings, get_settings
 from app.core.password_policy import PasswordPolicyError, validate_password_strength
 from app.core.security import PASSWORD_HASH_VERSION, get_password_hash, verify_password
@@ -26,6 +24,7 @@ from app.domain.users import (
     UserStatus,
 )
 from app.infrastructure.persistence.auth.user_repository import get_user_repository
+from app.infrastructure.redis.factory import get_redis_factory
 from app.infrastructure.redis_types import RedisBytesClient
 from app.observability.logging import log_event
 
@@ -522,15 +521,12 @@ def get_user_service() -> UserService:
 
 
 def build_ip_throttler(settings: Settings) -> LoginThrottle:
-    if not settings.redis_url:
-        raise RuntimeError("redis_url is required for IP throttling.")
+    redis_url = settings.resolve_auth_cache_redis_url()
+    if not redis_url:
+        raise RuntimeError("AUTH_CACHE_REDIS_URL (or REDIS_URL) is required for IP throttling.")
     client = cast(
         RedisBytesClient,
-        Redis.from_url(
-            settings.redis_url,
-            encoding="utf-8",
-            decode_responses=False,
-        ),
+        get_redis_factory(settings).get_client("auth_cache"),
     )
     window_seconds = int(settings.auth_ip_lockout_window_minutes * 60)
     block_seconds = int(settings.auth_ip_lockout_duration_minutes * 60)

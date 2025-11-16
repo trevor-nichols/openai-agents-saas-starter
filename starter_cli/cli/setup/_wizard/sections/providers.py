@@ -114,6 +114,29 @@ def _collect_redis(context: WizardContext, provider: InputProvider) -> None:
     validate_redis_url(primary, require_tls=context.profile != "local", role="Primary")
     context.set_backend("REDIS_URL", primary)
 
+    def _configure_optional(key: str, label: str) -> None:
+        value = provider.prompt_string(
+            key=key,
+            prompt=f"{label} Redis URL (blank = reuse primary)",
+            default=context.current(key) or "",
+            required=False,
+        )
+        if value:
+            validate_redis_url(value, require_tls=context.profile != "local", role=label)
+            context.set_backend(key, value)
+        else:
+            context.set_backend(key, "")
+            if context.profile != "local":
+                console.warn(
+                    f"{label} Redis workloads will reuse the primary Redis instance. "
+                    "Provision a dedicated pool in production.",
+                    topic="redis",
+                )
+
+    _configure_optional("RATE_LIMIT_REDIS_URL", "Rate limiting")
+    _configure_optional("AUTH_CACHE_REDIS_URL", "Auth/session cache")
+    _configure_optional("SECURITY_TOKEN_REDIS_URL", "Security token")
+
     billing = provider.prompt_string(
         key="BILLING_EVENTS_REDIS_URL",
         prompt="Billing events Redis URL (blank = reuse primary)",
