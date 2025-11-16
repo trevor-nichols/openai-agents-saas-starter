@@ -154,28 +154,28 @@ Legend: `✅` = prompted during wizard, `⚠️` = optional/backfilled warning, 
 | Env Var | Type | Default | Wizard? | Description |
 | --- | --- | --- | --- | --- |
 | `SECRETS_PROVIDER` | `str` | vault_dev | ✅ | Active secrets implementation (`vault_dev`, `vault_hcp`, `infisical_cloud`, `infisical_self_host`, `aws_sm`, `azure_kv`). |
-| `VAULT_NAMESPACE` | `str | None` | ✅ | ❌ | Optional Vault namespace when using HCP or multi-tenant clusters. |
-| `INFISICAL_BASE_URL` | `str | None` | ✅ | ❌ | Base URL for Infisical API when using Infisical providers. |
-| `INFISICAL_SERVICE_TOKEN` | `str | None` | ✅ | ❌ | Infisical service token used for non-interactive secret access. |
-| `INFISICAL_PROJECT_ID` | `str | None` | ✅ | ❌ | Infisical project/workspace identifier tied to this deployment. |
-| `INFISICAL_ENVIRONMENT` | `str | None` | ✅ | ❌ | Infisical environment slug (dev/staging/prod) queried for secrets. |
-| `INFISICAL_SECRET_PATH` | `str | None` | ✅ | ❌ | Secret path (e.g., `/backend`) to read when seeding environment values. |
-| `INFISICAL_CA_BUNDLE_PATH` | `str | None` | ✅ | ❌ | Custom CA bundle path for self-hosted Infisical instances. |
+| `VAULT_NAMESPACE` | `str | None` | ✅ | ✅ | Optional Vault namespace when using HCP or multi-tenant clusters. |
+| `INFISICAL_BASE_URL` | `str | None` | ✅ | ✅ | Base URL for Infisical API when using Infisical providers. |
+| `INFISICAL_SERVICE_TOKEN` | `str | None` | ✅ | ✅ | Infisical service token used for non-interactive secret access. |
+| `INFISICAL_PROJECT_ID` | `str | None` | ✅ | ✅ | Infisical project/workspace identifier tied to this deployment. |
+| `INFISICAL_ENVIRONMENT` | `str | None` | ✅ | ✅ | Infisical environment slug (dev/staging/prod) queried for secrets. |
+| `INFISICAL_SECRET_PATH` | `str | None` | ✅ | ✅ | Secret path (e.g., `/backend`) to read when seeding environment values. |
+| `INFISICAL_CA_BUNDLE_PATH` | `str | None` | ✅ | ✅ | Custom CA bundle path for self-hosted Infisical instances. |
 | `INFISICAL_SIGNING_SECRET_NAME` | `str` | auth-service-signing-secret | ✅ | Infisical secret name holding the signing key used for service-account payloads. |
 | `INFISICAL_CACHE_TTL_SECONDS` | `int` | 60 | ✅ | TTL (seconds) for Infisical secret cache entries. |
-| `AWS_REGION` | `str | None` | ✅ | ❌ | AWS region used for Secrets Manager operations. |
-| `AWS_PROFILE` | `str | None` | ✅ | ❌ | Named AWS profile to load when using credentials from ~/.aws. |
-| `AWS_ACCESS_KEY_ID` | `str | None` | ✅ | ❌ | Static AWS access key ID (used when not relying on profiles/IMDS). |
-| `AWS_SECRET_ACCESS_KEY` | `str | None` | ✅ | ❌ | Static AWS secret access key corresponding to the configured access key ID. |
-| `AWS_SESSION_TOKEN` | `str | None` | ✅ | ❌ | Optional AWS session token for temporary credentials. |
-| `AWS_SM_SIGNING_SECRET_ARN` | `str | None` | ✅ | ❌ | ARN or name of the Secrets Manager secret containing the signing secret value. |
+| `AWS_REGION` | `str | None` | ✅ | ✅ | AWS region used for Secrets Manager operations. |
+| `AWS_PROFILE` | `str | None` | ✅ | ✅ | Named AWS profile to load when using credentials from ~/.aws. |
+| `AWS_ACCESS_KEY_ID` | `str | None` | ✅ | ✅ | Static AWS access key ID (used when not relying on profiles/IMDS). |
+| `AWS_SECRET_ACCESS_KEY` | `str | None` | ✅ | ✅ | Static AWS secret access key corresponding to the configured access key ID. |
+| `AWS_SESSION_TOKEN` | `str | None` | ✅ | ✅ | Optional AWS session token for temporary credentials. |
+| `AWS_SM_SIGNING_SECRET_ARN` | `str | None` | ✅ | ✅ | ARN or name of the Secrets Manager secret containing the signing secret value. |
 | `AWS_SM_CACHE_TTL_SECONDS` | `int` | 60 | ✅ | TTL (seconds) for cached AWS Secrets Manager lookups. |
-| `AZURE_KEY_VAULT_URL` | `str | None` | ✅ | ❌ | Azure Key Vault base URL (https://<name>.vault.azure.net). |
-| `AZURE_KV_SIGNING_SECRET_NAME` | `str | None` | ✅ | ❌ | Key Vault secret name that stores the signing secret value. |
-| `AZURE_TENANT_ID` | `str | None` | ✅ | ❌ | Azure AD tenant ID used for service principal authentication. |
-| `AZURE_CLIENT_ID` | `str | None` | ✅ | ❌ | Azure AD application (client) ID used for Key Vault access. |
-| `AZURE_CLIENT_SECRET` | `str | None` | ✅ | ❌ | Azure AD application secret used when authenticating via client credentials. |
-| `AZURE_MANAGED_IDENTITY_CLIENT_ID` | `str | None` | ✅ | ❌ | User-assigned managed identity client ID for MSI authentication. |
+| `AZURE_KEY_VAULT_URL` | `str | None` | ✅ | ✅ | Azure Key Vault base URL (https://<name>.vault.azure.net). |
+| `AZURE_KV_SIGNING_SECRET_NAME` | `str | None` | ✅ | ✅ | Key Vault secret name that stores the signing secret value. |
+| `AZURE_TENANT_ID` | `str | None` | ✅ | ✅ | Azure AD tenant ID used for service principal authentication. |
+| `AZURE_CLIENT_ID` | `str | None` | ✅ | ✅ | Azure AD application (client) ID used for Key Vault access. |
+| `AZURE_CLIENT_SECRET` | `str | None` | ✅ | ✅ | Azure AD application secret used when authenticating via client credentials. |
+| `AZURE_MANAGED_IDENTITY_CLIENT_ID` | `str | None` | ✅ | ✅ | User-assigned managed identity client ID for MSI authentication. |
 | `AZURE_KV_CACHE_TTL_SECONDS` | `int` | 60 | ✅ | TTL (seconds) for cached Azure Key Vault secret reads. |
 | `ENABLE_SECRETS_PROVIDER_TELEMETRY` | `bool` | False | ✅ | Emit structured telemetry about selected secrets providers (no payload contents). |
 
