@@ -1079,6 +1079,316 @@ export type SessionLocationInfo = {
 };
 
 /**
+ * SignupAccessPolicyResponse
+ */
+export type SignupAccessPolicyResponse = {
+    /**
+     * Policy
+     *
+     * Active signup access policy.
+     */
+    policy: string;
+    /**
+     * Invite Required
+     *
+     * Indicates whether an invite token is required.
+     */
+    invite_required: boolean;
+    /**
+     * Request Access Enabled
+     *
+     * Whether deployments expose the access-request workflow.
+     */
+    request_access_enabled: boolean;
+};
+
+/**
+ * SignupInviteIssueRequest
+ */
+export type SignupInviteIssueRequest = {
+    /**
+     * Invited Email
+     *
+     * Optional email restriction for the invite.
+     */
+    invited_email?: string | null;
+    /**
+     * Max Redemptions
+     *
+     * Maximum number of tenants that can redeem the invite.
+     */
+    max_redemptions?: number;
+    /**
+     * Expires In Hours
+     *
+     * Invite expiry window expressed in hours.
+     */
+    expires_in_hours?: number | null;
+    /**
+     * Note
+     *
+     * Operator note stored alongside the invite.
+     */
+    note?: string | null;
+    /**
+     * Signup Request Id
+     *
+     * Associate the invite with a previously submitted signup request.
+     */
+    signup_request_id?: string | null;
+};
+
+/**
+ * SignupInviteIssueResponse
+ */
+export type SignupInviteIssueResponse = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Token Hint
+     */
+    token_hint: string;
+    /**
+     * Invited Email
+     */
+    invited_email?: string | null;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Max Redemptions
+     */
+    max_redemptions: number;
+    /**
+     * Redeemed Count
+     */
+    redeemed_count: number;
+    /**
+     * Expires At
+     */
+    expires_at?: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Signup Request Id
+     */
+    signup_request_id?: string | null;
+    /**
+     * Note
+     */
+    note?: string | null;
+    /**
+     * Invite Token
+     *
+     * Plaintext invite token (only returned once).
+     */
+    invite_token: string;
+};
+
+/**
+ * SignupInviteListResponse
+ */
+export type SignupInviteListResponse = {
+    /**
+     * Invites
+     */
+    invites: Array<SignupInviteResponse>;
+    /**
+     * Total
+     */
+    total: number;
+};
+
+/**
+ * SignupInviteResponse
+ */
+export type SignupInviteResponse = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Token Hint
+     */
+    token_hint: string;
+    /**
+     * Invited Email
+     */
+    invited_email?: string | null;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Max Redemptions
+     */
+    max_redemptions: number;
+    /**
+     * Redeemed Count
+     */
+    redeemed_count: number;
+    /**
+     * Expires At
+     */
+    expires_at?: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Signup Request Id
+     */
+    signup_request_id?: string | null;
+    /**
+     * Note
+     */
+    note?: string | null;
+};
+
+/**
+ * SignupInviteStatus
+ *
+ * Lifecycle states for tenant signup invites.
+ */
+export type SignupInviteStatus = 'active' | 'revoked' | 'expired' | 'exhausted';
+
+/**
+ * SignupRequestApprovalRequest
+ */
+export type SignupRequestApprovalRequest = {
+    /**
+     * Note
+     *
+     * Optional note recorded alongside the invite and decision.
+     */
+    note?: string | null;
+    /**
+     * Invite Expires In Hours
+     *
+     * Optional invite expiry override in hours.
+     */
+    invite_expires_in_hours?: number | null;
+};
+
+/**
+ * SignupRequestDecisionResponse
+ */
+export type SignupRequestDecisionResponse = {
+    request: SignupRequestResponse;
+    invite?: SignupInviteIssueResponse | null;
+};
+
+/**
+ * SignupRequestListResponse
+ */
+export type SignupRequestListResponse = {
+    /**
+     * Requests
+     */
+    requests: Array<SignupRequestResponse>;
+    /**
+     * Total
+     */
+    total: number;
+};
+
+/**
+ * SignupRequestPublicRequest
+ */
+export type SignupRequestPublicRequest = {
+    /**
+     * Email
+     */
+    email: string;
+    /**
+     * Organization
+     */
+    organization: string;
+    /**
+     * Full Name
+     */
+    full_name: string;
+    /**
+     * Message
+     *
+     * Optional context describing the intended use case.
+     */
+    message?: string | null;
+    /**
+     * Accept Terms
+     *
+     * Indicates that the requester accepted the Terms.
+     */
+    accept_terms: boolean;
+    /**
+     * Honeypot
+     *
+     * Hidden honeypot field used to detect basic bots.
+     */
+    honeypot?: string | null;
+};
+
+/**
+ * SignupRequestRejectionRequest
+ */
+export type SignupRequestRejectionRequest = {
+    /**
+     * Reason
+     *
+     * Reason communicated to operators when rejecting a request.
+     */
+    reason?: string | null;
+};
+
+/**
+ * SignupRequestResponse
+ */
+export type SignupRequestResponse = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Email
+     */
+    email: string;
+    /**
+     * Organization
+     */
+    organization: string | null;
+    /**
+     * Full Name
+     */
+    full_name: string | null;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Decision Reason
+     */
+    decision_reason?: string | null;
+    /**
+     * Invite Token Hint
+     */
+    invite_token_hint?: string | null;
+};
+
+/**
+ * SignupRequestStatus
+ */
+export type SignupRequestStatus = 'pending' | 'approved' | 'rejected';
+
+/**
  * StartSubscriptionRequest
  */
 export type StartSubscriptionRequest = {
@@ -1611,6 +1921,12 @@ export type UserRegisterRequest = {
      * Indicates whether the caller accepted the Terms of Service.
      */
     accept_terms?: boolean;
+    /**
+     * Invite Token
+     *
+     * Invite token or approval code required for invite-only deployments.
+     */
+    invite_token?: string | null;
 };
 
 /**
@@ -1664,31 +1980,31 @@ export type UserRegisterResponse = {
     /**
      * Scopes
      *
-     * Scopes granted to the session.
+     * Authorized scopes attached to the session.
      */
     scopes: Array<string>;
     /**
      * Tenant Id
      *
-     * Tenant identifier tied to the session.
+     * Tenant context associated with the tokens.
      */
     tenant_id: string;
     /**
      * User Id
      *
-     * Authenticated user identifier.
+     * User identifier encoded in the tokens.
      */
     user_id: string;
     /**
      * Email Verified
      *
-     * Whether the user's email has been verified.
+     * Whether the email has been verified.
      */
     email_verified: boolean;
     /**
      * Session Id
      *
-     * Stable identifier for the refresh session/device.
+     * Opaque session identifier for device tracking.
      */
     session_id: string;
     /**
@@ -1846,31 +2162,31 @@ export type UserSessionResponse = {
     /**
      * Scopes
      *
-     * Scopes granted to the session.
+     * Authorized scopes attached to the session.
      */
     scopes: Array<string>;
     /**
      * Tenant Id
      *
-     * Tenant identifier tied to the session.
+     * Tenant context associated with the tokens.
      */
     tenant_id: string;
     /**
      * User Id
      *
-     * Authenticated user identifier.
+     * User identifier encoded in the tokens.
      */
     user_id: string;
     /**
      * Email Verified
      *
-     * Whether the user's email has been verified.
+     * Whether the email has been verified.
      */
     email_verified: boolean;
     /**
      * Session Id
      *
-     * Stable identifier for the refresh session/device.
+     * Opaque session identifier for device tracking.
      */
     session_id: string;
 };
@@ -2485,6 +2801,22 @@ export type RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePost
 
 export type RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostResponse = RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostResponses[keyof RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostResponses];
 
+export type GetSignupAccessPolicyApiV1AuthSignupPolicyGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/signup-policy';
+};
+
+export type GetSignupAccessPolicyApiV1AuthSignupPolicyGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: SignupAccessPolicyResponse;
+};
+
+export type GetSignupAccessPolicyApiV1AuthSignupPolicyGetResponse = GetSignupAccessPolicyApiV1AuthSignupPolicyGetResponses[keyof GetSignupAccessPolicyApiV1AuthSignupPolicyGetResponses];
+
 export type RegisterTenantApiV1AuthRegisterPostData = {
     body: UserRegisterRequest;
     path?: never;
@@ -2510,8 +2842,242 @@ export type RegisterTenantApiV1AuthRegisterPostResponses = {
 
 export type RegisterTenantApiV1AuthRegisterPostResponse = RegisterTenantApiV1AuthRegisterPostResponses[keyof RegisterTenantApiV1AuthRegisterPostResponses];
 
+export type SubmitAccessRequestApiV1AuthRequestAccessPostData = {
+    body: SignupRequestPublicRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/request-access';
+};
+
+export type SubmitAccessRequestApiV1AuthRequestAccessPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SubmitAccessRequestApiV1AuthRequestAccessPostError = SubmitAccessRequestApiV1AuthRequestAccessPostErrors[keyof SubmitAccessRequestApiV1AuthRequestAccessPostErrors];
+
+export type SubmitAccessRequestApiV1AuthRequestAccessPostResponses = {
+    /**
+     * Successful Response
+     */
+    202: SignupAccessPolicyResponse;
+};
+
+export type SubmitAccessRequestApiV1AuthRequestAccessPostResponse = SubmitAccessRequestApiV1AuthRequestAccessPostResponses[keyof SubmitAccessRequestApiV1AuthRequestAccessPostResponses];
+
+export type ListSignupRequestsApiV1AuthSignupRequestsGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Status
+         */
+        status?: SignupRequestStatus | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Offset
+         */
+        offset?: number;
+    };
+    url: '/api/v1/auth/signup-requests';
+};
+
+export type ListSignupRequestsApiV1AuthSignupRequestsGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListSignupRequestsApiV1AuthSignupRequestsGetError = ListSignupRequestsApiV1AuthSignupRequestsGetErrors[keyof ListSignupRequestsApiV1AuthSignupRequestsGetErrors];
+
+export type ListSignupRequestsApiV1AuthSignupRequestsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: SignupRequestListResponse;
+};
+
+export type ListSignupRequestsApiV1AuthSignupRequestsGetResponse = ListSignupRequestsApiV1AuthSignupRequestsGetResponses[keyof ListSignupRequestsApiV1AuthSignupRequestsGetResponses];
+
+export type ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostData = {
+    body: SignupRequestApprovalRequest;
+    path: {
+        /**
+         * Request Id
+         */
+        request_id: string;
+    };
+    query?: never;
+    url: '/api/v1/auth/signup-requests/{request_id}/approve';
+};
+
+export type ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostError = ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostErrors[keyof ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostErrors];
+
+export type ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: SignupRequestDecisionResponse;
+};
+
+export type ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostResponse = ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostResponses[keyof ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostResponses];
+
+export type RejectSignupRequestApiV1AuthSignupRequestsRequestIdRejectPostData = {
+    body: SignupRequestRejectionRequest;
+    path: {
+        /**
+         * Request Id
+         */
+        request_id: string;
+    };
+    query?: never;
+    url: '/api/v1/auth/signup-requests/{request_id}/reject';
+};
+
+export type RejectSignupRequestApiV1AuthSignupRequestsRequestIdRejectPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RejectSignupRequestApiV1AuthSignupRequestsRequestIdRejectPostError = RejectSignupRequestApiV1AuthSignupRequestsRequestIdRejectPostErrors[keyof RejectSignupRequestApiV1AuthSignupRequestsRequestIdRejectPostErrors];
+
+export type RejectSignupRequestApiV1AuthSignupRequestsRequestIdRejectPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: SignupRequestDecisionResponse;
+};
+
+export type RejectSignupRequestApiV1AuthSignupRequestsRequestIdRejectPostResponse = RejectSignupRequestApiV1AuthSignupRequestsRequestIdRejectPostResponses[keyof RejectSignupRequestApiV1AuthSignupRequestsRequestIdRejectPostResponses];
+
+export type ListInvitesApiV1AuthInvitesGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Status
+         */
+        status?: SignupInviteStatus | null;
+        /**
+         * Email
+         */
+        email?: string | null;
+        /**
+         * Request Id
+         */
+        request_id?: string | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Offset
+         */
+        offset?: number;
+    };
+    url: '/api/v1/auth/invites';
+};
+
+export type ListInvitesApiV1AuthInvitesGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListInvitesApiV1AuthInvitesGetError = ListInvitesApiV1AuthInvitesGetErrors[keyof ListInvitesApiV1AuthInvitesGetErrors];
+
+export type ListInvitesApiV1AuthInvitesGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: SignupInviteListResponse;
+};
+
+export type ListInvitesApiV1AuthInvitesGetResponse = ListInvitesApiV1AuthInvitesGetResponses[keyof ListInvitesApiV1AuthInvitesGetResponses];
+
+export type IssueInviteApiV1AuthInvitesPostData = {
+    body: SignupInviteIssueRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/invites';
+};
+
+export type IssueInviteApiV1AuthInvitesPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type IssueInviteApiV1AuthInvitesPostError = IssueInviteApiV1AuthInvitesPostErrors[keyof IssueInviteApiV1AuthInvitesPostErrors];
+
+export type IssueInviteApiV1AuthInvitesPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: SignupInviteIssueResponse;
+};
+
+export type IssueInviteApiV1AuthInvitesPostResponse = IssueInviteApiV1AuthInvitesPostResponses[keyof IssueInviteApiV1AuthInvitesPostResponses];
+
+export type RevokeInviteApiV1AuthInvitesInviteIdRevokePostData = {
+    body?: never;
+    path: {
+        /**
+         * Invite Id
+         */
+        invite_id: string;
+    };
+    query?: never;
+    url: '/api/v1/auth/invites/{invite_id}/revoke';
+};
+
+export type RevokeInviteApiV1AuthInvitesInviteIdRevokePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RevokeInviteApiV1AuthInvitesInviteIdRevokePostError = RevokeInviteApiV1AuthInvitesInviteIdRevokePostErrors[keyof RevokeInviteApiV1AuthInvitesInviteIdRevokePostErrors];
+
+export type RevokeInviteApiV1AuthInvitesInviteIdRevokePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: SignupInviteResponse;
+};
+
+export type RevokeInviteApiV1AuthInvitesInviteIdRevokePostResponse = RevokeInviteApiV1AuthInvitesInviteIdRevokePostResponses[keyof RevokeInviteApiV1AuthInvitesInviteIdRevokePostResponses];
+
 export type ChatWithAgentApiV1ChatPostData = {
     body: AgentChatRequest;
+    headers?: {
+        /**
+         * X-Tenant-Id
+         */
+        'X-Tenant-Id'?: string | null;
+        /**
+         * X-Tenant-Role
+         */
+        'X-Tenant-Role'?: string | null;
+    };
     path?: never;
     query?: never;
     url: '/api/v1/chat';
@@ -2537,6 +3103,16 @@ export type ChatWithAgentApiV1ChatPostResponse = ChatWithAgentApiV1ChatPostRespo
 
 export type StreamChatWithAgentApiV1ChatStreamPostData = {
     body: AgentChatRequest;
+    headers?: {
+        /**
+         * X-Tenant-Id
+         */
+        'X-Tenant-Id'?: string | null;
+        /**
+         * X-Tenant-Role
+         */
+        'X-Tenant-Role'?: string | null;
+    };
     path?: never;
     query?: never;
     url: '/api/v1/chat/stream';
@@ -2608,10 +3184,29 @@ export type GetAgentStatusApiV1AgentsAgentNameStatusGetResponse = GetAgentStatus
 
 export type ListConversationsApiV1ConversationsGetData = {
     body?: never;
+    headers?: {
+        /**
+         * X-Tenant-Id
+         */
+        'X-Tenant-Id'?: string | null;
+        /**
+         * X-Tenant-Role
+         */
+        'X-Tenant-Role'?: string | null;
+    };
     path?: never;
     query?: never;
     url: '/api/v1/conversations';
 };
+
+export type ListConversationsApiV1ConversationsGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListConversationsApiV1ConversationsGetError = ListConversationsApiV1ConversationsGetErrors[keyof ListConversationsApiV1ConversationsGetErrors];
 
 export type ListConversationsApiV1ConversationsGetResponses = {
     /**
@@ -2626,6 +3221,16 @@ export type ListConversationsApiV1ConversationsGetResponse = ListConversationsAp
 
 export type DeleteConversationApiV1ConversationsConversationIdDeleteData = {
     body?: never;
+    headers?: {
+        /**
+         * X-Tenant-Id
+         */
+        'X-Tenant-Id'?: string | null;
+        /**
+         * X-Tenant-Role
+         */
+        'X-Tenant-Role'?: string | null;
+    };
     path: {
         /**
          * Conversation Id
@@ -2656,6 +3261,16 @@ export type DeleteConversationApiV1ConversationsConversationIdDeleteResponse = D
 
 export type GetConversationApiV1ConversationsConversationIdGetData = {
     body?: never;
+    headers?: {
+        /**
+         * X-Tenant-Id
+         */
+        'X-Tenant-Id'?: string | null;
+        /**
+         * X-Tenant-Role
+         */
+        'X-Tenant-Role'?: string | null;
+    };
     path: {
         /**
          * Conversation Id

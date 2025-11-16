@@ -19,6 +19,7 @@ def upgrade() -> None:
         "approved",
         "rejected",
         name="tenant_signup_request_status",
+        create_type=False,
     )
     invite_status_enum = postgresql.ENUM(
         "active",
@@ -26,6 +27,7 @@ def upgrade() -> None:
         "expired",
         "exhausted",
         name="tenant_signup_invite_status",
+        create_type=False,
     )
     reservation_status_enum = postgresql.ENUM(
         "active",
@@ -33,6 +35,7 @@ def upgrade() -> None:
         "finalized",
         "expired",
         name="signup_invite_reservation_status",
+        create_type=False,
     )
     bind = op.get_bind()
     request_status_enum.create(bind, checkfirst=True)
@@ -244,12 +247,14 @@ def downgrade() -> None:
         "expired",
         "exhausted",
         name="tenant_signup_invite_status",
+        create_type=False,
     )
     request_status_enum = postgresql.ENUM(
         "pending",
         "approved",
         "rejected",
         name="tenant_signup_request_status",
+        create_type=False,
     )
     reservation_status_enum = postgresql.ENUM(
         "active",
@@ -257,6 +262,7 @@ def downgrade() -> None:
         "finalized",
         "expired",
         name="signup_invite_reservation_status",
+        create_type=False,
     )
     invite_status_enum.drop(bind, checkfirst=True)
     request_status_enum.drop(bind, checkfirst=True)

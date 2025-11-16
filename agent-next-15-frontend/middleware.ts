@@ -3,7 +3,15 @@ import type { NextRequest } from 'next/server';
 
 import { ACCESS_TOKEN_COOKIE } from '@/lib/config';
 
-const PUBLIC_EXACT_PATHS = new Set(['/', '/pricing', '/features', '/docs', '/login', '/register']);
+const PUBLIC_EXACT_PATHS = new Set([
+  '/',
+  '/pricing',
+  '/features',
+  '/docs',
+  '/login',
+  '/register',
+  '/request-access',
+]);
 const PUBLIC_PREFIXES = ['/password', '/email', '/api', '/_next', '/favicon.ico'];
 const AUTH_EXACT_PATHS = new Set(['/login', '/register']);
 const AUTH_PREFIXES = ['/password', '/email'];

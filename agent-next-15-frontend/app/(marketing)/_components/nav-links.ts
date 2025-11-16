@@ -30,6 +30,11 @@ export const MARKETING_SECONDARY_LINKS: MarketingNavLink[] = [
     href: '/login',
     description: 'Access the operator console to manage tenants and agents.',
   },
+  {
+    label: 'Request access',
+    href: '/request-access',
+    description: 'Submit your use case to receive an invite token when approvals open.',
+  },
 ];
 
 export const MARKETING_CTA_LINK: MarketingNavLink = {

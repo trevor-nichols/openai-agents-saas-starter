@@ -33,10 +33,12 @@ import {
   MARKETING_SECONDARY_LINKS,
   type MarketingNavLink,
 } from './nav-links';
+import { useSignupCtaTarget } from '@/features/marketing/hooks/useSignupCtaTarget';
 
 export function MarketingHeader() {
   const pathname = usePathname();
   const [isCommandOpen, setIsCommandOpen] = useState(false);
+  const { cta } = useSignupCtaTarget();
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -49,6 +51,12 @@ export function MarketingHeader() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
+
+  const ctaNavLink: MarketingNavLink = {
+    ...MARKETING_CTA_LINK,
+    label: cta.label,
+    href: cta.href,
+  };
 
   const navLinks = [...MARKETING_PRIMARY_LINKS, ...MARKETING_SECONDARY_LINKS];
 
@@ -104,14 +112,14 @@ export function MarketingHeader() {
               variant="secondary"
               className="rounded-full border border-white/10 bg-white/5 text-sm font-semibold text-foreground"
             >
-              <Link href={MARKETING_CTA_LINK.href}>{MARKETING_CTA_LINK.label}</Link>
+              <Link href={cta.href}>{cta.label}</Link>
             </Button>
           </div>
 
           <div className="flex items-center gap-2 md:hidden">
             <CommandMenuButton onClick={() => setIsCommandOpen(true)} compact />
             <ThemeToggle />
-            <MobileNavSheet links={navLinks} />
+            <MobileNavSheet links={navLinks} ctaLink={ctaNavLink} />
           </div>
         </div>
       </div>
@@ -119,7 +127,8 @@ export function MarketingHeader() {
       <MarketingCommandMenu
         open={isCommandOpen}
         onOpenChange={setIsCommandOpen}
-        links={[...MARKETING_PRIMARY_LINKS, MARKETING_CTA_LINK, ...MARKETING_SECONDARY_LINKS]}
+        links={[...MARKETING_PRIMARY_LINKS, ctaNavLink, ...MARKETING_SECONDARY_LINKS]}
+        ctaLink={ctaNavLink}
       />
     </header>
   );
@@ -147,7 +156,7 @@ function CommandMenuButton({ onClick, compact }: { onClick: () => void; compact?
   );
 }
 
-function MobileNavSheet({ links }: { links: MarketingNavLink[] }) {
+function MobileNavSheet({ links, ctaLink }: { links: MarketingNavLink[]; ctaLink: MarketingNavLink }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
@@ -183,8 +192,8 @@ function MobileNavSheet({ links }: { links: MarketingNavLink[] }) {
               {link.badge ? <InlineTag tone="positive">{link.badge}</InlineTag> : null}
             </Button>
           ))}
-          <Button className="rounded-full" onClick={() => handleNavigate(MARKETING_CTA_LINK.href)}>
-            {MARKETING_CTA_LINK.label}
+          <Button className="rounded-full" onClick={() => handleNavigate(ctaLink.href)}>
+            {ctaLink.label}
           </Button>
         </div>
       </SheetContent>
@@ -196,9 +205,10 @@ interface MarketingCommandMenuProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   links: MarketingNavLink[];
+  ctaLink: MarketingNavLink;
 }
 
-function MarketingCommandMenu({ open, onOpenChange, links }: MarketingCommandMenuProps) {
+function MarketingCommandMenu({ open, onOpenChange, links, ctaLink }: MarketingCommandMenuProps) {
   const router = useRouter();
 
   const handleSelect = (href: string) => {
@@ -224,7 +234,7 @@ function MarketingCommandMenu({ open, onOpenChange, links }: MarketingCommandMen
         </CommandGroup>
         <CommandSeparator />
         <CommandGroup heading="Quick actions">
-          <CommandItem onSelect={() => handleSelect(MARKETING_CTA_LINK.href)}>Create account</CommandItem>
+          <CommandItem onSelect={() => handleSelect(ctaLink.href)}>{ctaLink.label}</CommandItem>
           <CommandItem onSelect={() => handleSelect('/contact')}>Contact sales</CommandItem>
         </CommandGroup>
       </CommandList>

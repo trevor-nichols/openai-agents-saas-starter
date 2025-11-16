@@ -11,7 +11,9 @@
     "validate": "pnpm lint && pnpm type-check",
     "generate": "openapi-ts",
     "test:e2e": "playwright test",
-    "test:unit": "vitest run --exclude tests/**"
+    "test:unit": "vitest run --exclude tests/**",
+    "storybook": "storybook dev -p 6006",
+    "storybook:build": "storybook build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -92,6 +94,13 @@
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5",
-    "vitest": "^2.1.3"
+    "vitest": "^2.1.3",
+    "@storybook/addon-essentials": "^8.2.9",
+    "@storybook/addon-interactions": "^8.2.9",
+    "@storybook/addon-links": "^8.2.9",
+    "@storybook/nextjs": "^8.2.9",
+    "@storybook/react": "^8.2.9",
+    "@storybook/test": "^8.2.9",
+    "storybook": "^8.2.9"
   }
 }

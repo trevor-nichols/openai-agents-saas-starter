@@ -20,7 +20,11 @@ const primaryNav = [
   { href: '/billing', label: 'Billing' },
 ];
 
-const accountNav = [{ href: '/account', label: 'Account' }];
+const accountNav = [
+  { href: '/account', label: 'Account' },
+  { href: '/settings/access', label: 'Signup guardrails' },
+  { href: '/settings/tenant', label: 'Tenant settings' },
+];
 
 // --- AppLayout component ---
 export default function AppLayout({ children }: AppLayoutProps) {

@@ -41,9 +41,11 @@ Reduce the attack surface of `/api/v1/auth/register` by moving the platform towa
 - ✅ Signup flow:
   - `UserRegisterRequest`/frontend accepts `invite_token`; backend policy now requires tokens for invite-only/approval modes. (Nov 16, 2025)
   - Public request-access endpoint persists `tenant_signup_request` rows + structured logs. (Nov 16, 2025)
-- Frontend:
-  - Add invite-token input + messaging on `/register`.
-  - Create “Request Access” flow (feature module under `features/marketing/access-request`) that posts to the new endpoint and confirms submission.
+- ✅ Frontend (Nov 16, 2025):
+  - `/register` now pulls the signup policy server-side, shows invite-token input + alerts, and conditionally requires tokens for invite-only/approval modes.
+  - Marketing CTAs and nav links derive their target from TanStack Query policy data, routing invite-only/approval deployments to the new `/request-access` funnel built under `features/marketing/access-request`.
+  - Storybook stories captured for the access-request hero/success states to document expected copy before design sign-off.
+- ✅ Operator workspace (Nov 16, 2025): `/settings/access` hosts the new `SignupGuardrailsWorkspace` with invites + requests panels (DataTable + dialogs) so ops can issue/revoke tokens and approve/reject submissions without the CLI. Story + RTL coverage landed for the policy banner copy.
 
 ### WS3 – Throttling, Detection & Telemetry (Phase 3)
 - ✅ Multi-dimensional quotas land in `routes_signup.py`/`routes_signup_requests.py` (Nov 16, 2025):
