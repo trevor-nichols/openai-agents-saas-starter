@@ -23,6 +23,7 @@ from starter_cli.cli.verification import (
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from starter_cli.cli.setup.infra import InfraSession
+    from starter_cli.cli.setup.tenant_summary import TenantSummary
 
 FRONTEND_ENV_RELATIVE = Path("agent-next-15-frontend/.env.local")
 
@@ -46,6 +47,7 @@ class WizardContext:
     verification_artifacts: list[VerificationArtifact] = field(default_factory=list)
     verification_log_path: Path = field(init=False)
     historical_verifications: list[VerificationArtifact] = field(init=False)
+    tenant_summary: TenantSummary | None = None
 
     def __post_init__(self) -> None:
         self.verification_log_path = (

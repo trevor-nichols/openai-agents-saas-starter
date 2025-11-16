@@ -3,6 +3,7 @@
 import os
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
+from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -21,6 +22,7 @@ from app.services.rate_limit_service import RateLimitExceeded, rate_limiter
 from main import app
 
 client = TestClient(app)
+TEST_TENANT_ID = str(uuid4())
 
 
 def _stub_current_user():
@@ -29,6 +31,8 @@ def _stub_current_user():
         "subject": "user:test-user",
         "payload": {
             "scope": "conversations:read conversations:write conversations:delete tools:read",
+            "tenant_id": TEST_TENANT_ID,
+            "roles": ["admin"],
         },
     }
 
@@ -136,7 +140,11 @@ def test_chat_requires_write_scope() -> None:
         return {
             "user_id": "limited",
             "subject": "user:limited",
-            "payload": {"scope": "conversations:read"},
+            "payload": {
+                "scope": "conversations:read",
+                "tenant_id": TEST_TENANT_ID,
+                "roles": ["admin"],
+            },
         }
 
     app.dependency_overrides[require_current_user] = _read_only_user
@@ -152,7 +160,11 @@ def test_delete_requires_delete_scope() -> None:
         return {
             "user_id": "limited",
             "subject": "user:limited",
-            "payload": {"scope": "conversations:read conversations:write"},
+            "payload": {
+                "scope": "conversations:read conversations:write",
+                "tenant_id": TEST_TENANT_ID,
+                "roles": ["admin"],
+            },
         }
 
     app.dependency_overrides[require_current_user] = _no_delete_user
@@ -184,7 +196,7 @@ def test_chat_rate_limit_blocks(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(rate_limiter, "enforce", _fake_enforce)
     monkeypatch.setattr(chat_router, "get_settings", lambda: _SettingsStub())
 
-    async def _fake_chat(_request):
+    async def _fake_chat(_request, *, actor):
         return AgentChatResponse(
             response="ok",
             conversation_id="rl-test",
@@ -204,17 +216,34 @@ def test_chat_rate_limit_blocks(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.mark.asyncio
 async def test_conversation_repository_roundtrip() -> None:
     repository = agent_service.conversation_repository
-    await repository.clear_conversation("integration-test")
+    await repository.clear_conversation("integration-test", tenant_id=TEST_TENANT_ID)
 
     await repository.add_message(
         "integration-test",
         ConversationMessage(role="user", content="Test message"),
-        metadata=ConversationMetadata(agent_entrypoint="triage"),
+        tenant_id=TEST_TENANT_ID,
+        metadata=ConversationMetadata(tenant_id=TEST_TENANT_ID, agent_entrypoint="triage"),
     )
 
-    messages = await repository.get_messages("integration-test")
+    messages = await repository.get_messages("integration-test", tenant_id=TEST_TENANT_ID)
     assert len(messages) == 1
     assert messages[0].content == "Test message"
 
-    await repository.clear_conversation("integration-test")
-    assert await repository.get_messages("integration-test") == []
+    await repository.clear_conversation("integration-test", tenant_id=TEST_TENANT_ID)
+    assert await repository.get_messages("integration-test", tenant_id=TEST_TENANT_ID) == []
+
+
+def test_chat_missing_tenant_claim_rejected() -> None:
+    def _missing_tenant_user():
+        return {
+            "user_id": "no-tenant",
+            "subject": "user:no-tenant",
+            "payload": {"scope": "conversations:write"},
+        }
+
+    app.dependency_overrides[require_current_user] = _missing_tenant_user
+    try:
+        response = client.post("/api/v1/chat", json={"message": "hi"})
+        assert response.status_code == 401
+    finally:
+        app.dependency_overrides[require_current_user] = _stub_current_user

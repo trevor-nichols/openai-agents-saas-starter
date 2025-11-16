@@ -64,6 +64,10 @@ Artifacts generated per run:
 - `var/reports/cli-one-stop-summary.md` — Markdown snippet with automation status, verification notes, and milestone table.
 - `var/reports/verification-artifacts.json` — append-only ledger of provider verifications (Vault, AWS, Azure, Infisical, Stripe). This is cumulative across runs.
 
+### Tenant IDs & Conversation APIs
+
+Conversation storage no longer auto-creates a "default" tenant. After the wizard captures the slug (`TENANT_DEFAULT_SLUG`), run `scripts/seed_users.py` (or your tenant provisioning workflow). Once the database contains at least one tenant, rerunning the wizard (or finishing another run) will automatically surface the matching tenant UUID—copy it into your operator docs/CI secrets so API clients can populate the `tenant_id` claim or `X-Tenant-Id` header. Without that scope, `/api/v1/chat` and `/api/v1/conversations` now reject the request before it reaches the agent service. Keep at least one tenant UUID handy for CI smoke tests and staging operators.
+
 
 After prompting, the wizard reloads the environment and clears cached settings so subsequent CLI
 commands see the fresh values.

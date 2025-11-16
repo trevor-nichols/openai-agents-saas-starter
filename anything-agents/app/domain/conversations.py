@@ -34,13 +34,13 @@ class ConversationRecord:
 
 @dataclass(slots=True)
 class ConversationMetadata:
-    """Optional metadata captured alongside a conversation event."""
+    """Metadata captured alongside a conversation event."""
 
+    tenant_id: str
     agent_entrypoint: str
     active_agent: str | None = None
     source_channel: str | None = None
     topic_hint: str | None = None
-    tenant_id: str | None = None
     user_id: str | None = None
     handoff_count: int | None = None
     total_tokens_prompt: int | None = None
@@ -49,6 +49,11 @@ class ConversationMetadata:
     sdk_session_id: str | None = None
     session_cursor: str | None = None
     last_session_sync_at: datetime | None = None
+
+    def __post_init__(self) -> None:
+        tenant = (self.tenant_id or "").strip()
+        if not tenant:
+            raise ValueError("ConversationMetadata requires tenant_id")
 
 
 @dataclass(slots=True)
@@ -68,19 +73,39 @@ class ConversationRepository(Protocol):
         conversation_id: str,
         message: ConversationMessage,
         *,
+        tenant_id: str,
         metadata: ConversationMetadata,
     ) -> None: ...
 
-    async def get_messages(self, conversation_id: str) -> list[ConversationMessage]: ...
+    async def get_messages(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+    ) -> list[ConversationMessage]: ...
 
-    async def list_conversation_ids(self) -> list[str]: ...
+    async def list_conversation_ids(self, *, tenant_id: str) -> list[str]: ...
 
-    async def iter_conversations(self) -> list[ConversationRecord]: ...
+    async def iter_conversations(self, *, tenant_id: str) -> list[ConversationRecord]: ...
 
-    async def clear_conversation(self, conversation_id: str) -> None: ...
+    async def clear_conversation(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+    ) -> None: ...
 
-    async def get_session_state(self, conversation_id: str) -> ConversationSessionState | None: ...
+    async def get_session_state(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+    ) -> ConversationSessionState | None: ...
 
     async def upsert_session_state(
-        self, conversation_id: str, state: ConversationSessionState
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        state: ConversationSessionState,
     ) -> None: ...

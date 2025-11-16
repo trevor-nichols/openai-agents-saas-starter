@@ -44,34 +44,61 @@ class ConversationService:
         self,
         conversation_id: str,
         message: ConversationMessage,
+        *,
+        tenant_id: str,
         metadata: ConversationMetadata,
     ) -> None:
         repository = self._require_repository()
+        normalized_tenant = _require_tenant_id(tenant_id)
+        _ensure_metadata_tenant(metadata, normalized_tenant)
         await repository.add_message(
             conversation_id,
             message,
+            tenant_id=normalized_tenant,
             metadata=metadata,
         )
 
-    async def get_messages(self, conversation_id: str) -> list[ConversationMessage]:
-        return await self._require_repository().get_messages(conversation_id)
+    async def get_messages(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+    ) -> list[ConversationMessage]:
+        normalized_tenant = _require_tenant_id(tenant_id)
+        return await self._require_repository().get_messages(
+            conversation_id, tenant_id=normalized_tenant
+        )
 
-    async def list_conversation_ids(self) -> list[str]:
-        return await self._require_repository().list_conversation_ids()
+    async def list_conversation_ids(self, *, tenant_id: str) -> list[str]:
+        normalized_tenant = _require_tenant_id(tenant_id)
+        return await self._require_repository().list_conversation_ids(
+            tenant_id=normalized_tenant
+        )
 
-    async def iterate_conversations(self) -> Iterable[ConversationRecord]:
-        return await self._require_repository().iter_conversations()
+    async def iterate_conversations(
+        self,
+        *,
+        tenant_id: str,
+    ) -> Iterable[ConversationRecord]:
+        normalized_tenant = _require_tenant_id(tenant_id)
+        return await self._require_repository().iter_conversations(tenant_id=normalized_tenant)
 
-    async def clear_conversation(self, conversation_id: str) -> None:
-        await self._require_repository().clear_conversation(conversation_id)
+    async def clear_conversation(self, conversation_id: str, *, tenant_id: str) -> None:
+        normalized_tenant = _require_tenant_id(tenant_id)
+        await self._require_repository().clear_conversation(
+            conversation_id, tenant_id=normalized_tenant
+        )
 
-    async def search(self, query: str) -> list[SearchResult]:
+    async def search(self, *, tenant_id: str, query: str) -> list[SearchResult]:
         """Lightweight search for conversation previews matching the query."""
 
         normalized = query.lower()
         matches: list[SearchResult] = []
 
-        for record in await self._require_repository().iter_conversations():
+        normalized_tenant = _require_tenant_id(tenant_id)
+        for record in await self._require_repository().iter_conversations(
+            tenant_id=normalized_tenant
+        ):
             for message in record.messages:
                 if normalized in message.content.lower():
                     preview = message.content[:120]
@@ -86,13 +113,27 @@ class ConversationService:
 
         return matches
 
-    async def get_session_state(self, conversation_id: str) -> ConversationSessionState | None:
-        return await self._require_repository().get_session_state(conversation_id)
+    async def get_session_state(
+        self, conversation_id: str, *, tenant_id: str
+    ) -> ConversationSessionState | None:
+        normalized_tenant = _require_tenant_id(tenant_id)
+        return await self._require_repository().get_session_state(
+            conversation_id, tenant_id=normalized_tenant
+        )
 
     async def update_session_state(
-        self, conversation_id: str, state: ConversationSessionState
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        state: ConversationSessionState,
     ) -> None:
-        await self._require_repository().upsert_session_state(conversation_id, state)
+        normalized_tenant = _require_tenant_id(tenant_id)
+        await self._require_repository().upsert_session_state(
+            conversation_id,
+            tenant_id=normalized_tenant,
+            state=state,
+        )
 
 
 def get_conversation_service() -> ConversationService:
@@ -111,3 +152,15 @@ class _ConversationServiceHandle:
 
 
 conversation_service = _ConversationServiceHandle()
+
+
+def _require_tenant_id(value: str) -> str:
+    tenant = (value or "").strip()
+    if not tenant:
+        raise ValueError("tenant_id is required for conversation operations")
+    return tenant
+
+
+def _ensure_metadata_tenant(metadata: ConversationMetadata, tenant_id: str) -> None:
+    if metadata.tenant_id != tenant_id:
+        raise ValueError("ConversationMetadata tenant_id mismatch")

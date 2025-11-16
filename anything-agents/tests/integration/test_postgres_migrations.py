@@ -30,6 +30,7 @@ from app.infrastructure.persistence.billing.models import (
     SubscriptionUsage as ORMSubscriptionUsage,
 )
 from app.infrastructure.persistence.billing.postgres import PostgresBillingRepository
+from app.infrastructure.persistence.conversations.models import TenantAccount
 from app.infrastructure.persistence.conversations.postgres import (
     PostgresConversationRepository,
 )
@@ -118,7 +119,18 @@ async def migrated_engine(postgres_database: str) -> AsyncIterator[AsyncEngine]:
 
 @pytest.fixture(scope="session")
 def migrated_session_factory(migrated_engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
+    """Fixture exposing a session factory bound to the migrated engine."""
+
     return async_sessionmaker(migrated_engine, expire_on_commit=False)
+
+
+async def _seed_tenant(session_factory: async_sessionmaker[AsyncSession]) -> str:
+    tenant_id = uuid.uuid4()
+    slug = f"tenant-{tenant_id.hex[:8]}"
+    async with session_factory() as session:
+        session.add(TenantAccount(id=tenant_id, slug=slug, name=f"Tenant {slug}"))
+        await session.commit()
+    return str(tenant_id)
 
 
 @pytest.mark.asyncio
@@ -161,18 +173,22 @@ async def test_repository_roundtrip(migrated_engine: AsyncEngine) -> None:
 
     session_factory = async_sessionmaker(migrated_engine, expire_on_commit=False)
     repository = PostgresConversationRepository(session_factory)
+    tenant_id = await _seed_tenant(session_factory)
 
     conversation_id = str(uuid.uuid4())
 
     await repository.add_message(
         conversation_id,
         ConversationMessage(role="user", content="Hello durable world!"),
-        metadata=ConversationMetadata(agent_entrypoint="triage"),
+        tenant_id=tenant_id,
+        metadata=ConversationMetadata(tenant_id=tenant_id, agent_entrypoint="triage"),
     )
     await repository.add_message(
         conversation_id,
         ConversationMessage(role="assistant", content="Persistence acknowledged."),
+        tenant_id=tenant_id,
         metadata=ConversationMetadata(
+            tenant_id=tenant_id,
             agent_entrypoint="triage",
             active_agent="triage",
             total_tokens_prompt=10,
@@ -180,7 +196,7 @@ async def test_repository_roundtrip(migrated_engine: AsyncEngine) -> None:
         ),
     )
 
-    messages = await repository.get_messages(conversation_id)
+    messages = await repository.get_messages(conversation_id, tenant_id=tenant_id)
     assert len(messages) == 2
     assert messages[0].content == "Hello durable world!"
     assert messages[1].role == "assistant"
@@ -194,23 +210,25 @@ async def test_repository_preserves_custom_conversation_id(
 
     session_factory = async_sessionmaker(migrated_engine, expire_on_commit=False)
     repository = PostgresConversationRepository(session_factory)
+    tenant_id = await _seed_tenant(session_factory)
 
     conversation_id = "integration-test-thread"
 
     await repository.add_message(
         conversation_id,
         ConversationMessage(role="user", content="Hello hashed world!"),
-        metadata=ConversationMetadata(agent_entrypoint="triage"),
+        tenant_id=tenant_id,
+        metadata=ConversationMetadata(tenant_id=tenant_id, agent_entrypoint="triage"),
     )
 
-    ids = await repository.list_conversation_ids()
+    ids = await repository.list_conversation_ids(tenant_id=tenant_id)
     assert conversation_id in ids
 
-    records = await repository.iter_conversations()
+    records = await repository.iter_conversations(tenant_id=tenant_id)
     assert any(record.conversation_id == conversation_id for record in records)
 
-    await repository.clear_conversation(conversation_id)
-    ids_after = await repository.list_conversation_ids()
+    await repository.clear_conversation(conversation_id, tenant_id=tenant_id)
+    ids_after = await repository.list_conversation_ids(tenant_id=tenant_id)
     assert conversation_id not in ids_after
 
 

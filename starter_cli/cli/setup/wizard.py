@@ -21,6 +21,7 @@ from .infra import InfraSession
 from .inputs import InputProvider
 from .models import SectionResult
 from .preflight import run_preflight
+from .tenant_summary import capture_tenant_summary
 
 PROFILE_CHOICES = ("local", "staging", "production")
 
@@ -108,6 +109,7 @@ class SetupWizard:
             self.context.save_env_files()
             self.context.load_environment()
             self.context.refresh_settings_cache()
+            capture_tenant_summary(self.context)
 
             sections = audit.build_sections(self.context)
             self._render(sections)

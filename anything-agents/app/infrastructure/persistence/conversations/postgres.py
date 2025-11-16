@@ -9,7 +9,6 @@ from datetime import UTC, datetime
 from typing import Literal, cast
 
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.domain.conversations import (
@@ -22,7 +21,6 @@ from app.domain.conversations import (
 from app.infrastructure.persistence.conversations.models import (
     AgentConversation,
     AgentMessage,
-    TenantAccount,
 )
 
 logger = logging.getLogger("anything-agents.persistence")
@@ -56,36 +54,39 @@ def _derive_conversation_key(conversation_id: str) -> str:
         return conversation_id
 
 
+def _parse_tenant_id(value: str | None) -> uuid.UUID:
+    if not value:
+        raise ValueError("tenant_id is required")
+    try:
+        return uuid.UUID(value)
+    except (TypeError, ValueError) as exc:  # pragma: no cover - invalid user input
+        raise ValueError("tenant_id must be a valid UUID") from exc
+
+
 class PostgresConversationRepository(ConversationRepository):
     """Persist conversations and messages using PostgreSQL."""
 
-    def __init__(
-        self,
-        session_factory: async_sessionmaker[AsyncSession],
-        *,
-        default_tenant_slug: str = "default",
-        default_tenant_name: str = "Default Tenant",
-    ) -> None:
+    def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
         self._session_factory = session_factory
-        self._default_tenant_slug = default_tenant_slug
-        self._default_tenant_name = default_tenant_name
 
     async def add_message(
         self,
         conversation_id: str,
         message: ConversationMessage,
         *,
+        tenant_id: str,
         metadata: ConversationMetadata,
     ) -> None:
         conversation_uuid = _coerce_conversation_uuid(conversation_id)
         conversation_key = _derive_conversation_key(conversation_id)
+        tenant_uuid = _parse_tenant_id(tenant_id)
+        _ensure_metadata_tenant(metadata, tenant_id)
         async with self._session_factory() as session:
-            tenant_id = await self._ensure_tenant(session, metadata.tenant_id)
             conversation = await self._get_or_create_conversation(
                 session,
                 conversation_uuid,
                 conversation_key=conversation_key,
-                tenant_id=tenant_id,
+                tenant_id=tenant_uuid,
                 metadata=metadata,
             )
 
@@ -139,9 +140,20 @@ class PostgresConversationRepository(ConversationRepository):
                 metadata.active_agent or metadata.agent_entrypoint,
             )
 
-    async def get_messages(self, conversation_id: str) -> list[ConversationMessage]:
+    async def get_messages(
+        self, conversation_id: str, *, tenant_id: str
+    ) -> list[ConversationMessage]:
         conversation_uuid = _coerce_conversation_uuid(conversation_id)
+        tenant_uuid = _parse_tenant_id(tenant_id)
         async with self._session_factory() as session:
+            conversation = await self._get_conversation(
+                session,
+                conversation_uuid,
+                tenant_id=tenant_uuid,
+            )
+            if conversation is None:
+                return []
+
             result = await session.execute(
                 select(AgentMessage)
                 .where(AgentMessage.conversation_id == conversation_uuid)
@@ -157,15 +169,23 @@ class PostgresConversationRepository(ConversationRepository):
                 for row in rows
             ]
 
-    async def list_conversation_ids(self) -> list[str]:
+    async def list_conversation_ids(self, *, tenant_id: str) -> list[str]:
+        tenant_uuid = _parse_tenant_id(tenant_id)
         async with self._session_factory() as session:
-            result = await session.execute(select(AgentConversation.conversation_key))
+            result = await session.execute(
+                select(AgentConversation.conversation_key).where(
+                    AgentConversation.tenant_id == tenant_uuid
+                )
+            )
             return [row[0] for row in result.all()]
 
-    async def iter_conversations(self) -> list[ConversationRecord]:
+    async def iter_conversations(self, *, tenant_id: str) -> list[ConversationRecord]:
+        tenant_uuid = _parse_tenant_id(tenant_id)
         async with self._session_factory() as session:
             conversations = await session.execute(
-                select(AgentConversation).order_by(AgentConversation.updated_at.desc())
+                select(AgentConversation)
+                .where(AgentConversation.tenant_id == tenant_uuid)
+                .order_by(AgentConversation.updated_at.desc())
             )
             conversation_rows: Sequence[AgentConversation] = conversations.scalars().all()
             if not conversation_rows:
@@ -202,18 +222,31 @@ class PostgresConversationRepository(ConversationRepository):
                 )
             return records
 
-    async def clear_conversation(self, conversation_id: str) -> None:
+    async def clear_conversation(self, conversation_id: str, *, tenant_id: str) -> None:
         conversation_uuid = _coerce_conversation_uuid(conversation_id)
+        tenant_uuid = _parse_tenant_id(tenant_id)
         async with self._session_factory() as session:
-            conversation = await session.get(AgentConversation, conversation_uuid)
+            conversation = await self._get_conversation(
+                session,
+                conversation_uuid,
+                tenant_id=tenant_uuid,
+                for_update=True,
+            )
             if conversation:
                 await session.delete(conversation)
                 await session.commit()
 
-    async def get_session_state(self, conversation_id: str) -> ConversationSessionState | None:
+    async def get_session_state(
+        self, conversation_id: str, *, tenant_id: str
+    ) -> ConversationSessionState | None:
         conversation_uuid = _coerce_conversation_uuid(conversation_id)
+        tenant_uuid = _parse_tenant_id(tenant_id)
         async with self._session_factory() as session:
-            conversation = await session.get(AgentConversation, conversation_uuid)
+            conversation = await self._get_conversation(
+                session,
+                conversation_uuid,
+                tenant_id=tenant_uuid,
+            )
             if conversation is None:
                 return None
             return ConversationSessionState(
@@ -223,12 +256,21 @@ class PostgresConversationRepository(ConversationRepository):
             )
 
     async def upsert_session_state(
-        self, conversation_id: str, state: ConversationSessionState
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        state: ConversationSessionState,
     ) -> None:
         conversation_uuid = _coerce_conversation_uuid(conversation_id)
+        tenant_uuid = _parse_tenant_id(tenant_id)
         async with self._session_factory() as session:
-            conversation = await session.get(
-                AgentConversation, conversation_uuid, with_for_update=True
+            conversation = await self._get_conversation(
+                session,
+                conversation_uuid,
+                tenant_id=tenant_uuid,
+                for_update=True,
+                strict=True,
             )
             if conversation is None:
                 raise ValueError(
@@ -251,10 +293,12 @@ class PostgresConversationRepository(ConversationRepository):
         tenant_id: uuid.UUID,
         metadata: ConversationMetadata,
     ) -> AgentConversation:
-        conversation = await session.get(
-            AgentConversation,
+        conversation = await self._get_conversation(
+            session,
             conversation_id,
-            with_for_update=True,
+            tenant_id=tenant_id,
+            for_update=True,
+            strict=True,
         )
         if conversation:
             if conversation.conversation_key != conversation_key:
@@ -291,38 +335,40 @@ class PostgresConversationRepository(ConversationRepository):
         await session.flush()
         return conversation
 
-    async def _ensure_tenant(
+    async def _get_conversation(
         self,
         session: AsyncSession,
-        tenant_id: str | None,
-    ) -> uuid.UUID:
-        if tenant_id:
-            return uuid.UUID(tenant_id)
-
-        result = await session.execute(
-            select(TenantAccount).where(TenantAccount.slug == self._default_tenant_slug)
+        conversation_id: uuid.UUID,
+        *,
+        tenant_id: uuid.UUID,
+        for_update: bool = False,
+        strict: bool = False,
+    ) -> AgentConversation | None:
+        conversation = await session.get(
+            AgentConversation,
+            conversation_id,
+            with_for_update=for_update,
         )
-        tenant = result.scalar_one_or_none()
-        if tenant:
-            return tenant.id
-
-        tenant = TenantAccount(
-            id=uuid.uuid4(),
-            slug=self._default_tenant_slug,
-            name=self._default_tenant_name,
-            created_at=datetime.now(UTC),
-        )
-        session.add(tenant)
-        try:
-            await session.flush()
-            logger.info("Created default tenant '%s'", self._default_tenant_slug)
-        except IntegrityError:
-            await session.rollback()
-            existing = await session.execute(
-                select(TenantAccount).where(TenantAccount.slug == self._default_tenant_slug)
+        if conversation is None:
+            return None
+        if conversation.tenant_id != tenant_id:
+            logger.warning(
+                "Conversation %s accessed with mismatched tenant (expected=%s, actual=%s)",
+                conversation_id,
+                tenant_id,
+                conversation.tenant_id,
             )
-            tenant = existing.scalar_one()
-        return tenant.id
+            if strict:
+                raise ValueError(
+                    "Conversation belongs to a different tenant; refusing to continue."
+                )
+            return None
+        return conversation
+
+
+def _ensure_metadata_tenant(metadata: ConversationMetadata, tenant_id: str) -> None:
+    if metadata.tenant_id != tenant_id:
+        raise ValueError("Metadata tenant_id mismatch")
 
 
 def _extract_message_content(payload: dict[str, object] | str | None) -> str:

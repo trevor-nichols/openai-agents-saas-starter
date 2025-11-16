@@ -104,6 +104,7 @@ def write_summary(context: WizardContext, sections: list[SectionResult]) -> None
         "frontend_env_path": str(context.frontend_path) if context.frontend_path else None,
         "current_run_verification_artifacts": artifacts_to_dict(context.verification_artifacts),
         "verification_artifacts": artifacts_to_dict(context.historical_verifications),
+        "tenant_summary": context.tenant_summary.as_dict() if context.tenant_summary else None,
         "milestones": [
             {
                 "milestone": section.milestone,
@@ -153,6 +154,17 @@ def write_markdown_summary(context: WizardContext, sections: list[SectionResult]
     else:
         lines.append("| _none_ | — | — |")
     lines.append("")
+    if context.tenant_summary:
+        lines.append("## Tenant Summary")
+        lines.append("")
+        tenant = context.tenant_summary
+        lines.append(f"- Slug: `{tenant.slug}`")
+        lines.append(f"- Tenant ID: `{tenant.tenant_id}`")
+        if tenant.name:
+            lines.append(f"- Name: `{tenant.name}`")
+        if tenant.created_at:
+            lines.append(f"- Created at: `{tenant.created_at}`")
+        lines.append("")
     lines.append("## Current Verification Artifacts")
     lines.append("")
     artifacts = context.verification_artifacts or []

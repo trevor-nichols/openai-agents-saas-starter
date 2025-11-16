@@ -2,16 +2,16 @@
 
 import json
 from collections.abc import AsyncIterator
-from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from fastapi.responses import StreamingResponse
 
 from app.api.dependencies import raise_rate_limit_http_error
 from app.api.dependencies.auth import CurrentUser, require_verified_scopes
+from app.api.dependencies.tenant import TenantContext, TenantRole, get_tenant_context
 from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse, StreamingChatResponse
 from app.core.config import get_settings
-from app.services.agent_service import agent_service
+from app.services.agent_service import ConversationActorContext, agent_service
 from app.services.rate_limit_service import (
     ConcurrencyQuota,
     RateLimitExceeded,
@@ -27,9 +27,18 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 async def chat_with_agent(
     request: AgentChatRequest,
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:write")),
+    tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
+    tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
 ) -> AgentChatResponse:
     """Send a message to the agent framework and receive a full response."""
 
+    tenant_context = await _resolve_tenant_context(
+        current_user,
+        tenant_id_header,
+        tenant_role_header,
+        min_role=TenantRole.VIEWER,
+    )
+    actor = _conversation_actor(current_user, tenant_context)
     settings = get_settings()
     await _enforce_user_quota(
         quota=RateLimitQuota(
@@ -38,11 +47,12 @@ async def chat_with_agent(
             window_seconds=60,
             scope="user",
         ),
-        user=current_user,
+        tenant_id=tenant_context.tenant_id,
+        user_id=actor.user_id,
     )
 
     try:
-        return await agent_service.chat(request)
+        return await agent_service.chat(request, actor=actor)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -54,9 +64,18 @@ async def chat_with_agent(
 async def stream_chat_with_agent(
     request: AgentChatRequest,
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:write")),
+    tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
+    tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
 ) -> StreamingResponse:
     """Provide an SSE stream for real-time agent responses."""
 
+    tenant_context = await _resolve_tenant_context(
+        current_user,
+        tenant_id_header,
+        tenant_role_header,
+        min_role=TenantRole.VIEWER,
+    )
+    actor = _conversation_actor(current_user, tenant_context)
     settings = get_settings()
     await _enforce_user_quota(
         quota=RateLimitQuota(
@@ -65,7 +84,8 @@ async def stream_chat_with_agent(
             window_seconds=60,
             scope="user",
         ),
-        user=current_user,
+        tenant_id=tenant_context.tenant_id,
+        user_id=actor.user_id,
     )
     stream_lease = await _acquire_stream_slot(
         quota=ConcurrencyQuota(
@@ -74,13 +94,14 @@ async def stream_chat_with_agent(
             ttl_seconds=300,
             scope="user",
         ),
-        user=current_user,
+        tenant_id=tenant_context.tenant_id,
+        user_id=actor.user_id,
     )
 
     async def _event_stream() -> AsyncIterator[str]:
         async with stream_lease:
             try:
-                async for chunk in agent_service.chat_stream(request):
+                async for chunk in agent_service.chat_stream(request, actor=actor):
                     payload = StreamingChatResponse(
                         chunk=chunk.chunk,
                         conversation_id=chunk.conversation_id,
@@ -115,8 +136,7 @@ async def stream_chat_with_agent(
     )
 
 
-async def _enforce_user_quota(quota: RateLimitQuota, user: CurrentUser) -> None:
-    tenant_id, user_id = _user_identity(user)
+async def _enforce_user_quota(quota: RateLimitQuota, *, tenant_id: str, user_id: str) -> None:
     if quota.limit <= 0:
         return
     try:
@@ -125,8 +145,9 @@ async def _enforce_user_quota(quota: RateLimitQuota, user: CurrentUser) -> None:
         raise_rate_limit_http_error(exc, tenant_id=tenant_id, user_id=user_id)
 
 
-async def _acquire_stream_slot(quota: ConcurrencyQuota, user: CurrentUser) -> RateLimitLease:
-    tenant_id, user_id = _user_identity(user)
+async def _acquire_stream_slot(
+    quota: ConcurrencyQuota, *, tenant_id: str, user_id: str
+) -> RateLimitLease:
     if quota.limit <= 0:
         return RateLimitLease(None, None)
     try:
@@ -135,13 +156,40 @@ async def _acquire_stream_slot(quota: ConcurrencyQuota, user: CurrentUser) -> Ra
         raise_rate_limit_http_error(exc, tenant_id=tenant_id, user_id=user_id)
 
 
-def _user_identity(user: CurrentUser) -> tuple[str, str]:
+async def _resolve_tenant_context(
+    current_user: CurrentUser,
+    tenant_id_header: str | None,
+    tenant_role_header: str | None,
+    *,
+    min_role: TenantRole,
+) -> TenantContext:
+    context = await get_tenant_context(
+        tenant_id_header=tenant_id_header,
+        tenant_role_header=tenant_role_header,
+        current_user=current_user,
+    )
+    context.ensure_role(*_allowed_roles(min_role))
+    return context
+
+
+def _conversation_actor(
+    current_user: CurrentUser, tenant_context: TenantContext
+) -> ConversationActorContext:
+    return ConversationActorContext(
+        tenant_id=tenant_context.tenant_id,
+        user_id=_user_id(current_user),
+    )
+
+
+def _user_id(user: CurrentUser) -> str:
     payload_obj = user.get("payload") if isinstance(user, dict) else None
-    payload: dict[str, Any] | None
-    if isinstance(payload_obj, dict):
-        payload = payload_obj
-    else:
-        payload = None
-    tenant_id = str((payload or {}).get("tenant_id") or "unknown")
-    user_id = str(user.get("user_id") or "anonymous")
-    return tenant_id, user_id
+    payload = payload_obj if isinstance(payload_obj, dict) else {}
+    return str(user.get("user_id") or payload.get("sub") or "anonymous")
+
+
+def _allowed_roles(min_role: TenantRole) -> tuple[TenantRole, ...]:
+    if min_role is TenantRole.VIEWER:
+        return (TenantRole.VIEWER, TenantRole.ADMIN, TenantRole.OWNER)
+    if min_role is TenantRole.ADMIN:
+        return (TenantRole.ADMIN, TenantRole.OWNER)
+    return (TenantRole.OWNER,)

@@ -155,49 +155,81 @@ class EphemeralConversationRepository(ConversationRepository):
     """Simple, per-test repository satisfying the conversation protocol."""
 
     def __init__(self) -> None:
-        self._messages: dict[str, list[ConversationMessage]] = defaultdict(list)
-        self._metadata: dict[str, ConversationMetadata] = {}
-        self._session_state: dict[str, ConversationSessionState] = {}
+        self._messages: dict[tuple[str, str], list[ConversationMessage]] = defaultdict(list)
+        self._metadata: dict[tuple[str, str], ConversationMetadata] = {}
+        self._session_state: dict[tuple[str, str], ConversationSessionState] = {}
 
     async def add_message(
         self,
         conversation_id: str,
         message: ConversationMessage,
         *,
+        tenant_id: str,
         metadata: ConversationMetadata,
     ) -> None:
-        self._messages[conversation_id].append(message)
-        self._metadata[conversation_id] = metadata
-        self._session_state[conversation_id] = ConversationSessionState(
+        key = self._key(tenant_id, conversation_id)
+        self._messages[key].append(message)
+        self._metadata[key] = metadata
+        self._session_state[key] = ConversationSessionState(
             sdk_session_id=metadata.sdk_session_id,
             session_cursor=metadata.session_cursor,
             last_session_sync_at=metadata.last_session_sync_at,
         )
 
-    async def get_messages(self, conversation_id: str) -> list[ConversationMessage]:
-        return list(self._messages.get(conversation_id, []))
+    async def get_messages(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+    ) -> list[ConversationMessage]:
+        key = self._key(tenant_id, conversation_id)
+        return list(self._messages.get(key, []))
 
-    async def list_conversation_ids(self) -> list[str]:
-        return list(self._messages.keys())
+    async def list_conversation_ids(self, *, tenant_id: str) -> list[str]:
+        tenant = self._require_tenant(tenant_id)
+        return [cid for (current_tenant, cid) in self._messages.keys() if current_tenant == tenant]
 
-    async def iter_conversations(self) -> list[ConversationRecord]:
-        return [
-            ConversationRecord(conversation_id=cid, messages=list(messages))
-            for cid, messages in self._messages.items()
-        ]
+    async def iter_conversations(self, *, tenant_id: str) -> list[ConversationRecord]:
+        tenant = self._require_tenant(tenant_id)
+        records: list[ConversationRecord] = []
+        for (current_tenant, cid), messages in self._messages.items():
+            if current_tenant != tenant:
+                continue
+            records.append(ConversationRecord(conversation_id=cid, messages=list(messages)))
+        return records
 
-    async def clear_conversation(self, conversation_id: str) -> None:
-        self._messages.pop(conversation_id, None)
-        self._metadata.pop(conversation_id, None)
-        self._session_state.pop(conversation_id, None)
+    async def clear_conversation(self, conversation_id: str, *, tenant_id: str) -> None:
+        key = self._key(tenant_id, conversation_id)
+        self._messages.pop(key, None)
+        self._metadata.pop(key, None)
+        self._session_state.pop(key, None)
 
-    async def get_session_state(self, conversation_id: str) -> ConversationSessionState | None:
-        return self._session_state.get(conversation_id)
+    async def get_session_state(
+        self, conversation_id: str, *, tenant_id: str
+    ) -> ConversationSessionState | None:
+        key = self._key(tenant_id, conversation_id)
+        return self._session_state.get(key)
 
     async def upsert_session_state(
-        self, conversation_id: str, state: ConversationSessionState
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        state: ConversationSessionState,
     ) -> None:
-        self._session_state[conversation_id] = state
+        key = self._key(tenant_id, conversation_id)
+        self._session_state[key] = state
+
+    def _key(self, tenant_id: str, conversation_id: str) -> tuple[str, str]:
+        tenant = self._require_tenant(tenant_id)
+        return tenant, conversation_id
+
+    @staticmethod
+    def _require_tenant(tenant_id: str) -> str:
+        tenant = (tenant_id or "").strip()
+        if not tenant:
+            raise ValueError("tenant_id is required")
+        return tenant
 
 
 @pytest.fixture(autouse=True)
