@@ -6,7 +6,6 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.api.dependencies import raise_rate_limit_http_error
 from app.api.dependencies.auth import CurrentUser, require_scopes
 from app.api.models.auth import (
     SignupAccessPolicyResponse,
@@ -18,18 +17,22 @@ from app.api.models.auth import (
     SignupRequestRejectionRequest,
     SignupRequestResponse,
 )
+from app.api.v1.auth.rate_limit_helpers import apply_signup_quota
 from app.api.v1.auth.utils import extract_client_ip, extract_user_agent
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 from app.domain.signup import SignupRequest, SignupRequestStatus
-from app.services.rate_limit_service import RateLimitExceeded, RateLimitQuota, rate_limiter
+from app.observability.metrics import record_signup_attempt, record_signup_blocked
+from app.services.rate_limit_service import RateLimitQuota, build_rate_limit_identity
 from app.services.signup_request_service import (
     SignupRequestDecisionResult,
     SignupRequestNotFoundError,
+    SignupRequestQuotaExceededError,
     SignupRequestService,
     get_signup_request_service,
 )
 
 router = APIRouter(tags=["auth"])
+PUBLIC_SIGNUP_REQUEST_TENANT_ID = "public-signup-request"
 
 
 def _request_service() -> SignupRequestService:
@@ -56,22 +59,40 @@ async def submit_access_request(
     request: Request,
     service: SignupRequestService = Depends(_request_service),
 ) -> SignupAccessPolicyResponse:
-    client_ip = extract_client_ip(request)
-    await _enforce_public_quota(client_ip)
-    await service.submit_request(
-        email=payload.email,
-        organization=payload.organization,
-        full_name=payload.full_name,
-        message=payload.message,
-        ip_address=client_ip,
-        user_agent=extract_user_agent(request),
-        honeypot_value=payload.honeypot,
-    )
     settings = get_settings()
+    policy = settings.signup_access_policy
+    client_ip = extract_client_ip(request)
+    user_agent = extract_user_agent(request)
+    await _enforce_public_quota(
+        settings=settings,
+        client_ip=client_ip,
+        user_agent=user_agent,
+        email=payload.email,
+    )
+    try:
+        created = await service.submit_request(
+            email=payload.email,
+            organization=payload.organization,
+            full_name=payload.full_name,
+            message=payload.message,
+            ip_address=client_ip,
+            user_agent=user_agent,
+            honeypot_value=payload.honeypot,
+        )
+    except SignupRequestQuotaExceededError as exc:
+        record_signup_blocked(reason=exc.reason)
+        record_signup_attempt(result="request_rate_limited", policy=policy)
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc)) from exc
+
+    if created is None:
+        record_signup_attempt(result="request_blocked", policy=policy)
+    else:
+        record_signup_attempt(result="request_success", policy=policy)
+
     return SignupAccessPolicyResponse(
-        policy=settings.signup_access_policy,
-        invite_required=settings.signup_access_policy != "public",
-        request_access_enabled=settings.signup_access_policy in {"invite_only", "approval"},
+        policy=policy,
+        invite_required=policy != "public",
+        request_access_enabled=policy in {"invite_only", "approval"},
     )
 
 
@@ -151,21 +172,78 @@ async def reject_signup_request(
     )
 
 
-async def _enforce_public_quota(client_ip: str | None) -> None:
-    settings = get_settings()
-    quota = RateLimitQuota(
-        name="signup_request_per_hour",
-        limit=settings.signup_rate_limit_per_hour,
-        window_seconds=3600,
-        scope="ip",
+async def _enforce_public_quota(
+    *,
+    settings: Settings,
+    client_ip: str | None,
+    user_agent: str | None,
+    email: str,
+) -> None:
+    policy = settings.signup_access_policy
+    identity_parts = build_rate_limit_identity(
+        client_ip,
+        user_agent,
+        include_user_agent=False,
     )
-    if quota.limit <= 0:
-        return
-    identity = client_ip or "unknown"
-    try:
-        await rate_limiter.enforce(quota, [identity])
-    except RateLimitExceeded as exc:
-        raise_rate_limit_http_error(exc, tenant_id="public-signup-request", user_id=identity)
+    ip_scope = client_ip or "unknown"
+    await apply_signup_quota(
+        RateLimitQuota(
+            name="signup_request_per_hour",
+            limit=settings.signup_rate_limit_per_hour,
+            window_seconds=3600,
+            scope="ip",
+        ),
+        key_parts=identity_parts,
+        scope_value=ip_scope,
+        policy=policy,
+        flow="request",
+        tenant_id=PUBLIC_SIGNUP_REQUEST_TENANT_ID,
+    )
+    await apply_signup_quota(
+        RateLimitQuota(
+            name="signup_request_per_day",
+            limit=settings.signup_rate_limit_per_day,
+            window_seconds=86400,
+            scope="ip",
+        ),
+        key_parts=identity_parts,
+        scope_value=ip_scope,
+        policy=policy,
+        flow="request",
+        tenant_id=PUBLIC_SIGNUP_REQUEST_TENANT_ID,
+    )
+
+    normalized_email = email.strip().lower()
+    if settings.signup_rate_limit_per_email_day > 0:
+        await apply_signup_quota(
+            RateLimitQuota(
+                name="signup_request_per_email_day",
+                limit=settings.signup_rate_limit_per_email_day,
+                window_seconds=86400,
+                scope="email",
+            ),
+            key_parts=[normalized_email],
+            scope_value=normalized_email,
+            policy=policy,
+            flow="request",
+            tenant_id=PUBLIC_SIGNUP_REQUEST_TENANT_ID,
+        )
+
+    domain = normalized_email.split("@")[-1] if "@" in normalized_email else None
+    if domain and settings.signup_rate_limit_per_domain_day > 0:
+        await apply_signup_quota(
+            RateLimitQuota(
+                name="signup_request_per_domain_day",
+                limit=settings.signup_rate_limit_per_domain_day,
+                window_seconds=86400,
+                scope="domain",
+            ),
+            key_parts=[domain],
+            scope_value=domain,
+            policy=policy,
+            flow="request",
+            tenant_id=PUBLIC_SIGNUP_REQUEST_TENANT_ID,
+        )
 
 
 def _to_request_response(record: SignupRequest) -> SignupRequestResponse:

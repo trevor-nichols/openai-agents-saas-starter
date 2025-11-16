@@ -12,7 +12,7 @@ Reduce the attack surface of `/api/v1/auth/register` by moving the platform towa
 | --- | --- | --- |
 | Default exposure | ⚠️ Risk | `allow_public_signup=True` across backend + CLI wizard, so fresh installs ship with open signup. |
 | Access controls | ⚠️ Missing | Signup allows any email address; no invite tokens or approval pipeline exist. |
-| Throttling | ⚠️ Minimal | Single per-IP quota (`signup_rate_limit_per_hour`); nothing per email/domain/device, no global ceilings, no observability. |
+| Throttling | ✅ Guarded | Layered per-IP/hour+day, per-email, and per-domain quotas plus concurrency caps ship with CLI prompts + metrics. |
 | Operator workflow | ⚠️ Missing | No process or tooling for recording/approving access requests when public signup is disabled. |
 | Frontend UX | ⚠️ Missing | Only “Register” CTA; no invite-token input or “Request access” surface tied to backend flows. |
 
@@ -46,14 +46,12 @@ Reduce the attack surface of `/api/v1/auth/register` by moving the platform towa
   - Create “Request Access” flow (feature module under `features/marketing/access-request`) that posts to the new endpoint and confirms submission.
 
 ### WS3 – Throttling, Detection & Telemetry (Phase 3)
-- Multi-dimensional quotas:
-  - `signup_rate_limit_per_ip_hour` (existing) + `signup_rate_limit_per_ip_day`.
-  - `signup_rate_limit_per_email_day` and `signup_rate_limit_per_domain_day`.
-  - `signup_concurrent_requests_limit` (cap simultaneous outstanding requests per IP).
-- Implement reusable helpers in `app/services/rate_limit_service.py` to build compound keys (IP+UA hash) and enforce quotas before hitting DB.
-- Add lightweight honeypot field + UA fingerprint hash to `SignupRequest` to slow naïve bots.
-- Expose metrics (`signup_attempts_total{result,policy}`, `signup_blocked_total{reason}`) and structured logs to aid detection.
-- Update CLI wizard to capture new quota inputs (with sane defaults) and mention telemetry requirements in docs/runbooks.
+- ✅ Multi-dimensional quotas land in `routes_signup.py`/`routes_signup_requests.py` (Nov 16, 2025):
+  - `signup_rate_limit_per_hour`, `_per_ip_day`, `_per_email_day`, `_per_domain_day` enforced before touching Postgres using shared helpers that hash IP+UA.
+  - `signup_concurrent_requests_limit` blocks additional `/request-access` submissions when an IP already owns the configured number of pending rows.
+- ✅ Honeypot + UA fingerprinting (Nov 16, 2025): invisible form field and SHA-256 UA hash stored in `SignupRequest.metadata`, with honeypot hits dropped server-side and logged as `signup.request_blocked` events.
+- ✅ Telemetry + metrics (Nov 16, 2025): `signup_attempts_total{result,policy}` and `signup_blocked_total{reason}` counters plus structured logs fire for `/register` and `/request-access`, feeding Prometheus + SIEM.
+- ✅ CLI/doc coverage (Nov 16, 2025): wizard prompts/operators for the new env vars (`SIGNUP_RATE_LIMIT_PER_*`, `SIGNUP_CONCURRENT_REQUESTS_LIMIT`), audit sections verify presence, and docs/trackers describe the defaults.
 
 ## Acceptance Criteria
 1. Operators can choose between public, invite-only, or approval-required signup modes during setup, with invite-only as the default posture.

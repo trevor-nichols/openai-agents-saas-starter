@@ -167,6 +167,27 @@ class Settings(BaseSettings):
     signup_rate_limit_per_hour: int = Field(
         default=20,
         description="Maximum signup attempts permitted per IP address each hour.",
+        alias="SIGNUP_RATE_LIMIT_PER_HOUR",
+    )
+    signup_rate_limit_per_day: int = Field(
+        default=100,
+        description="Maximum signup attempts permitted per IP address each day.",
+        alias="SIGNUP_RATE_LIMIT_PER_IP_DAY",
+    )
+    signup_rate_limit_per_email_day: int = Field(
+        default=3,
+        description="Maximum signup attempts permitted per email address each day.",
+        alias="SIGNUP_RATE_LIMIT_PER_EMAIL_DAY",
+    )
+    signup_rate_limit_per_domain_day: int = Field(
+        default=20,
+        description="Maximum signup attempts permitted per email domain each day.",
+        alias="SIGNUP_RATE_LIMIT_PER_DOMAIN_DAY",
+    )
+    signup_concurrent_requests_limit: int = Field(
+        default=3,
+        description="Maximum pending signup requests allowed per IP before operators respond.",
+        alias="SIGNUP_CONCURRENT_REQUESTS_LIMIT",
     )
     signup_default_plan_code: str | None = Field(
         default="starter",
@@ -1158,6 +1179,10 @@ class Settings(BaseSettings):
 
     @field_validator(
         "signup_rate_limit_per_hour",
+        "signup_rate_limit_per_day",
+        "signup_rate_limit_per_email_day",
+        "signup_rate_limit_per_domain_day",
+        "signup_concurrent_requests_limit",
         "signup_default_trial_days",
         "signup_invite_reservation_ttl_seconds",
     )

@@ -200,6 +200,8 @@ class SignupRequestRepository(Protocol):
 
     async def get(self, request_id: UUID) -> SignupRequest | None: ...
 
+    async def count_pending_requests_by_ip(self, ip_address: str) -> int: ...
+
     async def list_requests(
         self,
         *,

@@ -88,6 +88,10 @@ Legend: `✅` = prompted during wizard, `⚠️` = optional/backfilled warning, 
 | `ALLOW_PUBLIC_SIGNUP` | `bool` | Derived | ✅ | Legacy toggle (computed as `SIGNUP_ACCESS_POLICY == public`). |
 | `ALLOW_SIGNUP_TRIAL_OVERRIDE` | `bool` | False | ✅ | Permit clients to request custom trial lengths. |
 | `SIGNUP_RATE_LIMIT_PER_HOUR` | `int` | 20 | ✅ | Signup attempts per hour (per IP). |
+| `SIGNUP_RATE_LIMIT_PER_IP_DAY` | `int` | 100 | ✅ | Signup attempts per day (per IP). |
+| `SIGNUP_RATE_LIMIT_PER_EMAIL_DAY` | `int` | 3 | ✅ | Signup attempts per day (per email address). |
+| `SIGNUP_RATE_LIMIT_PER_DOMAIN_DAY` | `int` | 20 | ✅ | Signup attempts per day (per email domain). |
+| `SIGNUP_CONCURRENT_REQUESTS_LIMIT` | `int` | 3 | ✅ | Pending signup requests allowed per IP before the API rejects more submissions. |
 | `SIGNUP_DEFAULT_PLAN_CODE` | `str | None` | starter | ✅ | Default plan code provisioned for new tenants. |
 | `SIGNUP_DEFAULT_TRIAL_DAYS` | `int` | 14 | ✅ | Default trial length for new tenants. |
 

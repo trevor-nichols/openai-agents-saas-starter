@@ -11,6 +11,8 @@ from app.services.rate_limit_service import (
     RateLimitExceeded,
     RateLimitLease,
     RateLimitQuota,
+    build_rate_limit_identity,
+    hash_user_agent,
 )
 
 
@@ -82,3 +84,18 @@ async def test_degrades_open_when_backend_unavailable() -> None:
     )
     assert isinstance(lease, RateLimitLease)
     await lease.release()
+
+
+def test_build_rate_limit_identity_includes_user_agent_by_default() -> None:
+    parts = build_rate_limit_identity("10.1.2.3", "Test Agent/1.0")
+    assert parts[0] == "10.1.2.3"
+    assert parts[1] == hash_user_agent("Test Agent/1.0")[:16]
+
+
+def test_build_rate_limit_identity_ip_only() -> None:
+    parts = build_rate_limit_identity(
+        "203.0.113.5",
+        "Another Agent",
+        include_user_agent=False,
+    )
+    assert parts == ["203.0.113.5"]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
@@ -204,6 +205,26 @@ class RateLimiter:
     def _sanitize_parts(parts: Sequence[str]) -> Iterable[str]:
         for part in parts:
             yield (part or "unknown").replace(" ", "_")
+
+
+def hash_user_agent(user_agent: str | None) -> str:
+    normalized = (user_agent or "").strip().lower()
+    if not normalized:
+        return "no-user-agent"
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def build_rate_limit_identity(
+    ip_address: str | None,
+    user_agent: str | None,
+    *,
+    include_user_agent: bool = True,
+) -> list[str]:
+    ip_component = (ip_address or "unknown").lower()
+    if not include_user_agent:
+        return [ip_component]
+    ua_hash = hash_user_agent(user_agent)[:16]
+    return [ip_component, ua_hash]
 
 
 def get_rate_limiter() -> RateLimiter:

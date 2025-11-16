@@ -405,6 +405,21 @@ class PostgresSignupRequestRepository(SignupRequestRepository):
         requests = [item for item in (self._to_domain(row) for row in rows) if item]
         return SignupRequestListResult(requests=requests, total=total)
 
+    async def count_pending_requests_by_ip(self, ip_address: str) -> int:
+        normalized = (ip_address or "").strip()
+        if not normalized:
+            return 0
+        async with self._session_factory() as session:
+            stmt = (
+                select(func.count())
+                .select_from(TenantSignupRequest)
+                .where(
+                    TenantSignupRequest.ip_address == normalized,
+                    TenantSignupRequest.status == SignupRequestStatus.PENDING,
+                )
+            )
+            return int((await session.execute(stmt)).scalar_one())
+
     async def transition_status(
         self,
         *,

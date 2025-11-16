@@ -151,6 +151,10 @@ def test_signup_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.signup_access_policy == "invite_only"
     assert settings.allow_public_signup is False
     assert settings.signup_rate_limit_per_hour == 20
+    assert settings.signup_rate_limit_per_day == 100
+    assert settings.signup_rate_limit_per_email_day == 3
+    assert settings.signup_rate_limit_per_domain_day == 20
+    assert settings.signup_concurrent_requests_limit == 3
     assert settings.signup_default_plan_code == "starter"
     assert settings.signup_default_trial_days == 14
 
@@ -179,11 +183,36 @@ def test_signup_policy_backwards_compatibility(monkeypatch: pytest.MonkeyPatch) 
     assert settings.allow_public_signup is False
 
 
-def test_signup_rate_limit_requires_positive_values() -> None:
+def test_signup_rate_limit_requires_positive_values(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Negative signup rate limits are rejected."""
 
+    monkeypatch.setenv("SIGNUP_RATE_LIMIT_PER_HOUR", "-5")
     with pytest.raises(ValueError):
-        make_settings(signup_rate_limit_per_hour=-5)
+        make_settings()
+    monkeypatch.delenv("SIGNUP_RATE_LIMIT_PER_HOUR", raising=False)
+
+
+def test_signup_additional_limit_validation(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SIGNUP_RATE_LIMIT_PER_IP_DAY", "-1")
+    with pytest.raises(ValueError):
+        make_settings()
+    monkeypatch.delenv("SIGNUP_RATE_LIMIT_PER_IP_DAY", raising=False)
+
+    monkeypatch.setenv("SIGNUP_RATE_LIMIT_PER_EMAIL_DAY", "-1")
+    with pytest.raises(ValueError):
+        make_settings()
+    monkeypatch.delenv("SIGNUP_RATE_LIMIT_PER_EMAIL_DAY", raising=False)
+
+    monkeypatch.setenv("SIGNUP_RATE_LIMIT_PER_DOMAIN_DAY", "-1")
+    with pytest.raises(ValueError):
+        make_settings()
+    monkeypatch.delenv("SIGNUP_RATE_LIMIT_PER_DOMAIN_DAY", raising=False)
+
+    monkeypatch.setenv("SIGNUP_CONCURRENT_REQUESTS_LIMIT", "-1")
+    with pytest.raises(ValueError):
+        make_settings()
 
 
 def test_allowed_hosts_default_includes_local_and_test_hosts(

@@ -103,6 +103,16 @@ def parse_positive_int(value: str, *, field: str, minimum: int = 1) -> int:
     return parsed
 
 
+def parse_non_negative_int(value: str, *, field: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise CLIError(f"{field} must be an integer.") from exc
+    if parsed < 0:
+        raise CLIError(f"{field} must be zero or a positive integer.")
+    return parsed
+
+
 def probe_vault_transit(
     *,
     base_url: str,
@@ -140,6 +150,7 @@ def set_vault_probe_request(
 __all__ = [
     "normalize_geoip_provider",
     "normalize_logging_sink",
+    "parse_non_negative_int",
     "parse_positive_int",
     "probe_vault_transit",
     "validate_plan_map",

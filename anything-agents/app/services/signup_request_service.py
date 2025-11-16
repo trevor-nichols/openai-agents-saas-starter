@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from app.core.config import Settings, get_settings
@@ -20,12 +21,14 @@ from app.infrastructure.persistence.auth.signup_repository import (
     PostgresSignupRequestRepository,
 )
 from app.observability.logging import log_event
+from app.observability.metrics import record_signup_blocked
 from app.services.invite_service import (
     InviteIssueResult,
     InviteService,
     build_invite_service,
     get_invite_service,
 )
+from app.services.rate_limit_service import hash_user_agent
 
 
 @dataclass(slots=True)
@@ -40,6 +43,14 @@ class SignupRequestServiceError(RuntimeError):
 
 class SignupRequestNotFoundError(SignupRequestServiceError):
     """Raised when a request cannot be located."""
+
+
+class SignupRequestQuotaExceededError(SignupRequestServiceError):
+    """Raised when request quotas prevent accepting additional submissions."""
+
+    def __init__(self, message: str, *, reason: str) -> None:
+        super().__init__(message)
+        self.reason = reason
 
 
 class SignupRequestService:
@@ -62,6 +73,9 @@ class SignupRequestService:
     def invite_service(self) -> InviteService:
         return self._invite_service
 
+    def _get_settings(self) -> Settings:
+        return self._settings_factory()
+
     async def submit_request(
         self,
         *,
@@ -72,18 +86,46 @@ class SignupRequestService:
         ip_address: str | None,
         user_agent: str | None,
         honeypot_value: str | None,
-    ) -> SignupRequest:
-        metadata = None
-        if honeypot_value:
-            metadata = {"suspected_bot": True}
+    ) -> SignupRequest | None:
+        settings = self._get_settings()
+        metadata: dict[str, Any] | None = None
+        fingerprint = hash_user_agent(user_agent)
+        if fingerprint:
+            metadata = {"user_agent_fingerprint": fingerprint}
+
+        normalized_honeypot = _optional_str(honeypot_value)
+        if normalized_honeypot:
+            metadata = metadata or {}
+            metadata["suspected_bot"] = True
+            log_event(
+                "signup.request_blocked",
+                result="honeypot",
+                email=email,
+                ip_address=_optional_str(ip_address),
+            )
+            record_signup_blocked(reason="honeypot")
+            return None
+
+        normalized_ip = _optional_str(ip_address)
+        if (
+            normalized_ip
+            and settings.signup_concurrent_requests_limit > 0
+            and await self.repository.count_pending_requests_by_ip(normalized_ip)
+            >= settings.signup_concurrent_requests_limit
+        ):
+            raise SignupRequestQuotaExceededError(
+                "Too many pending requests from this IP. Try again soon.",
+                reason="pending_limit",
+            )
+
         payload = SignupRequestCreate(
             email=email.strip().lower(),
             organization=_optional_str(organization),
             full_name=_optional_str(full_name),
             message=_optional_str(message),
-            ip_address=_optional_str(ip_address),
+            ip_address=normalized_ip,
             user_agent=_optional_str(user_agent),
-            honeypot_value=_optional_str(honeypot_value),
+            honeypot_value=None,
             metadata=metadata,
         )
         record = await self.repository.create(payload)
@@ -91,7 +133,6 @@ class SignupRequestService:
             "signup.request_submitted",
             result="success",
             request_id=str(record.id),
-            suspected_bot=bool(honeypot_value),
         )
         return record
 
@@ -250,6 +291,7 @@ def get_signup_request_service() -> SignupRequestService:
 __all__ = [
     "SignupRequestDecisionResult",
     "SignupRequestNotFoundError",
+    "SignupRequestQuotaExceededError",
     "SignupRequestService",
     "SignupRequestServiceError",
     "build_signup_request_service",

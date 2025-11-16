@@ -60,6 +60,7 @@
 - **JWKS Endpoint**: Router `app/presentation/well_known.py` exposes `/.well-known/jwks.json`, pulling from `KeySet.materialize_jwks()` and serving the active key. Responses include `Cache-Control`, strong `ETag`, and `Last-Modified` headers so downstream verifiers can rely on conditional GETs (`If-None-Match`) to avoid unnecessary downloads.
 - **Key CLI (`auth keys rotate`, `auth jwks print`)**: Lives alongside the service-account helper in `app/cli/auth_cli.py`; `keys rotate` generates a fresh Ed25519 keypair and immediately replaces the active key in the configured storage backend, while `jwks print` dumps the current JWKS payload for audits or runbooks without hitting the HTTP endpoint.
 - **Observability Surface (`app/observability/*`, `/metrics`)**: Dedicated `metrics.py` registers Prometheus counters/histograms for signing, verification, JWKS, nonce cache, and service-account issuance, while `logging.py` centralizes structured JSON log emission. FastAPI exposes `GET /metrics` for scrapes and `auth.observability` logger streams to the SIEM.
+- **Signup Telemetry**: `signup_attempts_total{result,policy}` and `signup_blocked_total{reason}` capture `/auth/register` and `/auth/request-access` outcomes so SecOps can alert on surges before approvals are touched.
 
 ## 4. Data & Configuration
 
@@ -82,6 +83,9 @@
 - `auth_jwks_max_age_seconds: int` — preferred cache-control max-age for JWKS responses (defaults to 300 seconds; override via `AUTH_JWKS_MAX_AGE_SECONDS`).
 - `auth_jwks_etag_salt: str` — salt mixed into JWKS ETag derivation so hashes remain unpredictable; configure via `AUTH_JWKS_ETAG_SALT`.
 - `auth_refresh_token_pepper: str` — server-side secret concatenated with refresh tokens before hashing; must be unique per environment and rotated when compromise is suspected.
+- `signup_rate_limit_per_hour` / `_per_ip_day` / `_per_email_day` / `_per_domain_day` — layered quotas enforced before touching the database. Defaults (20/hr, 100/day, 3/email-day, 20/domain-day) can be tuned via the CLI wizard.
+- `signup_concurrent_requests_limit` — caps outstanding approval requests per IP (default 3) by counting pending rows before inserting another submission.
+- Honeypot + UA fingerprinting — `/auth/request-access` accepts a hidden honeypot input and stores a SHA-256 hash of the user agent so operators can correlate noisy bots without keeping raw fingerprints.
 - Additional knobs (`auth_issuer`, TTLs) will land with the AUTH-003 service refactor.
 
 ### Persistence Schema (AUTH-002/AUTH-003)

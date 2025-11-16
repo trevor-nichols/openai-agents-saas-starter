@@ -6,7 +6,7 @@ from starter_cli.cli.common import CLIError
 from starter_cli.cli.console import console
 from starter_cli.cli.setup._wizard.context import WizardContext
 from starter_cli.cli.setup.inputs import HeadlessInputProvider, InputProvider
-from starter_cli.cli.setup.validators import parse_positive_int
+from starter_cli.cli.setup.validators import parse_non_negative_int, parse_positive_int
 
 _SIGNUP_POLICY_DESCRIPTIONS: Final[dict[str, str]] = {
     "public": "Public signup enabled - anyone can self-register.",
@@ -41,6 +41,39 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     )
     context.set_backend("SIGNUP_RATE_LIMIT_PER_HOUR", str(rate_limit))
 
+    per_day_limit = parse_non_negative_int(
+        provider.prompt_string(
+            key="SIGNUP_RATE_LIMIT_PER_IP_DAY",
+            prompt="Signup attempts per day (per IP)",
+            default=context.current("SIGNUP_RATE_LIMIT_PER_IP_DAY") or "100",
+            required=True,
+        ),
+        field="SIGNUP_RATE_LIMIT_PER_IP_DAY",
+    )
+    context.set_backend("SIGNUP_RATE_LIMIT_PER_IP_DAY", str(per_day_limit))
+
+    per_email_limit = parse_non_negative_int(
+        provider.prompt_string(
+            key="SIGNUP_RATE_LIMIT_PER_EMAIL_DAY",
+            prompt="Signup attempts per day (per email)",
+            default=context.current("SIGNUP_RATE_LIMIT_PER_EMAIL_DAY") or "3",
+            required=True,
+        ),
+        field="SIGNUP_RATE_LIMIT_PER_EMAIL_DAY",
+    )
+    context.set_backend("SIGNUP_RATE_LIMIT_PER_EMAIL_DAY", str(per_email_limit))
+
+    per_domain_limit = parse_non_negative_int(
+        provider.prompt_string(
+            key="SIGNUP_RATE_LIMIT_PER_DOMAIN_DAY",
+            prompt="Signup attempts per day (per domain)",
+            default=context.current("SIGNUP_RATE_LIMIT_PER_DOMAIN_DAY") or "20",
+            required=True,
+        ),
+        field="SIGNUP_RATE_LIMIT_PER_DOMAIN_DAY",
+    )
+    context.set_backend("SIGNUP_RATE_LIMIT_PER_DOMAIN_DAY", str(per_domain_limit))
+
     plan_code = provider.prompt_string(
         key="SIGNUP_DEFAULT_PLAN_CODE",
         prompt="Default signup plan code",
@@ -60,6 +93,17 @@ def run(context: WizardContext, provider: InputProvider) -> None:
         minimum=1,
     )
     context.set_backend("SIGNUP_DEFAULT_TRIAL_DAYS", str(trial_days))
+
+    concurrent_limit = parse_non_negative_int(
+        provider.prompt_string(
+            key="SIGNUP_CONCURRENT_REQUESTS_LIMIT",
+            prompt="Pending signup requests allowed per IP",
+            default=context.current("SIGNUP_CONCURRENT_REQUESTS_LIMIT") or "3",
+            required=True,
+        ),
+        field="SIGNUP_CONCURRENT_REQUESTS_LIMIT",
+    )
+    context.set_backend("SIGNUP_CONCURRENT_REQUESTS_LIMIT", str(concurrent_limit))
 
     run_retry_here = provider.prompt_bool(
         key="ENABLE_BILLING_RETRY_WORKER",

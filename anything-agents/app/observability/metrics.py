@@ -174,6 +174,20 @@ RATE_LIMIT_HITS_TOTAL = Counter(
     registry=REGISTRY,
 )
 
+SIGNUP_ATTEMPTS_TOTAL = Counter(
+    "signup_attempts_total",
+    "Count of signup-related attempts segmented by result and policy.",
+    ("result", "policy"),
+    registry=REGISTRY,
+)
+
+SIGNUP_BLOCKED_TOTAL = Counter(
+    "signup_blocked_total",
+    "Count of signup blocks segmented by reason.",
+    ("reason",),
+    registry=REGISTRY,
+)
+
 EMAIL_DELIVERY_ATTEMPTS_TOTAL = Counter(
     "email_delivery_attempts_total",
     "Count of transactional email delivery attempts segmented by category and result.",
@@ -237,6 +251,14 @@ def observe_service_account_issuance(
 
 def record_rate_limit_hit(*, quota: str, scope: str) -> None:
     RATE_LIMIT_HITS_TOTAL.labels(quota=quota, scope=(scope or "unknown")).inc()
+
+
+def record_signup_attempt(*, result: str, policy: str | None) -> None:
+    SIGNUP_ATTEMPTS_TOTAL.labels(result=result, policy=(policy or "unknown")).inc()
+
+
+def record_signup_blocked(*, reason: str | None) -> None:
+    SIGNUP_BLOCKED_TOTAL.labels(reason=(reason or "unknown")).inc()
 
 
 def observe_email_delivery(*, category: str | None, result: str, duration_seconds: float) -> None:
