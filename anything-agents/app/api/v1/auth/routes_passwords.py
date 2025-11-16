@@ -115,7 +115,10 @@ async def admin_reset_password(
     payload: PasswordResetRequest,
     current_user: dict[str, object] = Depends(require_verified_scopes("support:read")),
 ) -> SuccessResponse:
-    tenant_claim = current_user.get("payload", {}).get("tenant_id")  # type: ignore[index]
+    tenant_claim: object | None = None
+    payload_claim = current_user.get("payload")
+    if isinstance(payload_claim, dict):
+        tenant_claim = payload_claim.get("tenant_id")
     if not tenant_claim:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

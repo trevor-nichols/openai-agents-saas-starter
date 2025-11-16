@@ -8,7 +8,7 @@ from enum import Enum
 from typing import Literal, Protocol
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field, FieldValidationInfo, field_validator
+from pydantic import BaseModel, EmailStr, Field, ValidationInfo, field_validator
 
 from app.core.password_policy import PasswordPolicyError, validate_password_strength
 
@@ -46,7 +46,7 @@ class UserCreate(BaseModel):
 
     @field_validator("password")
     @classmethod
-    def _validate_password_strength(cls, value: str, info: FieldValidationInfo) -> str:
+    def _validate_password_strength(cls, value: str, info: ValidationInfo) -> str:
         email = info.data.get("email") if info.data else None
         inputs = [email] if isinstance(email, str) else None
         try:

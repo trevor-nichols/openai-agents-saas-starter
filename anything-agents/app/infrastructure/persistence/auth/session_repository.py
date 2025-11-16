@@ -159,9 +159,10 @@ class PostgresUserSessionRepository(UserSessionRepository):
                 .where(UserSessionModel.id == session_id, UserSessionModel.revoked_at.is_(None))
                 .values(revoked_at=timestamp, revoked_reason=reason, updated_at=timestamp)
             )
-            result = cast(CursorResult, await session.execute(stmt))
+            result = await session.execute(stmt)
+            cursor = cast(CursorResult[Any], result)
             await session.commit()
-        return (result.rowcount or 0) > 0
+        return (cursor.rowcount or 0) > 0
 
     async def mark_session_revoked_by_jti(
         self,
@@ -179,9 +180,10 @@ class PostgresUserSessionRepository(UserSessionRepository):
                 )
                 .values(revoked_at=timestamp, revoked_reason=reason, updated_at=timestamp)
             )
-            result = cast(CursorResult, await session.execute(stmt))
+            result = await session.execute(stmt)
+            cursor = cast(CursorResult[Any], result)
             await session.commit()
-        return (result.rowcount or 0) > 0
+        return (cursor.rowcount or 0) > 0
 
     async def revoke_all_for_user(
         self,
@@ -196,9 +198,10 @@ class PostgresUserSessionRepository(UserSessionRepository):
                 .where(UserSessionModel.user_id == user_id, UserSessionModel.revoked_at.is_(None))
                 .values(revoked_at=timestamp, revoked_reason=reason, updated_at=timestamp)
             )
-            result = cast(CursorResult, await session.execute(stmt))
+            result = await session.execute(stmt)
+            cursor = cast(CursorResult[Any], result)
             await session.commit()
-        return result.rowcount or 0
+        return cursor.rowcount or 0
 
     def _to_domain(self, row: UserSessionModel | None) -> UserSession | None:
         if row is None:

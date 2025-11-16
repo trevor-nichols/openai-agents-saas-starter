@@ -215,7 +215,7 @@ class AuthService:
         error_cls: type[UserAuthenticationError] = UserRefreshError,
         error_message: str = "Refresh token verification failed.",
     ) -> dict[str, object]:
-        return self._sessions._default_verify_token(  # type: ignore[attr-defined]
+        return self._sessions._default_verify_token(
             token,
             allow_expired=allow_expired,
             error_cls=error_cls,

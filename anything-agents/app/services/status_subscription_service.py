@@ -227,13 +227,15 @@ class StatusSubscriptionService:
         limit: int,
         cursor: str | None,
     ) -> StatusSubscriptionListResult:
-        allowed_statuses: set[SubscriptionStatus] = {
+        allowed_statuses: tuple[SubscriptionStatus, ...] = (
             "pending_verification",
             "active",
             "revoked",
-        }
+        )
         normalized_status: SubscriptionStatus | None = (
-            status_filter if status_filter in allowed_statuses else None
+            cast(SubscriptionStatus, status_filter)
+            if isinstance(status_filter, str) and status_filter in allowed_statuses
+            else None
         )
         return await self._repository.list_subscriptions(
             tenant_id=tenant_id,

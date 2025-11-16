@@ -24,6 +24,7 @@ def run(context: WizardContext, provider: InputProvider) -> None:
 
 def collect_database(context: WizardContext, provider: InputProvider) -> None:
     existing_url = context.current("DATABASE_URL") or os.getenv("DATABASE_URL")
+    default_url: str | None
     if context.profile == "local":
         default_url = (
             existing_url

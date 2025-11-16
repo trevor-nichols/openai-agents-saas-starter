@@ -8,8 +8,9 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from types import TracebackType
 
-from redis.asyncio import Redis
 from redis.exceptions import RedisError
+
+from app.infrastructure.redis_types import RedisBytesClient
 
 
 @dataclass(slots=True, frozen=True)
@@ -49,7 +50,7 @@ class RateLimitLease:
     __slots__ = ("_redis", "_key", "_released", "_ttl", "_heartbeat", "_stop")
 
     def __init__(
-        self, redis: Redis | None, key: str | None, ttl_seconds: int | None = None
+        self, redis: RedisBytesClient | None, key: str | None, ttl_seconds: int | None = None
     ) -> None:
         self._redis = redis
         self._key = key
@@ -106,13 +107,17 @@ class RateLimiter:
     """Redis-backed rate limit manager."""
 
     def __init__(self) -> None:
-        self._redis: Redis | None = None
+        self._redis: RedisBytesClient | None = None
         self._prefix = "rate-limit"
         self._owns_client = False
         self._logger = logging.getLogger(__name__)
 
     def configure(
-        self, *, redis: Redis, prefix: str = "rate-limit", owns_client: bool = True
+        self,
+        *,
+        redis: RedisBytesClient,
+        prefix: str = "rate-limit",
+        owns_client: bool = True,
     ) -> None:
         self._redis = redis
         self._prefix = prefix.strip() or "rate-limit"

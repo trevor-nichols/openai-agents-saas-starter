@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import importlib.util
 from collections.abc import AsyncIterator
+from importlib.abc import Loader
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import pytest
 from sqlalchemy import Table
@@ -17,14 +18,17 @@ from app.infrastructure.persistence.stripe.models import (
     StripeEventDispatch,
 )
 from app.infrastructure.persistence.stripe.repository import StripeEventRepository
+from app.services.billing_service import BillingService
 from app.services.stripe_dispatcher import stripe_event_dispatcher
 from tests.utils.sqlalchemy import create_tables
 
 _REPLAY_MODULE = Path(__file__).resolve().parents[3] / "scripts" / "stripe" / "replay_events.py"
 _SPEC = importlib.util.spec_from_file_location("replay_events", _REPLAY_MODULE)
-assert _SPEC and _SPEC.loader
+if _SPEC is None or _SPEC.loader is None:
+    raise RuntimeError("stripe replay module could not be loaded")
 replay_events = importlib.util.module_from_spec(_SPEC)
-_SPEC.loader.exec_module(replay_events)  # type: ignore[arg-type]
+loader = cast(Loader, _SPEC.loader)
+loader.exec_module(replay_events)
 
 pytestmark = pytest.mark.stripe_replay
 
@@ -54,7 +58,10 @@ async def sqlite_repo() -> AsyncIterator[tuple[StripeEventRepository, _FakeBilli
     session_factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     repo = StripeEventRepository(session_factory)
     fake_billing = _FakeBillingService()
-    stripe_event_dispatcher.configure(repository=repo, billing=fake_billing)  # type: ignore[arg-type]
+    stripe_event_dispatcher.configure(
+        repository=repo,
+        billing=cast(BillingService, fake_billing),
+    )
     try:
         yield repo, fake_billing
     finally:
@@ -93,7 +100,7 @@ async def test_cli_replay_completes_failed_dispatch(sqlite_repo, capsys):
     assert "Replayed dispatch" in captured.out
 
 
-def _subscription_payload() -> dict:
+def _subscription_payload() -> dict[str, Any]:
     return {
         "id": "evt_cli",
         "type": "customer.subscription.created",

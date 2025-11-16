@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import logging
 import uuid
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import Any, cast
 
 from app.infrastructure.persistence.stripe.models import (
     StripeEvent,
@@ -31,7 +32,8 @@ from app.services.stripe_event_models import (
 logger = logging.getLogger("anything-agents.services.stripe_dispatcher")
 
 
-HandlerFunc = Callable[[StripeEvent, dict], Awaitable[DispatchBroadcastContext | None]]
+JSONDict = dict[str, Any]
+HandlerFunc = Callable[[StripeEvent, JSONDict], Awaitable[DispatchBroadcastContext | None]]
 
 
 @dataclass(slots=True)
@@ -46,7 +48,7 @@ class StripeEventDispatcher:
     def __init__(self) -> None:
         self._repository: StripeEventRepository | None = None
         self._billing_service: BillingService | None = None
-        self._handlers: Mapping[str, EventHandler] = {}
+        self._handlers: dict[str, EventHandler] = {}
         self._retry_base_seconds = 30.0
         self._retry_max_seconds = 10 * 60.0
 
@@ -60,7 +62,7 @@ class StripeEventDispatcher:
         self._billing_service = billing
         self._handlers = self._build_handlers()
 
-    def _build_handlers(self) -> Mapping[str, EventHandler]:
+    def _build_handlers(self) -> dict[str, EventHandler]:
         return {
             "customer.subscription.created": EventHandler(
                 "billing_sync", self._handle_subscription_event
@@ -80,7 +82,7 @@ class StripeEventDispatcher:
             ),
         }
 
-    async def dispatch_now(self, event: StripeEvent, payload: dict) -> DispatchResult:
+    async def dispatch_now(self, event: StripeEvent, payload: JSONDict) -> DispatchResult:
         handler = self._handlers.get(event.event_type)
         repository = self._require_repository()
         if handler is None:
@@ -115,7 +117,7 @@ class StripeEventDispatcher:
         self,
         dispatch: StripeEventDispatch,
         event: StripeEvent,
-        payload: dict,
+        payload: JSONDict,
         handler: EventHandler,
     ) -> DispatchResult:
         repository = self._require_repository()
@@ -156,7 +158,7 @@ class StripeEventDispatcher:
             return DispatchResult(processed_at=processed_at, broadcast=context)
 
     async def _handle_subscription_event(
-        self, event: StripeEvent, payload: dict
+        self, event: StripeEvent, payload: JSONDict
     ) -> DispatchBroadcastContext:
         billing = self._require_billing_service()
         snapshot = self._build_subscription_snapshot(payload)
@@ -170,7 +172,7 @@ class StripeEventDispatcher:
         )
 
     async def _handle_invoice_event(
-        self, event: StripeEvent, payload: dict
+        self, event: StripeEvent, payload: JSONDict
     ) -> DispatchBroadcastContext:
         billing = self._require_billing_service()
         snapshot = self._build_invoice_snapshot(event, payload)
@@ -190,7 +192,7 @@ class StripeEventDispatcher:
             usage=usage,
         )
 
-    def _build_subscription_snapshot(self, payload: dict) -> ProcessorSubscriptionSnapshot:
+    def _build_subscription_snapshot(self, payload: JSONDict) -> ProcessorSubscriptionSnapshot:
         data_obj = (payload.get("data") or {}).get("object") or {}
         metadata = data_obj.get("metadata") or {}
         tenant_id = metadata.get("tenant_id") or metadata.get("tenant")
@@ -245,10 +247,11 @@ class StripeEventDispatcher:
         )
 
     def _build_invoice_snapshot(
-        self, event: StripeEvent, payload: dict
+        self, event: StripeEvent, payload: JSONDict
     ) -> ProcessorInvoiceSnapshot:
-        data_obj = (payload.get("data") or {}).get("object") or {}
-        metadata = data_obj.get("metadata") or {}
+        stripe_data = cast(JSONDict, payload.get("data") or {})
+        data_obj = cast(JSONDict, stripe_data.get("object") or {})
+        metadata = cast(JSONDict, data_obj.get("metadata") or {})
         tenant_id = metadata.get("tenant_id") or metadata.get("tenant") or event.tenant_hint
         if not tenant_id:
             raise ValueError("Missing tenant_id in invoice metadata")
@@ -301,17 +304,19 @@ class StripeEventDispatcher:
             amount_cents=line.amount_cents,
         )
 
-    def _build_invoice_lines(self, invoice_obj: dict) -> list[ProcessorInvoiceLineSnapshot]:
+    def _build_invoice_lines(self, invoice_obj: JSONDict) -> list[ProcessorInvoiceLineSnapshot]:
         items = ((invoice_obj.get("lines") or {}).get("data")) or []
         lines: list[ProcessorInvoiceLineSnapshot] = []
         for line in items:
-            price = line.get("price") or {}
-            recurring = price.get("recurring") or {}
+            price = cast(JSONDict, line.get("price") or {})
+            recurring = cast(JSONDict, price.get("recurring") or {})
             usage_type = recurring.get("usage_type")
             is_metered = usage_type == "metered" or bool(line.get("usage_record_summary"))
             if not is_metered:
                 continue
-            metadata = (line.get("metadata") or {}) | (price.get("metadata") or {})
+            metadata = cast(JSONDict, (line.get("metadata") or {}))
+            price_metadata = cast(JSONDict, price.get("metadata") or {})
+            metadata = metadata | price_metadata
             feature_key = metadata.get("feature_key") or metadata.get("plan_feature")
             if not feature_key:
                 feature_key = price.get("nickname") or line.get("description")
@@ -331,7 +336,7 @@ class StripeEventDispatcher:
             )
         return lines
 
-    def _extract_plan_code_from_items(self, data_obj: dict) -> str | None:
+    def _extract_plan_code_from_items(self, data_obj: JSONDict) -> str | None:
         items = ((data_obj.get("items") or {}).get("data")) or []
         if not items:
             return None
@@ -343,14 +348,14 @@ class StripeEventDispatcher:
             or price.get("nickname")
         )
 
-    def _extract_price_id(self, data_obj: dict) -> str | None:
+    def _extract_price_id(self, data_obj: JSONDict) -> str | None:
         items = ((data_obj.get("items") or {}).get("data")) or []
         if not items:
             return None
         price = items[0].get("price") or {}
         return price.get("id")
 
-    def _extract_quantity(self, data_obj: dict) -> int | None:
+    def _extract_quantity(self, data_obj: JSONDict) -> int | None:
         items = ((data_obj.get("items") or {}).get("data")) or []
         if not items:
             return data_obj.get("quantity")

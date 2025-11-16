@@ -122,7 +122,7 @@ class UserProfile(Base):
     avatar_url: Mapped[str | None] = mapped_column(String(512))
     timezone: Mapped[str | None] = mapped_column(String(64))
     locale: Mapped[str | None] = mapped_column(String(32))
-    metadata_json: Mapped[dict | None] = mapped_column(JSONB)
+    metadata_json: Mapped[dict[str, str | None] | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=UTC_NOW
     )

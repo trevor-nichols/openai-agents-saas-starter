@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from azure.core.credentials import TokenCredential
 from azure.core.exceptions import AzureError
 from azure.identity import (
     ChainedTokenCredential,
@@ -156,7 +157,7 @@ def _probe_azure_secret(
     managed_identity_client_id: str | None,
 ) -> bool:
     try:
-        credentials = []
+        credentials: list[TokenCredential] = []
         if tenant_id and client_id and client_secret:
             credentials.append(
                 ClientSecretCredential(

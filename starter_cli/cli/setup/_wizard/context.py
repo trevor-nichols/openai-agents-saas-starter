@@ -42,7 +42,7 @@ class WizardContext:
     markdown_summary_path: Path | None = None
     dependency_statuses: list[DependencyStatus] = field(default_factory=list)
     automation: AutomationState = field(default_factory=AutomationState)
-    infra_session: "InfraSession | None" = None
+    infra_session: InfraSession | None = None
     verification_artifacts: list[VerificationArtifact] = field(default_factory=list)
     verification_log_path: Path = field(init=False)
     historical_verifications: list[VerificationArtifact] = field(init=False)

@@ -66,6 +66,9 @@ dev = [
   "types-PyJWT>=1.7.0,<2.0.0",
   "types-passlib>=1.7.7.16,<1.8.0",
   "types-redis>=4.6.0.12,<4.7.0",
+  "types-PyYAML>=6.0.12.20240917,<7.0.0",
+  "types-zxcvbn>=4.5.0,<5.0.0",
+  "boto3-stubs>=1.35.0,<2.0.0",
   "stripe>=10.11.0,<11.0.0",
 ]
 
@@ -116,6 +119,7 @@ exclude = [
 [tool.hatch.envs.default]
 features = ["dev"]
 python = "3.11"
+path = ".venv"
 [tool.hatch.envs.default.env-vars]
 PYTHONPATH = "."
 
@@ -124,7 +128,7 @@ serve = "uvicorn main:app --reload --app-dir anything-agents --reload-dir anythi
 test = "pytest"
 lint = "ruff check anything-agents starter_cli starter_shared"
 format = "ruff format anything-agents starter_cli starter_shared"
-typecheck = "mypy anything-agents starter_cli starter_shared"
+typecheck = "python -m scripts.typecheck"
 coverage = "python -m coverage run -m pytest && python -m coverage report"
 pyright = "python -m pyright"
 migrate = "alembic -c anything-agents/alembic.ini upgrade head"
@@ -163,7 +167,7 @@ disallow_any_generics = true
 disallow_subclassing_any = true
 ignore_missing_imports = false
 namespace_packages = true
-mypy_path = ["anything-agents", "starter_cli", "starter_shared"]
+mypy_path = ["anything-agents", "."]
 
 [[tool.mypy.overrides]]
 module = ["tavily", "tavily.*"]

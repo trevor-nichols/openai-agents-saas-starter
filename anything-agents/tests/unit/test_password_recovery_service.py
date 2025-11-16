@@ -10,6 +10,7 @@ from uuid import UUID, uuid4
 import pytest
 
 from app.bootstrap import get_container
+from app.domain.password_reset import PasswordResetTokenRecord
 from app.domain.users import TenantMembershipDTO, UserRecord, UserRepository, UserStatus
 from app.services.password_recovery_service import (
     InvalidPasswordResetTokenError,
@@ -40,21 +41,21 @@ class FakeUserRepository:
 
 class FakeTokenStore:
     def __init__(self) -> None:
-        self.records: dict[str, Any] = {}
+        self.records: dict[str, PasswordResetTokenRecord] = {}
 
-    async def save(self, record, *, ttl_seconds: int) -> None:  # type: ignore[override]
+    async def save(self, record: PasswordResetTokenRecord, *, ttl_seconds: int) -> None:
         self.records[record.token_id] = record
 
-    async def get(self, token_id: str):  # type: ignore[override]
+    async def get(self, token_id: str) -> PasswordResetTokenRecord | None:
         return self.records.get(token_id)
 
-    async def delete(self, token_id: str) -> None:  # type: ignore[override]
+    async def delete(self, token_id: str) -> None:
         self.records.pop(token_id, None)
 
 
 class FakeNotifier:
     def __init__(self) -> None:
-        self.sent = deque()
+        self.sent: deque[tuple[str, str, datetime]] = deque()
 
     async def send_password_reset(self, *, email: str, token: str, expires_at: datetime) -> None:
         self.sent.append((email, token, expires_at))

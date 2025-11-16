@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import and_, or_, select, update
 from sqlalchemy.exc import IntegrityError
@@ -35,7 +36,7 @@ class StripeEventRepository:
         *,
         stripe_event_id: str,
         event_type: str,
-        payload: dict,
+        payload: dict[str, Any],
         tenant_hint: str | None,
         stripe_created_at: datetime | None,
     ) -> tuple[StripeEvent, bool]:

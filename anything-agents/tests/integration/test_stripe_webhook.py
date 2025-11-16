@@ -27,6 +27,7 @@ from app.infrastructure.persistence.stripe.repository import (
 )
 from app.presentation.webhooks import stripe as stripe_webhook
 from app.services.billing_events import BillingEventsService
+from app.services.billing_service import BillingService
 from app.services.stripe_dispatcher import stripe_event_dispatcher
 from tests.utils.fake_billing_backend import QueueBillingEventBackend
 from tests.utils.sqlalchemy import create_tables
@@ -74,7 +75,10 @@ async def sqlite_stripe_repo() -> AsyncIterator[StripeEventRepository]:
     repo = StripeEventRepository(session_factory)
     configure_stripe_event_repository(repo)
     fake_billing = _FakeBillingService()
-    stripe_event_dispatcher.configure(repository=repo, billing=fake_billing)  # type: ignore[arg-type]
+    stripe_event_dispatcher.configure(
+        repository=repo,
+        billing=cast(BillingService, fake_billing),
+    )
     try:
         yield repo
     finally:

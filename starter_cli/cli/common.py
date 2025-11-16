@@ -12,6 +12,7 @@ from typing import Any
 
 import boto3
 import httpx
+from azure.core.credentials import TokenCredential
 from azure.identity import (
     ChainedTokenCredential,
     ClientSecretCredential,
@@ -276,7 +277,7 @@ def _fetch_azure_secret(settings: StarterSettingsProtocol) -> str:
     if not (az.vault_url and az.signing_secret_name):
         raise CLIError("Azure Key Vault configuration is incomplete; rerun secrets onboarding.")
 
-    credentials = []
+    credentials: list[TokenCredential] = []
     if az.tenant_id and az.client_id and az.client_secret:
         credentials.append(
             ClientSecretCredential(

@@ -26,12 +26,12 @@ class FakeUserRepository:
         self._user = user
         self.marked: list[UUID] = []
 
-    async def get_user_by_id(self, user_id: UUID) -> UserRecord | None:  # type: ignore[override]
+    async def get_user_by_id(self, user_id: UUID) -> UserRecord | None:
         if self._user and self._user.id == user_id:
             return self._user
         return None
 
-    async def mark_email_verified(self, user_id: UUID, *, timestamp: datetime) -> None:  # type: ignore[override]
+    async def mark_email_verified(self, user_id: UUID, *, timestamp: datetime) -> None:
         self.marked.append(user_id)
         if self._user and self._user.id == user_id:
             self._user.email_verified_at = timestamp

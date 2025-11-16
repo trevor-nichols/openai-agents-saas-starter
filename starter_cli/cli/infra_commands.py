@@ -4,9 +4,8 @@ import argparse
 import json
 import shutil
 import subprocess
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from typing import Callable
 
 from .common import CLIContext, CLIError
 from .console import console

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Iterable
 
 
 class AutomationPhase(str, Enum):
@@ -63,7 +63,12 @@ class AutomationState:
         self.records[phase] = record
         return record
 
-    def update(self, phase: AutomationPhase, status: AutomationStatus, note: str | None = None) -> AutomationRecord:
+    def update(
+        self,
+        phase: AutomationPhase,
+        status: AutomationStatus,
+        note: str | None = None,
+    ) -> AutomationRecord:
         record = self.records.setdefault(phase, AutomationRecord())
         record.status = status
         if note is not None:

@@ -31,12 +31,12 @@ class FakeStripeClient:
             trial_end=None,
             items=[StripeSubscriptionItem(id="si_123", price_id="price_123", quantity=1)],
         )
-        self.created_customers: list[dict[str, object]] = []
-        self.created_subscriptions: list[dict[str, object]] = []
-        self.updated_subscription_calls: list[dict[str, object]] = []
+        self.created_customers: list[dict[str, Any]] = []
+        self.created_subscriptions: list[dict[str, Any]] = []
+        self.updated_subscription_calls: list[dict[str, Any]] = []
         self.updated_emails: list[str] = []
         self.cancelled: list[bool] = []
-        self.usage_calls: list[dict[str, object]] = []
+        self.usage_calls: list[dict[str, Any]] = []
 
     async def create_customer(self, *, email: str | None, tenant_id: str) -> StripeCustomer:
         payload = {"email": email, "tenant_id": tenant_id}

@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime
-from typing import cast
+from typing import Any, cast
 
 from sqlalchemy import desc, select, update
 from sqlalchemy.engine import CursorResult
@@ -227,9 +227,10 @@ class PostgresStatusSubscriptionRepository(StatusSubscriptionRepository):
             )
         )
         async with self._session_factory() as session:
-            result = cast(CursorResult, await session.execute(stmt))
+            result = await session.execute(stmt)
+            cursor = cast(CursorResult[Any], result)
             await session.commit()
-        return (result.rowcount or 0) > 0
+        return (cursor.rowcount or 0) > 0
 
     async def find_active_by_target(
         self,

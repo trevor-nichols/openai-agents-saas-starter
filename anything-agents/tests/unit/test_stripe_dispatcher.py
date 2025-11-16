@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import pytest
 from sqlalchemy import Table
@@ -17,7 +17,11 @@ from app.infrastructure.persistence.stripe.models import (
     StripeEventDispatch,
 )
 from app.infrastructure.persistence.stripe.repository import StripeEventRepository
-from app.services.billing_service import ProcessorInvoiceSnapshot, ProcessorSubscriptionSnapshot
+from app.services.billing_service import (
+    BillingService,
+    ProcessorInvoiceSnapshot,
+    ProcessorSubscriptionSnapshot,
+)
 from app.services.stripe_dispatcher import EventHandler, StripeEventDispatcher
 from tests.utils.sqlalchemy import create_tables
 
@@ -63,7 +67,7 @@ async def dispatcher_repo() -> AsyncIterator[StripeEventRepository]:
         await engine.dispose()
 
 
-def _load_fixture(name: str) -> dict:
+def _load_fixture(name: str) -> dict[str, Any]:
     return json.loads((FIXTURES / name).read_text(encoding="utf-8"))
 
 
@@ -80,7 +84,7 @@ async def test_dispatcher_processes_subscription_event(dispatcher_repo: StripeEv
     )
     fake_billing = FakeBillingService()
     dispatcher = StripeEventDispatcher()
-    dispatcher.configure(repository=dispatcher_repo, billing=fake_billing)  # type: ignore[arg-type]
+    dispatcher.configure(repository=dispatcher_repo, billing=cast(BillingService, fake_billing))
 
     result = await dispatcher.dispatch_now(event, payload)
 
@@ -105,7 +109,10 @@ async def test_dispatcher_raises_for_missing_metadata(dispatcher_repo: StripeEve
         stripe_created_at=None,
     )
     dispatcher = StripeEventDispatcher()
-    dispatcher.configure(repository=dispatcher_repo, billing=FakeBillingService())  # type: ignore[arg-type]
+    dispatcher.configure(
+        repository=dispatcher_repo,
+        billing=cast(BillingService, FakeBillingService()),
+    )
 
     with pytest.raises(ValueError):
         await dispatcher.dispatch_now(event, payload)
@@ -123,7 +130,7 @@ async def test_dispatcher_processes_invoice_event(dispatcher_repo: StripeEventRe
     )
     fake_billing = FakeBillingService()
     dispatcher = StripeEventDispatcher()
-    dispatcher.configure(repository=dispatcher_repo, billing=fake_billing)  # type: ignore[arg-type]
+    dispatcher.configure(repository=dispatcher_repo, billing=cast(BillingService, fake_billing))
 
     result = await dispatcher.dispatch_now(event, payload)
 
@@ -148,7 +155,10 @@ async def test_invoice_event_without_metadata(dispatcher_repo: StripeEventReposi
         stripe_created_at=None,
     )
     dispatcher = StripeEventDispatcher()
-    dispatcher.configure(repository=dispatcher_repo, billing=FakeBillingService())  # type: ignore[arg-type]
+    dispatcher.configure(
+        repository=dispatcher_repo,
+        billing=cast(BillingService, FakeBillingService()),
+    )
 
     with pytest.raises(ValueError):
         await dispatcher.dispatch_now(event, payload)
@@ -166,12 +176,15 @@ async def test_dispatcher_schedules_retry_on_failure(dispatcher_repo: StripeEven
         stripe_created_at=None,
     )
     dispatcher = StripeEventDispatcher()
-    dispatcher.configure(repository=dispatcher_repo, billing=FakeBillingService())  # type: ignore[arg-type]
+    dispatcher.configure(
+        repository=dispatcher_repo,
+        billing=cast(BillingService, FakeBillingService()),
+    )
 
     async def failing_handler(*_):
         raise RuntimeError("boom")
 
-    dispatcher._handlers[event.event_type] = EventHandler("billing_sync", failing_handler)  # type: ignore[attr-defined]
+    dispatcher._handlers[event.event_type] = EventHandler("billing_sync", failing_handler)
 
     with pytest.raises(RuntimeError):
         await dispatcher.dispatch_now(event, payload)

@@ -15,7 +15,7 @@ class _MockTransport(httpx.BaseTransport):
     def __init__(self, responses: Mapping[str, tuple[int, dict[str, object]]]) -> None:
         self.responses = responses
 
-    def handle_request(self, request: httpx.Request) -> httpx.Response:  # type: ignore[override]
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
         key = f"{request.method} {request.url.path}"
         status, payload = self.responses.get(
             key,

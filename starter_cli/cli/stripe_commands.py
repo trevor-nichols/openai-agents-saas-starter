@@ -8,12 +8,15 @@ import subprocess
 from collections.abc import Iterable
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
-from typing import Any
+from types import FrameType
+from typing import Any, TypedDict, cast
 
 try:  # pragma: no cover - optional dependency
-    import stripe
+    import stripe as stripe_module
 except ImportError:  # pragma: no cover - handled at runtime
-    stripe = None  # type: ignore[assignment]
+    stripe: Any | None = None
+else:
+    stripe = cast(Any, stripe_module)
 
 from .common import CLIContext, CLIError
 from .console import console
@@ -26,7 +29,15 @@ from .env import (
 
 REQUIRED_ENV_KEYS = ("STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_PRODUCT_PRICE_MAP")
 AGGREGATED_KEYS = (*REQUIRED_ENV_KEYS, "DATABASE_URL")
-PLAN_CATALOG = (
+
+
+class PlanConfig(TypedDict):
+    code: str
+    name: str
+    default_cents: int
+
+
+PLAN_CATALOG: tuple[PlanConfig, ...] = (
     {"code": "starter", "name": "Starter", "default_cents": 2000},
     {"code": "pro", "name": "Pro", "default_cents": 9900},
 )
@@ -161,8 +172,8 @@ class StripeSetupFlow:
             )
 
     def _install_signal_handlers(self) -> None:
-        signal.signal(signal.SIGINT, self._graceful_exit)  # type: ignore[arg-type]
-        signal.signal(signal.SIGTERM, self._graceful_exit)  # type: ignore[arg-type]
+        signal.signal(signal.SIGINT, self._graceful_exit)
+        signal.signal(signal.SIGTERM, self._graceful_exit)
 
     def _load_env_files(self) -> tuple[EnvFile, EnvFile, EnvFile]:
         env_local = EnvFile(self.ctx.project_root / ".env.local")
@@ -336,8 +347,8 @@ class StripeSetupFlow:
 
     def _ensure_price(self, product_id: str, plan_code: str, amount_cents: int) -> Any:
         assert stripe is not None
-        prices = stripe.Price.list(product=product_id, active=True, limit=100)
-        for price in prices.auto_paging_iter():  # type: ignore[attr-defined]
+        prices: Any = stripe.Price.list(product=product_id, active=True, limit=100)
+        for price in prices.auto_paging_iter():
             recurring = getattr(price, "recurring", None) or {}
             if (
                 price.currency == self.currency
@@ -369,7 +380,7 @@ class StripeSetupFlow:
         env_local.save()
 
     @staticmethod
-    def _graceful_exit(signum, _frame):  # type: ignore[override]
+    def _graceful_exit(signum: int, _frame: FrameType | None) -> None:
         console.warn(f"Received signal {signum}. Exiting.")
         raise SystemExit(1)
 

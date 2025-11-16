@@ -9,19 +9,20 @@ from typing import Any
 
 from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import JSON, TypeDecorator
 
 from app.infrastructure.persistence.models.base import UTC_NOW, Base, uuid_pk
 
 
-class JSONBCompat(TypeDecorator):
+class JSONBCompat(TypeDecorator[Any]):
     """JSON type that prefers JSONB on Postgres but falls back to JSON elsewhere."""
 
     impl = JSON
     cache_ok = True
 
-    def load_dialect_impl(self, dialect):  # type: ignore[override]
+    def load_dialect_impl(self, dialect: Dialect) -> Any:
         if dialect.name == "postgresql":
             from sqlalchemy.dialects.postgresql import JSONB
 

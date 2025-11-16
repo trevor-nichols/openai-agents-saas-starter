@@ -10,7 +10,7 @@ from app.api.dependencies.tenant import TenantRole, get_tenant_context
 
 @pytest.mark.asyncio
 async def test_context_uses_token_claims() -> None:
-    user = {
+    user: dict[str, object] = {
         "payload": {
             "tenant_id": "tenant-123",
             "roles": ["admin"],
@@ -25,7 +25,7 @@ async def test_context_uses_token_claims() -> None:
 
 @pytest.mark.asyncio
 async def test_missing_tenant_claim_requires_header() -> None:
-    user = {"payload": {}}
+    user: dict[str, object] = {"payload": {}}
     with pytest.raises(HTTPException) as exc:
         await get_tenant_context(current_user=user)
     assert exc.value.status_code == 401
@@ -33,7 +33,7 @@ async def test_missing_tenant_claim_requires_header() -> None:
 
 @pytest.mark.asyncio
 async def test_header_supplies_tenant_when_claim_missing() -> None:
-    user = {"payload": {"scope": "support:*"}}
+    user: dict[str, object] = {"payload": {"scope": "support:*"}}
     context = await get_tenant_context(
         tenant_id_header="tenant-global",
         current_user=user,
@@ -44,7 +44,7 @@ async def test_header_supplies_tenant_when_claim_missing() -> None:
 
 @pytest.mark.asyncio
 async def test_header_mismatch_is_forbidden() -> None:
-    user = {"payload": {"tenant_id": "tenant-abc"}}
+    user: dict[str, object] = {"payload": {"tenant_id": "tenant-abc"}}
     with pytest.raises(HTTPException) as exc:
         await get_tenant_context(tenant_id_header="tenant-other", current_user=user)
     assert exc.value.status_code == 403
@@ -52,7 +52,7 @@ async def test_header_mismatch_is_forbidden() -> None:
 
 @pytest.mark.asyncio
 async def test_header_may_downscope_role() -> None:
-    user = {
+    user: dict[str, object] = {
         "payload": {
             "tenant_id": "tenant-123",
             "roles": ["owner"],
@@ -67,7 +67,7 @@ async def test_header_may_downscope_role() -> None:
 
 @pytest.mark.asyncio
 async def test_header_cannot_escalate_role() -> None:
-    user = {
+    user: dict[str, object] = {
         "payload": {
             "tenant_id": "tenant-123",
             "roles": ["viewer"],

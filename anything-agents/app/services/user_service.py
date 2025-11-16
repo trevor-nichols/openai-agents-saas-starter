@@ -6,7 +6,7 @@ import hashlib
 import logging
 from collections.abc import Sequence
 from datetime import UTC, datetime
-from typing import Protocol
+from typing import Literal, Protocol, cast
 from uuid import UUID
 
 from redis.asyncio import Redis
@@ -26,6 +26,7 @@ from app.domain.users import (
     UserStatus,
 )
 from app.infrastructure.persistence.auth.user_repository import get_user_repository
+from app.infrastructure.redis_types import RedisBytesClient
 from app.observability.logging import log_event
 
 logger = logging.getLogger("anything-agents.services.user")
@@ -343,7 +344,7 @@ class UserService:
         *,
         user_id: UUID,
         tenant_id: UUID,
-        result: str,
+        result: Literal["success", "failure", "locked"],
         reason: str,
         ip_address: str | None,
         user_agent: str | None,
@@ -353,7 +354,7 @@ class UserService:
             tenant_id=tenant_id,
             ip_hash=self._hash_ip(ip_address),
             user_agent=user_agent,
-            result=result,  # type: ignore[arg-type]
+            result=result,
             reason=reason,
             created_at=datetime.now(UTC),
         )
@@ -439,7 +440,7 @@ class NullLoginThrottle(LoginThrottle):
 class RedisLoginThrottle(LoginThrottle):
     def __init__(
         self,
-        client: Redis,
+        client: RedisBytesClient,
         *,
         threshold: int,
         window_seconds: int,
@@ -523,7 +524,14 @@ def get_user_service() -> UserService:
 def build_ip_throttler(settings: Settings) -> LoginThrottle:
     if not settings.redis_url:
         raise RuntimeError("redis_url is required for IP throttling.")
-    client = Redis.from_url(settings.redis_url, encoding="utf-8", decode_responses=False)
+    client = cast(
+        RedisBytesClient,
+        Redis.from_url(
+            settings.redis_url,
+            encoding="utf-8",
+            decode_responses=False,
+        ),
+    )
     window_seconds = int(settings.auth_ip_lockout_window_minutes * 60)
     block_seconds = int(settings.auth_ip_lockout_duration_minutes * 60)
     return RedisLoginThrottle(

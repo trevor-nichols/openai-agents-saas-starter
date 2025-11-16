@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from starter_cli.cli.console import console
-from starter_cli.cli.infra_commands import DependencyStatus, collect_dependency_statuses
+from starter_cli.cli.infra_commands import collect_dependency_statuses
 
 
 def run_preflight(context) -> None:

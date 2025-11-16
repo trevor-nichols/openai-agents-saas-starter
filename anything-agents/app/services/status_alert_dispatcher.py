@@ -16,6 +16,7 @@ from app.domain.status import (
     IncidentRecord,
     StatusSubscription,
     StatusSubscriptionRepository,
+    SubscriptionStatus,
 )
 from app.infrastructure.notifications import (
     ResendEmailAdapter,
@@ -25,7 +26,7 @@ from app.infrastructure.notifications import (
 )
 from app.observability.logging import log_event
 
-ACTIVE_STATUS = "active"
+ACTIVE_STATUS: SubscriptionStatus = "active"
 
 
 class StatusAlertDispatcher:

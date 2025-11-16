@@ -12,15 +12,15 @@ class _StubSMClient:
     def __init__(self) -> None:
         self.calls: list[str] = []
 
-    def get_secret_value(self, SecretId: str):  # type: ignore[N802]
-        self.calls.append(SecretId)
-        if SecretId == "arn:signing":
+    def get_secret_value(self, secret_id: str):
+        self.calls.append(secret_id)
+        if secret_id == "arn:signing":
             return "aws-secret-value"
         return "other"
 
-    def describe_secret(self, SecretId: str):  # type: ignore[N802]
-        self.calls.append(f"describe:{SecretId}")
-        return {"ARN": SecretId}
+    def describe_secret(self, secret_id: str):
+        self.calls.append(f"describe:{secret_id}")
+        return {"ARN": secret_id}
 
 
 @pytest.mark.asyncio

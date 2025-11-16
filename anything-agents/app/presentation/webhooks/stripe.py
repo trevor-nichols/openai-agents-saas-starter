@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from typing import cast
+from typing import Any, cast
 
 import stripe
 from fastapi import APIRouter, HTTPException, Request, status
@@ -139,7 +139,7 @@ async def handle_stripe_webhook(request: Request) -> dict[str, bool]:
     return {"success": True, "duplicate": False}
 
 
-def _extract_tenant_hint(event: dict) -> str | None:
+def _extract_tenant_hint(event: dict[str, Any]) -> str | None:
     data_object = (event.get("data") or {}).get("object") or {}
     metadata = data_object.get("metadata") or {}
     tenant = metadata.get("tenant_id") or metadata.get("tenant")
@@ -148,7 +148,7 @@ def _extract_tenant_hint(event: dict) -> str | None:
     return None
 
 
-def _extract_created(event: dict) -> datetime | None:
+def _extract_created(event: dict[str, Any]) -> datetime | None:
     created = event.get("created")
     if created is None:
         return None

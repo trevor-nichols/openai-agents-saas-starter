@@ -106,8 +106,8 @@ jobs:
       - name: CLI unit tests
         run: hatch run pytest anything-agents/tests/unit/cli
 
-      - name: Static typing (Pyright)
-        run: hatch run pyright
+      - name: Static typing (Pyright + Mypy)
+        run: hatch run typecheck
 
       - name: Run backend tests
         run: hatch run test

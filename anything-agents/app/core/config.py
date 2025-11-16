@@ -4,6 +4,7 @@
 # Used by: main.py and other modules requiring configuration
 
 import json
+from collections.abc import Mapping
 from functools import lru_cache
 
 from pydantic import Field, ValidationInfo, field_validator
@@ -971,21 +972,29 @@ class Settings(BaseSettings):
 
     @field_validator("stripe_product_price_map", mode="before")
     @classmethod
-    def _parse_price_map(cls, value):  # type: ignore[override]
+    def _parse_price_map(
+        cls, value: Mapping[str, str] | str | None
+    ) -> dict[str, str]:
         if value is None or value == {}:
             return {}
-        if isinstance(value, dict):
-            return value
+        if isinstance(value, Mapping):
+            return {str(plan): str(price) for plan, price in value.items()}
 
         if isinstance(value, str):
             text = value.strip()
             if not text:
                 return {}
             try:
-                parsed = json.loads(text)
+                parsed_json = json.loads(text)
             except json.JSONDecodeError:
-                parsed = cls._parse_price_map_csv(text)
-            return parsed
+                return cls._parse_price_map_csv(text)
+            if not isinstance(parsed_json, dict):
+                raise ValueError(
+                    "STRIPE_PRODUCT_PRICE_MAP JSON payload must decode to a mapping."
+                )
+            return {
+                str(plan): str(price) for plan, price in parsed_json.items()
+            }
 
         raise ValueError(
             "STRIPE_PRODUCT_PRICE_MAP must be a mapping, JSON string, or comma-delimited list."

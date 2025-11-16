@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from typing import Protocol
+from typing import Protocol, cast
 from uuid import UUID
 
 from redis.asyncio import Redis
 
 from app.core.config import Settings
 from app.domain.auth import RefreshTokenRecord
+from app.infrastructure.redis_types import RedisBytesClient
 
 
 class RefreshTokenCache(Protocol):
@@ -39,7 +40,7 @@ class NullRefreshTokenCache:
 class RedisRefreshTokenCache:
     """Redis cache for refresh tokens, keyed by account/tenant/scope."""
 
-    def __init__(self, client: Redis, *, prefix: str = "auth:refresh") -> None:
+    def __init__(self, client: RedisBytesClient, *, prefix: str = "auth:refresh") -> None:
         self._client = client
         self._prefix = prefix
 
@@ -101,5 +102,12 @@ class RedisRefreshTokenCache:
 def build_refresh_token_cache(settings: Settings) -> RefreshTokenCache:
     if not settings.redis_url:
         return NullRefreshTokenCache()
-    client = Redis.from_url(settings.redis_url, encoding="utf-8", decode_responses=False)
+    client = cast(
+        RedisBytesClient,
+        Redis.from_url(
+            settings.redis_url,
+            encoding="utf-8",
+            decode_responses=False,
+        ),
+    )
     return RedisRefreshTokenCache(client)

@@ -2,6 +2,7 @@
 
 import logging
 from contextlib import asynccontextmanager
+from typing import cast
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -34,6 +35,7 @@ from app.infrastructure.persistence.stripe.repository import (
     configure_stripe_event_repository,
 )
 from app.infrastructure.persistence.tenants import PostgresTenantSettingsRepository
+from app.infrastructure.redis_types import RedisBytesClient
 from app.infrastructure.security.vault_kv import configure_vault_secret_manager
 from app.middleware.logging import LoggingMiddleware
 from app.presentation import health as health_routes
@@ -114,10 +116,13 @@ async def lifespan(app: FastAPI):
     stripe_repo: StripeEventRepository | None = None
 
     if settings.redis_url:
-        rate_limit_client = Redis.from_url(
-            settings.redis_url,
-            encoding="utf-8",
-            decode_responses=False,
+        rate_limit_client = cast(
+            RedisBytesClient,
+            Redis.from_url(
+                settings.redis_url,
+                encoding="utf-8",
+                decode_responses=False,
+            ),
         )
         container.rate_limiter.configure(
             redis=rate_limit_client,

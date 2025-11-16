@@ -104,11 +104,12 @@ class ServiceAccountTokenService:
 
             issued_at = now
             expires_at = issued_at + timedelta(minutes=ttl_minutes)
+            jti = str(uuid4())
             payload = {
                 "sub": f"service-account:{account}",
                 "account": account,
                 "token_use": "refresh",
-                "jti": str(uuid4()),
+                "jti": jti,
                 "scope": " ".join(sanitized_scopes),
                 "iat": int(issued_at.timestamp()),
                 "nbf": int(issued_at.timestamp()),
@@ -147,7 +148,7 @@ class ServiceAccountTokenService:
                 fingerprint=fingerprint,
                 signing_kid=signed.primary.kid,
                 session_id=None,
-                jti=payload["jti"],
+                jti=jti,
                 require=False,
             )
 

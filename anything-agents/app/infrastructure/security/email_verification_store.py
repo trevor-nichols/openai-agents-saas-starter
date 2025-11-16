@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from typing import Final
+from typing import Final, cast
 from uuid import UUID
 
 from redis.asyncio import Redis
@@ -14,10 +14,11 @@ from app.domain.email_verification import (
     EmailVerificationTokenRecord,
     EmailVerificationTokenStore,
 )
+from app.infrastructure.redis_types import RedisStrClient
 
 
 class RedisEmailVerificationTokenStore(EmailVerificationTokenStore):
-    def __init__(self, client: Redis, *, prefix: str = "auth:emailverify") -> None:
+    def __init__(self, client: RedisStrClient, *, prefix: str = "auth:emailverify") -> None:
         self._client = client
         self._prefix = prefix.rstrip(":")
 
@@ -70,7 +71,14 @@ def get_email_verification_token_store(
     cached = _STORE_CACHE.get(redis_url)
     if cached:
         return cached
-    client = Redis.from_url(redis_url, encoding="utf-8", decode_responses=True)
+    client = cast(
+        RedisStrClient,
+        Redis.from_url(
+            redis_url,
+            encoding="utf-8",
+            decode_responses=True,
+        ),
+    )
     store = RedisEmailVerificationTokenStore(client)
     _STORE_CACHE[redis_url] = store
     return store

@@ -12,10 +12,9 @@ from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Protocol
 
-from redis.asyncio import Redis
-
 from app.infrastructure.persistence.stripe.models import StripeEvent, StripeEventStatus
 from app.infrastructure.persistence.stripe.repository import StripeEventRepository
+from app.infrastructure.redis_types import RedisBytesClient
 from app.observability.metrics import (
     observe_stripe_webhook_event,
     record_billing_stream_backlog,
@@ -29,6 +28,7 @@ from app.services.stripe_event_models import (
 )
 
 logger = logging.getLogger("anything-agents.services.billing_events")
+JSONDict = dict[str, Any]
 
 
 @dataclass(slots=True)
@@ -105,7 +105,7 @@ class BillingEventBackend(Protocol):
 class RedisBillingEventStream:
     def __init__(
         self,
-        redis: Redis,
+        redis: RedisBytesClient,
         stream_key: str,
         *,
         backlog_batch_size: int = 128,
@@ -170,7 +170,9 @@ class RedisBillingEventStream:
         if len(entries) < self._backlog_batch_size:
             self._backlog_exhausted = True
 
-    async def _read_new_entries(self, block_ms: int | None) -> list[tuple[str, dict]]:
+    async def _read_new_entries(
+        self, block_ms: int | None
+    ) -> list[tuple[str, dict[str | bytes, Any]]]:
         streams = await self._redis.xread(
             {self._stream_key: self._last_id},
             count=1,
@@ -181,7 +183,7 @@ class RedisBillingEventStream:
         _, entries = streams[0]
         return entries
 
-    def _decode_entry(self, fields: dict) -> str | None:
+    def _decode_entry(self, fields: dict[str | bytes, Any]) -> str | None:
         data = fields.get("data") or fields.get(b"data")
         if data is None:
             return None
@@ -203,7 +205,7 @@ class RedisBillingEventStream:
 class RedisBillingEventBackend:
     def __init__(
         self,
-        redis: Redis,
+        redis: RedisBytesClient,
         *,
         stream_max_length: int = 1024,
         stream_ttl_seconds: int = 86400,
@@ -306,7 +308,7 @@ class BillingEventsService:
     async def publish_from_event(
         self,
         record: StripeEvent,
-        payload: dict,
+        payload: JSONDict,
         context: DispatchBroadcastContext | None = None,
     ) -> None:
         if not self._enabled or not self._backend:
@@ -325,7 +327,7 @@ class BillingEventsService:
     async def _publish(
         self,
         record: StripeEvent,
-        payload: dict,
+        payload: JSONDict,
         context: DispatchBroadcastContext | None,
         *,
         source: str,
@@ -387,7 +389,7 @@ class BillingEventsService:
             raise RuntimeError("Billing events backend not configured.")
         return await self._backend.subscribe(self._channel(tenant_id))
 
-    async def publish_raw(self, tenant_id: str, message: dict) -> None:
+    async def publish_raw(self, tenant_id: str, message: JSONDict) -> None:
         """Test-only helper to inject events directly into the backend."""
 
         if not self._backend:
@@ -451,7 +453,7 @@ class BillingEventsService:
         return self._repository
 
     def _derive_artifacts_from_payload(
-        self, event_type: str, data_object: dict
+        self, event_type: str, data_object: JSONDict
     ) -> tuple[
         BillingEventSubscription | None,
         BillingEventInvoice | None,
@@ -469,7 +471,7 @@ class BillingEventsService:
         return subscription, invoice, usage
 
     def _subscription_payload_from_object(
-        self, data_obj: dict
+        self, data_obj: JSONDict
     ) -> BillingEventSubscription | None:
         if not data_obj:
             return None
@@ -490,7 +492,7 @@ class BillingEventsService:
             cancel_at=self._iso(self._coerce_datetime(data_obj.get("cancel_at"))),
         )
 
-    def _invoice_payload_from_object(self, invoice_obj: dict) -> BillingEventInvoice | None:
+    def _invoice_payload_from_object(self, invoice_obj: JSONDict) -> BillingEventInvoice | None:
         if not invoice_obj:
             return None
         amount_due = invoice_obj.get("amount_due")
@@ -510,7 +512,7 @@ class BillingEventsService:
             period_end=self._iso(self._coerce_datetime(invoice_obj.get("period_end"))),
         )
 
-    def _usage_from_invoice_object(self, invoice_obj: dict) -> list[BillingEventUsage]:
+    def _usage_from_invoice_object(self, invoice_obj: JSONDict) -> list[BillingEventUsage]:
         lines = ((invoice_obj.get("lines") or {}).get("data")) or []
         usage_entries: list[BillingEventUsage] = []
         for index, line in enumerate(lines):
@@ -550,7 +552,7 @@ class BillingEventsService:
             )
         return usage_entries
 
-    def _extract_plan_code(self, data_obj: dict) -> str | None:
+    def _extract_plan_code(self, data_obj: JSONDict) -> str | None:
         items = ((data_obj.get("items") or {}).get("data")) or []
         if items:
             price = items[0].get("price") or {}
@@ -570,7 +572,7 @@ class BillingEventsService:
             or plan.get("id")
         )
 
-    def _extract_quantity(self, data_obj: dict) -> int | None:
+    def _extract_quantity(self, data_obj: JSONDict) -> int | None:
         items = ((data_obj.get("items") or {}).get("data")) or []
         if items:
             quantity = items[0].get("quantity")
@@ -597,13 +599,14 @@ class BillingEventsService:
     def _normalize_payload(
         self,
         record: StripeEvent,
-        payload: dict,
+        payload: JSONDict,
         context: DispatchBroadcastContext | None,
     ) -> BillingEventPayload | None:
         tenant_id = context.tenant_id if context else record.tenant_hint
         if tenant_id is None:
             return None
-        data_object = (payload.get("data") or {}).get("object") or {}
+        data_container = _as_dict(payload.get("data"))
+        data_object = _as_dict(data_container.get("object"))
         context_status = context.status if context else None
         context_summary = context.summary if context else None
         status = context_status or data_object.get("status") or data_object.get("billing_reason")
@@ -740,3 +743,5 @@ class _BillingEventsServiceHandle:
 
 
 billing_events_service = _BillingEventsServiceHandle()
+def _as_dict(value: Any) -> JSONDict:
+    return value if isinstance(value, dict) else {}

@@ -1,5 +1,7 @@
 """Unit tests for application configuration settings."""
 
+from typing import Any, cast
+
 import pytest
 
 from app.core.config import Settings
@@ -15,7 +17,7 @@ def sanitized_settings(**overrides) -> Settings:
     """Return a Settings copy with deterministic, test-friendly values."""
 
     base = make_settings()
-    defaults = {
+    defaults: dict[str, object | None] = {
         "stripe_secret_key": None,
         "stripe_webhook_secret": None,
         "stripe_product_price_map": {},
@@ -60,7 +62,7 @@ def test_auth_audience_validation_errors(bad_value: object) -> None:
     """Invalid audience configuration raises a validation error."""
 
     with pytest.raises(ValueError):
-        make_settings(auth_audience=bad_value)  # type: ignore[arg-type]
+        make_settings(auth_audience=cast(Any, bad_value))
 
 
 def test_required_stripe_envs_missing_detects_blanks() -> None:

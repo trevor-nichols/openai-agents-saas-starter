@@ -253,7 +253,7 @@ class StripeClient:
                     duration_seconds=time.perf_counter() - start,
                 )
                 return result
-            except StripeLibraryError as exc:  # type: ignore[misc]
+            except StripeLibraryError as exc:
                 observe_stripe_api_call(
                     operation=operation,
                     result=_stripe_error_code(exc),

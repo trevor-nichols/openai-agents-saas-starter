@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
+from typing import Any
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
@@ -235,7 +236,7 @@ async def _publish_invoice_event(service: BillingEventsService) -> None:
     await service.publish_from_event(record, record.payload, context=context)
 
 
-def _extract_event_payload(stream_buffer: str) -> dict:
+def _extract_event_payload(stream_buffer: str) -> dict[str, Any]:
     for block in stream_buffer.split("\n\n"):
         if block.startswith("data:"):
             raw = block.replace("data:", "", 1).strip()

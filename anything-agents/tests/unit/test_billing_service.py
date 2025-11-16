@@ -98,7 +98,16 @@ class FakeGateway(PaymentGateway):
 
 
 class ErrorGateway(FakeGateway):
-    async def start_subscription(self, **_: object) -> SubscriptionProvisionResult:  # type: ignore[override]
+    async def start_subscription(
+        self,
+        *,
+        tenant_id: str,
+        plan_code: str,
+        billing_email: str | None,
+        auto_renew: bool,
+        seat_count: int | None,
+        trial_days: int | None,
+    ) -> SubscriptionProvisionResult:
         raise PaymentGatewayError("boom")
 
 

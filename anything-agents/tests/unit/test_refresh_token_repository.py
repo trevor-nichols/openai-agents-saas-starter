@@ -3,10 +3,12 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from types import MethodType
+from typing import Any, cast
 from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.core.config import Settings
@@ -27,7 +29,8 @@ def _build_repo() -> PostgresRefreshTokenRepository:
     )
 
     # session_factory is never invoked in these unit tests; provide a stub callable.
-    repo = PostgresRefreshTokenRepository(lambda: None, settings)  # type: ignore[arg-type]
+    session_factory = cast(async_sessionmaker[AsyncSession], lambda: None)
+    repo = PostgresRefreshTokenRepository(session_factory, settings)
     return repo
 
 
@@ -64,7 +67,11 @@ def test_rehydrate_service_account_token_includes_original_claims(monkeypatch) -
         scope_key="conversations:read",
     )
 
-    def fake_encode(self, payload, signing_kid):  # type: ignore[no-untyped-def]
+    def fake_encode(
+        self: PostgresRefreshTokenRepository,
+        payload: dict[str, Any],
+        signing_kid: str,
+    ) -> str:
         assert payload == expected_payload
         assert signing_kid == "kid-1"
         return expected_token
@@ -75,7 +82,7 @@ def test_rehydrate_service_account_token_includes_original_claims(monkeypatch) -
         MethodType(fake_encode, repo),
     )
 
-    def new_verify(token: str, hashed: str, pepper: str) -> bool:
+    def new_verify(token: str, hashed: str, *, pepper: str) -> bool:
         return token == expected_token and hashed == "stored-hash-service"
     monkeypatch.setattr(
         repository_module,
@@ -122,7 +129,11 @@ def test_rehydrate_user_token_preserves_user_subject(monkeypatch) -> None:
         scope_key="conversations:write",
     )
 
-    def fake_encode(self, payload, signing_kid):  # type: ignore[no-untyped-def]
+    def fake_encode(
+        self: PostgresRefreshTokenRepository,
+        payload: dict[str, Any],
+        signing_kid: str,
+    ) -> str:
         assert payload == expected_payload
         assert signing_kid == "kid-2"
         return expected_token
@@ -133,7 +144,7 @@ def test_rehydrate_user_token_preserves_user_subject(monkeypatch) -> None:
         MethodType(fake_encode, repo),
     )
 
-    def new_verify(token: str, hashed: str, pepper: str) -> bool:
+    def new_verify(token: str, hashed: str, *, pepper: str) -> bool:
         return token == expected_token and hashed == "stored-hash-user"
     monkeypatch.setattr(
         repository_module,

@@ -153,11 +153,18 @@ class SetupWizard:
                 blocked_reasons=blockers if enabled else None,
             )
             if override is not None:
-                console.info(f"{phase.value} automation { 'enabled' if enabled else 'disabled'} via {source}.", topic="wizard")
+                state = "enabled" if enabled else "disabled"
+                console.info(
+                    f"{phase.value} automation {state} via {source}.",
+                    topic="wizard",
+                )
             if blockers and enabled:
                 blocker_list = ", ".join(blockers)
                 console.warn(
-                    f"{phase.value.capitalize()} automation blocked due to missing dependencies: {blocker_list}.",
+                    (
+                        f"{phase.value.capitalize()} automation blocked due to "
+                        f"missing dependencies: {blocker_list}."
+                    ),
                     topic="wizard",
                 )
             elif enabled:

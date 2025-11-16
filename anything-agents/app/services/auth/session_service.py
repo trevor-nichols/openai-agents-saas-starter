@@ -261,6 +261,7 @@ class UserSessionService:
         audience = settings.auth_audience or [settings.app_name]
         session_uuid = session_id or uuid4()
         fingerprint = self._fingerprint(ip_address, user_agent)
+        access_jti = str(uuid4())
         access_payload = {
             "sub": f"user:{auth_user.user_id}",
             "tenant_id": str(auth_user.tenant_id),
@@ -269,7 +270,7 @@ class UserSessionService:
             "token_use": "access",
             "iss": settings.app_name,
             "aud": audience,
-            "jti": str(uuid4()),
+            "jti": access_jti,
             "email_verified": auth_user.email_verified,
             "sid": str(session_uuid),
             "iat": int(issued_at.timestamp()),
@@ -281,6 +282,7 @@ class UserSessionService:
         refresh_ttl = getattr(settings, "auth_refresh_token_ttl_minutes", 43200)
         refresh_expires = issued_at + timedelta(minutes=refresh_ttl)
         account = self._user_account_key(auth_user.user_id)
+        refresh_jti = str(uuid4())
         refresh_payload = {
             "sub": f"user:{auth_user.user_id}",
             "tenant_id": str(auth_user.tenant_id),
@@ -288,7 +290,7 @@ class UserSessionService:
             "token_use": "refresh",
             "iss": settings.app_name,
             "email_verified": auth_user.email_verified,
-            "jti": str(uuid4()),
+            "jti": refresh_jti,
             "iat": int(issued_at.timestamp()),
             "nbf": int(issued_at.timestamp()),
             "exp": int(refresh_expires.timestamp()),
@@ -301,7 +303,7 @@ class UserSessionService:
             session_id=session_uuid,
             user_id=auth_user.user_id,
             tenant_id=auth_user.tenant_id,
-            refresh_jti=refresh_payload["jti"],
+            refresh_jti=refresh_jti,
             fingerprint=fingerprint,
             ip_address=ip_address,
             user_agent=user_agent,
@@ -317,7 +319,7 @@ class UserSessionService:
             fingerprint=fingerprint,
             signing_kid=signed_refresh.primary.kid,
             session_id=session_uuid,
-            jti=refresh_payload["jti"],
+            jti=refresh_jti,
         )
 
         log_event(

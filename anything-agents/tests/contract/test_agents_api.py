@@ -171,7 +171,7 @@ def test_chat_rate_limit_blocks(monkeypatch: pytest.MonkeyPatch) -> None:
 
     invocation = {"count": 0}
 
-    async def _fake_enforce(quota, key_parts):  # type: ignore[unused-argument]
+    async def _fake_enforce(quota, _key_parts):
         invocation["count"] += 1
         if invocation["count"] > quota.limit:
             raise RateLimitExceeded(
@@ -184,7 +184,7 @@ def test_chat_rate_limit_blocks(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(rate_limiter, "enforce", _fake_enforce)
     monkeypatch.setattr(chat_router, "get_settings", lambda: _SettingsStub())
 
-    async def _fake_chat(request):  # type: ignore[unused-argument]
+    async def _fake_chat(_request):
         return AgentChatResponse(
             response="ok",
             conversation_id="rl-test",

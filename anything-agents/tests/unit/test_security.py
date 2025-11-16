@@ -109,9 +109,8 @@ def test_verifier_rejects_token_signed_with_next_key() -> None:
         pytest.skip("Test keyset does not define a next key with private material.")
 
     headers = {"kid": next_material.kid, "alg": "EdDSA", "typ": "JWT"}
-    token = jwt.encode(_payload(), next_material.private_key, algorithm="EdDSA", headers=headers)
-    if isinstance(token, bytes):
-        token = token.decode("utf-8")
+    encoded = jwt.encode(_payload(), next_material.private_key, algorithm="EdDSA", headers=headers)
+    token = encoded.decode("utf-8") if isinstance(encoded, bytes) else encoded
     verifier = get_token_verifier()
 
     with pytest.raises(TokenVerifierError):

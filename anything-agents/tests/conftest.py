@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import os
 from collections import defaultdict
-from collections.abc import Generator, Iterable
+from collections.abc import Generator
 from pathlib import Path
 
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
@@ -180,7 +180,7 @@ class EphemeralConversationRepository(ConversationRepository):
     async def list_conversation_ids(self) -> list[str]:
         return list(self._messages.keys())
 
-    async def iter_conversations(self) -> Iterable[ConversationRecord]:
+    async def iter_conversations(self) -> list[ConversationRecord]:
         return [
             ConversationRecord(conversation_id=cid, messages=list(messages))
             for cid, messages in self._messages.items()

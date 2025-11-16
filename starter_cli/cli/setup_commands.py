@@ -13,6 +13,7 @@ from .setup import (
     merge_answer_overrides,
 )
 from .setup.automation import AutomationPhase
+from .setup.inputs import InputProvider
 from .setup.wizard import PROFILE_CHOICES
 
 
@@ -95,7 +96,10 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         action="store_const",
         const=True,
         default=None,
-        help="Automatically manage the Vault dev signer (start/stop) when Vault verification is enabled.",
+        help=(
+            "Automatically manage the Vault dev signer (start/stop) when "
+            "Vault verification is enabled."
+        ),
     )
     wizard_parser.add_argument(
         "--no-auto-secrets",
@@ -129,7 +133,7 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
     if args.var:
         answers = merge_answer_overrides(answers, args.var)
 
-    provider = None
+    provider: InputProvider | None = None
     if args.report_only:
         console.info("Report-only mode selected; skipping wizard prompts.", topic="wizard")
     elif args.non_interactive:

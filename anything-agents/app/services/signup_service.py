@@ -347,11 +347,11 @@ class SignupService:
     ) -> int | None:
         settings = self._get_settings()
         plan_trial_days = await self._lookup_plan_trial_days(plan_code)
-        max_allowed = (
-            plan_trial_days
-            if plan_trial_days is not None
-            else settings.signup_default_trial_days
-        )
+        max_allowed: int | None
+        if plan_trial_days is not None:
+            max_allowed = plan_trial_days
+        else:
+            max_allowed = settings.signup_default_trial_days
         max_allowed = max_allowed if max_allowed and max_allowed > 0 else None
 
         if not settings.allow_signup_trial_override or requested_trial_days is None:

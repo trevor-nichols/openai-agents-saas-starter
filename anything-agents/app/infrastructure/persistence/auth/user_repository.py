@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import UTC, datetime
-from typing import Protocol
+from typing import Protocol, cast
 
 from redis.asyncio import Redis
 from sqlalchemy import delete, select, update
@@ -32,6 +32,10 @@ from app.infrastructure.persistence.auth.models import (
     UserLoginEvent,
     UserProfile,
 )
+from app.infrastructure.persistence.auth.models import (
+    UserStatus as DBUserStatus,
+)
+from app.infrastructure.redis_types import RedisBytesClient
 
 logger = logging.getLogger("anything-agents.persistence.users")
 
@@ -68,7 +72,7 @@ class NullLockoutStore:
 class RedisLockoutStore:
     """Redis-backed counter and lock management for login attempts."""
 
-    def __init__(self, client: Redis, *, prefix: str = "auth:lockout") -> None:
+    def __init__(self, client: RedisBytesClient, *, prefix: str = "auth:lockout") -> None:
         self._client = client
         self._prefix = prefix
 
@@ -116,7 +120,7 @@ class PostgresUserRepository(UserRepository):
                     email=normalized_email,
                     password_hash=payload.password_hash,
                     password_pepper_version=payload.password_pepper_version,
-                    status=payload.status,
+                    status=DBUserStatus(payload.status.value),
                 )
                 session.add(user)
                 await session.flush()
@@ -158,11 +162,12 @@ class PostgresUserRepository(UserRepository):
         return record
 
     async def update_user_status(self, user_id: uuid.UUID, status: UserStatus) -> None:
+        db_status = DBUserStatus(status.value)
         async with self._session_factory() as session:
             await session.execute(
                 update(UserAccount)
                 .where(UserAccount.id == user_id)
-                .values(status=status, updated_at=datetime.now(UTC))
+                .values(status=db_status, updated_at=datetime.now(UTC))
             )
             await session.commit()
 
@@ -346,8 +351,8 @@ class PostgresUserRepository(UserRepository):
             if not user:
                 return
             user.email_verified_at = timestamp
-            if user.status == UserStatus.PENDING:
-                user.status = UserStatus.ACTIVE  # type: ignore[assignment]
+            if user.status == DBUserStatus.PENDING:
+                user.status = DBUserStatus.ACTIVE
             user.updated_at = timestamp
             await session.commit()
 
@@ -355,7 +360,14 @@ class PostgresUserRepository(UserRepository):
 def build_lockout_store(settings: Settings) -> LockoutStore:
     if not settings.redis_url:
         raise RuntimeError("redis_url is required to build the lockout store.")
-    client = Redis.from_url(settings.redis_url, encoding="utf-8", decode_responses=False)
+    client = cast(
+        RedisBytesClient,
+        Redis.from_url(
+            settings.redis_url,
+            encoding="utf-8",
+            decode_responses=False,
+        ),
+    )
     return RedisLockoutStore(client)
 
 

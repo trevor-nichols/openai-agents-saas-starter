@@ -15,13 +15,16 @@ if TYPE_CHECKING:  # pragma: no cover - type checking only
 
 @dataclass(slots=True)
 class InfraSession:
-    context: "WizardContext"
+    context: WizardContext
     compose_started: bool = False
     vault_started: bool = False
 
     def ensure_compose(self) -> None:
         record = self.context.automation.get(AutomationPhase.INFRA)
-        if not record.enabled or record.status not in {AutomationStatus.PENDING, AutomationStatus.RUNNING}:
+        if not record.enabled or record.status not in {
+            AutomationStatus.PENDING,
+            AutomationStatus.RUNNING,
+        }:
             return
         note = "Starting Docker compose stack (Postgres + Redis)"
         self.context.automation.update(AutomationPhase.INFRA, AutomationStatus.RUNNING, note)

@@ -252,10 +252,9 @@ class EdDSATokenSigner(TokenSigner):
         private_key = material.private_key
         if private_key is None:
             raise TokenSignerError("Active key material is missing a private key")
-        token = jwt.encode(payload, private_key, algorithm="EdDSA", headers=headers)
-        if isinstance(token, bytes):
-            token = token.decode("utf-8")
-        return SignedToken(token=token, kid=material.kid)
+        encoded = jwt.encode(payload, private_key, algorithm="EdDSA", headers=headers)
+        token_str = encoded.decode("utf-8") if isinstance(encoded, bytes) else encoded
+        return SignedToken(token=token_str, kid=material.kid)
 
 
 class EdDSATokenVerifier(TokenVerifier):

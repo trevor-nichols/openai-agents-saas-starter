@@ -4,19 +4,20 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from typing import Final
+from typing import Final, cast
 from uuid import UUID
 
 from redis.asyncio import Redis
 
 from app.core.config import Settings, get_settings
 from app.domain.password_reset import PasswordResetTokenRecord, PasswordResetTokenStore
+from app.infrastructure.redis_types import RedisStrClient
 
 
 class RedisPasswordResetTokenStore(PasswordResetTokenStore):
     """Persists password reset tokens in Redis with TTL enforcement."""
 
-    def __init__(self, client: Redis, *, prefix: str = "auth:pwdreset") -> None:
+    def __init__(self, client: RedisStrClient, *, prefix: str = "auth:pwdreset") -> None:
         self._client = client
         self._prefix = prefix.rstrip(":")
 
@@ -67,7 +68,14 @@ def get_password_reset_token_store(settings: Settings | None = None) -> Password
     cached = _STORE_CACHE.get(redis_url)
     if cached:
         return cached
-    client = Redis.from_url(redis_url, encoding="utf-8", decode_responses=True)
+    client = cast(
+        RedisStrClient,
+        Redis.from_url(
+            redis_url,
+            encoding="utf-8",
+            decode_responses=True,
+        ),
+    )
     store = RedisPasswordResetTokenStore(client)
     _STORE_CACHE[redis_url] = store
     return store

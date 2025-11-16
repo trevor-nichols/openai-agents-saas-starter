@@ -8,6 +8,7 @@ from functools import lru_cache
 from importlib import resources
 from importlib.abc import Traversable
 from pathlib import Path
+from typing import Any
 
 import yaml
 from pydantic import BaseModel, Field, ValidationError, model_validator
@@ -66,7 +67,7 @@ def _catalog_path(custom_path: Path | None = None) -> CatalogResource:
     return package.joinpath("service_accounts.yaml")
 
 
-def _load_raw_catalog(resource: CatalogResource) -> dict:
+def _load_raw_catalog(resource: CatalogResource) -> dict[str, Any]:
     try:
         raw_text = resource.read_text(encoding="utf-8")
     except FileNotFoundError as exc:
@@ -95,7 +96,12 @@ def load_service_account_registry(path: Path | None = None) -> ServiceAccountReg
 
     catalog_path = _catalog_path(path)
     raw = _load_raw_catalog(catalog_path)
-    entries = raw.get("service_accounts", [])
+    entries_raw = raw.get("service_accounts", [])
+    if not isinstance(entries_raw, list):
+        raise ServiceAccountCatalogError("'service_accounts' must be a list.")
+    entries: list[dict[str, Any]] = [
+        entry for entry in entries_raw if isinstance(entry, dict)
+    ]
 
     definitions: dict[str, ServiceAccountDefinition] = {}
 

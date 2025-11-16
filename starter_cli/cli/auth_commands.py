@@ -4,7 +4,7 @@ import argparse
 import json
 import os
 import sys
-from typing import Any
+from typing import Any, TypeAlias
 
 import httpx
 from starter_shared.keys import (
@@ -18,7 +18,7 @@ from starter_shared.vault_kv import configure_vault_secret_manager
 from .common import CLIContext, CLIError, build_context, build_vault_headers
 from .console import console
 
-ParserSubparsers = argparse._SubParsersAction
+ParserSubparsers: TypeAlias = argparse._SubParsersAction[argparse.ArgumentParser]
 
 
 def register(subparsers: ParserSubparsers) -> None:

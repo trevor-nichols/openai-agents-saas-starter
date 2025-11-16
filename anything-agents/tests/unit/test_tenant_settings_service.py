@@ -34,9 +34,12 @@ async def test_update_settings_validates_email() -> None:
     service = TenantSettingsService(repository=repository)
 
     with pytest.raises(TenantSettingsValidationError):
+        invalid_contacts: list[dict[str, object]] = [
+            {"name": "Example", "email": "invalid"},
+        ]
         await service.update_settings(
             "tenant-1",
-            billing_contacts=[{"name": "Example", "email": "invalid"}],
+            billing_contacts=invalid_contacts,
             billing_webhook_url="https://example.com/webhook",
             plan_metadata={},
             flags={},
@@ -66,16 +69,17 @@ async def test_update_settings_persists_normalized_payload() -> None:
     )
     service = TenantSettingsService(repository=repository)
 
+    contacts_input: list[dict[str, object]] = [
+        {
+            "name": "  Jane Smith  ",
+            "email": "JANE@example.com",
+            "role": "Owner",
+            "notify_billing": True,
+        }
+    ]
     snapshot = await service.update_settings(
         "tenant-5",
-        billing_contacts=[
-            {
-                "name": "  Jane Smith  ",
-                "email": "JANE@example.com",
-                "role": "Owner",
-                "notify_billing": True,
-            }
-        ],
+        billing_contacts=contacts_input,
         billing_webhook_url="https://hooks.example.com/billing",
         plan_metadata={"plan": "enterprise", "notes": "  priority  "},
         flags={"beta": True},
@@ -83,6 +87,8 @@ async def test_update_settings_persists_normalized_payload() -> None:
 
     assert snapshot.tenant_id == "tenant-5"
     repository.upsert.assert_awaited_once()
-    args = repository.upsert.await_args.kwargs
+    call = repository.upsert.await_args
+    assert call is not None
+    args = call.kwargs
     assert args["billing_webhook_url"] == "https://hooks.example.com/billing"
     assert args["plan_metadata"] == {"plan": "enterprise", "notes": "priority"}

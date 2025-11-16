@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import asyncio
 from threading import Lock
-from typing import Protocol
+from typing import Protocol, cast
 
 from redis.asyncio import Redis
 
 from app.core.config import Settings, get_settings
+from app.infrastructure.redis_types import RedisBytesClient
 
 
 class NonceStore(Protocol):
@@ -22,7 +23,7 @@ class NonceStore(Protocol):
 class RedisNonceStore:
     """Redis-backed nonce cache for production usage."""
 
-    def __init__(self, client: Redis, *, prefix: str = "auth:nonce") -> None:
+    def __init__(self, client: RedisBytesClient, *, prefix: str = "auth:nonce") -> None:
         self._client = client
         self._prefix = prefix
 
@@ -39,7 +40,14 @@ _STORE_CACHE_LOCK = Lock()
 def _build_nonce_store(redis_url: str) -> RedisNonceStore:
     if not redis_url:
         raise RuntimeError("redis_url is required for nonce storage.")
-    client = Redis.from_url(redis_url, encoding="utf-8", decode_responses=False)
+    client = cast(
+        RedisBytesClient,
+        Redis.from_url(
+            redis_url,
+            encoding="utf-8",
+            decode_responses=False,
+        ),
+    )
     return RedisNonceStore(client)
 
 

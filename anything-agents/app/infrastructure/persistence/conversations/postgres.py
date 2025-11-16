@@ -325,7 +325,7 @@ class PostgresConversationRepository(ConversationRepository):
         return tenant.id
 
 
-def _extract_message_content(payload: dict | str | None) -> str:
+def _extract_message_content(payload: dict[str, object] | str | None) -> str:
     if isinstance(payload, dict):
         if "text" in payload:
             return str(payload["text"])

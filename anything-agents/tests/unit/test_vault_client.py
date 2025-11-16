@@ -16,7 +16,7 @@ class MockTransport(httpx.BaseTransport):
         self._status_code = status_code
         self._payload = payload
 
-    def handle_request(self, request: httpx.Request) -> httpx.Response:  # type: ignore[override]
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
         return httpx.Response(
             status_code=self._status_code,
             content=json.dumps(self._payload),
@@ -29,7 +29,7 @@ class HeaderCaptureTransport(httpx.BaseTransport):
         self.expected_namespace = expected_namespace
         self.last_request: httpx.Request | None = None
 
-    def handle_request(self, request: httpx.Request) -> httpx.Response:  # type: ignore[override]
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
         self.last_request = request
         return httpx.Response(status_code=500, json={"errors": ["forced"]}, request=request)
 

@@ -285,7 +285,7 @@ async def billing_event_stream(
         context=context,
     )
 
-    async def event_generator() -> AsyncIterator[str]:  # type: ignore[name-defined]
+    async def event_generator() -> AsyncIterator[str]:
         async with stream_lease:
             subscription = await service.subscribe(context.tenant_id)
             keepalive_interval = 15.0

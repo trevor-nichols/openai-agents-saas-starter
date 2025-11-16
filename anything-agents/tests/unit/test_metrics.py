@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import pytest
 
 from app.observability import metrics
 
 
-def _reset_metric(metric) -> None:  # type: ignore[no-untyped-def]
-    if hasattr(metric, "_metrics"):
-        metric._metrics.clear()
-    if hasattr(metric, "_value"):
-        metric._value.set(0)  # type: ignore[attr-defined]
+def _reset_metric(metric: Any) -> None:
+    metrics = getattr(metric, "_metrics", None)
+    if metrics is not None:
+        metrics.clear()
+    value = getattr(metric, "_value", None)
+    if value is not None:
+        value.set(0)
 
 
 def test_observe_jwt_verification_records_labels() -> None:
@@ -25,8 +29,10 @@ def test_observe_jwt_verification_records_labels() -> None:
         result="success", token_use="refresh"
     )
 
-    assert counter_child._value.get() == 1  # type: ignore[attr-defined]
-    assert histogram_child._sum.get() == pytest.approx(0.05, rel=1e-3)  # type: ignore[attr-defined]
+    counter_internal = cast(Any, counter_child)
+    histogram_internal = cast(Any, histogram_child)
+    assert counter_internal._value.get() == 1
+    assert histogram_internal._sum.get() == pytest.approx(0.05, rel=1e-3)
 
 
 def test_observe_service_account_issuance_tracks_reason() -> None:
@@ -47,7 +53,8 @@ def test_observe_service_account_issuance_tracks_reason() -> None:
         reason="rate_limited",
         reused="false",
     )
-    assert counter_child._value.get() == 1  # type: ignore[attr-defined]
+    counter_internal = cast(Any, counter_child)
+    assert counter_internal._value.get() == 1
 
 
 def test_record_nonce_cache_result_increments_counters() -> None:
@@ -57,8 +64,10 @@ def test_record_nonce_cache_result_increments_counters() -> None:
     metrics.record_nonce_cache_result(hit=False)
     metrics.record_nonce_cache_result(hit=True)
 
-    assert metrics.NONCE_CACHE_MISSES_TOTAL._value.get() == 1  # type: ignore[attr-defined]
-    assert metrics.NONCE_CACHE_HITS_TOTAL._value.get() == 1  # type: ignore[attr-defined]
+    misses = cast(Any, metrics.NONCE_CACHE_MISSES_TOTAL)
+    hits = cast(Any, metrics.NONCE_CACHE_HITS_TOTAL)
+    assert misses._value.get() == 1
+    assert hits._value.get() == 1
 
 
 def test_observe_stripe_gateway_operation_records_labels() -> None:
@@ -77,4 +86,5 @@ def test_observe_stripe_gateway_operation_records_labels() -> None:
         plan_code="starter",
         result="success",
     )
-    assert counter_child._value.get() == 1  # type: ignore[attr-defined]
+    counter_internal = cast(Any, counter_child)
+    assert counter_internal._value.get() == 1

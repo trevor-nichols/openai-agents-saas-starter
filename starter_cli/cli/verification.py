@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterable
+from typing import TypedDict
 
 
 @dataclass(slots=True)
@@ -15,14 +16,27 @@ class VerificationArtifact:
     detail: str | None = None
     source: str | None = None
     timestamp: str = field(
-        default_factory=lambda: datetime.now(timezone.utc)
+        default_factory=lambda: datetime.now(UTC)
         .isoformat(timespec="seconds")
         .replace("+00:00", "Z")
     )
 
 
-def artifacts_to_dict(artifacts: Iterable[VerificationArtifact]) -> list[dict]:
-    return [asdict(artifact) for artifact in artifacts]
+def artifacts_to_dict(artifacts: Iterable[VerificationArtifact]) -> list[VerificationArtifactDict]:
+    dicts: list[VerificationArtifactDict] = []
+    for artifact in artifacts:
+        raw = asdict(artifact)
+        dicts.append(
+            VerificationArtifactDict(
+                provider=str(raw["provider"]),
+                identifier=str(raw["identifier"]),
+                status=str(raw["status"]),
+                detail=raw.get("detail"),
+                source=raw.get("source"),
+                timestamp=str(raw["timestamp"]),
+            )
+        )
+    return dicts
 
 
 def load_verification_artifacts(path: Path) -> list[VerificationArtifact]:
@@ -68,3 +82,10 @@ __all__ = [
     "save_verification_artifacts",
     "append_verification_artifact",
 ]
+class VerificationArtifactDict(TypedDict):
+    provider: str
+    identifier: str
+    status: str
+    detail: str | None
+    source: str | None
+    timestamp: str

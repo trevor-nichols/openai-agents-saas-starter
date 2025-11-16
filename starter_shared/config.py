@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from importlib import import_module
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, cast, runtime_checkable
 
 from starter_shared.secrets.models import (
     AWSSecretsManagerConfig,
@@ -77,15 +77,17 @@ class StarterSettingsProtocol(Protocol):
     def required_stripe_envs_missing(self) -> list[str]: ...
 
 
-def _resolve_settings_class():
+def _resolve_settings_class() -> type[StarterSettingsProtocol]:
     try:
         module = import_module("app.core.config")
     except ModuleNotFoundError as exc:  # pragma: no cover - defensive
         raise RuntimeError("FastAPI settings module is unavailable") from exc
-    try:
-        return module.Settings
-    except AttributeError as exc:  # pragma: no cover - defensive
-        raise RuntimeError("app.core.config.Settings is missing") from exc
+    settings_cls: Any = getattr(module, "Settings", None)
+    if settings_cls is None:
+        raise RuntimeError("app.core.config.Settings is missing")
+    if not isinstance(settings_cls, type):
+        raise RuntimeError("app.core.config.Settings is not a class")
+    return cast(type[StarterSettingsProtocol], settings_cls)
 
 
 @lru_cache(maxsize=1)
@@ -93,7 +95,8 @@ def get_settings() -> StarterSettingsProtocol:
     """Lazily instantiate (and cache) the FastAPI settings object."""
 
     settings_cls = _resolve_settings_class()
-    return settings_cls()  # type: ignore[return-value]
+    settings = settings_cls()
+    return cast(StarterSettingsProtocol, settings)
 
 
 __all__ = ["StarterSettingsProtocol", "get_settings"]

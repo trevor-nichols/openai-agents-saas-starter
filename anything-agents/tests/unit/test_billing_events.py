@@ -158,9 +158,10 @@ def _make_event(
     stripe_event_id: str | None = None,
     event_type: str = "invoice.payment_failed",
     received_at: datetime | None = None,
-    payload: dict | None = None,
+    payload: dict[str, Any] | None = None,
 ) -> StripeEvent:
     now = received_at or datetime.now(UTC)
+    body: dict[str, Any]
     if payload is None:
         body = {
             "data": {"object": {"metadata": {"tenant_id": tenant}, "status": "failed"}}
@@ -168,7 +169,7 @@ def _make_event(
     else:
         body = payload
     if "data" not in body:
-        body = {"data": {"object": body}}
+        body = cast(dict[str, Any], {"data": {"object": body}})
     return StripeEvent(
         id=uuid.uuid4(),
         stripe_event_id=stripe_event_id or f"evt_{uuid.uuid4().hex[:8]}",
