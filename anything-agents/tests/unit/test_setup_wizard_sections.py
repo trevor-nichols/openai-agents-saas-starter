@@ -127,7 +127,7 @@ def test_core_section_extended_prompts(cli_ctx: CLIContext) -> None:
     env = context.backend_env
     assert env.get("APP_NAME") == "Acme AI"
     assert env.get("ALLOWED_METHODS") == "GET,POST"
-    assert env.get("AUTH_AUDIENCE") == "agent-api,billing"
+    assert env.get("AUTH_AUDIENCE") == '["agent-api", "billing"]'
     assert env.get("AUTH_KEY_STORAGE_BACKEND") == "secret-manager"
     assert env.get("AUTH_KEY_SECRET_NAME") == "kv/signing"
     assert env.get("DATABASE_POOL_SIZE") == "12"

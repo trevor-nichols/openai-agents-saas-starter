@@ -37,6 +37,17 @@ from app.services.email_verification_service import (
     EmailVerificationService,
     get_email_verification_service,
 )
+from app.services.invite_service import (
+    InviteEmailMismatchError,
+    InviteExpiredError,
+    InviteNotFoundError,
+    InviteRequestMismatchError,
+    InviteReservationContext,
+    InviteRevokedError,
+    InviteService,
+    InviteTokenRequiredError,
+    get_invite_service,
+)
 
 SlugGenerator = Callable[[str], str]
 
@@ -81,6 +92,7 @@ class SignupService:
         session_factory: async_sessionmaker[AsyncSession] | None = None,
         auth: AuthService | None = None,
         email_verification_service: EmailVerificationService | None = None,
+        invite_service: InviteService | None = None,
     ) -> None:
         self._billing_service = billing
         self._settings_factory = settings_factory or get_settings
@@ -88,6 +100,7 @@ class SignupService:
         self._session_factory = session_factory
         self._auth_service = auth
         self._email_verification_service = email_verification_service
+        self._invite_service = invite_service
 
     def _get_settings(self) -> Settings:
         return self._settings_factory()
@@ -101,6 +114,11 @@ class SignupService:
         if self._email_verification_service is None:
             self._email_verification_service = get_email_verification_service()
         return self._email_verification_service
+
+    def _get_invite_service(self) -> InviteService:
+        if self._invite_service is None:
+            self._invite_service = get_invite_service()
+        return self._invite_service
 
     def _get_billing_service(self) -> BillingService | None:
         if self._billing_service is None:
@@ -121,61 +139,87 @@ class SignupService:
         trial_days: int | None,
         ip_address: str | None,
         user_agent: str | None,
+        invite_token: str | None,
     ) -> SignupResult:
         settings = self._get_settings()
-        if not settings.allow_public_signup:
-            raise PublicSignupDisabledError("Public signup is disabled.")
+        invite_context: InviteReservationContext | None = None
+        if settings.signup_access_policy != "public":
+            invite_context = await self._reserve_invite_context(
+                policy=settings.signup_access_policy,
+                invite_token=invite_token,
+                email=email,
+            )
 
         try:
-            validate_password_strength(password, user_inputs=[email])
-        except PasswordPolicyError as exc:
-            raise SignupServiceError(str(exc)) from exc
+            try:
+                validate_password_strength(password, user_inputs=[email])
+            except PasswordPolicyError as exc:
+                raise SignupServiceError(str(exc)) from exc
 
-        tenant_slug = await self._ensure_unique_slug(self._slug_generator(tenant_name))
-        tenant_id, user_id = await self._provision_tenant_owner(
-            tenant_name=tenant_name.strip(),
-            tenant_slug=tenant_slug,
-            email=email,
-            password=password,
-            display_name=display_name,
-        )
+            tenant_slug = await self._ensure_unique_slug(self._slug_generator(tenant_name))
+            tenant_id, user_id = await self._provision_tenant_owner(
+                tenant_name=tenant_name.strip(),
+                tenant_slug=tenant_slug,
+                email=email,
+                password=password,
+                display_name=display_name,
+            )
 
-        resolved_plan = plan_code or settings.signup_default_plan_code
-        await self._maybe_provision_subscription(
-            tenant_id=tenant_id,
-            plan_code=resolved_plan,
-            billing_email=email,
-            requested_trial_days=trial_days,
-        )
+            resolved_plan = plan_code or settings.signup_default_plan_code
+            await self._maybe_provision_subscription(
+                tenant_id=tenant_id,
+                plan_code=resolved_plan,
+                billing_email=email,
+                requested_trial_days=trial_days,
+            )
 
-        tokens = await self._get_auth_service().login_user(
-            email=email,
-            password=password,
-            tenant_id=tenant_id,
-            ip_address=ip_address,
-            user_agent=user_agent,
-        )
+            tokens = await self._get_auth_service().login_user(
+                email=email,
+                password=password,
+                tenant_id=tenant_id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
 
-        await self._trigger_email_verification(
-            user_id=user_id,
-            ip_address=ip_address,
-            user_agent=user_agent,
-        )
+            await self._trigger_email_verification(
+                user_id=user_id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
 
-        log_event(
-            "signup.completed",
-            result="success",
-            tenant_id=tenant_id,
-            tenant_slug=tenant_slug,
-            plan_code=resolved_plan or "none",
-        )
+            log_event(
+                "signup.completed",
+                result="success",
+                tenant_id=tenant_id,
+                tenant_slug=tenant_slug,
+                plan_code=resolved_plan or "none",
+                invite_id=str(invite_context.invite.id) if invite_context else None,
+            )
 
-        return SignupResult(
-            tenant_id=tenant_id,
-            tenant_slug=tenant_slug,
-            user_id=user_id,
-            session=tokens,
-        )
+            if invite_context:
+                await invite_context.mark_succeeded(tenant_id=tenant_id, user_id=user_id)
+
+            return SignupResult(
+                tenant_id=tenant_id,
+                tenant_slug=tenant_slug,
+                user_id=user_id,
+                session=tokens,
+            )
+        except Exception:
+            await self._register_cleanup(invite_context, reason="signup_failed")
+            raise
+        finally:
+            await self._register_cleanup(invite_context, reason="signup_abandoned")
+
+    async def _register_cleanup(
+        self,
+        invite_context: InviteReservationContext | None,
+        *,
+        reason: str,
+    ) -> None:
+        if invite_context is None:
+            return
+        await invite_context.ensure_released(reason=reason)
 
     async def _trigger_email_verification(
         self,
@@ -388,6 +432,35 @@ class SignupService:
             self._session_factory = get_async_sessionmaker()
         return self._session_factory
 
+    async def _reserve_invite_context(
+        self,
+        *,
+        policy: str,
+        invite_token: str | None,
+        email: str,
+    ):
+        if policy == "public":  # pragma: no cover - guard
+            return None
+        try:
+            context = await self._get_invite_service().reserve_for_signup(
+                token=invite_token,
+                email=email,
+                require_request=policy == "approval",
+            )
+        except InviteTokenRequiredError as exc:
+            raise PublicSignupDisabledError(str(exc)) from exc
+        except InviteExpiredError as exc:
+            raise PublicSignupDisabledError(str(exc)) from exc
+        except InviteRequestMismatchError as exc:
+            raise PublicSignupDisabledError(str(exc)) from exc
+        except InviteRevokedError as exc:
+            raise PublicSignupDisabledError(str(exc)) from exc
+        except InviteNotFoundError as exc:
+            raise PublicSignupDisabledError(str(exc)) from exc
+        except InviteEmailMismatchError as exc:
+            raise PublicSignupDisabledError(str(exc)) from exc
+        return context
+
     @staticmethod
     def _default_slugify(value: str) -> str:
         normalized = value.strip().lower()
@@ -402,6 +475,7 @@ def build_signup_service(
     settings_factory: Callable[[], Settings] | None = None,
     slug_generator: SlugGenerator | None = None,
     session_factory: async_sessionmaker[AsyncSession] | None = None,
+    invite_service: InviteService | None = None,
 ) -> SignupService:
     return SignupService(
         billing=billing_service,
@@ -410,6 +484,7 @@ def build_signup_service(
         session_factory=session_factory,
         auth=auth_service,
         email_verification_service=email_verification_service,
+        invite_service=invite_service,
     )
 
 

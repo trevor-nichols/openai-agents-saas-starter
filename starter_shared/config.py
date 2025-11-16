@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from importlib import import_module
-from typing import Any, Protocol, cast, runtime_checkable
+from typing import Any, Literal, Protocol, cast, runtime_checkable
 
 from starter_shared.secrets.models import (
     AWSSecretsManagerConfig,
@@ -60,6 +60,7 @@ class StarterSettingsProtocol(Protocol):
     auth_key_secret_name: str | None
     enable_billing: bool
     enable_billing_retry_worker: bool
+    signup_access_policy: Literal["public", "invite_only", "approval"]
     allow_public_signup: bool
     signup_rate_limit_per_hour: int
 

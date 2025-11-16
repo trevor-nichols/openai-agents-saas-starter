@@ -28,6 +28,8 @@ if TYPE_CHECKING:  # pragma: no cover - type hints only
     from app.infrastructure.persistence.stripe.repository import StripeEventRepository
     from app.services.agent_service import AgentService
     from app.services.auth_service import AuthService
+    from app.services.invite_service import InviteService
+    from app.services.signup_request_service import SignupRequestService
     from app.services.signup_service import SignupService
 
 
@@ -56,6 +58,8 @@ class ApplicationContainer:
     service_account_token_service: ServiceAccountTokenService | None = None
     agent_service: AgentService | None = None
     signup_service: SignupService | None = None
+    invite_service: InviteService | None = None
+    signup_request_service: SignupRequestService | None = None
     status_subscription_service: StatusSubscriptionService | None = None
     status_alert_dispatcher: StatusAlertDispatcher | None = None
     tenant_settings_service: TenantSettingsService = field(
@@ -81,6 +85,8 @@ class ApplicationContainer:
         self.service_account_token_service = None
         self.agent_service = None
         self.signup_service = None
+        self.invite_service = None
+        self.signup_request_service = None
         self.status_subscription_service = None
         self.status_alert_dispatcher = None
 

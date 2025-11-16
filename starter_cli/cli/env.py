@@ -85,6 +85,11 @@ class EnvFile:
         if (value.startswith('"') and value.endswith('"')) or (
             value.startswith("'") and value.endswith("'")
         ):
+            if value.startswith('"'):
+                try:
+                    return json.loads(value)
+                except json.JSONDecodeError:
+                    pass
             return value[1:-1]
         if value.startswith('""') and value.endswith('""'):
             return value[3:-3]

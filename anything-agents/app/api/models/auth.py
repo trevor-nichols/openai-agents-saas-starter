@@ -52,6 +52,10 @@ class UserRegisterRequest(BaseModel):
         default=False,
         description="Indicates whether the caller accepted the Terms of Service.",
     )
+    invite_token: str | None = Field(
+        default=None,
+        description="Invite token or approval code required for invite-only deployments.",
+    )
 
     @field_validator("accept_terms")
     @classmethod
@@ -158,11 +162,134 @@ class UserSessionResponse(BaseModel):
     )
     kid: str = Field(description="Key identifier used to sign the access token.")
     refresh_kid: str = Field(description="Key identifier used to sign the refresh token.")
-    scopes: list[str] = Field(description="Scopes granted to the session.")
-    tenant_id: str = Field(description="Tenant identifier tied to the session.")
-    user_id: str = Field(description="Authenticated user identifier.")
-    email_verified: bool = Field(description="Whether the user's email has been verified.")
-    session_id: UUID = Field(description="Stable identifier for the refresh session/device.")
+    scopes: list[str] = Field(description="Authorized scopes attached to the session.")
+    tenant_id: str = Field(description="Tenant context associated with the tokens.")
+    user_id: str = Field(description="User identifier encoded in the tokens.")
+    email_verified: bool = Field(description="Whether the email has been verified.")
+    session_id: UUID = Field(description="Opaque session identifier for device tracking.")
+
+
+class SignupAccessPolicyResponse(BaseModel):
+    policy: str = Field(description="Active signup access policy.")
+    invite_required: bool = Field(description="Indicates whether an invite token is required.")
+    request_access_enabled: bool = Field(
+        description="Whether deployments expose the access-request workflow.")
+
+
+class SignupInviteIssueRequest(BaseModel):
+    invited_email: EmailStr | None = Field(
+        default=None,
+        description="Optional email restriction for the invite.",
+    )
+    max_redemptions: int = Field(
+        default=1,
+        ge=1,
+        le=10,
+        description="Maximum number of tenants that can redeem the invite.",
+    )
+    expires_in_hours: int | None = Field(
+        default=72,
+        ge=1,
+        le=24 * 14,
+        description="Invite expiry window expressed in hours.",
+    )
+    note: str | None = Field(
+        default=None,
+        max_length=512,
+        description="Operator note stored alongside the invite.",
+    )
+    signup_request_id: UUID | None = Field(
+        default=None,
+        description="Associate the invite with a previously submitted signup request.",
+    )
+
+
+class SignupInviteResponse(BaseModel):
+    id: UUID
+    token_hint: str
+    invited_email: EmailStr | None = None
+    status: str
+    max_redemptions: int
+    redeemed_count: int
+    expires_at: datetime | None = None
+    created_at: datetime
+    signup_request_id: UUID | None = None
+    note: str | None = None
+
+
+class SignupInviteIssueResponse(SignupInviteResponse):
+    invite_token: str = Field(description="Plaintext invite token (only returned once).")
+
+
+class SignupInviteListResponse(BaseModel):
+    invites: list[SignupInviteResponse]
+    total: int
+
+
+class SignupRequestPublicRequest(BaseModel):
+    email: EmailStr
+    organization: str = Field(min_length=2, max_length=128)
+    full_name: str = Field(min_length=2, max_length=128)
+    message: str | None = Field(
+        default=None,
+        max_length=1000,
+        description="Optional context describing the intended use case.",
+    )
+    accept_terms: bool = Field(description="Indicates that the requester accepted the Terms.")
+    honeypot: str | None = Field(
+        default=None,
+        description="Hidden honeypot field used to detect basic bots.",
+    )
+
+    @field_validator("accept_terms")
+    @classmethod
+    def _confirm_terms(cls, value: bool) -> bool:
+        if not value:
+            raise ValueError("Terms of Service must be accepted before requesting access.")
+        return value
+
+
+class SignupRequestResponse(BaseModel):
+    id: UUID
+    email: EmailStr
+    organization: str | None
+    full_name: str | None
+    status: str
+    created_at: datetime
+    decision_reason: str | None = None
+    invite_token_hint: str | None = None
+
+
+class SignupRequestListResponse(BaseModel):
+    requests: list[SignupRequestResponse]
+    total: int
+
+
+class SignupRequestApprovalRequest(BaseModel):
+    note: str | None = Field(
+        default=None,
+        max_length=512,
+        description="Optional note recorded alongside the invite and decision.",
+    )
+    invite_expires_in_hours: int | None = Field(
+        default=72,
+        ge=1,
+        le=24 * 14,
+        description="Optional invite expiry override in hours.",
+    )
+
+
+class SignupRequestRejectionRequest(BaseModel):
+    reason: str | None = Field(
+        default=None,
+        max_length=512,
+        description="Reason communicated to operators when rejecting a request.",
+    )
+
+
+class SignupRequestDecisionResponse(BaseModel):
+    request: SignupRequestResponse
+    invite: SignupInviteIssueResponse | None = None
 
 
 class UserRegisterResponse(UserSessionResponse):

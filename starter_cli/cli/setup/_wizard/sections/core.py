@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from starter_cli.cli.common import CLIError
 from starter_cli.cli.console import console
 from starter_cli.cli.setup._wizard.context import WizardContext
@@ -150,14 +152,14 @@ def _configure_authentication(context: WizardContext, provider: InputProvider) -
     context.set_backend_bool("REQUIRE_EMAIL_VERIFICATION", require_email)
 
     audience_default = context.current("AUTH_AUDIENCE") or _DEFAULT_AUTH_AUDIENCE
-    audience_value = _prompt_nonempty_string(
+    raw_audience = _prompt_nonempty_string(
         context,
         provider,
         key="AUTH_AUDIENCE",
         prompt="JWT audiences (comma-separated or JSON array)",
         default=audience_default,
     )
-    context.set_backend("AUTH_AUDIENCE", audience_value)
+    context.set_backend("AUTH_AUDIENCE", _normalize_audience_value(raw_audience))
 
     jwt_algorithm = _prompt_nonempty_string(
         context,
@@ -286,6 +288,25 @@ def _prompt_nonempty_string(
         if _is_headless(provider):
             raise CLIError(f"{key} cannot be blank.")
         console.warn(f"{key} cannot be blank.", topic="wizard")
+
+
+def _normalize_audience_value(raw_value: str) -> str:
+    stripped = raw_value.strip()
+    candidates: list[str] = []
+    if not stripped:
+        raise CLIError("AUTH_AUDIENCE must include at least one audience identifier.")
+    try:
+        parsed = json.loads(stripped)
+    except json.JSONDecodeError:
+        parsed = None
+    if isinstance(parsed, list):
+        candidates = [str(item).strip() for item in parsed if str(item).strip()]
+    if not candidates:
+        candidates = [part.strip() for part in stripped.split(",") if part.strip()]
+    if not candidates:
+        raise CLIError("AUTH_AUDIENCE must include at least one audience identifier.")
+    deduped = list(dict.fromkeys(candidates))
+    return json.dumps(deduped)
 
 
 def _prompt_choice(

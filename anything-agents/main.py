@@ -29,6 +29,10 @@ from app.infrastructure.persistence.auth.repository import get_refresh_token_rep
 from app.infrastructure.persistence.auth.session_repository import (
     get_user_session_repository,
 )
+from app.infrastructure.persistence.auth.signup_repository import (
+    PostgresSignupInviteRepository,
+    PostgresSignupRequestRepository,
+)
 from app.infrastructure.persistence.auth.user_repository import get_user_repository
 from app.infrastructure.persistence.billing import PostgresBillingRepository
 from app.infrastructure.persistence.conversations.postgres import (
@@ -55,8 +59,10 @@ from app.services.auth.builders import (
 from app.services.auth_service import AuthService
 from app.services.billing_events import RedisBillingEventBackend
 from app.services.email_verification_service import build_email_verification_service
+from app.services.invite_service import build_invite_service
 from app.services.password_recovery_service import build_password_recovery_service
 from app.services.payment_gateway import stripe_gateway
+from app.services.signup_request_service import build_signup_request_service
 from app.services.signup_service import build_signup_service
 from app.services.status_alert_dispatcher import build_status_alert_dispatcher
 from app.services.status_subscription_service import build_status_subscription_service
@@ -196,12 +202,25 @@ async def lifespan(app: FastAPI):
         conversation_service=container.conversation_service,
     )
 
+    invite_repository = PostgresSignupInviteRepository(session_factory)
+    request_repository = PostgresSignupRequestRepository(session_factory)
+    container.invite_service = build_invite_service(
+        repository=invite_repository,
+        settings_factory=lambda: settings,
+    )
+    container.signup_request_service = build_signup_request_service(
+        repository=request_repository,
+        invite_service=container.invite_service,
+        settings_factory=lambda: settings,
+    )
+
     container.signup_service = build_signup_service(
         billing_service=container.billing_service if settings.enable_billing else None,
         auth_service=container.auth_service,
         email_verification_service=container.email_verification_service,
         settings_factory=lambda: settings,
         session_factory=session_factory,
+        invite_service=container.invite_service,
     )
 
     status_repo = get_status_subscription_repository(settings)

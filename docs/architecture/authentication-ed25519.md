@@ -74,7 +74,7 @@
 - `iat`, `exp`, `nbf` — standard temporal claims.
 
 ### Settings Additions (`app/core/config.py`)
-- `auth_audience: list[str]` — defaults to `["agent-api", "analytics-service", "billing-worker", "support-console", "synthetic-monitor"]`; override with a JSON array via `AUTH_AUDIENCE` and keep ordering stable across services.
+- `auth_audience: list[str]` — defaults to `["agent-api", "analytics-service", "billing-worker", "support-console", "synthetic-monitor"]`; override with a JSON array via `AUTH_AUDIENCE` (comma-separated strings remain backward compatible) and keep ordering stable across services.
 - `auth_key_storage_backend: str` — `file` (default) or `secret-manager`.
 - `auth_key_storage_path: str` — filesystem location for keyset JSON when using the file backend.
 - `auth_key_secret_name: str` — secret-manager entry name/path (e.g., `kv/data/auth/keyset`) for environments storing the keyset outside the filesystem. Used by the Vault KV adapter to read/write the serialized KeySet document.
@@ -144,7 +144,7 @@ Public signup flows run through the transactional `SignupService`. Clients and o
 
 | HTTP Status | Condition | Notes |
 |-------------|-----------|-------|
-| **403 FORBIDDEN** | `allow_public_signup` is `False`. | Server short-circuits before any DB work and surfaces `PublicSignupDisabledError` so deployments can go invite-only without code changes. |
+| **403 FORBIDDEN** | `SIGNUP_ACCESS_POLICY` is not `public`. | Server short-circuits before any DB work and surfaces `PublicSignupDisabledError` so deployments can go invite/approval-only without code changes. |
 | **409 CONFLICT** | Email already exists or slug allocation exceeds retries. | Email collisions are detected inside the transaction (before inserts) and raise `EmailAlreadyRegisteredError`; slug collisions are extremely rare and map to `TenantSlugCollisionError`. No tenant rows are persisted in either case. |
 | **429 TOO MANY REQUESTS** | IP exceeded `signup_rate_limit_per_hour`. | Enforced via the shared rate limiter; `Retry-After` communicates when the next attempt is allowed. |
 | **502 BAD GATEWAY** | Billing gateway rejected the initial plan/trial. | Tenant + owner accounts remain active; ops can retry plan creation or fall back to a free tier. The response includes `BillingProvisioningError` detail for observability. |

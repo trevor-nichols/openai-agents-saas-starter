@@ -84,7 +84,8 @@ Legend: `✅` = prompted during wizard, `⚠️` = optional/backfilled warning, 
 
 | Env Var | Type | Default | Wizard? | Description |
 | --- | --- | --- | --- | --- |
-| `ALLOW_PUBLIC_SIGNUP` | `bool` | True | ✅ | Allow unauthenticated tenants to self-register. |
+| `SIGNUP_ACCESS_POLICY` | `str` | invite_only | ✅ | Signup exposure posture (`public`, `invite_only`, or `approval`). |
+| `ALLOW_PUBLIC_SIGNUP` | `bool` | Derived | ✅ | Legacy toggle (computed as `SIGNUP_ACCESS_POLICY == public`). |
 | `ALLOW_SIGNUP_TRIAL_OVERRIDE` | `bool` | False | ✅ | Permit clients to request custom trial lengths. |
 | `SIGNUP_RATE_LIMIT_PER_HOUR` | `int` | 20 | ✅ | Signup attempts per hour (per IP). |
 | `SIGNUP_DEFAULT_PLAN_CODE` | `str | None` | starter | ✅ | Default plan code provisioned for new tenants. |
@@ -126,7 +127,7 @@ Legend: `✅` = prompted during wizard, `⚠️` = optional/backfilled warning, 
 | `APP_DESCRIPTION` | `str` | anything-agents FastAPI microservice | ✅ | Application description |
 | `APP_NAME` | `str` | anything-agents | ✅ | Application name |
 | `APP_VERSION` | `str` | 1.0.0 | ✅ | Application version |
-| `AUTH_AUDIENCE` | `list` | PydanticUndefined | ✅ | Ordered list of permitted JWT audiences. Provide as JSON array via AUTH_AUDIENCE environment variable; comma-separated strings are accepted when instantiating Settings directly. |
+| `AUTH_AUDIENCE` | `list` | PydanticUndefined | ✅ | Ordered list of permitted JWT audiences. Provide as a JSON array (wizard default) or a comma-separated string; the backend normalizes both formats. |
 | `AUTH_KEY_SECRET_NAME` | `str | None` | None | ✅ | Secret-manager key/path storing keyset JSON when backend=secret-manager. |
 | `AUTH_KEY_STORAGE_BACKEND` | `str` | file | ✅ | Key storage backend (file or secret-manager). |
 | `AUTH_KEY_STORAGE_PATH` | `str` | var/keys/keyset.json | ✅ | Filesystem path for keyset JSON when using file backend. |

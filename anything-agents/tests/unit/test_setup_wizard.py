@@ -58,6 +58,7 @@ def test_wizard_headless_local_generates_env(temp_ctx: CLIContext) -> None:
         "TENANT_DEFAULT_SLUG": "local",
         "LOGGING_SINK": "stdout",
         "GEOIP_PROVIDER": "none",
+        "SIGNUP_ACCESS_POLICY": "public",
         "ALLOW_PUBLIC_SIGNUP": "true",
         "ALLOW_SIGNUP_TRIAL_OVERRIDE": "false",
         "SIGNUP_RATE_LIMIT_PER_HOUR": "15",
@@ -79,6 +80,7 @@ def test_wizard_headless_local_generates_env(temp_ctx: CLIContext) -> None:
     assert "TENANT_DEFAULT_SLUG=local" in env_body
     assert "API_BASE_URL=http://127.0.0.1:8001" in env_body
     assert "LOGGING_SINK=stdout" in env_body
+    assert "SIGNUP_ACCESS_POLICY=public" in env_body
     assert "ALLOW_PUBLIC_SIGNUP=true" in env_body
     assert "BILLING_RETRY_DEPLOYMENT_MODE=inline" in env_body
     assert 'ANTHROPIC_API_KEY=""' in env_body
@@ -122,6 +124,7 @@ def test_wizard_refreshes_cached_settings(temp_ctx: CLIContext) -> None:
         "TENANT_DEFAULT_SLUG": "local",
         "LOGGING_SINK": "stdout",
         "GEOIP_PROVIDER": "none",
+        "SIGNUP_ACCESS_POLICY": "public",
         "ALLOW_PUBLIC_SIGNUP": "true",
         "ALLOW_SIGNUP_TRIAL_OVERRIDE": "false",
         "SIGNUP_RATE_LIMIT_PER_HOUR": "15",
@@ -187,6 +190,7 @@ def test_wizard_clears_optional_provider_keys(temp_ctx: CLIContext) -> None:
         "TENANT_DEFAULT_SLUG": "local",
         "LOGGING_SINK": "stdout",
         "GEOIP_PROVIDER": "none",
+        "SIGNUP_ACCESS_POLICY": "public",
         "ALLOW_PUBLIC_SIGNUP": "true",
         "ALLOW_SIGNUP_TRIAL_OVERRIDE": "false",
         "SIGNUP_RATE_LIMIT_PER_HOUR": "15",
@@ -243,6 +247,7 @@ def test_wizard_does_not_leak_env_values(temp_ctx: CLIContext) -> None:
         "TENANT_DEFAULT_SLUG": "local",
         "LOGGING_SINK": "stdout",
         "GEOIP_PROVIDER": "none",
+        "SIGNUP_ACCESS_POLICY": "public",
         "ALLOW_PUBLIC_SIGNUP": "true",
         "ALLOW_SIGNUP_TRIAL_OVERRIDE": "false",
         "SIGNUP_RATE_LIMIT_PER_HOUR": "15",
@@ -260,9 +265,11 @@ def test_wizard_does_not_leak_env_values(temp_ctx: CLIContext) -> None:
     )
     wizard.execute()
     assert os.environ["ALLOW_PUBLIC_SIGNUP"] == "true"
+    assert os.environ["SIGNUP_ACCESS_POLICY"] == "public"
 
     _cleanup_env(baseline_snapshot)
     assert os.environ["ALLOW_PUBLIC_SIGNUP"] == "false"
+    assert "SIGNUP_ACCESS_POLICY" not in os.environ
 
 
 def test_wizard_rotates_new_peppers(monkeypatch, temp_ctx: CLIContext) -> None:
@@ -309,6 +316,7 @@ def test_wizard_rotates_new_peppers(monkeypatch, temp_ctx: CLIContext) -> None:
         "TENANT_DEFAULT_SLUG": "local",
         "LOGGING_SINK": "stdout",
         "GEOIP_PROVIDER": "none",
+        "SIGNUP_ACCESS_POLICY": "public",
         "ALLOW_PUBLIC_SIGNUP": "true",
         "ALLOW_SIGNUP_TRIAL_OVERRIDE": "false",
         "SIGNUP_RATE_LIMIT_PER_HOUR": "15",
@@ -366,6 +374,7 @@ def test_wizard_staging_verifies_vault(
         "TENANT_DEFAULT_SLUG": "tenant-staging",
         "LOGGING_SINK": "none",
         "GEOIP_PROVIDER": "none",
+        "SIGNUP_ACCESS_POLICY": "invite_only",
         "ALLOW_PUBLIC_SIGNUP": "false",
         "ALLOW_SIGNUP_TRIAL_OVERRIDE": "false",
         "SIGNUP_RATE_LIMIT_PER_HOUR": "10",

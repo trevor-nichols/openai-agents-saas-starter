@@ -57,6 +57,16 @@ def test_auth_audience_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.auth_audience == ["foo-service", "bar-service", "baz-service"]
 
 
+def test_auth_audience_env_override_csv(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Comma-separated overrides remain backward compatible."""
+
+    monkeypatch.setenv("AUTH_AUDIENCE", "foo-service,bar-service,baz-service")
+
+    settings = make_settings()
+
+    assert settings.auth_audience == ["foo-service", "bar-service", "baz-service"]
+
+
 @pytest.mark.parametrize("bad_value", [123, "", [], ["   "]])
 def test_auth_audience_validation_errors(bad_value: object) -> None:
     """Invalid audience configuration raises a validation error."""
@@ -130,15 +140,43 @@ def test_stripe_configuration_summary_masks_tokens() -> None:
     assert backend == "BILLING_EVENTS_REDIS_URL"
 
 
-def test_signup_settings_defaults() -> None:
+def test_signup_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     """Public signup toggles expose sensible defaults for starter deployments."""
+
+    monkeypatch.delenv("SIGNUP_ACCESS_POLICY", raising=False)
+    monkeypatch.delenv("ALLOW_PUBLIC_SIGNUP", raising=False)
 
     settings = make_settings()
 
-    assert settings.allow_public_signup is True
+    assert settings.signup_access_policy == "invite_only"
+    assert settings.allow_public_signup is False
     assert settings.signup_rate_limit_per_hour == 20
     assert settings.signup_default_plan_code == "starter"
     assert settings.signup_default_trial_days == 14
+
+
+def test_signup_policy_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    """SIGNUP_ACCESS_POLICY controls allow_public_signup."""
+
+    monkeypatch.setenv("SIGNUP_ACCESS_POLICY", "public")
+    monkeypatch.delenv("ALLOW_PUBLIC_SIGNUP", raising=False)
+
+    settings = make_settings()
+
+    assert settings.signup_access_policy == "public"
+    assert settings.allow_public_signup is True
+
+
+def test_signup_policy_backwards_compatibility(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Legacy ALLOW_PUBLIC_SIGNUP envs still map to a policy."""
+
+    monkeypatch.delenv("SIGNUP_ACCESS_POLICY", raising=False)
+    monkeypatch.setenv("ALLOW_PUBLIC_SIGNUP", "false")
+
+    settings = make_settings()
+
+    assert settings.signup_access_policy == "invite_only"
+    assert settings.allow_public_signup is False
 
 
 def test_signup_rate_limit_requires_positive_values() -> None:

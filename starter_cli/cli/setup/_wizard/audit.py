@@ -314,6 +314,7 @@ def _signup_worker_section(settings, env_snapshot: dict[str, str]) -> SectionRes
     )
     section.checks.extend(
         [
+            _env_presence("SIGNUP_ACCESS_POLICY", env_snapshot),
             _env_presence("ALLOW_PUBLIC_SIGNUP", env_snapshot),
             _env_presence("SIGNUP_DEFAULT_TRIAL_DAYS", env_snapshot),
             _env_presence("BILLING_RETRY_DEPLOYMENT_MODE", env_snapshot),

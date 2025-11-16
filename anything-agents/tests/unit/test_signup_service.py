@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, cast
 from unittest.mock import AsyncMock
@@ -15,7 +15,17 @@ from app.core.config import Settings
 from app.domain.billing import BillingPlan
 from app.services.auth_service import UserSessionTokens
 from app.services.billing_service import BillingService
-from app.services.signup_service import EmailAlreadyRegisteredError, SignupService
+from app.services.invite_service import (
+    InviteEmailMismatchError,
+    InviteNotFoundError,
+    InviteService,
+    InviteTokenRequiredError,
+)
+from app.services.signup_service import (
+    EmailAlreadyRegisteredError,
+    PublicSignupDisabledError,
+    SignupService,
+)
 
 
 class StubBillingService:
@@ -63,6 +73,64 @@ class StubAuthService:
         return self.tokens
 
 
+def _default_invite_status() -> Any:
+    return type("Status", (), {"value": "active"})()
+
+
+@dataclass
+class StubInvite:
+    id: str = "invite-1"
+    token_hint: str = "abcdef12"
+    invited_email: str | None = None
+    status: Any = field(default_factory=_default_invite_status)
+    max_redemptions: int = 1
+    redeemed_count: int = 0
+    expires_at: datetime | None = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    signup_request_id: str | None = None
+    note: str | None = None
+
+
+@dataclass
+class StubInviteReservationContext:
+    invite: StubInvite = field(default_factory=StubInvite)
+    finalized_with: list[dict[str, str]] = field(default_factory=list)
+    releases: list[str] = field(default_factory=list)
+    finalized: bool = False
+    released: bool = False
+
+    async def mark_succeeded(self, *, tenant_id: str, user_id: str) -> None:
+        self.finalized_with.append({"tenant_id": tenant_id, "user_id": user_id})
+        self.finalized = True
+
+    async def ensure_released(self, *, reason: str) -> None:
+        if self.finalized or self.released:
+            return
+        self.releases.append(reason)
+        self.released = True
+
+
+class StubInviteService:
+    def __init__(self, *, error: Exception | None = None) -> None:
+        self.calls: list[dict[str, Any]] = []
+        self.context = StubInviteReservationContext()
+        self._error = error
+
+    async def reserve_for_signup(
+        self,
+        *,
+        token: str | None,
+        email: str,
+        require_request: bool,
+    ) -> StubInviteReservationContext:
+        self.calls.append({"token": token, "email": email, "require_request": require_request})
+        if not token:
+            raise InviteTokenRequiredError("Invite required")
+        if self._error:
+            raise self._error
+        return self.context
+
+
 @pytest.fixture(autouse=True)
 def mock_email_verification():
     service = AsyncMock()
@@ -86,6 +154,10 @@ def _token_payload(user_id: str, tenant_id: str) -> UserSessionTokens:
         email_verified=False,
         session_id=str(uuid4()),
     )
+
+
+def _build_settings(**overrides: Any) -> Settings:
+    return Settings.model_validate(overrides)
 
 
 def _patch_internals(
@@ -127,7 +199,10 @@ async def test_register_uses_plan_trial_when_override_disallowed(
 
     service = SignupService(
         billing=cast(BillingService, billing_stub),
-        settings_factory=lambda: Settings(enable_billing=True),
+        settings_factory=lambda: _build_settings(
+            enable_billing=True,
+            signup_access_policy="public",
+        ),
     )
     _patch_internals(service, monkeypatch)
 
@@ -140,6 +215,7 @@ async def test_register_uses_plan_trial_when_override_disallowed(
         trial_days=60,
         ip_address="127.0.0.1",
         user_agent="pytest",
+        invite_token=None,
     )
 
     assert result.tenant_slug == "acme"
@@ -166,7 +242,11 @@ async def test_register_allows_shorter_trial_when_flag_enabled(
 
     service = SignupService(
         billing=cast(BillingService, billing_stub),
-        settings_factory=lambda: Settings(enable_billing=True, allow_signup_trial_override=True),
+        settings_factory=lambda: _build_settings(
+            enable_billing=True,
+            allow_signup_trial_override=True,
+            signup_access_policy="public",
+        ),
     )
     _patch_internals(service, monkeypatch)
 
@@ -179,6 +259,7 @@ async def test_register_allows_shorter_trial_when_flag_enabled(
         trial_days=5,
         ip_address=None,
         user_agent=None,
+        invite_token=None,
     )
 
     assert billing_stub.calls and billing_stub.calls[0]["trial_days"] == 5
@@ -203,7 +284,11 @@ async def test_register_clamps_override_to_plan_cap(
 
     service = SignupService(
         billing=cast(BillingService, billing_stub),
-        settings_factory=lambda: Settings(enable_billing=True, allow_signup_trial_override=True),
+        settings_factory=lambda: _build_settings(
+            enable_billing=True,
+            allow_signup_trial_override=True,
+            signup_access_policy="public",
+        ),
     )
     _patch_internals(service, monkeypatch)
 
@@ -216,6 +301,7 @@ async def test_register_clamps_override_to_plan_cap(
         trial_days=45,
         ip_address=None,
         user_agent=None,
+        invite_token=None,
     )
 
     assert billing_stub.calls and billing_stub.calls[0]["trial_days"] == 10
@@ -229,7 +315,10 @@ async def test_register_propagates_duplicate_email(monkeypatch: pytest.MonkeyPat
 
     service = SignupService(
         billing=cast(BillingService, billing_stub),
-        settings_factory=lambda: Settings(enable_billing=False),
+        settings_factory=lambda: _build_settings(
+            enable_billing=False,
+            signup_access_policy="public",
+        ),
     )
     _patch_internals(
         service,
@@ -247,6 +336,7 @@ async def test_register_propagates_duplicate_email(monkeypatch: pytest.MonkeyPat
             trial_days=None,
             ip_address=None,
             user_agent=None,
+            invite_token=None,
         )
 
 
@@ -260,7 +350,10 @@ async def test_register_surfaces_billing_plan_errors(monkeypatch: pytest.MonkeyP
 
     service = SignupService(
         billing=cast(BillingService, billing_stub),
-        settings_factory=lambda: Settings(enable_billing=True),
+        settings_factory=lambda: _build_settings(
+            enable_billing=True,
+            signup_access_policy="public",
+        ),
     )
     _patch_internals(service, monkeypatch)
 
@@ -274,4 +367,177 @@ async def test_register_surfaces_billing_plan_errors(monkeypatch: pytest.MonkeyP
             trial_days=None,
             ip_address=None,
             user_agent=None,
+            invite_token=None,
         )
+
+
+@pytest.mark.asyncio
+async def test_register_requires_invite_under_invite_only_policy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("SIGNUP_ACCESS_POLICY", raising=False)
+    monkeypatch.delenv("ALLOW_PUBLIC_SIGNUP", raising=False)
+    billing_stub = StubBillingService()
+    auth_stub = StubAuthService(tokens=_token_payload("user-4", "tenant-4"))
+    cast(Any, get_container()).auth_service = auth_stub
+
+    invite_stub = StubInviteService()
+    service = SignupService(
+        billing=cast(BillingService, billing_stub),
+        settings_factory=lambda: _build_settings(signup_access_policy="invite_only"),
+        invite_service=cast(InviteService, invite_stub),
+    )
+    _patch_internals(service, monkeypatch)
+
+    with pytest.raises(PublicSignupDisabledError):
+        await service.register(
+            email="invite-only@example.com",
+            password="IroncladValley$462",
+            tenant_name="Acme",
+            display_name=None,
+            plan_code=None,
+            trial_days=None,
+            ip_address=None,
+            user_agent=None,
+            invite_token=None,
+        )
+
+
+@pytest.mark.asyncio
+async def test_register_consumes_invite_when_token_present(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("SIGNUP_ACCESS_POLICY", raising=False)
+    monkeypatch.delenv("ALLOW_PUBLIC_SIGNUP", raising=False)
+    billing_stub = StubBillingService()
+    auth_stub = StubAuthService(tokens=_token_payload("user-5", "tenant-5"))
+    cast(Any, get_container()).auth_service = auth_stub
+
+    invite_stub = StubInviteService()
+    service = SignupService(
+        billing=cast(BillingService, billing_stub),
+        settings_factory=lambda: _build_settings(signup_access_policy="invite_only"),
+        invite_service=cast(InviteService, invite_stub),
+    )
+    _patch_internals(service, monkeypatch)
+
+    await service.register(
+        email="invite-token@example.com",
+        password="IroncladValley$462",
+        tenant_name="Acme",
+        display_name=None,
+        plan_code=None,
+        trial_days=None,
+        ip_address=None,
+        user_agent=None,
+        invite_token="token-123",
+    )
+
+    assert invite_stub.calls and invite_stub.calls[0]["token"] == "token-123"
+    assert invite_stub.context.finalized_with
+    assert invite_stub.context.finalized_with[0]["tenant_id"] == "tenant-1"
+    assert not invite_stub.context.releases
+
+
+@pytest.mark.asyncio
+async def test_register_invalid_invite_maps_to_public_signup_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("SIGNUP_ACCESS_POLICY", raising=False)
+    monkeypatch.delenv("ALLOW_PUBLIC_SIGNUP", raising=False)
+    billing_stub = StubBillingService()
+    auth_stub = StubAuthService(tokens=_token_payload("user-err", "tenant-err"))
+    cast(Any, get_container()).auth_service = auth_stub
+
+    invite_stub = StubInviteService(error=InviteNotFoundError("Invite token is invalid."))
+    service = SignupService(
+        billing=cast(BillingService, billing_stub),
+        settings_factory=lambda: _build_settings(signup_access_policy="invite_only"),
+        invite_service=cast(InviteService, invite_stub),
+    )
+    _patch_internals(service, monkeypatch)
+
+    with pytest.raises(PublicSignupDisabledError):
+        await service.register(
+            email="invalid-token@example.com",
+            password="IroncladValley$462",
+            tenant_name="Acme",
+            display_name=None,
+            plan_code=None,
+            trial_days=None,
+            ip_address=None,
+            user_agent=None,
+            invite_token="bad-token",
+        )
+
+
+@pytest.mark.asyncio
+async def test_register_email_mismatch_maps_to_public_signup_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("SIGNUP_ACCESS_POLICY", raising=False)
+    monkeypatch.delenv("ALLOW_PUBLIC_SIGNUP", raising=False)
+    billing_stub = StubBillingService()
+    auth_stub = StubAuthService(tokens=_token_payload("user-err", "tenant-err"))
+    cast(Any, get_container()).auth_service = auth_stub
+
+    invite_stub = StubInviteService(error=InviteEmailMismatchError("Invite token is restricted"))
+    service = SignupService(
+        billing=cast(BillingService, billing_stub),
+        settings_factory=lambda: _build_settings(signup_access_policy="invite_only"),
+        invite_service=cast(InviteService, invite_stub),
+    )
+    _patch_internals(service, monkeypatch)
+
+    with pytest.raises(PublicSignupDisabledError):
+        await service.register(
+            email="wrong@example.com",
+            password="IroncladValley$462",
+            tenant_name="Acme",
+            display_name=None,
+            plan_code=None,
+            trial_days=None,
+            ip_address=None,
+            user_agent=None,
+            invite_token="token-xyz",
+        )
+
+
+@pytest.mark.asyncio
+async def test_register_releases_invite_on_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("SIGNUP_ACCESS_POLICY", raising=False)
+    monkeypatch.delenv("ALLOW_PUBLIC_SIGNUP", raising=False)
+    billing_stub = StubBillingService()
+    auth_stub = StubAuthService(tokens=_token_payload("user-err", "tenant-err"))
+    cast(Any, get_container()).auth_service = auth_stub
+
+    invite_stub = StubInviteService()
+    service = SignupService(
+        billing=cast(BillingService, billing_stub),
+        settings_factory=lambda: _build_settings(signup_access_policy="invite_only"),
+        invite_service=cast(InviteService, invite_stub),
+    )
+    _patch_internals(
+        service,
+        monkeypatch,
+        provision_exc=EmailAlreadyRegisteredError("duplicate"),
+    )
+
+    with pytest.raises(EmailAlreadyRegisteredError):
+        await service.register(
+            email="invite-failure@example.com",
+            password="IroncladValley$462",
+            tenant_name="Acme",
+            display_name=None,
+            plan_code=None,
+            trial_days=None,
+            ip_address=None,
+            user_agent=None,
+            invite_token="token-err",
+        )
+
+    assert invite_stub.calls
+    assert invite_stub.context.finalized_with == []
+    assert invite_stub.context.releases == ["signup_failed"]

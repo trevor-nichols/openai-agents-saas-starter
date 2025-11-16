@@ -4,11 +4,16 @@
 # Used by: main.py and other modules requiring configuration
 
 import json
+import logging
+import os
 from collections.abc import Mapping
 from functools import lru_cache
+from types import MethodType
+from typing import Any, Literal, cast
 
-from pydantic import Field, ValidationInfo, field_validator
+from pydantic import Field, ValidationInfo, field_validator, model_validator
 from pydantic_settings import BaseSettings
+from pydantic_settings.sources import PydanticBaseSettingsSource
 
 from app.domain.secrets import (
     AWSSecretsManagerConfig,
@@ -32,6 +37,9 @@ _VAULT_PROVIDER_KEYS = {
     SecretsProviderLiteral.VAULT_DEV,
     SecretsProviderLiteral.VAULT_HCP,
 }
+SignupAccessPolicyLiteral = Literal["public", "invite_only", "approval"]
+
+_signup_policy_logger = logging.getLogger("app.core.config.signup")
 
 # =============================================================================
 # SETTINGS CLASS
@@ -137,9 +145,18 @@ class Settings(BaseSettings):
     # SIGNUP / TENANT ONBOARDING
     # =============================================================================
 
+    signup_access_policy: SignupAccessPolicyLiteral = Field(
+        default="invite_only",
+        description="Signup exposure posture: public, invite_only, or approval.",
+        alias="SIGNUP_ACCESS_POLICY",
+    )
     allow_public_signup: bool = Field(
         default=True,
-        description="Allow unauthenticated tenants to self-register via /auth/register.",
+        description=(
+            "Allow unauthenticated tenants to self-register via /auth/register. "
+            "Derived from SIGNUP_ACCESS_POLICY."
+        ),
+        alias="ALLOW_PUBLIC_SIGNUP",
     )
     allow_signup_trial_override: bool = Field(
         default=False,
@@ -160,6 +177,13 @@ class Settings(BaseSettings):
         description=(
             "Fallback trial length (days) for tenants when processor metadata is unavailable."
         ),
+    )
+    signup_invite_reservation_ttl_seconds: int = Field(
+        default=15 * 60,
+        description=(
+            "How long (seconds) a reserved invite remains valid while signup provisioning runs."
+        ),
+        alias="SIGNUP_INVITE_RESERVATION_TTL_SECONDS",
     )
     tenant_default_slug: str = Field(
         default="default",
@@ -868,6 +892,38 @@ class Settings(BaseSettings):
     # SECRET VALIDATION HELPERS
     # =============================================================================
 
+    @model_validator(mode="after")
+    def _synchronize_signup_policy(self) -> "Settings":
+        """Keep SIGNUP_ACCESS_POLICY + ALLOW_PUBLIC_SIGNUP aligned (env + overrides)."""
+
+        env_policy = os.getenv("SIGNUP_ACCESS_POLICY")
+        env_allow = os.getenv("ALLOW_PUBLIC_SIGNUP")
+
+        if env_policy:
+            normalized = env_policy.strip().lower()
+            if normalized in {"public", "invite_only", "approval"}:
+                self.signup_access_policy = cast(SignupAccessPolicyLiteral, normalized)
+        elif env_allow is not None:
+            allow_bool = env_allow.strip().lower() in {"1", "true", "yes", "y"}
+            self.signup_access_policy = (
+                "public" if allow_bool else "invite_only"
+            )
+
+        derived_allow = self.signup_access_policy == "public"
+
+        if env_policy and env_allow is not None:
+            env_allow_bool = env_allow.strip().lower() in {"1", "true", "yes", "y"}
+            if env_allow_bool != derived_allow:
+                _signup_policy_logger.warning(
+                    "ALLOW_PUBLIC_SIGNUP (%s) conflicts with SIGNUP_ACCESS_POLICY=%s; "
+                    "using policy to derive final value.",
+                    env_allow,
+                    self.signup_access_policy,
+                )
+
+        self.allow_public_signup = derived_allow
+        return self
+
     def secret_warnings(self) -> list[str]:
         warnings: list[str] = []
         if self._is_placeholder_secret(
@@ -920,6 +976,49 @@ class Settings(BaseSettings):
         return self.vault_verify_enabled or self.should_enforce_secret_overrides()
 
     # =============================================================================
+    # SETTINGS SOURCE CUSTOMIZATION
+    # =============================================================================
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        _settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource | None,
+        dotenv_settings: PydanticBaseSettingsSource | None,
+        file_secret_settings: PydanticBaseSettingsSource | None,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        """Inject audience-aware env sources so CSV strings remain supported."""
+
+        cls._patch_auth_audience_parsing(env_settings)
+        cls._patch_auth_audience_parsing(dotenv_settings)
+
+        return tuple(
+            source
+            for source in (init_settings, env_settings, dotenv_settings, file_secret_settings)
+            if source is not None
+        )
+
+    @staticmethod
+    def _patch_auth_audience_parsing(source: PydanticBaseSettingsSource | None) -> None:
+        if source is None:
+            return
+        original_prepare = source.prepare_field_value
+        settings_cls: type[BaseSettings] | None = getattr(source, "settings_cls", None)
+
+        def prepare_field_value(self, field_name, field, value, value_is_complex):
+            parser = getattr(settings_cls, "_parse_auth_audience_string", None)
+            if (
+                field_name == "auth_audience"
+                and isinstance(value, str)
+                and callable(parser)
+            ):
+                return parser(value)
+            return original_prepare(field_name, field, value, value_is_complex)
+
+        cast(Any, source).prepare_field_value = MethodType(prepare_field_value, source)
+
+    # =============================================================================
     # CONFIGURATION
     # =============================================================================
 
@@ -932,17 +1031,20 @@ class Settings(BaseSettings):
 
     @field_validator("auth_audience", mode="before")
     @classmethod
-    def _parse_auth_audience(cls, value: str | list[str] | None) -> list[str] | None:
+    def _parse_auth_audience(
+        cls,
+        value: str | list[str] | tuple[str, ...] | set[str] | None,
+    ) -> list[str] | None:
         """
         Normalize auth audience configuration to a list of non-empty strings.
 
-        Supports comma-separated strings for environment-variable overrides.
+        Supports JSON arrays or comma-separated strings for environment-variable overrides.
         """
         if value is None:
             return None
 
         if isinstance(value, str):
-            items = [item.strip() for item in value.split(",") if item.strip()]
+            items = cls._parse_auth_audience_string(value)
         elif isinstance(value, list | tuple | set):
             items = [str(item).strip() for item in value if str(item).strip()]
         else:
@@ -952,6 +1054,19 @@ class Settings(BaseSettings):
             raise ValueError("auth_audience must include at least one audience identifier.")
 
         return list(dict.fromkeys(items))  # preserve order while deduplicating
+
+    @staticmethod
+    def _parse_auth_audience_string(raw_value: str) -> list[str]:
+        stripped = raw_value.strip()
+        if not stripped:
+            return []
+        try:
+            parsed = json.loads(stripped)
+        except json.JSONDecodeError:
+            parsed = None
+        if isinstance(parsed, list):
+            return [str(item).strip() for item in parsed if str(item).strip()]
+        return [item.strip() for item in stripped.split(",") if item.strip()]
 
     @field_validator("auth_key_storage_backend")
     @classmethod
@@ -1041,7 +1156,11 @@ class Settings(BaseSettings):
             cleaned[plan] = price
         return cleaned
 
-    @field_validator("signup_rate_limit_per_hour", "signup_default_trial_days")
+    @field_validator(
+        "signup_rate_limit_per_hour",
+        "signup_default_trial_days",
+        "signup_invite_reservation_ttl_seconds",
+    )
     @classmethod
     def _validate_signup_ints(cls, value: int, info: ValidationInfo) -> int:
         if value < 0:

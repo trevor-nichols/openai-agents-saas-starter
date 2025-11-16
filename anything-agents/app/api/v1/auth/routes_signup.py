@@ -5,7 +5,11 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request, status
 
 from app.api.dependencies import raise_rate_limit_http_error
-from app.api.models.auth import UserRegisterRequest, UserRegisterResponse
+from app.api.models.auth import (
+    SignupAccessPolicyResponse,
+    UserRegisterRequest,
+    UserRegisterResponse,
+)
 from app.api.v1.auth.utils import extract_client_ip, extract_user_agent, to_user_session_response
 from app.core.config import get_settings
 from app.services.billing_service import (
@@ -14,6 +18,12 @@ from app.services.billing_service import (
     PlanNotFoundError,
     SubscriptionNotFoundError,
     SubscriptionStateError,
+)
+from app.services.invite_service import (
+    InviteExpiredError,
+    InviteRequestMismatchError,
+    InviteRevokedError,
+    InviteTokenRequiredError,
 )
 from app.services.rate_limit_service import RateLimitExceeded, RateLimitQuota, rate_limiter
 from app.services.signup_service import (
@@ -25,6 +35,17 @@ from app.services.signup_service import (
 )
 
 router = APIRouter(tags=["auth"])
+
+
+@router.get("/signup-policy", response_model=SignupAccessPolicyResponse)
+async def get_signup_access_policy() -> SignupAccessPolicyResponse:
+    settings = get_settings()
+    policy = settings.signup_access_policy
+    return SignupAccessPolicyResponse(
+        policy=policy,
+        invite_required=policy != "public",
+        request_access_enabled=policy in {"invite_only", "approval"},
+    )
 
 
 @router.post("/register", response_model=UserRegisterResponse, status_code=status.HTTP_201_CREATED)
@@ -45,8 +66,17 @@ async def register_tenant(
             trial_days=payload.trial_days,
             ip_address=client_ip,
             user_agent=extract_user_agent(request),
+            invite_token=payload.invite_token,
         )
     except PublicSignupDisabledError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except InviteTokenRequiredError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except InviteExpiredError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except InviteRevokedError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except InviteRequestMismatchError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     except EmailAlreadyRegisteredError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
