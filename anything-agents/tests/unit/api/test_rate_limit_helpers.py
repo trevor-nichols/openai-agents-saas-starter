@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from app.api.v1.auth import rate_limit_helpers as helpers
-from app.services.rate_limit_service import RateLimitExceeded, RateLimitQuota
+from app.services.shared.rate_limit_service import RateLimitExceeded, RateLimitQuota
 
 
 class _LimiterStub:

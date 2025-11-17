@@ -21,7 +21,7 @@ from app.api.v1.chat import router as chat_router
 from app.api.v1.chat.schemas import AgentChatResponse
 from app.domain.conversations import ConversationMessage, ConversationMetadata
 from app.services.agent_service import agent_service
-from app.services.rate_limit_service import RateLimitExceeded, rate_limiter
+from app.services.shared.rate_limit_service import RateLimitExceeded, rate_limiter
 from main import app
 
 client = TestClient(app)

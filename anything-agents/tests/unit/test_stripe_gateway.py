@@ -15,7 +15,7 @@ from app.infrastructure.stripe import (
     StripeSubscriptionItem,
     StripeUsageRecord,
 )
-from app.services.payment_gateway import PaymentGatewayError, StripeGateway
+from app.services.billing.payment_gateway import PaymentGatewayError, StripeGateway
 
 
 class FakeStripeClient:
@@ -231,7 +231,7 @@ async def test_gateway_emits_metrics_on_success(monkeypatch: pytest.MonkeyPatch)
         calls.append(kwargs)
 
     monkeypatch.setattr(
-        "app.services.payment_gateway.observe_stripe_gateway_operation", fake_observe
+        "app.services.billing.payment_gateway.observe_stripe_gateway_operation", fake_observe
     )
 
     client = FakeStripeClient()
@@ -262,7 +262,7 @@ async def test_stripe_errors_wrapped_with_gateway_error(monkeypatch: pytest.Monk
         calls.append(kwargs)
 
     monkeypatch.setattr(
-        "app.services.payment_gateway.observe_stripe_gateway_operation", fake_observe
+        "app.services.billing.payment_gateway.observe_stripe_gateway_operation", fake_observe
     )
 
     class ExplodingClient(FakeStripeClient):

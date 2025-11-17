@@ -15,13 +15,13 @@ from app.infrastructure.persistence.stripe.models import (
 )
 from app.infrastructure.persistence.stripe.repository import StripeEventRepository
 from app.observability.logging import log_context, log_event
-from app.services.billing_service import (
+from app.services.billing.billing_service import (
     BillingService,
     ProcessorInvoiceLineSnapshot,
     ProcessorInvoiceSnapshot,
     ProcessorSubscriptionSnapshot,
 )
-from app.services.stripe_event_models import (
+from app.services.billing.stripe.event_models import (
     DispatchBroadcastContext,
     DispatchResult,
     InvoiceSnapshotView,

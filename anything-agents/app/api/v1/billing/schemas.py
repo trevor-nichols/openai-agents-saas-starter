@@ -7,7 +7,7 @@ from typing import Annotated
 from pydantic import BaseModel, EmailStr, Field
 
 from app.domain.billing import BillingPlan, PlanFeature, TenantSubscription
-from app.services.billing_events import (
+from app.services.billing.billing_events import (
     BillingEventInvoice,
     BillingEventPayload,
     BillingEventSubscription,

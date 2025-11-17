@@ -9,19 +9,19 @@ from typing import TYPE_CHECKING
 from app.infrastructure.redis.factory import reset_redis_factory, shutdown_redis_factory
 from app.services.auth.service_account_service import ServiceAccountTokenService
 from app.services.auth.session_service import UserSessionService
-from app.services.billing_events import BillingEventsService
-from app.services.billing_service import BillingService
+from app.services.billing.billing_events import BillingEventsService
+from app.services.billing.billing_service import BillingService
+from app.services.billing.stripe.dispatcher import StripeEventDispatcher
+from app.services.billing.stripe.retry_worker import StripeDispatchRetryWorker
 from app.services.conversation_service import ConversationService
-from app.services.email_verification_service import EmailVerificationService
 from app.services.geoip_service import GeoIPService, NullGeoIPService, shutdown_geoip_service
-from app.services.password_recovery_service import PasswordRecoveryService
-from app.services.rate_limit_service import RateLimiter
-from app.services.status_alert_dispatcher import StatusAlertDispatcher
-from app.services.status_subscription_service import StatusSubscriptionService
-from app.services.stripe_dispatcher import StripeEventDispatcher
-from app.services.stripe_retry_worker import StripeDispatchRetryWorker
-from app.services.tenant_settings_service import TenantSettingsService
-from app.services.user_service import UserService
+from app.services.shared.rate_limit_service import RateLimiter
+from app.services.signup.email_verification_service import EmailVerificationService
+from app.services.signup.password_recovery_service import PasswordRecoveryService
+from app.services.status.status_alert_dispatcher import StatusAlertDispatcher
+from app.services.status.status_subscription_service import StatusSubscriptionService
+from app.services.tenant.tenant_settings_service import TenantSettingsService
+from app.services.users.user_service import UserService
 
 if TYPE_CHECKING:  # pragma: no cover - type hints only
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -29,9 +29,9 @@ if TYPE_CHECKING:  # pragma: no cover - type hints only
     from app.infrastructure.persistence.stripe.repository import StripeEventRepository
     from app.services.agent_service import AgentService
     from app.services.auth_service import AuthService
-    from app.services.invite_service import InviteService
-    from app.services.signup_request_service import SignupRequestService
-    from app.services.signup_service import SignupService
+    from app.services.signup.invite_service import InviteService
+    from app.services.signup.signup_request_service import SignupRequestService
+    from app.services.signup.signup_service import SignupService
 
 
 @dataclass(slots=True)

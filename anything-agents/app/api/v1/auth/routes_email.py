@@ -11,12 +11,12 @@ from app.api.dependencies.auth import require_current_user
 from app.api.models.auth import EmailVerificationConfirmRequest
 from app.api.models.common import SuccessResponse
 from app.api.v1.auth.utils import extract_client_ip, extract_user_agent
-from app.services.email_verification_service import (
+from app.services.shared.rate_limit_service import RateLimitExceeded, RateLimitQuota, rate_limiter
+from app.services.signup.email_verification_service import (
     EmailVerificationDeliveryError,
     InvalidEmailVerificationTokenError,
     get_email_verification_service,
 )
-from app.services.rate_limit_service import RateLimitExceeded, RateLimitQuota, rate_limiter
 
 router = APIRouter(tags=["auth"])
 

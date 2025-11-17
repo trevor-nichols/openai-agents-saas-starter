@@ -14,9 +14,9 @@ from app.domain.signup import (
     SignupRequestRepository,
     SignupRequestStatus,
 )
-from app.services.invite_service import InviteService
-from app.services.rate_limit_service import hash_user_agent
-from app.services.signup_request_service import (
+from app.services.shared.rate_limit_service import hash_user_agent
+from app.services.signup.invite_service import InviteService
+from app.services.signup.signup_request_service import (
     SignupRequestQuotaExceededError,
     SignupRequestService,
     _normalize_uuid,
@@ -112,7 +112,7 @@ async def test_submit_request_blocks_honeypot(monkeypatch: pytest.MonkeyPatch) -
     reasons: list[str | None] = []
 
     monkeypatch.setattr(
-        "app.services.signup_request_service.record_signup_blocked",
+        "app.services.signup.signup_request_service.record_signup_blocked",
         lambda *, reason: reasons.append(reason),
     )
 

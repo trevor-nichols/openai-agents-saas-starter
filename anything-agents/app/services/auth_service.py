@@ -32,7 +32,7 @@ from app.services.auth.errors import (
     UserRefreshError,
 )
 from app.services.geoip_service import GeoIPService, get_geoip_service
-from app.services.user_service import UserService, get_user_service
+from app.services.users.user_service import UserService, get_user_service
 
 
 class AuthService:

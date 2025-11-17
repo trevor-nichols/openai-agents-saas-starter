@@ -536,3 +536,22 @@ def build_ip_throttler(settings: Settings) -> LoginThrottle:
         window_seconds=window_seconds,
         block_seconds=block_seconds,
     )
+
+
+__all__ = [
+    "InvalidCredentialsError",
+    "IpThrottledError",
+    "LoginThrottle",
+    "MembershipNotFoundError",
+    "NullLoginThrottle",
+    "PasswordPolicyViolationError",
+    "TenantContextRequiredError",
+    "UserDisabledError",
+    "UserLockedError",
+    "UserService",
+    "UserServiceError",
+    "build_ip_throttler",
+    "build_user_service",
+    "get_user_service",
+    "RedisLoginThrottle",
+]

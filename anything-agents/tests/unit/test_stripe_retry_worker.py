@@ -10,8 +10,8 @@ import pytest
 
 from app.infrastructure.persistence.stripe.models import StripeEventDispatch
 from app.observability.metrics import STRIPE_DISPATCH_RETRY_TOTAL
-from app.services.stripe_event_models import DispatchResult
-from app.services.stripe_retry_worker import StripeDispatchRetryWorker
+from app.services.billing.stripe.event_models import DispatchResult
+from app.services.billing.stripe.retry_worker import StripeDispatchRetryWorker
 
 
 def _dispatch(handler: str = "billing_sync") -> StripeEventDispatch:

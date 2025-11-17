@@ -17,13 +17,13 @@ from app.api.models.auth import (
 from app.api.models.common import SuccessResponse
 from app.api.v1.auth.utils import extract_client_ip, extract_user_agent
 from app.services.auth_service import auth_service
-from app.services.password_recovery_service import (
+from app.services.shared.rate_limit_service import RateLimitExceeded, RateLimitQuota, rate_limiter
+from app.services.signup.password_recovery_service import (
     InvalidPasswordResetTokenError,
     PasswordResetDeliveryError,
     get_password_recovery_service,
 )
-from app.services.rate_limit_service import RateLimitExceeded, RateLimitQuota, rate_limiter
-from app.services.user_service import (
+from app.services.users.user_service import (
     InvalidCredentialsError,
     MembershipNotFoundError,
     PasswordPolicyViolationError,

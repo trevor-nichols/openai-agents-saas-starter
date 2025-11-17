@@ -20,7 +20,7 @@ from app.observability.metrics import (
     record_billing_stream_backlog,
     record_billing_stream_event,
 )
-from app.services.stripe_event_models import (
+from app.services.billing.stripe.event_models import (
     DispatchBroadcastContext,
     InvoiceSnapshotView,
     SubscriptionSnapshotView,

@@ -5,7 +5,7 @@ import pytest
 from fakeredis.aioredis import FakeRedis
 from redis.exceptions import ConnectionError
 
-from app.services.rate_limit_service import (
+from app.services.shared.rate_limit_service import (
     ConcurrencyQuota,
     RateLimiter,
     RateLimitExceeded,

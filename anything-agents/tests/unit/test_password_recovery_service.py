@@ -12,11 +12,11 @@ import pytest
 from app.bootstrap import get_container
 from app.domain.password_reset import PasswordResetTokenRecord
 from app.domain.users import TenantMembershipDTO, UserRecord, UserRepository, UserStatus
-from app.services.password_recovery_service import (
+from app.services.signup.password_recovery_service import (
     InvalidPasswordResetTokenError,
     PasswordRecoveryService,
 )
-from app.services.user_service import (
+from app.services.users.user_service import (
     InvalidCredentialsError,
     PasswordPolicyViolationError,
     PasswordReuseError,

@@ -14,14 +14,14 @@ from app.bootstrap import get_container
 from app.core.config import Settings
 from app.domain.billing import BillingPlan
 from app.services.auth_service import UserSessionTokens
-from app.services.billing_service import BillingService
-from app.services.invite_service import (
+from app.services.billing.billing_service import BillingService
+from app.services.signup.invite_service import (
     InviteEmailMismatchError,
     InviteNotFoundError,
     InviteService,
     InviteTokenRequiredError,
 )
-from app.services.signup_service import (
+from app.services.signup.signup_service import (
     EmailAlreadyRegisteredError,
     PublicSignupDisabledError,
     SignupService,
@@ -342,7 +342,7 @@ async def test_register_propagates_duplicate_email(monkeypatch: pytest.MonkeyPat
 
 @pytest.mark.asyncio
 async def test_register_surfaces_billing_plan_errors(monkeypatch: pytest.MonkeyPatch) -> None:
-    from app.services.billing_service import PlanNotFoundError
+    from app.services.billing.billing_service import PlanNotFoundError
 
     billing_stub = StubBillingService(error=PlanNotFoundError("unknown plan"))
     auth_stub = StubAuthService(tokens=_token_payload("user-3", "tenant-3"))

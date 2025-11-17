@@ -11,7 +11,7 @@ from app.domain.billing import (
     SubscriptionInvoiceRecord,
     TenantSubscription,
 )
-from app.services.payment_gateway import (
+from app.services.billing.payment_gateway import (
     PaymentGateway,
     PaymentGatewayError,
     stripe_gateway,

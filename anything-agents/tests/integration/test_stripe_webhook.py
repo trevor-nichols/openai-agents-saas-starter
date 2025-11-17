@@ -26,9 +26,9 @@ from app.infrastructure.persistence.stripe.repository import (
     reset_stripe_event_repository,
 )
 from app.presentation.webhooks import stripe as stripe_webhook
-from app.services.billing_events import BillingEventsService
-from app.services.billing_service import BillingService
-from app.services.stripe_dispatcher import stripe_event_dispatcher
+from app.services.billing.billing_events import BillingEventsService
+from app.services.billing.billing_service import BillingService
+from app.services.billing.stripe.dispatcher import stripe_event_dispatcher
 from tests.utils.fake_billing_backend import QueueBillingEventBackend
 from tests.utils.sqlalchemy import create_tables
 

@@ -13,13 +13,13 @@ from app.infrastructure.persistence.auth import models as auth_models  # noqa: F
 from app.infrastructure.persistence.billing import models as billing_models
 from app.infrastructure.persistence.billing.postgres import PostgresBillingRepository
 from app.infrastructure.persistence.conversations import models as conversation_models
-from app.services.billing_service import (
+from app.services.billing.billing_service import (
     BillingService,
     PaymentProviderError,
     ProcessorInvoiceLineSnapshot,
     ProcessorInvoiceSnapshot,
 )
-from app.services.payment_gateway import (
+from app.services.billing.payment_gateway import (
     PaymentGateway,
     PaymentGatewayError,
     SubscriptionProvisionResult,

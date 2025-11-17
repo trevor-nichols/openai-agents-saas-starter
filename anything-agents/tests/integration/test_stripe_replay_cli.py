@@ -18,8 +18,8 @@ from app.infrastructure.persistence.stripe.models import (
     StripeEventDispatch,
 )
 from app.infrastructure.persistence.stripe.repository import StripeEventRepository
-from app.services.billing_service import BillingService
-from app.services.stripe_dispatcher import stripe_event_dispatcher
+from app.services.billing.billing_service import BillingService
+from app.services.billing.stripe.dispatcher import stripe_event_dispatcher
 from tests.utils.sqlalchemy import create_tables
 
 _REPLAY_MODULE = Path(__file__).resolve().parents[3] / "scripts" / "stripe" / "replay_events.py"

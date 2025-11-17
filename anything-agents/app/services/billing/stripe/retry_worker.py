@@ -10,8 +10,8 @@ from uuid import UUID
 from app.infrastructure.persistence.stripe.models import StripeEventDispatch
 from app.observability.logging import log_context, log_event
 from app.observability.metrics import observe_dispatch_retry
-from app.services.stripe_dispatcher import get_stripe_event_dispatcher
-from app.services.stripe_event_models import DispatchResult
+from app.services.billing.stripe.dispatcher import get_stripe_event_dispatcher
+from app.services.billing.stripe.event_models import DispatchResult
 
 
 class StripeDispatchRepository(Protocol):

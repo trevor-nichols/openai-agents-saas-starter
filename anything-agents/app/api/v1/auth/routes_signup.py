@@ -13,21 +13,21 @@ from app.api.v1.auth.rate_limit_helpers import apply_signup_quota
 from app.api.v1.auth.utils import extract_client_ip, extract_user_agent, to_user_session_response
 from app.core.config import Settings, get_settings
 from app.observability.metrics import record_signup_attempt
-from app.services.billing_service import (
+from app.services.billing.billing_service import (
     BillingError,
     InvalidTenantIdentifierError,
     PlanNotFoundError,
     SubscriptionNotFoundError,
     SubscriptionStateError,
 )
-from app.services.invite_service import (
+from app.services.shared.rate_limit_service import RateLimitQuota, build_rate_limit_identity
+from app.services.signup.invite_service import (
     InviteExpiredError,
     InviteRequestMismatchError,
     InviteRevokedError,
     InviteTokenRequiredError,
 )
-from app.services.rate_limit_service import RateLimitQuota, build_rate_limit_identity
-from app.services.signup_service import (
+from app.services.signup.signup_service import (
     BillingProvisioningError,
     EmailAlreadyRegisteredError,
     PublicSignupDisabledError,

@@ -17,12 +17,12 @@ from app.api.v1.billing.router import router as billing_router
 from app.bootstrap import get_container
 from app.core.config import get_settings
 from app.infrastructure.persistence.stripe.models import StripeEvent, StripeEventStatus
-from app.services.billing_events import (
+from app.services.billing.billing_events import (
     BillingEventHistoryPage,
     BillingEventPayload,
     BillingEventsService,
 )
-from app.services.stripe_event_models import (
+from app.services.billing.stripe.event_models import (
     DispatchBroadcastContext,
     InvoiceSnapshotView,
     SubscriptionSnapshotView,

@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from app.domain.tenant_settings import BillingContact, TenantSettingsSnapshot
-from app.services.tenant_settings_service import (
+from app.services.tenant.tenant_settings_service import (
     TenantSettingsService,
     TenantSettingsValidationError,
 )

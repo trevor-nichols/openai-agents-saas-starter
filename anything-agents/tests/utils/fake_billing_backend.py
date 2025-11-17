@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections import defaultdict
 
-from app.services.billing_events import BillingEventBackend, BillingEventStream
+from app.services.billing.billing_events import BillingEventBackend, BillingEventStream
 
 
 class QueueBillingEventStream(BillingEventStream):

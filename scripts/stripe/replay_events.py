@@ -30,8 +30,8 @@ from app.infrastructure.persistence.stripe.repository import (  # noqa: E402
     StripeEventRepository,
     StripeDispatchStatus,
 )
-from app.services.billing_service import billing_service  # noqa: E402
-from app.services.stripe_dispatcher import stripe_event_dispatcher  # noqa: E402
+from app.services.billing.billing_service import billing_service  # noqa: E402
+from app.services.billing.stripe.dispatcher import stripe_event_dispatcher  # noqa: E402
 
 FIXTURES_DIR = REPO_ROOT / "anything-agents" / "tests" / "fixtures" / "stripe"
 

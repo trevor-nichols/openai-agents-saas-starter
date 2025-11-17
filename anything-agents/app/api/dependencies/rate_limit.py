@@ -8,7 +8,7 @@ from fastapi import HTTPException, status
 
 from app.observability.logging import log_event
 from app.observability.metrics import record_rate_limit_hit
-from app.services.rate_limit_service import RateLimitExceeded
+from app.services.shared.rate_limit_service import RateLimitExceeded
 
 
 def raise_rate_limit_http_error(

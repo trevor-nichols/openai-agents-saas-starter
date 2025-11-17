@@ -22,13 +22,13 @@ from app.infrastructure.persistence.auth.signup_repository import (
 )
 from app.observability.logging import log_event
 from app.observability.metrics import record_signup_blocked
-from app.services.invite_service import (
+from app.services.shared.rate_limit_service import hash_user_agent
+from app.services.signup.invite_service import (
     InviteIssueResult,
     InviteService,
     build_invite_service,
     get_invite_service,
 )
-from app.services.rate_limit_service import hash_user_agent
 
 
 @dataclass(slots=True)

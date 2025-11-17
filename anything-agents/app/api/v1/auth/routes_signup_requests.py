@@ -22,8 +22,8 @@ from app.api.v1.auth.utils import extract_client_ip, extract_user_agent
 from app.core.config import Settings, get_settings
 from app.domain.signup import SignupRequest, SignupRequestStatus
 from app.observability.metrics import record_signup_attempt, record_signup_blocked
-from app.services.rate_limit_service import RateLimitQuota, build_rate_limit_identity
-from app.services.signup_request_service import (
+from app.services.shared.rate_limit_service import RateLimitQuota, build_rate_limit_identity
+from app.services.signup.signup_request_service import (
     SignupRequestDecisionResult,
     SignupRequestNotFoundError,
     SignupRequestQuotaExceededError,

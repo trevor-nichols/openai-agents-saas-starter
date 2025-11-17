@@ -34,7 +34,7 @@ from app.infrastructure.notifications import (
     get_resend_email_adapter,
 )
 from app.observability.logging import log_event
-from app.services.rate_limit_service import RateLimitExceeded, RateLimitQuota, rate_limiter
+from app.services.shared.rate_limit_service import RateLimitExceeded, RateLimitQuota, rate_limiter
 
 
 @dataclass(slots=True)

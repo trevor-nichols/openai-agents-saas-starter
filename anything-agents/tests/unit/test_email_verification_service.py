@@ -15,7 +15,7 @@ from app.domain.email_verification import (
     EmailVerificationTokenStore,
 )
 from app.domain.users import TenantMembershipDTO, UserRecord, UserRepository, UserStatus
-from app.services.email_verification_service import (
+from app.services.signup.email_verification_service import (
     EmailVerificationService,
     InvalidEmailVerificationTokenError,
 )

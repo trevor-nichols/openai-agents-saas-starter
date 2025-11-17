@@ -30,7 +30,7 @@ from app.services.auth_service import (
     UserRefreshError,
     auth_service,
 )
-from app.services.user_service import (
+from app.services.users.user_service import (
     InvalidCredentialsError,
     MembershipNotFoundError,
     UserDisabledError,

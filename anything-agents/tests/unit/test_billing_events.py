@@ -16,8 +16,8 @@ from app.observability.metrics import (
     STRIPE_BILLING_STREAM_BACKLOG_SECONDS,
     STRIPE_BILLING_STREAM_EVENTS_TOTAL,
 )
-from app.services.billing_events import BillingEventsService, RedisBillingEventBackend
-from app.services.stripe_event_models import (
+from app.services.billing.billing_events import BillingEventsService, RedisBillingEventBackend
+from app.services.billing.stripe.event_models import (
     DispatchBroadcastContext,
     InvoiceSnapshotView,
     SubscriptionSnapshotView,
@@ -126,7 +126,7 @@ async def test_publish_retries_on_backend_failure(monkeypatch):
     async def no_sleep(*_):
         return None
 
-    monkeypatch.setattr("app.services.billing_events.asyncio.sleep", no_sleep)
+    monkeypatch.setattr("app.services.billing.billing_events.asyncio.sleep", no_sleep)
 
     await service.publish_from_event(
         _make_event(), {"data": {"object": {"metadata": {"tenant_id": "tenant-1"}}}}
@@ -144,7 +144,7 @@ async def test_publish_raises_after_max_attempts(monkeypatch):
     async def no_sleep(*_):
         return None
 
-    monkeypatch.setattr("app.services.billing_events.asyncio.sleep", no_sleep)
+    monkeypatch.setattr("app.services.billing.billing_events.asyncio.sleep", no_sleep)
 
     with pytest.raises(RuntimeError):
         await service.publish_from_event(

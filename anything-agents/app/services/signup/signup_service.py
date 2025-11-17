@@ -27,17 +27,17 @@ from app.infrastructure.persistence.auth.models import (
 from app.infrastructure.persistence.conversations.models import TenantAccount
 from app.observability.logging import log_event
 from app.services.auth_service import AuthService, UserSessionTokens, get_auth_service
-from app.services.billing_service import (
+from app.services.billing.billing_service import (
     BillingError,
     BillingService,
     PaymentProviderError,
     get_billing_service,
 )
-from app.services.email_verification_service import (
+from app.services.signup.email_verification_service import (
     EmailVerificationService,
     get_email_verification_service,
 )
-from app.services.invite_service import (
+from app.services.signup.invite_service import (
     InviteEmailMismatchError,
     InviteExpiredError,
     InviteNotFoundError,

@@ -7,7 +7,7 @@ from typing import Literal
 
 from app.api.dependencies import raise_rate_limit_http_error
 from app.observability.metrics import record_signup_attempt, record_signup_blocked
-from app.services.rate_limit_service import RateLimitExceeded, RateLimitQuota, rate_limiter
+from app.services.shared.rate_limit_service import RateLimitExceeded, RateLimitQuota, rate_limiter
 
 DEFAULT_SIGNUP_TENANT_ID = "public-signup"
 

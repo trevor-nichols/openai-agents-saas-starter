@@ -15,8 +15,8 @@ from app.infrastructure.persistence.stripe.repository import (
     get_stripe_event_repository,
 )
 from app.observability.metrics import observe_stripe_webhook_event
-from app.services.billing_events import get_billing_events_service
-from app.services.stripe_dispatcher import stripe_event_dispatcher
+from app.services.billing.billing_events import get_billing_events_service
+from app.services.billing.stripe.dispatcher import stripe_event_dispatcher
 
 SignatureVerificationError = cast(
     type[Exception],

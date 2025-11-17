@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from app.core.config import get_settings
 from app.core.security import get_token_signer
 from app.domain.tenant_settings import BillingContact, TenantSettingsSnapshot
-from app.services.tenant_settings_service import TenantSettingsValidationError
+from app.services.tenant.tenant_settings_service import TenantSettingsValidationError
 from main import app
 
 
@@ -27,7 +27,7 @@ def client() -> Generator[TestClient, None, None]:
 def mock_service(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
     mock = AsyncMock()
     monkeypatch.setattr(
-        "app.services.tenant_settings_service.get_tenant_settings_service",
+        "app.services.tenant.tenant_settings_service.get_tenant_settings_service",
         lambda: mock,
     )
     return mock

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.dependencies.tenant import TenantContext, TenantRole, require_tenant_role
 from app.api.models.tenant_settings import TenantSettingsResponse, TenantSettingsUpdateRequest
-from app.services.tenant_settings_service import (
+from app.services.tenant.tenant_settings_service import (
     TenantSettingsValidationError,
     tenant_settings_service,
 )

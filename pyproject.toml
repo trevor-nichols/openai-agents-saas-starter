@@ -155,6 +155,33 @@ ignore = [
   "B008",
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"anything-agents/app/services/**/*.py" = [
+  "I252",  # allow transitional relative imports while services are reorganized
+]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "parents"
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"app.services.billing_service" = { msg = "Import via app.services.billing.*" }
+"app.services.billing_events" = { msg = "Import via app.services.billing.*" }
+"app.services.payment_gateway" = { msg = "Import via app.services.billing.payment_gateway" }
+"app.services.stripe_dispatcher" = { msg = "Import via app.services.billing.stripe.dispatcher" }
+"app.services.stripe_event_models" = { msg = "Import via app.services.billing.stripe.event_models" }
+"app.services.stripe_retry_worker" = { msg = "Import via app.services.billing.stripe.retry_worker" }
+"app.services.email_verification_service" = { msg = "Import via app.services.signup.email_verification_service" }
+"app.services.invite_service" = { msg = "Import via app.services.signup.invite_service" }
+"app.services.password_recovery_service" = { msg = "Import via app.services.signup.password_recovery_service" }
+"app.services.signup_request_service" = { msg = "Import via app.services.signup.signup_request_service" }
+"app.services.signup_service" = { msg = "Import via app.services.signup.signup_service" }
+"app.services.status_service" = { msg = "Import via app.services.status.status_service" }
+"app.services.status_alert_dispatcher" = { msg = "Import via app.services.status.status_alert_dispatcher" }
+"app.services.status_subscription_service" = { msg = "Import via app.services.status.status_subscription_service" }
+"app.services.tenant_settings_service" = { msg = "Import via app.services.tenant.tenant_settings_service" }
+"app.services.user_service" = { msg = "Import via app.services.users.user_service" }
+"app.services.rate_limit_service" = { msg = "Import via app.services.shared.rate_limit_service" }
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"

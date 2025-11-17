@@ -63,17 +63,17 @@ from app.services.auth.builders import (
     build_session_service,
 )
 from app.services.auth_service import AuthService
-from app.services.billing_events import RedisBillingEventBackend
-from app.services.email_verification_service import build_email_verification_service
+from app.services.billing.billing_events import RedisBillingEventBackend
+from app.services.billing.payment_gateway import stripe_gateway
 from app.services.geoip_service import build_geoip_service
-from app.services.invite_service import build_invite_service
-from app.services.password_recovery_service import build_password_recovery_service
-from app.services.payment_gateway import stripe_gateway
-from app.services.signup_request_service import build_signup_request_service
-from app.services.signup_service import build_signup_service
-from app.services.status_alert_dispatcher import build_status_alert_dispatcher
-from app.services.status_subscription_service import build_status_subscription_service
-from app.services.user_service import build_user_service
+from app.services.signup.email_verification_service import build_email_verification_service
+from app.services.signup.invite_service import build_invite_service
+from app.services.signup.password_recovery_service import build_password_recovery_service
+from app.services.signup.signup_request_service import build_signup_request_service
+from app.services.signup.signup_service import build_signup_service
+from app.services.status.status_alert_dispatcher import build_status_alert_dispatcher
+from app.services.status.status_subscription_service import build_status_subscription_service
+from app.services.users.user_service import build_user_service
 
 # =============================================================================
 # MODULE CONSTANTS

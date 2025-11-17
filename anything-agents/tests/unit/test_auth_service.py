@@ -31,7 +31,7 @@ from app.services.auth_service import (
     UserAuthenticationError,
     UserLogoutError,
 )
-from app.services.user_service import MembershipNotFoundError, UserService
+from app.services.users.user_service import MembershipNotFoundError, UserService
 
 
 class FakeRefreshRepo:

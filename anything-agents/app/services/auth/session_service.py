@@ -12,7 +12,7 @@ from app.core.security import TokenVerifierError, get_token_signer, get_token_ve
 from app.domain.auth import UserSessionListResult, UserSessionTokens
 from app.domain.users import AuthenticatedUser
 from app.observability.logging import log_event
-from app.services.user_service import (
+from app.services.users.user_service import (
     InvalidCredentialsError,
     IpThrottledError,
     MembershipNotFoundError,

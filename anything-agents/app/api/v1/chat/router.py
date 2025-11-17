@@ -12,7 +12,7 @@ from app.api.dependencies.tenant import TenantContext, TenantRole, get_tenant_co
 from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse, StreamingChatResponse
 from app.core.config import get_settings
 from app.services.agent_service import ConversationActorContext, agent_service
-from app.services.rate_limit_service import (
+from app.services.shared.rate_limit_service import (
     ConcurrencyQuota,
     RateLimitExceeded,
     RateLimitLease,

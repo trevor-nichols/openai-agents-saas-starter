@@ -33,15 +33,15 @@ from app.services.auth_service import (
     UserRefreshError,
     UserSessionTokens,
 )
-from app.services.email_verification_service import (
+from app.services.signup.email_verification_service import (
     EmailVerificationDeliveryError,
     InvalidEmailVerificationTokenError,
 )
-from app.services.password_recovery_service import (
+from app.services.signup.password_recovery_service import (
     InvalidPasswordResetTokenError,
     PasswordResetDeliveryError,
 )
-from app.services.user_service import (
+from app.services.users.user_service import (
     InvalidCredentialsError,
     MembershipNotFoundError,
     UserLockedError,

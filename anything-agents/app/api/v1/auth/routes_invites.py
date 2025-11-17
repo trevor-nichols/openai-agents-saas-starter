@@ -14,7 +14,11 @@ from app.api.models.auth import (
     SignupInviteResponse,
 )
 from app.domain.signup import SignupInvite, SignupInviteStatus
-from app.services.invite_service import InviteNotFoundError, InviteService, get_invite_service
+from app.services.signup.invite_service import (
+    InviteNotFoundError,
+    InviteService,
+    get_invite_service,
+)
 
 router = APIRouter(tags=["auth"])
 

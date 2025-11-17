@@ -24,9 +24,9 @@ from app.bootstrap import get_container
 from app.core.config import get_settings
 from app.core.security import get_current_user
 from app.domain.status import PlatformStatusSnapshot
-from app.services.status_alert_dispatcher import StatusAlertDispatcher
-from app.services.status_service import get_status_service
-from app.services.status_subscription_service import StatusSubscriptionService
+from app.services.status.status_alert_dispatcher import StatusAlertDispatcher
+from app.services.status.status_service import get_status_service
+from app.services.status.status_subscription_service import StatusSubscriptionService
 
 router = APIRouter(prefix="/status", tags=["status"])
 legacy_router = APIRouter(tags=["status"])
