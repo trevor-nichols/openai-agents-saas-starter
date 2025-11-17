@@ -3,17 +3,15 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 from datetime import UTC, datetime
 from typing import Protocol
 from uuid import UUID
 
 from app.infrastructure.persistence.stripe.models import StripeEventDispatch
+from app.observability.logging import log_context, log_event
 from app.observability.metrics import observe_dispatch_retry
 from app.services.stripe_dispatcher import get_stripe_event_dispatcher
 from app.services.stripe_event_models import DispatchResult
-
-logger = logging.getLogger("anything-agents.services.stripe_retry_worker")
 
 
 class StripeDispatchRepository(Protocol):
@@ -82,15 +80,16 @@ class StripeDispatchRetryWorker:
 
     async def _run(self) -> None:
         stop_event = self._require_stop_event()
-        while not stop_event.is_set():
-            await self._process_due_dispatches()
-            try:
-                await asyncio.wait_for(
-                    stop_event.wait(),
-                    timeout=self._poll_interval_seconds,
-                )
-            except TimeoutError:
-                continue
+        with log_context(worker_id="stripe-dispatch-retry"):
+            while not stop_event.is_set():
+                await self._process_due_dispatches()
+                try:
+                    await asyncio.wait_for(
+                        stop_event.wait(),
+                        timeout=self._poll_interval_seconds,
+                    )
+                except TimeoutError:
+                    continue
 
     async def _process_due_dispatches(self) -> None:
         repository = self._require_repository()
@@ -100,8 +99,12 @@ class StripeDispatchRetryWorker:
                 limit=self._batch_size,
                 ready_before=datetime.now(UTC),
             )
-        except Exception:  # pragma: no cover - defensive logging
-            logger.exception("Failed to enumerate Stripe dispatches for retry")
+        except Exception as exc:  # pragma: no cover - defensive logging
+            log_event(
+                "stripe.dispatch.retry_enumeration_failed",
+                level="error",
+                exc_info=exc,
+            )
             return
 
         if not due_dispatches:
@@ -121,15 +124,19 @@ class StripeDispatchRetryWorker:
         try:
             await dispatcher.replay_dispatch(dispatch.id)
             observe_dispatch_retry(handler=dispatch.handler, result="success")
-            logger.info(
-                "Retried Stripe dispatch",
-                extra={"dispatch_id": str(dispatch.id), "handler": dispatch.handler},
+            log_event(
+                "stripe.dispatch.retry_success",
+                dispatch_id=str(dispatch.id),
+                handler=dispatch.handler,
             )
-        except Exception:  # pragma: no cover - dispatcher handles bookkeeping
+        except Exception as exc:  # pragma: no cover - dispatcher handles bookkeeping
             observe_dispatch_retry(handler=dispatch.handler, result="failed")
-            logger.exception(
-                "Automatic replay failed",
-                extra={"dispatch_id": str(dispatch.id), "handler": dispatch.handler},
+            log_event(
+                "stripe.dispatch.retry_failed",
+                level="error",
+                dispatch_id=str(dispatch.id),
+                handler=dispatch.handler,
+                exc_info=exc,
             )
 
     def _require_repository(self) -> StripeDispatchRepository:

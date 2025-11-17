@@ -22,7 +22,7 @@ from passlib.context import CryptContext
 
 from app.core.config import Settings, get_settings
 from app.core.keys import KeyMaterial, KeySet, load_keyset
-from app.observability.logging import log_event
+from app.observability.logging import bind_log_context, log_event
 from app.observability.metrics import observe_jwt_signing, observe_jwt_verification
 
 UTC = UTC
@@ -485,8 +485,14 @@ async def get_current_user(
     subject = raw_subject
     email_verified = bool(payload.get("email_verified"))
 
+    normalized_user_id = _normalize_subject(subject)
+    bind_log_context(
+        user_id=normalized_user_id,
+        session_id=payload.get("sid"),
+    )
+
     return {
-        "user_id": _normalize_subject(subject),
+        "user_id": normalized_user_id,
         "subject": subject,
         "payload": payload,
         "email_verified": email_verified,

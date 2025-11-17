@@ -52,6 +52,7 @@ from app.infrastructure.redis.factory import get_redis_factory
 from app.infrastructure.redis_types import RedisBytesClient
 from app.infrastructure.security.vault_kv import configure_vault_secret_manager
 from app.middleware.logging import LoggingMiddleware
+from app.observability.logging import configure_logging
 from app.presentation import health as health_routes
 from app.presentation import metrics as metrics_routes
 from app.presentation import well_known as well_known_routes
@@ -80,6 +81,9 @@ from app.services.user_service import build_user_service
 logger = logging.getLogger(__name__)
 _STRIPE_TROUBLESHOOTING_DOC = "docs/billing/stripe-setup.md#startup-validation--troubleshooting"
 _PROVIDER_DOC = "docs/ops/provider-parity.md"
+
+
+configure_logging(get_settings())
 
 # =============================================================================
 # LIFESPAN EVENTS

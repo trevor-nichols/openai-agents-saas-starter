@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
@@ -15,6 +14,7 @@ from app.infrastructure.persistence.stripe.models import (
     StripeEventStatus,
 )
 from app.infrastructure.persistence.stripe.repository import StripeEventRepository
+from app.observability.logging import log_context, log_event
 from app.services.billing_service import (
     BillingService,
     ProcessorInvoiceLineSnapshot,
@@ -28,9 +28,6 @@ from app.services.stripe_event_models import (
     SubscriptionSnapshotView,
     UsageDelta,
 )
-
-logger = logging.getLogger("anything-agents.services.stripe_dispatcher")
-
 
 JSONDict = dict[str, Any]
 HandlerFunc = Callable[[StripeEvent, JSONDict], Awaitable[DispatchBroadcastContext | None]]
@@ -83,35 +80,42 @@ class StripeEventDispatcher:
         }
 
     async def dispatch_now(self, event: StripeEvent, payload: JSONDict) -> DispatchResult:
-        handler = self._handlers.get(event.event_type)
-        repository = self._require_repository()
-        if handler is None:
-            processed_at = await repository.record_outcome(
-                event.id, status=StripeEventStatus.PROCESSED
-            )
-            logger.debug("No dispatcher registered for event %s", event.event_type)
-            return DispatchResult(processed_at=processed_at)
+        with log_context(worker_id="stripe-dispatcher", stripe_event_id=event.stripe_event_id):
+            handler = self._handlers.get(event.event_type)
+            repository = self._require_repository()
+            if handler is None:
+                processed_at = await repository.record_outcome(
+                    event.id, status=StripeEventStatus.PROCESSED
+                )
+                log_event(
+                    "stripe.dispatch.no_handler",
+                    level="debug",
+                    event_type=event.event_type,
+                    stripe_event_id=event.stripe_event_id,
+                )
+                return DispatchResult(processed_at=processed_at)
 
-        dispatch = await repository.ensure_dispatch(event_id=event.id, handler=handler.name)
-        return await self._execute_handler(dispatch, event, payload, handler)
+            dispatch = await repository.ensure_dispatch(event_id=event.id, handler=handler.name)
+            return await self._execute_handler(dispatch, event, payload, handler)
 
     async def replay_dispatch(self, dispatch_id: uuid.UUID) -> DispatchResult:
-        repository = self._require_repository()
-        dispatch = await repository.get_dispatch(dispatch_id)
-        if dispatch is None:
-            raise ValueError(f"Dispatch {dispatch_id} not found")
-        event = await repository.get_event_by_uuid(dispatch.stripe_event_id)
-        if event is None:
-            raise ValueError("Parent Stripe event missing for dispatch replay")
-        handler = self._handlers.get(event.event_type)
-        if handler is None:
-            await repository.mark_dispatch_completed(dispatch.id)
-            processed_at = await repository.record_outcome(
-                event.id, status=StripeEventStatus.PROCESSED
-            )
-            return DispatchResult(processed_at=processed_at)
-        await repository.reset_dispatch(dispatch.id)
-        return await self._execute_handler(dispatch, event, event.payload, handler)
+        with log_context(worker_id="stripe-dispatcher", stripe_dispatch_id=str(dispatch_id)):
+            repository = self._require_repository()
+            dispatch = await repository.get_dispatch(dispatch_id)
+            if dispatch is None:
+                raise ValueError(f"Dispatch {dispatch_id} not found")
+            event = await repository.get_event_by_uuid(dispatch.stripe_event_id)
+            if event is None:
+                raise ValueError("Parent Stripe event missing for dispatch replay")
+            handler = self._handlers.get(event.event_type)
+            if handler is None:
+                await repository.mark_dispatch_completed(dispatch.id)
+                processed_at = await repository.record_outcome(
+                    event.id, status=StripeEventStatus.PROCESSED
+                )
+                return DispatchResult(processed_at=processed_at)
+            await repository.reset_dispatch(dispatch.id)
+            return await self._execute_handler(dispatch, event, event.payload, handler)
 
     async def _execute_handler(
         self,
@@ -140,9 +144,14 @@ class StripeEventDispatcher:
                 status=StripeEventStatus.FAILED,
                 error=error_message,
             )
-            logger.exception(
-                "Stripe dispatch handler failed",
-                extra={"stripe_event_id": event.stripe_event_id, "handler": handler.name},
+            log_event(
+                "stripe.dispatch.failed",
+                level="error",
+                handler=handler.name,
+                stripe_event_id=event.stripe_event_id,
+                attempts=dispatch.attempts,
+                next_retry_at=retry_at,
+                exc_info=exc,
             )
             raise
         else:
@@ -151,9 +160,11 @@ class StripeEventDispatcher:
                 event.id,
                 status=StripeEventStatus.PROCESSED,
             )
-            logger.info(
-                "Stripe dispatch completed",
-                extra={"stripe_event_id": event.stripe_event_id, "handler": handler.name},
+            log_event(
+                "stripe.dispatch.completed",
+                handler=handler.name,
+                stripe_event_id=event.stripe_event_id,
+                attempts=dispatch.attempts,
             )
             return DispatchResult(processed_at=processed_at, broadcast=context)
 

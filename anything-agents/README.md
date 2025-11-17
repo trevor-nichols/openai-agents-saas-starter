@@ -272,6 +272,31 @@ curl -X POST "http://localhost:8000/api/v1/billing/tenants/tenant-123/usage" \
 
 Billing routes now require Stripe credentials whenever `ENABLE_BILLING=true`. The quickest path is to run the consolidated operator CLI via `python -m starter_cli.cli stripe setup` (aliased by `pnpm stripe:setup`), which prompts for your Stripe secret/webhook secrets, asks how much to charge for the Starter + Pro plans, and then creates/reuses the corresponding Stripe products/prices (7-day trial included). The CLI writes `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PRODUCT_PRICE_MAP` into `.env.local` and flips `ENABLE_BILLING=true` for you. Prefer manual edits? You can still populate those keys yourself—just keep the JSON map in sync with your real Stripe price IDs. See `docs/billing/stripe-setup.md` for the full checklist.
 
+## 📈 Observability & Logging
+
+- FastAPI + worker entrypoints call `app.observability.logging.configure_logging(get_settings())`, which wires the JSON formatter and sink declared via `LOGGING_SINK` (`stdout`, `datadog`, `otlp`, or `none`). Set `LOGGING_DATADOG_API_KEY`/`LOGGING_DATADOG_SITE` or `LOGGING_OTLP_ENDPOINT` (+ optional `LOGGING_OTLP_HEADERS` JSON) before switching sinks; startup fails fast when configuration is incomplete.
+- Request middleware seeds a scoped `log_context`, so every `log_event(...)` down-stack inherits `correlation_id`, `tenant_id`, and `user_id` automatically. Background workers bind their own `worker_id`, ensuring Stripe replay jobs, Resend adapters, etc., land in the same pipeline. See `docs/architecture/structured-logging.md` for the canonical schema.
+- Sample stdout entry:
+
+```json
+{
+  "ts": "2025-11-17T09:00:00.123Z",
+  "event": "http.response",
+  "level": "info",
+  "correlation_id": "3c6c72f0-3af7-4a40-b655-a1859d4373af",
+  "tenant_id": "tenant-42",
+  "user_id": "5f1a",
+  "status_code": 200,
+  "duration_ms": 42.1,
+  "fields": {
+    "status_code": 200,
+    "duration_ms": 42.1
+  }
+}
+```
+
+Every sink receives the same schema, so Datadog and OTLP collectors ingest identical payloads when enabled.
+
 ## 🤖 Agent Types
 
 ### Current Agents

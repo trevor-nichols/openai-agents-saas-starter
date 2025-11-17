@@ -1,9 +1,3 @@
-# File: app/middleware/logging.py
-# Purpose: Logging middleware for anything-agents
-# Dependencies: fastapi, starlette, logging
-# Used by: main.py for request/response logging
-
-import logging
 import time
 import uuid
 from collections.abc import Awaitable, Callable
@@ -11,7 +5,7 @@ from collections.abc import Awaitable, Callable
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-logger = logging.getLogger("anything-agents")
+from app.observability.logging import log_context, log_event
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -24,26 +18,46 @@ class LoggingMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         correlation_id = str(uuid.uuid4())
         request.state.correlation_id = correlation_id
-        start_time = time.time()
+        start_time = time.perf_counter()
+        client_ip = request.client.host if request.client else None
 
-        logger.info(f"Request: {request.method} {request.url} [ID: {correlation_id}]")
+        with log_context(
+            correlation_id=correlation_id,
+            http_method=request.method,
+            http_path=str(request.url),
+            client_ip=client_ip,
+        ):
+            log_event(
+                "http.request",
+                method=request.method,
+                path=str(request.url),
+                client_ip=client_ip,
+                user_agent=request.headers.get("user-agent"),
+            )
+            try:
+                response = await call_next(request)
+            except Exception as exc:  # pragma: no cover - bubbled to handlers
+                duration_ms = round((time.perf_counter() - start_time) * 1000, 3)
+                log_event(
+                    "http.error",
+                    level="error",
+                    message=str(exc),
+                    exc_info=exc,
+                    duration_ms=duration_ms,
+                )
+                raise
 
-        try:
-            response = await call_next(request)
-            process_time = time.time() - start_time
+            process_time = time.perf_counter() - start_time
+            duration_ms = round(process_time * 1000, 3)
 
-            logger.info(
-                f"Response: {response.status_code} [{correlation_id}] ({round(process_time, 4)}s)"
+            log_event(
+                "http.response",
+                status_code=response.status_code,
+                duration_ms=duration_ms,
+                content_length=response.headers.get("content-length"),
+                content_type=response.headers.get("content-type"),
             )
 
             response.headers["X-Correlation-ID"] = correlation_id
             response.headers["X-Process-Time"] = str(round(process_time, 4))
-
             return response
-
-        except Exception as e:
-            process_time = time.time() - start_time
-            logger.error(
-                f"Error: {e!s} [{correlation_id}] ({round(process_time, 4)}s)", exc_info=True
-            )
-            raise e

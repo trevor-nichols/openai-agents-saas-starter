@@ -9,6 +9,7 @@ from typing import Any
 from fastapi import Depends, Header, HTTPException, status
 
 from app.api.dependencies.auth import CurrentUser, require_verified_user
+from app.observability.logging import bind_log_context
 
 
 class TenantRole(str, Enum):
@@ -87,6 +88,12 @@ async def get_tenant_context(
     granted_role = _role_from_claims(payload)
     requested_role = _normalize_role(header_role)
     role = _select_effective_role(granted_role, requested_role)
+
+    bind_log_context(
+        tenant_id=effective_tenant,
+        tenant_role=role.value,
+        user_id=current_user.get("user_id"),
+    )
 
     return TenantContext(tenant_id=effective_tenant, role=role, user=current_user)
 
