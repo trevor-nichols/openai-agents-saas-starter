@@ -18,6 +18,7 @@ class InfraSession:
     context: WizardContext
     compose_started: bool = False
     vault_started: bool = False
+    keep_compose_active: bool = False
 
     def ensure_compose(self) -> None:
         record = self.context.automation.get(AutomationPhase.INFRA)
@@ -28,6 +29,7 @@ class InfraSession:
             return
         note = "Starting Docker compose stack (Postgres + Redis)"
         self.context.automation.update(AutomationPhase.INFRA, AutomationStatus.RUNNING, note)
+        self.context.refresh_automation_ui(AutomationPhase.INFRA)
         console.info(note, topic="infra")
         try:
             self._run_cli(["infra", "compose", "up"])
@@ -46,6 +48,7 @@ class InfraSession:
                 AutomationStatus.SUCCEEDED,
                 "Docker compose stack running.",
             )
+            self.context.refresh_automation_ui(AutomationPhase.INFRA)
             console.success("Docker compose stack is running.", topic="infra")
 
     def ensure_vault(self, enabled: bool) -> None:
@@ -70,6 +73,7 @@ class InfraSession:
             return
         note = "Starting Vault dev signer via docker compose"
         self.context.automation.update(AutomationPhase.SECRETS, AutomationStatus.RUNNING, note)
+        self.context.refresh_automation_ui(AutomationPhase.SECRETS)
         console.info(note, topic="vault")
         try:
             self._run_cli(["infra", "vault", "up"], topic="vault")
@@ -89,13 +93,14 @@ class InfraSession:
                 AutomationStatus.SUCCEEDED,
                 "Vault dev signer ready.",
             )
+            self.context.refresh_automation_ui(AutomationPhase.SECRETS)
             console.success("Vault dev signer ready at VAULT_DEV_HOST_ADDR.", topic="vault")
 
     def cleanup(self) -> None:
         if self.vault_started:
             console.info("Stopping Vault dev signer …", topic="vault")
             self._safe_shutdown(["infra", "vault", "down"], topic="vault")
-        if self.compose_started:
+        if self.compose_started and not self.keep_compose_active:
             console.info("Stopping Docker compose stack …", topic="infra")
             self._safe_shutdown(["infra", "compose", "down"], topic="infra")
 
@@ -123,6 +128,7 @@ class InfraSession:
     ) -> None:
         console.error(f"{message}: {error}", topic=topic)
         self.context.automation.update(phase, AutomationStatus.FAILED, f"{message}: {error}")
+        self.context.refresh_automation_ui(phase)
         try:
             self._run_cli(log_command, topic=topic)
         except Exception:  # pragma: no cover - best effort

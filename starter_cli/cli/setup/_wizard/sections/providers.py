@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import subprocess
+
+from redis.asyncio import Redis
 
 from starter_cli.cli.common import CLIError
 from starter_cli.cli.console import console
@@ -113,6 +116,7 @@ def _collect_redis(context: WizardContext, provider: InputProvider) -> None:
     )
     validate_redis_url(primary, require_tls=context.profile != "local", role="Primary")
     context.set_backend("REDIS_URL", primary)
+    redis_targets: dict[str, str] = {"Primary": primary}
 
     def _configure_optional(key: str, label: str) -> None:
         value = provider.prompt_string(
@@ -124,6 +128,7 @@ def _collect_redis(context: WizardContext, provider: InputProvider) -> None:
         if value:
             validate_redis_url(value, require_tls=context.profile != "local", role=label)
             context.set_backend(key, value)
+            redis_targets[label] = value
         else:
             context.set_backend(key, "")
             if context.profile != "local":
@@ -146,6 +151,7 @@ def _collect_redis(context: WizardContext, provider: InputProvider) -> None:
     if billing:
         validate_redis_url(billing, require_tls=context.profile != "local", role="Billing events")
         context.set_backend("BILLING_EVENTS_REDIS_URL", billing)
+        redis_targets["Billing events"] = billing
     else:
         context.set_backend("BILLING_EVENTS_REDIS_URL", "")
         if context.profile != "local":
@@ -154,6 +160,7 @@ def _collect_redis(context: WizardContext, provider: InputProvider) -> None:
                 "instance for production.",
                 topic="redis",
             )
+    _warmup_redis(context, redis_targets)
 
 
 def _collect_billing(context: WizardContext, provider: InputProvider) -> None:
@@ -253,8 +260,85 @@ def _collect_email(context: WizardContext, provider: InputProvider) -> None:
     context.set_backend("RESEND_EMAIL_VERIFICATION_TEMPLATE_ID", template_verify)
     context.set_backend("RESEND_PASSWORD_RESET_TEMPLATE_ID", template_reset)
 
+def _warmup_redis(context: WizardContext, targets: dict[str, str]) -> None:
+    record = context.automation.get(AutomationPhase.REDIS)
+    if not record.enabled:
+        return
+    if record.status == AutomationStatus.BLOCKED:
+        console.warn(record.note or "Redis automation blocked.", topic="redis")
+        context.refresh_automation_ui(AutomationPhase.REDIS)
+        return
+    context.automation.update(
+        AutomationPhase.REDIS,
+        AutomationStatus.RUNNING,
+        "Validating Redis connectivity.",
+    )
+    context.refresh_automation_ui(AutomationPhase.REDIS)
+    try:
+        asyncio.run(_ping_all_redis(targets))
+    except Exception as exc:  # pragma: no cover - network failures
+        context.automation.update(
+            AutomationPhase.REDIS,
+            AutomationStatus.FAILED,
+            f"Redis warm-up failed: {exc}",
+        )
+        context.refresh_automation_ui(AutomationPhase.REDIS)
+        raise CLIError(f"Redis warm-up failed: {exc}") from exc
+    else:
+        context.automation.update(
+            AutomationPhase.REDIS,
+            AutomationStatus.SUCCEEDED,
+            "Redis warm-up succeeded.",
+        )
+        context.refresh_automation_ui(AutomationPhase.REDIS)
+        console.success("Redis pools validated.", topic="redis")
+
+
+async def _ping_all_redis(targets: dict[str, str]) -> None:
+    seen: set[str] = set()
+    for _, url in targets.items():
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        client = Redis.from_url(url, encoding="utf-8", decode_responses=True)
+        try:
+            await client.ping()
+        finally:
+            await client.close()
+
 
 def _maybe_run_migrations(context: WizardContext, provider: InputProvider) -> None:
+    record = context.automation.get(AutomationPhase.MIGRATIONS)
+    if record.enabled:
+        if record.status == AutomationStatus.BLOCKED:
+            console.warn(record.note or "Migrations automation blocked.", topic="migrate")
+            context.refresh_automation_ui(AutomationPhase.MIGRATIONS)
+            return
+        context.automation.update(
+            AutomationPhase.MIGRATIONS,
+            AutomationStatus.RUNNING,
+            "Running `make migrate`.",
+        )
+        context.refresh_automation_ui(AutomationPhase.MIGRATIONS)
+        try:
+            context.run_migrations()
+        except (CLIError, subprocess.CalledProcessError) as exc:
+            context.automation.update(
+                AutomationPhase.MIGRATIONS,
+                AutomationStatus.FAILED,
+                f"Migrations failed: {exc}",
+            )
+            context.refresh_automation_ui(AutomationPhase.MIGRATIONS)
+            raise
+        else:
+            context.automation.update(
+                AutomationPhase.MIGRATIONS,
+                AutomationStatus.SUCCEEDED,
+                "Database migrated.",
+            )
+            context.refresh_automation_ui(AutomationPhase.MIGRATIONS)
+        return
+
     run_now = provider.prompt_bool(
         key="RUN_MIGRATIONS_NOW",
         prompt="Run `make migrate` now?",
@@ -281,12 +365,14 @@ def _maybe_run_stripe_setup(context: WizardContext, provider: InputProvider) -> 
                 AutomationStatus.SKIPPED,
                 "Headless mode skips Stripe automation.",
             )
+            context.refresh_automation_ui(AutomationPhase.STRIPE)
             return
         context.automation.update(
             AutomationPhase.STRIPE,
             AutomationStatus.RUNNING,
             "Running `stripe setup` helper.",
         )
+        context.refresh_automation_ui(AutomationPhase.STRIPE)
         console.info("Running embedded Stripe setup flow …", topic="stripe")
         try:
             context.run_subprocess(
@@ -299,6 +385,7 @@ def _maybe_run_stripe_setup(context: WizardContext, provider: InputProvider) -> 
                 AutomationStatus.FAILED,
                 f"Stripe setup failed: {exc}",
             )
+            context.refresh_automation_ui(AutomationPhase.STRIPE)
             raise
         else:
             context.automation.update(
@@ -306,6 +393,7 @@ def _maybe_run_stripe_setup(context: WizardContext, provider: InputProvider) -> 
                 AutomationStatus.SUCCEEDED,
                 "Stripe setup completed.",
             )
+            context.refresh_automation_ui(AutomationPhase.STRIPE)
             context.record_verification(
                 provider="stripe",
                 identifier="stripe_setup",

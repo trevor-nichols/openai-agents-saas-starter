@@ -5,6 +5,7 @@ from pathlib import Path
 from starter_cli.cli.common import CLIError
 from starter_cli.cli.console import console
 from starter_cli.cli.setup._wizard.context import WizardContext
+from starter_cli.cli.setup.automation import AutomationPhase, AutomationStatus
 from starter_cli.cli.setup.geoip import download_maxmind_database
 from starter_cli.cli.setup.inputs import InputProvider
 from starter_cli.cli.setup.validators import normalize_geoip_provider, normalize_logging_sink
@@ -153,6 +154,36 @@ def _maybe_download_maxmind_db(
 ) -> None:
     target = _resolve_geoip_path(context, raw_path)
     default_download = context.profile != "local"
+    record = context.automation.get(AutomationPhase.GEOIP)
+    if record.enabled:
+        if record.status == AutomationStatus.BLOCKED:
+            console.warn(record.note or "GeoIP automation blocked.", topic="geoip")
+            context.refresh_automation_ui(AutomationPhase.GEOIP)
+        else:
+            context.automation.update(
+                AutomationPhase.GEOIP,
+                AutomationStatus.RUNNING,
+                f"Downloading GeoIP DB to {raw_path}",
+            )
+            context.refresh_automation_ui(AutomationPhase.GEOIP)
+            try:
+                download_maxmind_database(license_key=license_key, target_path=target)
+            except CLIError as exc:
+                context.automation.update(
+                    AutomationPhase.GEOIP,
+                    AutomationStatus.FAILED,
+                    f"GeoIP download failed: {exc}",
+                )
+                context.refresh_automation_ui(AutomationPhase.GEOIP)
+                raise
+            else:
+                context.automation.update(
+                    AutomationPhase.GEOIP,
+                    AutomationStatus.SUCCEEDED,
+                    "GeoIP database downloaded.",
+                )
+                context.refresh_automation_ui(AutomationPhase.GEOIP)
+            return
     should_download = provider.prompt_bool(
         key="GEOIP_MAXMIND_DOWNLOAD",
         prompt=f"Download/refresh MaxMind DB at {raw_path} now?",

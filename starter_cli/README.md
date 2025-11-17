@@ -58,14 +58,24 @@ Flags:
 - `--report-only` skips prompts and prints the milestone audit without modifying env files.
 - `--output {summary,json}` selects console format.
 - `--summary-path PATH` writes the audit JSON (defaults to `var/reports/setup-summary.json`).
-- `--auto-infra/--no-auto-infra`, `--auto-secrets/--no-auto-secrets`, and `--auto-stripe/--no-auto-stripe` opt in or out of the automation hooks. Today that covers Docker compose (Postgres/Redis), the local Vault dev signer used for transit verification, and the embedded Stripe provisioning flow. When omitted, the wizard prompts for each phase and records the decision in the audit.
+- `--auto-infra/--no-auto-infra`, `--auto-secrets/--no-auto-secrets`, and `--auto-stripe/--no-auto-stripe` opt in or out of the legacy automation hooks (Docker compose, Vault dev signer, embedded Stripe provisioning).
+- `--auto-migrations/--no-auto-migrations`, `--auto-redis/--no-auto-redis`, and `--auto-geoip/--no-auto-geoip` control the new automation phases for database migrations, Redis warm-up, and GeoIP dataset downloads.
 - `--markdown-summary-path PATH` writes a Markdown recap (defaults to `var/reports/cli-one-stop-summary.md`). Use it when you want to drop the summary into issues or onboarding docs.
+- `--no-schema` bypasses the dependency graph (legacy linear prompts). `--no-tui` disables the Rich dashboard when you only want raw console logs (CI, piping, etc.).
 
 Artifacts generated per run:
 
 - `var/reports/setup-summary.json` — serialized milestone + automation summary.
 - `var/reports/cli-one-stop-summary.md` — Markdown snippet with automation status, verification notes, and milestone table.
 - `var/reports/verification-artifacts.json` — append-only ledger of provider verifications (Vault, AWS, Azure, Infisical, Stripe). This is cumulative across runs.
+- `var/reports/wizard-state.json` — cached prompt outcomes feeding the dependency graph; delete it when you want a totally fresh interaction.
+
+#### Dashboard + Dependency Graph
+
+- The wizard now streams a Rich dashboard (milestones, automation phases, rolling activity log). Disable with `--no-tui` if you need minimal output.
+- Prompts are driven by `starter_cli/cli/setup/schema.yaml`, so Vault/Slack/GeoIP/billing worker questions only appear when prerequisites are satisfied—even in headless runs.
+- Automation phases emit progress to the dashboard and audit summaries. Docker/Vault/Stripe automation existed before; migrations, Redis warm-up, and GeoIP downloads now ride the same rails with automatic retries + remediation notes.
+- The exit checklist leaves only two manual steps: `hatch run serve` (backend) and `pnpm dev` (frontend). You can opt to keep Docker Compose running so those commands work immediately; otherwise the wizard tears down infra during cleanup.
 
 ### Tenant IDs & Conversation APIs
 

@@ -13,8 +13,11 @@ from starter_cli.cli.common import CLIContext, CLIError
 from starter_cli.cli.console import console
 from starter_cli.cli.env import EnvFile
 from starter_cli.cli.infra_commands import DependencyStatus
-from starter_cli.cli.setup.automation import AutomationState
+from starter_cli.cli.setup.automation import AutomationPhase, AutomationState
 from starter_cli.cli.setup.inputs import InputProvider
+from starter_cli.cli.setup.schema import WizardSchema
+from starter_cli.cli.setup.state import WizardStateStore
+from starter_cli.cli.setup.ui import WizardUIView, automation_status_to_state
 from starter_cli.cli.verification import (
     VerificationArtifact,
     append_verification_artifact,
@@ -44,6 +47,9 @@ class WizardContext:
     dependency_statuses: list[DependencyStatus] = field(default_factory=list)
     automation: AutomationState = field(default_factory=AutomationState)
     infra_session: InfraSession | None = None
+    schema: WizardSchema | None = None
+    state_store: WizardStateStore | None = None
+    ui: WizardUIView | None = None
     verification_artifacts: list[VerificationArtifact] = field(default_factory=list)
     verification_log_path: Path = field(init=False)
     historical_verifications: list[VerificationArtifact] = field(init=False)
@@ -195,6 +201,16 @@ class WizardContext:
         self.historical_verifications.append(artifact)
         append_verification_artifact(self.verification_log_path, artifact)
         return artifact
+
+    def refresh_automation_ui(self, phase: AutomationPhase) -> None:
+        if not self.ui:
+            return
+        record = self.automation.get(phase)
+        self.ui.mark_automation(
+            phase.value,
+            automation_status_to_state(record.status),
+            record.note,
+        )
 
 
 def build_env_files(cli_ctx: CLIContext) -> tuple[EnvFile, EnvFile | None, Path | None]:

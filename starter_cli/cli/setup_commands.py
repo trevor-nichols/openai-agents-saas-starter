@@ -37,6 +37,16 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         help="Run without prompts (requires --answers-file/--var for required values).",
     )
     wizard_parser.add_argument(
+        "--no-tui",
+        action="store_true",
+        help="Disable the Rich status dashboard (use plain console output).",
+    )
+    wizard_parser.add_argument(
+        "--no-schema",
+        action="store_true",
+        help="Bypass the dependency graph (legacy prompt flow).",
+    )
+    wizard_parser.add_argument(
         "--report-only",
         action="store_true",
         help="Skip prompts entirely and render the milestone audit report.",
@@ -123,6 +133,51 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         const=False,
         help="Explicitly disable Stripe automation.",
     )
+    wizard_parser.add_argument(
+        "--auto-migrations",
+        dest="auto_migrations",
+        action="store_const",
+        const=True,
+        default=None,
+        help="Automatically run database migrations after providers complete.",
+    )
+    wizard_parser.add_argument(
+        "--no-auto-migrations",
+        dest="auto_migrations",
+        action="store_const",
+        const=False,
+        help="Disable automatic migrations (wizard will prompt instead).",
+    )
+    wizard_parser.add_argument(
+        "--auto-redis",
+        dest="auto_redis",
+        action="store_const",
+        const=True,
+        default=None,
+        help="Automatically warm up Redis pools after configuration.",
+    )
+    wizard_parser.add_argument(
+        "--no-auto-redis",
+        dest="auto_redis",
+        action="store_const",
+        const=False,
+        help="Skip Redis warm-up automation.",
+    )
+    wizard_parser.add_argument(
+        "--auto-geoip",
+        dest="auto_geoip",
+        action="store_const",
+        const=True,
+        default=None,
+        help="Download GeoIP datasets automatically when required.",
+    )
+    wizard_parser.add_argument(
+        "--no-auto-geoip",
+        dest="auto_geoip",
+        action="store_const",
+        const=False,
+        help="Skip GeoIP download automation.",
+    )
     wizard_parser.set_defaults(handler=handle_setup_wizard)
 
 
@@ -147,6 +202,9 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
             AutomationPhase.INFRA: args.auto_infra,
             AutomationPhase.SECRETS: args.auto_secrets,
             AutomationPhase.STRIPE: args.auto_stripe,
+            AutomationPhase.MIGRATIONS: args.auto_migrations,
+            AutomationPhase.REDIS: args.auto_redis,
+            AutomationPhase.GEOIP: args.auto_geoip,
         }.items()
         if value is not None
     }
@@ -160,6 +218,8 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
         if args.markdown_summary_path
         else None,
         automation_overrides=automation_overrides,
+        enable_tui=not args.no_tui,
+        enable_schema=not args.no_schema,
     )
     if args.summary_path:
         wizard.summary_path = Path(args.summary_path).expanduser()

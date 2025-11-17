@@ -146,6 +146,7 @@ def _ensure_vault_infra(context: WizardContext, enable_vault: bool) -> None:
                 AutomationStatus.SKIPPED,
                 "Vault automation skipped (verification disabled).",
             )
+            context.refresh_automation_ui(AutomationPhase.SECRETS)
 
 
 def _verify_vault_transit(context: WizardContext) -> None:
