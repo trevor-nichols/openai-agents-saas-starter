@@ -1,7 +1,7 @@
 <!-- SECTION: Title -->
 # Frontend UI Foundation Milestone — Refresh
 
-_Last updated: November 13, 2025_
+_Last updated: November 17, 2025_
 
 ## Objective
 Re-align the frontend tracker with the current state of the Next.js 15 surface, capturing what already shipped, what remains in flight, and the concrete steps required to graduate the UI foundation into polish mode.
@@ -17,7 +17,7 @@ Re-align the frontend tracker with the current state of the Next.js 15 surface, 
 | Agents & tools | ✅ Complete | Agents page now hosts the consolidated workspace (catalog + chat + tools + archive). |
 | Account & security | ✅ Complete | Profile/security/sessions/service-accounts fully wired with TanStack Query. |
 | Tenant settings | ✅ Complete | Billing contacts, webhook, metadata, and flag controls shipped. |
-| Marketing surfaces | ⚠️ In progress | Landing, pricing, features, docs, and the `/status` `StatusExperience` orchestrator are live; Platform Foundations now owns all copy + analytics decisions and is executing the polish pass. |
+| Marketing surfaces | ✅ Complete | Landing, pricing, features, docs, and `/status` now share the finalized copy matrices, analytics wiring, and status-alert UX. |
 | QA coverage | ⚠️ Limited | Vitest covers chat + billing routes; E2E only tests auth happy path. |
 
 ## Completed Work
@@ -27,27 +27,25 @@ Re-align the frontend tracker with the current state of the Next.js 15 surface, 
 - **Feature directories**: Chat, account, billing, and dashboard modules now follow the orchestrator/components/hooks pattern (FE-001 closed).
 
 ## Outstanding Gaps & Risks
-1. **Marketing copy & CTA matrix** — Final voice/CTA decisions must be codified in the per-page constants so future changes stay aligned without external approvals.
-2. **Analytics coverage** — Every marketing CTA/link should emit the same structured telemetry before we iterate on design, otherwise we cannot measure conversion changes.
-3. **Status alerts UX** — The shared subscription card works but needs final validation copy, error states, and confirmation banners so it feels production-ready.
-4. **QA depth (scheduled post-polish)** — Only one Playwright smoke test exists; the expanded suite remains deferred until the marketing polish is done.
+1. **QA depth** — Only one Playwright smoke test exists; the expanded suite covering billing plan mutations, service-account issuance, and chat transcript export is still pending and remains the final blocker before we can call this milestone complete.
 
 ## Next Actions
 | # | Task | Owner | Status | Target |
 | - | ---- | ----- | ------ | ------ |
-| 1 | Lock marketing copy + CTA matrix across landing, features, pricing, docs (constants + FAQs). | Platform Foundations | In Progress | Nov 21 |
-| 2 | Instrument every marketing CTA/link with `useMarketingAnalytics` (hero buttons, plan cards, nav pills, resource links). | Platform Foundations | In Progress | Nov 21 |
-| 3 | Polish the status alert funnel (shared `StatusAlertsCard`, `/status` verification banners, helper text) and document the API contract. | Platform Foundations | Todo | Nov 25 |
-| 4 | Document marketing voice + analytics taxonomy in `docs/marketing/README.md` so future changes stay aligned. | Platform Foundations | Todo | Nov 25 |
+| 1 | Lock marketing copy + CTA matrix across landing, features, pricing, docs (constants + FAQs). | Platform Foundations | Completed | Nov 17 |
+| 2 | Instrument every marketing CTA/link with `useMarketingAnalytics` (hero buttons, plan cards, nav pills, resource links). | Platform Foundations | Completed | Nov 17 |
+| 3 | Polish the status alert funnel (shared `StatusAlertsCard`, `/status` verification banners, helper text) and document the API contract. | Platform Foundations | Completed | Nov 17 |
+| 4 | Document marketing voice + analytics taxonomy in `docs/marketing/README.md` so future changes stay aligned. | Platform Foundations | Completed | Nov 17 |
 | 5 | Expand Playwright suite to cover billing plan changes, service-account issue/revoke, and chat transcript export once UI polish ships. | Platform Foundations | Scheduled | Dec 4 |
 | 6 | Maintain the weekly tracker review ritual (15 mins in Frontend Sync) to keep status current. | Platform Foundations | Scheduled | Ongoing |
 
 ## Risk Log
 - **Workspace onboarding**: The consolidated agents surface adds cognitive load; we still need onboarding copy/video to guide customers. _Mitigation_: Add inline coach marks + docs once analytics prove adoption.
 - **Admin blind spots**: Newly shipped tenant settings lack inline guidance and guardrails, so CS/Ops could misconfigure plan metadata or webhooks. _Mitigation_: Layer contextual copy, validation states, and ship the companion runbook.
-- **Regression exposure**: Minimal E2E coverage increases risk as more enterprise flows ship. _Mitigation_: Task #3.
+- **Regression exposure**: Minimal E2E coverage increases risk as more enterprise flows ship. _Mitigation_: Task #5 (Playwright expansion) remains the next deliverable; ensure specs land before Dec 4.
 
 ## Changelog
+- **2025-11-17**: Marketing copy matrices, analytics instrumentation, status-alert UX/docs, and the marketing voice guide completed; milestone now blocks solely on the Playwright expansion (Task #5).
 - **2025-11-13**: Agents workspace now bundles catalog, chat, tools panel, and conversation archive; removed standalone `/tools` + `/conversations` routes.
 - **2025-11-13**: Tracker reset to reflect current implementation; previous tracker archived under `docs/trackers/complete/MILESTONE_FRONTEND_UI_FOUNDATION_2025-11-13.md`.
 - **2025-11-13**: Landing, pricing, features, and docs routes now use feature modules with TanStack data + CTA instrumentation (status alert lead capture live on `/`).
