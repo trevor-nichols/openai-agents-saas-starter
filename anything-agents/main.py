@@ -65,6 +65,7 @@ from app.services.auth.builders import (
 from app.services.auth_service import AuthService
 from app.services.billing_events import RedisBillingEventBackend
 from app.services.email_verification_service import build_email_verification_service
+from app.services.geoip_service import build_geoip_service
 from app.services.invite_service import build_invite_service
 from app.services.password_recovery_service import build_password_recovery_service
 from app.services.payment_gateway import stripe_gateway
@@ -140,6 +141,7 @@ async def lifespan(app: FastAPI):
 
     container = ApplicationContainer()
     set_container(container)
+    container.geoip_service = build_geoip_service(settings)
     warnings = settings.secret_warnings()
     try:
         enforce_secret_overrides(settings)

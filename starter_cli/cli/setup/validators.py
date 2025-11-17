@@ -86,10 +86,19 @@ def normalize_logging_sink(value: str) -> str:
 
 
 def normalize_geoip_provider(value: str) -> str:
-    options = {"none", "maxmind", "ip2location"}
     normalized = value.strip().lower()
+    aliases = {
+        "maxmind": "maxmind_db",
+        "maxmind_db": "maxmind_db",
+        "ip2location-db": "ip2location_db",
+        "ip2location_bin": "ip2location_db",
+    }
+    normalized = aliases.get(normalized, normalized)
+    options = {"none", "ipinfo", "ip2location", "maxmind_db", "ip2location_db"}
     if normalized not in options:
-        raise CLIError("GeoIP provider must be one of none, maxmind, ip2location.")
+        raise CLIError(
+            "GeoIP provider must be one of none, ipinfo, ip2location, maxmind_db, ip2location_db."
+        )
     return normalized
 
 

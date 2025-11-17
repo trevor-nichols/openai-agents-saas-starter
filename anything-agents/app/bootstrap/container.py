@@ -13,7 +13,7 @@ from app.services.billing_events import BillingEventsService
 from app.services.billing_service import BillingService
 from app.services.conversation_service import ConversationService
 from app.services.email_verification_service import EmailVerificationService
-from app.services.geoip_service import GeoIPService, NullGeoIPService
+from app.services.geoip_service import GeoIPService, NullGeoIPService, shutdown_geoip_service
 from app.services.password_recovery_service import PasswordRecoveryService
 from app.services.rate_limit_service import RateLimiter
 from app.services.status_alert_dispatcher import StatusAlertDispatcher
@@ -76,6 +76,7 @@ class ApplicationContainer:
             self.rate_limiter.shutdown(),
             return_exceptions=False,
         )
+        await shutdown_geoip_service(self.geoip_service)
         await shutdown_redis_factory()
         self.session_factory = None
         self.stripe_event_repository = None
@@ -91,6 +92,7 @@ class ApplicationContainer:
         self.signup_request_service = None
         self.status_subscription_service = None
         self.status_alert_dispatcher = None
+        self.geoip_service = NullGeoIPService()
 
 
 _CONTAINER: ApplicationContainer | None = None

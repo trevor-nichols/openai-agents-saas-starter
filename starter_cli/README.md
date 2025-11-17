@@ -48,6 +48,8 @@ The flow covers four milestones plus frontend wiring:
 | M4 Signup & Worker policy | Signup posture (policy + throttles) plus billing retry worker | `SIGNUP_ACCESS_POLICY`, `ALLOW_PUBLIC_SIGNUP`, `SIGNUP_RATE_LIMIT_PER_*`, `SIGNUP_CONCURRENT_REQUESTS_LIMIT`, `ENABLE_BILLING_RETRY_WORKER` |
 | Frontend | Next.js runtime config | `NEXT_PUBLIC_API_URL`, Playwright URL, cookie flags |
 
+GeoIP prompts cover IPinfo/IP2Location SaaS tokens plus self-hosted MaxMind/IP2Location databases. When you choose the MaxMind database provider, the wizard can download/refresh the GeoLite2 City bundle (using `GEOIP_MAXMIND_LICENSE_KEY`) and will warn if the on-disk `.mmdb` file is missing. Cache TTL/capacity and HTTP timeout knobs are recorded alongside the provider choice so backend services stay in sync with operator expectations.
+
 Flags:
 
 - `--profile {local,staging,production}` toggles defaults and required checks.

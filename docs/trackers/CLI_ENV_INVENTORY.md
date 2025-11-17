@@ -113,9 +113,15 @@ Legend: `✅` = prompted during wizard, `⚠️` = optional/backfilled warning, 
 
 | Env Var | Type | Default | Wizard? | Description |
 | --- | --- | --- | --- | --- |
+| `GEOIP_PROVIDER` | `str` | none | ✅ | GeoIP provider selection (none, ipinfo, ip2location, maxmind_db, ip2location_db). |
+| `GEOIP_IPINFO_TOKEN` | `str | None` | None | ✅ | IPinfo API token when geoip_provider=ipinfo. |
 | `GEOIP_IP2LOCATION_API_KEY` | `str | None` | None | ✅ | IP2Location API key when geoip_provider=ip2location. |
-| `GEOIP_MAXMIND_LICENSE_KEY` | `str | None` | None | ✅ | MaxMind license key when geoip_provider=maxmind. |
-| `GEOIP_PROVIDER` | `str` | none | ✅ | GeoIP provider selection (none, maxmind, ip2location). |
+| `GEOIP_MAXMIND_LICENSE_KEY` | `str | None` | None | ✅ | MaxMind license key used for GeoLite2/GeoIP2 downloads. |
+| `GEOIP_MAXMIND_DB_PATH` | `str | None` | None | ✅ | Filesystem path to the MaxMind GeoIP2/GeoLite2 database. |
+| `GEOIP_IP2LOCATION_DB_PATH` | `str | None` | None | ✅ | Filesystem path to the IP2Location BIN database. |
+| `GEOIP_CACHE_TTL_SECONDS` | `float` | 900.0 | ✅ | TTL (seconds) for cached GeoIP lookups. |
+| `GEOIP_CACHE_MAX_ENTRIES` | `int` | 4096 | ✅ | Maximum cached GeoIP entries per process. |
+| `GEOIP_HTTP_TIMEOUT_SECONDS` | `float` | 2.0 | ✅ | HTTP timeout (seconds) for SaaS GeoIP providers. |
 | `LOGGING_DATADOG_API_KEY` | `str | None` | None | ✅ | Datadog API key when logging_sink=datadog. |
 | `LOGGING_DATADOG_SITE` | `str | None` | datadoghq.com | ✅ | Datadog site (datadoghq.com, datadoghq.eu, etc.). |
 | `LOGGING_OTLP_ENDPOINT` | `str | None` | None | ✅ | OTLP/HTTP endpoint when logging_sink=otlp. |

@@ -46,7 +46,9 @@ def test_logging_sink_normalization() -> None:
 
 
 def test_geoip_provider_normalization() -> None:
-    assert normalize_geoip_provider("MAXMIND") == "maxmind"
+    assert normalize_geoip_provider("MAXMIND") == "maxmind_db"
+    assert normalize_geoip_provider("ipinfo") == "ipinfo"
+    assert normalize_geoip_provider("ip2location-db") == "ip2location_db"
     with pytest.raises(CLIError):
         normalize_geoip_provider("custom")
 

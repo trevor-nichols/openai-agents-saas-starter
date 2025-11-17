@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+from pathlib import Path
+
+from starter_cli.cli.common import CLIError
 from starter_cli.cli.console import console
 from starter_cli.cli.setup._wizard.context import WizardContext
+from starter_cli.cli.setup.geoip import download_maxmind_database
 from starter_cli.cli.setup.inputs import InputProvider
 from starter_cli.cli.setup.validators import normalize_geoip_provider, normalize_logging_sink
 
@@ -60,20 +64,28 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     geo = normalize_geoip_provider(
         provider.prompt_string(
             key="GEOIP_PROVIDER",
-            prompt="GeoIP provider (none/maxmind/ip2location)",
+            prompt="GeoIP provider (none/ipinfo/ip2location/maxmind_db/ip2location_db)",
             default=context.current("GEOIP_PROVIDER") or "none",
             required=True,
         )
     )
     context.set_backend("GEOIP_PROVIDER", geo)
-    if geo == "maxmind":
-        license_key = provider.prompt_secret(
-            key="GEOIP_MAXMIND_LICENSE_KEY",
-            prompt="MaxMind license key",
-            existing=context.current("GEOIP_MAXMIND_LICENSE_KEY"),
+    if context.profile != "local" and geo == "none":
+        console.warn(
+            (
+                "GeoIP provider is disabled for a non-local profile; session telemetry "
+                "will lack location data."
+            ),
+            topic="geoip",
+        )
+    if geo == "ipinfo":
+        token = provider.prompt_secret(
+            key="GEOIP_IPINFO_TOKEN",
+            prompt="IPinfo API token",
+            existing=context.current("GEOIP_IPINFO_TOKEN"),
             required=True,
         )
-        context.set_backend("GEOIP_MAXMIND_LICENSE_KEY", license_key, mask=True)
+        context.set_backend("GEOIP_IPINFO_TOKEN", token, mask=True)
     elif geo == "ip2location":
         api_key = provider.prompt_secret(
             key="GEOIP_IP2LOCATION_API_KEY",
@@ -82,3 +94,96 @@ def run(context: WizardContext, provider: InputProvider) -> None:
             required=True,
         )
         context.set_backend("GEOIP_IP2LOCATION_API_KEY", api_key, mask=True)
+    elif geo == "maxmind_db":
+        license_key = provider.prompt_secret(
+            key="GEOIP_MAXMIND_LICENSE_KEY",
+            prompt="MaxMind license key",
+            existing=context.current("GEOIP_MAXMIND_LICENSE_KEY"),
+            required=True,
+        )
+        context.set_backend("GEOIP_MAXMIND_LICENSE_KEY", license_key, mask=True)
+        db_path = provider.prompt_string(
+            key="GEOIP_MAXMIND_DB_PATH",
+            prompt="Path to MaxMind GeoIP database",
+            default=context.current("GEOIP_MAXMIND_DB_PATH") or "var/geoip/GeoLite2-City.mmdb",
+            required=True,
+        )
+        context.set_backend("GEOIP_MAXMIND_DB_PATH", db_path)
+        _maybe_download_maxmind_db(context, provider, license_key=license_key, raw_path=db_path)
+    elif geo == "ip2location_db":
+        default_ip2location = "var/geoip/IP2LOCATION-LITE-DB3.BIN"
+        db_path = provider.prompt_string(
+            key="GEOIP_IP2LOCATION_DB_PATH",
+            prompt="Path to IP2Location BIN database",
+            default=context.current("GEOIP_IP2LOCATION_DB_PATH") or default_ip2location,
+            required=True,
+        )
+        context.set_backend("GEOIP_IP2LOCATION_DB_PATH", db_path)
+        _warn_missing_db(context, db_path, provider_name="IP2Location")
+
+    cache_ttl = provider.prompt_string(
+        key="GEOIP_CACHE_TTL_SECONDS",
+        prompt="GeoIP cache TTL (seconds)",
+        default=context.current("GEOIP_CACHE_TTL_SECONDS") or "900",
+        required=True,
+    )
+    context.set_backend("GEOIP_CACHE_TTL_SECONDS", cache_ttl)
+    cache_max = provider.prompt_string(
+        key="GEOIP_CACHE_MAX_ENTRIES",
+        prompt="GeoIP cache capacity (entries)",
+        default=context.current("GEOIP_CACHE_MAX_ENTRIES") or "4096",
+        required=True,
+    )
+    context.set_backend("GEOIP_CACHE_MAX_ENTRIES", cache_max)
+    http_timeout = provider.prompt_string(
+        key="GEOIP_HTTP_TIMEOUT_SECONDS",
+        prompt="GeoIP HTTP timeout (seconds)",
+        default=context.current("GEOIP_HTTP_TIMEOUT_SECONDS") or "2.0",
+        required=True,
+    )
+    context.set_backend("GEOIP_HTTP_TIMEOUT_SECONDS", http_timeout)
+
+
+def _maybe_download_maxmind_db(
+    context: WizardContext,
+    provider: InputProvider,
+    *,
+    license_key: str,
+    raw_path: str,
+) -> None:
+    target = _resolve_geoip_path(context, raw_path)
+    default_download = context.profile != "local"
+    should_download = provider.prompt_bool(
+        key="GEOIP_MAXMIND_DOWNLOAD",
+        prompt=f"Download/refresh MaxMind DB at {raw_path} now?",
+        default=default_download,
+    )
+    if not should_download:
+        _warn_missing_path(target, label="MaxMind database")
+        return
+    try:
+        download_maxmind_database(license_key=license_key, target_path=target)
+    except CLIError as exc:
+        console.error(f"Failed to download MaxMind database: {exc}", topic="geoip")
+        _warn_missing_path(target, label="MaxMind database")
+
+
+def _warn_missing_db(context: WizardContext, raw_path: str, *, provider_name: str) -> None:
+    target = _resolve_geoip_path(context, raw_path)
+    _warn_missing_path(target, label=f"{provider_name} database")
+
+
+def _resolve_geoip_path(context: WizardContext, raw_path: str) -> Path:
+    candidate = Path(raw_path).expanduser()
+    if candidate.is_absolute():
+        return candidate
+    return (context.cli_ctx.project_root / candidate).resolve()
+
+
+def _warn_missing_path(path: Path, *, label: str) -> None:
+    if path.exists():
+        return
+    console.warn(
+        f"{label} not found at {path}. Download it now or update the path later.",
+        topic="geoip",
+    )
