@@ -25,6 +25,7 @@ from app.infrastructure.notifications import (
     get_resend_email_adapter,
 )
 from app.observability.logging import log_event
+from app.services.integrations.slack_notifier import SlackNotificationError, SlackNotifier
 
 ACTIVE_STATUS: SubscriptionStatus = "active"
 
@@ -38,11 +39,13 @@ class StatusAlertDispatcher:
         *,
         settings: Settings,
         email_adapter: ResendEmailAdapter | None,
+        slack_notifier: SlackNotifier | None,
     ) -> None:
         self._repository = repository
         self._settings = settings
         self._email_adapter = email_adapter
         self._http_timeout = settings.status_subscription_webhook_timeout_seconds
+        self._slack_notifier = slack_notifier
 
     async def dispatch_incident(
         self,
@@ -74,7 +77,12 @@ class StatusAlertDispatcher:
             if not result.next_cursor:
                 break
             cursor = result.next_cursor
-        return matched
+        slack_dispatched = await self._notify_slack(
+            incident=incident,
+            severity=severity_normalized,
+            tenant_id=tenant_id,
+        )
+        return matched + slack_dispatched
 
     def _should_notify(self, subscription: StatusSubscription, severity: str) -> bool:
         if subscription.status != ACTIVE_STATUS:
@@ -198,6 +206,44 @@ class StatusAlertDispatcher:
                 reason=str(exc),
             )
 
+    async def _notify_slack(
+        self,
+        *,
+        incident: IncidentRecord,
+        severity: str,
+        tenant_id: UUID | None,
+    ) -> int:
+        notifier = self._slack_notifier
+        if (notifier is None) or not self._settings.enable_slack_status_notifications:
+            return 0
+        channels = self._resolve_slack_channels(tenant_id)
+        dispatched = 0
+        for channel in channels:
+            try:
+                await notifier.send_incident_alert(
+                    incident=incident,
+                    severity=severity,
+                    channel=channel,
+                    tenant_id=tenant_id,
+                )
+                dispatched += 1
+            except SlackNotificationError as exc:
+                log_event(
+                    "status.alert_dispatch.slack_error",
+                    channel=channel,
+                    incident_id=incident.incident_id,
+                    reason=str(exc),
+                )
+        return dispatched
+
+    def _resolve_slack_channels(self, tenant_id: UUID | None) -> list[str]:
+        mapping = self._settings.slack_status_tenant_channel_map
+        if tenant_id:
+            tenant_channels = mapping.get(str(tenant_id).lower(), [])
+            if tenant_channels:
+                return list(tenant_channels)
+        return list(self._settings.slack_status_default_channels)
+
     async def _ensure_unsubscribe_token(self, subscription_id: UUID) -> str | None:
         token = await self._repository.get_unsubscribe_token(subscription_id)
         if token:
@@ -250,9 +296,15 @@ def build_status_alert_dispatcher(
     *,
     repository: StatusSubscriptionRepository,
     settings: Settings | None = None,
+    slack_notifier: SlackNotifier | None = None,
 ) -> StatusAlertDispatcher:
     resolved = settings or get_settings()
     adapter = None
     if resolved.enable_resend_email_delivery:
         adapter = get_resend_email_adapter(resolved)
-    return StatusAlertDispatcher(repository, settings=resolved, email_adapter=adapter)
+    return StatusAlertDispatcher(
+        repository,
+        settings=resolved,
+        email_adapter=adapter,
+        slack_notifier=slack_notifier,
+    )

@@ -203,6 +203,21 @@ EMAIL_DELIVERY_LATENCY_SECONDS = Histogram(
     registry=REGISTRY,
 )
 
+SLACK_NOTIFICATION_ATTEMPTS_TOTAL = Counter(
+    "slack_notification_attempts_total",
+    "Count of Slack notification attempts segmented by channel and result.",
+    ("channel", "result"),
+    registry=REGISTRY,
+)
+
+SLACK_NOTIFICATION_LATENCY_SECONDS = Histogram(
+    "slack_notification_latency_seconds",
+    "Latency histogram for Slack notification delivery attempts.",
+    ("channel", "result"),
+    buckets=_LATENCY_BUCKETS,
+    registry=REGISTRY,
+)
+
 
 def observe_jwt_signing(*, result: str, token_use: str | None, duration_seconds: float) -> None:
     label = _sanitize_token_use(token_use)
@@ -265,6 +280,19 @@ def observe_email_delivery(*, category: str | None, result: str, duration_second
     label = (category or "unknown").lower()
     EMAIL_DELIVERY_ATTEMPTS_TOTAL.labels(category=label, result=result).inc()
     EMAIL_DELIVERY_LATENCY_SECONDS.labels(category=label, result=result).observe(
+        max(duration_seconds, 0.0)
+    )
+
+
+def observe_slack_notification(
+    *,
+    channel: str | None,
+    result: str,
+    duration_seconds: float,
+) -> None:
+    label = (channel or "unknown").lower()
+    SLACK_NOTIFICATION_ATTEMPTS_TOTAL.labels(channel=label, result=result).inc()
+    SLACK_NOTIFICATION_LATENCY_SECONDS.labels(channel=label, result=result).observe(
         max(duration_seconds, 0.0)
     )
 

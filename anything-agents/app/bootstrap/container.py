@@ -15,6 +15,7 @@ from app.services.billing.stripe.dispatcher import StripeEventDispatcher
 from app.services.billing.stripe.retry_worker import StripeDispatchRetryWorker
 from app.services.conversation_service import ConversationService
 from app.services.geoip_service import GeoIPService, NullGeoIPService, shutdown_geoip_service
+from app.services.integrations.slack_notifier import SlackNotifier
 from app.services.shared.rate_limit_service import RateLimiter
 from app.services.signup.email_verification_service import EmailVerificationService
 from app.services.signup.password_recovery_service import PasswordRecoveryService
@@ -52,6 +53,7 @@ class ApplicationContainer:
     stripe_event_repository: StripeEventRepository | None = None
     user_service: UserService | None = None
     geoip_service: GeoIPService = field(default_factory=NullGeoIPService)
+    slack_notifier: SlackNotifier | None = None
     auth_service: AuthService | None = None
     password_recovery_service: PasswordRecoveryService | None = None
     email_verification_service: EmailVerificationService | None = None
@@ -76,6 +78,8 @@ class ApplicationContainer:
             self.rate_limiter.shutdown(),
             return_exceptions=False,
         )
+        if self.slack_notifier:
+            await self.slack_notifier.shutdown()
         await shutdown_geoip_service(self.geoip_service)
         await shutdown_redis_factory()
         self.session_factory = None

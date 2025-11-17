@@ -10,6 +10,7 @@ from ._wizard.context import FRONTEND_ENV_RELATIVE, WizardContext, build_env_fil
 from ._wizard.sections import (
     core,
     frontend,
+    integrations,
     observability,
     providers,
     secrets,
@@ -103,6 +104,7 @@ class SetupWizard:
             security.run(self.context, provider)
             providers.run(self.context, provider)
             observability.run(self.context, provider)
+            integrations.run(self.context, provider)
             signup.run(self.context, provider)
             frontend.configure(self.context, provider)
 

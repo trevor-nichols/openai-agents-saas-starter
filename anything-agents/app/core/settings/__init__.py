@@ -7,6 +7,7 @@ from .ai import AIProviderSettingsMixin
 from .application import ApplicationSettingsMixin
 from .base import VAULT_PROVIDER_KEYS, BaseAppSettings, SignupAccessPolicyLiteral
 from .database import DatabaseAndBillingSettingsMixin
+from .integrations import IntegrationSettingsMixin
 from .observability import ObservabilitySettingsMixin
 from .providers import SecretsProviderSettingsMixin
 from .rate_limits import RateLimitSettingsMixin
@@ -19,6 +20,7 @@ class Settings(
     BaseAppSettings,
     AIProviderSettingsMixin,
     ApplicationSettingsMixin,
+    IntegrationSettingsMixin,
     RedisSettingsMixin,
     RateLimitSettingsMixin,
     SignupSettingsMixin,

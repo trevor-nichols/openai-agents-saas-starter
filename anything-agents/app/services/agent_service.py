@@ -81,6 +81,14 @@ class AgentRegistry:
         self._register_builtin_tools()
         self._build_default_agents()
 
+    def _resolve_agent_model(self, agent_key: str) -> str:
+        overrides = {
+            "triage": self._settings.agent_triage_model,
+            "code_assistant": self._settings.agent_code_model,
+            "data_analyst": self._settings.agent_data_model,
+        }
+        return overrides.get(agent_key) or self._settings.agent_default_model
+
     def _register_builtin_tools(self) -> None:
         self._tool_registry.register_tool(
             get_current_time,
@@ -114,7 +122,7 @@ class AgentRegistry:
             step-by-step reasoning when helpful.
             """,
             handoff_description="Handles software engineering questions and code reviews.",
-            model="gpt-4.1-2025-04-14",
+            model=self._resolve_agent_model("code_assistant"),
             tools=code_tools,
         )
 
@@ -126,7 +134,7 @@ class AgentRegistry:
             summaries or sanity checks.
             """,
             handoff_description="Supports analytical and quantitative queries.",
-            model="gpt-4.1-2025-04-14",
+            model=self._resolve_agent_model("data_analyst"),
             tools=data_tools,
         )
 
@@ -143,7 +151,7 @@ class AgentRegistry:
         triage_agent = Agent(
             name="Triage Assistant",
             instructions=triage_instructions,
-            model="gpt-4.1-2025-04-14",
+            model=self._resolve_agent_model("triage"),
             tools=triage_tools,
             handoffs=[handoff(code_assistant), handoff(data_analyst)],
         )

@@ -103,6 +103,28 @@ def test_wizard_headless_local_generates_env(temp_ctx: CLIContext) -> None:
     _cleanup_env(snapshot)
 
 
+def test_wizard_configures_slack_section(temp_ctx: CLIContext) -> None:
+    snapshot = dict(os.environ)
+    answers = _local_headless_answers() | {
+        "ENABLE_SLACK_STATUS_NOTIFICATIONS": "true",
+        "SLACK_STATUS_BOT_TOKEN": "xoxb-test",
+        "SLACK_STATUS_DEFAULT_CHANNELS": "#incidents",
+    }
+    wizard = SetupWizard(
+        ctx=temp_ctx,
+        profile="local",
+        output_format="summary",
+        input_provider=HeadlessInputProvider(answers=answers),
+    )
+    wizard.execute()
+
+    env_body = (temp_ctx.project_root / ".env.local").read_text(encoding="utf-8")
+    assert "ENABLE_SLACK_STATUS_NOTIFICATIONS=true" in env_body
+    assert "SLACK_STATUS_DEFAULT_CHANNELS=#incidents" in env_body
+    assert "SLACK_STATUS_BOT_TOKEN=xoxb-test" in env_body
+    _cleanup_env(snapshot)
+
+
 def test_wizard_headless_requires_worker_mode(temp_ctx: CLIContext) -> None:
     snapshot = dict(os.environ)
     answers = _local_headless_answers()

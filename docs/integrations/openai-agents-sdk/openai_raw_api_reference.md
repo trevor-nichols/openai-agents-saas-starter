@@ -1366,7 +1366,7 @@ reasoning
 object
 
 Optional
-gpt-5 and o-series models only
+gpt-5.1 and o-series models only
 
 Configuration options for reasoning models.
 

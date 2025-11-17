@@ -66,6 +66,7 @@ from app.services.auth_service import AuthService
 from app.services.billing.billing_events import RedisBillingEventBackend
 from app.services.billing.payment_gateway import stripe_gateway
 from app.services.geoip_service import build_geoip_service
+from app.services.integrations.slack_notifier import build_slack_notifier
 from app.services.signup.email_verification_service import build_email_verification_service
 from app.services.signup.invite_service import build_invite_service
 from app.services.signup.password_recovery_service import build_password_recovery_service
@@ -265,9 +266,12 @@ async def lifespan(app: FastAPI):
             repository=status_repo,
             settings=settings,
         )
+        slack_notifier = build_slack_notifier(settings)
+        container.slack_notifier = slack_notifier
         container.status_alert_dispatcher = build_status_alert_dispatcher(
             repository=status_repo,
             settings=settings,
+            slack_notifier=slack_notifier,
         )
 
     if settings.enable_billing:

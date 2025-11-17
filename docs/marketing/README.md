@@ -5,7 +5,7 @@ _Last updated: November 14, 2025_
 Platform Foundations owns every marketing route (`/`, `/features`, `/pricing`, `/docs`, `/status`). This guide keeps copy, CTA wiring, and analytics consistent so future changes stay aligned with the code we just shipped.
 
 ## 1. Voice & Positioning
-- **Tone:** confident, operator-friendly, and action-oriented. Emphasize production readiness (GPT-5 agents, Ed25519 auth, billing automation) without hype.
+- **Tone:** confident, operator-friendly, and action-oriented. Emphasize production readiness (GPT-5.1 agents, Ed25519 auth, billing automation) without hype.
 - **Audience:** product engineers, platform teams, and GTM partners evaluating the starter. Avoid consumer phrasing.
 - **Structure:** every hero uses the pattern _eyebrow → title (≤12 words) → two-sentence description → primary/secondary CTAs_. Reference the constants under `agent-next-15-frontend/features/marketing/*/constants.ts`.
 - **Proof points:** highlight cross-stack alignment (FastAPI + Next.js), enterprise guardrails, billing automation, and ops tooling. Keep bullets as outcome statements, not feature lists.
