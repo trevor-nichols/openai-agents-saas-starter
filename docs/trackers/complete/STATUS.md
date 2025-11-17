@@ -22,11 +22,14 @@
 - Unit test coverage spans backend services and CLI sections (e.g., `anything-agents/tests/unit/test_setup_wizard_sections.py`, `test_signup_service.py`, CLI provider tests).
 
 ## Open Items (Must Fix before “Complete”)
-1. **Operational Proof** – Capture a documented run of `hatch run lint`, `hatch run typecheck`, key backend tests, and the CLI wizard (screenshots/logs in `var/reports`) as evidence for release gate.
+| ID | Area | Description | Owner | Status/Notes |
+| --- | --- | --- | --- | --- |
+| — | — | **No open items.** | — | — |
 
 ## Recently Resolved
-- **2025-11-17 – Agent Model Baseline** – Default agents now run on GPT-5.1 via the `AGENT_MODEL_*` settings, ensuring the triage/code/data assistants align with the new reasoning mandate while remaining overrideable.
-- **2025-11-17 – Slack Integrations** – `app/services/integrations/slack_notifier.py`, wizard prompts, and `docs/integrations/slack.md` shipped the first production adapter so incidents post directly to operator-defined Slack channels with retries, metrics, and optional tenant overrides.
+- **2025-11-17 / BCL-01 – Agent Model Baseline** – Default agents now run on GPT-5.1 via the `AGENT_MODEL_*` settings, ensuring the triage/code/data assistants align with the new reasoning mandate while remaining overrideable.
+- **2025-11-17 / BCL-02 – Slack Integrations** – `app/services/integrations/slack_notifier.py`, wizard prompts, and `docs/integrations/slack.md` shipped the first production adapter so incidents post directly to operator-defined Slack channels with retries, metrics, and optional tenant overrides.
+- **2025-11-17 / BCL-03 – Ops Evidence Bundle** – Captured lint, typecheck, unit tests, and a full Starter CLI wizard run with transcripts + summaries under `var/reports/ops-evidence-20251117T225150Z-*`, closing the release gate evidence requirement.
 
 ## Optional Enhancements / Nice-to-Haves
 - **Conversation Search Indexing** – Move from naive substring scans to Postgres full-text search or vector search for better scale.

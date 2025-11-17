@@ -6,9 +6,9 @@
 ## Blocking Items to Reach “Complete”
 | ID | Area | Description | Owner | Status/Notes |
 | --- | --- | --- | --- | --- |
-| BCL-01 | Agents | Update `app/services/agent_service.py` to default to GPT‑5 reasoning models per product spec; make model IDs configurable via settings/env to avoid future code edits. | Backend Eng | OPEN |
+| BCL-01 | Agents | Update `app/services/agent_service.py` to default to GPT‑5 reasoning models per product spec; make model IDs configurable via settings/env to avoid future code edits. | Backend Eng | DONE – `AGENT_MODEL_*` settings now default to GPT-5.1 reasoning models. |
 | BCL-02 | Integrations | Slack notifier landed: settings + CLI collect bot tokens/channels, `StatusAlertDispatcher` fans out to Slack with retries/metrics, and docs live at `docs/integrations/slack.md`. | Backend Eng | DONE |
-| BCL-03 | Ops Evidence | Capture and attach proof of successful `hatch run lint`, `hatch run typecheck`, representative backend test suite run, and a full CLI wizard execution (screenshots/log excerpts) to `docs/ops` or `var/reports` for compliance sign-off. | Platform Eng | OPEN |
+| BCL-03 | Ops Evidence | Capture and attach proof of successful `hatch run lint`, `hatch run typecheck`, representative backend test suite run, and a full CLI wizard execution (screenshots/log excerpts) to `docs/ops` or `var/reports` for compliance sign-off. | Platform Eng | DONE – artifacts stored under `var/reports/ops-evidence-20251117T225150Z-*`. |
 
 ## Optional / Nice-to-Have Enhancements
 - **Conversation Search**: Upgrade `ConversationService.search` to leverage Postgres full-text or embedding search instead of linear substring scans.
