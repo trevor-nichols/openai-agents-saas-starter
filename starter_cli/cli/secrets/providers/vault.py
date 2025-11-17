@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import subprocess
+from typing import TYPE_CHECKING
 
 from starter_shared.secrets.models import SecretsProviderLiteral
-from typing import TYPE_CHECKING
 
 from ...common import CLIContext
 from ...console import console

@@ -14,7 +14,7 @@ from app.infrastructure.redis.factory import (
 
 
 def build_settings(**overrides: object) -> Settings:
-    base = Settings(_env_file=None)
+    base = Settings(_env_file=None)  # pyright: ignore[reportCallIssue]
     return base.model_copy(update=overrides)
 
 

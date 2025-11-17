@@ -7,11 +7,11 @@ from starter_shared.secrets.models import SecretsProviderLiteral
 from starter_cli.cli.auth_commands import handle_keys_rotate
 from starter_cli.cli.common import CLIError
 from starter_cli.cli.console import console
+from starter_cli.cli.secrets import registry
 from starter_cli.cli.setup._wizard.context import WizardContext
 from starter_cli.cli.setup.automation import AutomationPhase, AutomationStatus
 from starter_cli.cli.setup.inputs import HeadlessInputProvider, InputProvider
 from starter_cli.cli.setup.validators import probe_vault_transit
-from starter_cli.cli.secrets import registry
 
 _VAULT_PROVIDERS = {
     SecretsProviderLiteral.VAULT_DEV,

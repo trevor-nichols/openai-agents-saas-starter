@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 from starter_shared.secrets.models import SecretsProviderLiteral
-from typing import TYPE_CHECKING
 
 from ...common import CLIContext, CLIError
 from ...console import console

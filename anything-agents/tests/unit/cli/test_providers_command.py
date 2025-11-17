@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass, replace
+from typing import cast
 
 import pytest
-
-from starter_shared.provider_validation import ProviderViolation
 from starter_cli.cli import providers_commands
 from starter_cli.cli.common import CLIContext
+from starter_shared.config import StarterSettingsProtocol
+from starter_shared.provider_validation import ProviderViolation
 
 
 @dataclass(slots=True)
@@ -26,7 +27,7 @@ def _run_handler(
     violations: list[ProviderViolation],
 ) -> int:
     ctx = CLIContext()
-    ctx.settings = settings
+    ctx.settings = cast(StarterSettingsProtocol, settings)
     args = argparse.Namespace(strict=False)
 
     def _mock_validate(current_settings, *, strict):

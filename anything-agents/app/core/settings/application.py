@@ -1,0 +1,70 @@
+"""Application-level configuration primitives."""
+from __future__ import annotations
+
+from pydantic import BaseModel, Field
+
+from .base import SAFE_ENVIRONMENTS
+
+
+class ApplicationSettingsMixin(BaseModel):
+    """Metadata, runtime flags, and network policies."""
+
+    app_name: str = Field(default="anything-agents", description="Application name")
+    app_description: str = Field(
+        default="anything-agents FastAPI microservice", description="Application description"
+    )
+    app_version: str = Field(default="1.0.0", description="Application version")
+    app_public_url: str = Field(
+        default="http://localhost:3000",
+        description="Public base URL used when generating email links.",
+        alias="APP_PUBLIC_URL",
+    )
+    debug: bool = Field(default=False, description="Debug mode")
+    environment: str = Field(
+        default="development",
+        description="Deployment environment label (development, staging, production, etc.)",
+        alias="ENVIRONMENT",
+    )
+    port: int = Field(default=8000, description="Server port")
+
+    allowed_hosts: str = Field(
+        default="localhost,localhost:8000,127.0.0.1,testserver,testclient",
+        description=(
+            "Trusted hosts for FastAPI TrustedHostMiddleware (comma-separated host[:port] entries)."
+        ),
+    )
+    allowed_origins: str = Field(
+        default="http://localhost:3000,http://localhost:8000",
+        description="CORS allowed origins (comma-separated)",
+    )
+    allowed_methods: str = Field(
+        default="GET,POST,PUT,DELETE,OPTIONS", description="CORS allowed methods (comma-separated)"
+    )
+    allowed_headers: str = Field(default="*", description="CORS allowed headers (comma-separated)")
+    log_level: str = Field(default="INFO", description="Logging level")
+
+    def get_allowed_hosts_list(self) -> list[str]:
+        normalized_hosts: list[str] = []
+        for host in self.allowed_hosts.split(","):
+            candidate = host.strip()
+            if candidate and candidate not in normalized_hosts:
+                normalized_hosts.append(candidate)
+
+        if self.debug or self.environment.lower() in SAFE_ENVIRONMENTS:
+            for safe_host in ("testserver", "testclient"):
+                if safe_host not in normalized_hosts:
+                    normalized_hosts.append(safe_host)
+
+        if not normalized_hosts:
+            normalized_hosts = ["localhost"]
+
+        return normalized_hosts
+
+    def get_allowed_origins_list(self) -> list[str]:
+        return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]
+
+    def get_allowed_methods_list(self) -> list[str]:
+        return [method.strip() for method in self.allowed_methods.split(",") if method.strip()]
+
+    def get_allowed_headers_list(self) -> list[str]:
+        return [header.strip() for header in self.allowed_headers.split(",") if header.strip()]

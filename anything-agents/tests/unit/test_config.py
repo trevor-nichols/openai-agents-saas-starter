@@ -20,7 +20,7 @@ def make_settings(**overrides) -> Settings:
         patched_env[env_key] = os.environ.pop(env_key, None)
 
     try:
-        instance = Settings(_env_file=None, **overrides)
+        instance = Settings(_env_file=None, **overrides)  # pyright: ignore[reportCallIssue]
         reset_candidates = (
             "rate_limit_redis_url",
             "auth_cache_redis_url",

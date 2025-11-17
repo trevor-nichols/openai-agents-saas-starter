@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from azure.core.credentials import TokenCredential
 from azure.core.exceptions import AzureError
 from azure.identity import (
@@ -10,7 +12,6 @@ from azure.identity import (
 )
 from azure.keyvault.secrets import SecretClient
 from starter_shared.secrets.models import SecretsProviderLiteral
-from typing import TYPE_CHECKING
 
 from ...common import CLIContext
 from ...console import console
