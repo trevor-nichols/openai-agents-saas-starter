@@ -58,6 +58,10 @@ class StarterSettingsProtocol(Protocol):
     auth_key_storage_backend: str
     auth_key_storage_path: str
     auth_key_secret_name: str | None
+    enable_resend_email_delivery: bool
+    resend_api_key: str | None
+    resend_default_from: str | None
+    tavily_api_key: str | None
     enable_billing: bool
     enable_billing_retry_worker: bool
     signup_access_policy: Literal["public", "invite_only", "approval"]
@@ -79,6 +83,8 @@ class StarterSettingsProtocol(Protocol):
     def secret_warnings(self) -> list[str]: ...
 
     def required_stripe_envs_missing(self) -> list[str]: ...
+
+    def should_enforce_secret_overrides(self) -> bool: ...
 
 
 def _resolve_settings_class() -> type[StarterSettingsProtocol]:

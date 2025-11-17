@@ -122,7 +122,17 @@ Manages the `/api/v1/status` surface:
 - `status subscriptions list|revoke` for alert subscriptions (requires `STATUS_API_TOKEN`).
 - `status incidents resend` to redispatch a stored incident (optionally by tenant and severity).
 
-### 7. `config dump-schema`
+### 7. `providers validate`
+
+Validates Stripe, Resend, and Tavily configuration before you boot FastAPI or deploy:
+
+- Loads the same env files as other commands, reuses the backend validator, and prints one line per
+  violation with provider/code context.
+- Returns non-zero when fatal issues exist (any hardened environment or when you pass `--strict`).
+- Use `make validate-providers` or `python -m starter_cli.cli providers validate --strict` in CI to
+  fail the pipeline before Docker builds or migrations.
+
+### 8. `config dump-schema`
 
 Renders every FastAPI setting and its env alias, default, type, and wizard coverage. Use this to audit
 what remains unprompted after running the wizard. Supports `--format table` (default) or `json`.

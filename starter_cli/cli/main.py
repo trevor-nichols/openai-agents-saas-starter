@@ -8,6 +8,7 @@ from . import (
     auth_commands,
     config_commands,
     infra_commands,
+    providers_commands,
     secrets_commands,
     setup_commands,
     status_commands,
@@ -53,6 +54,7 @@ def build_parser() -> argparse.ArgumentParser:
     auth_commands.register(subparsers)
     config_commands.register(subparsers)
     infra_commands.register(subparsers)
+    providers_commands.register(subparsers)
     secrets_commands.register(subparsers)
     stripe_commands.register(subparsers)
     status_commands.register(subparsers)

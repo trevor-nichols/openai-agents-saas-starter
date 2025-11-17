@@ -5,10 +5,15 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any
+
+from app.core.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # TOOL REGISTRY CLASS
@@ -270,23 +275,30 @@ def initialize_tools() -> ToolRegistry:
         ToolRegistry: Populated tool registry
     """
     registry = get_tool_registry()
+    settings = get_settings()
 
     # Import and register tools
     try:
         from .web_search import tavily_search_tool
 
-        registry.register_tool(
-            tavily_search_tool,
-            category="web_search",
-            metadata={
-                "description": "Search the web for current information using Tavily API",
-                "requires_api_key": True,
-                "api_service": "tavily",
-                "core": False,
-                "agents": ["triage", "data_analyst"],
-                "capabilities": ["web_search"],
-            },
-        )
+        if settings.tavily_api_key and settings.tavily_api_key.strip():
+            registry.register_tool(
+                tavily_search_tool,
+                category="web_search",
+                metadata={
+                    "description": "Search the web for current information using Tavily API",
+                    "requires_api_key": True,
+                    "api_service": "tavily",
+                    "core": False,
+                    "agents": ["triage", "data_analyst"],
+                    "capabilities": ["web_search"],
+                },
+            )
+        else:
+            logger.info(
+                "TAVILY_API_KEY is not configured; Tavily search tool will be disabled.",
+                extra={"provider": "tavily"},
+            )
     except ImportError as e:
         print(f"Warning: Could not import web search tools: {e}")
 

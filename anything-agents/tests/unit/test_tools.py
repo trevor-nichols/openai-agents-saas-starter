@@ -3,7 +3,10 @@
 # Dependencies: pytest, app/utils/tools
 # Used by: Test suite for validating tool integration
 
+from types import SimpleNamespace
 from unittest.mock import Mock, call, create_autospec, patch
+
+import pytest
 
 from app.services.agent_service import AgentRegistry
 from app.utils.tools import ToolRegistry, get_tool_registry, initialize_tools
@@ -12,6 +15,25 @@ from app.utils.tools.web_search import get_tavily_client, tavily_search_tool
 # =============================================================================
 # TOOL REGISTRY TESTS
 # =============================================================================
+
+
+@pytest.fixture(autouse=True)
+def _reset_tool_registry():
+    get_tool_registry.cache_clear()
+    yield
+    get_tool_registry.cache_clear()
+
+
+@pytest.fixture
+def registry_settings(monkeypatch):
+    """Patch tool registry settings with a configurable Tavily API key."""
+
+    def _configure(*, tavily_key: str | None = "test_key") -> SimpleNamespace:
+        settings = SimpleNamespace(tavily_api_key=tavily_key)
+        monkeypatch.setattr("app.utils.tools.registry.get_settings", lambda: settings)
+        return settings
+
+    return _configure
 
 
 def test_tool_registry_initialization():
@@ -24,8 +46,9 @@ def test_tool_registry_initialization():
     assert hasattr(registry, "get_core_tools")
 
 
-def test_initialize_tools():
+def test_initialize_tools(registry_settings):
     """Test that tools are properly initialized and registered."""
+    registry_settings()
     registry = initialize_tools()
 
     # Check that tools are registered
@@ -35,6 +58,14 @@ def test_initialize_tools():
     # Check categories
     categories = registry.list_categories()
     assert "web_search" in categories
+
+
+def test_initialize_tools_skips_tavily_without_key(registry_settings):
+    """Verify Tavily tool registration is skipped when API key is unavailable."""
+    registry_settings(tavily_key=None)
+    registry = initialize_tools()
+
+    assert "tavily_search_tool" not in registry.list_tool_names()
 
 
 def test_tool_registry_get_core_tools():
@@ -102,8 +133,9 @@ def test_get_tavily_client_with_api_key():
 # =============================================================================
 
 
-def test_tool_registry_integration():
+def test_tool_registry_integration(registry_settings):
     """Test full tool registry integration."""
+    registry_settings()
     registry = initialize_tools()
 
     # Test getting tool by name
@@ -143,8 +175,9 @@ def test_tool_can_be_used_by_agent():
     assert agent.tools[0].name == "tavily_search_tool"
 
 
-def test_tool_registry_provides_tools_for_agents():
+def test_tool_registry_provides_tools_for_agents(registry_settings):
     """Test that the tool registry can provide tools for agent creation."""
+    registry_settings()
     registry = initialize_tools()
     AgentRegistry(registry)
 

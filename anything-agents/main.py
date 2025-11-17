@@ -17,6 +17,11 @@ from app.core.config import (
     enforce_vault_verification,
     get_settings,
 )
+from app.core.provider_validation import (
+    ProviderViolation,
+    ensure_provider_parity,
+    validate_providers,
+)
 from app.infrastructure.db import (
     dispose_engine,
     get_async_sessionmaker,
@@ -74,6 +79,7 @@ from app.services.user_service import build_user_service
 
 logger = logging.getLogger(__name__)
 _STRIPE_TROUBLESHOOTING_DOC = "docs/billing/stripe-setup.md#startup-validation--troubleshooting"
+_PROVIDER_DOC = "docs/ops/provider-parity.md"
 
 # =============================================================================
 # LIFESPAN EVENTS
@@ -104,10 +110,30 @@ def _log_billing_configuration(settings: Settings) -> None:
     )
 
 
+def _log_provider_violations(violations: list[ProviderViolation]) -> None:
+    for violation in violations:
+        log_fn = logger.error if violation.fatal else logger.warning
+        log_fn(
+            "Provider validation issue detected: %s (see %s)",
+            violation.message,
+            _PROVIDER_DOC,
+            extra={
+                "provider": violation.provider,
+                "code": violation.code,
+                "fatal": violation.fatal,
+            },
+        )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Handle application lifespan events."""
     settings = get_settings()
+    provider_violations = validate_providers(settings)
+    if provider_violations:
+        _log_provider_violations(provider_violations)
+    ensure_provider_parity(settings, violations=provider_violations)
+
     container = ApplicationContainer()
     set_container(container)
     warnings = settings.secret_warnings()
