@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Final
 
 from starter_cli.cli.common import CLIError
@@ -105,21 +106,26 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     )
     context.set_backend("SIGNUP_CONCURRENT_REQUESTS_LIMIT", str(concurrent_limit))
 
-    run_retry_here = provider.prompt_bool(
-        key="ENABLE_BILLING_RETRY_WORKER",
-        prompt="Run the Stripe retry worker inside this deployment?",
-        default=context.current_bool("ENABLE_BILLING_RETRY_WORKER", True),
-    )
+    worker_mode = _prompt_worker_mode(context, provider)
+    run_retry_here = worker_mode == "inline"
     context.set_backend_bool("ENABLE_BILLING_RETRY_WORKER", run_retry_here)
-    deployment_mode = "inline" if run_retry_here else "dedicated"
-    context.set_backend("BILLING_RETRY_DEPLOYMENT_MODE", deployment_mode)
+    context.set_backend("BILLING_RETRY_DEPLOYMENT_MODE", worker_mode)
 
-    replay_stream = provider.prompt_bool(
-        key="ENABLE_BILLING_STREAM_REPLAY",
-        prompt="Replay Stripe events from Redis on startup?",
-        default=context.current_bool("ENABLE_BILLING_STREAM_REPLAY", True),
-    )
-    context.set_backend_bool("ENABLE_BILLING_STREAM_REPLAY", replay_stream)
+    if run_retry_here:
+        replay_stream = provider.prompt_bool(
+            key="ENABLE_BILLING_STREAM_REPLAY",
+            prompt="Replay Stripe events from Redis on startup?",
+            default=context.current_bool("ENABLE_BILLING_STREAM_REPLAY", True),
+        )
+        context.set_backend_bool("ENABLE_BILLING_STREAM_REPLAY", replay_stream)
+    else:
+        context.set_backend_bool("ENABLE_BILLING_STREAM_REPLAY", False)
+        console.info(
+            "Disabling billing stream replay in this env (dedicated worker will own it).",
+            topic="wizard",
+        )
+
+    _write_worker_guidance(context, worker_mode)
 
 
 def _prompt_signup_policy(context: WizardContext, provider: InputProvider) -> str:
@@ -177,6 +183,120 @@ def _normalize_policy(value: str | None) -> str | None:
     if normalized in _SIGNUP_POLICY_CHOICES:
         return normalized
     return None
+
+
+def _prompt_worker_mode(context: WizardContext, provider: InputProvider) -> str:
+    existing = _normalize_worker_mode(context.current("BILLING_RETRY_DEPLOYMENT_MODE"))
+    headless_mode = _normalize_worker_mode(
+        _headless_answer(provider, "BILLING_RETRY_DEPLOYMENT_MODE")
+    )
+    if headless_mode:
+        return headless_mode
+
+    is_headless = isinstance(provider, HeadlessInputProvider)
+    if is_headless and not existing:
+        raise CLIError(
+            "Headless wizard runs must set BILLING_RETRY_DEPLOYMENT_MODE=inline|dedicated. "
+            "Update your answers file before re-running."
+        )
+
+    default_mode = existing
+    if not default_mode:
+        default_mode = "inline" if context.profile == "local" else "dedicated"
+    while True:
+        value = (
+            provider.prompt_string(
+                key="BILLING_RETRY_DEPLOYMENT_MODE",
+                prompt=(
+                    "Stripe retry worker deployment mode "
+                    "(inline runs inside this API pod, dedicated requires a separate worker)"
+                ),
+                default=default_mode,
+                required=True,
+            )
+            .strip()
+            .lower()
+        )
+        normalized = _normalize_worker_mode(value)
+        if normalized:
+            if normalized == "dedicated":
+                console.info(
+                    "CLI will disable the worker on this env and generate worker overrides.",
+                    topic="wizard",
+                )
+            else:
+                console.info(
+                    "CLI will run the retry worker inside this deployment (single replica).",
+                    topic="wizard",
+                )
+            return normalized
+        if isinstance(provider, HeadlessInputProvider):
+            raise CLIError("BILLING_RETRY_DEPLOYMENT_MODE must be 'inline' or 'dedicated'.")
+        console.warn("Enter either 'inline' or 'dedicated'.", topic="wizard")
+
+
+def _normalize_worker_mode(value: str | None) -> str | None:
+    if not value:
+        return None
+    normalized = value.strip().lower()
+    if normalized in {"inline", "dedicated"}:
+        return normalized
+    return None
+
+
+def _write_worker_guidance(context: WizardContext, worker_mode: str) -> None:
+    reports_dir = context.cli_ctx.project_root / "var/reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+
+    timestamp = datetime.now(UTC).isoformat()
+    summary_path = reports_dir / "billing-worker-topology.md"
+    overlay_path = reports_dir / "billing-worker.env"
+    inline = worker_mode == "inline"
+    lines = [
+        "# Stripe Retry Worker Topology",
+        "",
+        f"- Generated: `{timestamp}`",
+        f"- Profile: `{context.profile}`",
+        f"- Mode: `{worker_mode}`",
+    ]
+    if inline:
+        if overlay_path.exists():
+            overlay_path.unlink()
+            console.info(
+                "Removed dedicated worker overrides (current mode is inline).",
+                topic="wizard",
+            )
+        lines.extend(
+            [
+                "",
+                "This environment runs exactly one FastAPI replica, so the retry worker stays "
+                "inline. Deploying additional replicas requires switching to `dedicated` mode and "
+                "re-running the wizard so only one pod keeps `ENABLE_BILLING_RETRY_WORKER=true`.",
+            ]
+        )
+    else:
+        overlay_lines = [
+            "# Copy these overrides into the env for the single billing worker deployment.",
+            "ENABLE_BILLING=true",
+            "ENABLE_BILLING_RETRY_WORKER=true",
+            "ENABLE_BILLING_STREAM_REPLAY=true",
+            "BILLING_RETRY_DEPLOYMENT_MODE=dedicated",
+        ]
+        overlay_path.write_text("\n".join(overlay_lines) + "\n", encoding="utf-8")
+        console.success(f"Billing worker overrides written to {overlay_path}", topic="wizard")
+        lines.extend(
+            [
+                "",
+                "Run a separate `billing-worker` deployment (replicas: 1) using the overrides "
+                "written to `var/reports/billing-worker.env`. All customer-facing API pods must "
+                "keep `ENABLE_BILLING_RETRY_WORKER=false` and "
+                "`ENABLE_BILLING_STREAM_REPLAY=false`.",
+                "Refer to docs/billing/stripe-runbook.md for the deployment matrix and monitoring "
+                "checks (OPS-004).",
+            ]
+        )
+    summary_path.write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
+    console.success(f"Worker topology documented in {summary_path}", topic="wizard")
 
 
 def _headless_answer(provider: InputProvider, key: str) -> str | None:

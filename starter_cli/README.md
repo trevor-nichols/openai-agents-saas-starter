@@ -45,7 +45,7 @@ The flow covers four milestones plus frontend wiring:
 | M1 Secrets & Vault | Generate peppers/keys, optionally rotate Ed25519 material, enforce Vault transit verification | `SECRET_KEY`, `AUTH_*` peppers, `VAULT_*` vars |
 | M2 Providers & Infra | Database URL, AI providers, Redis pools, Stripe, Resend, migrations | `DATABASE_URL`, `OPENAI_API_KEY`, `REDIS_URL`, `RATE_LIMIT_REDIS_URL`, `AUTH_CACHE_REDIS_URL`, `SECURITY_TOKEN_REDIS_URL`, `BILLING_EVENTS_REDIS_URL`, `STRIPE_*`, `RESEND_*` |
 | M3 Tenant & Observability | Tenant defaults, logging sinks, GeoIP providers | `TENANT_DEFAULT_SLUG`, `LOGGING_*`, `GEOIP_*` |
-| M4 Signup & Worker policy | Signup posture (policy + throttles) plus billing retry worker | `SIGNUP_ACCESS_POLICY`, `ALLOW_PUBLIC_SIGNUP`, `SIGNUP_RATE_LIMIT_PER_*`, `SIGNUP_CONCURRENT_REQUESTS_LIMIT`, `ENABLE_BILLING_RETRY_WORKER` |
+| M4 Signup & Worker policy | Signup posture (policy + throttles) plus billing retry worker | `SIGNUP_ACCESS_POLICY`, `ALLOW_PUBLIC_SIGNUP`, `SIGNUP_RATE_LIMIT_PER_*`, `SIGNUP_CONCURRENT_REQUESTS_LIMIT`, `BILLING_RETRY_DEPLOYMENT_MODE`, `ENABLE_BILLING_RETRY_WORKER` |
 | Frontend | Next.js runtime config | `NEXT_PUBLIC_API_URL`, Playwright URL, cookie flags |
 
 GeoIP prompts cover IPinfo/IP2Location SaaS tokens plus self-hosted MaxMind/IP2Location databases. When you choose the MaxMind database provider, the wizard can download/refresh the GeoLite2 City bundle (using `GEOIP_MAXMIND_LICENSE_KEY`) and will warn if the on-disk `.mmdb` file is missing. Cache TTL/capacity and HTTP timeout knobs are recorded alongside the provider choice so backend services stay in sync with operator expectations.
@@ -167,6 +167,7 @@ See `docs/ops/db-release-playbook.md` for the full pre-flight checklist, evidenc
 ## Headless & CI Patterns
 
 - **Answers file format:** JSON object of `KEY: "value"`. Keys are uppercased internally.
+- **Billing retry worker:** Headless runs *must* include `BILLING_RETRY_DEPLOYMENT_MODE` (`inline` or `dedicated`). The former `ENABLE_BILLING_RETRY_WORKER` flag is ignored and the wizard will exit with an error if the new key is missing.
 - **Override precedence:** later `--answers-file` entries overwrite earlier ones; `--var` entries win
   last.
 - **Detection:** the wizard sets `context.is_headless` when answers are present so it can skip

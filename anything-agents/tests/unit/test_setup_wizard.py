@@ -29,9 +29,8 @@ def _cleanup_env(snapshot: dict[str, str]) -> None:
         os.environ[key] = value
 
 
-def test_wizard_headless_local_generates_env(temp_ctx: CLIContext) -> None:
-    snapshot = dict(os.environ)
-    answers = {
+def _local_headless_answers() -> dict[str, str]:
+    return {
         "ENVIRONMENT": "development",
         "DEBUG": "true",
         "PORT": "8001",
@@ -42,7 +41,10 @@ def test_wizard_headless_local_generates_env(temp_ctx: CLIContext) -> None:
         "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents",
         "API_BASE_URL": "http://127.0.0.1:8001",
         "ROTATE_SIGNING_KEYS": "false",
-        "VAULT_VERIFY_ENABLED": "false",
+        "VAULT_VERIFY_ENABLED": "true",
+        "VAULT_ADDR": "https://vault.example.com",
+        "VAULT_TOKEN": "vault-token",
+        "VAULT_TRANSIT_KEY": "auth-service",
         "OPENAI_API_KEY": "sk-openai",
         "ENABLE_ANTHROPIC_API_KEY": "false",
         "ENABLE_GEMINI_API_KEY": "false",
@@ -71,9 +73,15 @@ def test_wizard_headless_local_generates_env(temp_ctx: CLIContext) -> None:
         "SIGNUP_CONCURRENT_REQUESTS_LIMIT": "2",
         "SIGNUP_DEFAULT_PLAN_CODE": "starter",
         "SIGNUP_DEFAULT_TRIAL_DAYS": "21",
+        "BILLING_RETRY_DEPLOYMENT_MODE": "inline",
         "ENABLE_BILLING_RETRY_WORKER": "true",
         "ENABLE_BILLING_STREAM_REPLAY": "false",
     }
+
+
+def test_wizard_headless_local_generates_env(temp_ctx: CLIContext) -> None:
+    snapshot = dict(os.environ)
+    answers = _local_headless_answers()
     wizard = SetupWizard(
         ctx=temp_ctx,
         profile="local",
@@ -92,6 +100,100 @@ def test_wizard_headless_local_generates_env(temp_ctx: CLIContext) -> None:
     assert "BILLING_RETRY_DEPLOYMENT_MODE=inline" in env_body
     assert 'ANTHROPIC_API_KEY=""' in env_body
     assert 'TAVILY_API_KEY=""' in env_body
+    _cleanup_env(snapshot)
+
+
+def test_wizard_headless_requires_worker_mode(temp_ctx: CLIContext) -> None:
+    snapshot = dict(os.environ)
+    answers = _local_headless_answers()
+    answers.pop("BILLING_RETRY_DEPLOYMENT_MODE")
+    wizard = SetupWizard(
+        ctx=temp_ctx,
+        profile="local",
+        output_format="summary",
+        input_provider=HeadlessInputProvider(answers=answers),
+    )
+
+    with pytest.raises(CLIError, match="BILLING_RETRY_DEPLOYMENT_MODE"):
+        wizard.execute()
+
+    _cleanup_env(snapshot)
+
+
+def test_wizard_writes_dedicated_worker_artifacts(temp_ctx: CLIContext) -> None:
+    snapshot = dict(os.environ)
+    answers = {
+        "ENVIRONMENT": "production",
+        "DEBUG": "false",
+        "PORT": "8001",
+        "APP_PUBLIC_URL": "https://example.com",
+        "ALLOWED_HOSTS": "example.com",
+        "ALLOWED_ORIGINS": "https://example.com",
+        "AUTO_RUN_MIGRATIONS": "false",
+        "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents",
+        "API_BASE_URL": "https://api.example.com",
+        "ROTATE_SIGNING_KEYS": "false",
+        "VAULT_VERIFY_ENABLED": "true",
+        "VAULT_ADDR": "https://vault.example.com",
+        "VAULT_TOKEN": "vault-token",
+        "VAULT_TRANSIT_KEY": "auth-service",
+        "OPENAI_API_KEY": "sk-openai",
+        "ENABLE_ANTHROPIC_API_KEY": "false",
+        "ENABLE_GEMINI_API_KEY": "false",
+        "ENABLE_XAI_API_KEY": "false",
+        "ENABLE_TAVILY": "false",
+        "REDIS_URL": "rediss://:secret@redis.example.com:6379/0",
+        "RATE_LIMIT_REDIS_URL": "",
+        "AUTH_CACHE_REDIS_URL": "",
+        "SECURITY_TOKEN_REDIS_URL": "",
+        "BILLING_EVENTS_REDIS_URL": "",
+        "ENABLE_BILLING": "true",
+        "ENABLE_BILLING_STREAM": "true",
+        "STRIPE_SECRET_KEY": "sk_live_example",
+        "STRIPE_WEBHOOK_SECRET": "whsec_example",
+        "STRIPE_PRODUCT_PRICE_MAP": '{"starter":"price_123"}',
+        "RESEND_EMAIL_ENABLED": "false",
+        "RESEND_BASE_URL": "https://api.resend.com",
+        "RUN_MIGRATIONS_NOW": "false",
+        "TENANT_DEFAULT_SLUG": "prod",
+        "LOGGING_SINK": "stdout",
+        "GEOIP_PROVIDER": "none",
+        "SIGNUP_ACCESS_POLICY": "invite_only",
+        "ALLOW_PUBLIC_SIGNUP": "false",
+        "ALLOW_SIGNUP_TRIAL_OVERRIDE": "false",
+        "SIGNUP_RATE_LIMIT_PER_HOUR": "10",
+        "SIGNUP_RATE_LIMIT_PER_IP_DAY": "20",
+        "SIGNUP_RATE_LIMIT_PER_EMAIL_DAY": "3",
+        "SIGNUP_RATE_LIMIT_PER_DOMAIN_DAY": "5",
+        "SIGNUP_CONCURRENT_REQUESTS_LIMIT": "1",
+        "SIGNUP_DEFAULT_PLAN_CODE": "starter",
+        "SIGNUP_DEFAULT_TRIAL_DAYS": "14",
+        "BILLING_RETRY_DEPLOYMENT_MODE": "dedicated",
+        "ENABLE_BILLING_RETRY_WORKER": "false",
+        "ENABLE_BILLING_STREAM_REPLAY": "true",
+    }
+    wizard = SetupWizard(
+        ctx=temp_ctx,
+        profile="production",
+        output_format="summary",
+        input_provider=HeadlessInputProvider(answers=answers),
+    )
+    wizard.execute()
+
+    env_body = (temp_ctx.project_root / ".env.local").read_text(encoding="utf-8")
+    assert "ENABLE_BILLING_RETRY_WORKER=false" in env_body
+    assert "ENABLE_BILLING_STREAM_REPLAY=false" in env_body
+    assert "BILLING_RETRY_DEPLOYMENT_MODE=dedicated" in env_body
+
+    overlay_path = temp_ctx.project_root / "var/reports/billing-worker.env"
+    summary_path = temp_ctx.project_root / "var/reports/billing-worker-topology.md"
+    assert overlay_path.exists()
+    assert summary_path.exists()
+    overlay_body = overlay_path.read_text(encoding="utf-8")
+    assert "ENABLE_BILLING_RETRY_WORKER=true" in overlay_body
+    summary_body = summary_path.read_text(encoding="utf-8")
+    assert "dedicated" in summary_body
+
     _cleanup_env(snapshot)
 
 
@@ -144,6 +246,7 @@ def test_wizard_refreshes_cached_settings(temp_ctx: CLIContext) -> None:
         "SIGNUP_CONCURRENT_REQUESTS_LIMIT": "2",
         "SIGNUP_DEFAULT_PLAN_CODE": "starter",
         "SIGNUP_DEFAULT_TRIAL_DAYS": "21",
+        "BILLING_RETRY_DEPLOYMENT_MODE": "inline",
         "ENABLE_BILLING_RETRY_WORKER": "true",
         "ENABLE_BILLING_STREAM_REPLAY": "false",
     }
@@ -217,6 +320,7 @@ def test_wizard_clears_optional_provider_keys(temp_ctx: CLIContext) -> None:
         "SIGNUP_CONCURRENT_REQUESTS_LIMIT": "2",
         "SIGNUP_DEFAULT_PLAN_CODE": "starter",
         "SIGNUP_DEFAULT_TRIAL_DAYS": "21",
+        "BILLING_RETRY_DEPLOYMENT_MODE": "inline",
         "ENABLE_BILLING_RETRY_WORKER": "true",
         "ENABLE_BILLING_STREAM_REPLAY": "false",
     }
@@ -281,6 +385,7 @@ def test_wizard_does_not_leak_env_values(temp_ctx: CLIContext) -> None:
         "SIGNUP_CONCURRENT_REQUESTS_LIMIT": "2",
         "SIGNUP_DEFAULT_PLAN_CODE": "starter",
         "SIGNUP_DEFAULT_TRIAL_DAYS": "21",
+        "BILLING_RETRY_DEPLOYMENT_MODE": "inline",
         "ENABLE_BILLING_RETRY_WORKER": "true",
         "ENABLE_BILLING_STREAM_REPLAY": "false",
     }
@@ -357,6 +462,7 @@ def test_wizard_rotates_new_peppers(monkeypatch, temp_ctx: CLIContext) -> None:
         "SIGNUP_CONCURRENT_REQUESTS_LIMIT": "2",
         "SIGNUP_DEFAULT_PLAN_CODE": "starter",
         "SIGNUP_DEFAULT_TRIAL_DAYS": "21",
+        "BILLING_RETRY_DEPLOYMENT_MODE": "inline",
         "ENABLE_BILLING_RETRY_WORKER": "true",
         "ENABLE_BILLING_STREAM_REPLAY": "false",
     }
@@ -422,6 +528,7 @@ def test_wizard_staging_verifies_vault(
         "SIGNUP_CONCURRENT_REQUESTS_LIMIT": "1",
         "SIGNUP_DEFAULT_PLAN_CODE": "starter",
         "SIGNUP_DEFAULT_TRIAL_DAYS": "14",
+        "BILLING_RETRY_DEPLOYMENT_MODE": "dedicated",
         "ENABLE_BILLING_RETRY_WORKER": "false",
         "ENABLE_BILLING_STREAM_REPLAY": "true",
     }

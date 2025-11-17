@@ -4,10 +4,11 @@ import argparse
 import asyncio
 import json
 import subprocess
+from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -39,7 +40,10 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     db_parser.add_argument(
         "--non-interactive",
         action="store_true",
-        help="Fail instead of prompting for inputs (requires explicit Stripe params or --skip-stripe).",
+        help=(
+            "Fail instead of prompting for inputs "
+            "(requires explicit Stripe params or --skip-stripe)."
+        ),
     )
     db_parser.add_argument(
         "--skip-stripe",
@@ -53,7 +57,10 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     )
     db_parser.add_argument(
         "--summary-path",
-        help="Optional path for the JSON summary artifact (defaults to var/reports/db-release-<timestamp>.json).",
+        help=(
+            "Optional path for the JSON summary artifact "
+            "(defaults to var/reports/db-release-<timestamp>.json)."
+        ),
     )
     db_parser.add_argument(
         "--json",
@@ -64,7 +71,10 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         "--plan",
         action="append",
         metavar="CODE=CENTS",
-        help="Override Stripe plan amount when --non-interactive is used (forwarded to stripe setup).",
+        help=(
+            "Override Stripe plan amount when --non-interactive is used "
+            "(forwarded to stripe setup)."
+        ),
     )
     db_parser.set_defaults(handler=handle_db_release)
 
@@ -208,11 +218,12 @@ class DatabaseReleaseWorkflow:
             )
             return
 
-        if not self.database_url:
+        database_url = self.database_url
+        if not database_url:
             raise CLIError("DATABASE_URL is not configured; cannot verify billing plans.")
 
         async def _verify() -> list[dict[str, Any]]:
-            engine = create_async_engine(self.database_url)
+            engine = create_async_engine(database_url)
             try:
                 async with engine.connect() as conn:
                     result = await conn.execute(
@@ -372,7 +383,7 @@ class DatabaseReleaseWorkflow:
             return None
         return result.stdout.strip() or None
 
-    def _run_command(self, cmd: Iterable[str], success_detail: str) -> str:
+    def _run_command(self, cmd: Sequence[str], success_detail: str) -> str:
         subprocess.run(cmd, cwd=self.project_root, check=True)
         return success_detail
 

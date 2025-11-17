@@ -68,7 +68,7 @@ Document the outstanding deliverables for the Starter CLI (SC) so we can plan im
 ### M4 – Signup & Worker Policy Controls (AUTH-011, OPS-004)
 
 - **Signup exposure & quotas:** Provide interactive prompts (or flags) to set `allow_public_signup`, invite-only toggles, per-IP tenant creation quotas, and rate-limit overrides. Emit summaries so operators can document their chosen posture.
-- **Retry worker deployment guidance:** Detect whether the Stripe retry worker should run inside the main API pod or separately; update `ENABLE_BILLING_RETRY_WORKER`/`ENABLE_BILLING_STREAM_REPLAY` values and print the recommended deployment topology.
+- **Retry worker deployment guidance:** Detect whether the Stripe retry worker should run inside the main API pod or separately; update `ENABLE_BILLING_RETRY_WORKER`/`ENABLE_BILLING_STREAM_REPLAY` values and print the recommended deployment topology. The wizard now persists the choice to `var/reports/billing-worker-topology.md` and emits `var/reports/billing-worker.env` overrides whenever a dedicated worker is required so operators can wire the single-runner deployment directly.
 - **Policy audit artifacts:** Produce a short report (Markdown/JSON) summarizing signup + worker decisions that can be checked into infra repos for later review.
 
 ---

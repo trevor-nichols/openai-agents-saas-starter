@@ -332,13 +332,20 @@ def _signup_worker_section(settings, env_snapshot: dict[str, str]) -> SectionRes
 
     if settings:
         worker_enabled = getattr(settings, "enable_billing_retry_worker", None)
+        deployment_mode = getattr(settings, "billing_retry_deployment_mode", None)
         detail = None
+        status = "pending"
         if worker_enabled is not None:
-            detail = "inline" if worker_enabled else "disabled"
+            if deployment_mode == "dedicated" and not worker_enabled:
+                detail = "dedicated (disabled on API pod)"
+                status = "ok"
+            else:
+                detail = "inline" if worker_enabled else "disabled"
+                status = "ok"
         section.checks.append(
             CheckResult(
                 name="retry_worker",
-                status="ok" if worker_enabled is not None else "pending",
+                status=status,
                 detail=detail,
             )
         )
