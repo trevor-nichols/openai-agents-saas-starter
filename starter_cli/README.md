@@ -139,6 +139,31 @@ Validates Stripe, Resend, and Tavily configuration before you boot FastAPI or de
 Renders every FastAPI setting and its env alias, default, type, and wizard coverage. Use this to audit
 what remains unprompted after running the wizard. Supports `--format table` (default) or `json`.
 
+### 9. `release db`
+
+End-to-end release helper that enforces the migration → Stripe provisioning → billing verification order.
+
+```bash
+python -m starter_cli.cli release db \
+  --summary-path var/reports/db-release-$(date -u +%Y%m%dT%H%M%SZ).json
+```
+
+What it does:
+
+1. Runs `make migrate` with the current `.env*` context.
+2. Captures the Alembic head via `hatch run alembic -c anything-agents/alembic.ini current`.
+3. Invokes the existing Stripe setup flow unless `--skip-stripe` is passed.
+4. Queries `billing_plans` to ensure each plan is active and has a Stripe price ID.
+5. Writes `var/reports/db-release-*.json` with timestamps, git SHA, masked secrets, plan statuses, and the flags used (pass `--json` to also print it to stdout).
+
+Flags:
+
+- `--non-interactive` – fail instead of prompting; combine with `--plan starter=2000 --plan pro=9900` (or your catalog) when headless.
+- `--skip-stripe` / `--skip-db-checks` – opt out of the Stripe provisioning or SQL verification phases when manual evidence is provided elsewhere.
+- `--plan CODE=CENTS` – forwarded to the embedded Stripe flow and required per plan when `--non-interactive` is used.
+
+See `docs/ops/db-release-playbook.md` for the full pre-flight checklist, evidence expectations, and rollback guidance.
+
 ## Headless & CI Patterns
 
 - **Answers file format:** JSON object of `KEY: "value"`. Keys are uppercased internally.

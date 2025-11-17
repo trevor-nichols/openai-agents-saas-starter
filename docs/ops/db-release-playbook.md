@@ -26,20 +26,29 @@ Run this list **before** touching production:
 
 ## Execution Order
 ### Option A – Automated (preferred)
-Use the dedicated release helper once it lands (tracked in `docs/trackers/MILESTONE_DB_RELEASE_AUTOMATION.md`).
+
+Run the release helper whenever you promote a backend build:
 
 ```bash
 python -m starter_cli.cli release db \
-  --summary-path var/reports/db-release-$(date -u +%Y%m%dT%H%M%SZ).json \
-  --non-interactive
+  --summary-path var/reports/db-release-$(date -u +%Y%m%dT%H%M%SZ).json
 ```
 
-This command will:
-1. Run `make migrate` with the current `.env*` loads.
-2. Verify Alembic head vs. expected revision; abort if drift remains.
-3. Execute `starter_cli cli stripe setup --non-interactive` (or skip when `--skip-stripe` is set but requires manual evidence).
-4. Query `billing_plans` to ensure seeded plan codes exist and Stripe price IDs are synced.
-5. Emit a JSON artifact under `var/reports/` with timestamps, git SHA, Alembic revision, and Stripe product/price IDs.
+Key flags:
+
+- `--non-interactive` – fails instead of prompting; combine with `--plan starter=2000 --plan pro=9900` (or your catalog) to supply Stripe pricing and keep the run headless.
+- `--skip-stripe` – skip provisioning when automation cannot hit Stripe (attach manual screenshots/artifacts).
+- `--skip-db-checks` – skip the billing plan query (only when a separate evidence source exists).
+- `--json` – also print the JSON summary to stdout.
+- `--plan CODE=CENTS` – forwarded to the embedded Stripe setup flow; required for every plan during non-interactive runs.
+
+The command executes the following steps:
+
+1. Runs `make migrate` with the current `.env*` loads so FastAPI pods don't need `AUTO_RUN_MIGRATIONS`.
+2. Captures the Alembic head via `hatch run alembic -c anything-agents/alembic.ini current`.
+3. Invokes the Stripe provisioning flow unless `--skip-stripe` is set (same UX as `stripe setup`, including CLI validation unless `--non-interactive` is passed).
+4. Queries `billing_plans` to ensure every required plan exists, is active, and has a Stripe price ID.
+5. Emits `var/reports/db-release-*.json` containing timestamps, git SHA, Alembic revision, plan status, masked Stripe secrets, and the options used. Use `--summary-path` to override the location.
 
 ### Option B – Manual (until automation ships or when running in constrained environments)
 1. **Migrations**
@@ -97,4 +106,3 @@ Use the `--skip-stripe` flag (once the release command lands) and follow the man
 
 **Q: When should this runbook be updated?**
 Whenever a new migration workflow, plan catalog change, or CLI flag lands. Log the update in `docs/trackers/MILESTONE_DB_RELEASE_AUTOMATION.md` and reference the change in release notes.
-

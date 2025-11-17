@@ -186,6 +186,22 @@ This standard operating procedure covers the two long-lived Stripe credentials u
 - **Behaviour** – polls every 30s, pulls failed dispatch rows whose `next_retry_at` has passed, and calls `dispatcher.replay_dispatch()` so the normal bookkeeping runs (status -> `completed`/`failed`, metrics, billing stream publish).
 - **Backoff** – dispatcher failures schedule retries with exponential backoff (30s to 10m). When the root cause persists, rows remain `failed` and alerts stay firing; use the CLI to inspect or force replay with `--yes`.
 
+### Deployment Modes (OPS-004)
+
+OPS-004 tracks “exactly one retry worker per fleet.” Use the table below to document which pods own the worker:
+
+| Mode | When to use | Required settings |
+| --- | --- | --- |
+| Inline | Single-instance or dev/staging stacks where only one FastAPI pod exists. | Keep `ENABLE_BILLING_RETRY_WORKER=true`, `ENABLE_BILLING_STREAM_REPLAY=true`, and `BILLING_RETRY_DEPLOYMENT_MODE=inline` (the setup wizard sets this automatically). |
+| Dedicated worker | Production clusters with multiple API replicas. | Customer-facing API pods: `ENABLE_BILLING_RETRY_WORKER=false`, `ENABLE_BILLING_STREAM_REPLAY=false`, `BILLING_RETRY_DEPLOYMENT_MODE=dedicated`. A separate “billing-worker” deployment (1 replica) keeps both flags true so it owns retries + stream replay. |
+
+Implementation checklist:
+
+1. During `starter_cli.cli setup wizard` answer **No** to “Run the Stripe retry worker inside this deployment?” for customer-facing pods and **Yes** for the worker pod. This keeps env files honest (`starter_cli/cli/setup/_wizard/sections/signup.py`).
+2. In Kubernetes/Compose, create a dedicated deployment/statefulset for the worker with `replicas: 1`, `ENABLE_BILLING=true`, `ENABLE_BILLING_RETRY_WORKER=true`, and `ENABLE_BILLING_STREAM_REPLAY=true`. All other API deployments set the flags to `false`.
+3. Gate rollouts with metrics: alert on `stripe_dispatch_retry_total{result!="success"}` and watch for duplicate “stripe.dispatch.retry_success” log streams—two pods emitting those logs concurrently means the worker flag is misconfigured.
+4. Document the worker pod in your ops runbooks. During incidents, confirm logs show **one** pod starting the worker (“Stripe dispatch retry worker disabled” should appear on all others). If you ever need multiple replicas, add a Redis-backed lease before scaling out to avoid duplicate replays.
+
 ## Billing Stream Replay Worker
 
 - **Purpose** – On startup the API replays previously processed Stripe events into Redis so new subscribers catch up before receiving live SSE updates.
