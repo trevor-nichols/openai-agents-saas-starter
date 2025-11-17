@@ -1,34 +1,32 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import replace
+from dataclasses import dataclass, replace
 
+import pytest
+
+from starter_shared.provider_validation import ProviderViolation
 from starter_cli.cli import providers_commands
 from starter_cli.cli.common import CLIContext
 
-from app.core.provider_validation import ProviderViolation
 
-
-class DummyContext(CLIContext):
-    def __init__(self, settings):
-        super().__init__()
-        self._settings = settings
-
-    def require_settings(self):
-        return self._settings
-
-
-class DummySettings:
-    def __init__(self, *, enable_billing: bool = False, strict: bool = False):
-        self.enable_billing = enable_billing
-        self._strict = strict
+@dataclass(slots=True)
+class _DummySettings:
+    enable_billing: bool = False
+    _strict: bool = False
 
     def should_enforce_secret_overrides(self) -> bool:
         return self._strict
 
 
-def _run_handler(monkeypatch, *, settings, violations):
-    ctx = DummyContext(settings)
+def _run_handler(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    settings: _DummySettings,
+    violations: list[ProviderViolation],
+) -> int:
+    ctx = CLIContext()
+    ctx.settings = settings
     args = argparse.Namespace(strict=False)
 
     def _mock_validate(current_settings, *, strict):
@@ -41,8 +39,8 @@ def _run_handler(monkeypatch, *, settings, violations):
     return providers_commands.handle_validate_providers(args, ctx)
 
 
-def test_providers_cli_fails_on_stripe_gaps(monkeypatch):
-    settings = DummySettings(enable_billing=True)
+def test_providers_cli_fails_on_stripe_gaps(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = _DummySettings(enable_billing=True)
     violations = [
         ProviderViolation(
             provider="stripe",
@@ -57,8 +55,10 @@ def test_providers_cli_fails_on_stripe_gaps(monkeypatch):
     assert exit_code == 1
 
 
-def test_providers_cli_warns_when_non_stripe_and_not_strict(monkeypatch):
-    settings = DummySettings(enable_billing=False)
+def test_providers_cli_warns_when_non_stripe_and_not_strict(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _DummySettings(enable_billing=False)
     violations = [
         ProviderViolation(
             provider="resend",

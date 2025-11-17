@@ -46,8 +46,8 @@ def test_infra_deps_reports_missing_tools(monkeypatch) -> None:
     monkeypatch.setattr(cli_console, "err_stream", buffer)
     monkeypatch.setattr(
         infra_commands,
-        "_detect_compose_binary",
-        lambda: "/usr/bin/docker compose",
+        "_detect_compose_command",
+        lambda: ("/usr/bin/docker", "compose"),
     )
 
     def fake_which(binary: str) -> str | None:
@@ -69,8 +69,8 @@ def test_infra_deps_json_missing(monkeypatch) -> None:
     monkeypatch.setattr(cli_console, "err_stream", buffer)
     monkeypatch.setattr(
         infra_commands,
-        "_detect_compose_binary",
-        lambda: "/usr/bin/docker compose",
+        "_detect_compose_command",
+        lambda: ("/usr/bin/docker", "compose"),
     )
 
     def fake_which(binary: str) -> str | None:
@@ -91,7 +91,7 @@ def test_infra_deps_detects_missing_compose(monkeypatch) -> None:
     monkeypatch.setattr(cli_console, "stream", buffer)
     monkeypatch.setattr(cli_console, "err_stream", buffer)
 
-    monkeypatch.setattr(infra_commands, "_detect_compose_binary", lambda: None)
+    monkeypatch.setattr(infra_commands, "_detect_compose_command", lambda: None)
 
     def fake_which(binary: str) -> str | None:
         # everything else is installed

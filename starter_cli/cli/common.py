@@ -44,6 +44,12 @@ _VAULT_PROVIDERS = {
     SecretsProviderLiteral.VAULT_DEV,
     SecretsProviderLiteral.VAULT_HCP,
 }
+SKIP_ENV_FLAG = "STARTER_CLI_SKIP_ENV"
+_TRUE_LITERALS = {"1", "true", "yes"}
+
+
+def should_skip_env_loading() -> bool:
+    return os.getenv(SKIP_ENV_FLAG, "false").lower() in _TRUE_LITERALS
 
 
 @dataclass(slots=True)

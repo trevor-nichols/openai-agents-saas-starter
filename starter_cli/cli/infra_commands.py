@@ -146,20 +146,12 @@ def handle_deps(args: argparse.Namespace, _ctx: CLIContext) -> int:
                 "status": status.status,
                 "version": status.version or "",
                 "path": status.path,
-                "command": status.command,
+                "command": list(status.command) if status.command else None,
                 "hint": status.hint if status.status != "ok" else "",
             }
             for status in statuses
         ]
-        json.dump(
-            {
-                "dependencies": payload,
-                "missing": [status.name for status in statuses if status.status != "ok"],
-                "ok": [status.name for status in statuses if status.status == "ok"],
-            },
-            console.stream,
-            indent=2,
-        )
+        json.dump(payload, console.stream, indent=2)
         console.stream.write("\n")
         return 1 if any(status.status != "ok" for status in statuses) else 0
 

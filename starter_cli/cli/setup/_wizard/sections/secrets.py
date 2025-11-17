@@ -11,6 +11,7 @@ from starter_cli.cli.setup._wizard.context import WizardContext
 from starter_cli.cli.setup.automation import AutomationPhase, AutomationStatus
 from starter_cli.cli.setup.inputs import HeadlessInputProvider, InputProvider
 from starter_cli.cli.setup.validators import probe_vault_transit
+from starter_cli.cli.secrets import registry
 
 _VAULT_PROVIDERS = {
     SecretsProviderLiteral.VAULT_DEV,
@@ -126,7 +127,6 @@ def _run_provider_workflow(
             _verify_vault_transit(context)
         return
 
-    from starter_cli.cli.secrets import registry
     from starter_cli.cli.secrets.models import SecretsWorkflowOptions
 
     runner = registry.get_runner(literal)

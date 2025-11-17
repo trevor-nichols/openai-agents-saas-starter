@@ -1,5 +1,6 @@
 """Unit tests for application configuration settings."""
 
+import os
 from typing import Any, cast
 
 import pytest
@@ -8,9 +9,37 @@ from app.core.config import Settings, enforce_vault_verification
 
 
 def make_settings(**overrides) -> Settings:
-    """Instantiate Settings without loading repo env files."""
+    """Instantiate Settings with explicit kwargs taking precedence over env vars."""
 
-    return Settings(**overrides)
+    patched_env: dict[str, str | None] = {}
+    for field_name in overrides:
+        field = Settings.model_fields.get(field_name)
+        if field is None:
+            continue
+        env_key = (field.alias or field_name).upper()
+        patched_env[env_key] = os.environ.pop(env_key, None)
+
+    try:
+        instance = Settings(_env_file=None, **overrides)
+        reset_candidates = (
+            "rate_limit_redis_url",
+            "auth_cache_redis_url",
+            "security_token_redis_url",
+            "billing_events_redis_url",
+        )
+        updates: dict[str, object | None] = {}
+        for field_name in reset_candidates:
+            if field_name not in overrides:
+                updates[field_name] = None
+        if updates:
+            instance = instance.model_copy(update=updates)
+        return instance
+    finally:
+        for key, value in patched_env.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
 
 
 def sanitized_settings(**overrides) -> Settings:

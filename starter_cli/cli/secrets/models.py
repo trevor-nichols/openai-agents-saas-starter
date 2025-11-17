@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from starter_shared.secrets.models import SecretsProviderLiteral
 
 from ..common import TELEMETRY_ENV, CLIContext
 from ..console import console
-from ..setup.inputs import InputProvider
 from ..verification import VerificationArtifact
+
+if TYPE_CHECKING:
+    from ..setup.inputs import InputProvider
 
 
 @dataclass(slots=True)

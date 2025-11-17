@@ -3,12 +3,15 @@ from __future__ import annotations
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 from starter_shared.secrets.models import SecretsProviderLiteral
+from typing import TYPE_CHECKING
 
 from ...common import CLIContext, CLIError
 from ...console import console
-from ...setup.inputs import InputProvider
 from ...verification import VerificationArtifact
 from ..models import OnboardResult, SecretsWorkflowOptions
+
+if TYPE_CHECKING:
+    from ...setup.inputs import InputProvider
 
 
 def run_aws_sm(

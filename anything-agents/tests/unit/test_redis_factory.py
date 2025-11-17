@@ -14,7 +14,7 @@ from app.infrastructure.redis.factory import (
 
 
 def build_settings(**overrides: object) -> Settings:
-    base = Settings()
+    base = Settings(_env_file=None)
     return base.model_copy(update=overrides)
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import replace
 
-from app.core.provider_validation import validate_providers
+from starter_shared.provider_validation import validate_providers
 
 from .common import CLIContext
 from .console import console

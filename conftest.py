@@ -12,5 +12,6 @@ os.environ["AUTO_RUN_MIGRATIONS"] = "false"
 os.environ["ENABLE_BILLING"] = "false"
 os.environ["ALLOW_PUBLIC_SIGNUP"] = "true"
 os.environ["ALLOW_SIGNUP_TRIAL_OVERRIDE"] = "false"
+os.environ["STARTER_CLI_SKIP_ENV"] = "true"
 
 config_module.get_settings.cache_clear()

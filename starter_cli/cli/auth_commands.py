@@ -15,7 +15,13 @@ from starter_shared.keys import (
 )
 from starter_shared.vault_kv import configure_vault_secret_manager
 
-from .common import CLIContext, CLIError, build_context, build_vault_headers
+from .common import (
+    CLIContext,
+    CLIError,
+    build_context,
+    build_vault_headers,
+    should_skip_env_loading,
+)
 from .console import console
 
 # `_SubParsersAction` is not parametrized at runtime on Python 3.11, so provide a
@@ -247,7 +253,8 @@ def _ensure_context(ctx: CLIContext | None) -> CLIContext:
     if ctx is not None:
         return ctx
     new_ctx = build_context()
-    new_ctx.load_environment(verbose=False)
+    if not should_skip_env_loading():
+        new_ctx.load_environment(verbose=False)
     return new_ctx
 
 
