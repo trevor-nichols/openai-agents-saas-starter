@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import os
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Callable, TextIO
+from typing import TextIO
 
 from rich.console import Console as RichConsole
 from rich.console import RenderableType

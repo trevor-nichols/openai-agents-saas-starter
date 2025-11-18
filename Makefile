@@ -58,15 +58,30 @@ migration-revision:
 	@$(ENV_RUNNER) .env.compose $(ENV_FILE) -- hatch run migration-revision "$(MESSAGE)"
 
 dev-up:
-	@$(ENV_RUNNER) .env.compose $(ENV_FILE) -- bash -c \
-		'echo "Starting postgres (port $$POSTGRES_PORT) and redis (port $$REDIS_PORT)"; \
-		docker compose up -d postgres redis'
+	@$(ENV_RUNNER) .env.compose $(ENV_FILE) -- python ops/observability/render_collector_config.py
+	@$(ENV_RUNNER) .env.compose $(ENV_FILE) -- bash -c '
+		set -euo pipefail;
+		services="postgres redis";
+		collector_msg="";
+		if [ "$${ENABLE_OTEL_COLLECTOR:-false}" = "true" ]; then 
+			services="$${services} otel-collector";
+			collector_msg=" + otel-collector (ports $${OTEL_COLLECTOR_HTTP_PORT:-4318}/$${OTEL_COLLECTOR_GRPC_PORT:-4317})";
+		fi;
+		echo "Starting $${services}${collector_msg}";
+		docker compose up -d $${services};
+	'
 
 dev-down:
 	@$(ENV_RUNNER) .env.compose $(ENV_FILE) -- docker compose down
 
 dev-logs:
-	@$(ENV_RUNNER) .env.compose $(ENV_FILE) -- docker compose logs -f --tail=100 postgres redis
+	@$(ENV_RUNNER) .env.compose $(ENV_FILE) -- bash -c '
+		services="postgres redis";
+		if [ "$${ENABLE_OTEL_COLLECTOR:-false}" = "true" ]; then 
+			services="$${services} otel-collector";
+		fi;
+		docker compose logs -f --tail=100 $${services};
+	'
 
 dev-ps:
 	@$(ENV_RUNNER) .env.compose $(ENV_FILE) -- docker compose ps

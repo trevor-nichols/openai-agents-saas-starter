@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Callable
 from importlib import import_module
-from typing import TYPE_CHECKING, Callable, TypeAlias
+from typing import TYPE_CHECKING, TypeAlias
 
 if TYPE_CHECKING:  # pragma: no cover - typing helper
     ParserSubparsers: TypeAlias = argparse._SubParsersAction[argparse.ArgumentParser]
@@ -27,7 +28,7 @@ _COMMAND_MODULES = (
 def register_all(subparsers: ParserSubparsers) -> None:
     for module_name in _COMMAND_MODULES:
         module = import_module(module_name)
-        register: Callable[[ParserSubparsers], None] = getattr(module, "register")
+        register: Callable[[ParserSubparsers], None] = module.register
         register(subparsers)
 
 

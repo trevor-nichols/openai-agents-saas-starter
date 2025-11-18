@@ -8,12 +8,12 @@ import httpx
 import pytest
 from starter_cli.core import CLIContext, CLIError
 from starter_cli.workflows.setup import HeadlessInputProvider, SetupWizard
-from starter_cli.workflows.setup.automation import AutomationPhase
+from starter_cli.workflows.setup import wizard as wizard_module
 from starter_cli.workflows.setup._wizard import audit
 from starter_cli.workflows.setup._wizard.sections import providers as provider_section
+from starter_cli.workflows.setup.automation import AutomationPhase
 from starter_cli.workflows.setup.models import CheckResult, SectionResult
 from starter_cli.workflows.setup.validators import set_vault_probe_request
-from starter_cli.workflows.setup import wizard as wizard_module
 
 
 @pytest.fixture()
@@ -143,6 +143,39 @@ def test_wizard_configures_slack_section(temp_ctx: CLIContext) -> None:
     assert "ENABLE_SLACK_STATUS_NOTIFICATIONS=true" in env_body
     assert 'SLACK_STATUS_DEFAULT_CHANNELS="#incidents"' in env_body
     assert "SLACK_STATUS_BOT_TOKEN=xoxb-test" in env_body
+    _cleanup_env(snapshot)
+
+
+def test_wizard_configures_bundled_collector(temp_ctx: CLIContext) -> None:
+    snapshot = dict(os.environ)
+    answers = _local_headless_answers() | {
+        "LOGGING_SINK": "otlp",
+        "ENABLE_OTEL_COLLECTOR": "true",
+        "LOGGING_OTLP_ENDPOINT": "http://otel-collector:4318/v1/logs",
+        "LOGGING_OTLP_HEADERS": "",
+        "OTEL_EXPORTER_SENTRY_ENABLED": "true",
+        "OTEL_EXPORTER_SENTRY_ENDPOINT": "https://o11y.ingest.sentry.io/api/42/otlp",
+        "OTEL_EXPORTER_SENTRY_AUTH_HEADER": "Bearer sentry-token",
+        "OTEL_EXPORTER_SENTRY_HEADERS": "",
+        "OTEL_EXPORTER_DATADOG_ENABLED": "true",
+        "OTEL_EXPORTER_DATADOG_API_KEY": "dd-api-key",
+        "OTEL_EXPORTER_DATADOG_SITE": "datadoghq.eu",
+    }
+    wizard = _create_setup_wizard(
+        ctx=temp_ctx,
+        profile="local",
+        output_format="summary",
+        input_provider=HeadlessInputProvider(answers=answers),
+    )
+    wizard.execute()
+
+    env_body = (temp_ctx.project_root / ".env.local").read_text(encoding="utf-8")
+    assert "ENABLE_OTEL_COLLECTOR=true" in env_body
+    assert "LOGGING_OTLP_ENDPOINT=http://otel-collector:4318/v1/logs" in env_body
+    assert "OTEL_EXPORTER_SENTRY_ENDPOINT=https://o11y.ingest.sentry.io/api/42/otlp" in env_body
+    assert "OTEL_EXPORTER_SENTRY_AUTH_HEADER=Bearer sentry-token" in env_body
+    assert "OTEL_EXPORTER_DATADOG_API_KEY=dd-api-key" in env_body
+    assert "OTEL_EXPORTER_DATADOG_SITE=datadoghq.eu" in env_body
     _cleanup_env(snapshot)
 
 
@@ -666,12 +699,14 @@ def test_collect_database_requires_non_local_value(temp_ctx: CLIContext) -> None
     _cleanup_env(snapshot)
 
 
-def test_interactive_wizard_runs_tui_alongside_shell(monkeypatch: pytest.MonkeyPatch, temp_ctx: CLIContext) -> None:
+def test_interactive_wizard_runs_tui_alongside_shell(
+    monkeypatch: pytest.MonkeyPatch, temp_ctx: CLIContext
+) -> None:
     class DummyUI:
         started = False
         stopped = False
 
-        def __init__(self, *, sections, automation, section_prompts=None, enabled=True):  # noqa: D401
+        def __init__(self, *, sections, automation, section_prompts=None, enabled=True):
             self.enabled = enabled
 
         def start(self) -> None:
@@ -724,7 +759,7 @@ def test_interactive_wizard_runs_tui_alongside_shell(monkeypatch: pytest.MonkeyP
 
     monkeypatch.setattr(SetupWizard, "_build_section_runners", _dummy_runners)
 
-    provider = object()
+    provider = HeadlessInputProvider(answers={})
     wizard = SetupWizard(
         ctx=temp_ctx,
         profile="local",
@@ -734,8 +769,6 @@ def test_interactive_wizard_runs_tui_alongside_shell(monkeypatch: pytest.MonkeyP
         enable_tui=True,
         enable_schema=False,
     )
-    wizard._require_inputs = lambda: provider
-
     wizard.execute()
 
     assert DummyShell.ran is True

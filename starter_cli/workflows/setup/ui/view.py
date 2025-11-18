@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 from collections import OrderedDict, deque
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from time import perf_counter
-from typing import Mapping, Sequence
 
 from rich.console import Console
 from rich.live import Live
 from rich.rule import Rule
 
-from .layout import build_layout
 from ..schema import ValueLookup
+from .layout import build_layout
 from .state import (
     AutomationRow,
     DependencyStatus,
@@ -159,7 +159,11 @@ class WizardUIView:
             for prompt in status.prompts:
                 prompt.configured = bool(normalized.get(prompt.key.upper()))
                 updated: list[DependencyStatus] = []
-                for label, condition in zip(prompt.dependency_labels, prompt.conditions):
+                for label, condition in zip(
+                    prompt.dependency_labels,
+                    prompt.conditions,
+                    strict=False,
+                ):
                     satisfied = condition.evaluate(lookup)
                     updated.append(DependencyStatus(label=label, satisfied=satisfied))
                 prompt.dependencies = tuple(updated)

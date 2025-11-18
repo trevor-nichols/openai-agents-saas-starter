@@ -4,7 +4,7 @@ import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol, TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIError
@@ -73,9 +73,9 @@ class InputProvider(Protocol):
 @dataclass(slots=True)
 class InteractiveInputProvider(InputProvider):
     prefill: ParsedAnswers
-    ui_commands: "WizardUICommandHandler | None" = None
+    ui_commands: WizardUICommandHandler | None = None
 
-    def bind_ui_commands(self, handler: "WizardUICommandHandler") -> None:
+    def bind_ui_commands(self, handler: WizardUICommandHandler) -> None:
         self.ui_commands = handler
 
     def prompt_string(self, *, key: str, prompt: str, default: str | None, required: bool) -> str:

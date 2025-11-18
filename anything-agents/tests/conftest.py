@@ -8,6 +8,19 @@ from collections import defaultdict
 from collections.abc import Generator
 from pathlib import Path
 
+import pytest
+import sqlalchemy.ext.asyncio as sqla_async
+from fakeredis.aioredis import FakeRedis
+from sqlalchemy.dialects.postgresql import CITEXT, JSONB
+from sqlalchemy.ext.compiler import compiles
+from starter_shared import config as shared_config
+
+from tests.utils.pytest_stripe import (
+    configure_stripe_replay_option,
+    register_stripe_replay_marker,
+    skip_stripe_replay_if_disabled,
+)
+
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 os.environ["REDIS_URL"] = "redis://localhost:6379/0"
 os.environ.setdefault("RATE_LIMIT_REDIS_URL", os.environ["REDIS_URL"])
@@ -18,18 +31,6 @@ os.environ.setdefault("ENABLE_BILLING", "false")
 os.environ.setdefault("ALLOW_PUBLIC_SIGNUP", "true")
 os.environ.setdefault("STARTER_CLI_SKIP_ENV", "true")
 os.environ.setdefault("STARTER_CLI_SKIP_VAULT_PROBE", "true")
-
-import pytest
-import sqlalchemy.ext.asyncio as sqla_async
-from fakeredis.aioredis import FakeRedis
-from sqlalchemy.dialects.postgresql import CITEXT, JSONB
-from sqlalchemy.ext.compiler import compiles
-from starter_shared import config as shared_config
-from tests.utils.pytest_stripe import (
-    configure_stripe_replay_option,
-    register_stripe_replay_marker,
-    skip_stripe_replay_if_disabled,
-)
 
 from app.bootstrap import reset_container
 from app.core import config as config_module

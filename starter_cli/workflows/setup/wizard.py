@@ -6,6 +6,7 @@ from pathlib import Path
 
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext, CLIError
+
 from ._wizard import audit
 from ._wizard.context import FRONTEND_ENV_RELATIVE, WizardContext, build_env_files
 from ._wizard.sections import (
@@ -154,7 +155,6 @@ class SetupWizard:
     def execute(self) -> None:
         provider = self._require_inputs()
         self.context.is_headless = hasattr(provider, "answers")
-        use_shell = self._should_use_shell()
         ui = self.ui if self._should_render_ui() else None
         if ui is not None:
             ui.start()

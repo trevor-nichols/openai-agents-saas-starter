@@ -268,6 +268,7 @@ def configure_logging(settings: Settings) -> None:
         "root": {"level": log_level, "handlers": [handler_name]},
     }
     logging.config.dictConfig(logging_config)
+    logging.getLogger("httpx").setLevel(max(logging.WARNING, logging.getLogger("httpx").level))
 
 
 def _resolve_handler_config(

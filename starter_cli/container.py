@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from pathlib import Path
-from typing import Iterable
 
-from .adapters.io.console import console, configure_console
+from .adapters.io.console import configure_console, console
 from .core import CLIContext, CLIError, build_context, iter_env_files
 
 

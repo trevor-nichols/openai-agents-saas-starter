@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 from starter_cli.adapters.io.console import console
+
 from ..section_specs import SectionSpec
 from .view import WizardUIView
 
@@ -12,7 +13,9 @@ class WizardUICommandHandler:
 
     def __init__(self, ui: WizardUIView, sections: Sequence[SectionSpec]) -> None:
         self.ui = ui
-        self._order_map: dict[str, str] = {str(idx + 1): spec.key for idx, spec in enumerate(sections)}
+        self._order_map: dict[str, str] = {
+            str(idx + 1): spec.key for idx, spec in enumerate(sections)
+        }
         self._sections_by_key: dict[str, SectionSpec] = {spec.key: spec for spec in sections}
         self._label_map: dict[str, str] = {spec.key.lower(): spec.key for spec in sections}
 

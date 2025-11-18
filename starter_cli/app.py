@@ -59,7 +59,9 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _resolve_env_files(container: ApplicationContainer, args: argparse.Namespace) -> Sequence[Path] | None:
+def _resolve_env_files(
+    container: ApplicationContainer, args: argparse.Namespace
+) -> Sequence[Path] | None:
     custom_envs = container.iter_env_files(args.env_files or [])
     skip_env = args.skip_env or should_skip_env_loading()
 

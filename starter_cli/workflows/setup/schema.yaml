@@ -58,6 +58,46 @@ prompts:
     when:
       - key: LOGGING_SINK
         equals: otlp
+  ENABLE_OTEL_COLLECTOR:
+    section: observability
+    when:
+      - key: LOGGING_SINK
+        equals: otlp
+  OTEL_EXPORTER_SENTRY_ENABLED:
+    section: observability
+    when:
+      - key: LOGGING_SINK
+        equals: otlp
+  OTEL_EXPORTER_SENTRY_ENDPOINT:
+    section: observability
+    when:
+      - key: LOGGING_SINK
+        equals: otlp
+  OTEL_EXPORTER_SENTRY_AUTH_HEADER:
+    section: observability
+    when:
+      - key: LOGGING_SINK
+        equals: otlp
+  OTEL_EXPORTER_SENTRY_HEADERS:
+    section: observability
+    when:
+      - key: LOGGING_SINK
+        equals: otlp
+  OTEL_EXPORTER_DATADOG_ENABLED:
+    section: observability
+    when:
+      - key: LOGGING_SINK
+        equals: otlp
+  OTEL_EXPORTER_DATADOG_API_KEY:
+    section: observability
+    when:
+      - key: LOGGING_SINK
+        equals: otlp
+  OTEL_EXPORTER_DATADOG_SITE:
+    section: observability
+    when:
+      - key: LOGGING_SINK
+        equals: otlp
   GEOIP_IPINFO_TOKEN:
     section: observability
     when:

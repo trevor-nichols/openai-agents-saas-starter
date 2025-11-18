@@ -5,7 +5,6 @@ from pathlib import Path
 
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext
-
 from starter_cli.workflows.setup import (
     HeadlessInputProvider,
     InteractiveInputProvider,

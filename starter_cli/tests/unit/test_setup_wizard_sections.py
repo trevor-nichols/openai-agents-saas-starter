@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import pytest
-import os
 from starter_cli.adapters.env import EnvFile
 from starter_cli.core import CLIContext, CLIError
 from starter_cli.workflows.secrets import registry as secrets_registry
@@ -208,12 +208,15 @@ def test_security_section_populates_limits_and_secrets(cli_ctx: CLIContext) -> N
     assert context.backend_env.get("STATUS_SUBSCRIPTION_TOKEN_PEPPER")
 
 
-def test_audit_sections_flag_missing_values(cli_ctx: CLIContext, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_audit_sections_flag_missing_values(
+    cli_ctx: CLIContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
     context = _build_context(cli_ctx, profile="production")
     context.set_backend("OPENAI_API_KEY", "sk-test", mask=True)
     # Ensure peppers aren't already present from other tests
     context.unset_backend("AUTH_PASSWORD_PEPPER")
     context.unset_backend("AUTH_REFRESH_TOKEN_PEPPER")
+
     def _raise_settings_error():
         raise RuntimeError("disabled for test")
 
@@ -225,6 +228,8 @@ def test_audit_sections_flag_missing_values(cli_ctx: CLIContext, monkeypatch: py
     statuses = {check.name: check.status for check in secrets_section.checks}
     assert statuses["AUTH_PASSWORD_PEPPER"] in {"warning", "missing"}
     assert statuses["VAULT_ADDR"] == "missing"
+
+
 def test_secrets_section_runs_non_vault_provider(monkeypatch, cli_ctx: CLIContext) -> None:
     context = _build_context(cli_ctx)
     provider = StubProvider(strings={"SECRETS_PROVIDER": "infisical_cloud"})

@@ -4,41 +4,39 @@ import argparse
 from pathlib import Path
 
 import pytest
-
-from starter_cli.core import CLIContext
 from starter_cli.commands import setup as setup_cmd
+from starter_cli.core import CLIContext
 
 
 def _build_args(**overrides) -> argparse.Namespace:
-    defaults = dict(
-        profile="local",
-        output="summary",
-        answers_file=None,
-        var=None,
-        report_only=False,
-        non_interactive=False,
-        legacy_flow=False,
-        no_tui=False,
-        no_schema=False,
-        markdown_summary_path=None,
-        summary_path=None,
-        auto_infra=None,
-        auto_secrets=None,
-        auto_stripe=None,
-        auto_migrations=None,
-        auto_redis=None,
-        auto_geoip=None,
-
+    defaults = {
+        "profile": "local",
+        "output": "summary",
+        "answers_file": None,
+        "var": None,
+        "report_only": False,
+        "non_interactive": False,
+        "legacy_flow": False,
+        "no_tui": False,
+        "no_schema": False,
+        "markdown_summary_path": None,
+        "summary_path": None,
+        "auto_infra": None,
+        "auto_secrets": None,
+        "auto_stripe": None,
+        "auto_migrations": None,
+        "auto_redis": None,
+        "auto_geoip": None,
         # flags that map to argparse choices but default via Namespace
-        setup_command="wizard",
-    )
+        "setup_command": "wizard",
+    }
     defaults.update(overrides)
     return argparse.Namespace(**defaults)
 
 
 @pytest.fixture(name="dummy_ctx")
 def _dummy_ctx(tmp_path: Path) -> CLIContext:
-    return CLIContext(project_root=tmp_path, env_files=tuple())
+    return CLIContext(project_root=tmp_path, env_files=())
 
 
 def _install_dummies(monkeypatch: pytest.MonkeyPatch):

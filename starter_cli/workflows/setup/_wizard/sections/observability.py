@@ -50,10 +50,23 @@ def run(context: WizardContext, provider: InputProvider) -> None:
         context.set_backend("LOGGING_DATADOG_API_KEY", api_key, mask=True)
         context.set_backend("LOGGING_DATADOG_SITE", site)
     elif sink == "otlp":
+        bundled_default = _collector_default(context)
+        use_bundled_collector = provider.prompt_bool(
+            key="ENABLE_OTEL_COLLECTOR",
+            prompt="Start bundled OpenTelemetry Collector via docker compose?",
+            default=bundled_default,
+        )
+        context.set_backend_bool("ENABLE_OTEL_COLLECTOR", use_bundled_collector)
         endpoint = provider.prompt_string(
             key="LOGGING_OTLP_ENDPOINT",
             prompt="OTLP/HTTP endpoint",
-            default=context.current("LOGGING_OTLP_ENDPOINT") or "https://collector.example/v1/logs",
+            default=
+            context.current("LOGGING_OTLP_ENDPOINT")
+            or (
+                "http://otel-collector:4318/v1/logs"
+                if use_bundled_collector
+                else "https://collector.example/v1/logs"
+            ),
             required=True,
         )
         headers = provider.prompt_string(
@@ -65,6 +78,15 @@ def run(context: WizardContext, provider: InputProvider) -> None:
         context.set_backend("LOGGING_OTLP_ENDPOINT", endpoint)
         if headers:
             context.set_backend("LOGGING_OTLP_HEADERS", headers)
+        else:
+            context.unset_backend("LOGGING_OTLP_HEADERS")
+        if use_bundled_collector:
+            _configure_collector_exporters(context, provider)
+        else:
+            _clear_collector_exporters(context)
+    else:
+        context.set_backend_bool("ENABLE_OTEL_COLLECTOR", False)
+        _clear_collector_exporters(context)
 
     geo = normalize_geoip_provider(
         provider.prompt_string(
@@ -147,6 +169,92 @@ def run(context: WizardContext, provider: InputProvider) -> None:
         required=True,
     )
     context.set_backend("GEOIP_HTTP_TIMEOUT_SECONDS", http_timeout)
+
+
+def _collector_default(context: WizardContext) -> bool:
+    current = context.current("ENABLE_OTEL_COLLECTOR")
+    if current is not None:
+        return context.current_bool("ENABLE_OTEL_COLLECTOR")
+    return context.profile == "local"
+
+
+def _clear_collector_exporters(context: WizardContext) -> None:
+    context.unset_backend("OTEL_EXPORTER_SENTRY_ENDPOINT")
+    context.unset_backend("OTEL_EXPORTER_SENTRY_AUTH_HEADER")
+    context.unset_backend("OTEL_EXPORTER_SENTRY_HEADERS")
+    context.unset_backend("OTEL_EXPORTER_DATADOG_API_KEY")
+    context.unset_backend("OTEL_EXPORTER_DATADOG_SITE")
+
+
+def _configure_collector_exporters(context: WizardContext, provider: InputProvider) -> None:
+    _configure_sentry_exporter(context, provider)
+    _configure_datadog_exporter(context, provider)
+
+
+def _configure_sentry_exporter(context: WizardContext, provider: InputProvider) -> None:
+    default_enabled = bool(context.current("OTEL_EXPORTER_SENTRY_ENDPOINT"))
+    enabled = provider.prompt_bool(
+        key="OTEL_EXPORTER_SENTRY_ENABLED",
+        prompt="Forward logs to Sentry from the bundled collector?",
+        default=default_enabled,
+    )
+    if not enabled:
+        context.unset_backend("OTEL_EXPORTER_SENTRY_ENDPOINT")
+        context.unset_backend("OTEL_EXPORTER_SENTRY_AUTH_HEADER")
+        context.unset_backend("OTEL_EXPORTER_SENTRY_HEADERS")
+        return
+    endpoint = provider.prompt_string(
+        key="OTEL_EXPORTER_SENTRY_ENDPOINT",
+        prompt="Sentry OTLP HTTP endpoint",
+        default=context.current("OTEL_EXPORTER_SENTRY_ENDPOINT")
+        or "https://o11y.ingest.sentry.io/api/<project>/otlp",
+        required=True,
+    )
+    auth_header = provider.prompt_secret(
+        key="OTEL_EXPORTER_SENTRY_AUTH_HEADER",
+        prompt="Sentry Authorization header (e.g., 'Bearer <token>')",
+        existing=context.current("OTEL_EXPORTER_SENTRY_AUTH_HEADER"),
+        required=True,
+    )
+    headers = provider.prompt_string(
+        key="OTEL_EXPORTER_SENTRY_HEADERS",
+        prompt="Additional Sentry headers JSON (optional)",
+        default=context.current("OTEL_EXPORTER_SENTRY_HEADERS") or "",
+        required=False,
+    )
+    context.set_backend("OTEL_EXPORTER_SENTRY_ENDPOINT", endpoint)
+    context.set_backend("OTEL_EXPORTER_SENTRY_AUTH_HEADER", auth_header, mask=True)
+    if headers:
+        context.set_backend("OTEL_EXPORTER_SENTRY_HEADERS", headers)
+    else:
+        context.unset_backend("OTEL_EXPORTER_SENTRY_HEADERS")
+
+
+def _configure_datadog_exporter(context: WizardContext, provider: InputProvider) -> None:
+    default_enabled = bool(context.current("OTEL_EXPORTER_DATADOG_API_KEY"))
+    enabled = provider.prompt_bool(
+        key="OTEL_EXPORTER_DATADOG_ENABLED",
+        prompt="Forward logs to Datadog from the bundled collector?",
+        default=default_enabled,
+    )
+    if not enabled:
+        context.unset_backend("OTEL_EXPORTER_DATADOG_API_KEY")
+        context.unset_backend("OTEL_EXPORTER_DATADOG_SITE")
+        return
+    api_key = provider.prompt_secret(
+        key="OTEL_EXPORTER_DATADOG_API_KEY",
+        prompt="Datadog API key",
+        existing=context.current("OTEL_EXPORTER_DATADOG_API_KEY"),
+        required=True,
+    )
+    site = provider.prompt_string(
+        key="OTEL_EXPORTER_DATADOG_SITE",
+        prompt="Datadog site (datadoghq.com/datadoghq.eu/etc.)",
+        default=context.current("OTEL_EXPORTER_DATADOG_SITE") or "datadoghq.com",
+        required=True,
+    )
+    context.set_backend("OTEL_EXPORTER_DATADOG_API_KEY", api_key, mask=True)
+    context.set_backend("OTEL_EXPORTER_DATADOG_SITE", site)
 
 
 def _maybe_download_maxmind_db(

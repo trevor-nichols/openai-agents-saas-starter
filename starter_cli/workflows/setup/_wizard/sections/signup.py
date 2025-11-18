@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Final
+from typing import Final, cast
 
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIError
@@ -315,7 +315,7 @@ def _headless_answer(provider: InputProvider, key: str) -> str | None:
 def _resolve_base_provider(provider: InputProvider) -> InputProvider:
     current = provider
     while isinstance(current, SchemaAwareInputProvider):
-        current = current._provider  # type: ignore[attr-defined]
+        current = cast(InputProvider, current._provider)
     return current
 
 

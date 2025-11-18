@@ -14,7 +14,12 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from starter_cli.adapters.env import EnvFile, aggregate_env_values, build_env_scope, expand_env_placeholders
+from starter_cli.adapters.env import (
+    EnvFile,
+    aggregate_env_values,
+    build_env_scope,
+    expand_env_placeholders,
+)
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext, CLIError
 

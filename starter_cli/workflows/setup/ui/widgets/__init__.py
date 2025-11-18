@@ -56,4 +56,10 @@ def configured_badge(configured: bool) -> Text:
     return Text("—", style="#666666")
 
 
-__all__ = ["progress_bar", "progress_caption", "status_badge", "dependency_badge", "configured_badge"]
+__all__ = [
+    "progress_bar",
+    "progress_caption",
+    "status_badge",
+    "dependency_badge",
+    "configured_badge",
+]

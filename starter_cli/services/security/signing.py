@@ -7,8 +7,6 @@ import json
 import os
 import time
 import uuid
-from collections.abc import Iterable
-from dataclasses import dataclass
 from typing import Any
 
 import boto3
@@ -263,7 +261,7 @@ def _fetch_aws_secret(settings: StarterSettingsProtocol) -> str:
         return response["SecretString"]
     if "SecretBinary" in response:
         value = response["SecretBinary"]
-        if isinstance(value, (bytes, bytearray)):
+        if isinstance(value, bytes | bytearray):
             return value.decode("utf-8")
     raise CLIError("AWS secret missing string payload.")
 

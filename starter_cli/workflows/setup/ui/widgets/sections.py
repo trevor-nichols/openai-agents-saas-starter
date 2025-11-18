@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from rich.console import Group
+from collections.abc import Sequence
+
+from rich.console import Group, RenderableType
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
@@ -14,7 +16,7 @@ def section_card(section: SectionStatus, *, expanded: bool) -> Panel:
 
     detail = _detail_text(section)
     dependency_block = _dependency_block(section.prompts, expanded=expanded)
-    body_segments = [detail]
+    body_segments: list[RenderableType] = [detail]
     if dependency_block is not None:
         body_segments.append(dependency_block)
     body = Group(*body_segments)
@@ -40,7 +42,7 @@ def _detail_text(section: SectionStatus) -> Text:
     return Text("No additional detail yet.", style="dim")
 
 
-def _dependency_block(prompts: tuple[PromptMeta, ...] | list[PromptMeta] | None, *, expanded: bool):
+def _dependency_block(prompts: Sequence[PromptMeta] | None, *, expanded: bool):
     if not prompts:
         return None
     conditional_prompts = [prompt for prompt in prompts if prompt.dependencies]

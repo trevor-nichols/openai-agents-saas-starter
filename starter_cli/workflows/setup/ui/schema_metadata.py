@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Iterable
 
 from ..schema import Condition, PromptRule, WizardSchema
 from .state import DependencyStatus, PromptMeta

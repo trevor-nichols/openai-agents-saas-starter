@@ -27,9 +27,10 @@ _REPLAY_MODULE = Path(__file__).resolve().parents[3] / "scripts" / "stripe" / "r
 _SPEC = importlib.util.spec_from_file_location("replay_events", _REPLAY_MODULE)
 if _SPEC is None or _SPEC.loader is None:
     raise RuntimeError("stripe replay module could not be loaded")
-replay_events = importlib.util.module_from_spec(_SPEC)
+_replay_module = importlib.util.module_from_spec(_SPEC)
 loader = cast(Loader, _SPEC.loader)
-loader.exec_module(replay_events)
+loader.exec_module(_replay_module)
+replay_events = cast(Any, _replay_module)
 
 pytestmark = pytest.mark.stripe_replay
 

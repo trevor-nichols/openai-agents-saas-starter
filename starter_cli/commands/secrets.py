@@ -7,7 +7,6 @@ from starter_shared.secrets.models import SecretsProviderLiteral
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext, CLIError
 from starter_cli.telemetry import append_verification_artifact
-
 from starter_cli.workflows.secrets import registry
 from starter_cli.workflows.secrets.models import (
     ProviderOption,

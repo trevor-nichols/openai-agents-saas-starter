@@ -6,6 +6,7 @@ from rich.table import Table
 from rich.text import Text
 
 from starter_cli.adapters.io.console import console
+
 from ._wizard.context import WizardContext
 from .section_specs import SectionSpec
 
