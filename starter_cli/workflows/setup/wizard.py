@@ -20,9 +20,10 @@ from ._wizard.sections import (
     signup,
     usage,
 )
+from .answer_recorder import AnswerRecorder, RecordingInputProvider
 from .automation import ALL_AUTOMATION_PHASES, AutomationPhase
 from .infra import InfraSession
-from .inputs import InputProvider, InteractiveInputProvider
+from .inputs import InputProvider, InteractiveInputProvider, is_headless_provider
 from .models import SectionResult
 from .preflight import run_preflight
 from .schema import load_schema
@@ -108,6 +109,7 @@ class SetupWizard:
         input_provider: InputProvider | None,
         summary_path: Path | None = None,
         markdown_summary_path: Path | None = None,
+        export_answers_path: Path | None = None,
         automation_overrides: dict[AutomationPhase, bool | None] | None = None,
         enable_tui: bool = True,
         enable_schema: bool = True,
@@ -122,6 +124,8 @@ class SetupWizard:
         self.enable_shell = enable_shell
         self.schema = load_schema() if enable_schema else None
         self.state_store = WizardStateStore(ctx.project_root / "var/reports/wizard-state.json")
+        self.export_answers_path = export_answers_path
+        self._answer_recorder: AnswerRecorder | None = None
         section_prompt_metadata = build_section_prompt_metadata(self.schema)
         self.context = WizardContext(
             cli_ctx=ctx,
@@ -155,7 +159,7 @@ class SetupWizard:
     # ------------------------------------------------------------------
     def execute(self) -> None:
         provider = self._require_inputs()
-        self.context.is_headless = hasattr(provider, "answers")
+        self.context.is_headless = is_headless_provider(provider)
         ui = self.ui if self._should_render_ui() else None
         if ui is not None:
             ui.start()
@@ -179,6 +183,7 @@ class SetupWizard:
                 return
 
             self._post_sections(provider)
+            self._maybe_export_answers()
         except KeyboardInterrupt:
             console.warn("Setup wizard interrupted. Goodbye!", topic="wizard")
         finally:
@@ -401,18 +406,39 @@ class SetupWizard:
                 "This command requires inputs. Provide --answers-file/--var overrides or "
                 "run without --non-interactive."
             )
-        if not self.schema:
-            return self.input_provider
-        if not isinstance(self.input_provider, SchemaAwareInputProvider):
+        provider: InputProvider = self.input_provider
+        if self.export_answers_path:
+            if not self._answer_recorder:
+                self._answer_recorder = AnswerRecorder()
+            if not isinstance(provider, RecordingInputProvider):
+                provider = RecordingInputProvider(provider=provider, recorder=self._answer_recorder)
+        if self.schema and not isinstance(provider, SchemaAwareInputProvider):
             if not self.state_store:
                 raise CLIError("Wizard state store unavailable; cannot continue.")
-            self.input_provider = SchemaAwareInputProvider(
-                provider=self.input_provider,
+            provider = SchemaAwareInputProvider(
+                provider=provider,
                 schema=self.schema,
                 state=self.state_store,
                 context=self.context,
             )
-        return self.input_provider
+        self.input_provider = provider
+        return provider
+
+    def _maybe_export_answers(self) -> None:
+        if not self.export_answers_path or not self._answer_recorder:
+            return
+        try:
+            self._answer_recorder.export(self.export_answers_path)
+        except OSError as exc:  # pragma: no cover - filesystem failures
+            console.error(
+                f"Failed to export answers to {self.export_answers_path}: {exc}",
+                topic="wizard",
+            )
+            return
+        console.success(
+            f"Wrote prompt answers to {self.export_answers_path}",
+            topic="wizard",
+        )
 
 
 __all__ = ["SetupWizard", "PROFILE_CHOICES", "FRONTEND_ENV_RELATIVE"]

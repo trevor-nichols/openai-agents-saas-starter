@@ -27,3 +27,4 @@ Deliver a clean implementation of the redesigned Starter CLI wizard so operators
 1. Dogfood the new wizard with at least two fresh checkouts and capture feedback for the screencast.
 2. Add regression tests that cover schema skip-logic plus automation fallbacks (tracked under QA backlog).
 3. Socialize the new `--auto-*` flags and dashboard workflow with the ops and DX channels.
+4. Roll out the `--export-answers` helper + production `--strict` alias to onboarding docs and gather DX feedback after two production runs.

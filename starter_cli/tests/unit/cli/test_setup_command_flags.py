@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 from starter_cli.commands import setup as setup_cmd
-from starter_cli.core import CLIContext
+from starter_cli.core import CLIContext, CLIError
 
 
 def _build_args(**overrides) -> argparse.Namespace:
@@ -14,11 +14,13 @@ def _build_args(**overrides) -> argparse.Namespace:
         "output": "summary",
         "answers_file": None,
         "var": None,
+        "strict": False,
         "report_only": False,
         "non_interactive": False,
         "legacy_flow": False,
         "no_tui": False,
         "no_schema": False,
+        "export_answers": None,
         "markdown_summary_path": None,
         "summary_path": None,
         "auto_infra": None,
@@ -90,3 +92,53 @@ def test_setup_command_disables_shell_and_tui_when_requested(
     assert exit_code == 0
     assert created["enable_shell"] is False
     assert created["enable_tui"] is False
+
+
+def test_setup_command_rejects_export_when_report_only(
+    dummy_ctx: CLIContext,
+) -> None:
+    args = _build_args(report_only=True, export_answers="ops/local.json")
+
+    with pytest.raises(CLIError):
+        setup_cmd.handle_setup_wizard(args, dummy_ctx)
+
+
+def test_setup_command_strict_requires_production_profile(dummy_ctx: CLIContext) -> None:
+    args = _build_args(profile="staging", strict=True, var=["FOO=bar"])
+
+    with pytest.raises(CLIError):
+        setup_cmd.handle_setup_wizard(args, dummy_ctx)
+
+
+def test_setup_command_strict_requires_answers(dummy_ctx: CLIContext) -> None:
+    args = _build_args(profile="production", strict=True)
+
+    with pytest.raises(CLIError):
+        setup_cmd.handle_setup_wizard(args, dummy_ctx)
+
+
+def test_setup_command_strict_forces_headless(
+    monkeypatch: pytest.MonkeyPatch, dummy_ctx: CLIContext
+) -> None:
+    created = _install_dummies(monkeypatch)
+
+    args = _build_args(profile="production", strict=True, var=["FOO=bar"])
+
+    exit_code = setup_cmd.handle_setup_wizard(args, dummy_ctx)
+
+    assert exit_code == 0
+    assert created.get("executed") is True
+    assert isinstance(created["input_provider"], setup_cmd.HeadlessInputProvider)
+
+
+def test_setup_command_passes_export_answers_path(
+    monkeypatch: pytest.MonkeyPatch, dummy_ctx: CLIContext
+) -> None:
+    created = _install_dummies(monkeypatch)
+
+    args = _build_args(export_answers="ops/local.json")
+
+    exit_code = setup_cmd.handle_setup_wizard(args, dummy_ctx)
+
+    assert exit_code == 0
+    assert created["export_answers_path"] == Path("ops/local.json").expanduser()

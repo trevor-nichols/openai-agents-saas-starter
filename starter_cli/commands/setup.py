@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 
 from starter_cli.adapters.io.console import console
-from starter_cli.core import CLIContext
+from starter_cli.core import CLIContext, CLIError
 from starter_cli.workflows.setup import (
     HeadlessInputProvider,
     InteractiveInputProvider,
@@ -30,6 +30,11 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         choices=PROFILE_CHOICES,
         default="local",
         help="Target deployment profile. Influences required checks and defaults.",
+    )
+    wizard_parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Production-only alias that enforces headless runs with pre-provided answers.",
     )
     wizard_parser.add_argument(
         "--non-interactive",
@@ -73,6 +78,11 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         action="append",
         metavar="KEY=VALUE",
         help="Override a specific prompt answer (repeatable).",
+    )
+    wizard_parser.add_argument(
+        "--export-answers",
+        metavar="PATH",
+        help="Write the collected prompt answers to PATH (JSON).",
     )
     wizard_parser.add_argument(
         "--summary-path",
@@ -187,6 +197,15 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
 
 
 def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
+    if getattr(args, "strict", False):
+        if args.profile != "production":
+            raise CLIError("--strict is only supported with --profile production.")
+        if not args.answers_file and not args.var:
+            raise CLIError("--strict requires --answers-file or --var overrides.")
+        args.non_interactive = True
+    if args.export_answers and args.report_only:
+        raise CLIError("--export-answers cannot be combined with --report-only.")
+
     answers: dict[str, str] = {}
     if args.answers_file:
         answers = load_answers_files(args.answers_file)
@@ -223,6 +242,7 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
         profile=args.profile,
         output_format=args.output,
         input_provider=provider,
+        export_answers_path=Path(args.export_answers).expanduser() if args.export_answers else None,
         markdown_summary_path=Path(args.markdown_summary_path).expanduser()
         if args.markdown_summary_path
         else None,

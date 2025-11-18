@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Final, cast
+from typing import Final
 
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIError
 
-from ...inputs import HeadlessInputProvider, InputProvider
-from ...schema_provider import SchemaAwareInputProvider
+from ...inputs import InputProvider, is_headless_provider
 from ...validators import parse_non_negative_int, parse_positive_int
 from ..context import WizardContext
 
@@ -150,7 +149,7 @@ def _prompt_signup_policy(context: WizardContext, provider: InputProvider) -> st
         if value in _SIGNUP_POLICY_CHOICES:
             console.info(_SIGNUP_POLICY_DESCRIPTIONS[value], topic="wizard")
             return value
-        if isinstance(provider, HeadlessInputProvider):
+        if is_headless_provider(provider):
             raise CLIError(
                 "SIGNUP_ACCESS_POLICY must be one of "
                 f"{', '.join(sorted(_SIGNUP_POLICY_CHOICES))}."
@@ -198,8 +197,7 @@ def _prompt_worker_mode(context: WizardContext, provider: InputProvider) -> str:
     if headless_mode:
         return headless_mode
 
-    base_provider = _resolve_base_provider(provider)
-    is_headless = isinstance(base_provider, HeadlessInputProvider)
+    is_headless = is_headless_provider(provider)
     if is_headless and not existing:
         raise CLIError(
             "Headless wizard runs must set BILLING_RETRY_DEPLOYMENT_MODE=inline|dedicated. "
@@ -236,7 +234,7 @@ def _prompt_worker_mode(context: WizardContext, provider: InputProvider) -> str:
                     topic="wizard",
                 )
             return normalized
-        if isinstance(provider, HeadlessInputProvider):
+        if is_headless_provider(provider):
             raise CLIError("BILLING_RETRY_DEPLOYMENT_MODE must be 'inline' or 'dedicated'.")
         console.warn("Enter either 'inline' or 'dedicated'.", topic="wizard")
 
@@ -306,17 +304,10 @@ def _write_worker_guidance(context: WizardContext, worker_mode: str) -> None:
 
 
 def _headless_answer(provider: InputProvider, key: str) -> str | None:
-    base = _resolve_base_provider(provider)
-    if isinstance(base, HeadlessInputProvider):
-        return base.answers.get(key.upper())
+    answers = getattr(provider, "answers", None)
+    if answers:
+        return answers.get(key.upper())
     return None
-
-
-def _resolve_base_provider(provider: InputProvider) -> InputProvider:
-    current = provider
-    while isinstance(current, SchemaAwareInputProvider):
-        current = cast(InputProvider, current._provider)
-    return current
 
 
 def _coerce_bool_like(value: str) -> bool:

@@ -7,7 +7,11 @@ from pathlib import Path
 import httpx
 import pytest
 from starter_cli.core import CLIContext, CLIError
-from starter_cli.workflows.setup import HeadlessInputProvider, SetupWizard
+from starter_cli.workflows.setup import (
+    HeadlessInputProvider,
+    InteractiveInputProvider,
+    SetupWizard,
+)
 from starter_cli.workflows.setup import wizard as wizard_module
 from starter_cli.workflows.setup._wizard import audit
 from starter_cli.workflows.setup._wizard.sections import providers as provider_section
@@ -146,6 +150,25 @@ def test_wizard_configures_slack_section(temp_ctx: CLIContext) -> None:
     _cleanup_env(snapshot)
 
 
+def test_wizard_exports_answers_when_requested(temp_ctx: CLIContext) -> None:
+    snapshot = dict(os.environ)
+    answers = _local_headless_answers()
+    export_path = temp_ctx.project_root / "ops" / "local.json"
+    wizard = _create_setup_wizard(
+        ctx=temp_ctx,
+        profile="local",
+        output_format="summary",
+        input_provider=HeadlessInputProvider(answers=answers),
+        export_answers_path=export_path,
+    )
+    wizard.execute()
+
+    payload = json.loads(export_path.read_text(encoding="utf-8"))
+    assert payload["DATABASE_URL"] == answers["DATABASE_URL"]
+    assert payload["OPENAI_API_KEY"] == answers["OPENAI_API_KEY"]
+    _cleanup_env(snapshot)
+
+
 def test_wizard_configures_bundled_collector(temp_ctx: CLIContext) -> None:
     snapshot = dict(os.environ)
     answers = _local_headless_answers() | {
@@ -173,7 +196,7 @@ def test_wizard_configures_bundled_collector(temp_ctx: CLIContext) -> None:
     assert "ENABLE_OTEL_COLLECTOR=true" in env_body
     assert "LOGGING_OTLP_ENDPOINT=http://otel-collector:4318/v1/logs" in env_body
     assert "OTEL_EXPORTER_SENTRY_ENDPOINT=https://o11y.ingest.sentry.io/api/42/otlp" in env_body
-    assert "OTEL_EXPORTER_SENTRY_AUTH_HEADER=Bearer sentry-token" in env_body
+    assert 'OTEL_EXPORTER_SENTRY_AUTH_HEADER="Bearer sentry-token"' in env_body
     assert "OTEL_EXPORTER_DATADOG_API_KEY=dd-api-key" in env_body
     assert "OTEL_EXPORTER_DATADOG_SITE=datadoghq.eu" in env_body
     _cleanup_env(snapshot)
@@ -191,6 +214,40 @@ def test_wizard_headless_requires_worker_mode(temp_ctx: CLIContext) -> None:
     )
 
     with pytest.raises(CLIError, match="BILLING_RETRY_DEPLOYMENT_MODE"):
+        wizard.execute()
+
+    _cleanup_env(snapshot)
+
+
+def test_wizard_headless_invalid_number_raises(temp_ctx: CLIContext) -> None:
+    snapshot = dict(os.environ)
+    answers = _local_headless_answers() | {"SIGNUP_RATE_LIMIT_PER_HOUR": "abc"}
+    wizard = _create_setup_wizard(
+        ctx=temp_ctx,
+        profile="local",
+        output_format="summary",
+        input_provider=HeadlessInputProvider(answers=answers),
+    )
+
+    with pytest.raises(CLIError, match="SIGNUP_RATE_LIMIT_PER_HOUR must be an integer"):
+        wizard.execute()
+
+    _cleanup_env(snapshot)
+
+
+def test_wizard_headless_export_invalid_number_raises(temp_ctx: CLIContext) -> None:
+    snapshot = dict(os.environ)
+    answers = _local_headless_answers() | {"SIGNUP_RATE_LIMIT_PER_HOUR": "abc"}
+    export_path = temp_ctx.project_root / "ops" / "local.json"
+    wizard = _create_setup_wizard(
+        ctx=temp_ctx,
+        profile="local",
+        output_format="summary",
+        input_provider=HeadlessInputProvider(answers=answers),
+        export_answers_path=export_path,
+    )
+
+    with pytest.raises(CLIError, match="SIGNUP_RATE_LIMIT_PER_HOUR must be an integer"):
         wizard.execute()
 
     _cleanup_env(snapshot)
@@ -759,7 +816,7 @@ def test_interactive_wizard_runs_tui_alongside_shell(
 
     monkeypatch.setattr(SetupWizard, "_build_section_runners", _dummy_runners)
 
-    provider = HeadlessInputProvider(answers={})
+    provider = InteractiveInputProvider(prefill={})
     wizard = SetupWizard(
         ctx=temp_ctx,
         profile="local",

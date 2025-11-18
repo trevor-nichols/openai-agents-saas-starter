@@ -10,7 +10,7 @@ from starter_cli.core import CLIError
 from starter_cli.workflows.secrets import registry
 
 from ...automation import AutomationPhase, AutomationStatus
-from ...inputs import HeadlessInputProvider, InputProvider
+from ...inputs import InputProvider, is_headless_provider
 from ...validators import probe_vault_transit
 from ..context import WizardContext
 
@@ -102,7 +102,7 @@ def _collect_provider_choice(
         try:
             return SecretsProviderLiteral(choice)
         except ValueError:
-            if isinstance(provider, HeadlessInputProvider):
+            if is_headless_provider(provider):
                 raise CLIError(f"Invalid secrets provider '{choice}'.") from None
             console.warn(
                 "Invalid secrets provider. Please choose a supported value.",

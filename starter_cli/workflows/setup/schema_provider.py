@@ -145,5 +145,11 @@ class SchemaAwareInputProvider:
             return False
         return default
 
+    @property
+    def answers(self):  # pragma: no cover - passthrough access
+        if hasattr(self._provider, "answers"):
+            return getattr(self._provider, "answers")
+        raise AttributeError("answers not available")
+
 
 __all__ = ["SchemaAwareInputProvider"]

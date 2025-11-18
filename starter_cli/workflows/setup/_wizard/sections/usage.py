@@ -11,7 +11,7 @@ from typing import Final
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIError
 
-from ...inputs import HeadlessInputProvider, InputProvider
+from ...inputs import InputProvider, is_headless_provider
 from ...validators import parse_non_negative_int, validate_plan_map
 from ..context import WizardContext
 
@@ -158,7 +158,7 @@ def _prompt_cache_ttl(context: WizardContext, provider: InputProvider) -> int:
                 field="USAGE_GUARDRAIL_CACHE_TTL_SECONDS",
             )
         except CLIError as exc:
-            if isinstance(provider, HeadlessInputProvider):
+            if is_headless_provider(provider):
                 raise
             console.warn(str(exc), topic="wizard")
             continue
@@ -177,7 +177,7 @@ def _prompt_soft_limit_mode(context: WizardContext, provider: InputProvider) -> 
         ).strip().lower()
         if value in {"warn", "block"}:
             return value
-        if isinstance(provider, HeadlessInputProvider):
+        if is_headless_provider(provider):
             raise CLIError("USAGE_GUARDRAIL_SOFT_LIMIT_MODE must be 'warn' or 'block'.")
         console.warn("Enter either 'warn' or 'block'.", topic="wizard")
 
@@ -199,7 +199,7 @@ def _prompt_cache_backend(context: WizardContext, provider: InputProvider) -> st
         if value in {"redis", "memory"}:
             _record_answer(context, "USAGE_GUARDRAIL_CACHE_BACKEND", value)
             return value
-        if isinstance(provider, HeadlessInputProvider):
+        if is_headless_provider(provider):
             raise CLIError("USAGE_GUARDRAIL_CACHE_BACKEND must be 'redis' or 'memory'.")
         console.warn("Enter either 'redis' or 'memory'.", topic="wizard")
 
@@ -340,7 +340,7 @@ def _prompt_limit(
         try:
             value = parse_non_negative_int(raw, field=key)
         except CLIError as exc:
-            if isinstance(provider, HeadlessInputProvider):
+            if is_headless_provider(provider):
                 raise
             console.warn(str(exc), topic="wizard")
             continue

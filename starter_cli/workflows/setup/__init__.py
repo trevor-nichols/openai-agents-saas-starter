@@ -4,6 +4,7 @@ from .inputs import (
     InputProvider,
     InteractiveInputProvider,
     ParsedAnswers,
+    is_headless_provider,
     load_answers_files,
     merge_answer_overrides,
 )
@@ -18,6 +19,7 @@ __all__ = [
     "InteractiveInputProvider",
     "HeadlessInputProvider",
     "ParsedAnswers",
+    "is_headless_provider",
     "load_answers_files",
     "merge_answer_overrides",
 ]

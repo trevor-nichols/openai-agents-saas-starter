@@ -197,3 +197,7 @@ def _coerce_bool(value: str, key: str) -> bool:
     raise CLIError(
         f"Unable to parse boolean for {key!r}: expected true/false, got '{value}'."
     )
+
+
+def is_headless_provider(provider: InputProvider) -> bool:
+    return hasattr(provider, "answers")

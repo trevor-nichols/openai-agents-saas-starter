@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIError
 
-from ...inputs import HeadlessInputProvider, InputProvider
+from ...inputs import InputProvider, is_headless_provider
 from ..context import WizardContext
 
 _LOCKOUT_FIELDS: Sequence[tuple[str, str, int]] = (
@@ -186,12 +186,12 @@ def _prompt_positive_int(
         try:
             parsed = int(raw_value)
         except ValueError:
-            if isinstance(provider, HeadlessInputProvider):
+            if is_headless_provider(provider):
                 raise CLIError(f"{key} must be an integer.") from None
             console.warn(f"{key} must be an integer.", topic="wizard")
             continue
         if parsed <= 0:
-            if isinstance(provider, HeadlessInputProvider):
+            if is_headless_provider(provider):
                 raise CLIError(f"{key} must be greater than zero.")
             console.warn(f"{key} must be greater than zero.", topic="wizard")
             continue

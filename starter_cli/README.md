@@ -67,7 +67,9 @@ Once all sections show `Done`, press `Enter` to finalize or reopen any section f
 Flags:
 
 - `--profile {local,staging,production}` toggles defaults and required checks.
+- `--strict` forces headless runs for production (auto-enables `--non-interactive` and rejects missing answers).
 - `--non-interactive` + `--answers-file/--var` run headless.
+- `--export-answers PATH` writes every prompt response from the current run to JSON so you can replay/edit it later.
 - `--report-only` skips prompts and prints the milestone audit without modifying env files.
 - `--output {summary,json}` selects console format.
 - `--legacy-flow` forces the legacy linear prompts (disables the new shell dashboard).
@@ -83,6 +85,16 @@ Artifacts generated per run:
 - `var/reports/cli-one-stop-summary.md` — Markdown snippet with automation status, verification notes, and milestone table.
 - `var/reports/verification-artifacts.json` — append-only ledger of provider verifications (Vault, AWS, Azure, Infisical, Stripe). This is cumulative across runs.
 - `var/reports/wizard-state.json` — cached prompt outcomes feeding the dependency graph; delete it when you want a totally fresh interaction.
+
+#### Profiles & Answer Files
+
+1. Run the wizard interactively with `--profile local` to gather every required value.
+2. Pass `--export-answers ops/environments/local.json` so the CLI writes the actual responses you just entered.
+3. Duplicate that file per environment (`staging.json`, `production.json`), scrub or swap any secrets, and check them into your secure config repo.
+4. Replay the wizard headlessly with `python -m starter_cli.app setup wizard --profile staging --non-interactive --answers-file ops/environments/staging.json`.
+5. For hardened runs, add `--strict` (production only) so the CLI refuses to prompt and enforces that every answer is pre-supplied.
+
+This workflow keeps a single schema-driven wizard while avoiding ad-hoc copying of `.env.local` files between environments.
 
 #### Dashboard + Dependency Graph
 
@@ -205,6 +217,7 @@ See `docs/ops/db-release-playbook.md` for the full pre-flight checklist, evidenc
 ## Headless & CI Patterns
 
 - **Answers file format:** JSON object of `KEY: "value"`. Keys are uppercased internally.
+- **Export helper:** add `--export-answers path/to/local.json` to an interactive run to capture everything you typed so the exact payload can be reused (after edits) in staging/production.
 - **Billing retry worker:** Headless runs *must* include `BILLING_RETRY_DEPLOYMENT_MODE` (`inline` or `dedicated`). The former `ENABLE_BILLING_RETRY_WORKER` flag is ignored and the wizard will exit with an error if the new key is missing.
 - **Override precedence:** later `--answers-file` entries overwrite earlier ones; `--var` entries win
   last.

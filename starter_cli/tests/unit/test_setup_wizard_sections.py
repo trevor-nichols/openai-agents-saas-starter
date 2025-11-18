@@ -10,6 +10,7 @@ from starter_cli.adapters.env import EnvFile
 from starter_cli.core import CLIContext, CLIError
 from starter_cli.workflows.secrets import registry as secrets_registry
 from starter_cli.workflows.secrets.models import OnboardResult
+from starter_cli.workflows.setup import HeadlessInputProvider
 from starter_cli.workflows.setup._wizard import audit
 from starter_cli.workflows.setup._wizard.context import WizardContext
 from starter_cli.workflows.setup._wizard.sections import (
@@ -19,7 +20,13 @@ from starter_cli.workflows.setup._wizard.sections import (
     security,
     usage,
 )
+from starter_cli.workflows.setup.answer_recorder import (
+    AnswerRecorder,
+    RecordingInputProvider,
+)
 from starter_cli.workflows.setup.inputs import InputProvider
+from starter_cli.workflows.setup.schema_provider import SchemaAwareInputProvider
+from starter_cli.workflows.setup.state import WizardStateStore
 from starter_shared.secrets.models import SecretsProviderLiteral
 
 
@@ -213,6 +220,33 @@ def test_security_section_populates_limits_and_secrets(cli_ctx: CLIContext) -> N
     assert context.backend_env.get("AUTH_JWKS_ETAG_SALT")
     assert context.backend_env.get("STATUS_SUBSCRIPTION_ENCRYPTION_KEY")
     assert context.backend_env.get("STATUS_SUBSCRIPTION_TOKEN_PEPPER")
+
+
+def test_core_is_headless_via_schema_wrapper(cli_ctx: CLIContext) -> None:
+    context = _build_context(cli_ctx)
+    state = WizardStateStore(cli_ctx.project_root / "var/reports/wizard-state.json")
+    provider = SchemaAwareInputProvider(
+        provider=HeadlessInputProvider(answers={"ENVIRONMENT": "development"}),
+        schema=None,
+        state=state,
+        context=context,
+    )
+
+    assert core._is_headless(provider) is True
+
+
+def test_core_is_headless_via_recording_wrapper(cli_ctx: CLIContext) -> None:
+    context = _build_context(cli_ctx)
+    state = WizardStateStore(cli_ctx.project_root / "var/reports/wizard-state.json")
+    schema_provider = SchemaAwareInputProvider(
+        provider=HeadlessInputProvider(answers={"ENVIRONMENT": "development"}),
+        schema=None,
+        state=state,
+        context=context,
+    )
+    recorder = RecordingInputProvider(provider=schema_provider, recorder=AnswerRecorder())
+
+    assert core._is_headless(recorder) is True
 
 
 def test_usage_section_writes_entitlements(cli_ctx: CLIContext) -> None:

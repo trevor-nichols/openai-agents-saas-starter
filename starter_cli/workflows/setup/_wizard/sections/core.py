@@ -5,7 +5,7 @@ import json
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIError
 
-from ...inputs import HeadlessInputProvider, InputProvider
+from ...inputs import InputProvider, is_headless_provider
 from ..context import WizardContext
 
 _DEFAULT_AUTH_AUDIENCE = (
@@ -399,4 +399,4 @@ def _prompt_positive_float(
 
 
 def _is_headless(provider: InputProvider) -> bool:
-    return isinstance(provider, HeadlessInputProvider)
+    return is_headless_provider(provider)
