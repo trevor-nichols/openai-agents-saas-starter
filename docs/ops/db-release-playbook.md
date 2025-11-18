@@ -21,7 +21,7 @@ Run this list **before** touching production:
 - [ ] Ensure no pending Alembic revisions on the source branch (`hatch run alembic -c anything-agents/alembic.ini heads`).
 - [ ] Verify Postgres reachability (`psql $DATABASE_URL -c 'select version();'`).
 - [ ] Run `make migrate` against a staging environment to smoke-test the revision.
-- [ ] Validate provider inputs with `python -m starter_cli.cli providers validate` so Stripe/Resend/OpenAI keys exist before billing is enabled.
+- [ ] Validate provider inputs with `python -m starter_cli.app providers validate` so Stripe/Resend/OpenAI keys exist before billing is enabled.
 - [ ] Confirm Stripe CLI authentication: `stripe whoami` should succeed (skip when using purely manual plan updates).
 
 ## Execution Order
@@ -30,7 +30,7 @@ Run this list **before** touching production:
 Run the release helper whenever you promote a backend build:
 
 ```bash
-python -m starter_cli.cli release db \
+python -m starter_cli.app release db \
   --summary-path var/reports/db-release-$(date -u +%Y%m%dT%H%M%SZ).json
 ```
 
@@ -60,7 +60,7 @@ The command executes the following steps:
 
 2. **Stripe plan seeding**
    ```bash
-   python -m starter_cli.cli stripe setup \
+   python -m starter_cli.app stripe setup \
      --non-interactive \
      --secret-key $STRIPE_SECRET_KEY \
      --webhook-secret $STRIPE_WEBHOOK_SECRET \
@@ -79,7 +79,7 @@ The command executes the following steps:
    ```
    Confirm both `starter` and `pro` rows exist, are active, and have Stripe price IDs referenced in `.env.local`.
 
-4. **Provider sanity** – `python -m starter_cli.cli providers validate` and `python -m starter_cli.cli status summary` (if available) should both return success.
+4. **Provider sanity** – `python -m starter_cli.app providers validate` and `python -m starter_cli.app status summary` (if available) should both return success.
 
 ## Evidence Capture
 - Automation mode stores `var/reports/db-release-*.json`. Upload the file to your release record/PR and attach console logs.

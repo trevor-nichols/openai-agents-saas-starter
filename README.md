@@ -5,7 +5,7 @@ Production-ready starter kit for building AI Agent SaaS products. The repo bundl
 ## Architecture At A Glance
 - **Backend** (`anything-agents/`): FastAPI, async SQLAlchemy, Postgres + Redis (refresh tokens & billing), JWT auth, Alembic migrations, Ed25519 keys in `var/keys/`, OpenAI Agents SDK integrations, Stripe billing services.
 - **Frontend** (`agent-next-15-frontend/`): Next.js 15, TanStack Query, Shadcn UI, HeyAPI-generated client under `lib/api/client`.
-- **Starter CLI** (`starter_cli/`): Operator workflows (setup wizard, secrets onboarding, Stripe provisioning, auth tooling, infra helpers) with side-effect-free imports so CI/CD can run `python -m starter_cli.cli`.
+- **Starter CLI** (`starter_cli/`): Operator workflows (setup wizard, secrets onboarding, Stripe provisioning, auth tooling, infra helpers) with side-effect-free imports so CI/CD can run `python -m starter_cli.app`.
 - **Docs & Trackers** (`docs/`): SDK references, frontend UI/data-access guides, CLI milestones, and project trackers.
 
 ## Prerequisites
@@ -26,11 +26,11 @@ Production-ready starter kit for building AI Agent SaaS products. The repo bundl
    ```
 2. **Run prerequisite check**  
    ```bash
-   python -m starter_cli.cli infra deps --format table
+   python -m starter_cli.app infra deps --format table
    ```
 3. **Guided environment wizard**  
    ```bash
-   python -m starter_cli.cli setup wizard --profile local
+   python -m starter_cli.app setup wizard --profile local
    # OR: make cli CMD="setup wizard --profile local"
    ```  
    The wizard writes `.env.local` (backend) and `agent-next-15-frontend/.env.local`, covering secrets, providers, tenants, signup policy, and frontend runtime config. Use `--non-interactive`, `--answers-file`, and `--summary-path` for headless or auditable runs.
@@ -55,7 +55,7 @@ Production-ready starter kit for building AI Agent SaaS products. The repo bundl
   Env is pulled from `agent-next-15-frontend/.env.local`. Follow `docs/frontend/data-access.md` and `docs/frontend/ui/components.md` for feature architecture and Shadcn usage.
 
 ## Starter CLI Highlights
-All commands run via `python -m starter_cli.cli …` or `make cli CMD='…'`.
+All commands run via `python -m starter_cli.app …` or `make cli CMD='…'`.
 - `setup wizard` – milestone-based env bootstrap (Secrets → Providers → Observability → Signup → Frontend).
 - `secrets onboard` – guided workflows for Vault (dev/HCP), Infisical, AWS Secrets Manager, Azure Key Vault; validates connectivity before emitting env updates.
 - `stripe setup` – provisioning for `starter` and `pro` plans, captures webhook + secret keys, can run headless with `--non-interactive`.

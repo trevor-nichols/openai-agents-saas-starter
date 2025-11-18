@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping
 
-from starter_cli.cli.inventory import WIZARD_PROMPTED_ENV_VARS
+from starter_cli.core.inventory import WIZARD_PROMPTED_ENV_VARS
 from starter_shared.config import get_settings
 
 REPO_ROOT = Path(__file__).resolve().parents[2]

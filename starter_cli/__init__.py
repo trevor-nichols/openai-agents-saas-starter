@@ -18,6 +18,6 @@ if _BACKEND_ROOT.exists():
     if backend_path not in sys.path:
         sys.path.insert(0, backend_path)
 
-from . import cli as cli  # noqa: E402
+from . import app as app  # noqa: E402
 
-__all__ = ["cli"]
+__all__ = ["app"]

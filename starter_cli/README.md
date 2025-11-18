@@ -18,13 +18,15 @@ values written here are exactly what FastAPI and the CLI share at runtime.
 From the repo root run:
 
 ```bash
-python -m starter_cli.cli --help
+python -m starter_cli.app --help
 ```
+
+> The legacy `starter_cli.cli` shim has been removed; use `python -m starter_cli.app` going forward.
 
 Environment loading rules:
 
 1. By default the CLI loads `.env.compose`, `.env`, and `.env.local` in that order (see
-   `starter_cli/cli/common.py`).
+   `starter_cli/core/context.py`).
 2. Use `--env-file PATH` to append additional env files.
 3. Pass `--skip-env` (or export `STARTER_CLI_SKIP_ENV=true`) to rely solely on explicit
    `--env-file` arguments or the current shell.
@@ -85,7 +87,7 @@ Artifacts generated per run:
 #### Dashboard + Dependency Graph
 
 - The wizard now streams a Rich dashboard (milestones, automation phases, rolling activity log). Disable with `--no-tui` if you need minimal output.
-- Prompts are driven by `starter_cli/cli/setup/schema.yaml`, so Vault/Slack/GeoIP/billing worker questions only appear when prerequisites are satisfied—even in headless runs.
+- Prompts are driven by `starter_cli/workflows/setup/schema.yaml`, so Vault/Slack/GeoIP/billing worker questions only appear when prerequisites are satisfied—even in headless runs.
 - Automation phases emit progress to the dashboard and audit summaries. Docker/Vault/Stripe automation existed before; migrations, Redis warm-up, and GeoIP downloads now ride the same rails with automatic retries + remediation notes.
 - The exit checklist leaves only two manual steps: `hatch run serve` (backend) and `pnpm dev` (frontend). You can opt to keep Docker Compose running so those commands work immediately; otherwise the wizard tears down infra during cleanup.
 
@@ -154,7 +156,7 @@ Validates Stripe, Resend, and Tavily configuration before you boot FastAPI or de
 - Loads the same env files as other commands, reuses the backend validator, and prints one line per
   violation with provider/code context.
 - Returns non-zero when fatal issues exist (any hardened environment or when you pass `--strict`).
-- Use `make validate-providers` or `python -m starter_cli.cli providers validate --strict` in CI to
+- Use `make validate-providers` or `python -m starter_cli.app providers validate --strict` in CI to
   fail the pipeline before Docker builds or migrations.
 
 ### 8. `config dump-schema`
@@ -167,7 +169,7 @@ what remains unprompted after running the wizard. Supports `--format table` (def
 End-to-end release helper that enforces the migration → Stripe provisioning → billing verification order.
 
 ```bash
-python -m starter_cli.cli release db \
+python -m starter_cli.app release db \
   --summary-path var/reports/db-release-$(date -u +%Y%m%dT%H%M%SZ).json
 ```
 
@@ -195,23 +197,23 @@ See `docs/ops/db-release-playbook.md` for the full pre-flight checklist, evidenc
   last.
 - **Detection:** the wizard sets `context.is_headless` when answers are present so it can skip
   interactive-only helpers (e.g., Stripe seeding prompt).
-- **Common CI flow:** `python -m starter_cli.cli setup wizard --profile staging --non-interactive \
+- **Common CI flow:** `python -m starter_cli.app setup wizard --profile staging --non-interactive \
   --answers-file ops/environments/staging.json --summary-path artifacts/setup-summary.json`.
 
 ## Generated Outputs & Reference Material
 
 - `.env.local` (backend) and `agent-next-15-frontend/.env.local` are written via
-  `starter_cli/cli/env.py`.
+  `starter_cli/adapters/env/files.py`.
 - Milestone reports live in `var/reports/setup-summary.json` unless overridden.
-- Wizard coverage of backend env vars is tracked in `starter_cli/cli/inventory.py`.
-- Provider runners and supporting models are under `starter_cli/cli/secrets/`.
+- Wizard coverage of backend env vars is tracked in `starter_cli/core/inventory.py`.
+- Provider runners and supporting models are under `starter_cli/workflows/secrets/`.
 - CLI architectural snapshot: `starter_cli/SNAPSHOT.md`.
 
 ## Contribution Guidelines
 
-- Imports must remain side-effect free (`python -m starter_cli.cli` should not hit external services).
+- Imports must remain side-effect free (`python -m starter_cli.app` should not hit external services).
 - Tests stub network calls; `conftest.py` forces SQLite/fakeredis—new modules must obey that contract.
-- Any new CLI workflow that introduces env knobs should update `starter_cli/cli/inventory.py` *and*
+- Any new CLI workflow that introduces env knobs should update `starter_cli/core/inventory.py` *and*
   the relevant tracker under `docs/trackers/` (e.g., `CLI_MILESTONE.md`).
 - Follow the repo-wide tooling expectations after edits: run backend `hatch run lint` /
   `hatch run pyright` or frontend `pnpm lint` / `pnpm type-check` when you touch those surfaces from a
@@ -219,7 +221,7 @@ See `docs/ops/db-release-playbook.md` for the full pre-flight checklist, evidenc
 
 ## Suggested Next Steps
 
-1. Run `python -m starter_cli.cli infra deps` to confirm prerequisites.
-2. Execute `python -m starter_cli.cli setup wizard --profile local` for a new checkout.
-3. Use `starter_cli/cli/stripe_commands.py` as a reference when onboarding billing.
+1. Run `python -m starter_cli.app infra deps` to confirm prerequisites.
+2. Execute `python -m starter_cli.app setup wizard --profile local` for a new checkout.
+3. Use `starter_cli/commands/stripe.py` as a reference when onboarding billing.
 4. Review `docs/trackers/CLI_MILESTONE.md` before adding new features to ensure roadmap parity.

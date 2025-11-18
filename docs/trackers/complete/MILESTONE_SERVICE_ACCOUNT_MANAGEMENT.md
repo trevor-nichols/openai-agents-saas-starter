@@ -62,7 +62,7 @@ Ship tenant-facing auditing and revocation workflows for service-account refresh
 3. **Service Layer**: Wrap repository calls in `AuthService` with tenant scoping + actor metadata for logging.
 4. **API Routes**: New module `routes_service_account_admin.py` under `app/api/v1/auth/` containing list/revoke endpoints using `SuccessResponse` patterns.
 5. **Frontend**: Update HeyAPI generation; create `useServiceAccountTokens` and `useRevokeServiceAccountToken` hooks; integrate into service-accounts page with confirmation modals.
-6. **CLI**: Extend `starter_cli.cli.auth_commands` to reuse HTTP client config, support pagination, and share revoke confirmation prompts for interactive + headless flows.
+6. **CLI**: Extend `starter_cli.commands.auth` to reuse HTTP client config, support pagination, and share revoke confirmation prompts for interactive + headless flows.
 7. **Docs/Tracking**: Refresh `SNAPSHOT.md`, data-access doc, and this tracker with status updates; announce in release notes.
 
 <!-- SECTION: Risks -->

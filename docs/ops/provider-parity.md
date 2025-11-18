@@ -21,7 +21,7 @@ violations halt the process immediately so health probes never turn green with a
 
 1. **Runtime:** importing `app.main` triggers the same validation, so `hatch run serve`,
    `pytest`, and CI Gunicorn boots all share the guard.
-2. **Operator CLI:** run `python -m starter_cli.cli providers validate` (or
+2. **Operator CLI:** run `python -m starter_cli.app providers validate` (or
    `make validate-providers`). The command loads `.env.compose`, `.env`, and `.env.local`,
    reuses the backend validator, and exits non-zero whenever billing is enabled but Stripe vars are
    missing—even in local/dev mode—to stay consistent with FastAPI startup. Pass `--strict` to treat
@@ -40,7 +40,7 @@ The validator surfaces structured log output similar to:
 
 1. Inspect `.env.local` (or the secrets source for your deployed environment) and populate the
    missing variables listed in the error message.
-2. Rerun `python -m starter_cli.cli providers validate --strict` to confirm the issue is resolved.
+2. Rerun `python -m starter_cli.app providers validate --strict` to confirm the issue is resolved.
 3. Redeploy the backend only after the validator returns success.
 
 ### Provider-specific notes

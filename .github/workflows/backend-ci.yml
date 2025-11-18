@@ -36,14 +36,14 @@ jobs:
           hatch env create
 
       - name: CLI smoke test
-        run: hatch run python -m starter_cli.cli --help
+        run: hatch run python -m starter_cli.app --help
 
       - name: Verify CLI environment inventory
         run: hatch run python -m scripts.cli.verify_env_inventory
 
       - name: Check infra dependencies (JSON)
         run: |
-          hatch run python -m starter_cli.cli infra deps --format json > deps-status.json || true
+          hatch run python -m starter_cli.app infra deps --format json > deps-status.json || true
           hatch run python - <<'PY'
           import json, sys
           with open("deps-status.json", "r", encoding="utf-8") as fh:
@@ -104,7 +104,7 @@ jobs:
         run: hatch env create
 
       - name: CLI unit tests
-        run: hatch run pytest anything-agents/tests/unit/cli
+        run: hatch run pytest starter_cli/tests
 
       - name: Static typing (Pyright + Mypy)
         run: hatch run typecheck

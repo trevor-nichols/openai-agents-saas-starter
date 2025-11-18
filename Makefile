@@ -34,7 +34,7 @@ help:
 	@echo "  make lint-stripe-fixtures   # Validate Stripe fixture JSON files"
 	@echo "  make cli-verify-env         # Check docs/trackers/CLI_ENV_INVENTORY.md vs runtime settings"
 	@echo "  make validate-providers     # Validate Stripe/Resend/Tavily env configuration"
-	@echo "  make cli CMD='...'          # Run the consolidated operator CLI (python -m starter_cli.cli)"
+	@echo "  make cli CMD='...'          # Run the consolidated operator CLI (python -m starter_cli.app)"
 
 bootstrap:
 	@echo "Creating/refreshing the Hatch environment"
@@ -89,7 +89,7 @@ verify-vault: vault-up
 		VAULT_TOKEN=$(VAULT_DEV_ROOT_TOKEN_ID) \
 		VAULT_TRANSIT_KEY=$(VAULT_TRANSIT_KEY) \
 		VAULT_VERIFY_ENABLED=true \
-		$(ENV_RUNNER) .env.compose $(ENV_FILE) -- python -m starter_cli.cli auth tokens issue-service-account --account dev-automation --scopes conversations:read --output text
+		$(ENV_RUNNER) .env.compose $(ENV_FILE) -- python -m starter_cli.app auth tokens issue-service-account --account dev-automation --scopes conversations:read --output text
 
 test-stripe:
 	@$(ENV_RUNNER) .env.compose $(ENV_FILE) -- hatch run pytest -m stripe_replay
@@ -108,7 +108,7 @@ cli-verify-env:
 	@python -m scripts.cli.verify_env_inventory
 
 validate-providers:
-	@python -m starter_cli.cli providers validate
+	@python -m starter_cli.app providers validate
 
 cli:
-	@python -m starter_cli.cli $(CMD)
+	@python -m starter_cli.app $(CMD)

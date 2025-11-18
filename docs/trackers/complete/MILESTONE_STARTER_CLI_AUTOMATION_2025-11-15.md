@@ -69,7 +69,7 @@ This section captures every prerequisite a new operator must satisfy today. Each
 ### CLI & Infra (root README, starter_cli/README.md, Makefile)
 | Area | Manual Steps Today | Auto? | Notes/Dependencies |
 | --- | --- | --- | --- |
-| Prereq audit | Run `python -m starter_cli.cli infra deps`. | ✅ Target | Wizard preflight should call and display structured output. |
+| Prereq audit | Run `python -m starter_cli.app infra deps`. | ✅ Target | Wizard preflight should call and display structured output. |
 | Docker services | `make dev-up`, `make dev-down`, `make dev-logs`, `make dev-ps`. | ✅ Target | `InfraSession` now issues `infra compose up/down` when automation is enabled, captures failures/logs, and falls back to manual commands when gated. |
 | Vault dev signer | `make vault-up`, `make vault-down`, `make vault-logs`, `make verify-vault`. | ✅ Target | Hooked into Secrets milestone when Vault automation enabled. |
 | Stripe CLI presence | Manual install + `stripe login`. | ✅ Target | Preflight now checks for the `stripe` binary/version; automation toggles rely on this signal before running provisioning flows. |

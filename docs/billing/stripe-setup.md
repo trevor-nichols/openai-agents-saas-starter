@@ -37,7 +37,7 @@ STRIPE_PRODUCT_PRICE_MAP={"starter":"price_123","pro":"price_456"}
 
 ## Startup validation & troubleshooting
 
-Before deploying, run `make validate-providers` (or `python -m starter_cli.cli providers validate --strict`)
+Before deploying, run `make validate-providers` (or `python -m starter_cli.app providers validate --strict`)
 to confirm Stripe env vars are present—the CLI shares the same validator FastAPI uses during startup and
 will exit non-zero whenever billing is enabled but a Stripe variable is missing (dev/staging/prod alike).
 

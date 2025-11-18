@@ -4,7 +4,7 @@ _Last updated: November 17, 2025_
 
 ## 1. Environment
 - Run `pnpm dev` (frontend) + `hatch run dev` (backend) locally or point Playwright to a deployed preview via `PLAYWRIGHT_BASE_URL`.
-- Seed a tenant + operator users using the Starter CLI (`python -m starter_cli.cli seed playground --answers-file ./seeds/playwright.yaml`). Ensure:
+- Seed a tenant + operator users using the Starter CLI (`python -m starter_cli.app seed playground --answers-file ./seeds/playwright.yaml`). Ensure:
   - Tenant admin owns Starter plan with at least two plans available for upgrade/downgrade tests.
   - Platform operator has `service_accounts:manage` and Vault test signer credentials.
   - Conversations fixture exists for transcript export.

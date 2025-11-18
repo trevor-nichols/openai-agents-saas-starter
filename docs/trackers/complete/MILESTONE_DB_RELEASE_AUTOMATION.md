@@ -15,7 +15,7 @@ Create an auditable, automation-friendly release flow that guarantees Alembic mi
 | Area | Requirement |
 | --- | --- |
 | Runbook | A single source of truth (`docs/ops/db-release-playbook.md`) that documents prerequisites, commands, verification queries, rollback steps, and evidence capture. |
-| Automation | `python -m starter_cli.cli release db` orchestrates migrations + plan seeding with structured logging, timestamps, and JSON output for CI/CD. |
+| Automation | `python -m starter_cli.app release db` orchestrates migrations + plan seeding with structured logging, timestamps, and JSON output for CI/CD. |
 | Verification | Command fails fast when Alembic has pending revisions, when seeded plans are missing, or when Stripe provisioning/price map sync does not complete. |
 | Artifact | Each run emits `var/reports/db-release-<timestamp>.json` capturing git SHA, Alembic head, seeded plan codes/ids, Stripe product/price IDs, and operator metadata. |
 | Tracker closure | DB-007 row in `docs/trackers/ISSUE_TRACKER.md` references the runbook and CLI automation, status flipped to Resolved once tests/docs land. |
@@ -30,7 +30,7 @@ Create an auditable, automation-friendly release flow that guarantees Alembic mi
 
 ## Deliverables
 1. **Runbook** – `docs/ops/db-release-playbook.md` describing roles, prerequisites, env parity, exact commands, and rollback/recovery instructions.
-2. **Release Command** – New CLI surface (`starter_cli.cli release db`) with interactive + headless modes, dependency gates, and JSON artifacts.
+2. **Release Command** – New CLI surface (`starter_cli.app release db`) with interactive + headless modes, dependency gates, and JSON artifacts.
 3. **Verification Guards** – SQL health checks (ensure baseline plans exist, Alembic head matches). Non-zero exit on failures.
 4. **CI/CD Hook** – Example GitHub Actions snippet (or doc) demonstrating how to invoke the release command before promoting an image.
 5. **Tracker Updates** – ISSUE_TRACKER + CLI milestone tracker referencing the runbook and automation, marking DB-007 complete when merged.
@@ -86,4 +86,4 @@ All deliverables graduated to documentation ownership. `docs/ops/db-release-play
 ## Changelog
 - **2025-11-17** – Milestone document created; initial runbook draft added under `docs/ops/db-release-playbook.md`.
 - **2025-11-17** – Tracker archived under `docs/trackers/complete/` with runbook sign-off.
-- **2025-11-17** – `starter_cli.cli release db` shipped with Stripe embedding, plan verification, and JSON artifacts; runbook + ISSUE_TRACKER updated and DB-007 closed.
+- **2025-11-17** – `starter_cli.app release db` shipped with Stripe embedding, plan verification, and JSON artifacts; runbook + ISSUE_TRACKER updated and DB-007 closed.

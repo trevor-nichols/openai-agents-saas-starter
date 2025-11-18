@@ -31,7 +31,7 @@ rooms without custom code.
 
 ## Wizard Flow
 
-Run `python -m starter_cli.cli setup wizard` (interactive or headless) and answer the new prompts in
+Run `python -m starter_cli.app setup wizard` (interactive or headless) and answer the new prompts in
 the **Integrations** milestone:
 
 1. “Enable Slack notifications for status incidents?” – toggles `ENABLE_SLACK_STATUS_NOTIFICATIONS`.

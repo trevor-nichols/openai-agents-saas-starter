@@ -158,20 +158,20 @@ Flip `RESEND_EMAIL_ENABLED=true` only after you have verified the sender domain 
 Prefer not to edit env files manually? Run the consolidated operator CLI:
 
 ```bash
-python -m starter_cli.cli setup wizard        # full interactive flow
+python -m starter_cli.app setup wizard        # full interactive flow
 make cli CMD="setup wizard --profile=production"  # helper wrapper
-python -m starter_cli.cli infra deps          # check Docker/Hatch/Node/pnpm availability
-python -m starter_cli.cli infra compose up    # start Postgres + Redis via docker compose
-python -m starter_cli.cli infra vault up      # run the Vault dev signer helper
+python -m starter_cli.app infra deps          # check Docker/Hatch/Node/pnpm availability
+python -m starter_cli.app infra compose up    # start Postgres + Redis via docker compose
+python -m starter_cli.app infra vault up      # run the Vault dev signer helper
 ```
 
-The wizard now walks through profiles (local/staging/production), captures required vs. optional secrets, verifies Vault Transit connectivity before enabling service-account issuance, validates Stripe/Redis/Resend inputs (with optional migration + seeding helpers), and records tenant/logging/GeoIP/signup policies so auditors can trace every decision. It writes `.env.local` + `agent-next-15-frontend/.env.local`, then emits a milestone-aligned report. Stripe provisioning and auth tooling now live exclusively under the consolidated CLI (`python -m starter_cli.cli stripe …`, `python -m starter_cli.cli auth …`).
+The wizard now walks through profiles (local/staging/production), captures required vs. optional secrets, verifies Vault Transit connectivity before enabling service-account issuance, validates Stripe/Redis/Resend inputs (with optional migration + seeding helpers), and records tenant/logging/GeoIP/signup policies so auditors can trace every decision. It writes `.env.local` + `agent-next-15-frontend/.env.local`, then emits a milestone-aligned report. Stripe provisioning and auth tooling now live exclusively under the consolidated CLI (`python -m starter_cli.app stripe …`, `python -m starter_cli.app auth …`).
 
 After the wizard, use the new `infra` command group instead of raw Make targets:
 
-- `python -m starter_cli.cli infra compose up|down|logs|ps` – wraps `make dev-*` helpers for Docker Compose.
-- `python -m starter_cli.cli infra vault up|down|logs|verify` – manages the Vault dev signer lifecycle.
-- `python -m starter_cli.cli config dump-schema --format table` – lists every backend env var, its default, and whether the wizard collected it. The full inventory also lives in `docs/trackers/CLI_ENV_INVENTORY.md`.
+- `python -m starter_cli.app infra compose up|down|logs|ps` – wraps `make dev-*` helpers for Docker Compose.
+- `python -m starter_cli.app infra vault up|down|logs|verify` – manages the Vault dev signer lifecycle.
+- `python -m starter_cli.app config dump-schema --format table` – lists every backend env var, its default, and whether the wizard collected it. The full inventory also lives in `docs/trackers/CLI_ENV_INVENTORY.md`.
 - `make cli-verify-env` – runs the inventory verification script to ensure the markdown table stays in sync with the runtime schema (useful in CI or before merging infra changes).
 - Every wizard run writes a JSON audit report (default `var/reports/setup-summary.json`; override via `--summary-path`) so you can archive the collected inputs alongside deployment artifacts.
 
@@ -270,7 +270,7 @@ curl -X POST "http://localhost:8000/api/v1/billing/tenants/tenant-123/usage" \
 
 #### Stripe configuration
 
-Billing routes now require Stripe credentials whenever `ENABLE_BILLING=true`. The quickest path is to run the consolidated operator CLI via `python -m starter_cli.cli stripe setup` (aliased by `pnpm stripe:setup`), which prompts for your Stripe secret/webhook secrets, asks how much to charge for the Starter + Pro plans, and then creates/reuses the corresponding Stripe products/prices (7-day trial included). The CLI writes `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PRODUCT_PRICE_MAP` into `.env.local` and flips `ENABLE_BILLING=true` for you. Prefer manual edits? You can still populate those keys yourself—just keep the JSON map in sync with your real Stripe price IDs. See `docs/billing/stripe-setup.md` for the full checklist.
+Billing routes now require Stripe credentials whenever `ENABLE_BILLING=true`. The quickest path is to run the consolidated operator CLI via `python -m starter_cli.app stripe setup` (aliased by `pnpm stripe:setup`), which prompts for your Stripe secret/webhook secrets, asks how much to charge for the Starter + Pro plans, and then creates/reuses the corresponding Stripe products/prices (7-day trial included). The CLI writes `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PRODUCT_PRICE_MAP` into `.env.local` and flips `ENABLE_BILLING=true` for you. Prefer manual edits? You can still populate those keys yourself—just keep the JSON map in sync with your real Stripe price IDs. See `docs/billing/stripe-setup.md` for the full checklist.
 
 ## 📈 Observability & Logging
 

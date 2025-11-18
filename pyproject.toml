@@ -83,7 +83,7 @@ issues = "https://github.com/openai/openai-agents-starter/issues"
 
 [project.scripts]
 anything-agents = "run:main"
-aa-cli = "starter_cli.cli.main:main"
+aa-cli = "starter_cli.app:main"
 
 [tool.hatch.metadata]
 allow-direct-references = true
