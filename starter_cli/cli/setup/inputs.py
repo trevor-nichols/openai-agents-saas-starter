@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 import json
-import secrets
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from getpass import getpass
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, TYPE_CHECKING
 
 from ..common import CLIError
 from ..console import console
+
+if TYPE_CHECKING:
+    from .ui.commands import WizardUICommandHandler
 
 ParsedAnswers = dict[str, str]
 
@@ -72,37 +73,35 @@ class InputProvider(Protocol):
 @dataclass(slots=True)
 class InteractiveInputProvider(InputProvider):
     prefill: ParsedAnswers
+    ui_commands: "WizardUICommandHandler | None" = None
+
+    def bind_ui_commands(self, handler: "WizardUICommandHandler") -> None:
+        self.ui_commands = handler
 
     def prompt_string(self, *, key: str, prompt: str, default: str | None, required: bool) -> str:
         normalized = _normalize_key(key)
         if (value := self.prefill.pop(normalized, None)) is not None:
-            console.info(f"{key} supplied via answers file / override.", topic="wizard")
+            console.note(f"{key} supplied via answers file / override.", topic="wizard")
             return value
-        while True:
-            suffix = f" [{default}]" if default else ""
-            value = input(f"{prompt}{suffix}: ").strip()
-            if value:
-                return value
-            if default is not None:
-                return default
-            if not required:
-                return ""
-            console.warn("A value is required for this field.")
+        return console.ask_text(
+            key=key,
+            prompt=prompt,
+            default=default,
+            required=required,
+            command_hook=self._handle_command,
+        )
 
     def prompt_bool(self, *, key: str, prompt: str, default: bool) -> bool:
         normalized = _normalize_key(key)
         if (value := self.prefill.pop(normalized, None)) is not None:
+            console.note(f"{key} supplied via answers file / override.", topic="wizard")
             return _coerce_bool(value, key)
-        hint = "Y/n" if default else "y/N"
-        while True:
-            raw = input(f"{prompt} ({hint}) ").strip().lower()
-            if not raw:
-                return default
-            if raw in {"y", "yes"}:
-                return True
-            if raw in {"n", "no"}:
-                return False
-            console.warn("Please answer yes or no.")
+        return console.ask_bool(
+            key=key,
+            prompt=prompt,
+            default=default,
+            command_hook=self._handle_command,
+        )
 
     def prompt_secret(
         self,
@@ -114,15 +113,22 @@ class InteractiveInputProvider(InputProvider):
     ) -> str:
         normalized = _normalize_key(key)
         if (value := self.prefill.pop(normalized, None)) is not None:
-            console.info(f"{key} supplied via answers file / override.", topic="wizard")
+            console.note(f"{key} supplied via answers file / override.", topic="wizard")
             return value
         if existing:
-            console.info(
+            console.note(
                 f"{prompt} already set; press Enter to keep the current value.",
                 topic="wizard",
             )
         while True:
-            value = getpass(f"{prompt}: ").strip()
+            value = console.ask_text(
+                key=key,
+                prompt=prompt,
+                default=existing,
+                required=required and not existing,
+                secret=True,
+                command_hook=self._handle_command,
+            )
             if value:
                 return value
             if existing:
@@ -130,8 +136,12 @@ class InteractiveInputProvider(InputProvider):
             if required:
                 console.warn("A value is required for this secret.")
             else:
-                console.info("Generating a secure random value …", topic="wizard")
-                return secrets.token_urlsafe(32)
+                return ""
+
+    def _handle_command(self, raw: str) -> bool:
+        if not self.ui_commands:
+            return False
+        return self.ui_commands.handle(raw.strip())
 
 
 @dataclass(slots=True)

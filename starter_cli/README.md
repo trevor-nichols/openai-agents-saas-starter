@@ -51,17 +51,29 @@ The flow covers five milestones plus frontend wiring:
 
 GeoIP prompts cover IPinfo/IP2Location SaaS tokens plus self-hosted MaxMind/IP2Location databases. When you choose the MaxMind database provider, the wizard can download/refresh the GeoLite2 City bundle (using `GEOIP_MAXMIND_LICENSE_KEY`) and will warn if the on-disk `.mmdb` file is missing. Cache TTL/capacity and HTTP timeout knobs are recorded alongside the provider choice so backend services stay in sync with operator expectations.
 
+#### Interactive shell
+
+Interactive runs now open with a shell-style home screen instead of dropping you straight into prompts. The panel shows every section, its completion state, and the next recommended milestone. Commands:
+
+- `Enter` — jump to the next incomplete section.
+- `1-8` — open that section immediately.
+- `Q` — quit without finalizing (you can resume later; answers are saved incrementally).
+- Section keys (e.g., `secrets`) also work as shortcuts.
+
+Once all sections show `Done`, press `Enter` to finalize or reopen any section for edits. Pass `--legacy-flow` (or `--no-tui`) to return to the previous linear experience.
+
 Flags:
 
 - `--profile {local,staging,production}` toggles defaults and required checks.
 - `--non-interactive` + `--answers-file/--var` run headless.
 - `--report-only` skips prompts and prints the milestone audit without modifying env files.
 - `--output {summary,json}` selects console format.
+- `--legacy-flow` forces the legacy linear prompts (disables the new shell dashboard).
 - `--summary-path PATH` writes the audit JSON (defaults to `var/reports/setup-summary.json`).
 - `--auto-infra/--no-auto-infra`, `--auto-secrets/--no-auto-secrets`, and `--auto-stripe/--no-auto-stripe` opt in or out of the legacy automation hooks (Docker compose, Vault dev signer, embedded Stripe provisioning).
 - `--auto-migrations/--no-auto-migrations`, `--auto-redis/--no-auto-redis`, and `--auto-geoip/--no-auto-geoip` control the new automation phases for database migrations, Redis warm-up, and GeoIP dataset downloads.
 - `--markdown-summary-path PATH` writes a Markdown recap (defaults to `var/reports/cli-one-stop-summary.md`). Use it when you want to drop the summary into issues or onboarding docs.
-- `--no-schema` bypasses the dependency graph (legacy linear prompts). `--no-tui` disables the Rich dashboard when you only want raw console logs (CI, piping, etc.).
+- `--no-schema` bypasses the dependency graph (legacy linear prompts). `--no-tui` disables both the interactive shell and the legacy Rich dashboard, falling back to plain console logs (CI, piping, etc.).
 
 Artifacts generated per run:
 

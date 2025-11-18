@@ -22,7 +22,7 @@ from .common import (
     build_context,
     iter_env_files,
 )
-from .console import console
+from .console import AVAILABLE_THEMES, configure_console, console
 
 Handler = Callable[[argparse.Namespace, CLIContext], int]
 _SKIP_ENV_FLAG = "STARTER_CLI_SKIP_ENV"
@@ -49,6 +49,21 @@ def build_parser() -> argparse.ArgumentParser:
         "--quiet-env",
         action="store_true",
         help="Suppress informational logs when loading env files.",
+    )
+    parser.add_argument(
+        "--console-theme",
+        choices=AVAILABLE_THEMES,
+        help="Override the CLI color theme (defaults to STARTER_CLI_THEME or midnight).",
+    )
+    parser.add_argument(
+        "--console-width",
+        type=int,
+        help="Wrap CLI output at a fixed width (defaults to auto).",
+    )
+    parser.add_argument(
+        "--no-color",
+        action="store_true",
+        help="Disable ANSI styling (same as STARTER_CLI_NO_COLOR=1).",
     )
 
     subparsers = parser.add_subparsers(dest="command")
@@ -91,6 +106,7 @@ def _load_environment(args: argparse.Namespace) -> CLIContext:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    configure_console(theme=args.console_theme, width=args.console_width, no_color=args.no_color)
     ctx = _load_environment(args)
 
     handler: Handler | None = getattr(args, "handler", None)

@@ -16,7 +16,10 @@ from starter_cli.cli.setup.validators import validate_plan_map, validate_redis_u
 
 
 def run(context: WizardContext, provider: InputProvider) -> None:
-    console.info("[M2] Providers & Infra", topic="wizard")
+    console.section(
+        "Providers & Infra",
+        "Wire up databases, AI providers, Redis, billing, and email transports.",
+    )
     collect_database(context, provider)
     _collect_ai_providers(context, provider)
     _collect_redis(context, provider)

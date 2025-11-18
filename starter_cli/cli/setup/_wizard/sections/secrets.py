@@ -20,7 +20,10 @@ _VAULT_PROVIDERS = {
 
 
 def run(context: WizardContext, provider: InputProvider) -> None:
-    console.info("[M1] Secrets & Vault", topic="wizard")
+    console.section(
+        "Secrets & Vault",
+        "Generate peppers, provision signing keys, and choose a secrets provider.",
+    )
     _collect_secrets(context, provider)
     selected_provider = _collect_provider_choice(context, provider)
     context.set_backend("SECRETS_PROVIDER", selected_provider.value)

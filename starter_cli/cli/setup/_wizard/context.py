@@ -82,15 +82,31 @@ class WizardContext:
         return value.strip().lower() in {"1", "true", "yes", "y"}
 
     def set_backend(self, key: str, value: str, *, mask: bool = False) -> None:
+        previous = self.backend_env.get(key)
         self.backend_env.set(key, value)
         os.environ[key] = value
-        display = "***" if mask else value
-        console.info(f"{key} => {display}", topic="env")
+        console.value_change(
+            scope="backend",
+            key=key,
+            previous=previous,
+            current=value,
+            secret=mask,
+        )
+        self.refresh_ui_prompts()
 
     def unset_backend(self, key: str) -> None:
+        previous = self.backend_env.get(key)
+        if previous is None:
+            return
         self.backend_env.delete(key)
         os.environ.pop(key, None)
-        console.info(f"{key} => <removed>", topic="env")
+        console.value_change(
+            scope="backend",
+            key=key,
+            previous=previous,
+            current="<removed>",
+        )
+        self.refresh_ui_prompts()
 
     def set_backend_bool(self, key: str, value: bool) -> None:
         self.set_backend(key, "true" if value else "false")
@@ -98,8 +114,14 @@ class WizardContext:
     def set_frontend(self, key: str, value: str) -> None:
         if not self.frontend_env:
             return
+        previous = self.frontend_env.get(key)
         self.frontend_env.set(key, value)
-        console.info(f"[frontend] {key} => {value}", topic="env")
+        console.value_change(
+            scope="frontend",
+            key=key,
+            previous=previous,
+            current=value,
+        )
 
     def set_frontend_bool(self, key: str, value: bool) -> None:
         self.set_frontend(key, "true" if value else "false")
@@ -201,6 +223,11 @@ class WizardContext:
         self.historical_verifications.append(artifact)
         append_verification_artifact(self.verification_log_path, artifact)
         return artifact
+
+    def refresh_ui_prompts(self) -> None:
+        if not self.ui:
+            return
+        self.ui.sync_prompt_states(self.env_snapshot())
 
     def refresh_automation_ui(self, phase: AutomationPhase) -> None:
         if not self.ui:

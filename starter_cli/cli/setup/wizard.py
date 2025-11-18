@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from functools import partial
 from pathlib import Path
 
 from ..common import CLIContext, CLIError
@@ -19,14 +20,18 @@ from ._wizard.sections import (
 )
 from .automation import ALL_AUTOMATION_PHASES, AutomationPhase
 from .infra import InfraSession
-from .inputs import InputProvider
+from .inputs import InputProvider, InteractiveInputProvider
 from .models import SectionResult
 from .preflight import run_preflight
 from .schema import load_schema
 from .schema_provider import SchemaAwareInputProvider
+from .section_specs import SECTION_LABELS, SECTION_SPECS
+from .shell import WizardShell
 from .state import WizardStateStore
 from .tenant_summary import capture_tenant_summary
 from .ui import WizardUIView
+from .ui.commands import WizardUICommandHandler
+from .ui.schema_metadata import build_section_prompt_metadata
 
 PROFILE_CHOICES = ("local", "staging", "production")
 
@@ -81,17 +86,6 @@ _AUTOMATION_PROFILE_LIMITS: dict[AutomationPhase, set[str] | None] = {
     AutomationPhase.GEOIP: None,
 }
 
-_SECTION_FLOW: list[tuple[str, str]] = [
-    ("core", "Core & Metadata"),
-    ("secrets", "Secrets & Vault"),
-    ("security", "Security & Rate Limits"),
-    ("providers", "Providers & Infra"),
-    ("observability", "Tenant & Observability"),
-    ("integrations", "Integrations"),
-    ("signup", "Signup & Worker"),
-    ("frontend", "Frontend"),
-]
-
 _AUTOMATION_LABELS: dict[AutomationPhase, str] = {
     AutomationPhase.INFRA: "Local Infra",
     AutomationPhase.SECRETS: "Vault Helpers",
@@ -115,6 +109,7 @@ class SetupWizard:
         automation_overrides: dict[AutomationPhase, bool | None] | None = None,
         enable_tui: bool = True,
         enable_schema: bool = True,
+        enable_shell: bool = True,
     ) -> None:
         backend_env, frontend_env, frontend_path = build_env_files(ctx)
         self.ctx = ctx
@@ -122,8 +117,10 @@ class SetupWizard:
         self.input_provider = input_provider
         self.automation_overrides = automation_overrides or {}
         self.enable_tui = enable_tui
+        self.enable_shell = enable_shell
         self.schema = load_schema() if enable_schema else None
         self.state_store = WizardStateStore(ctx.project_root / "var/reports/wizard-state.json")
+        section_prompt_metadata = build_section_prompt_metadata(self.schema)
         self.context = WizardContext(
             cli_ctx=ctx,
             profile=profile,
@@ -139,11 +136,17 @@ class SetupWizard:
             (phase.value, _AUTOMATION_LABELS[phase]) for phase in ALL_AUTOMATION_PHASES
         ]
         self.ui = WizardUIView(
-            sections=_SECTION_FLOW,
+            sections=[(spec.key, spec.label) for spec in SECTION_SPECS],
             automation=automation_labels,
+            section_prompts=section_prompt_metadata,
             enabled=enable_tui,
         )
         self.context.ui = self.ui
+        if isinstance(self.input_provider, InteractiveInputProvider) and self.ui.enabled:
+            handler = WizardUICommandHandler(self.ui, SECTION_SPECS)
+            self.input_provider.bind_ui_commands(handler)
+        self.context.refresh_ui_prompts()
+        self.section_states: dict[str, str] = {spec.key: "pending" for spec in SECTION_SPECS}
 
     # ------------------------------------------------------------------
     # Public entrypoints
@@ -151,47 +154,92 @@ class SetupWizard:
     def execute(self) -> None:
         provider = self._require_inputs()
         self.context.is_headless = hasattr(provider, "answers")
-        self.ui.start()
-        self.ui.log("Starting setup wizard …")
+        use_shell = self._should_use_shell()
+        if self.ui and not use_shell:
+            self.ui.start()
+            self.ui.log("Starting setup wizard …")
         console.info("Starting setup wizard …", topic="wizard")
-        run_preflight(self.context)
-        self._configure_automation(provider)
-
-        infra_session = InfraSession(self.context)
-        self.context.infra_session = infra_session
+        infra_session: InfraSession | None = None
         try:
+            run_preflight(self.context)
+            self._configure_automation(provider)
+
+            infra_session = InfraSession(self.context)
+            self.context.infra_session = infra_session
             infra_session.ensure_compose()
 
-            self._run_section("core", lambda: core.run(self.context, provider))
-            self._run_section("secrets", lambda: secrets.run(self.context, provider))
-            self._run_section("security", lambda: security.run(self.context, provider))
-            self._run_section("providers", lambda: providers.run(self.context, provider))
-            self._run_section(
-                "observability",
-                lambda: observability.run(self.context, provider),
-            )
-            self._run_section("integrations", lambda: integrations.run(self.context, provider))
-            self._run_section("signup", lambda: signup.run(self.context, provider))
-            self._run_section("frontend", lambda: frontend.configure(self.context, provider))
+            sections_completed = self._run_sections(provider)
+            if not sections_completed:
+                console.warn(
+                    "Wizard exited before completing all sections; skipping finalization.",
+                    topic="wizard",
+                )
+                return
 
-            self.context.save_env_files()
-            self.context.load_environment()
-            self.context.refresh_settings_cache()
-            capture_tenant_summary(self.context)
-
-            sections = audit.build_sections(self.context)
-            self._render(sections)
-            audit.render_schema_summary(self.context)
-            audit.write_summary(self.context, sections)
-            audit.write_markdown_summary(self.context, sections)
-            self._finalize_run(provider)
+            self._post_sections(provider)
+        except KeyboardInterrupt:
+            console.warn("Setup wizard interrupted. Goodbye!", topic="wizard")
         finally:
-            infra_session.cleanup()
-            self.ui.stop()
+            if infra_session is not None:
+                infra_session.cleanup()
+            if self.ui and not use_shell:
+                self.ui.stop()
 
     def render_report(self) -> None:
         sections = audit.build_sections(self.context)
         self._render(sections)
+
+    # ------------------------------------------------------------------
+    # Section orchestration
+    # ------------------------------------------------------------------
+    def _run_sections(self, provider: InputProvider) -> bool:
+        runners = self._build_section_runners(provider)
+        if self._should_use_shell():
+            shell = WizardShell(
+                context=self.context,
+                sections=SECTION_SPECS,
+                section_states=self.section_states,
+                runners=runners,
+                run_section=lambda key, runner: self._run_section(
+                    key,
+                    runner,
+                    fail_soft=True,
+                ),
+            )
+            return shell.run()
+
+        for spec in SECTION_SPECS:
+            runner = runners[spec.key]
+            self._run_section(spec.key, runner)
+        return True
+
+    def _post_sections(self, provider: InputProvider) -> None:
+        self.context.save_env_files()
+        self.context.load_environment()
+        self.context.refresh_settings_cache()
+        capture_tenant_summary(self.context)
+
+        sections = audit.build_sections(self.context)
+        self._render(sections)
+        audit.render_schema_summary(self.context)
+        audit.write_summary(self.context, sections)
+        audit.write_markdown_summary(self.context, sections)
+        self._finalize_run(provider)
+
+    def _build_section_runners(self, provider: InputProvider) -> dict[str, Callable[[], None]]:
+        return {
+            "core": partial(core.run, self.context, provider),
+            "secrets": partial(secrets.run, self.context, provider),
+            "security": partial(security.run, self.context, provider),
+            "providers": partial(providers.run, self.context, provider),
+            "observability": partial(observability.run, self.context, provider),
+            "integrations": partial(integrations.run, self.context, provider),
+            "signup": partial(signup.run, self.context, provider),
+            "frontend": partial(frontend.configure, self.context, provider),
+        }
+
+    def _should_use_shell(self) -> bool:
+        return self.enable_shell and not self.context.is_headless
 
     # ------------------------------------------------------------------
     # Helper utilities
@@ -215,14 +263,22 @@ class SetupWizard:
     def _render(self, sections: Sequence[SectionResult]) -> None:
         audit.render_sections(self.context, output_format=self.output_format, sections=sections)
 
-    def _run_section(self, key: str, runner: Callable[[], None]) -> None:
-        label = dict(_SECTION_FLOW).get(key, key.title())
+    def _run_section(
+        self,
+        key: str,
+        runner: Callable[[], None],
+        *,
+        fail_soft: bool = False,
+    ) -> bool:
+        label = SECTION_LABELS.get(key, key.title())
+        self.section_states[key] = "running"
         if self.ui:
             self.ui.mark_section(key, "running", f"Collecting {label.lower()}.")
             self.ui.log(f"{label} in progress …")
         try:
             runner()
         except Exception:
+            self.section_states[key] = "failed"
             if self.ui:
                 self.ui.mark_section(
                     key,
@@ -230,11 +286,15 @@ class SetupWizard:
                     "Encountered an error.",
                 )
                 self.ui.log(f"{label} failed.")
+            if fail_soft:
+                return False
             raise
         else:
+            self.section_states[key] = "done"
             if self.ui:
                 self.ui.mark_section(key, "done", "Completed.")
                 self.ui.log(f"{label} complete.")
+            return True
 
     def _finalize_run(self, provider: InputProvider) -> None:
         keep_compose = True
@@ -255,17 +315,17 @@ class SetupWizard:
                 topic="infra",
             )
         console.newline()
-        console.info("Next actions", topic="wizard")
-        console.info("1) Backend: run `hatch run serve`", topic="wizard")
-        console.info(
-            "2) Frontend: run `pnpm dev` inside agent-next-15-frontend",
-            topic="wizard",
-        )
+        console.section("Next Actions", "Bring the stack online and smoke-test the flow.")
+        console.step("1.", "Backend: run `hatch run serve`")
+        console.step("2.", "Frontend: run `pnpm dev` inside agent-next-15-frontend")
         if self.ui:
             self.ui.log("Ready for `hatch run serve` + `pnpm dev`.")
 
     def _configure_automation(self, provider: InputProvider) -> None:
-        console.info("Configuring automation preferences …", topic="wizard")
+        console.section(
+            "Automation Preferences",
+            "Decide which helper workflows (Docker, Vault, Stripe, etc.) should auto-run.",
+        )
         for phase in ALL_AUTOMATION_PHASES:
             key, prompt, default = _AUTOMATION_PROMPTS[phase]
             override = self.automation_overrides.get(phase)

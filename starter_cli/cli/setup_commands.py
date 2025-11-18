@@ -42,6 +42,11 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         help="Disable the Rich status dashboard (use plain console output).",
     )
     wizard_parser.add_argument(
+        "--legacy-flow",
+        action="store_true",
+        help="Use the legacy sequential prompts instead of the interactive shell dashboard.",
+    )
+    wizard_parser.add_argument(
         "--no-schema",
         action="store_true",
         help="Bypass the dependency graph (legacy prompt flow).",
@@ -209,6 +214,13 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
         if value is not None
     }
 
+    shell_enabled = (
+        not args.non_interactive
+        and not args.report_only
+        and not args.legacy_flow
+        and not args.no_tui
+    )
+
     wizard = SetupWizard(
         ctx=ctx,
         profile=args.profile,
@@ -218,8 +230,9 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
         if args.markdown_summary_path
         else None,
         automation_overrides=automation_overrides,
-        enable_tui=not args.no_tui,
+        enable_tui=(not shell_enabled) and not args.no_tui,
         enable_schema=not args.no_schema,
+        enable_shell=shell_enabled,
     )
     if args.summary_path:
         wizard.summary_path = Path(args.summary_path).expanduser()

@@ -12,7 +12,10 @@ from starter_cli.cli.setup.inputs import InputProvider
 
 
 def run(context: WizardContext, provider: InputProvider) -> None:
-    console.info("Configuring integrations …", topic="wizard")
+    console.section(
+        "Integrations",
+        "Connect operator tooling such as Slack for proactive notifications.",
+    )
     _configure_slack_status(context, provider)
 
 
@@ -128,4 +131,3 @@ def _parse_channels_input(raw: str) -> list[str]:
 
 
 __all__ = ["run"]
-

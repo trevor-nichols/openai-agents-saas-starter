@@ -16,7 +16,10 @@ _KEY_STORAGE_CHOICES = {"file", "secret-manager"}
 def run(context: WizardContext, provider: InputProvider) -> None:
     """Collect deployment metadata shared across all milestones."""
 
-    console.info("[Core] Deployment metadata", topic="wizard")
+    console.section(
+        "Core & Metadata",
+        "Establish baseline URLs, auth defaults, and service metadata for every profile.",
+    )
 
     env_default = {
         "local": "development",

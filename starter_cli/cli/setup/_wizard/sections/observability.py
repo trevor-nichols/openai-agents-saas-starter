@@ -12,7 +12,10 @@ from starter_cli.cli.setup.validators import normalize_geoip_provider, normalize
 
 
 def run(context: WizardContext, provider: InputProvider) -> None:
-    console.info("[M3] Tenant & Observability", topic="wizard")
+    console.section(
+        "Tenant & Observability",
+        "Name the default tenant and configure logging, GeoIP, and monitoring sinks.",
+    )
     slug = provider.prompt_string(
         key="TENANT_DEFAULT_SLUG",
         prompt="Default tenant slug",

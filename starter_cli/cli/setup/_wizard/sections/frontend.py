@@ -8,7 +8,10 @@ from starter_cli.cli.setup.inputs import InputProvider
 def configure(context: WizardContext, provider: InputProvider) -> None:
     if not context.frontend_env:
         return
-    console.info("[Frontend] Next.js env", topic="wizard")
+    console.section(
+        "Frontend",
+        "Finalize Next.js environment variables and local testing hooks.",
+    )
     context.set_frontend("NEXT_PUBLIC_API_URL", context.api_base_url)
     playwright_default = context.frontend_env.get("PLAYWRIGHT_BASE_URL") or "http://localhost:3000"
     playwright = provider.prompt_string(

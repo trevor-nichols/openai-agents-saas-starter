@@ -85,7 +85,10 @@ _PLACEHOLDER_JWKS_SALT = "local-jwks-salt"
 
 
 def run(context: WizardContext, provider: InputProvider) -> None:
-    console.info("[M2] Security & Rate Limits", topic="wizard")
+    console.section(
+        "Security & Rate Limits",
+        "Dial in lockouts, token lifetimes, and email/reset policies before launch.",
+    )
     _configure_auth_lockouts(context, provider)
     _configure_jwks_cache(context, provider)
     _configure_email_password_status(context, provider)

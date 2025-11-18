@@ -18,7 +18,10 @@ _SIGNUP_POLICY_CHOICES: Final[set[str]] = set(_SIGNUP_POLICY_DESCRIPTIONS.keys()
 
 
 def run(context: WizardContext, provider: InputProvider) -> None:
-    console.info("[M4] Signup & Worker policy", topic="wizard")
+    console.section(
+        "Signup & Worker Policies",
+        "Choose how tenants onboard and how the billing worker behaves by default.",
+    )
     policy = _prompt_signup_policy(context, provider)
     context.set_backend("SIGNUP_ACCESS_POLICY", policy)
     context.set_backend_bool("ALLOW_PUBLIC_SIGNUP", policy == "public")
