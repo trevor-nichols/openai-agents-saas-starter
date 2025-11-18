@@ -82,6 +82,10 @@ Legend: `✅` = prompted during wizard, `⚠️` = optional/backfilled warning, 
 | `GEMINI_API_KEY` | `str | None` | None | ✅ | Google Gemini API key (optional). |
 | `XAI_API_KEY` | `str | None` | None | ✅ | xAI API key (optional). |
 | `TAVILY_API_KEY` | `str | None` | None | ✅ | Tavily web search API key. |
+| `AGENT_MODEL_DEFAULT` | `str` | gpt-5.1 | ❌ | Default reasoning model used across agents when no specialization override is provided. |
+| `AGENT_MODEL_TRIAGE` | `str | None` | None | ❌ | Optional override for the triage agent; falls back to `AGENT_MODEL_DEFAULT` when unset. |
+| `AGENT_MODEL_CODE` | `str | None` | None | ❌ | Optional override for the code/completions agent; defaults to `AGENT_MODEL_DEFAULT`. |
+| `AGENT_MODEL_DATA` | `str | None` | None | ❌ | Optional override for the data analyst agent; defaults to `AGENT_MODEL_DEFAULT`. |
 
 ## Signup policy
 
@@ -128,6 +132,19 @@ Legend: `✅` = prompted during wizard, `⚠️` = optional/backfilled warning, 
 | `LOGGING_OTLP_ENDPOINT` | `str | None` | None | ✅ | OTLP/HTTP endpoint when logging_sink=otlp. |
 | `LOGGING_OTLP_HEADERS` | `str | None` | None | ✅ | Optional OTLP headers JSON when logging_sink=otlp. |
 | `LOGGING_SINK` | `str` | stdout | ✅ | Logging sink (stdout, datadog, otlp, or none). |
+
+## Status notifications (Slack)
+
+| Env Var | Type | Default | Wizard? | Description |
+| --- | --- | --- | --- | --- |
+| `ENABLE_SLACK_STATUS_NOTIFICATIONS` | `bool` | False | ✅ | Toggle Slack delivery for status/incident broadcasts. |
+| `SLACK_STATUS_BOT_TOKEN` | `str | None` | None | ✅ | OAuth bot token with `chat:write` scope used to send Slack messages. |
+| `SLACK_STATUS_DEFAULT_CHANNELS` | `list[str]` | [] | ✅ | Default channel IDs (comma-separated string or JSON list) targeted when fan-out is enabled. |
+| `SLACK_STATUS_TENANT_CHANNEL_MAP` | `dict[str,list[str]]` | {} | ✅ | JSON map of tenant IDs to channel overrides for Slack notifications. |
+| `SLACK_API_BASE_URL` | `str` | https://slack.com/api | ✅ | Slack Web API base URL (override for tests/self-hosted proxies). |
+| `SLACK_HTTP_TIMEOUT_SECONDS` | `float` | 5.0 | ✅ | HTTP timeout (seconds) applied to Slack API calls. |
+| `SLACK_STATUS_RATE_LIMIT_WINDOW_SECONDS` | `float` | 1.0 | ✅ | Per-channel throttling window for Slack status posts. |
+| `SLACK_STATUS_MAX_RETRIES` | `int` | 3 | ✅ | Maximum retry attempts for Slack delivery failures. |
 
 ## Other
 

@@ -12,6 +12,7 @@ import pytest
 from sqlalchemy import Table
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+import app.infrastructure.persistence.tenants.models  # noqa: F401  # register tenant models for SA relationships
 from app.infrastructure.persistence.stripe.models import (
     StripeDispatchStatus,
     StripeEvent,
@@ -58,13 +59,16 @@ async def sqlite_repo() -> AsyncIterator[tuple[StripeEventRepository, _FakeBilli
     session_factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     repo = StripeEventRepository(session_factory)
     fake_billing = _FakeBillingService()
+    original_billing = replay_events.billing_service
     stripe_event_dispatcher.configure(
         repository=repo,
         billing=cast(BillingService, fake_billing),
     )
     try:
+        replay_events.billing_service = cast(BillingService, fake_billing)
         yield repo, fake_billing
     finally:
+        replay_events.billing_service = original_billing
         await engine.dispose()
 
 

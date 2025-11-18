@@ -25,6 +25,11 @@ from fakeredis.aioredis import FakeRedis
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB
 from sqlalchemy.ext.compiler import compiles
 from starter_shared import config as shared_config
+from tests.utils.pytest_stripe import (
+    configure_stripe_replay_option,
+    register_stripe_replay_marker,
+    skip_stripe_replay_if_disabled,
+)
 
 from app.bootstrap import reset_container
 from app.core import config as config_module
@@ -59,37 +64,19 @@ def _compile_citext_to_text(element, compiler, **kwargs):
 def pytest_addoption(parser: pytest.Parser) -> None:
     """Register custom CLI flags."""
 
-    parser.addoption(
-        "--enable-stripe-replay",
-        action="store_true",
-        default=False,
-        help=(
-            "Run tests marked with @pytest.mark.stripe_replay "
-            "(requires Postgres + Stripe fixtures)."
-        ),
-    )
+    configure_stripe_replay_option(parser)
 
 
 def pytest_configure(config: pytest.Config) -> None:
     """Ensure markers are known to pytest."""
 
-    config.addinivalue_line(
-        "markers",
-        "stripe_replay: exercises Stripe webhook replay + billing stream flows; "
-        "requires external fixtures.",
-    )
+    register_stripe_replay_marker(config)
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
     """Skip Stripe replay tests unless explicitly enabled."""
 
-    if config.getoption("--enable-stripe-replay"):
-        return
-
-    skip_marker = pytest.mark.skip(reason="Stripe replay tests require --enable-stripe-replay.")
-    for item in items:
-        if "stripe_replay" in item.keywords:
-            item.add_marker(skip_marker)
+    skip_stripe_replay_if_disabled(config, items)
 
 
 @pytest.fixture(autouse=True)
