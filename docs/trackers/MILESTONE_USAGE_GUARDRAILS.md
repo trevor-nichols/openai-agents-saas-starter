@@ -41,7 +41,7 @@ Give operators a turnkey way to meter agent usage (messages, input tokens, outpu
 | 5 | Document operator workflow (README, billing runbook, new troubleshooting doc) and add metrics/logging for quota hits. | Platform Foundations | ✅ Completed | Nov 18 |
 | 6 | Build entitlement loader that ingests `usage-entitlements.json` and upserts plan features in Postgres/Stripe. | Platform Foundations | ✅ Completed | Nov 18 |
 | 7 | Replace in-process usage totals cache with a Redis-backed/shared implementation surfaced via CLI settings. | Platform Foundations | ✅ Completed | Nov 18 |
-| 8 | (Optional stretch) Build dashboard/export script showing per-tenant usage + remaining quota for admin UI. | Platform Foundations | Planned | Dec 5 |
+| 8 | Build CLI dashboard/export workflow (usage report JSON/CSV) so operators can inspect per-tenant usage + remaining quota without wiring a UI. | Platform Foundations | ✅ Completed | Nov 18 |
 
 ## Risks & Mitigations
 | Risk | Impact | Mitigation |
@@ -58,5 +58,7 @@ Give operators a turnkey way to meter agent usage (messages, input tokens, outpu
 - **2025-11-18** — Setup wizard gains "Usage & Entitlements" section that toggles guardrails and persists per-plan limits to `var/reports/usage-entitlements.json` for operators.
 - **2025-11-18** — Phase P4 closed: guardrail evaluations now emit Prometheus metrics + structured logs, README references the new `Usage Guardrails` runbook, and operators have troubleshooting/alerting guidance.
 - **2025-11-18** — Follow-up scope scheduled: entitlement loader + Redis-backed usage cache added ahead of the dashboard/export stretch; telemetry provider toggles are tracked separately under the observability milestone.
+- **2025-11-18** — Task 8 kicked off: CLI `starter_cli usage export-report` will read Postgres rollups and write `var/reports/usage-dashboard.{json,csv}` so operators can ship usage data into admin dashboards without additional services.
+- **2025-11-18** — CLI exporter shipped: modular usage report service + tests, `usage export-report` command, default artifacts under `var/reports/usage-dashboard.*`, and runbook/README updates.
 - **2025-11-18** — CLI usage command `python -m starter_cli.app usage sync-entitlements` now syncs `usage-entitlements.json` into `plan_features` with dry-run + prune flags, closing work item #6.
 - **2025-11-18** — Usage cache now supports Redis via `USAGE_GUARDRAIL_CACHE_BACKEND`/`USAGE_GUARDRAIL_REDIS_URL`, and the setup wizard exposes those prompts so operators can pick Redis or per-process memory.

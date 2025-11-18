@@ -32,6 +32,25 @@ python -m starter_cli.app usage sync-entitlements \
 - `--allow-disabled-artifact` lets you replay artifacts generated while guardrails were disabled, which is useful when reusing answers between environments.
 - The command errors if the target plan code does not exist, so seed plans via Stripe/migrations before syncing entitlements.
 
+### Exporting dashboard artifacts
+
+Run the CLI exporter whenever operators need an audit-friendly snapshot of usage vs. plan limits:
+
+```
+python -m starter_cli.app usage export-report \
+  --tenant acme \
+  --plan starter \
+  --period-start 2025-11-01T00:00:00Z \
+  --period-end 2025-12-01T00:00:00Z
+```
+
+- JSON and CSV artifacts land in `var/reports/usage-dashboard.{json,csv}` unless overridden with
+  `--output-json/--output-csv`. Pass `--no-json` or `--no-csv` to disable one of the formats.
+- Use `--feature input_tokens --feature output_tokens` to reduce payload size when sharing with
+  finance/ops stakeholders.
+- `--warn-threshold` controls when a feature is marked as `approaching` in the report (defaults to 80%).
+- Artifacts are safe to check into the operator evidence bundle alongside the wizard answers files.
+
 ## Monitoring & Alerting
 
 ### Prometheus Metrics
@@ -77,5 +96,6 @@ Ingestion tips:
 - [ ] `usage_guardrail_decisions_total` present on the Prometheus `/metrics` output and ingested into dashboards.
 - [ ] Alerts configured for hard-limit spikes and policy configuration errors.
 - [ ] `python -m starter_cli.app usage sync-entitlements` has been run after every plan limit change (use `--dry-run` first in CI).
+- [ ] `python -m starter_cli.app usage export-report` captured the current billing period snapshot and artifacts stored under `var/reports/`.
 - [ ] Runbook + plan entitlements reviewed whenever pricing/plan tiers change.
 - [ ] `var/reports/usage-entitlements.json` stored with the rest of the operator artifacts for auditability.

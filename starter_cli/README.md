@@ -159,12 +159,25 @@ Validates Stripe, Resend, and Tavily configuration before you boot FastAPI or de
 - Use `make validate-providers` or `python -m starter_cli.app providers validate --strict` in CI to
   fail the pipeline before Docker builds or migrations.
 
-### 8. `config dump-schema`
+### 8. `usage`
+
+Guardrail-focused operator helpers:
+
+- `usage sync-entitlements` — ingests `var/reports/usage-entitlements.json` and upserts plan
+  features into Postgres/Stripe so the backend enforces the latest limits. Supports `--dry-run`,
+  `--plan starter --plan pro`, and `--prune-missing` to delete retired features.
+- `usage export-report` — queries tenant subscriptions + rollups and writes dashboard artifacts
+  (JSON/CSV) under `var/reports/usage-dashboard.*` by default. Filters: `--tenant slug`, `--plan code`,
+  `--feature key`, `--period-start/-end`, and `--include-inactive`. Operators can dial the warn
+  threshold (`--warn-threshold 0.75`) and redirect or disable specific artifacts via
+  `--output-json PATH`, `--output-csv PATH`, `--no-json`, or `--no-csv`.
+
+### 9. `config dump-schema`
 
 Renders every FastAPI setting and its env alias, default, type, and wizard coverage. Use this to audit
 what remains unprompted after running the wizard. Supports `--format table` (default) or `json`.
 
-### 9. `release db`
+### 10. `release db`
 
 End-to-end release helper that enforces the migration → Stripe provisioning → billing verification order.
 
