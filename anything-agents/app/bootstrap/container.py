@@ -22,6 +22,8 @@ from app.services.signup.password_recovery_service import PasswordRecoveryServic
 from app.services.status.status_alert_dispatcher import StatusAlertDispatcher
 from app.services.status.status_subscription_service import StatusSubscriptionService
 from app.services.tenant.tenant_settings_service import TenantSettingsService
+from app.services.usage_policy_service import UsagePolicyService
+from app.services.usage_recorder import UsageRecorder
 from app.services.users.user_service import UserService
 
 if TYPE_CHECKING:  # pragma: no cover - type hints only
@@ -68,6 +70,8 @@ class ApplicationContainer:
     tenant_settings_service: TenantSettingsService = field(
         default_factory=TenantSettingsService
     )
+    usage_recorder: UsageRecorder = field(default_factory=UsageRecorder)
+    usage_policy_service: UsagePolicyService | None = None
 
     async def shutdown(self) -> None:
         """Gracefully tear down managed services."""
@@ -97,6 +101,7 @@ class ApplicationContainer:
         self.status_subscription_service = None
         self.status_alert_dispatcher = None
         self.geoip_service = NullGeoIPService()
+        self.usage_policy_service = None
 
 
 _CONTAINER: ApplicationContainer | None = None

@@ -74,6 +74,7 @@ from app.services.signup.signup_request_service import build_signup_request_serv
 from app.services.signup.signup_service import build_signup_service
 from app.services.status.status_alert_dispatcher import build_status_alert_dispatcher
 from app.services.status.status_subscription_service import build_status_subscription_service
+from app.services.usage_policy_service import build_usage_policy_service
 from app.services.users.user_service import build_user_service
 
 # =============================================================================
@@ -237,6 +238,7 @@ async def lifespan(app: FastAPI):
 
     container.agent_service = build_agent_service(
         conversation_service=container.conversation_service,
+        usage_recorder=container.usage_recorder,
     )
 
     invite_repository = PostgresSignupInviteRepository(session_factory)
@@ -277,6 +279,33 @@ async def lifespan(app: FastAPI):
     if settings.enable_billing:
         billing_service = container.billing_service
         billing_service.set_repository(PostgresBillingRepository(session_factory))
+        container.usage_recorder.set_billing_service(billing_service)
+        usage_cache_backend = settings.usage_guardrail_cache_backend
+        usage_cache_client = None
+        if usage_cache_backend == "redis":
+            try:
+                usage_cache_client = cast(
+                    RedisBytesClient,
+                    redis_factory.get_client("usage_cache"),
+                )
+            except RuntimeError as exc:
+                logger.warning(
+                    "Usage guardrail cache backend set to redis but no Redis URL configured; "
+                    "falling back to in-memory cache.",
+                    extra={"environment": settings.environment},
+                    exc_info=exc,
+                )
+                usage_cache_backend = "memory"
+        if settings.enable_usage_guardrails:
+            container.usage_policy_service = build_usage_policy_service(
+                billing_service=billing_service,
+                cache_ttl_seconds=settings.usage_guardrail_cache_ttl_seconds,
+                soft_limit_mode=settings.usage_guardrail_soft_limit_mode,
+                cache_backend=usage_cache_backend,
+                redis_client=usage_cache_client,
+            )
+        else:
+            container.usage_policy_service = None
         stripe_repo = StripeEventRepository(session_factory)
         configure_stripe_event_repository(stripe_repo)
         container.stripe_event_dispatcher.configure(repository=stripe_repo, billing=billing_service)
@@ -307,6 +336,8 @@ async def lifespan(app: FastAPI):
                 await service.startup()
             else:
                 logger.info("Billing stream replay/startup disabled by configuration")
+    else:
+        container.usage_policy_service = None
     try:
         yield
     finally:

@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import logging
 import uuid
+from collections.abc import Sequence
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
 
@@ -16,6 +17,7 @@ from app.domain.billing import (
     PlanFeature,
     SubscriptionInvoiceRecord,
     TenantSubscription,
+    UsageTotal,
 )
 from app.infrastructure.persistence.billing.models import (
     BillingPlan as ORMPlan,
@@ -202,6 +204,59 @@ class PostgresBillingRepository(BillingRepository):
                 idempotency_key=idempotency_key,
             )
             await session.commit()
+
+    async def get_usage_totals(
+        self,
+        tenant_id: str,
+        *,
+        feature_keys: Sequence[str] | None = None,
+        period_start: datetime | None = None,
+        period_end: datetime | None = None,
+    ) -> list[UsageTotal]:
+        async with self._session_factory() as session:
+            tenant_uuid = self._parse_tenant_uuid(tenant_id)
+            query = (
+                select(
+                    ORMSubscriptionUsage.feature_key,
+                    func.sum(ORMSubscriptionUsage.quantity).label("total_quantity"),
+                    func.min(ORMSubscriptionUsage.period_start).label("min_period_start"),
+                    func.max(ORMSubscriptionUsage.period_end).label("max_period_end"),
+                    func.min(ORMSubscriptionUsage.unit).label("unit"),
+                )
+                .join(
+                    ORMTenantSubscription,
+                    ORMSubscriptionUsage.subscription_id == ORMTenantSubscription.id,
+                )
+                .where(ORMTenantSubscription.tenant_id == tenant_uuid)
+            )
+
+            if feature_keys:
+                query = query.where(ORMSubscriptionUsage.feature_key.in_(feature_keys))
+            if period_start:
+                query = query.where(ORMSubscriptionUsage.period_end >= period_start)
+            if period_end:
+                query = query.where(ORMSubscriptionUsage.period_start <= period_end)
+
+            query = query.group_by(ORMSubscriptionUsage.feature_key)
+            result = await session.execute(query)
+            rows = result.all()
+
+        usage_totals: list[UsageTotal] = []
+        for row in rows:
+            if row.total_quantity is None:
+                continue
+            window_start = period_start or row.min_period_start
+            window_end = period_end or row.max_period_end
+            usage_totals.append(
+                UsageTotal(
+                    feature_key=row.feature_key,
+                    unit=row.unit or "units",
+                    quantity=int(row.total_quantity),
+                    window_start=window_start,
+                    window_end=window_end,
+                )
+            )
+        return usage_totals
 
     async def upsert_invoice(self, invoice: SubscriptionInvoiceRecord) -> None:
         async with self._session_factory() as session:

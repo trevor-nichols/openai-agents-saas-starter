@@ -1,7 +1,7 @@
 """Tests covering the billing service scaffolding."""
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import cast
 
@@ -13,6 +13,7 @@ from app.infrastructure.persistence.auth import models as auth_models  # noqa: F
 from app.infrastructure.persistence.billing import models as billing_models
 from app.infrastructure.persistence.billing.postgres import PostgresBillingRepository
 from app.infrastructure.persistence.conversations import models as conversation_models
+from app.infrastructure.persistence.tenants import models as tenant_models
 from app.services.billing.billing_service import (
     BillingService,
     PaymentProviderError,
@@ -115,6 +116,7 @@ TABLES_TO_CREATE = cast(
     tuple[Table, ...],
     (
         conversation_models.TenantAccount.__table__,
+        tenant_models.TenantSettingsModel.__table__,
         billing_models.BillingPlan.__table__,
         billing_models.PlanFeature.__table__,
         billing_models.TenantSubscription.__table__,
@@ -328,3 +330,101 @@ async def test_gateway_errors_surface_as_payment_provider_error(billing_context)
             auto_renew=True,
             trial_days=None,
         )
+
+
+@pytest.mark.asyncio
+async def test_get_usage_totals_returns_windowed_sums(billing_context):
+    service = _service(billing_context)
+    await service.start_subscription(
+        tenant_id=billing_context.tenant_id,
+        plan_code="starter",
+        billing_email="billing@example.com",
+        auto_renew=True,
+        seat_count=None,
+        trial_days=None,
+    )
+
+    window_start = datetime(2025, 1, 1, tzinfo=UTC)
+    window_end = datetime(2025, 1, 31, tzinfo=UTC)
+
+    await billing_context.repository.record_usage(
+        billing_context.tenant_id,
+        feature_key="messages",
+        quantity=5,
+        period_start=window_start,
+        period_end=window_start + timedelta(days=1),
+        idempotency_key="usage-1",
+    )
+    await billing_context.repository.record_usage(
+        billing_context.tenant_id,
+        feature_key="messages",
+        quantity=3,
+        period_start=window_start + timedelta(days=2),
+        period_end=window_start + timedelta(days=3),
+        idempotency_key="usage-2",
+    )
+    await billing_context.repository.record_usage(
+        billing_context.tenant_id,
+        feature_key="messages",
+        quantity=2,
+        period_start=window_end + timedelta(days=1),
+        period_end=window_end + timedelta(days=2),
+        idempotency_key="usage-3",
+    )
+
+    totals = await billing_context.repository.get_usage_totals(
+        billing_context.tenant_id,
+        feature_keys=["messages"],
+        period_start=window_start,
+        period_end=window_end,
+    )
+
+    assert len(totals) == 1
+    total = totals[0]
+    assert total.feature_key == "messages"
+    assert total.quantity == 8
+    assert total.window_start == window_start
+    assert total.window_end == window_end
+
+
+@pytest.mark.asyncio
+async def test_get_usage_totals_handles_multiple_features(billing_context):
+    service = _service(billing_context)
+    await service.start_subscription(
+        tenant_id=billing_context.tenant_id,
+        plan_code="starter",
+        billing_email="billing@example.com",
+        auto_renew=True,
+        seat_count=None,
+        trial_days=None,
+    )
+
+    base = datetime(2025, 2, 1, tzinfo=UTC)
+
+    await billing_context.repository.record_usage(
+        billing_context.tenant_id,
+        feature_key="messages",
+        quantity=4,
+        period_start=base,
+        period_end=base + timedelta(days=1),
+        idempotency_key="multi-1",
+    )
+    await billing_context.repository.record_usage(
+        billing_context.tenant_id,
+        feature_key="output_tokens",
+        quantity=750,
+        period_start=base,
+        period_end=base + timedelta(days=1),
+        idempotency_key="multi-2",
+    )
+
+    totals = await billing_context.repository.get_usage_totals(
+        billing_context.tenant_id,
+        period_start=base,
+        period_end=base + timedelta(days=30),
+    )
+
+    assert {t.feature_key for t in totals} == {"messages", "output_tokens"}
+    totals_map = {t.feature_key: t for t in totals}
+    assert totals_map["messages"].quantity == 4
+    assert totals_map["output_tokens"].quantity == 750

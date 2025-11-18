@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Protocol
@@ -104,3 +105,21 @@ class BillingRepository(Protocol):
     ) -> None: ...
 
     async def upsert_invoice(self, invoice: SubscriptionInvoiceRecord) -> None: ...
+
+    async def get_usage_totals(
+        self,
+        tenant_id: str,
+        *,
+        feature_keys: Sequence[str] | None = None,
+        period_start: datetime | None = None,
+        period_end: datetime | None = None,
+    ) -> list[UsageTotal]: ...
+
+
+@dataclass(slots=True)
+class UsageTotal:
+    feature_key: str
+    unit: str
+    quantity: int
+    window_start: datetime
+    window_end: datetime

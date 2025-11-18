@@ -88,3 +88,34 @@ def test_observe_stripe_gateway_operation_records_labels() -> None:
     )
     counter_internal = cast(Any, counter_child)
     assert counter_internal._value.get() == 1
+
+
+def test_record_usage_guardrail_decision_normalizes_plan_code() -> None:
+    _reset_metric(metrics.USAGE_GUARDRAIL_DECISIONS_TOTAL)
+
+    metrics.record_usage_guardrail_decision(decision="allow", plan_code="Starter")
+
+    counter_child = metrics.USAGE_GUARDRAIL_DECISIONS_TOTAL.labels(
+        decision="allow",
+        plan_code="starter",
+    )
+    counter_internal = cast(Any, counter_child)
+    assert counter_internal._value.get() == 1
+
+
+def test_record_usage_limit_hit_tracks_feature_and_limit() -> None:
+    _reset_metric(metrics.USAGE_LIMIT_HITS_TOTAL)
+
+    metrics.record_usage_limit_hit(
+        plan_code="pro",
+        limit_type="hard_limit",
+        feature_key="messages",
+    )
+
+    counter_child = metrics.USAGE_LIMIT_HITS_TOTAL.labels(
+        plan_code="pro",
+        limit_type="hard_limit",
+        feature_key="messages",
+    )
+    counter_internal = cast(Any, counter_child)
+    assert counter_internal._value.get() == 1

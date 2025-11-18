@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -11,7 +12,13 @@ from starter_cli.workflows.secrets import registry as secrets_registry
 from starter_cli.workflows.secrets.models import OnboardResult
 from starter_cli.workflows.setup._wizard import audit
 from starter_cli.workflows.setup._wizard.context import WizardContext
-from starter_cli.workflows.setup._wizard.sections import core, frontend, secrets, security
+from starter_cli.workflows.setup._wizard.sections import (
+    core,
+    frontend,
+    secrets,
+    security,
+    usage,
+)
 from starter_cli.workflows.setup.inputs import InputProvider
 from starter_shared.secrets.models import SecretsProviderLiteral
 
@@ -206,6 +213,79 @@ def test_security_section_populates_limits_and_secrets(cli_ctx: CLIContext) -> N
     assert context.backend_env.get("AUTH_JWKS_ETAG_SALT")
     assert context.backend_env.get("STATUS_SUBSCRIPTION_ENCRYPTION_KEY")
     assert context.backend_env.get("STATUS_SUBSCRIPTION_TOKEN_PEPPER")
+
+
+def test_usage_section_writes_entitlements(cli_ctx: CLIContext) -> None:
+    context = _build_context(cli_ctx)
+    context.set_backend_bool("ENABLE_BILLING", True)
+    provider = StubProvider(
+        bools={"ENABLE_USAGE_GUARDRAILS": True},
+        strings={
+            "USAGE_GUARDRAIL_CACHE_TTL_SECONDS": "45",
+            "USAGE_GUARDRAIL_SOFT_LIMIT_MODE": "block",
+            "USAGE_GUARDRAIL_CACHE_BACKEND": "redis",
+            "USAGE_GUARDRAIL_REDIS_URL": "redis://cache:6379/7",
+            "USAGE_PLAN_CODES": "starter",
+            "USAGE_STARTER_MESSAGES_SOFT_LIMIT": "80",
+            "USAGE_STARTER_MESSAGES_HARD_LIMIT": "120",
+            "USAGE_STARTER_INPUT_TOKENS_SOFT_LIMIT": "100000",
+            "USAGE_STARTER_INPUT_TOKENS_HARD_LIMIT": "150000",
+            "USAGE_STARTER_OUTPUT_TOKENS_SOFT_LIMIT": "40000",
+            "USAGE_STARTER_OUTPUT_TOKENS_HARD_LIMIT": "60000",
+        },
+    )
+
+    usage.run(context, provider)
+
+    env = context.backend_env
+    assert env.get("ENABLE_USAGE_GUARDRAILS") == "true"
+    assert env.get("USAGE_GUARDRAIL_CACHE_TTL_SECONDS") == "45"
+    assert env.get("USAGE_GUARDRAIL_SOFT_LIMIT_MODE") == "block"
+    assert env.get("USAGE_GUARDRAIL_CACHE_BACKEND") == "redis"
+    assert env.get("USAGE_GUARDRAIL_REDIS_URL") == "redis://cache:6379/7"
+
+    artifact = cli_ctx.project_root / "var/reports/usage-entitlements.json"
+    assert artifact.exists()
+    payload = json.loads(artifact.read_text(encoding="utf-8"))
+    assert payload["enabled"] is True
+    assert payload["plans"][0]["plan_code"] == "starter"
+    features = {f["feature_key"]: f for f in payload["plans"][0]["features"]}
+    assert features["messages"]["hard_limit"] == 120
+    assert features["input_tokens"]["soft_limit"] == 100000
+
+
+def test_usage_section_skips_when_billing_disabled(cli_ctx: CLIContext) -> None:
+    context = _build_context(cli_ctx)
+    provider = StubProvider(bools={"ENABLE_USAGE_GUARDRAILS": True})
+
+    usage.run(context, provider)
+
+    env = context.backend_env
+    assert env.get("ENABLE_USAGE_GUARDRAILS") == "false"
+    artifact = cli_ctx.project_root / "var/reports/usage-entitlements.json"
+    assert artifact.exists()
+    payload = json.loads(artifact.read_text(encoding="utf-8"))
+    assert payload["enabled"] is False
+
+
+def test_usage_section_allows_memory_cache(cli_ctx: CLIContext) -> None:
+    context = _build_context(cli_ctx)
+    context.set_backend_bool("ENABLE_BILLING", True)
+    provider = StubProvider(
+        bools={"ENABLE_USAGE_GUARDRAILS": True},
+        strings={
+            "USAGE_GUARDRAIL_CACHE_TTL_SECONDS": "0",
+            "USAGE_GUARDRAIL_SOFT_LIMIT_MODE": "warn",
+            "USAGE_GUARDRAIL_CACHE_BACKEND": "memory",
+            "USAGE_PLAN_CODES": "starter",
+        },
+    )
+
+    usage.run(context, provider)
+
+    env = context.backend_env
+    assert env.get("USAGE_GUARDRAIL_CACHE_BACKEND") == "memory"
+    assert env.get("USAGE_GUARDRAIL_REDIS_URL") is None
 
 
 def test_audit_sections_flag_missing_values(

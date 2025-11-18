@@ -13,13 +13,30 @@ ExceptionHandler = Callable[[Request, Exception], Response | Awaitable[Response]
 
 
 def _http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
+    detail = exc.detail
+    detail_dict = detail if isinstance(detail, dict) else None
+    detail_str = detail if isinstance(detail, str) else None
+
+    if detail_dict is not None:
+        error_code = detail_dict.get("code", exc.__class__.__name__)
+        message = detail_dict.get("message", str(detail_dict))
+    elif detail_str is not None:
+        error_code = detail_str
+        message = detail_str
+    else:
+        error_code = exc.__class__.__name__
+        message = str(detail)
+
     payload = ErrorResponse(
-        error=exc.detail if isinstance(exc.detail, str) else exc.__class__.__name__,
-        message=exc.detail if isinstance(exc.detail, str) else str(exc.detail),
+        error=str(error_code),
+        message=str(message),
         details=getattr(exc, "headers", None),
     )
     body = payload.model_dump()
-    body.setdefault("detail", payload.message)
+    if detail_dict is not None:
+        body["detail"] = detail_dict
+    else:
+        body.setdefault("detail", payload.message)
     return JSONResponse(
         status_code=exc.status_code,
         content=body,

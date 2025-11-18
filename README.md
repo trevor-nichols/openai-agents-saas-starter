@@ -87,6 +87,8 @@ Refer to `starter_cli/README.md` for detailed flags, answers-file formats, and c
 - `docs/openai-agents-sdk/` – SDK reference + integration patterns.
 - `docs/frontend/data-access.md` & `docs/frontend/ui/components.md` – frontend architecture + component inventory.
 - `docs/trackers/CLI_MILESTONE.md` – CLI roadmap and status.
+- `docs/ops/usage-guardrails-runbook.md` – plan-aware usage guardrails enablement, metrics, and troubleshooting steps.
+- `python -m starter_cli.app usage sync-entitlements` – CLI helper that syncs `var/reports/usage-entitlements.json` into `plan_features` so guardrails enforce the latest plan limits.
 - `Makefile` – curated commands for API, migrations, infra, Stripe tooling, and CLI invocation.
 
 > Future sections can expand on backend internals, service boundaries, and frontend feature guides as they are reviewed. For now, use this README as the top-level map and follow the linked docs for deeper dives.

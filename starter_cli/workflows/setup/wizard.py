@@ -18,6 +18,7 @@ from ._wizard.sections import (
     secrets,
     security,
     signup,
+    usage,
 )
 from .automation import ALL_AUTOMATION_PHASES, AutomationPhase
 from .infra import InfraSession
@@ -233,6 +234,7 @@ class SetupWizard:
             "secrets": partial(secrets.run, self.context, provider),
             "security": partial(security.run, self.context, provider),
             "providers": partial(providers.run, self.context, provider),
+            "usage": partial(usage.run, self.context, provider),
             "observability": partial(observability.run, self.context, provider),
             "integrations": partial(integrations.run, self.context, provider),
             "signup": partial(signup.run, self.context, provider),

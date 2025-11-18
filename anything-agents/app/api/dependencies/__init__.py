@@ -8,6 +8,7 @@ from .service_accounts import (
     require_service_account_actor,
 )
 from .tenant import TenantContext, TenantRole, get_tenant_context, require_tenant_role
+from .usage import enforce_usage_guardrails
 
 __all__ = [
     "require_current_user",
@@ -20,4 +21,5 @@ __all__ = [
     "TenantRole",
     "get_tenant_context",
     "require_tenant_role",
+    "enforce_usage_guardrails",
 ]

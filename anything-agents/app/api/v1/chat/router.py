@@ -3,12 +3,13 @@
 import json
 from collections.abc import AsyncIterator
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 
 from app.api.dependencies import raise_rate_limit_http_error
 from app.api.dependencies.auth import CurrentUser, require_verified_scopes
-from app.api.dependencies.tenant import TenantContext, TenantRole, get_tenant_context
+from app.api.dependencies.tenant import TenantContext, TenantRole, require_tenant_role
+from app.api.dependencies.usage import enforce_usage_guardrails
 from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse, StreamingChatResponse
 from app.core.config import get_settings
 from app.services.agent_service import ConversationActorContext, agent_service
@@ -21,23 +22,22 @@ from app.services.shared.rate_limit_service import (
 )
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+_ALLOWED_VIEWER_ROLES: tuple[TenantRole, ...] = (
+    TenantRole.VIEWER,
+    TenantRole.ADMIN,
+    TenantRole.OWNER,
+)
 
 
 @router.post("", response_model=AgentChatResponse)
 async def chat_with_agent(
     request: AgentChatRequest,
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:write")),
-    tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
-    tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
+    tenant_context: TenantContext = Depends(require_tenant_role(*_ALLOWED_VIEWER_ROLES)),
+    _: object = Depends(enforce_usage_guardrails),
 ) -> AgentChatResponse:
     """Send a message to the agent framework and receive a full response."""
 
-    tenant_context = await _resolve_tenant_context(
-        current_user,
-        tenant_id_header,
-        tenant_role_header,
-        min_role=TenantRole.VIEWER,
-    )
     actor = _conversation_actor(current_user, tenant_context)
     settings = get_settings()
     await _enforce_user_quota(
@@ -64,17 +64,11 @@ async def chat_with_agent(
 async def stream_chat_with_agent(
     request: AgentChatRequest,
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:write")),
-    tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
-    tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
+    tenant_context: TenantContext = Depends(require_tenant_role(*_ALLOWED_VIEWER_ROLES)),
+    _: object = Depends(enforce_usage_guardrails),
 ) -> StreamingResponse:
     """Provide an SSE stream for real-time agent responses."""
 
-    tenant_context = await _resolve_tenant_context(
-        current_user,
-        tenant_id_header,
-        tenant_role_header,
-        min_role=TenantRole.VIEWER,
-    )
     actor = _conversation_actor(current_user, tenant_context)
     settings = get_settings()
     await _enforce_user_quota(
@@ -156,22 +150,6 @@ async def _acquire_stream_slot(
         raise_rate_limit_http_error(exc, tenant_id=tenant_id, user_id=user_id)
 
 
-async def _resolve_tenant_context(
-    current_user: CurrentUser,
-    tenant_id_header: str | None,
-    tenant_role_header: str | None,
-    *,
-    min_role: TenantRole,
-) -> TenantContext:
-    context = await get_tenant_context(
-        tenant_id_header=tenant_id_header,
-        tenant_role_header=tenant_role_header,
-        current_user=current_user,
-    )
-    context.ensure_role(*_allowed_roles(min_role))
-    return context
-
-
 def _conversation_actor(
     current_user: CurrentUser, tenant_context: TenantContext
 ) -> ConversationActorContext:
@@ -185,11 +163,3 @@ def _user_id(user: CurrentUser) -> str:
     payload_obj = user.get("payload") if isinstance(user, dict) else None
     payload = payload_obj if isinstance(payload_obj, dict) else {}
     return str(user.get("user_id") or payload.get("sub") or "anonymous")
-
-
-def _allowed_roles(min_role: TenantRole) -> tuple[TenantRole, ...]:
-    if min_role is TenantRole.VIEWER:
-        return (TenantRole.VIEWER, TenantRole.ADMIN, TenantRole.OWNER)
-    if min_role is TenantRole.ADMIN:
-        return (TenantRole.ADMIN, TenantRole.OWNER)
-    return (TenantRole.OWNER,)

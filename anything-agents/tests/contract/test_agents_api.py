@@ -1,7 +1,9 @@
 """Test suite covering agent-facing endpoints and services."""
 
 import os
+from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
@@ -15,16 +17,24 @@ os.environ.setdefault("AUTH_CACHE_REDIS_URL", os.environ["REDIS_URL"])
 os.environ.setdefault("SECURITY_TOKEN_REDIS_URL", os.environ["REDIS_URL"])
 os.environ.setdefault("AUTO_RUN_MIGRATIONS", "false")
 os.environ.setdefault("ENABLE_BILLING", "false")
+os.environ.setdefault("ENABLE_USAGE_GUARDRAILS", "false")
 
+from app.api.dependencies import usage as usage_dependencies
 from app.api.dependencies.auth import require_current_user
 from app.api.v1.chat import router as chat_router
 from app.api.v1.chat.schemas import AgentChatResponse
+from app.bootstrap.container import get_container
 from app.domain.conversations import ConversationMessage, ConversationMetadata
 from app.services.agent_service import agent_service
 from app.services.shared.rate_limit_service import RateLimitExceeded, rate_limiter
+from app.services.usage_policy_service import (
+    UsagePolicyDecision,
+    UsagePolicyResult,
+    UsagePolicyService,
+    UsageViolation,
+)
 from main import app
 
-client = TestClient(app)
 TEST_TENANT_ID = str(uuid4())
 
 
@@ -55,7 +65,13 @@ def _override_current_user():
             app.dependency_overrides[require_current_user] = previous
 
 
-def test_list_available_agents() -> None:
+@pytest.fixture(scope="module")
+def client():
+    with TestClient(app) as test_client:
+        yield test_client
+
+
+def test_list_available_agents(client: TestClient) -> None:
     response = client.get("/api/v1/agents")
     assert response.status_code == 200
 
@@ -64,7 +80,7 @@ def test_list_available_agents() -> None:
     assert any(agent["name"] == "triage" for agent in payload)
 
 
-def test_get_agent_status() -> None:
+def test_get_agent_status(client: TestClient) -> None:
     response = client.get("/api/v1/agents/triage/status")
     assert response.status_code == 200
 
@@ -73,14 +89,16 @@ def test_get_agent_status() -> None:
     assert payload["status"] == "active"
 
 
-def test_get_nonexistent_agent_status() -> None:
+def test_get_nonexistent_agent_status(client: TestClient) -> None:
     response = client.get("/api/v1/agents/nonexistent/status")
     assert response.status_code == 404
 
 
 @patch("app.infrastructure.openai.runner.run", new_callable=AsyncMock)
-def test_chat_with_agent(mock_run: AsyncMock) -> None:
-    mock_run.return_value = SimpleNamespace(final_output="Hello! I'm here to help you.")
+def test_chat_with_agent(mock_run: AsyncMock, client: TestClient) -> None:
+    mock_run.return_value = SimpleNamespace(
+        final_output="Hello! I'm here to help you.", context_wrapper=None, last_response_id="resp"
+    )
 
     chat_request = {"message": "Hello, how are you?", "agent_type": "triage"}
 
@@ -94,8 +112,10 @@ def test_chat_with_agent(mock_run: AsyncMock) -> None:
 
 
 @patch("app.infrastructure.openai.runner.run", new_callable=AsyncMock)
-def test_chat_falls_back_to_triage(mock_run: AsyncMock) -> None:
-    mock_run.return_value = SimpleNamespace(final_output="Fallback engaged.")
+def test_chat_falls_back_to_triage(mock_run: AsyncMock, client: TestClient) -> None:
+    mock_run.return_value = SimpleNamespace(
+        final_output="Fallback engaged.", context_wrapper=None, last_response_id="resp"
+    )
 
     chat_request = {"message": "Route me", "agent_type": "nonexistent"}
 
@@ -108,8 +128,10 @@ def test_chat_falls_back_to_triage(mock_run: AsyncMock) -> None:
 
 
 @patch("app.infrastructure.openai.runner.run", new_callable=AsyncMock)
-def test_conversation_lifecycle(mock_run: AsyncMock) -> None:
-    mock_run.return_value = SimpleNamespace(final_output="Sure, let's get started.")
+def test_conversation_lifecycle(mock_run: AsyncMock, client: TestClient) -> None:
+    mock_run.return_value = SimpleNamespace(
+        final_output="Sure, let's get started.", context_wrapper=None, last_response_id="resp"
+    )
 
     chat_request = {"message": "Start a new plan", "agent_type": "triage"}
     chat_response = client.post("/api/v1/chat", json=chat_request)
@@ -138,7 +160,7 @@ def test_agent_service_initialization() -> None:
     assert {"triage", "code_assistant", "data_analyst"}.issubset(names)
 
 
-def test_chat_requires_write_scope() -> None:
+def test_chat_requires_write_scope(client: TestClient) -> None:
     def _read_only_user():
         return {
             "user_id": "limited",
@@ -158,7 +180,7 @@ def test_chat_requires_write_scope() -> None:
         app.dependency_overrides[require_current_user] = _stub_current_user
 
 
-def test_delete_requires_delete_scope() -> None:
+def test_delete_requires_delete_scope(client: TestClient) -> None:
     def _no_delete_user():
         return {
             "user_id": "limited",
@@ -178,7 +200,7 @@ def test_delete_requires_delete_scope() -> None:
         app.dependency_overrides[require_current_user] = _stub_current_user
 
 
-def test_chat_rate_limit_blocks(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_chat_rate_limit_blocks(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
     class _SettingsStub:
         chat_rate_limit_per_minute = 1
         chat_stream_rate_limit_per_minute = 1
@@ -202,19 +224,59 @@ def test_chat_rate_limit_blocks(monkeypatch: pytest.MonkeyPatch) -> None:
     async def _fake_chat(_request, *, actor):
         return AgentChatResponse(
             response="ok",
-            conversation_id="rl-test",
+            conversation_id="rate-test",
             agent_used="triage",
         )
 
     monkeypatch.setattr(agent_service, "chat", _fake_chat)
 
-    first = client.post("/api/v1/chat", json={"message": "hello"})
+    first = client.post("/api/v1/chat", json={"message": "hi"})
     assert first.status_code == 200
 
-    second = client.post("/api/v1/chat", json={"message": "hello again"})
+    second = client.post("/api/v1/chat", json={"message": "still hi"})
     assert second.status_code == 429
     assert "Rate limit exceeded" in second.text
 
+
+@patch("app.infrastructure.openai.runner.run", new_callable=AsyncMock)
+def test_chat_blocks_when_usage_guardrail_hits(
+    mock_run: AsyncMock, monkeypatch: pytest.MonkeyPatch, client: TestClient
+) -> None:
+    class _SettingsStub:
+        enable_usage_guardrails = True
+
+    violation = UsageViolation(
+        feature_key="messages",
+        limit_type="hard_limit",
+        limit_value=100,
+        usage=150,
+        unit="messages",
+        window_start=datetime.now(UTC),
+        window_end=datetime.now(UTC),
+    )
+    result = UsagePolicyResult(
+        decision=UsagePolicyDecision.HARD_LIMIT,
+        window_start=datetime.now(UTC),
+        window_end=datetime.now(UTC),
+        violations=[violation],
+    )
+
+    class _StubUsagePolicyService:
+        async def evaluate(self, tenant_id: str):
+            return result
+
+    monkeypatch.setattr(usage_dependencies, "get_settings", lambda: _SettingsStub())
+    container = get_container()
+    previous_service = container.usage_policy_service
+    container.usage_policy_service = cast(UsagePolicyService, _StubUsagePolicyService())
+
+    response = client.post("/api/v1/chat", json={"message": "hello"})
+    try:
+        assert response.status_code == 429
+        payload = response.json()
+        assert payload["detail"]["feature_key"] == "messages"
+    finally:
+        container.usage_policy_service = previous_service
 
 @pytest.mark.asyncio
 async def test_conversation_repository_roundtrip() -> None:
@@ -236,7 +298,7 @@ async def test_conversation_repository_roundtrip() -> None:
     assert await repository.get_messages("integration-test", tenant_id=TEST_TENANT_ID) == []
 
 
-def test_chat_missing_tenant_claim_rejected() -> None:
+def test_chat_missing_tenant_claim_rejected(client: TestClient) -> None:
     def _missing_tenant_user():
         return {
             "user_id": "no-tenant",

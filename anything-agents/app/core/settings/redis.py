@@ -27,6 +27,11 @@ class RedisSettingsMixin(BaseModel):
         ),
         alias="SECURITY_TOKEN_REDIS_URL",
     )
+    usage_guardrail_redis_url: str | None = Field(
+        default=None,
+        description="Redis URL dedicated to usage guardrail caches (defaults to REDIS_URL).",
+        alias="USAGE_GUARDRAIL_REDIS_URL",
+    )
 
     def resolve_rate_limit_redis_url(self) -> str | None:
         return normalize_url(self.rate_limit_redis_url) or normalize_url(self.redis_url)
@@ -36,6 +41,9 @@ class RedisSettingsMixin(BaseModel):
 
     def resolve_security_token_redis_url(self) -> str | None:
         return normalize_url(self.security_token_redis_url) or normalize_url(self.redis_url)
+
+    def resolve_usage_guardrail_redis_url(self) -> str | None:
+        return normalize_url(self.usage_guardrail_redis_url) or normalize_url(self.redis_url)
 
     def require_hardened_redis(self) -> bool:
         guard = getattr(self, "should_enforce_secret_overrides", None)

@@ -12,7 +12,13 @@ from redis.asyncio import Redis
 from app.core.config import Settings, get_settings
 from app.infrastructure.redis_types import RedisBytesClient, RedisStrClient
 
-RedisPurpose = Literal["rate_limit", "auth_cache", "security_tokens", "billing_events"]
+RedisPurpose = Literal[
+    "rate_limit",
+    "auth_cache",
+    "security_tokens",
+    "billing_events",
+    "usage_cache",
+]
 RedisClient = RedisBytesClient | RedisStrClient
 
 
@@ -62,6 +68,7 @@ class RedisClientFactory:
             "auth_cache": self._settings.resolve_auth_cache_redis_url,
             "security_tokens": self._settings.resolve_security_token_redis_url,
             "billing_events": self._settings.resolve_billing_events_redis_url,
+            "usage_cache": self._settings.resolve_usage_guardrail_redis_url,
         }
         resolver = resolver_map[purpose]
         url = resolver()

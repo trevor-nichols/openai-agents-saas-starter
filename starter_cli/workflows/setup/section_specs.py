@@ -32,6 +32,11 @@ SECTION_SPECS: list[SectionSpec] = [
         summary="Wire databases, AI providers, Redis pools, Stripe, and email transports.",
     ),
     SectionSpec(
+        key="usage",
+        label="Usage & Entitlements",
+        summary="Enable usage guardrails and capture per-plan limits for billing.",
+    ),
+    SectionSpec(
         key="observability",
         label="Tenant & Observability",
         summary="Set tenant defaults, logging sinks, and GeoIP provider posture.",

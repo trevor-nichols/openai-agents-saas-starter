@@ -10,6 +10,7 @@ from app.domain.billing import (
     BillingRepository,
     SubscriptionInvoiceRecord,
     TenantSubscription,
+    UsageTotal,
 )
 from app.services.billing.payment_gateway import (
     PaymentGateway,
@@ -111,6 +112,9 @@ class BillingService:
     async def list_plans(self) -> list[BillingPlan]:
         return await self._require_repository().list_plans()
 
+    async def get_plan(self, plan_code: str) -> BillingPlan:
+        return await self._ensure_plan_exists(plan_code)
+
     async def get_subscription(self, tenant_id: str) -> TenantSubscription | None:
         try:
             return await self._require_repository().get_subscription(tenant_id)
@@ -118,6 +122,25 @@ class BillingService:
             # Maintain backward compatibility with non-UUID tenant identifiers by
             # treating them as missing records rather than surfacing a 500.
             return None
+
+    async def get_usage_totals(
+        self,
+        tenant_id: str,
+        *,
+        feature_keys: list[str] | None = None,
+        period_start: datetime | None = None,
+        period_end: datetime | None = None,
+    ) -> list[UsageTotal]:
+        repository = self._require_repository()
+        try:
+            return await repository.get_usage_totals(
+                tenant_id,
+                feature_keys=feature_keys,
+                period_start=period_start,
+                period_end=period_end,
+            )
+        except ValueError as exc:
+            raise InvalidTenantIdentifierError("Tenant identifier is not a valid UUID.") from exc
 
     async def start_subscription(
         self,

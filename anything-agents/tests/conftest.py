@@ -26,6 +26,7 @@ os.environ["REDIS_URL"] = "redis://localhost:6379/0"
 os.environ.setdefault("RATE_LIMIT_REDIS_URL", os.environ["REDIS_URL"])
 os.environ.setdefault("AUTH_CACHE_REDIS_URL", os.environ["REDIS_URL"])
 os.environ.setdefault("SECURITY_TOKEN_REDIS_URL", os.environ["REDIS_URL"])
+os.environ.setdefault("USAGE_GUARDRAIL_REDIS_URL", os.environ["REDIS_URL"])
 os.environ.setdefault("AUTO_RUN_MIGRATIONS", "false")
 os.environ.setdefault("ENABLE_BILLING", "false")
 os.environ.setdefault("ALLOW_PUBLIC_SIGNUP", "true")

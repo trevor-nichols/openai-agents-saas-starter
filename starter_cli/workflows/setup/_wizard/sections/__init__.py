@@ -7,6 +7,7 @@ from . import (
     secrets,
     security,
     signup,
+    usage,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "secrets",
     "security",
     "signup",
+    "usage",
 ]

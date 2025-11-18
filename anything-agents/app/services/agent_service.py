@@ -12,6 +12,7 @@ from typing import Any, ClassVar
 from agents import Agent, function_tool, handoff, trace
 from agents.extensions.handoff_prompt import prompt_with_handoff_instructions
 from agents.extensions.memory.sqlalchemy_session import SQLAlchemySession
+from agents.usage import Usage
 from openai.types.responses import ResponseTextDeltaEvent
 
 from app.api.v1.agents.schemas import AgentStatus, AgentSummary
@@ -27,6 +28,7 @@ from app.domain.conversations import (
 from app.infrastructure.openai import runner as agent_runner
 from app.infrastructure.openai.sessions import build_conversation_session
 from app.services.conversation_service import ConversationService, get_conversation_service
+from app.services.usage_recorder import UsageEntry, UsageRecorder
 from app.utils.tools import ToolRegistry, initialize_tools
 
 
@@ -189,6 +191,7 @@ class AgentService:
         *,
         conversation_repo: ConversationRepository | None = None,
         conversation_service: ConversationService | None = None,
+        usage_recorder: UsageRecorder | None = None,
     ) -> None:
         self._conversation_service = conversation_service or get_conversation_service()
         if conversation_repo is not None:
@@ -196,6 +199,7 @@ class AgentService:
 
         self._tool_registry = initialize_tools()
         self._agent_registry = AgentRegistry(self._tool_registry)
+        self._usage_recorder = usage_recorder
 
     async def chat(
         self, request: AgentChatRequest, *, actor: ConversationActorContext
@@ -251,6 +255,12 @@ class AgentService:
             ),
         )
         await self._sync_session_state(actor.tenant_id, conversation_id, session_id)
+        await self._record_usage_metrics(
+            tenant_id=actor.tenant_id,
+            conversation_id=conversation_id,
+            response_id=result.last_response_id,
+            usage=result.context_wrapper.usage if result.context_wrapper else None,
+        )
 
         return AgentChatResponse(
             response=str(result.final_output),
@@ -344,6 +354,12 @@ class AgentService:
             ),
         )
         await self._sync_session_state(actor.tenant_id, conversation_id, session_id)
+        await self._record_usage_metrics(
+            tenant_id=actor.tenant_id,
+            conversation_id=conversation_id,
+            response_id=stream.last_response_id,
+            usage=stream.context_wrapper.usage if stream.context_wrapper else None,
+        )
 
     async def get_conversation_history(
         self, conversation_id: str, *, actor: ConversationActorContext
@@ -465,6 +481,52 @@ class AgentService:
             ),
         )
 
+    async def _record_usage_metrics(
+        self,
+        *,
+        tenant_id: str,
+        conversation_id: str,
+        response_id: str | None,
+        usage: Usage | None,
+    ) -> None:
+        if not self._usage_recorder:
+            return
+        timestamp = datetime.now(UTC)
+        base_key = response_id or f"{conversation_id}:{uuid.uuid4()}"
+        entries: list[UsageEntry] = [
+            UsageEntry(
+                feature_key="messages",
+                quantity=1,
+                idempotency_key=f"{base_key}:messages",
+                period_start=timestamp,
+                period_end=timestamp,
+            )
+        ]
+
+        if usage:
+            if usage.input_tokens > 0:
+                entries.append(
+                    UsageEntry(
+                        feature_key="input_tokens",
+                        quantity=int(usage.input_tokens),
+                        idempotency_key=f"{base_key}:input_tokens",
+                        period_start=timestamp,
+                        period_end=timestamp,
+                    )
+                )
+            if usage.output_tokens > 0:
+                entries.append(
+                    UsageEntry(
+                        feature_key="output_tokens",
+                        quantity=int(usage.output_tokens),
+                        idempotency_key=f"{base_key}:output_tokens",
+                        period_start=timestamp,
+                        period_end=timestamp,
+                    )
+                )
+
+        await self._usage_recorder.record_batch(tenant_id, entries)
+
     @staticmethod
     def _to_chat_message(message: ConversationMessage) -> ChatMessage:
         return ChatMessage(
@@ -477,10 +539,12 @@ def build_agent_service(
     *,
     conversation_service: ConversationService | None = None,
     conversation_repository: ConversationRepository | None = None,
+    usage_recorder: UsageRecorder | None = None,
 ) -> AgentService:
     return AgentService(
         conversation_repo=conversation_repository,
         conversation_service=conversation_service,
+        usage_recorder=usage_recorder,
     )
 
 
@@ -492,6 +556,7 @@ def get_agent_service() -> AgentService:
         container.agent_service = build_agent_service(
             conversation_service=container.conversation_service,
             conversation_repository=None,
+            usage_recorder=container.usage_recorder,
         )
     return container.agent_service
 

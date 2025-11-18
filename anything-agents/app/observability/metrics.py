@@ -174,6 +174,20 @@ RATE_LIMIT_HITS_TOTAL = Counter(
     registry=REGISTRY,
 )
 
+USAGE_GUARDRAIL_DECISIONS_TOTAL = Counter(
+    "usage_guardrail_decisions_total",
+    "Count of usage guardrail evaluations segmented by decision and plan.",
+    ("decision", "plan_code"),
+    registry=REGISTRY,
+)
+
+USAGE_LIMIT_HITS_TOTAL = Counter(
+    "usage_limit_hits_total",
+    "Count of usage limit hits segmented by plan, limit type, and feature.",
+    ("plan_code", "limit_type", "feature_key"),
+    registry=REGISTRY,
+)
+
 SIGNUP_ATTEMPTS_TOTAL = Counter(
     "signup_attempts_total",
     "Count of signup-related attempts segmented by result and policy.",
@@ -266,6 +280,25 @@ def observe_service_account_issuance(
 
 def record_rate_limit_hit(*, quota: str, scope: str) -> None:
     RATE_LIMIT_HITS_TOTAL.labels(quota=quota, scope=(scope or "unknown")).inc()
+
+
+def record_usage_guardrail_decision(*, decision: str, plan_code: str | None) -> None:
+    plan_label = _sanitize_plan_code(plan_code)
+    USAGE_GUARDRAIL_DECISIONS_TOTAL.labels(
+        decision=decision,
+        plan_code=plan_label,
+    ).inc()
+
+
+def record_usage_limit_hit(
+    *, plan_code: str | None, limit_type: str | None, feature_key: str | None
+) -> None:
+    plan_label = _sanitize_plan_code(plan_code)
+    USAGE_LIMIT_HITS_TOTAL.labels(
+        plan_code=plan_label,
+        limit_type=(limit_type or "unknown"),
+        feature_key=(feature_key or "unknown"),
+    ).inc()
 
 
 def record_signup_attempt(*, result: str, policy: str | None) -> None:

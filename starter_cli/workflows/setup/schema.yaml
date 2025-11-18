@@ -193,3 +193,28 @@ prompts:
     when:
       - key: BILLING_RETRY_DEPLOYMENT_MODE
         equals: inline
+  ENABLE_USAGE_GUARDRAILS:
+    section: usage
+    when:
+      - key: ENABLE_BILLING
+        truthy: true
+  USAGE_GUARDRAIL_CACHE_TTL_SECONDS:
+    section: usage
+    when:
+      - key: ENABLE_USAGE_GUARDRAILS
+        truthy: true
+  USAGE_GUARDRAIL_SOFT_LIMIT_MODE:
+    section: usage
+    when:
+      - key: ENABLE_USAGE_GUARDRAILS
+        truthy: true
+  USAGE_GUARDRAIL_CACHE_BACKEND:
+    section: usage
+    when:
+      - key: ENABLE_USAGE_GUARDRAILS
+        truthy: true
+  USAGE_GUARDRAIL_REDIS_URL:
+    section: usage
+    when:
+      - key: USAGE_GUARDRAIL_CACHE_BACKEND
+        equals: redis

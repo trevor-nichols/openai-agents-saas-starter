@@ -22,6 +22,7 @@ _COMMAND_MODULES = (
     "starter_cli.commands.status",
     "starter_cli.commands.stripe",
     "starter_cli.commands.setup",
+    "starter_cli.commands.usage",
 )
 
 
