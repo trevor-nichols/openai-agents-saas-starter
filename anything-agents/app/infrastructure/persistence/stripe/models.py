@@ -13,7 +13,14 @@ from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import JSON, TypeDecorator
 
+# Ensure dependent ORM models register before SQLAlchemy configures relationship
+# targets when Stripe models load in isolation (e.g., billing stream unit tests).
+from app.infrastructure.persistence.billing import models as _billing_models  # noqa: F401
+from app.infrastructure.persistence.conversations import (  # noqa: F401
+    models as _conversation_models,
+)
 from app.infrastructure.persistence.models.base import UTC_NOW, Base, uuid_pk
+from app.infrastructure.persistence.tenants import models as _tenant_models  # noqa: F401
 
 
 class JSONBCompat(TypeDecorator[Any]):

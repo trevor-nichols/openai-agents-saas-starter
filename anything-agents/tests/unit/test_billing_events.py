@@ -10,13 +10,14 @@ from typing import Any, cast
 import pytest
 from fakeredis.aioredis import FakeRedis
 
+from app.infrastructure.billing.events.redis_backend import RedisBillingEventBackend
 from app.infrastructure.persistence.stripe.models import StripeEvent, StripeEventStatus
 from app.infrastructure.persistence.stripe.repository import StripeEventRepository
 from app.observability.metrics import (
     STRIPE_BILLING_STREAM_BACKLOG_SECONDS,
     STRIPE_BILLING_STREAM_EVENTS_TOTAL,
 )
-from app.services.billing.billing_events import BillingEventsService, RedisBillingEventBackend
+from app.services.billing.billing_events import BillingEventsService
 from app.services.billing.stripe.event_models import (
     DispatchBroadcastContext,
     InvoiceSnapshotView,
@@ -116,17 +117,30 @@ async def test_publish_includes_dispatch_context():
 
 
 @pytest.mark.asyncio
+async def test_configure_preserves_repository_when_backend_added_later():
+    backend = RedisBillingEventBackend(FakeRedis())
+    service = BillingEventsService()
+    repository = StubStripeEventRepository(events=[])
+
+    service.configure(repository=cast(StripeEventRepository, repository))
+    service.configure(backend=backend)
+
+    page = await service.list_history(tenant_id="tenant-123")
+    assert page.items == []
+
+
+@pytest.mark.asyncio
 async def test_publish_retries_on_backend_failure(monkeypatch):
     backend = FlakyBackend(fail_count=1)
     service = BillingEventsService()
     service.configure(backend=backend, repository=None)
-    service._publish_retry_attempts = 2
-    service._publish_retry_delay_seconds = 0
+    service._publisher._publish_retry_attempts = 2
+    service._publisher._publish_retry_delay_seconds = 0
 
     async def no_sleep(*_):
         return None
 
-    monkeypatch.setattr("app.services.billing.billing_events.asyncio.sleep", no_sleep)
+    monkeypatch.setattr("app.services.billing.billing_events.publisher.asyncio.sleep", no_sleep)
 
     await service.publish_from_event(
         _make_event(), {"data": {"object": {"metadata": {"tenant_id": "tenant-1"}}}}
@@ -138,13 +152,13 @@ async def test_publish_raises_after_max_attempts(monkeypatch):
     backend = FlakyBackend(fail_count=5)
     service = BillingEventsService()
     service.configure(backend=backend, repository=None)
-    service._publish_retry_attempts = 2
-    service._publish_retry_delay_seconds = 0
+    service._publisher._publish_retry_attempts = 2
+    service._publisher._publish_retry_delay_seconds = 0
 
     async def no_sleep(*_):
         return None
 
-    monkeypatch.setattr("app.services.billing.billing_events.asyncio.sleep", no_sleep)
+    monkeypatch.setattr("app.services.billing.billing_events.publisher.asyncio.sleep", no_sleep)
 
     with pytest.raises(RuntimeError):
         await service.publish_from_event(

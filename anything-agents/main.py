@@ -22,6 +22,7 @@ from app.core.provider_validation import (
     ensure_provider_parity,
     validate_providers,
 )
+from app.infrastructure.billing.events.redis_backend import RedisBillingEventBackend
 from app.infrastructure.db import (
     dispose_engine,
     get_async_sessionmaker,
@@ -63,7 +64,6 @@ from app.services.auth.builders import (
     build_session_service,
 )
 from app.services.auth_service import AuthService
-from app.services.billing.billing_events import RedisBillingEventBackend
 from app.services.billing.payment_gateway import stripe_gateway
 from app.services.geoip_service import build_geoip_service
 from app.services.integrations.slack_notifier import build_slack_notifier

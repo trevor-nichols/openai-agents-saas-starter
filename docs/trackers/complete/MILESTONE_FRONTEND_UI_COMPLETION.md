@@ -18,7 +18,7 @@ Re-align the frontend tracker with the current state of the Next.js 15 surface, 
 | Account & security | ✅ Complete | Profile/security/sessions/service-accounts fully wired with TanStack Query. |
 | Tenant settings | ✅ Complete | Billing contacts, webhook, metadata, and flag controls shipped. |
 | Marketing surfaces | ✅ Complete | Landing, pricing, features, docs, and `/status` now share the finalized copy matrices, analytics wiring, and status-alert UX. |
-| QA coverage | ⚠️ Limited | Vitest covers chat + billing routes; E2E only tests auth happy path. |
+| QA coverage | ✅ Complete | Playwright suite now exercises billing plan changes, usage/SSE, service accounts, tenant settings, transcript export, and archive management. |
 
 ## Completed Work
 - **Architecture**: Route groups, middleware, and layout structure mirror the IA in the archived tracker.
@@ -27,7 +27,7 @@ Re-align the frontend tracker with the current state of the Next.js 15 surface, 
 - **Feature directories**: Chat, account, billing, and dashboard modules now follow the orchestrator/components/hooks pattern (FE-001 closed).
 
 ## Outstanding Gaps & Risks
-1. **QA depth** — Only one Playwright smoke test exists; the expanded suite covering billing plan mutations, service-account issuance, and chat transcript export is still pending and remains the final blocker before we can call this milestone complete.
+All tracked gaps for this milestone are closed. Keep monitoring UX polish in dashboard/billing, but no blockers remain for milestone completion.
 
 ## Next Actions
 | # | Task | Owner | Status | Target |
@@ -36,7 +36,7 @@ Re-align the frontend tracker with the current state of the Next.js 15 surface, 
 | 2 | Instrument every marketing CTA/link with `useMarketingAnalytics` (hero buttons, plan cards, nav pills, resource links). | Platform Foundations | Completed | Nov 17 |
 | 3 | Polish the status alert funnel (shared `StatusAlertsCard`, `/status` verification banners, helper text) and document the API contract. | Platform Foundations | Completed | Nov 17 |
 | 4 | Document marketing voice + analytics taxonomy in `docs/marketing/README.md` so future changes stay aligned. | Platform Foundations | Completed | Nov 17 |
-| 5 | Expand Playwright suite to cover billing plan changes, service-account issue/revoke, and chat transcript export once UI polish ships. | Platform Foundations | Scheduled | Dec 4 |
+| 5 | Expand Playwright suite to cover billing plan changes, service-account issue/revoke, and chat transcript export once UI polish ships. | Platform Foundations | Completed | Nov 19 |
 | 6 | Maintain the weekly tracker review ritual (15 mins in Frontend Sync) to keep status current. | Platform Foundations | Scheduled | Ongoing |
 
 ## Risk Log
@@ -46,6 +46,7 @@ Re-align the frontend tracker with the current state of the Next.js 15 surface, 
 
 ## Changelog
 - **2025-11-17**: Marketing copy matrices, analytics instrumentation, status-alert UX/docs, and the marketing voice guide completed; milestone now blocks solely on the Playwright expansion (Task #5).
+- **2025-11-19**: Playwright milestone (Flows 3–8) landed, closing Task #5 and bringing QA coverage to parity with the UI foundation scope.
 - **2025-11-13**: Agents workspace now bundles catalog, chat, tools panel, and conversation archive; removed standalone `/tools` + `/conversations` routes.
 - **2025-11-13**: Tracker reset to reflect current implementation; previous tracker archived under `docs/trackers/complete/MILESTONE_FRONTEND_UI_FOUNDATION_2025-11-13.md`.
 - **2025-11-13**: Landing, pricing, features, and docs routes now use feature modules with TanStack data + CTA instrumentation (status alert lead capture live on `/`).

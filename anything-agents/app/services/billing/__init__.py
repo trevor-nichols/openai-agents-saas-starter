@@ -11,7 +11,6 @@ from .billing_events import (
     BillingEventStream,
     BillingEventSubscription,
     BillingEventUsage,
-    RedisBillingEventBackend,
     billing_events_service,
     get_billing_events_service,
 )
@@ -54,7 +53,6 @@ __all__ = [
     "ProcessorInvoiceLineSnapshot",
     "ProcessorInvoiceSnapshot",
     "ProcessorSubscriptionSnapshot",
-    "RedisBillingEventBackend",
     "StripeGateway",
     "SubscriptionNotFoundError",
     "SubscriptionProvisionResult",
