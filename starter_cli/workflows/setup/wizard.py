@@ -194,7 +194,9 @@ class SetupWizard:
 
     def render_report(self) -> None:
         sections = audit.build_sections(self.context)
-        self._render(sections)
+        rendered = self._render(sections)
+        if self.output_format == "checklist" and rendered:
+            self._write_rendered_output(rendered)
 
     # ------------------------------------------------------------------
     # Section orchestration
@@ -271,8 +273,18 @@ class SetupWizard:
     def markdown_summary_path(self, value: Path | None) -> None:  # pragma: no cover
         self.context.markdown_summary_path = value
 
-    def _render(self, sections: Sequence[SectionResult]) -> None:
-        audit.render_sections(self.context, output_format=self.output_format, sections=sections)
+    def _render(self, sections: Sequence[SectionResult]) -> str | None:
+        return audit.render_sections(
+            self.context, output_format=self.output_format, sections=sections
+        )
+
+    def _write_rendered_output(self, text: str) -> None:
+        path = self.context.markdown_summary_path
+        if not path:
+            return
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text.rstrip() + "\n", encoding="utf-8")
+        console.success(f"Checklist written to {path}", topic="wizard")
 
     def _run_section(
         self,

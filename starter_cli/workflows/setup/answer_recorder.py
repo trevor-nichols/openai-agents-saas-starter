@@ -5,8 +5,15 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Protocol, runtime_checkable
 
 from .inputs import InputProvider, ParsedAnswers, _normalize_key
+
+
+@runtime_checkable
+class _AnswerAware(Protocol):
+    @property
+    def answers(self) -> ParsedAnswers: ...
 
 
 class AnswerRecorder:
@@ -53,8 +60,8 @@ class RecordingInputProvider(InputProvider):
 
     @property
     def answers(self) -> ParsedAnswers:
-        if hasattr(self.provider, "answers"):
-            return getattr(self.provider, "answers")
+        if isinstance(self.provider, _AnswerAware):
+            return self.provider.answers
         raise AttributeError("answers not available")
 
     def prompt_bool(self, *, key: str, prompt: str, default: bool) -> bool:

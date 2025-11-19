@@ -71,12 +71,15 @@ Flags:
 - `--non-interactive` + `--answers-file/--var` run headless.
 - `--export-answers PATH` writes every prompt response from the current run to JSON so you can replay/edit it later.
 - `--report-only` skips prompts and prints the milestone audit without modifying env files.
-- `--output {summary,json}` selects console format.
+- `--output {summary,json,checklist}` selects the console format. `checklist` emits a Markdown
+  checklist that you can pipe to a file or pair with `--markdown-summary-path`.
 - `--legacy-flow` forces the legacy linear prompts (disables the new shell dashboard).
 - `--summary-path PATH` writes the audit JSON (defaults to `var/reports/setup-summary.json`).
 - `--auto-infra/--no-auto-infra`, `--auto-secrets/--no-auto-secrets`, and `--auto-stripe/--no-auto-stripe` opt in or out of the legacy automation hooks (Docker compose, Vault dev signer, embedded Stripe provisioning).
 - `--auto-migrations/--no-auto-migrations`, `--auto-redis/--no-auto-redis`, and `--auto-geoip/--no-auto-geoip` control the new automation phases for database migrations, Redis warm-up, and GeoIP dataset downloads.
-- `--markdown-summary-path PATH` writes a Markdown recap (defaults to `var/reports/cli-one-stop-summary.md`). Use it when you want to drop the summary into issues or onboarding docs.
+- `--markdown-summary-path PATH` writes a Markdown recap (defaults to `var/reports/cli-one-stop-summary.md`).
+  When combined with `--report-only --output checklist`, the CLI writes the checklist directly to the
+  provided path so Platform Foundations can drop it into trackers.
 - `--no-schema` bypasses the dependency graph (legacy linear prompts). `--no-tui` disables both the interactive shell and the legacy Rich dashboard, falling back to plain console logs (CI, piping, etc.).
 
 Artifacts generated per run:

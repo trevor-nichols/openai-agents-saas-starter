@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 import json
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any, get_args, get_origin
 
 from pydantic_core import PydanticUndefined
@@ -27,6 +29,20 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         help="Output as aligned table (default) or JSON list.",
     )
     dump_parser.set_defaults(handler=handle_dump_schema)
+
+    inventory_parser = config_subparsers.add_parser(
+        "write-inventory",
+        help="Render the CLI environment inventory Markdown doc.",
+    )
+    inventory_parser.add_argument(
+        "--path",
+        default="docs/trackers/CLI_ENV_INVENTORY.md",
+        help=(
+            "Destination path for the Markdown inventory "
+            "(defaults to docs/trackers/CLI_ENV_INVENTORY.md)."
+        ),
+    )
+    inventory_parser.set_defaults(handler=handle_write_inventory)
 
 
 @dataclass(slots=True)
@@ -64,6 +80,17 @@ def handle_dump_schema(args: argparse.Namespace, ctx: CLIContext) -> int:
         return 0
 
     _render_table(field_specs)
+    return 0
+
+
+def handle_write_inventory(args: argparse.Namespace, ctx: CLIContext) -> int:
+    settings = ctx.require_settings()
+    field_specs = _collect_field_specs(settings.__class__)
+    destination = Path(args.path).expanduser().resolve()
+    body = _render_markdown(field_specs)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(body, encoding="utf-8")
+    console.success(f"Environment inventory written to {destination}", topic="config")
     return 0
 
 
@@ -142,6 +169,41 @@ def _render_table(field_specs: list[FieldSpec]) -> None:
     console.info(format_row(tuple("-" * width for width in widths)), topic="config")
     for row in rows:
         console.info(format_row(row), topic="config")
+
+
+def _render_markdown(field_specs: list[FieldSpec]) -> str:
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S %Z")
+    lines = [
+        "# Starter CLI Environment Inventory",
+        "",
+        "This file is generated via `python -m starter_cli.app config write-inventory`.",
+        f"Last updated: {timestamp}",
+        "",
+        "Legend: `✅` = wizard prompts for it, blank = requires manual population.",
+        "",
+        "| Env Var | Type | Default | Required | Wizard? | Description |",
+        "| --- | --- | --- | --- | --- | --- |",
+    ]
+    for spec in field_specs:
+        default_value = _markdown_escape(_format_default(spec.default, spec.required))
+        description = _markdown_escape(spec.description)
+        lines.append(
+            "| {env} | {type} | {default} | {required} | {wizard} | {description} |".format(
+                env=spec.env_var,
+                type=_markdown_escape(spec.type_hint),
+                default=default_value or "—",
+                required="✅" if spec.required else "",
+                wizard="✅" if spec.wizard_prompted else "",
+                description=description or "—",
+            )
+        )
+    return "\n".join(lines).strip() + "\n"
+
+
+def _markdown_escape(value: str | None) -> str:
+    if not value:
+        return ""
+    return value.replace("|", "\\|")
 
 
 __all__ = ["register"]

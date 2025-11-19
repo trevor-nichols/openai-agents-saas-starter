@@ -1,0 +1,104 @@
+# Starter CLI Milestone Tracker
+
+This tracker captures the Starter CLI setup flow plus the recommended environment “profiles” we should support. Treat it as the source of truth when aligning automation expectations, documentation, and onboarding guides.
+
+## Goals
+- Guarantee that `python -m starter_cli.app setup wizard` guides an operator from zero env vars to a runnable stack with auditable artifacts.
+- Keep the local profile blazing fast by prefilling sensible defaults, deferring optional providers, and embracing Docker Compose for Postgres/Redis.
+- Maintain parity between the wizard questionnaire and the docs so every prompt has clear rationale and fallback guidance.
+
+## Profiles To Support
+1. **Local-Lite (default `--profile local`)**
+   - Compose-managed Postgres + Redis (leave `DATABASE_URL` blank to rely on docker-compose defaults).
+   - Secrets provider `vault_dev` with verification disabled for speed.
+   - Billing, Resend, Slack, GeoIP all **off** to shrink dependencies.
+   - Inline billing worker with replay enabled, insecure cookies allowed.
+   - Automation: `--auto-infra`, `--auto-secrets`, `--auto-migrations`, `--auto-redis`, `--no-auto-geoip`.
+2. **Local-Full (still `--profile local`, but “parity mode”)**
+   - Same infra automation as Local-Lite, but flip on billing + Stripe plan map, Resend, Slack test message, GeoIP (MaxMind download).
+   - Use this before handing off to QA so we verify integrations without leaving localhost.
+3. **Staging**
+   - Requires managed Postgres URL + TLS Redis endpoints.
+   - Secrets provider: `vault_hcp` or cloud secret manager with Vault verification **enabled** (non-negotiable).
+   - Billing, usage guardrails, Slack, observability sinks must all be exercised; automation limited to migrations/redis/geoip (no Docker/Vault helpers).
+4. **Production**
+   - Headless (`--strict --profile production`) runs only; answers supplied via repo-stored JSON/vars in CI.
+   - Enforces Vault verification, dedicated billing worker, secure cookies only, and brings its own automation hooks (migrations/geoip).
+   - Stripe provisioning and Resend onboarding run outside the wizard; the setup flow just validates keys.
+
+## Wizard Sections & Expectations
+| Section | Purpose | Local-Lite Defaults | Higher Environment Requirements |
+| --- | --- | --- | --- |
+| Core & Metadata | ENV label, URLs, auth defaults | Keep defaults (`ENVIRONMENT=development`, `DEBUG=true`); auto migrations true | Explicit hostnames, `DEBUG=false`, stricter CORS |
+| Secrets & Vault | Generate peppers, choose provider, optional signing key rotation | Autogenerate peppers, `vault_dev`, verification off | Real secret manager, Vault verification on, rotate keys each milestone |
+| Security & Rate Limits | Lockouts, JWKS cache, rate limit redis prefix | Accept defaults to stay unblocked | Tune email/reset throttles per policy, JWKS salt stored in secret manager |
+| Providers & Infra | DB URL, AI providers, Redis pools, Stripe, Resend | OpenAI key only; leave `DATABASE_URL` empty; Redis=localhost; skip billing/email | Managed DB URL, TLS Redis per workload, Stripe secrets + plan map, Resend templates |
+| Usage & Entitlements | Plan guardrails + entitlements artifact | Skipped (billing off) | Required when billing on; produce `var/reports/usage-entitlements.json` |
+| Observability | Tenant slug, logging sink, GeoIP | `LOGGING_SINK=stdout`, `GEOIP_PROVIDER=none` | Datadog/OTLP endpoints, GeoIP provider tokens, optional collector exporters |
+| Integrations | Slack incident notifications | Disabled | Slack bot token, channel map, send test |
+| Signup & Worker | Signup policy, rate limits, billing worker topology | `invite_only`, inline worker, insecure cookies allowed | `approval` or `invite_only`, dedicated worker, auto-generated worker overlay |
+| Frontend | Next.js envs (API URL, Playwright, cookie posture) | `NEXT_PUBLIC_API_URL` from API base, allow insecure cookies | HTTPS URLs only, secure cookies, Playwright hitting deployed host |
+
+## Suggested Workflow
+1. **Verify dependencies once**  
+   `python -m starter_cli.app infra deps`
+2. **Bootstrap Local-Lite**  
+   ```bash
+   python -m starter_cli.app setup wizard \
+     --profile local \
+     --auto-infra --auto-secrets --auto-migrations --auto-redis \
+     --no-auto-geoip
+   ```
+3. **Seed a test tenant/user** (unblocks frontend login)  
+   ```bash
+   python scripts/seed_users.py \
+     --email dev@example.com \
+     --password "Passw0rd!" \
+     --display-name "Dev Admin"
+   ```
+4. **Issue a service-account token** for API smoke tests  
+   ```bash
+   python -m starter_cli.app auth tokens issue-service-account \
+     --account demo-bot \
+     --scopes chat:write,conversations:read
+   ```
+5. **Promote configs**  
+   - Copy `.env.local` + `agent-next-15-frontend/.env.local` outputs into the staging secrets store.
+   - Re-run the wizard with `--profile staging --no-auto-infra --no-auto-secrets` to validate hosted dependencies before shipping.
+6. **Document findings**  
+   - Check `var/reports/setup-summary.json` and `cli-one-stop-summary.md` into the operator runbook for each milestone.
+   - Regenerate `docs/trackers/templates/STARTER_CLI_CHECKLIST.md` via `python -m starter_cli.app setup wizard --profile <profile> --report-only --output checklist --markdown-summary-path docs/trackers/templates/STARTER_CLI_CHECKLIST.md` so Platform Foundations has the latest checkbox set.
+   - Update this tracker whenever prompts change or new providers appear.
+
+## Makefile Automation
+Use the new Make targets to keep each milestone repeatable:
+
+| Target | Description | Notes |
+| --- | --- | --- |
+| `make setup-local-lite` | Runs dependency check, launches the wizard with Local-Lite flags, then seeds a dev user. | Requires user input for secrets; auto-starts Compose for seeding. Afterwards run `make api` + `make issue-demo-token`. |
+| `make setup-local-full` | Same as Local-Lite but keeps every automation switch on (`--auto-geoip`, `--auto-stripe`). | Useful for parity testing once Resend/Stripe creds exist. |
+| `make setup-staging [SETUP_STAGING_ANSWERS=path]` | Runs the wizard with staging-safe automation; optional answers file enables headless mode. | Compose/Vault helpers disabled; ensure hosted Postgres/Redis URLs exist beforehand. |
+| `make setup-production SETUP_PRODUCTION_ANSWERS=path` | Strict, headless production run. | Provide an answers JSON per environment (committed to a secure store). |
+| `make seed-dev-user` | Starts Compose (if needed) and reuses `scripts/seed_users.py`. | Customize via `SETUP_USER_EMAIL`, `SETUP_USER_PASSWORD`, `SETUP_USER_TENANT`, etc. |
+| `make issue-demo-token` | Calls the CLI token issuer once FastAPI is running. | `SETUP_SERVICE_ACCOUNT`, `SETUP_SERVICE_SCOPES`, `SETUP_SERVICE_TENANT` override defaults. |
+
+Environment variable knobs for automation:
+
+- `SETUP_USER_EMAIL`, `SETUP_USER_NAME`, `SETUP_USER_PASSWORD`, `SETUP_USER_TENANT`, `SETUP_USER_TENANT_NAME`, `SETUP_USER_ROLE`
+- `SETUP_SERVICE_ACCOUNT`, `SETUP_SERVICE_SCOPES`, `SETUP_SERVICE_TENANT`
+- `SETUP_STAGING_ANSWERS`, `SETUP_PRODUCTION_ANSWERS`
+
+Document the resulting `var/reports/*.json` files (and any answer files) whenever these targets are exercised so other environments stay reproducible.
+
+Reference templates live under `docs/environments/`. Copy `staging.answers.template.json` or `production.answers.template.json` into a secure location, populate the real secrets, and point the `SETUP_*_ANSWERS` environment variable at that file before running the Make target.
+
+Regenerate the environment inventory after prompt/schema updates with:
+
+```bash
+python -m starter_cli.app config write-inventory --path docs/trackers/CLI_ENV_INVENTORY.md
+```
+
+## Next Steps
+- [x] Convert this tracker into a checklist template referenced by Platform Foundations.
+- [x] Backfill staging/production answer files in `docs/environments/` so `--strict` runs have blessed defaults.
+- [x] Align `docs/trackers/CLI_ENV_INVENTORY.md` with the Local-Full profile to ensure parity coverage.

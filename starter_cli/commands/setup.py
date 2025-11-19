@@ -63,9 +63,12 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     )
     wizard_parser.add_argument(
         "--output",
-        choices={"summary", "json"},
+        choices={"summary", "json", "checklist"},
         default="summary",
-        help="Render a human-readable summary or machine-friendly JSON when auditing.",
+        help=(
+            "Render a human-readable summary, machine-friendly JSON, or a Markdown checklist"
+            " when auditing."
+        ),
     )
     wizard_parser.add_argument(
         "--answers-file",

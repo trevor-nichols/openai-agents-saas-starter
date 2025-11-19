@@ -6,12 +6,14 @@ node_modules/
 
 # Scratch CLI runs
 tmp-cli-test*
+docs/environments/*.answers.json
 
 # macOS
 .DS_Store
 
 # C extensions
 *.so
+*tmp
 
 # Distribution / packaging
 .Python

@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import argparse
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import cast
 
 import pytest
 from starter_cli.commands import usage as usage_cmd
 from starter_cli.core import CLIContext, CLIError
-from datetime import UTC, datetime
-
 from starter_cli.workflows.usage import (
     PlanSyncResult,
     UsageEntitlementSyncResult,

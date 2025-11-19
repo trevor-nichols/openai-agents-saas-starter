@@ -35,3 +35,22 @@ def test_config_dump_schema_table(monkeypatch) -> None:
     output = buffer.getvalue()
     assert "Env Var" in output
     assert "DATABASE_URL" in output
+
+
+def test_config_write_inventory(monkeypatch, tmp_path) -> None:
+    buffer = io.StringIO()
+    monkeypatch.setattr(cli_console, "stream", buffer)
+    destination = tmp_path / "inventory.md"
+    exit_code = cli_app.main(
+        [
+            "--skip-env",
+            "config",
+            "write-inventory",
+            "--path",
+            str(destination),
+        ]
+    )
+    assert exit_code == 0
+    body = destination.read_text(encoding="utf-8")
+    assert "Starter CLI Environment Inventory" in body
+    assert "| Env Var |" in body

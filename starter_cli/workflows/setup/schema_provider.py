@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping
+from typing import Protocol, runtime_checkable
 
 from starter_cli.adapters.io.console import console
 
@@ -13,6 +14,12 @@ from .state import WizardStateStore
 
 def _normalize(key: str) -> str:
     return key.strip().upper()
+
+
+@runtime_checkable
+class _AnswerAware(Protocol):
+    @property
+    def answers(self): ...
 
 
 class SchemaAwareInputProvider:
@@ -147,8 +154,8 @@ class SchemaAwareInputProvider:
 
     @property
     def answers(self):  # pragma: no cover - passthrough access
-        if hasattr(self._provider, "answers"):
-            return getattr(self._provider, "answers")
+        if isinstance(self._provider, _AnswerAware):
+            return self._provider.answers
         raise AttributeError("answers not available")
 
 

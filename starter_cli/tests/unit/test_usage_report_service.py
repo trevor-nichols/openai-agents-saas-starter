@@ -7,7 +7,6 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
-
 from starter_cli.workflows.usage import UsageReportRequest
 from starter_cli.workflows.usage.usage_report_models import UsageReport
 from starter_cli.workflows.usage.usage_report_service import (
@@ -163,6 +162,8 @@ def test_write_usage_report_files(tmp_path):
         json_path=tmp_path / "report.json",
         csv_path=tmp_path / "report.csv",
     )
+    assert artifacts.json_path is not None
+    assert artifacts.csv_path is not None
     assert artifacts.json_path.exists()
     assert artifacts.csv_path.exists()
     data = json.loads(artifacts.json_path.read_text(encoding="utf-8"))

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Sequence
+from datetime import UTC, datetime
 
 from starter_cli.adapters.io.console import console
 from starter_cli.core.inventory import WIZARD_PROMPTED_ENV_VARS
@@ -27,7 +28,7 @@ def render_sections(
     *,
     output_format: str,
     sections: Sequence[SectionResult],
-) -> None:
+) -> str | None:
     if output_format == "json":
         payload = [
             {
@@ -46,8 +47,13 @@ def render_sections(
             }
             for section in sections
         ]
-        print(json.dumps(payload, indent=2))
-        return
+        text = json.dumps(payload, indent=2)
+        print(text)
+        return text
+    if output_format == "checklist":
+        text = _build_checklist_markdown(context, sections)
+        console.stream.write(text + "\n")
+        return text
 
     console.info(f"Profile: {context.profile}")
     if context.cli_ctx.loaded_env_files:
@@ -65,6 +71,7 @@ def render_sections(
         for check in section.checks:
             detail = f" ({check.detail})" if check.detail else ""
             console.info(f"- {check.name}: {check.status}{detail}")
+    return None
 
 
 def render_schema_summary(context: WizardContext) -> None:
@@ -385,6 +392,58 @@ def _pepper_status(key: str, value: str | None) -> CheckResult:
     if value in placeholders:
         return CheckResult(name=key, status="warning", detail="Using starter value")
     return CheckResult(name=key, status="ok")
+
+
+_STATUS_EMOJI = {
+    "ok": "✅",
+    "missing": "❌",
+    "warning": "⚠️",
+    "pending": "⏳",
+    "action_required": "❗",
+}
+
+
+def _build_checklist_markdown(
+    context: WizardContext,
+    sections: Sequence[SectionResult],
+) -> str:
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S %Z")
+    env_files = context.cli_ctx.loaded_env_files
+    env_file_line = (
+        ", ".join(f"`{path}`" for path in env_files)
+        if env_files
+        else "_(none loaded via --env-file)_"
+    )
+    lines: list[str] = []
+    lines.append("# Starter CLI Setup Checklist")
+    lines.append("")
+    lines.append(f"- Profile: `{context.profile}`")
+    lines.append(f"- Generated: {timestamp}")
+    lines.append(f"- Loaded env files: {env_file_line}")
+    lines.append("- Tracker reference: `docs/trackers/complete/MILESTONE_TRACKER.md`")
+    lines.append(
+        "- Regenerate: `python -m starter_cli.app setup wizard --profile "
+        f"{context.profile} --report-only --output checklist --markdown-summary-path <path>`"
+    )
+    lines.append("")
+    for section in sections:
+        lines.append(f"## {section.milestone}")
+        lines.append(section.focus)
+        lines.append("")
+        for check in section.checks:
+            lines.append(_format_check_entry(check))
+        lines.append("")
+    return "\n".join(lines).strip()
+
+
+def _format_check_entry(check: CheckResult) -> str:
+    checkbox = "x" if check.status == "ok" else " "
+    emoji = _STATUS_EMOJI.get(check.status, "")
+    optional = " _(optional)_" if not check.required else ""
+    detail = f" — {check.detail}" if check.detail else ""
+    status = check.status.replace("_", " ")
+    status_fragment = f"{emoji} {status}".strip()
+    return f"- [{checkbox}] `{check.name}`{optional} — {status_fragment}{detail}"
 
 
 __all__ = ["build_sections", "render_sections", "render_schema_summary", "write_summary"]

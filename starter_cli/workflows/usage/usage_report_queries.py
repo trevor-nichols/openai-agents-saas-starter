@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, Iterable, Sequence
+from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -100,7 +101,8 @@ async def fetch_subscriptions(
 
     rows: list[SubscriptionRow] = []
     for row in result:
-        mapping = row._mapping if hasattr(row, "_mapping") else row
+        raw_mapping = row._mapping if hasattr(row, "_mapping") else row
+        mapping = dict(raw_mapping)
         rows.append(
             SubscriptionRow(
                 subscription_id=str(mapping["subscription_id"]),
@@ -163,7 +165,8 @@ async def fetch_plan_features(
 
     features: dict[str, dict[str, PlanFeatureRow]] = {}
     for row in result:
-        mapping = row._mapping if hasattr(row, "_mapping") else row
+        raw_mapping = row._mapping if hasattr(row, "_mapping") else row
+        mapping = dict(raw_mapping)
         plan_code = str(mapping["plan_code"])
         feature_key = str(mapping["feature_key"])
         plan_features = features.setdefault(plan_code, {})
@@ -224,15 +227,20 @@ async def fetch_usage_rows(
 
     rows: list[UsageRow] = []
     for row in result:
-        mapping = row._mapping if hasattr(row, "_mapping") else row
+        raw_mapping = row._mapping if hasattr(row, "_mapping") else row
+        mapping = dict(raw_mapping)
+        period_start = _ensure_datetime(mapping.get("period_start"))
+        period_end = _ensure_datetime(mapping.get("period_end"))
+        if period_start is None or period_end is None:
+            raise UsageReportQueryError("Usage rows require period_start/period_end timestamps")
         rows.append(
             UsageRow(
                 subscription_id=str(mapping["subscription_id"]),
                 feature_key=str(mapping["feature_key"]),
                 unit=str(mapping.get("unit") or "units"),
                 quantity=int(mapping.get("quantity", 0)),
-                period_start=_ensure_datetime(mapping["period_start"]),
-                period_end=_ensure_datetime(mapping["period_end"]),
+                period_start=period_start,
+                period_end=period_end,
             )
         )
     return rows

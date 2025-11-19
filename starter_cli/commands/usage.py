@@ -265,7 +265,9 @@ def _parse_datetime(raw: str) -> datetime:
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
 
 
-def _resolve_output_targets(ctx: CLIContext, args: argparse.Namespace) -> tuple[Path | None, Path | None]:
+def _resolve_output_targets(
+    ctx: CLIContext, args: argparse.Namespace
+) -> tuple[Path | None, Path | None]:
     default_json = ctx.project_root / "var" / "reports" / "usage-dashboard.json"
     default_csv = ctx.project_root / "var" / "reports" / "usage-dashboard.csv"
 

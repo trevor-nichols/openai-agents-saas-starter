@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable, Iterable, Sequence
 
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
@@ -264,7 +264,7 @@ def _remaining(limit_value: int | None, quantity: int) -> int | None:
 
 
 def _percent(quantity: int, limit_value: int | None) -> float | None:
-    if limit_value in (None, 0):
+    if limit_value is None or limit_value == 0:
         return None
     return round((quantity / limit_value) * 100, 2)
 

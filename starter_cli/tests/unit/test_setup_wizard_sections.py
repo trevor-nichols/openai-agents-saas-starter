@@ -25,6 +25,7 @@ from starter_cli.workflows.setup.answer_recorder import (
     RecordingInputProvider,
 )
 from starter_cli.workflows.setup.inputs import InputProvider
+from starter_cli.workflows.setup.models import CheckResult, SectionResult
 from starter_cli.workflows.setup.schema_provider import SchemaAwareInputProvider
 from starter_cli.workflows.setup.state import WizardStateStore
 from starter_shared.secrets.models import SecretsProviderLiteral
@@ -158,6 +159,22 @@ def test_core_section_extended_prompts(cli_ctx: CLIContext) -> None:
     assert env.get("DATABASE_POOL_SIZE") == "12"
     assert env.get("DATABASE_POOL_TIMEOUT") == "45.5"
     assert env.get("LOG_LEVEL") == "DEBUG"
+
+
+def test_checklist_output_format(cli_ctx: CLIContext) -> None:
+    context = _build_context(cli_ctx)
+    section = SectionResult("M1", "Focus")
+    section.checks.append(CheckResult(name="TEST_KEY", status="missing"))
+
+    checklist = audit.render_sections(
+        context,
+        output_format="checklist",
+        sections=[section],
+    )
+
+    assert isinstance(checklist, str)
+    assert "Starter CLI Setup Checklist" in checklist
+    assert "TEST_KEY" in checklist
 
 
 def test_secrets_section_generates_missing_peppers(cli_ctx: CLIContext) -> None:
