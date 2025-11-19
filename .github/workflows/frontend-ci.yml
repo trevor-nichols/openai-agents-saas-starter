@@ -28,19 +28,19 @@ jobs:
         with:
           node-version: "20"
           cache: pnpm
-          cache-dependency-path: agent-next-15-frontend/pnpm-lock.yaml
+          cache-dependency-path: web-app/pnpm-lock.yaml
 
       - name: Use pnpm 10.15.0
         run: corepack prepare pnpm@10.15.0 --activate
 
       - name: Install dependencies
-        working-directory: agent-next-15-frontend
+        working-directory: web-app
         run: pnpm install --frozen-lockfile
 
       - name: Lint
-        working-directory: agent-next-15-frontend
+        working-directory: web-app
         run: pnpm lint
 
       - name: Type check
-        working-directory: agent-next-15-frontend
+        working-directory: web-app
         run: pnpm type-check

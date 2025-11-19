@@ -190,7 +190,7 @@ def test_secrets_section_generates_missing_peppers(cli_ctx: CLIContext) -> None:
 
 
 def test_frontend_section_writes_env_values(cli_ctx: CLIContext, tmp_path: Path) -> None:
-    frontend_dir = tmp_path / "agent-next-15-frontend"
+    frontend_dir = tmp_path / "web-app"
     frontend_dir.mkdir(parents=True, exist_ok=True)
     frontend_env_path = frontend_dir / ".env.local"
     frontend_env = EnvFile(frontend_env_path)

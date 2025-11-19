@@ -12,7 +12,7 @@ from typing import Dict, Iterable, Mapping
 
 
 DEFAULT_PREFIX = "app.services"
-DEFAULT_ROOT = Path(__file__).resolve().parents[1] / "anything-agents" / "app" / "services"
+DEFAULT_ROOT = Path(__file__).resolve().parents[1] / "api-service" / "app" / "services"
 
 
 def main() -> None:
@@ -48,7 +48,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--root",
         type=str,
-        help="Path to the services directory (defaults to anything-agents/app/services)",
+        help="Path to the services directory (defaults to api-service/app/services)",
     )
     parser.add_argument(
         "--prefix",

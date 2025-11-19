@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 # Ensure the backend package is importable when running from repository root.
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-BACKEND_ROOT = PROJECT_ROOT / "anything-agents"
+BACKEND_ROOT = PROJECT_ROOT / "api-service"
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 

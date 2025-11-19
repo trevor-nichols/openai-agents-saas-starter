@@ -15,7 +15,7 @@ def _find_repo_root() -> Path:
 
 
 REPO_ROOT = _find_repo_root()
-APP_ROOT = REPO_ROOT / "anything-agents" / "app"
+APP_ROOT = REPO_ROOT / "api-service" / "app"
 CLI_ROOT = REPO_ROOT / "starter_cli"
 SCRIPTS_ROOT = REPO_ROOT / "scripts"
 SCAN_ROOTS = [APP_ROOT, CLI_ROOT, SCRIPTS_ROOT]

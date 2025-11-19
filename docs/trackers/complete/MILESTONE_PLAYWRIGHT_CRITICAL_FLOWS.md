@@ -38,7 +38,7 @@ Guarantee that every revenue- or security-impacting workflow in the Next.js 15 s
 | I | Implement conversations archive spec (Flow 8) covering delete/restore + billing gate. | Platform Foundations | ✅ Completed | Nov 19 |
 
 ## Data & Infrastructure Dependencies
-- **Seed scripts**: Extend the existing `tests/README.md` guidance with a reusable `pnpm test:seed` that provisions tenants/plans using FastAPI admin APIs (requires `anything-agents` running with `USE_TEST_FIXTURES=true`).
+- **Seed scripts**: Extend the existing `tests/README.md` guidance with a reusable `pnpm test:seed` that provisions tenants/plans using FastAPI admin APIs (requires `api-service` running with `USE_TEST_FIXTURES=true`).
 - **Stripe + billing stubs**: Use the `billing_service` fake gateway to emit invoices/events without hitting Stripe; ensure Redis (`agents-redis` on 6380) is running for SSE coverage.
 - **Vault signer**: `just vault-up` launches the dev transit signer required for service-account tests; pair with a fixture service-account scope in Postgres.
 - **Storage mock**: Transcript export spec needs a deterministic storage stub (local/S3 fake); document the toggle + helper script inside `tests/README.md` before enabling Flow 7.

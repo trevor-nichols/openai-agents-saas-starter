@@ -74,8 +74,8 @@ Reduce the attack surface of `/api/v1/auth/register` by moving the platform towa
 | Token leakage or brute force | Store hashed invite tokens, enforce low TTL, minimum entropy, and revoke on first use. |
 | Operator backlog on approvals | Provide CSV/export + CLI batch commands so Ops can triage outside UI; ensure runbooks exist. |
 | Legitimate users blocked by quotas | Return descriptive 429 with `Retry-After`, implement allowlist env var for trusted IPs/domains, and document override steps. |
-| Frontend/backed contract drift | Add contract tests for new endpoints and update `agent-next-15-frontend` SDK (`pnpm heyapi:generate`) as part of the implementation work. |
+| Frontend/backed contract drift | Add contract tests for new endpoints and update `web-app` SDK (`pnpm heyapi:generate`) as part of the implementation work. |
 
 ## Next Steps
-1. Finalize plan review with @anything-agents/auth + CLI owners (this doc).
+1. Finalize plan review with @api-service/auth + CLI owners (this doc).
 2. Begin Phase 1 implementation once stakeholders sign off; keep this milestone updated twice weekly until AUTH-011 closes.

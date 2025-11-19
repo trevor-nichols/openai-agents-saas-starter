@@ -19,7 +19,7 @@
 
 ## Validation & Observability
 - Prometheus counters/gauges cover JWT, rate limits, billing, signup, email delivery, and Stripe retries; `/health` and `/health/ready` probes exist.
-- Unit test coverage spans backend services and CLI sections (e.g., `anything-agents/tests/unit/test_setup_wizard_sections.py`, `test_signup_service.py`, CLI provider tests).
+- Unit test coverage spans backend services and CLI sections (e.g., `api-service/tests/unit/test_setup_wizard_sections.py`, `test_signup_service.py`, CLI provider tests).
 
 ## Open Items (Must Fix before “Complete”)
 | ID | Area | Description | Owner | Status/Notes |

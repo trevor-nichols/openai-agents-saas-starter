@@ -3,18 +3,18 @@
 Production-ready starter kit for building AI Agent SaaS products. The repo bundles a FastAPI backend (OpenAI Agents SDK v0.5.0) and a Next.js 15 frontend, plus an operator-focused Starter CLI that wires secrets, infrastructure, and env files in one flow.
 
 ## Architecture At A Glance
-- **Backend** (`anything-agents/`): FastAPI, async SQLAlchemy, Postgres + Redis (refresh tokens & billing), JWT auth, Alembic migrations, Ed25519 keys in `var/keys/`, OpenAI Agents SDK integrations, Stripe billing services.
-- **Frontend** (`agent-next-15-frontend/`): Next.js 15, TanStack Query, Shadcn UI, HeyAPI-generated client under `lib/api/client`.
+- **Backend** (`api-service/`): FastAPI, async SQLAlchemy, Postgres + Redis (refresh tokens & billing), JWT auth, Alembic migrations, Ed25519 keys in `var/keys/`, OpenAI Agents SDK integrations, Stripe billing services.
+- **Frontend** (`web-app/`): Next.js 15, TanStack Query, Shadcn UI, HeyAPI-generated client under `lib/api/client`.
 - **Starter CLI** (`starter_cli/`): Operator workflows (setup wizard, secrets onboarding, Stripe provisioning, auth tooling, infra helpers) with side-effect-free imports so CI/CD can run `python -m starter_cli.app`.
 - **Docs & Trackers** (`docs/`): SDK references, frontend UI/data-access guides, CLI milestones, and project trackers.
 
 ## Prerequisites
 | Tool | Version | Notes |
 | --- | --- | --- |
-| Python | 3.11+ | Install backend extras: `pip install 'anything-agents[dev]'`. |
+| Python | 3.11+ | Install backend extras: `pip install 'api-service[dev]'`. |
 | Hatch | Latest | Manages backend virtualenv + scripts. |
 | Node.js | 20+ | Paired with `pnpm` for the Next.js app. |
-| pnpm | 8+ | `pnpm install` in `agent-next-15-frontend/`. |
+| pnpm | 8+ | `pnpm install` in `web-app/`. |
 | just | Latest | Task runner replacing the old Makefile; install via `brew install just` or `sudo apt-get install just`. |
 | Docker & Compose v2 | — | Used by Just recipes for Postgres/Redis/Vault. |
 | Stripe CLI | — | Required for `starter_cli stripe setup` unless `--skip-stripe-cli`. |
@@ -25,7 +25,7 @@ Production-ready starter kit for building AI Agent SaaS products. The repo bundl
 1. **Bootstrap tooling**  
    ```bash
    just bootstrap          # creates/refreshes the Hatch environment
-   pnpm install            # inside agent-next-15-frontend/
+   pnpm install            # inside web-app/
    ```
 2. **Run prerequisite check**  
    ```bash
@@ -36,7 +36,7 @@ Production-ready starter kit for building AI Agent SaaS products. The repo bundl
    python -m starter_cli.app setup wizard --profile local
    # OR: just cli cmd="setup wizard --profile local"
    ```  
-   The wizard writes `.env.local` (backend) and `agent-next-15-frontend/.env.local`, covering secrets, providers, tenants, signup policy, and frontend runtime config. Use `--non-interactive`, `--answers-file`, and `--summary-path` for headless or auditable runs.
+   The wizard writes `.env.local` (backend) and `web-app/.env.local`, covering secrets, providers, tenants, signup policy, and frontend runtime config. Use `--non-interactive`, `--answers-file`, and `--summary-path` for headless or auditable runs.
 4. **Bring up local infrastructure**  
    ```bash
    just dev-up        # Postgres + Redis
@@ -52,10 +52,10 @@ Production-ready starter kit for building AI Agent SaaS products. The repo bundl
 
 - **Frontend App**  
   ```bash
-  cd agent-next-15-frontend
+  cd web-app
   pnpm dev
   ```
-  Env is pulled from `agent-next-15-frontend/.env.local`. Follow `docs/frontend/data-access.md` and `docs/frontend/ui/components.md` for feature architecture and Shadcn usage.
+  Env is pulled from `web-app/.env.local`. Follow `docs/frontend/data-access.md` and `docs/frontend/ui/components.md` for feature architecture and Shadcn usage.
 
 ## Starter CLI Highlights
 All commands run via `python -m starter_cli.app …` or `just cli cmd='…'`.

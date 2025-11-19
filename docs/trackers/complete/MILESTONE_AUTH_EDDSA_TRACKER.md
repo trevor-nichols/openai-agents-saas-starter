@@ -27,7 +27,7 @@
 - PyJWT ≥2.10 with `cryptography` backend satisfies EdDSA support; ensure dependency alignment in `pyproject.toml` and lockfiles.
 - Private keys live outside source control; local dev uses generated test keys with explicit warnings to prevent promotion.
 - Refresh token storage may leverage existing Postgres infrastructure; if so, enforce tenant scoping and TTL cleanup jobs.
-- Frontend must gracefully handle JWKS cache refresh; coordinate with `agent-next-15-frontend` for hook updates.
+- Frontend must gracefully handle JWKS cache refresh; coordinate with `web-app` for hook updates.
 - Multi-region deployments replicate key material via approved secret manager; single signer per region with documented failover promotion.
 - Refresh tokens bind to device fingerprint hash; mismatches trigger rejection unless trusted-device flows are implemented later.
 - JWKS endpoint remains public with edge rate limiting and audit logging; reject mTLS for now.

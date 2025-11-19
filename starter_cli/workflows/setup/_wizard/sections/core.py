@@ -124,7 +124,7 @@ def _configure_branding(context: WizardContext, provider: InputProvider) -> None
         provider,
         key="APP_NAME",
         prompt="Application name",
-        default=context.current("APP_NAME") or "anything-agents",
+        default=context.current("APP_NAME") or "api-service",
     )
     context.set_backend("APP_NAME", app_name)
 
@@ -133,7 +133,7 @@ def _configure_branding(context: WizardContext, provider: InputProvider) -> None
         provider,
         key="APP_DESCRIPTION",
         prompt="Application description",
-        default=context.current("APP_DESCRIPTION") or "anything-agents FastAPI microservice",
+        default=context.current("APP_DESCRIPTION") or "api-service FastAPI microservice",
     )
     context.set_backend("APP_DESCRIPTION", app_description)
 

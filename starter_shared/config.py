@@ -1,7 +1,7 @@
 """Lightweight config bridge for the Agent Starter CLI.
 
 This module exposes a narrow, import-safe surface that lets CLI code obtain the
-backend's Pydantic settings without importing `anything-agents/app` directly at
+backend's Pydantic settings without importing `api-service/app` directly at
 module import time. The CLI should depend on the protocol defined here rather
 than on the concrete FastAPI settings class.
 """

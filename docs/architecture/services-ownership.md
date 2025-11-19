@@ -3,7 +3,7 @@
 
 _Last updated: November 17, 2025_
 
-This document captures the current owners and responsibilities for every module under `anything-agents/app/services`. It complements the dependency snapshot (`docs/architecture/services_dependency_snapshot.md`) so refactors stay aligned with clear points of contact.
+This document captures the current owners and responsibilities for every module under `api-service/app/services`. It complements the dependency snapshot (`docs/architecture/services_dependency_snapshot.md`) so refactors stay aligned with clear points of contact.
 
 ## Baseline Signals
 - Fan-out hotspots today are `auth.builders`, `signup_service`, `auth_service`, and `auth.session_service`, reflecting how identity flows centralize orchestration.
@@ -36,4 +36,4 @@ Escalation order for refactors: contact the owning pod, confirm rollout/test exp
 
 ## Enforcement
 - `pyproject.toml` now bans imports from the legacy flat modules (e.g., `app.services.signup_service`, `app.services.billing_service`). Ruff’s `flake8-tidy-imports` plugin enforces this during `hatch run lint`.
-- `anything-agents/tests/unit/test_service_import_boundaries.py` now scans `anything-agents/app`, `starter_cli/`, and `scripts/` to guarantee no banned module sneaks in anywhere in the monorepo, giving engineers fast feedback during `pytest` runs.
+- `api-service/tests/unit/test_service_import_boundaries.py` now scans `api-service/app`, `starter_cli/`, and `scripts/` to guarantee no banned module sneaks in anywhere in the monorepo, giving engineers fast feedback during `pytest` runs.

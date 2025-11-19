@@ -6,7 +6,7 @@ This document codifies how the Next.js frontend talks to the FastAPI backend. Ev
 
 ## Layered Architecture
 
-1. **Generated SDK (`agent-next-15-frontend/lib/api/client`)**  
+1. **Generated SDK (`web-app/lib/api/client`)**  
    - Auto-generated via HeyAPI.  
    - Never imported directly from React components.  
    - Only server-side services may create SDK clients, typically via `lib/server/apiClient.ts`.
@@ -35,7 +35,7 @@ This document codifies how the Next.js frontend talks to the FastAPI backend. Ev
 
 1. **Add/extend a server service**  
    - Use `getServerApiClient()` to enforce cookie-based auth.  
-   - Map SDK types into domain DTOs defined in `agent-next-15-frontend/types/*`.  
+   - Map SDK types into domain DTOs defined in `web-app/types/*`.  
    - Handle mock mode if relevant (`USE_API_MOCK`).
 
 2. **Expose the service**  
@@ -51,7 +51,7 @@ This document codifies how the Next.js frontend talks to the FastAPI backend. Ev
    - Register keys in `lib/queries/keys.ts`.  
    - Create a hook in `lib/queries/<domain>.ts`.  
    - Return `{ dataAlias, isLoading, error, refetch }`.  
-   - Reuse shared types from `agent-next-15-frontend/types`.
+   - Reuse shared types from `web-app/types`.
 
 5. **Update docs/tests**  
 - Add any domain-specific notes here or in `docs/<domain>/`.  
@@ -129,7 +129,7 @@ This layering mirrors the conversations stack, so future agent detail pages can 
 - [ ] Service created/updated with full type coverage.  
 - [ ] Optional API route added for browser access.  
 - [ ] Fetch helper + hook implemented using centralized query keys.  
-- [ ] Types declared under `agent-next-15-frontend/types`.  
+- [ ] Types declared under `web-app/types`.  
 - [ ] Documentation (this file + AGENTS.md note) updated.  
 - [ ] `pnpm lint`, `pnpm type-check`, and `pnpm vitest run` executed locally.
 

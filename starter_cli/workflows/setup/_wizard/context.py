@@ -29,7 +29,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from ..infra import InfraSession
     from ..tenant_summary import TenantSummary
 
-FRONTEND_ENV_RELATIVE = Path("agent-next-15-frontend/.env.local")
+FRONTEND_ENV_RELATIVE = Path("web-app/.env.local")
 
 
 @dataclass(slots=True)
@@ -173,10 +173,10 @@ class WizardContext:
         console.success("Updated .env.local", topic="wizard")
         if self.frontend_env:
             self.frontend_env.save()
-            console.success("Updated agent-next-15-frontend/.env.local", topic="wizard")
+            console.success("Updated web-app/.env.local", topic="wizard")
         elif self.frontend_path:
             console.warn(
-                "Frontend directory missing; skipped agent-next-15-frontend/.env.local.",
+                "Frontend directory missing; skipped web-app/.env.local.",
                 topic="wizard",
             )
 

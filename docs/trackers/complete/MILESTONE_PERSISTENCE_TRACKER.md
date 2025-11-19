@@ -87,7 +87,7 @@ BillingPlan (1) ────< TenantSubscription (many)
 3. Add observability around persistence (structured logs, metrics hooks) and validate via CI smoke tests.
 
 ## Progress Log
-- **2025-11-06**: Alembic scaffolded under `anything-agents/alembic`, baseline migration `20251106_120000_create_conversation_and_billing_tables.py` authored with seeded Starter/Pro plans.
+- **2025-11-06**: Alembic scaffolded under `api-service/alembic`, baseline migration `20251106_120000_create_conversation_and_billing_tables.py` authored with seeded Starter/Pro plans.
 - **2025-11-06**: Async engine bootstrap added (`app/infrastructure/db`), new settings for database configuration, and readiness health check now verifies Postgres connectivity.
 - **2025-11-06**: Implemented Postgres conversation repository (`app/infrastructure/persistence/conversations/postgres.py`), updated agent service for async persistence, and adjusted tests + routes to await new interfaces.
 - **2025-11-06**: Added CI-backed Postgres smoke tests (`tests/integration/test_postgres_migrations.py`) and GitHub Actions workflow service wiring to validate migrations on every PR.

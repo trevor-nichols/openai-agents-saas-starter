@@ -46,10 +46,10 @@ Transform the Starter CLI from an env-file wizard into a single operator entrypo
 ## Setup Requirements Inventory (Source of Truth)
 This section captures every prerequisite a new operator must satisfy today. Each row links back to the owning doc so implementation can reference authoritative details, and marks whether the one-stop milestone should automate it (`Auto?`).
 
-### Backend (FastAPI) – from `anything-agents/README.md`
+### Backend (FastAPI) – from `api-service/README.md`
 | Area | Manual Steps Today | Auto? | Notes/Dependencies |
 | --- | --- | --- | --- |
-| Python tooling | Install Python 3.11+, Hatch, project deps (`pip install 'anything-agents[dev]'`, `hatch env create`). | ⚠️ Assist | CLI can confirm Hatch + deps (via `infra deps`). Full install remains manual but add guidance/remediation text. |
+| Python tooling | Install Python 3.11+, Hatch, project deps (`pip install 'api-service[dev]'`, `hatch env create`). | ⚠️ Assist | CLI can confirm Hatch + deps (via `infra deps`). Full install remains manual but add guidance/remediation text. |
 | Env file | Copy `.env.local.example` → `.env.local`, fill every secret (peppers, keys, Vault vars). | ✅ Target | Wizard already collects values; automation ensures file creation plus diff logging. |
 | Secrets & peppers | Generate `SECRET_KEY`, `AUTH_*` peppers, session salts. | ✅ Target | Wizard milestone M1 covers; ensure outputs flagged in summary with “generated” markers. |
 | Persistence config | Supply `DATABASE_URL`, `REDIS_URL`, `BILLING_EVENTS_REDIS_URL`, `AUTO_RUN_MIGRATIONS`. | ✅ Target | Wizard M2 collects; automation should validate connectivity post-compose. |
@@ -58,11 +58,11 @@ This section captures every prerequisite a new operator must satisfy today. Each
 | Stripe + billing | Run `stripe setup`, seed plans, capture webhook secret, set `ENABLE_BILLING*`. | ✅ Target | Embed CLI `stripe setup`, ensure env update + summary capture. |
 | Migrations | `just migrate` after infra up. | ⚠️ Assist | Provide optional hook post-infra start to run migrations, but keep opt-in due to destructive nature. |
 
-### Frontend (Next.js) – from `agent-next-15-frontend/README.md`
+### Frontend (Next.js) – from `web-app/README.md`
 | Area | Manual Steps Today | Auto? | Notes/Dependencies |
 | --- | --- | --- | --- |
 | Node toolchain | Install Node 20+, pnpm; run `pnpm install`. | ⚠️ Assist | CLI can verify versions via `infra deps` and prompt to run `pnpm install`, but not install automatically. |
-| Env file | `agent-next-15-frontend/.env.local` with API URL, cookies, Playwright base URL. | ✅ Target | Wizard already writes; ensure automation regenerates file when backend URL changes. |
+| Env file | `web-app/.env.local` with API URL, cookies, Playwright base URL. | ✅ Target | Wizard already writes; ensure automation regenerates file when backend URL changes. |
 | API client | Run `pnpm generate` (HeyAPI). | ⚠️ Assist | Document reminder post-wizard; optional future hook but not in current milestone scope. |
 | Dev server | `pnpm dev` once backend is reachable. | ℹ️ Inform | Out of scope to auto-launch UI, but summary should list command. |
 
@@ -83,7 +83,7 @@ This section captures every prerequisite a new operator must satisfy today. Each
 | Stripe | `stripe setup` interactive prompts. | ✅ Target | Embed inside wizard with resume support. |
 | Resend / Email | Manual API key creation, update `.env.local`. | ⚠️ Assist | CLI can validate API key but not create provider accounts. |
 
-> This inventory should stay in sync with root `README.md`, `anything-agents/README.md`, and `agent-next-15-frontend/README.md`. Any new requirement uncovered during implementation must be added here first, then reflected in the relevant docs.
+> This inventory should stay in sync with root `README.md`, `api-service/README.md`, and `web-app/README.md`. Any new requirement uncovered during implementation must be added here first, then reflected in the relevant docs.
 
 ## Milestone Backlog
 | # | Task | Owner | Status | Target |

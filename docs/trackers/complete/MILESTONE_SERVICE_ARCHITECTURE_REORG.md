@@ -4,7 +4,7 @@
 _Last updated: November 17, 2025_
 
 ## Objective
-Establish a documented, phased plan to restructure `anything-agents/app/services` into domain-scoped modules that mirror API routers and repository boundaries. The milestone completes when every service lives in a clearly owned domain package, imports remain ergonomic, and the reorg is backed by automated checks plus rollout guardrails.
+Establish a documented, phased plan to restructure `api-service/app/services` into domain-scoped modules that mirror API routers and repository boundaries. The milestone completes when every service lives in a clearly owned domain package, imports remain ergonomic, and the reorg is backed by automated checks plus rollout guardrails.
 
 ## Success Criteria
 - Directory structure expresses bounded contexts (Auth, Billing, Conversations, Signup, Status, Tenant, Shared) with ≤5 files per leaf folder.
@@ -26,7 +26,7 @@ Establish a documented, phased plan to restructure `anything-agents/app/services
 The end-state structure groups orchestration logic by domain and separates integration façades. Each folder gets an `__init__.py` that exports the stable API and an optional `README.md` for context.
 
 ```text
-anything-agents/app/services/
+api-service/app/services/
   __init__.py                    # Barrel file exporting domain façades
   shared/
     __init__.py

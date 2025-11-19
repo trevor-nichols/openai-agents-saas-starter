@@ -40,7 +40,7 @@ def register(subparsers: ParserSubparsers) -> None:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="auth",
-        description="Authentication utilities for anything-agents.",
+        description="Authentication utilities for api-service.",
     )
     subparsers = parser.add_subparsers(dest="command")
     _register_tokens_command(subparsers)

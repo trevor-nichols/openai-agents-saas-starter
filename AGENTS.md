@@ -52,8 +52,8 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 - **Testing:** Colocate unit/interaction tests with the orchestrator (`ChatWorkspace.test.tsx`). Promote reusable test helpers to existing shared testing utilities when multiple features need them.
 
 ## CLI Charter – Starter CLI (SC)
-- **Purpose:** The SC is the single operator entrypoint for provisioning secrets, wiring third-party providers, generating env files for both the FastAPI backend and the Next.js frontend, and exporting audit artifacts. It replaces the legacy “Anything Agents” branding.
-- **Boundaries:** SC never imports `anything-agents/app` modules directly. Shared logic (key generation, schema validation) must live in neutral `starter_shared/*` modules to keep imports acyclic and to allow the CLI to run without initializing the server stack.
+- **Purpose:** The SC is the single operator entrypoint for provisioning secrets, wiring third-party providers, generating env files for both the FastAPI backend and the Next.js frontend, and exporting audit artifacts. It replaces the legacy branding from earlier iterations.
+- **Boundaries:** SC never imports `api-service/app` modules directly. Shared logic (key generation, schema validation) must live in neutral `starter_shared/*` modules to keep imports acyclic and to allow the CLI to run without initializing the server stack.
 - **Execution modes:** Every workflow supports interactive prompts for first-time operators and headless execution via flags (`--non-interactive`, `--answers-file`, `--var`) so CI/CD can drive the same flows deterministically.
 - **Testing contract:** Importing `python -m starter_cli.app` must be side-effect free (no DB/Vault connections). Unit tests stub network calls, and the repo-root `conftest.py` enforces SQLite/fakeredis overrides for all CLI modules.
 - **Ownership & roadmap:** Platform Foundations owns the CLI. Work is tracked in `docs/trackers/CLI_MILESTONE.md` with phases for rebrand, config extraction, adapter rewrites, hermetic testing, and CI guardrails. Any new CLI feature must update that tracker before merge.
@@ -70,7 +70,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 
 # Test Environment Contract
 - `conftest.py` at the repository root forces the entire pytest run onto SQLite + fakeredis and disables billing/auto migrations. **Do not** remove or bypass this file; any new package (CLI included) must behave correctly when those overrides are in effect.
-- Any test that mutates `os.environ` must snapshot and restore the original values to avoid leaking state into other suites. Use the helpers in `anything-agents/tests/conftest.py` or mimic their pattern.
+- Any test that mutates `os.environ` must snapshot and restore the original values to avoid leaking state into other suites. Use the helpers in `api-service/tests/conftest.py` or mimic their pattern.
 - When adding CLI modules, ensure module import has no side effects (e.g., avoid calling `get_settings()` or hitting the database at import time). If you need settings, fetch them inside the handler after env overrides have loaded.
 - Postgres integration suites (`tests/integration/test_postgres_migrations.py`) remain skipped unless `USE_REAL_POSTGRES=true`; leave this off for local/unit CI runs so we never accidentally hit a developer's Postgres instance.
 
@@ -83,7 +83,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 # Codebase Patterns
 openai-agents-starter/
 ├── pyproject.toml
-├── agent-next-15-frontend/
+├── web-app/
 │   ├── app/
 │   │   ├── (agent)/
 │   │   │   ├── actions.ts
@@ -105,7 +105,7 @@ openai-agents-starter/
 │   ├── types/
 │   │   └── generated/… (OpenAPI types)
 │   └── config + tooling files (package.json, tailwind.config.ts, etc.)
-├── anything-agents/
+├── api-service/
 │   ├── alembic/ (database migrations)
 │   ├── app/
 │   │   ├── api/ (FastAPI layer - versioned routes, dependencies, models)

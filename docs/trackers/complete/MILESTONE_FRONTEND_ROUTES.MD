@@ -13,7 +13,7 @@ tags:
 
 ## Goal
 
-Bridge every backend HTTP endpoint documented in `anything-agents/app/api/ENDPOINTS.md` with a production-ready entry point in the Next.js frontend so web clients and server actions never need to bypass the App Router layer.
+Bridge every backend HTTP endpoint documented in `api-service/app/api/ENDPOINTS.md` with a production-ready entry point in the Next.js frontend so web clients and server actions never need to bypass the App Router layer.
 
 ## Scope
 

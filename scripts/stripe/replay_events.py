@@ -14,9 +14,9 @@ from typing import Iterable
 from dotenv import load_dotenv
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-ANYTHING_AGENTS_DIR = REPO_ROOT / "anything-agents"
-if str(ANYTHING_AGENTS_DIR) not in sys.path:
-    sys.path.insert(0, str(ANYTHING_AGENTS_DIR))
+API_SERVICE_DIR = REPO_ROOT / "api-service"
+if str(API_SERVICE_DIR) not in sys.path:
+    sys.path.insert(0, str(API_SERVICE_DIR))
 
 from app.core import config as config_module  # noqa: E402
 from app.core.config import get_settings  # noqa: E402
@@ -33,7 +33,7 @@ from app.infrastructure.persistence.stripe.repository import (  # noqa: E402
 from app.services.billing.billing_service import billing_service  # noqa: E402
 from app.services.billing.stripe.dispatcher import stripe_event_dispatcher  # noqa: E402
 
-FIXTURES_DIR = REPO_ROOT / "anything-agents" / "tests" / "fixtures" / "stripe"
+FIXTURES_DIR = API_SERVICE_DIR / "tests" / "fixtures" / "stripe"
 
 
 def load_env_files() -> None:

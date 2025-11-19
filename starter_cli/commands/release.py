@@ -165,7 +165,7 @@ class DatabaseReleaseWorkflow:
                 "run",
                 "alembic",
                 "-c",
-                "anything-agents/alembic.ini",
+                "api-service/alembic.ini",
                 "current",
             ]
             result = subprocess.run(

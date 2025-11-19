@@ -340,7 +340,7 @@ class SetupWizard:
         console.newline()
         console.section("Next Actions", "Bring the stack online and smoke-test the flow.")
         console.step("1.", "Backend: run `hatch run serve`")
-        console.step("2.", "Frontend: run `pnpm dev` inside agent-next-15-frontend")
+        console.step("2.", "Frontend: run `pnpm dev` inside web-app")
         if self.ui:
             self.ui.log("Ready for `hatch run serve` + `pnpm dev`.")
 

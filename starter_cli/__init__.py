@@ -1,6 +1,6 @@
 """Starter CLI package.
 
-This module also injects the backend source directory (``anything-agents``)
+This module also injects the backend source directory (``api-service``)
 into ``sys.path`` so that CLI commands can reuse the FastAPI project's
 modules (``app.*``) without requiring callers to set ``PYTHONPATH`` manually.
 """
@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 _PACKAGE_ROOT = Path(__file__).resolve().parent
-_BACKEND_ROOT = _PACKAGE_ROOT.parent / "anything-agents"
+_BACKEND_ROOT = _PACKAGE_ROOT.parent / "api-service"
 
 if _BACKEND_ROOT.exists():
     backend_path = str(_BACKEND_ROOT)

@@ -126,4 +126,4 @@ jobs:
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents_ci
         run: |
-          hatch run pytest anything-agents/tests/integration --maxfail=1 -m postgres
+          hatch run pytest api-service/tests/integration --maxfail=1 -m postgres

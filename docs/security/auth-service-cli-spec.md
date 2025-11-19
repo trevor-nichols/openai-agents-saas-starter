@@ -149,7 +149,7 @@ Operator / CI Job
 
 1. Define service-account catalog (YAML/JSON) and loader in `app/core/service_accounts.py`.  
 2. Implement AuthService endpoint with RBAC enforcement, audit logging, and metrics.  
-3. Build CLI command module (`anything-agents/bin/auth_cli.py`) with Vault integration helpers.  
+3. Build CLI command module (`api-service/bin/auth_cli.py`) with Vault integration helpers.  
 4. Write unit + contract tests covering successful issuance, validation errors, and authorization failures.  
 5. Document operational steps in runbooks (rotation, revocation, emergency kill).  
 6. Provide sample pipeline integration (GitHub Actions, Jenkins, etc.) in `docs/security/examples/`.

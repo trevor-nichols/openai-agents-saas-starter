@@ -1,6 +1,6 @@
 # Stripe Setup (STRIPE-01)
 
-This guide explains the minimum configuration required to turn on billing with Stripe in the `anything-agents` backend. The STRIPE-02 helper now provisions the default plans (Starter + Pro) for you, but the environment variables below still need to be present so the service can boot safely when `ENABLE_BILLING=true`.
+This guide explains the minimum configuration required to turn on billing with Stripe in the `api-service` backend. The STRIPE-02 helper now provisions the default plans (Starter + Pro) for you, but the environment variables below still need to be present so the service can boot safely when `ENABLE_BILLING=true`.
 
 ## Prerequisites
 

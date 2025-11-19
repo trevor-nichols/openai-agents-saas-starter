@@ -1,6 +1,6 @@
 {
-  "include": ["anything-agents", "starter_cli", "starter_shared"],
+  "include": ["api-service", "starter_cli", "starter_shared"],
   "typeCheckingMode": "basic",
   "pythonVersion": "3.11",
-  "extraPaths": ["anything-agents", "starter_cli", "starter_shared"]
+  "extraPaths": ["api-service", "starter_cli", "starter_shared"]
 }

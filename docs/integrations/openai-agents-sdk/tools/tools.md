@@ -28,7 +28,7 @@ Tool = Union[
 ]
 A tool that can be used in an agent.
 
-## Anything Agents tool scoping
+## Acme tool scoping
 
 In this starter project every tool is registered with `ToolRegistry`, which adds
 metadata describing how the triage platform can use it. When calling

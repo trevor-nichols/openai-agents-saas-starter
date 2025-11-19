@@ -1,6 +1,6 @@
 # File: run.py
-# Purpose: Main entry point for running the anything-agents FastAPI application
-# Dependencies: anything-agents/main.py, uvicorn
+# Purpose: Main entry point for running the api-service FastAPI application
+# Dependencies: api-service/main.py, uvicorn
 # Used by: Direct execution to start the development server
 
 import os
@@ -12,9 +12,9 @@ from pathlib import Path
 # PATH CONFIGURATION
 # =============================================================================
 
-# Add the anything-agents directory to Python path
+# Add the api-service directory to Python path
 current_dir = Path(__file__).parent
-app_dir = current_dir / "anything-agents"
+app_dir = current_dir / "api-service"
 sys.path.insert(0, str(app_dir))
 
 # =============================================================================
@@ -52,7 +52,7 @@ def get_server_config():
 
 def main():
     """Main function to run the FastAPI application."""
-    print("🚀 Starting anything-agents FastAPI application...")
+    print("🚀 Starting api-service FastAPI application...")
     
     # Load environment variables
     load_environment()

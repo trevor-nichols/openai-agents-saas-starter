@@ -3,10 +3,10 @@ requires = ["hatchling>=1.25.0"]
 build-backend = "hatchling.build"
 
 [project]
-name = "anything-agents"
+name = "api-service"
 version = "0.1.0"
 description = "FastAPI-based AI agent service powered by the OpenAI Agents SDK."
-readme = "anything-agents/README.md"
+readme = "api-service/README.md"
 requires-python = ">=3.11"
 license = { file = "LICENSE" }
 authors = [
@@ -82,14 +82,14 @@ documentation = "https://github.com/openai/openai-agents-starter/tree/main/docs/
 issues = "https://github.com/openai/openai-agents-starter/issues"
 
 [project.scripts]
-anything-agents = "run:main"
+api-service = "run:main"
 aa-cli = "starter_cli.app:main"
 
 [tool.hatch.metadata]
 allow-direct-references = true
 
 [tool.hatch.build.sources]
-app = "anything-agents/app"
+app = "api-service/app"
 starter_cli = "starter_cli"
 starter_shared = "starter_shared"
 
@@ -97,7 +97,7 @@ starter_shared = "starter_shared"
 packages = ["app", "starter_cli", "starter_shared"]
 include = [
   "run.py",
-  "anything-agents/main.py",
+  "api-service/main.py",
 ]
 exclude = [
   "**/__pycache__",
@@ -106,7 +106,7 @@ exclude = [
 
 [tool.hatch.build.targets.sdist]
 include = [
-  "anything-agents/**",
+  "api-service/**",
   "starter_cli/**",
   "starter_shared/**",
   "docs/**",
@@ -127,19 +127,19 @@ path = ".venv"
 PYTHONPATH = "."
 
 [tool.hatch.envs.default.scripts]
-serve = "uvicorn main:app --reload --app-dir anything-agents --reload-dir anything-agents --reload-dir starter_cli --reload-dir starter_shared --host 127.0.0.1 --port 8000"
+serve = "uvicorn main:app --reload --app-dir api-service --reload-dir api-service --reload-dir starter_cli --reload-dir starter_shared --host 127.0.0.1 --port 8000"
 test = "pytest"
-lint = "ruff check anything-agents starter_cli starter_shared"
-format = "ruff format anything-agents starter_cli starter_shared"
+lint = "ruff check api-service starter_cli starter_shared"
+format = "ruff format api-service starter_cli starter_shared"
 typecheck = "python -m scripts.typecheck"
 coverage = "python -m coverage run -m pytest && python -m coverage report"
 pyright = "python -m pyright"
-migrate = "alembic -c anything-agents/alembic.ini upgrade head"
-migration-revision = "alembic -c anything-agents/alembic.ini revision -m \"{args}\""
+migrate = "alembic -c api-service/alembic.ini upgrade head"
+migration-revision = "alembic -c api-service/alembic.ini revision -m \"{args}\""
 
 [tool.ruff]
 line-length = 100
-src = ["anything-agents", "starter_cli", "starter_shared"]
+src = ["api-service", "starter_cli", "starter_shared"]
 target-version = "py311"
 
 [tool.ruff.lint]
@@ -157,7 +157,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"anything-agents/app/services/**/*.py" = [
+"api-service/app/services/**/*.py" = [
   "I252",  # allow transitional relative imports while services are reorganized
 ]
 
@@ -197,7 +197,7 @@ disallow_any_generics = true
 disallow_subclassing_any = true
 ignore_missing_imports = false
 namespace_packages = true
-mypy_path = ["anything-agents", "."]
+mypy_path = ["api-service", "."]
 
 [[tool.mypy.overrides]]
 module = ["tavily", "tavily.*"]
@@ -208,14 +208,14 @@ module = ["IP2Location", "IP2Location.*"]
 ignore_missing_imports = true
 
 [tool.pyright]
-include = ["anything-agents", "starter_cli", "starter_shared"]
+include = ["api-service", "starter_cli", "starter_shared"]
 typeCheckingMode = "basic"
 pythonVersion = "3.11"
-extraPaths = ["anything-agents", "starter_cli", "starter_shared"]
+extraPaths = ["api-service", "starter_cli", "starter_shared"]
 
 [tool.pytest.ini_options]
-pythonpath = ["anything-agents", "."]
-testpaths = ["anything-agents/tests"]
+pythonpath = ["api-service", "."]
+testpaths = ["api-service/tests"]
 asyncio_mode = "auto"
 addopts = "--strict-markers --disable-warnings"
 markers = [
@@ -226,7 +226,7 @@ markers = [
 
 [tool.coverage.run]
 branch = true
-source = ["anything-agents/app"]
+source = ["api-service/app"]
 omit = ["*/__init__.py"]
 
 [tool.coverage.report]

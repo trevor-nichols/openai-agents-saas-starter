@@ -1,6 +1,6 @@
 # Stripe Billing Runbook
 
-This document outlines the operator workflows for receiving, inspecting, and replaying Stripe webhook events in the `anything-agents` backend.
+This document outlines the operator workflows for receiving, inspecting, and replaying Stripe webhook events in the `api-service` backend.
 
 ## Event Intake
 

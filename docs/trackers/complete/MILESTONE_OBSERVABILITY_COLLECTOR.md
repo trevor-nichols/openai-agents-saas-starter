@@ -18,7 +18,7 @@ Bundle a turnkey OpenTelemetry Collector into the starter stack so every tenant 
 | Docker Compose integration | ✅ Complete | `otel-collector` service, Just hooks, and config renderer now live. |
 | Starter CLI onboarding | ✅ Complete | Wizard prompts for OTLP sink, bundled collector toggle, and Sentry/Datadog exporters; headless keys documented. |
 | Documentation & runbooks | ✅ Complete | `docs/observability/README.md` covers setup, env vars, exporters, verification steps, and automated smoke test instructions. |
-| QA / smoke validation | ✅ Complete | `anything-agents/tests/integration/test_observability_collector.py` spins up the collector via Docker and asserts logs hit the debug exporter. |
+| QA / smoke validation | ✅ Complete | `api-service/tests/integration/test_observability_collector.py` spins up the collector via Docker and asserts logs hit the debug exporter. |
 
 ## Deliverables
 1. **Collector Infrastructure** — Compose service, health checks, and Just recipe to manage lifecycle alongside Postgres/Redis/Vault.
@@ -45,6 +45,6 @@ Bundle a turnkey OpenTelemetry Collector into the starter stack so every tenant 
 | Additional container increases local resource usage. | Low | Allow opt-out flag/Just helper (e.g., `just observability-down`) and document CPU/memory expectations. |
 
 ## Changelog
-- **2025-11-18** — Collector service/config renderer/CLI/doc updates merged; smoke tests added via `anything-agents/tests/integration/test_observability_collector.py`.
+- **2025-11-18** — Collector service/config renderer/CLI/doc updates merged; smoke tests added via `api-service/tests/integration/test_observability_collector.py`.
 - **2025-11-18** — Milestone created, version pinned to 0.139.0, Issue BE-008 opened for tracking.
 - **2025-11-18** — Debug exporter now defaults to `detailed`, `.env` templates expose `OTEL_DEBUG_VERBOSITY`, docs were updated, and the smoke test reads combined `docker logs` output so OTLP payload assertions pass on hosts where the log stream lands on stderr.

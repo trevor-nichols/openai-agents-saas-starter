@@ -10,7 +10,7 @@ values written here are exactly what FastAPI and the CLI share at runtime.
 
 ## Prerequisites & Invocation
 
-- Python 3.11+, Hatch, and the backend dev dependencies (`pip install 'anything-agents[dev]'`).
+- Python 3.11+, Hatch, and the backend dev dependencies (`pip install 'api-service[dev]'`).
 - Node.js 20+ and `pnpm` (for the frontend env file that the wizard populates).
 - Docker + Docker Compose v2 (for `just dev-up` / `just vault-up`).
 - `just` task runner (install via `brew install just` or `sudo apt-get install just`).
@@ -40,7 +40,7 @@ Most subcommands support headless execution. Provide answers via one or more JSO
 
 ### 1. `setup wizard`
 
-Guided setup that writes `.env.local` (backend) and, when present, `agent-next-15-frontend/.env.local`.
+Guided setup that writes `.env.local` (backend) and, when present, `web-app/.env.local`.
 The flow covers five milestones plus frontend wiring:
 
 | Milestone | Focus | Key outputs |
@@ -205,7 +205,7 @@ python -m starter_cli.app release db \
 What it does:
 
 1. Runs `just migrate` with the current `.env*` context.
-2. Captures the Alembic head via `hatch run alembic -c anything-agents/alembic.ini current`.
+2. Captures the Alembic head via `hatch run alembic -c api-service/alembic.ini current`.
 3. Invokes the existing Stripe setup flow unless `--skip-stripe` is passed.
 4. Queries `billing_plans` to ensure each plan is active and has a Stripe price ID.
 5. Writes `var/reports/db-release-*.json` with timestamps, git SHA, masked secrets, plan statuses, and the flags used (pass `--json` to also print it to stdout).
@@ -232,7 +232,7 @@ See `docs/ops/db-release-playbook.md` for the full pre-flight checklist, evidenc
 
 ## Generated Outputs & Reference Material
 
-- `.env.local` (backend) and `agent-next-15-frontend/.env.local` are written via
+- `.env.local` (backend) and `web-app/.env.local` are written via
   `starter_cli/adapters/env/files.py`.
 - Milestone reports live in `var/reports/setup-summary.json` unless overridden.
 - Wizard coverage of backend env vars is tracked in `starter_cli/core/inventory.py`.

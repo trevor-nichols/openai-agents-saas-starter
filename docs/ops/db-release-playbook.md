@@ -18,7 +18,7 @@ This runbook codifies the order-of-operations for shipping schema changes and bi
 ## Pre-flight Checklist
 Run this list **before** touching production:
 - [ ] Confirm git SHA/tag for the release candidate.
-- [ ] Ensure no pending Alembic revisions on the source branch (`hatch run alembic -c anything-agents/alembic.ini heads`).
+- [ ] Ensure no pending Alembic revisions on the source branch (`hatch run alembic -c api-service/alembic.ini heads`).
 - [ ] Verify Postgres reachability (`psql $DATABASE_URL -c 'select version();'`).
 - [ ] Run `just migrate` against a staging environment to smoke-test the revision.
 - [ ] Validate provider inputs with `python -m starter_cli.app providers validate` so Stripe/Resend/OpenAI keys exist before billing is enabled.
@@ -45,7 +45,7 @@ Key flags:
 The command executes the following steps:
 
 1. Runs `just migrate` with the current `.env*` loads so FastAPI pods don't need `AUTO_RUN_MIGRATIONS`.
-2. Captures the Alembic head via `hatch run alembic -c anything-agents/alembic.ini current`.
+2. Captures the Alembic head via `hatch run alembic -c api-service/alembic.ini current`.
 3. Invokes the Stripe provisioning flow unless `--skip-stripe` is set (same UX as `stripe setup`, including CLI validation unless `--non-interactive` is passed).
 4. Queries `billing_plans` to ensure every required plan exists, is active, and has a Stripe price ID.
 5. Emits `var/reports/db-release-*.json` containing timestamps, git SHA, Alembic revision, plan status, masked Stripe secrets, and the options used. Use `--summary-path` to override the location.
@@ -54,7 +54,7 @@ The command executes the following steps:
 1. **Migrations**
    ```bash
    just migrate
-   hatch run alembic -c anything-agents/alembic.ini current
+   hatch run alembic -c api-service/alembic.ini current
    ```
    Save the `alembic current` output in the release ticket.
 
@@ -90,7 +90,7 @@ The command executes the following steps:
   - Any screenshots/logs proving provider validation succeeded.
 
 ## Rollback / Recovery
-1. **Schema rollback** – Use Alembic to revert once: `hatch run alembic -c anything-agents/alembic.ini downgrade -1`. Coordinate with engineering to confirm whether data migrations require manual cleanup.
+1. **Schema rollback** – Use Alembic to revert once: `hatch run alembic -c api-service/alembic.ini downgrade -1`. Coordinate with engineering to confirm whether data migrations require manual cleanup.
 2. **Stripe rollback** – Archive newly created prices/products in the Stripe dashboard or via CLI. Update `.env.local` to point back to known-good `price_…` IDs.
 3. **Re-run release** – After fixing issues, repeat the Execution Order (automation or manual) and attach fresh artifacts.
 

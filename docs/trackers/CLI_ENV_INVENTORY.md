@@ -19,8 +19,8 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | ALLOW_PUBLIC_SIGNUP | bool | True |  | ✅ | Allow unauthenticated tenants to self-register via /auth/register. Derived from SIGNUP_ACCESS_POLICY. |
 | ALLOW_SIGNUP_TRIAL_OVERRIDE | bool | False |  | ✅ | Permit /auth/register callers to request trial periods up to the plan/default cap. |
 | ANTHROPIC_API_KEY | str \| NoneType | — |  | ✅ | Anthropic API key |
-| APP_DESCRIPTION | str | anything-agents FastAPI microservice |  | ✅ | Application description |
-| APP_NAME | str | anything-agents |  | ✅ | Application name |
+| APP_DESCRIPTION | str | api-service FastAPI microservice |  | ✅ | Application description |
+| APP_NAME | str | api-service |  | ✅ | Application name |
 | APP_PUBLIC_URL | str | http://localhost:3000 |  | ✅ | Public base URL used when generating email links. |
 | APP_VERSION | str | 1.0.0 |  | ✅ | Application version |
 | AUTH_AUDIENCE | list[str] | — |  | ✅ | Ordered list of permitted JWT audiences. Provide as JSON array via AUTH_AUDIENCE or comma-separated strings. |

@@ -91,8 +91,8 @@ sequenceDiagram
 - **Exit**: Contract suite green, OpenAPI regenerated for Next client.
 
 ### IDP-005 — Frontend Integration (AUTH-003)
-- **Status:** Completed (2025-11-07) — login page, secure cookie/session helpers, middleware guard, silent refresh hook, and Playwright smoke test landed in `agent-next-15-frontend`.
-- Update `agent-next-15-frontend` actions/hooks to call new endpoints, store tokens via secure cookies (`next/headers` middleware) with silent refresh.
+- **Status:** Completed (2025-11-07) — login page, secure cookie/session helpers, middleware guard, silent refresh hook, and Playwright smoke test landed in `web-app`.
+- Update `web-app` actions/hooks to call new endpoints, store tokens via secure cookies (`next/headers` middleware) with silent refresh.
 - Add sign-in/out components, error states, and protected-route guard using server actions.
 - Unit tests for hooks, e2e smoke (Playwright) verifying login + token refresh.
 - **Exit**: Frontend build/tests green, UX reviewed with product.

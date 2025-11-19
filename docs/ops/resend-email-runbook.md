@@ -2,7 +2,7 @@
 
 Last updated: November 9, 2025
 
-This runbook explains how to operate the Resend-backed email delivery path for verification and password reset flows in anything-agents.
+This runbook explains how to operate the Resend-backed email delivery path for verification and password reset flows in api-service.
 
 ## Prerequisites
 

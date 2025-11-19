@@ -168,7 +168,7 @@ class StripeSetupFlow:
     def _require_stripe_dependency(self) -> None:
         if stripe is None:  # pragma: no cover - runtime dependency
             raise CLIError(
-                "Missing dependency 'stripe'. Install with `pip install 'anything-agents[dev]'`."
+                "Missing dependency 'stripe'. Install with `pip install 'api-service[dev]'`."
             )
 
     def _install_signal_handlers(self) -> None:

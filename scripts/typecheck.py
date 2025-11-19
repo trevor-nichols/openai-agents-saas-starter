@@ -21,7 +21,7 @@ def main() -> None:
                 python,
                 "-m",
                 "mypy",
-                "anything-agents",
+                "api-service",
                 "starter_cli",
                 "starter_shared",
             ],

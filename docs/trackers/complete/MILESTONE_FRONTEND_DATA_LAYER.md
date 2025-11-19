@@ -46,7 +46,7 @@ Deliver a stable, fully typed data layer that the UI team can build on without r
   - [x] Instrument structured logging (console.debug/info) behind `NODE_ENV !== 'production'`.
 - **Docs & Cleanup**
   - [x] Update `docs/frontend/data-access.md` with a “Chat Data Flow” section referencing new hooks.
-  - [x] Refresh `agent-next-15-frontend/SNAPSHOT.md` once file moves are complete.
+  - [x] Refresh `web-app/SNAPSHOT.md` once file moves are complete.
   - [x] Document testing instructions and lint/type-check expectations in this tracker.
 
 <!-- SECTION: Milestone States -->
