@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from datetime import datetime
+from uuid import UUID
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api.v1.test_fixtures.router import router as test_fixture_router
 from app.core.config import get_settings
+from app.services.signup.email_verification_service import EmailVerificationTokenIssueResult
 from app.services.test_fixtures import FixtureApplyResult
 
 
@@ -18,7 +23,7 @@ def _create_app() -> FastAPI:
 
 
 @pytest.fixture
-def app(monkeypatch: pytest.MonkeyPatch) -> TestClient:
+def app(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     monkeypatch.delenv("USE_TEST_FIXTURES", raising=False)
     get_settings.cache_clear()
     application = _create_app()
@@ -81,3 +86,43 @@ def test_apply_fixtures_invokes_service(monkeypatch: pytest.MonkeyPatch) -> None
     payload = response.json()
     assert payload["tenants"]["alpha"]["plan_code"] == "starter"
 
+
+def test_issue_email_token_requires_fixture_flag(app: TestClient) -> None:
+    response = app.post(
+        "/api/v1/test-fixtures/email-verification-token",
+        json={"email": "owner@example.com"},
+    )
+    assert response.status_code == 404
+
+
+def test_issue_email_token_returns_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("USE_TEST_FIXTURES", "true")
+    get_settings.cache_clear()
+    application = _create_app()
+
+    issued = EmailVerificationTokenIssueResult(
+        token="abcd.efgh",
+        user_id=UUID("00000000-0000-0000-0000-0000000000aa"),
+        expires_at=datetime.fromisoformat("2025-01-01T00:05:00+00:00"),
+    )
+
+    class _FakeService:
+        async def issue_token_for_testing(self, **kwargs):
+            _ = kwargs
+            return issued
+
+    monkeypatch.setattr(
+        "app.api.v1.test_fixtures.router.get_email_verification_service",
+        lambda: _FakeService(),
+    )
+
+    with TestClient(application) as client:
+        response = client.post(
+            "/api/v1/test-fixtures/email-verification-token",
+            json={"email": "owner@example.com"},
+        )
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["token"] == "abcd.efgh"
+    assert payload["user_id"] == str(issued.user_id)

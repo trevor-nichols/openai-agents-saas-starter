@@ -16,7 +16,7 @@ Guarantee that every revenue- or security-impacting workflow in the Next.js 15 s
 | # | Flow | Surfaces Exercised | Why it’s Critical | Current Coverage | Primary Blockers |
 | - | ---- | ------------------ | ----------------- | ---------------- | ---------------- |
 | 1 | **Auth + chat handshake** | `/login` → `/dashboard` → `/chat` → logout (`tests/auth-smoke.spec.ts`) | Baseline guard that access control + chat shell never regress. | ✅ Passing | None |
-| 2 | **Self-serve signup + email verification** | `/register`, `/auth/email/verify`, `/login` | Ensures SaaS funnel works when invite-only is disabled. | ⛔ Not implemented | Needs deterministic signup tenant + mocked email verification token. |
+| 2 | **Self-serve signup + email verification** | `/register`, `/auth/email/verify`, `/login` | Ensures SaaS funnel works when invite-only is disabled. | ✅ Passing | Uses Playwright helper + `/api/v1/test-fixtures/email-verification-token` endpoint for deterministic inbox. |
 | 3 | **Plan upgrade/downgrade + audit trail** | `/billing` plan cards, TanStack mutations, SSE toast feed | Revenue path; verifies optimistic UI + Stripe webhook replay. | ⛔ Not implemented | Seeder for Starter/Scale plans + Stripe stubs; backend mutation fixtures. |
 | 4 | **Billing events ledger & usage metering** | `/billing/events`, `/billing/usage` filters + SSE bridge | Confirms SSE wiring, filters, and usage aggregation match backend. | ⛔ Not implemented | Need Redis-backed stream fixture + usage deltas inserted via `/api/v1/billing/tenants/{id}/usage`. |
 | 5 | **Service-account issue & revoke** | `/account/service-accounts` modal + revoke actions | Protects Vault integration + admin permission boundaries. | ⛔ Not implemented | Vault test signer container + seeded operator tenant. |
@@ -27,9 +27,9 @@ Guarantee that every revenue- or security-impacting workflow in the Next.js 15 s
 ## Milestone Task Board
 | # | Task | Owner | Status | Target |
 | - | ---- | ----- | ------ | ------ |
-| A | Convert placeholder `test.skip` calls to boolean form so `pnpm type-check` passes (`tests/app-regressions.spec.ts`). | Platform Foundations | 🟡 In Progress | Nov 19 |
+| A | Convert placeholder `test.skip` calls to boolean form so `pnpm type-check` passes (`tests/app-regressions.spec.ts`). | Platform Foundations | ✅ Completed | Nov 19 |
 | B | Land deterministic fixture harness (seed tenants, plans, conversations, service accounts) documented in `tests/README.md`. | Platform Foundations + Backend | ✅ Completed | Nov 19 |
-| C | Implement signup + email verification spec (Flow 2) guarded by feature flag toggles. | Platform Foundations | ⛔ Not Started | Nov 19 |
+| C | Implement signup + email verification spec (Flow 2) guarded by feature flag toggles. | Platform Foundations | ✅ Completed | Nov 19 |
 | D | Implement billing plan mutation spec (Flow 3) including optimistic UI + SSE event assertion. | Platform Foundations | ⛔ Not Started | Nov 19 |
 | E | Implement billing ledger + usage spec (Flow 4) verifying filters + SSE merge. | Platform Foundations | ⛔ Not Started | Nov 19 |
 | F | Implement service-account lifecycle spec (Flow 5). | Platform Foundations | ⛔ Not Started | Nov 19 |
@@ -51,4 +51,5 @@ Guarantee that every revenue- or security-impacting workflow in the Next.js 15 s
 
 ## Changelog
 - **2025-11-21**: Added backend `test-fixtures` router, deterministic seed service, and `pnpm test:seed` harness outputting `tests/.fixtures.json`.
-- **2025-11-19**: Tracker created with flow inventory, blockers, and task board after billing-enabled OpenAPI regeneration.
+- **2025-11-19**: Self-serve signup Playwright spec (`tests/signup-email-verification.spec.ts`) added with deterministic email-token helper (`/api/v1/test-fixtures/email-verification-token`). Tracker updated (Flow 2 + Task C) after verifying `pnpm type-check`/`pnpm lint` pass.
+- **2025-11-19**: Tracker created with flow inventory, blockers, and task board after billing-enabled OpenAPI regeneration. Task A completed by switching `tests/app-regressions.spec.ts` to boolean `test.skip` form and re-running `pnpm type-check` to confirm a clean build.

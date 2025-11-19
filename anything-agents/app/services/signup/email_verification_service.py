@@ -119,6 +119,13 @@ class ResendEmailVerificationNotifier(EmailVerificationNotifier):
         )
 
 
+@dataclass(slots=True)
+class EmailVerificationTokenIssueResult:
+    token: str
+    user_id: UUID
+    expires_at: datetime
+
+
 class EmailVerificationService:
     def __init__(
         self,
@@ -173,6 +180,40 @@ class EmailVerificationService:
             token_id=record.token_id,
         )
         return True
+
+    async def issue_token_for_testing(
+        self,
+        *,
+        email: str,
+        ip_address: str | None,
+        user_agent: str | None,
+    ) -> EmailVerificationTokenIssueResult:
+        normalized = email.strip().lower()
+        user = await self._repository.get_user_by_email(normalized)
+        if user is None:
+            raise EmailVerificationError("User not found for verification token issuance.")
+        if user.email_verified_at is not None:
+            raise EmailVerificationError("Email is already verified for this user.")
+
+        token, record = self._mint_token(
+            user_id=user.id,
+            email=user.email,
+            ip=ip_address,
+            ua=user_agent,
+        )
+        await self._token_store.save(record, ttl_seconds=self._token_ttl_seconds())
+        log_event(
+            "auth.email_verification_token",
+            result="test_issued",
+            user_id=str(user.id),
+            token_id=record.token_id,
+        )
+
+        return EmailVerificationTokenIssueResult(
+            token=token,
+            user_id=user.id,
+            expires_at=record.expires_at,
+        )
 
     async def verify_token(
         self,
@@ -293,6 +334,7 @@ def get_email_verification_service() -> EmailVerificationService:
 __all__ = [
     "EmailVerificationDeliveryError",
     "EmailVerificationError",
+    "EmailVerificationTokenIssueResult",
     "EmailVerificationService",
     "InvalidEmailVerificationTokenError",
     "get_email_verification_service",

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import cast
 
 import pytest
 from sqlalchemy import Table, select
@@ -16,19 +17,22 @@ from app.infrastructure.persistence.tenants import models as tenant_models
 from app.services.test_fixtures import PlaywrightFixtureSpec, TestFixtureService
 from tests.utils.sqlalchemy import create_tables
 
-TABLES: tuple[Table, ...] = (
-    conversation_models.TenantAccount.__table__,
-    auth_models.UserAccount.__table__,
-    auth_models.UserProfile.__table__,
-    auth_models.PasswordHistory.__table__,
-    auth_models.TenantUserMembership.__table__,
-    billing_models.BillingPlan.__table__,
-    billing_models.PlanFeature.__table__,
-    billing_models.TenantSubscription.__table__,
-    billing_models.SubscriptionUsage.__table__,
-    tenant_models.TenantSettingsModel.__table__,
-    conversation_models.AgentConversation.__table__,
-    conversation_models.AgentMessage.__table__,
+TABLES: tuple[Table, ...] = cast(
+    tuple[Table, ...],
+    (
+        conversation_models.TenantAccount.__table__,
+        auth_models.UserAccount.__table__,
+        auth_models.UserProfile.__table__,
+        auth_models.PasswordHistory.__table__,
+        auth_models.TenantUserMembership.__table__,
+        billing_models.BillingPlan.__table__,
+        billing_models.PlanFeature.__table__,
+        billing_models.TenantSubscription.__table__,
+        billing_models.SubscriptionUsage.__table__,
+        tenant_models.TenantSettingsModel.__table__,
+        conversation_models.AgentConversation.__table__,
+        conversation_models.AgentMessage.__table__,
+    ),
 )
 
 
@@ -147,4 +151,3 @@ def _default_plans() -> list[billing_models.BillingPlan]:
         feature_toggles={"export_transcripts": True},
     )
     return [starter]
-

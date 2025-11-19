@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Literal
+from typing import Literal, cast
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, EmailStr, Field, ValidationInfo, field_validator
@@ -398,7 +398,8 @@ class TestFixtureService:
             )
 
             for index, message in enumerate(convo.messages):
-                message_id = uuid4().int & ((1 << 63) - 1)
+                random_bits = cast(int, uuid4().int)
+                message_id = random_bits & ((1 << 63) - 1)
                 session.add(
                     AgentMessage(
                         id=message_id,
@@ -478,4 +479,3 @@ __all__ = [
     "TestFixtureError",
     "TestFixtureService",
 ]
-

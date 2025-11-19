@@ -16,6 +16,7 @@ from app.domain.email_verification import (
 )
 from app.domain.users import TenantMembershipDTO, UserRecord, UserRepository, UserStatus
 from app.services.signup.email_verification_service import (
+    EmailVerificationError,
     EmailVerificationService,
     InvalidEmailVerificationTokenError,
 )
@@ -25,6 +26,11 @@ class FakeUserRepository:
     def __init__(self, user: UserRecord | None) -> None:
         self._user = user
         self.marked: list[UUID] = []
+
+    async def get_user_by_email(self, email: str) -> UserRecord | None:
+        if self._user and self._user.email.lower() == email.strip().lower():
+            return self._user
+        return None
 
     async def get_user_by_id(self, user_id: UUID) -> UserRecord | None:
         if self._user and self._user.id == user_id:
@@ -171,3 +177,43 @@ async def test_verify_token_rejects_invalid(sample_user: UserRecord) -> None:
 
     with pytest.raises(InvalidEmailVerificationTokenError):
         await service.verify_token(token="missing.token", ip_address=None, user_agent=None)
+
+
+@pytest.mark.asyncio
+async def test_issue_token_for_testing_returns_token(sample_user: UserRecord) -> None:
+    repo = FakeUserRepository(sample_user)
+    store = FakeTokenStore()
+    service = EmailVerificationService(
+        cast(UserRepository, repo),
+        cast(EmailVerificationTokenStore, store),
+        FakeNotifier(),
+    )
+
+    result = await service.issue_token_for_testing(
+        email=sample_user.email,
+        ip_address="198.51.100.5",
+        user_agent="pytest",
+    )
+
+    assert result.token.count(".") == 1
+    assert result.user_id == sample_user.id
+    token_id = result.token.split(".", 1)[0]
+    assert token_id in store.saved
+
+
+@pytest.mark.asyncio
+async def test_issue_token_for_testing_rejects_verified_user(sample_user: UserRecord) -> None:
+    sample_user.email_verified_at = datetime.now(UTC)
+    repo = FakeUserRepository(sample_user)
+    service = EmailVerificationService(
+        cast(UserRepository, repo),
+        cast(EmailVerificationTokenStore, FakeTokenStore()),
+        FakeNotifier(),
+    )
+
+    with pytest.raises(EmailVerificationError):
+        await service.issue_token_for_testing(
+            email=sample_user.email,
+            ip_address=None,
+            user_agent=None,
+        )
