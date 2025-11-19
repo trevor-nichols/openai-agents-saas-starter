@@ -15,13 +15,13 @@ Bundle a turnkey OpenTelemetry Collector into the starter stack so every tenant 
 | Area | Status | Notes |
 | --- | --- | --- |
 | Collector image/version tracking | ✅ Complete | Pinned to `otel/opentelemetry-collector-contrib:0.139.0`; doc + tracker updated Nov 18. |
-| Docker Compose integration | ✅ Complete | `otel-collector` service, Makefile hooks, and config renderer now live. |
+| Docker Compose integration | ✅ Complete | `otel-collector` service, Just hooks, and config renderer now live. |
 | Starter CLI onboarding | ✅ Complete | Wizard prompts for OTLP sink, bundled collector toggle, and Sentry/Datadog exporters; headless keys documented. |
 | Documentation & runbooks | ✅ Complete | `docs/observability/README.md` covers setup, env vars, exporters, verification steps, and automated smoke test instructions. |
 | QA / smoke validation | ✅ Complete | `anything-agents/tests/integration/test_observability_collector.py` spins up the collector via Docker and asserts logs hit the debug exporter. |
 
 ## Deliverables
-1. **Collector Infrastructure** — Compose service, health checks, and Makefile task to manage lifecycle alongside Postgres/Redis/Vault.
+1. **Collector Infrastructure** — Compose service, health checks, and Just recipe to manage lifecycle alongside Postgres/Redis/Vault.
 2. **Config Templates** — Opinionated `collector.yaml` with processors/exporters for stdout + opt-in SaaS targets (Sentry, Datadog) via env vars.
 3. **CLI Experience** — Setup wizard step that captures logging sink choice, writes the appropriate env vars, and, when OTLP+collector is selected, injects the default endpoint + vendor tokens.
 4. **Docs & Runbooks** — `docs/observability/README.md` (or section in ops guide) describing local/prod topologies, version upgrade steps, and sample vendor wiring.
@@ -31,7 +31,7 @@ Bundle a turnkey OpenTelemetry Collector into the starter stack so every tenant 
 | # | Task | Owner | Status | Target |
 | - | ---- | ----- | ------ | ------ |
 | 1 | Finalize collector version pin + changelog watcher (start with 0.139.0). | Platform Foundations | ✅ Completed | Nov 18 |
-| 2 | Add `otel-collector` service to `docker-compose.yml`, mount generated config, expose 4318/4317, and update Make targets. | Platform Foundations | ✅ Completed | Nov 18 |
+| 2 | Add `otel-collector` service to `docker-compose.yml`, mount generated config, expose 4318/4317, and update Just recipes. | Platform Foundations | ✅ Completed | Nov 18 |
 | 3 | Author config renderer (`ops/observability/render_collector_config.py`) with env-driven Sentry/Datadog exporters. | Platform Foundations | ✅ Completed | Nov 18 |
 | 4 | Extend Starter CLI setup wizard to include "Observability" step (sink selection, OTLP endpoint/header prompts, toggle for bundled collector). | Platform Foundations | ✅ Completed | Nov 18 |
 | 5 | Update docs (`docs/trackers/ISSUE_TRACKER.md`, `docs/observability/README.md`) with quick-start + production guidance. | Platform Foundations | ✅ Completed | Nov 18 |
@@ -42,7 +42,7 @@ Bundle a turnkey OpenTelemetry Collector into the starter stack so every tenant 
 | --- | --- | --- |
 | Collector image drift introduces breaking config changes. | Medium | Track upstream release notes monthly; keep config minimal and documented. |
 | Operators misunderstand exporter credentials living in plain env vars. | Medium | Document secret handling + recommend Vault/Secrets Manager for prod tokens. |
-| Additional container increases local resource usage. | Low | Allow opt-out flag/Make target (`make observability-down`) and document CPU/memory expectations. |
+| Additional container increases local resource usage. | Low | Allow opt-out flag/Just helper (e.g., `just observability-down`) and document CPU/memory expectations. |
 
 ## Changelog
 - **2025-11-18** — Collector service/config renderer/CLI/doc updates merged; smoke tests added via `anything-agents/tests/integration/test_observability_collector.py`.

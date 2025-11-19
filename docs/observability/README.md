@@ -10,7 +10,7 @@ This doc explains how the starter repo ships a turnkey OpenTelemetry Collector s
 1. Run the Starter CLI setup wizard (interactive or headless) and select `otlp` as your logging sink.
 2. When prompted, choose **“Start bundled OpenTelemetry Collector”** to let docker compose manage the collector container.
 3. (Optional) Enable Sentry and/or Datadog exporters directly from the wizard—provide the OTLP endpoint + bearer token for Sentry or the API key + site for Datadog.
-4. The wizard writes the env vars below to `.env.local`, and `make dev-up` renders `var/observability/collector.generated.yaml` before launching `otel/opentelemetry-collector-contrib:0.139.0` with those settings.
+4. The wizard writes the env vars below to `.env.local`, and `just dev-up` renders `var/observability/collector.generated.yaml` before launching `otel/opentelemetry-collector-contrib:0.139.0` with those settings.
 5. FastAPI points `LOGGING_OTLP_ENDPOINT` at `http://otel-collector:4318/v1/logs` automatically, so structured logs flow through the collector and on to any configured exporters.
 
 ## Services & Ports
@@ -28,7 +28,7 @@ The collector image is pinned to `otel/opentelemetry-collector-contrib:0.139.0`,
 | Env Var | Purpose | Wizard support |
 | --- | --- | --- |
 | `LOGGING_SINK` | Set to `otlp` to route FastAPI logs through OTLP/HTTP. | ✅ |
-| `ENABLE_OTEL_COLLECTOR` | `true` launches the bundled `otel-collector` service via `make dev-up`. | ✅ |
+| `ENABLE_OTEL_COLLECTOR` | `true` launches the bundled `otel-collector` service via `just dev-up`. | ✅ |
 | `LOGGING_OTLP_ENDPOINT` | Auto-set to `http://otel-collector:4318/v1/logs` when the bundled collector is enabled (you can override for remote collectors). | ✅ |
 | `LOGGING_OTLP_HEADERS` | Optional JSON map for custom headers when pointing directly at a SaaS OTLP endpoint. | ✅ |
 | `OTEL_COLLECTOR_HTTP_PORT` / `OTEL_COLLECTOR_GRPC_PORT` / `OTEL_COLLECTOR_DIAG_PORT` | Host port mappings for the container; defaults are 4318/4317/13133. | Manual override in `.env.local`. |
@@ -45,7 +45,7 @@ The wizard stores secrets in `.env.local` only. The generated collector config l
 ## Code Flow
 
 - `ops/observability/render_collector_config.py` reads the env vars above and emits `var/observability/collector.generated.yaml` whenever `ENABLE_OTEL_COLLECTOR=true`.
-- `make dev-up` (and the CLI’s `starter_cli infra compose up`) call the renderer before running `docker compose up ... otel-collector` so the container always mounts a fresh config.
+- `just dev-up` (and the CLI’s `starter_cli infra compose up`) call the renderer before running `docker compose up ... otel-collector` so the container always mounts a fresh config.
 - `docker-compose.yml` defines the `otel-collector` service with the generated config volume and exposes the OTLP/diagnostic ports for local use.
 
 ## Exporter Presets
@@ -67,13 +67,13 @@ This enables the collector’s native `datadog` exporter, so OTLP logs are relay
 
 ### Additional Destinations
 
-Need another sink (Grafana Loki, Honeycomb, Splunk, etc.)? Copy `ops/observability/render_collector_config.py`, add another exporter block keyed off env vars, and re-run `make dev-up`. Downstream pipelines pick up the change automatically because docker compose mounts the regenerated config on restart.
+Need another sink (Grafana Loki, Honeycomb, Splunk, etc.)? Copy `ops/observability/render_collector_config.py`, add another exporter block keyed off env vars, and re-run `just dev-up`. Downstream pipelines pick up the change automatically because docker compose mounts the regenerated config on restart.
 
 ## Local Verification
 
 ```bash
 # Start the stack with the collector enabled
-$ make dev-up
+$ just dev-up
 
 # Tail collector logs
 $ docker compose logs -f otel-collector
@@ -82,7 +82,7 @@ $ docker compose logs -f otel-collector
 $ curl http://localhost:${OTEL_COLLECTOR_DIAG_PORT:-13133}/healthz
 ```
 
-You should see structured JSON logs coming from FastAPI and mirrored by the collector’s debug exporter. If Sentry/Datadog credentials are wrong, the collector logs emit transport errors—fix the env vars and rerun `make dev-up` to regenerate the config.
+You should see structured JSON logs coming from FastAPI and mirrored by the collector’s debug exporter. If Sentry/Datadog credentials are wrong, the collector logs emit transport errors—fix the env vars and rerun `just dev-up` to regenerate the config.
 
 ### Automated Smoke Test
 

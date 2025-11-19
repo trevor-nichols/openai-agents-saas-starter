@@ -16,7 +16,7 @@
 3. **Tool registry parity** — `initialize_tools()` only registers `tavily_search_tool` when the key
    exists, making agent capabilities reflect actual provider coverage.
 4. **Operator tooling** — `python -m starter_cli.app providers validate` (and
-   `make validate-providers`) fail fast when required env vars are missing. CI can pass `--strict`
+   `just validate-providers`) fail fast when required env vars are missing. CI can pass `--strict`
    to block merges before Docker builds/deployments.
 5. **Documentation** — `docs/ops/provider-parity.md` captures the enforcement matrix, remediation
    steps, and references back to Stripe/Resend runbooks.
@@ -28,4 +28,4 @@
 - When tenant-level entitlements diverge, wire that metadata into the validator so providers can be
   scoped per-tenant rather than globally fatal.
 - Wire the CLI command into CI (GitHub Action) once the backend workflow is updated to call
-  `make validate-providers` ahead of migrations/tests.
+  `just validate-providers` ahead of migrations/tests.

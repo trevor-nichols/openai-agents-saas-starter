@@ -6,7 +6,7 @@
 
 - Python 3.11+ with access to the repository’s virtual environment (install with `pip install '.[dev]'` or `pip install stripe` at minimum).
 - Stripe CLI installed (`stripe --version`). The assistant can open the guided auth page and run `stripe login --interactive` for you.
-- Docker + `make` if you want the helper to launch the local Postgres stack via `make dev-up`.
+- Docker + `just` if you want the helper to launch the local Postgres stack via `just dev-up`.
 - A Stripe account that can create API keys, webhook endpoints, products, and prices.
 
 ## Running the script
@@ -18,7 +18,7 @@ pnpm stripe:setup   # invokes python -m starter_cli.app stripe setup
 ### What happens during the run?
 
 1. **Stripe CLI check** – Verifies installation/auth. If auth is missing it can open <https://dashboard.stripe.com/stripe-cli/auth> and run `stripe login --interactive` inline.
-2. **Postgres helper** – Offers to run `make dev-up` and (optionally) executes a `psql` smoke test against your `DATABASE_URL` (discovered from `.env.local`, `.env`, `.env.compose`, or manual input).
+2. **Postgres helper** – Offers to run `just dev-up` and (optionally) executes a `psql` smoke test against your `DATABASE_URL` (discovered from `.env.local`, `.env`, `.env.compose`, or manual input).
 3. **Stripe provisioning** – Prompts for `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and the monthly price for each plan. Using the official Stripe SDK it:
    - creates (or updates) the `starter` and `pro` products,
    - ensures each product has a monthly price with a 7-day trial, and
@@ -30,7 +30,7 @@ Sample output (abbreviated):
 ```
 [INFO] Stripe SaaS setup assistant starting…
 [SUCCESS] stripe version 1.18.3
-[INFO] Start or refresh the local Postgres stack via `make dev-up`? (Y/n)
+[INFO] Start or refresh the local Postgres stack via `just dev-up`? (Y/n)
 ...
 [SUCCESS] Configured Starter (USD 29.00) → price_1Qabcd...
 [SUCCESS] Configured Pro (USD 79.00) → price_1Qefgh...

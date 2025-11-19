@@ -155,7 +155,7 @@ class DatabaseReleaseWorkflow:
     def _run_migrations(self) -> None:
         self._execute_step(
             name="migrations",
-            func=lambda: self._run_command(["make", "migrate"], "Ran `make migrate`."),
+            func=lambda: self._run_command(["just", "migrate"], "Ran `just migrate`."),
         )
 
     def _capture_alembic_revision(self) -> None:

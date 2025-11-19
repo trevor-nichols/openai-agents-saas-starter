@@ -223,12 +223,12 @@ class StripeSetupFlow:
         if self.non_interactive:
             return
         console.info("Postgres helper", topic="postgres")
-        if self._prompt_yes_no("Start or refresh the local Postgres stack via `make dev-up`?"):
+        if self._prompt_yes_no("Start or refresh the local Postgres stack via `just dev-up`?"):
             try:
-                self._run_interactive(["make", "dev-up"])
+                self._run_interactive(["just", "dev-up"])
             except (FileNotFoundError, subprocess.CalledProcessError) as exc:
                 console.warn(
-                    f"`make dev-up` failed ({exc}). Fix Postgres manually.",
+                    f"`just dev-up` failed ({exc}). Fix Postgres manually.",
                     topic="postgres",
                 )
 

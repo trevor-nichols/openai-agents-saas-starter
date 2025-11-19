@@ -12,7 +12,7 @@ This runbook codifies the order-of-operations for shipping schema changes and bi
 ## Prerequisites
 1. **Environment parity** – `.env.local` / deployment secrets contain the target `DATABASE_URL`, Redis URLs, and provider keys. Run `starter_cli config dump-schema` if you need to confirm coverage.
 2. **Secrets** – `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and the desired `STRIPE_PRODUCT_PRICE_MAP` entries are available (from prior runs or the upcoming release).
-3. **Tooling** – Hatch environment created (`make bootstrap`), Docker/Compose available if you need local Postgres, and Stripe CLI installed+authenticated when using automation for Stripe provisioning.
+3. **Tooling** – Hatch environment created (`just bootstrap`), Docker/Compose available if you need local Postgres, and Stripe CLI installed+authenticated when using automation for Stripe provisioning.
 4. **Access** – Operator can reach the deployment Postgres instance (psql/SSL tunnels). Verify credentials by running `psql $DATABASE_URL -c 'select 1'` prior to the window.
 
 ## Pre-flight Checklist
@@ -20,7 +20,7 @@ Run this list **before** touching production:
 - [ ] Confirm git SHA/tag for the release candidate.
 - [ ] Ensure no pending Alembic revisions on the source branch (`hatch run alembic -c anything-agents/alembic.ini heads`).
 - [ ] Verify Postgres reachability (`psql $DATABASE_URL -c 'select version();'`).
-- [ ] Run `make migrate` against a staging environment to smoke-test the revision.
+- [ ] Run `just migrate` against a staging environment to smoke-test the revision.
 - [ ] Validate provider inputs with `python -m starter_cli.app providers validate` so Stripe/Resend/OpenAI keys exist before billing is enabled.
 - [ ] Confirm Stripe CLI authentication: `stripe whoami` should succeed (skip when using purely manual plan updates).
 
@@ -44,7 +44,7 @@ Key flags:
 
 The command executes the following steps:
 
-1. Runs `make migrate` with the current `.env*` loads so FastAPI pods don't need `AUTO_RUN_MIGRATIONS`.
+1. Runs `just migrate` with the current `.env*` loads so FastAPI pods don't need `AUTO_RUN_MIGRATIONS`.
 2. Captures the Alembic head via `hatch run alembic -c anything-agents/alembic.ini current`.
 3. Invokes the Stripe provisioning flow unless `--skip-stripe` is set (same UX as `stripe setup`, including CLI validation unless `--non-interactive` is passed).
 4. Queries `billing_plans` to ensure every required plan exists, is active, and has a Stripe price ID.
@@ -53,7 +53,7 @@ The command executes the following steps:
 ### Option B – Manual (until automation ships or when running in constrained environments)
 1. **Migrations**
    ```bash
-   make migrate
+   just migrate
    hatch run alembic -c anything-agents/alembic.ini current
    ```
    Save the `alembic current` output in the release ticket.
@@ -102,7 +102,7 @@ No. `AUTO_RUN_MIGRATIONS` remains `false` outside local dev, so pods refuse to a
 Use the `--skip-stripe` flag (once the release command lands) and follow the manual plan seeding steps. Attach the manual evidence to the release summary.
 
 **Q: How do I know which database the CLI targets?**
-`make migrate` loads env files via `scripts/run_with_env.py`, respecting `.env.compose` + `.env.local`. Confirm `DATABASE_URL` before running the commands, especially when using remote Postgres.
+`just migrate` loads env files via `scripts/run_with_env.py`, respecting `.env.compose` + `.env.local`. Confirm `DATABASE_URL` before running the commands, especially when using remote Postgres.
 
 **Q: When should this runbook be updated?**
 Whenever a new migration workflow, plan catalog change, or CLI flag lands. Log the update in `docs/trackers/MILESTONE_DB_RELEASE_AUTOMATION.md` and reference the change in release notes.

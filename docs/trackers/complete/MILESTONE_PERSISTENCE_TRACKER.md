@@ -62,7 +62,7 @@ BillingPlan (1) ────< TenantSubscription (many)
 2. Scaffold Alembic environment (if not present) with async-compatible configuration and naming conventions.
 3. Generate initial migration `20251106_create_conversation_and_billing_tables` and review for idempotency.
 4. Add migration tests/integration checks using ephemeral Postgres (e.g., pytest fixture that runs `alembic upgrade head`).
-5. Update developer tooling (Makefile task or hatch script) to run migrations locally and in CI.
+5. Update developer tooling (Just recipe or hatch script) to run migrations locally and in CI.
 
 ### DB-002 — Engine Bootstrap
 1. Extend `Settings` with `database_url`, pool sizing, and feature toggles (e.g., `enable_billing`).

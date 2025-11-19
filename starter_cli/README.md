@@ -12,7 +12,8 @@ values written here are exactly what FastAPI and the CLI share at runtime.
 
 - Python 3.11+, Hatch, and the backend dev dependencies (`pip install 'anything-agents[dev]'`).
 - Node.js 20+ and `pnpm` (for the frontend env file that the wizard populates).
-- Docker + Docker Compose v2 (for `make dev-up` / `make vault-up`).
+- Docker + Docker Compose v2 (for `just dev-up` / `just vault-up`).
+- `just` task runner (install via `brew install just` or `sudo apt-get install just`).
 - Stripe CLI (required for `stripe setup` unless you pass `--skip-stripe-cli`).
 
 From the repo root run:
@@ -123,14 +124,14 @@ Onboards a hosted secrets/signing provider. Available runners today: Vault Dev, 
 2. Validates connectivity (e.g., Vault transit probe, AWS `GetSecretValue`, Azure Key Vault reads,
    Infisical API check).
 3. Prints env updates + next steps so you can copy them into `.env.local` or CI secrets.
-4. Optionally runs helper Makefile targets (e.g., `make vault-up`).
+4. Optionally runs helper Just recipes (e.g., `just vault-up`).
 
 ### 3. `stripe setup`
 
 Interactive provisioning of Stripe products/prices plus secret capture:
 
 - Verifies the `stripe` Python package and Stripe CLI are present (unless `--skip-stripe-cli`).
-- Optionally runs `make dev-up` and tests `psql` connectivity before seeding plan data.
+- Optionally runs `just dev-up` and tests `psql` connectivity before seeding plan data.
 - Prompts for secret key/webhook secret (or requires `--secret-key/--webhook-secret` in
   `--non-interactive` mode).
 - Ensures one product & price per plan (`starter`, `pro`) in Stripe and writes
@@ -151,10 +152,10 @@ Operator utilities around authentication:
 
 ### 5. `infra`
 
-Wraps Make targets for local infrastructure and dependency checks:
+Wraps Just recipes for local infrastructure and dependency checks:
 
-- `infra compose {up,down,logs,ps}` → `make dev-*` targets for Postgres + Redis.
-- `infra vault {up,down,logs,verify}` → `make vault-*` helpers for the dev signer.
+- `infra compose {up,down,logs,ps}` → `just dev-*` recipes for Postgres + Redis.
+- `infra vault {up,down,logs,verify}` → `just vault-*` helpers for the dev signer.
 - `infra deps [--format {table,json}]` → verifies Docker, Compose v2, Hatch, Node, pnpm.
 
 ### 6. `status`
@@ -171,7 +172,7 @@ Validates Stripe, Resend, and Tavily configuration before you boot FastAPI or de
 - Loads the same env files as other commands, reuses the backend validator, and prints one line per
   violation with provider/code context.
 - Returns non-zero when fatal issues exist (any hardened environment or when you pass `--strict`).
-- Use `make validate-providers` or `python -m starter_cli.app providers validate --strict` in CI to
+- Use `just validate-providers` or `python -m starter_cli.app providers validate --strict` in CI to
   fail the pipeline before Docker builds or migrations.
 
 ### 8. `usage`
@@ -203,7 +204,7 @@ python -m starter_cli.app release db \
 
 What it does:
 
-1. Runs `make migrate` with the current `.env*` context.
+1. Runs `just migrate` with the current `.env*` context.
 2. Captures the Alembic head via `hatch run alembic -c anything-agents/alembic.ini current`.
 3. Invokes the existing Stripe setup flow unless `--skip-stripe` is passed.
 4. Queries `billing_plans` to ensure each plan is active and has a Stripe price ID.

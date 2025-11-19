@@ -11,7 +11,7 @@
 - **Application hooks**: `AgentService` pulls/updates session metadata via `ConversationService`, then calls `Runner.run(..., session=...)`.
 
 ## Provisioning Checklist
-1. Run `make migrate` (uses `.env.compose` + local env) to apply `6724700351b6_add_sdk_session_columns`.
+1. Run `just migrate` (uses `.env.compose` + local env) to apply `6724700351b6_add_sdk_session_columns`.
 2. Verify the tables exist:
    ```sql
    \d sdk_agent_sessions;
@@ -32,7 +32,7 @@
 ## Recovery Procedures
 1. **Corrupted session history**: Delete from `sdk_agent_session_messages` for the affected `session_id` and blank the associated columns on `agent_conversations`. Agents will rebuild state from durable conversation logs.
 2. **Rolling back code**: Downgrade the migration (`alembic downgrade 45c4400e74d9`) only after clearing the new columns/tables.
-3. **Stuck migrations**: Use `make migrate` to rerun with verbose output; all SQL runs inside the managed virtualenv.
+3. **Stuck migrations**: Use `just migrate` to rerun with verbose output; all SQL runs inside the managed virtualenv.
 
 ## Local Development Notes
 - Tests rely on the new tables; ensure `pytest -m postgres` runs against a database that has the migration.

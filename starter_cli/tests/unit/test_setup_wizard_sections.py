@@ -366,7 +366,7 @@ def test_secrets_section_runs_non_vault_provider(monkeypatch, cli_ctx: CLIContex
     provider = StubProvider(strings={"SECRETS_PROVIDER": "infisical_cloud"})
 
     def fake_runner(ctx, input_provider, *, options):
-        assert options.skip_make
+        assert options.skip_automation
         return OnboardResult(
             provider=SecretsProviderLiteral.INFISICAL_CLOUD,
             env_updates={

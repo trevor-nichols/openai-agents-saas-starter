@@ -12,7 +12,7 @@ Document the outstanding deliverables for the Starter CLI (SC) so we can plan im
 | --- | --- | --- | --- | --- |
 | M0 – Rebrand & Isolation Guardrails | Rename CLI surface to ASC, extract shared config modules, and eliminate direct imports from `anything-agents/app`. | CLI-020, CLI-021 | CLI packages load without FastAPI dependencies, repo docs reflect the new name, and automated checks prevent regressions. | In Progress |
 | M1 – Secrets & Key Management | Replace repo secrets with operator-supplied values and wire Vault Transit for service-account issuance. | SEC-007, SEC-008 | CLI rotates peppers/keys, stores them in Vault (or guarded local files), and configures AuthService to require Vault-signed requests outside dev. | In Progress |
-| M2 – Provider & Infra Provisioning | Enforce required third-party keys, managed Redis configuration, and migration/plan seeding workflows. | OPS-003, INFRA-004, DB-007 | CLI refuses to finish until Stripe/Resend/OpenAI keys and Redis endpoints are validated, then runs `make migrate` + plan seeding with recorded outputs. | In Progress |
+| M2 – Provider & Infra Provisioning | Enforce required third-party keys, managed Redis configuration, and migration/plan seeding workflows. | OPS-003, INFRA-004, DB-007 | CLI refuses to finish until Stripe/Resend/OpenAI keys and Redis endpoints are validated, then runs `just migrate` + plan seeding with recorded outputs. | In Progress |
 | M3 – Tenant & Observability Guardrails | Ensure tenant attribution, log forwarding, and GeoIP enrichment are configured during setup. | BE-012, OBS-006, OBS-007 | CLI scaffolds tenant-aware metadata defaults, enables JSON logging or external sinks, and wires GeoIP providers (or explicit "none" choice). | In Progress |
 | M4 – Signup & Worker Policy Controls | Capture launch-time decisions for signup exposure and background worker scaling. | AUTH-011, OPS-004 | CLI toggles public vs invite-only signup, sets rate/quota caps, and documents whether a dedicated Stripe retry worker deployment is required. | In Progress |
 
@@ -39,7 +39,7 @@ Document the outstanding deliverables for the Starter CLI (SC) so we can plan im
 - Added a machine-readable inventory of every backend env var (`docs/trackers/CLI_ENV_INVENTORY.md`) plus a new `starter_cli config dump-schema` command so operators (and CI automation) can diff wizard coverage versus the full Pydantic settings model.
 - Introduced `starter_cli infra compose|vault|deps` so the CLI can bootstrap Docker Compose stacks, manage the Vault dev signer, and verify local dependencies without dropping back to raw Make targets. Tests now cover these wrappers via `test_cli_infra_commands.py`.
 - The setup wizard now prompts for `DATABASE_URL` and prints a “schema coverage” summary pointing operators to the inventory/dump-schema tooling for any remaining manual knobs.
-- Added `scripts/cli/verify_env_inventory.py` (wired via `make cli-verify-env`) so CI can fail fast if docs/trackers/CLI_ENV_INVENTORY.md drifts from the runtime settings schema or wizard coverage flags.
+- Added `scripts/cli/verify_env_inventory.py` (wired via `just cli-verify-env`) so CI can fail fast if docs/trackers/CLI_ENV_INVENTORY.md drifts from the runtime settings schema or wizard coverage flags.
 - The setup wizard now emits a JSON summary (default `var/reports/setup-summary.json`, override via `--summary-path`) which captures milestone checks + env paths for audit logs or deployment artifacts.
 
 ## Detailed Scope
@@ -57,7 +57,7 @@ Document the outstanding deliverables for the Starter CLI (SC) so we can plan im
 - **Third-party credential capture:** Require Stripe secret/webhook keys, Resend toggles (`RESEND_EMAIL_ENABLED`, `RESEND_API_KEY`, `RESEND_DEFAULT_FROM`, `RESEND_BASE_URL`, optional template IDs), and the OpenAI API key before continuing; optionally capture Tavily. Persist validated values to the appropriate env files, label them as required vs optional in the generated summary, and redact when printing logs.
 - **Plan map + billing config:** Walk operators through selecting plans (Starter/Pro), update `STRIPE_PRODUCT_PRICE_MAP`, and sync with the Stripe setup script when present.
 - **Managed Redis guidance:** Collect Redis URLs, enforce TLS/auth flags, and encourage separate logical DBs for rate limiting, nonce cache, and billing streams. Emit warnings and docs if users insist on single-instance dev defaults.
-- **Migration + seeding runner:** Wrap `make migrate` and plan-seeding helpers so first deploys run schema migrations and Stripe catalog seeding in a predictable order with logged timestamps for auditability.
+- **Migration + seeding runner:** Wrap `just migrate` and plan-seeding helpers so first deploys run schema migrations and Stripe catalog seeding in a predictable order with logged timestamps for auditability.
 
 ### M3 – Tenant & Observability Guardrails (BE-012, OBS-006, OBS-007)
 

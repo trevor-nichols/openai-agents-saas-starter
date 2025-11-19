@@ -27,20 +27,20 @@ Guarantee that every revenue- or security-impacting workflow in the Next.js 15 s
 ## Milestone Task Board
 | # | Task | Owner | Status | Target |
 | - | ---- | ----- | ------ | ------ |
-| A | Convert placeholder `test.skip` calls to boolean form so `pnpm type-check` passes (`tests/app-regressions.spec.ts`). | Platform Foundations | 🟡 In Progress | Nov 20 |
-| B | Land deterministic fixture harness (seed tenants, plans, conversations, service accounts) documented in `tests/README.md`. | Platform Foundations + Backend | ✅ Completed | Nov 25 |
-| C | Implement signup + email verification spec (Flow 2) guarded by feature flag toggles. | Platform Foundations | ⛔ Not Started | Nov 27 |
-| D | Implement billing plan mutation spec (Flow 3) including optimistic UI + SSE event assertion. | Platform Foundations | ⛔ Not Started | Nov 27 |
-| E | Implement billing ledger + usage spec (Flow 4) verifying filters + SSE merge. | Platform Foundations | ⛔ Not Started | Nov 29 |
-| F | Implement service-account lifecycle spec (Flow 5). | Platform Foundations | ⛔ Not Started | Nov 29 |
-| G | Implement tenant settings spec (Flow 6) ensuring webhook + contacts persisted. | Platform Foundations | ⛔ Not Started | Dec 1 |
-| H | Implement chat transcript export spec (Flow 7) ensuring file download and toast. | Platform Foundations | ⛔ Not Started | Dec 1 |
-| I | Implement conversations archive spec (Flow 8) covering delete/restore + billing gate. | Platform Foundations | ⛔ Not Started | Dec 2 |
+| A | Convert placeholder `test.skip` calls to boolean form so `pnpm type-check` passes (`tests/app-regressions.spec.ts`). | Platform Foundations | 🟡 In Progress | Nov 19 |
+| B | Land deterministic fixture harness (seed tenants, plans, conversations, service accounts) documented in `tests/README.md`. | Platform Foundations + Backend | ✅ Completed | Nov 19 |
+| C | Implement signup + email verification spec (Flow 2) guarded by feature flag toggles. | Platform Foundations | ⛔ Not Started | Nov 19 |
+| D | Implement billing plan mutation spec (Flow 3) including optimistic UI + SSE event assertion. | Platform Foundations | ⛔ Not Started | Nov 19 |
+| E | Implement billing ledger + usage spec (Flow 4) verifying filters + SSE merge. | Platform Foundations | ⛔ Not Started | Nov 19 |
+| F | Implement service-account lifecycle spec (Flow 5). | Platform Foundations | ⛔ Not Started | Nov 19 |
+| G | Implement tenant settings spec (Flow 6) ensuring webhook + contacts persisted. | Platform Foundations | ⛔ Not Started | Nov 19 |
+| H | Implement chat transcript export spec (Flow 7) ensuring file download and toast. | Platform Foundations | ⛔ Not Started | Nov 19 |
+| I | Implement conversations archive spec (Flow 8) covering delete/restore + billing gate. | Platform Foundations | ⛔ Not Started | Nov 19 |
 
 ## Data & Infrastructure Dependencies
 - **Seed scripts**: Extend the existing `tests/README.md` guidance with a reusable `pnpm test:seed` that provisions tenants/plans using FastAPI admin APIs (requires `anything-agents` running with `USE_TEST_FIXTURES=true`).
 - **Stripe + billing stubs**: Use the `billing_service` fake gateway to emit invoices/events without hitting Stripe; ensure Redis (`agents-redis` on 6380) is running for SSE coverage.
-- **Vault signer**: `make vault-up` launches the dev transit signer required for service-account tests; pair with a fixture service-account scope in Postgres.
+- **Vault signer**: `just vault-up` launches the dev transit signer required for service-account tests; pair with a fixture service-account scope in Postgres.
 - **Storage mock**: Transcript export spec needs a deterministic storage stub (local/S3 fake); document the toggle + helper script inside `tests/README.md` before enabling Flow 7.
 
 ## Exit Criteria

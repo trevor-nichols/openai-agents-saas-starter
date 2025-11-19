@@ -100,7 +100,7 @@ class SecretProviderProtocol(Protocol):
 
 ### 6.5 CLI Onboarding Command
 - New command: `starter_cli secrets onboard [--provider ...] [--non-interactive --answers-file path]`.
-- Supported choices in Phase 1: `vault_dev` (runs `make vault-up`, captures printed envs), `hcp_vault` (prompts for HCP org/project + service principal, optionally hits HCP API), `infisical_cloud` (runs `infisical login/init`, captures workspace/env IDs), `infisical_self_host` (downloads Infisical compose bundle, runs docker compose up, collects admin token).
+- Supported choices in Phase 1: `vault_dev` (runs `just vault-up`, captures printed envs), `hcp_vault` (prompts for HCP org/project + service principal, optionally hits HCP API), `infisical_cloud` (runs `infisical login/init`, captures workspace/env IDs), `infisical_self_host` (downloads Infisical compose bundle, runs docker compose up, collects admin token).
 - Output artifacts: `.env.local` snippets for backend/frontend, optional CI secret checklist, post-setup validation summary.
 
 ### 6.6 Next Steps (Phase 1 Prep)
@@ -120,8 +120,8 @@ class SecretProviderProtocol(Protocol):
 ## 8. Phase 2 Progress (2025-11-15)
 
 - Added `starter_cli secrets onboard` with shared command plumbing, answer-file support, non-interactive mode, and provider selection menu.
-- Vault Dev workflow now guides operators through `make vault-up`, gathers defaults (addr/token/transit key), and prints env snippets + warnings.
-- HCP Vault workflow prompts for addr/namespace/token/transit key, emits env entries, and documents follow-up tasks (Transit enablement, `make verify-vault`).
+- Vault Dev workflow now guides operators through `just vault-up`, gathers defaults (addr/token/transit key), and prints env snippets + warnings.
+- HCP Vault workflow prompts for addr/namespace/token/transit key, emits env entries, and documents follow-up tasks (Transit enablement, `just verify-vault`).
 - Infisical Cloud/Self-Host appear in the selector as “coming soon” so UX strings stay stable while backend support is under construction.
 
 ## 9. Phase 3 Progress (2025-11-15)

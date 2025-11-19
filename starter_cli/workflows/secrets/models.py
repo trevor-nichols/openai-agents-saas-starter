@@ -34,9 +34,9 @@ class OnboardResult:
 
 @dataclass(slots=True)
 class SecretsWorkflowOptions:
-    """Optional knobs that workflows may consult (e.g., skip Make targets)."""
+    """Optional knobs that workflows may consult (e.g., skip local automation)."""
 
-    skip_make: bool = False
+    skip_automation: bool = False
 
 
 class SecretsWorkflow(Protocol):

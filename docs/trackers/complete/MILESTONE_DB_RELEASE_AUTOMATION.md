@@ -7,8 +7,8 @@ Create an auditable, automation-friendly release flow that guarantees Alembic mi
 
 ## Current Gaps
 1. `AUTO_RUN_MIGRATIONS` is intentionally `false` in production, so pods never self-heal schema drift.
-2. Operators must remember to run `make migrate` + Stripe provisioning manually; steps vary by team and are not written down.
-3. The Starter CLI wizard only offers an optional `Run make migrate now?` prompt—no enforcement, no logging, and no non-interactive pathway.
+2. Operators must remember to run `just migrate` + Stripe provisioning manually; steps vary by team and are not written down.
+3. The Starter CLI wizard only offers an optional `Run just migrate now?` prompt—no enforcement, no logging, and no non-interactive pathway.
 4. There is no post-run verification or artifact proving which Alembic revision/Stripe price IDs were applied, blocking audit and rollback readiness.
 
 ## Success Criteria
@@ -40,7 +40,7 @@ Create an auditable, automation-friendly release flow that guarantees Alembic mi
 | --- | --- | --- | --- |
 | P0 Alignment | Confirm prerequisites, choose CLI command name/flags, align on artifact schema. | Platform Foundations + Billing | Signed-off spec appended to this doc. |
 | P1 Runbook | Draft and review `docs/ops/db-release-playbook.md`. Include manual fallback steps in case automation is unavailable. | Docs/Platform | Runbook approved + linked from README + ISSUE_TRACKER. |
-| P2 Automation | Implement CLI release command, integrate `make migrate`, `stripe setup`, verification queries, JSON artifact writer, and headless flags. | CLI Team | Command passes local E2E test, emits artifact, handles failure paths. |
+| P2 Automation | Implement CLI release command, integrate `just migrate`, `stripe setup`, verification queries, JSON artifact writer, and headless flags. | CLI Team | Command passes local E2E test, emits artifact, handles failure paths. |
 | P3 Tests & CI | Add unit tests/stubs for CLI, add migration verification test, wire CI example/gate, update trackers + changelog. | QA/CLI | Tests merge cleanly, DB-007 moved to Resolved. |
 
 ## Work Breakdown Structure
@@ -53,7 +53,7 @@ Create an auditable, automation-friendly release flow that guarantees Alembic mi
 - Parameters: `--non-interactive`, `--skip-stripe`, `--skip-db-checks`, `--summary-path`, `--json`.
 - Steps inside command:
   1. Load env files via `EnvFile` helpers.
-  2. Run `make migrate` via `subprocess` (same as wizard) but enforce success.
+  2. Run `just migrate` via `subprocess` (same as wizard) but enforce success.
   3. Optionally run `stripe setup --non-interactive ...` or a lighter `stripe plans verify` when env already has product/price IDs.
   4. Query Postgres via async SQLAlchemy (reuse existing session factory) to confirm `billing_plans` table contains expected codes + non-null `stripe_price_id`.
   5. Write artifact to `var/reports/db-release-YYYYMMDDTHHMMSSZ.json` and echo summary.

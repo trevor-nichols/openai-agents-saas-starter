@@ -20,7 +20,7 @@ PROVIDER_WORKFLOWS: tuple[ProviderWorkflow, ...] = (
             literal=SecretsProviderLiteral.VAULT_DEV,
             label="Vault Dev (Docker)",
             description=(
-                "Single-command dev signer via make vault-up on http://127.0.0.1:18200."
+                "Single-command dev signer via just vault-up on http://127.0.0.1:18200."
             ),
             available=True,
         ),

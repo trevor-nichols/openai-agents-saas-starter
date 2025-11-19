@@ -40,16 +40,16 @@ This document outlines the operator workflows for receiving, inspecting, and rep
 
    ```bash
    # List failed dispatches for the billing_sync handler (page 2)
-   make stripe-replay ARGS="list --handler billing_sync --status failed --page 2"
+   just stripe-replay args="list --handler billing_sync --status failed --page 2"
 
    # Replay a specific dispatch UUID
-   make stripe-replay ARGS="replay --dispatch-id 7ad7c7bc-..."
+   just stripe-replay args="replay --dispatch-id 7ad7c7bc-..."
 
    # Replay everything currently failed (limit 10, auto-confirm)
-   make stripe-replay ARGS="replay --status failed --limit 10 --yes"
+   just stripe-replay args="replay --status failed --limit 10 --yes"
 
    # Replay based on Stripe event ids (dispatch rows are created automatically)
-   make stripe-replay ARGS="replay --event-id evt_123 --event-id evt_456"
+   just stripe-replay args="replay --event-id evt_123 --event-id evt_456"
    ```
 
    The CLI now talks directly to Postgres: it resets the `stripe_event_dispatch` rows to `pending`, invokes the dispatcher in-process, and updates the parent `stripe_events` row—no webhook POSTs required.
@@ -115,20 +115,20 @@ Normalized `BillingEventPayload` messages delivered over `/api/v1/billing/stream
   stripe trigger customer.subscription.created \
     --override '{"customer":"{{CUSTOMER_ID}}","metadata":{"tenant_id":"default"}}'
   ```
-- Inspect stored events via `psql` or any SQL client pointed at the Postgres instance started by `make dev-up`.
+- Inspect stored events via `psql` or any SQL client pointed at the Postgres instance started by `just dev-up`.
 - Validate fixture coverage locally:
   ```bash
-  make lint-stripe-fixtures
-  make test-stripe
+  just lint-stripe-fixtures
+  just test-stripe
   ```
 
 ## Streaming Health Checks
 
-1. **Redis** – `make dev-up` already launches Redis. Inspect `billing:events:last_processed_at` via `redis-cli` to ensure bookmarks advance.
+1. **Redis** – `just dev-up` already launches Redis. Inspect `billing:events:last_processed_at` via `redis-cli` to ensure bookmarks advance.
 2. **SSE endpoint** – `curl -H "X-Tenant-Id: <tenant>" -H "X-Tenant-Role: owner" http://localhost:8000/api/v1/billing/stream` should return a continuous event stream (ping comments every 15s). Headers are optional but, when provided, must align with the tenant/role embedded in the JWT.
 3. **Frontend panel** – the Agent dashboard displays subscription/invoice/usage cards from the stream payload. If it stalls, verify cookies include the tenant metadata and inspect browser devtools for SSE disconnects.
 4. **Metrics** – monitor `stripe_webhook_events_total{result="dispatch_failed"}` plus `stripe_billing_stream_events_total{result="failed"}`/`stripe_billing_stream_backlog_seconds` to catch stuck fan-out or Redis lag.
-5. **Automated suites** – run `make test-stripe` (fixture-driven webhook + SSE tests) and `make lint-stripe-fixtures` before pushing changes so replay tooling stays in sync.
+5. **Automated suites** – run `just test-stripe` (fixture-driven webhook + SSE tests) and `just lint-stripe-fixtures` before pushing changes so replay tooling stays in sync.
 6. **Secret rotations** – after updating Stripe credentials, work through the validation checklist in the [Stripe Secret Rotation SOP](#stripe-secret-rotation-sop) to confirm new keys and webhook signatures are live.
 
 ## Stripe Secret Rotation SOP
@@ -155,7 +155,7 @@ This standard operating procedure covers the two long-lived Stripe credentials u
 1. In the Stripe Dashboard, create a **new restricted secret key** with the same permissions as the current one.
 2. Update the key in your secret manager (`.env.local`, Vault, Kubernetes secret, etc.) **without deleting** the previous value yet.
 3. Deploy/restart the FastAPI app so the new key is loaded; verify startup logs show the masked key prefix/suffix you expect.
-4. Run `make test-stripe` against a staging environment to exercise subscription creation and usage recording with the new key.
+4. Run `just test-stripe` against a staging environment to exercise subscription creation and usage recording with the new key.
 5. Once satisfied, delete or revoke the old key in Stripe to prevent reuse.
 
 ### Rotation steps – Webhook secret (`STRIPE_WEBHOOK_SECRET`)
@@ -167,7 +167,7 @@ This standard operating procedure covers the two long-lived Stripe credentials u
 
 ### Validation
 
-- Execute `make test-stripe` (or the CI workflow) and ensure both the webhook ingestion test and SSE test pass.
+- Execute `just test-stripe` (or the CI workflow) and ensure both the webhook ingestion test and SSE test pass.
 - Tail the application logs for `Stripe billing configuration validated` and confirm no `dispatch_failed` or `stream_failed` entries appear within five minutes of the rotation.
 - Check Prometheus: `stripe_gateway_operations_total{result!="success"}` should remain flat, and `stripe_webhook_events_total{result="invalid_signature"}` should be zero.
 - Confirm the frontend Billing Activity panel resumes streaming data for at least one tenant.
@@ -175,7 +175,7 @@ This standard operating procedure covers the two long-lived Stripe credentials u
 ### Rollback
 
 1. Keep the previous secrets until validation is complete. If issues arise, revert the env values to the prior key/secret and redeploy.
-2. Re-run `make test-stripe` to confirm the rollback restored functionality.
+2. Re-run `just test-stripe` to confirm the rollback restored functionality.
 3. Investigate the failed rotation (typically a missed redeploy or stale secret store) before attempting again. Document the incident in the ops log.
 
 

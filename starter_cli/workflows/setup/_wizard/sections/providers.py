@@ -321,7 +321,7 @@ def _maybe_run_migrations(context: WizardContext, provider: InputProvider) -> No
         context.automation.update(
             AutomationPhase.MIGRATIONS,
             AutomationStatus.RUNNING,
-            "Running `make migrate`.",
+            "Running `just migrate`.",
         )
         context.refresh_automation_ui(AutomationPhase.MIGRATIONS)
         try:
@@ -345,7 +345,7 @@ def _maybe_run_migrations(context: WizardContext, provider: InputProvider) -> No
 
     run_now = provider.prompt_bool(
         key="RUN_MIGRATIONS_NOW",
-        prompt="Run `make migrate` now?",
+        prompt="Run `just migrate` now?",
         default=context.profile != "local",
     )
     if run_now:

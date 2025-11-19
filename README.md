@@ -15,13 +15,16 @@ Production-ready starter kit for building AI Agent SaaS products. The repo bundl
 | Hatch | Latest | Manages backend virtualenv + scripts. |
 | Node.js | 20+ | Paired with `pnpm` for the Next.js app. |
 | pnpm | 8+ | `pnpm install` in `agent-next-15-frontend/`. |
-| Docker & Compose v2 | — | Used by Make targets for Postgres/Redis/Vault. |
+| just | Latest | Task runner replacing the old Makefile; install via `brew install just` or `sudo apt-get install just`. |
+| Docker & Compose v2 | — | Used by Just recipes for Postgres/Redis/Vault. |
 | Stripe CLI | — | Required for `starter_cli stripe setup` unless `--skip-stripe-cli`. |
+
+> Tip: macOS users can run `brew install just`; Ubuntu runners can use `sudo apt-get install just`.
 
 ## First-Time Setup
 1. **Bootstrap tooling**  
    ```bash
-   make bootstrap          # creates/refreshes the Hatch environment
+   just bootstrap          # creates/refreshes the Hatch environment
    pnpm install            # inside agent-next-15-frontend/
    ```
 2. **Run prerequisite check**  
@@ -31,21 +34,21 @@ Production-ready starter kit for building AI Agent SaaS products. The repo bundl
 3. **Guided environment wizard**  
    ```bash
    python -m starter_cli.app setup wizard --profile local
-   # OR: make cli CMD="setup wizard --profile local"
+   # OR: just cli cmd="setup wizard --profile local"
    ```  
    The wizard writes `.env.local` (backend) and `agent-next-15-frontend/.env.local`, covering secrets, providers, tenants, signup policy, and frontend runtime config. Use `--non-interactive`, `--answers-file`, and `--summary-path` for headless or auditable runs.
 4. **Bring up local infrastructure**  
    ```bash
-   make dev-up        # Postgres + Redis
-   make vault-up      # optional: dev Vault signer for auth flows
+   just dev-up        # Postgres + Redis
+   just vault-up      # optional: dev Vault signer for auth flows
    ```
 
 ## Running The Stack
 - **Backend API**  
   ```bash
-  make api
+  just api
   ```  
-  Wraps `hatch run serve` with `.env.compose` + `.env.local`. Use `make migrate` / `make migration-revision MESSAGE=...` for Alembic workflows.
+  Wraps `hatch run serve` with `.env.compose` + `.env.local`. Use `just migrate` / `just migration-revision message="add_users"` for Alembic workflows.
 
 - **Frontend App**  
   ```bash
@@ -55,12 +58,12 @@ Production-ready starter kit for building AI Agent SaaS products. The repo bundl
   Env is pulled from `agent-next-15-frontend/.env.local`. Follow `docs/frontend/data-access.md` and `docs/frontend/ui/components.md` for feature architecture and Shadcn usage.
 
 ## Starter CLI Highlights
-All commands run via `python -m starter_cli.app …` or `make cli CMD='…'`.
+All commands run via `python -m starter_cli.app …` or `just cli cmd='…'`.
 - `setup wizard` – milestone-based env bootstrap (Secrets → Providers → Observability → Signup → Frontend).
 - `secrets onboard` – guided workflows for Vault (dev/HCP), Infisical, AWS Secrets Manager, Azure Key Vault; validates connectivity before emitting env updates.
 - `stripe setup` – provisioning for `starter` and `pro` plans, captures webhook + secret keys, can run headless with `--non-interactive`.
 - `auth` – service-account token issuance, Ed25519 key rotation, JWKS printing (uses Vault transit when enabled).
-- `infra` – wraps `make dev-*` and `make vault-*` plus dependency checks.
+- `infra` – wraps `just dev-*` and `just vault-*` plus dependency checks.
 - `status` – manages `/api/v1/status` subscriptions/incidents.
 - `config dump-schema` – audits every FastAPI setting with env alias, default, type, and wizard coverage.
 
@@ -77,7 +80,7 @@ Refer to `starter_cli/README.md` for detailed flags, answers-file formats, and c
 ## Development Workflow
 - Keep FastAPI routers <300 lines; extract shared helpers once reused.
 - Redis is dual-use: refresh-token cache and billing event transport. Coordinate settings through the wizard or `.env.local`.
-- Secrets live in `var/keys/`; Vault workflows (`make vault-up`, `make verify-vault`) help issue signed tokens locally.
+- Secrets live in `var/keys/`; Vault workflows (`just vault-up`, `just verify-vault`) help issue signed tokens locally.
 - Tests are SQLite + fakeredis by default (`conftest.py`); avoid leaking env mutations between tests.
 - Backend edits → `hatch run lint` & `hatch run pyright`; frontend edits → `pnpm lint` & `pnpm type-check`.
 
@@ -89,6 +92,6 @@ Refer to `starter_cli/README.md` for detailed flags, answers-file formats, and c
 - `docs/trackers/CLI_MILESTONE.md` – CLI roadmap and status.
 - `docs/ops/usage-guardrails-runbook.md` – plan-aware usage guardrails enablement, metrics, and troubleshooting steps.
 - `python -m starter_cli.app usage sync-entitlements` – CLI helper that syncs `var/reports/usage-entitlements.json` into `plan_features` so guardrails enforce the latest plan limits.
-- `Makefile` – curated commands for API, migrations, infra, Stripe tooling, and CLI invocation.
+- `justfile` – curated commands for API, migrations, infra, Stripe tooling, and CLI invocation.
 
 > Future sections can expand on backend internals, service boundaries, and frontend feature guides as they are reviewed. For now, use this README as the top-level map and follow the linked docs for deeper dives.

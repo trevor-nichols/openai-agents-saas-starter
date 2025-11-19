@@ -159,7 +159,7 @@ Prefer not to edit env files manually? Run the consolidated operator CLI:
 
 ```bash
 python -m starter_cli.app setup wizard        # full interactive flow
-make cli CMD="setup wizard --profile=production"  # helper wrapper
+just cli cmd="setup wizard --profile=production"  # helper wrapper
 python -m starter_cli.app infra deps          # check Docker/Hatch/Node/pnpm availability
 python -m starter_cli.app infra compose up    # start Postgres + Redis via docker compose
 python -m starter_cli.app infra vault up      # run the Vault dev signer helper
@@ -167,12 +167,12 @@ python -m starter_cli.app infra vault up      # run the Vault dev signer helper
 
 The wizard now walks through profiles (local/staging/production), captures required vs. optional secrets, verifies Vault Transit connectivity before enabling service-account issuance, validates Stripe/Redis/Resend inputs (with optional migration + seeding helpers), and records tenant/logging/GeoIP/signup policies so auditors can trace every decision. It writes `.env.local` + `agent-next-15-frontend/.env.local`, then emits a milestone-aligned report. Stripe provisioning and auth tooling now live exclusively under the consolidated CLI (`python -m starter_cli.app stripe …`, `python -m starter_cli.app auth …`).
 
-After the wizard, use the new `infra` command group instead of raw Make targets:
+After the wizard, use the new `infra` command group instead of raw Just recipes:
 
-- `python -m starter_cli.app infra compose up|down|logs|ps` – wraps `make dev-*` helpers for Docker Compose.
+- `python -m starter_cli.app infra compose up|down|logs|ps` – wraps `just dev-*` helpers for Docker Compose.
 - `python -m starter_cli.app infra vault up|down|logs|verify` – manages the Vault dev signer lifecycle.
 - `python -m starter_cli.app config dump-schema --format table` – lists every backend env var, its default, and whether the wizard collected it. The full inventory also lives in `docs/trackers/CLI_ENV_INVENTORY.md`.
-- `make cli-verify-env` – runs the inventory verification script to ensure the markdown table stays in sync with the runtime schema (useful in CI or before merging infra changes).
+- `just cli-verify-env` – runs the inventory verification script to ensure the markdown table stays in sync with the runtime schema (useful in CI or before merging infra changes).
 - Every wizard run writes a JSON audit report (default `var/reports/setup-summary.json`; override via `--summary-path`) so you can archive the collected inputs alongside deployment artifacts.
 
 ### 4. Run the Application
@@ -192,21 +192,21 @@ The API will be available at `http://localhost:8000`
 
 1. Start the infrastructure stack (Postgres + Redis) via the helper, which automatically sources `.env.compose` and your `.env.local`:
    ```bash
-   make dev-up
+   just dev-up
    ```
-   *(Stop later with `make dev-down`. Data persists inside the `postgres-data` / `redis-data` volumes.)*
+   *(Stop later with `just dev-down`. Data persists inside the `postgres-data` / `redis-data` volumes.)*
 2. Apply the baseline migration:
    ```bash
-   make migrate
+   just migrate
    ```
 3. Generate new migrations as the schema evolves:
    ```bash
-   make migration-revision MESSAGE="add widget table"
+   just migration-revision message="add widget table"
    ```
 
 ### 6. Seed a Local Admin User
 
-Once Postgres is running and the new auth tables are migrated, create a bootstrap user via the helper script (the Makefile wrappers automatically load both `.env.compose` and `.env.local`):
+Once Postgres is running and the new auth tables are migrated, create a bootstrap user via the helper script (the Just recipes automatically load both `.env.compose` and `.env.local`):
 
 ```bash
 python scripts/seed_users.py --email admin@example.com --tenant-slug default --role admin
@@ -420,12 +420,12 @@ pytest tests/test_agents.py
 pytest --cov=app tests/
 
 # Replay Stripe fixtures through the webhook + SSE stack
-make test-stripe
+just test-stripe
 
 # Validate and replay stored Stripe events (examples)
-make lint-stripe-fixtures
-make stripe-replay ARGS="list --handler billing_sync --status failed"
-make stripe-replay ARGS="replay --dispatch-id 7ad7c7bc-..."
+just lint-stripe-fixtures
+just stripe-replay args="list --handler billing_sync --status failed"
+just stripe-replay args="replay --dispatch-id 7ad7c7bc-..."
 ```
 
 ## 🔄 Migration Path: Single → Multiagent

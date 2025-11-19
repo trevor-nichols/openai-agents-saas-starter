@@ -1,6 +1,6 @@
 # Environment Answer Files
 
-Use this directory to version **templates** for the Starter CLI answer files. Actual staging or production credentials must never be committed—copy the template you need, fill in the values off-repo (or in a secure secrets bucket), and point the Make targets at that file.
+Use this directory to version **templates** for the Starter CLI answer files. Actual staging or production credentials must never be committed—copy the template you need, fill in the values off-repo (or in a secure secrets bucket), and point the Just recipes at that file.
 
 ## Workflow
 
@@ -10,10 +10,10 @@ Use this directory to version **templates** for the Starter CLI answer files. Ac
    cp docs/environments/production.answers.template.json ~/secrets/production.answers.json
    ```
 2. Replace every `CHANGE_ME`/placeholder value with the real secret, URL, or ID for that environment.
-3. Export the path when running the automation targets:
+3. Export the path when running the automation recipes:
    ```bash
-   SETUP_STAGING_ANSWERS=~/secrets/staging.answers.json make setup-staging
-   SETUP_PRODUCTION_ANSWERS=~/secrets/production.answers.json make setup-production
+   SETUP_STAGING_ANSWERS=~/secrets/staging.answers.json just setup-staging
+   SETUP_PRODUCTION_ANSWERS=~/secrets/production.answers.json just setup-production
    ```
 
 ### Template Conventions

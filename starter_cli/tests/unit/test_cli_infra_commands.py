@@ -18,7 +18,7 @@ def _capture_console(monkeypatch) -> io.StringIO:
     return buffer
 
 
-def test_infra_compose_runs_make(monkeypatch) -> None:
+def test_infra_compose_runs_just(monkeypatch) -> None:
     calls: list[list[str]] = []
 
     def fake_run(cmd, cwd, check):
@@ -31,10 +31,10 @@ def test_infra_compose_runs_make(monkeypatch) -> None:
     monkeypatch.setattr(infra_commands.subprocess, "run", fake_run)
     result = cli_app.main(["--skip-env", "infra", "compose", "up"])
     assert result == 0
-    assert calls == [["make", "dev-up"]]
+    assert calls == [["just", "dev-up"]]
 
 
-def test_infra_vault_runs_make(monkeypatch) -> None:
+def test_infra_vault_runs_just(monkeypatch) -> None:
     calls: list[list[str]] = []
 
     def fake_run(cmd, cwd, check):
@@ -47,7 +47,7 @@ def test_infra_vault_runs_make(monkeypatch) -> None:
     monkeypatch.setattr(infra_commands.subprocess, "run", fake_run)
     result = cli_app.main(["--skip-env", "infra", "vault", "verify"])
     assert result == 0
-    assert calls == [["make", "verify-vault"]]
+    assert calls == [["just", "verify-vault"]]
 
 
 def test_infra_deps_reports_missing_tools(monkeypatch) -> None:

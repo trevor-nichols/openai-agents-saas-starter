@@ -11,7 +11,7 @@ Transform the Starter CLI from an env-file wizard into a single operator entrypo
 | --- | --- | --- |
 | Prerequisite detection | Docker/Compose, Hatch, Node/pnpm, Stripe CLI | `infra deps` expands into structured telemetry + actionable tips surfaced in the wizard pre-check. |
 | Guided automation | Setup wizard, secrets onboarding, Stripe provisioning | Wizard gains opt-in automation toggles (`--auto-infra`, `--auto-stripe`) and surfaces when automation succeeded/failed, falling back to manual steps gracefully. |
-| Infra orchestration | Postgres + Redis compose stack, Vault dev signer | CLI can start/stop infra through existing Make targets (`infra compose`, `infra vault`) and capture logs/summaries for the milestone report. |
+| Infra orchestration | Postgres + Redis compose stack, Vault dev signer | CLI can start/stop infra through existing Just recipes (`infra compose`, `infra vault`) and capture logs/summaries for the milestone report. |
 | Provider workflows | Vault dev/HCP, AWS Secrets Manager, Azure Key Vault, Infisical | Each runner reports verification artifacts (e.g., transit probe, AWS `GetSecretValue`) and records env deltas in the milestone summary. |
 | Stripe enablement | Product/price seeding, keys + webhook secrets, billing toggles | `stripe setup` can be invoked from the wizard when credentials are available, and its outputs are appended to the wizard audit. |
 | Reporting & UX | Summary view + JSON artifact | Every automation step emits structured results in `var/reports/cli-one-stop-summary.json` plus console badges so users can share proof of setup (resume/demo ready). |
@@ -54,9 +54,9 @@ This section captures every prerequisite a new operator must satisfy today. Each
 | Secrets & peppers | Generate `SECRET_KEY`, `AUTH_*` peppers, session salts. | ✅ Target | Wizard milestone M1 covers; ensure outputs flagged in summary with “generated” markers. |
 | Persistence config | Supply `DATABASE_URL`, `REDIS_URL`, `BILLING_EVENTS_REDIS_URL`, `AUTO_RUN_MIGRATIONS`. | ✅ Target | Wizard M2 collects; automation should validate connectivity post-compose. |
 | Providers (AI/Email) | Populate `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `RESEND_*`, etc. | ⚠️ Assist | Wizard prompts; automation limited to validation (ping key endpoints when safe). |
-| Vault transit | Provide `VAULT_*` & optionally run `make vault-up` + verification script. | ✅ Target | Auto-start dev signer (with consent) + run transit probe; record evidence hash. |
+| Vault transit | Provide `VAULT_*` & optionally run `just vault-up` + verification script. | ✅ Target | Auto-start dev signer (with consent) + run transit probe; record evidence hash. |
 | Stripe + billing | Run `stripe setup`, seed plans, capture webhook secret, set `ENABLE_BILLING*`. | ✅ Target | Embed CLI `stripe setup`, ensure env update + summary capture. |
-| Migrations | `make migrate` after infra up. | ⚠️ Assist | Provide optional hook post-infra start to run migrations, but keep opt-in due to destructive nature. |
+| Migrations | `just migrate` after infra up. | ⚠️ Assist | Provide optional hook post-infra start to run migrations, but keep opt-in due to destructive nature. |
 
 ### Frontend (Next.js) – from `agent-next-15-frontend/README.md`
 | Area | Manual Steps Today | Auto? | Notes/Dependencies |
@@ -66,12 +66,12 @@ This section captures every prerequisite a new operator must satisfy today. Each
 | API client | Run `pnpm generate` (HeyAPI). | ⚠️ Assist | Document reminder post-wizard; optional future hook but not in current milestone scope. |
 | Dev server | `pnpm dev` once backend is reachable. | ℹ️ Inform | Out of scope to auto-launch UI, but summary should list command. |
 
-### CLI & Infra (root README, starter_cli/README.md, Makefile)
+### CLI & Infra (root README, starter_cli/README.md, justfile)
 | Area | Manual Steps Today | Auto? | Notes/Dependencies |
 | --- | --- | --- | --- |
 | Prereq audit | Run `python -m starter_cli.app infra deps`. | ✅ Target | Wizard preflight should call and display structured output. |
-| Docker services | `make dev-up`, `make dev-down`, `make dev-logs`, `make dev-ps`. | ✅ Target | `InfraSession` now issues `infra compose up/down` when automation is enabled, captures failures/logs, and falls back to manual commands when gated. |
-| Vault dev signer | `make vault-up`, `make vault-down`, `make vault-logs`, `make verify-vault`. | ✅ Target | Hooked into Secrets milestone when Vault automation enabled. |
+| Docker services | `just dev-up`, `just dev-down`, `just dev-logs`, `just dev-ps`. | ✅ Target | `InfraSession` now issues `infra compose up/down` when automation is enabled, captures failures/logs, and falls back to manual commands when gated. |
+| Vault dev signer | `just vault-up`, `just vault-down`, `just vault-logs`, `just verify-vault`. | ✅ Target | Hooked into Secrets milestone when Vault automation enabled. |
 | Stripe CLI presence | Manual install + `stripe login`. | ✅ Target | Preflight now checks for the `stripe` binary/version; automation toggles rely on this signal before running provisioning flows. |
 | Reports | Wizard writes `var/reports/setup-summary.json`. | ✅ Target | Extend to include automation transcript + artifacts. |
 

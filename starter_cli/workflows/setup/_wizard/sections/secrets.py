@@ -134,7 +134,11 @@ def _run_provider_workflow(
     from starter_cli.workflows.secrets.models import SecretsWorkflowOptions
 
     runner = registry.get_runner(literal)
-    result = runner(context.cli_ctx, provider, options=SecretsWorkflowOptions(skip_make=True))
+    result = runner(
+        context.cli_ctx,
+        provider,
+        options=SecretsWorkflowOptions(skip_automation=True),
+    )
     for key, value in result.env_updates.items():
         context.set_backend(key, value)
 

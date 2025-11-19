@@ -59,14 +59,14 @@ def run_vault_dev(
     }
 
     steps = [
-        "Run `make vault-up` to start the local dev signer (remains in-memory, non-production).",
+        "Run `just vault-up` to start the local dev signer (remains in-memory, non-production).",
         "Export the variables above or add them to .env.local / .env.compose.",
-        "Re-run `make verify-vault` after updating FastAPI env to ensure end-to-end signing works.",
+        "Re-run `just verify-vault` after updating FastAPI env to ensure end-to-end signing works.",
     ]
 
-    if not options.skip_make and _prompt_yes_no("Run `make vault-up` now?", default=True):
-        _run_make_target(ctx, "vault-up", topic="secrets")
-        steps[0] = "Started the dev signer via `make vault-up`."
+    if not options.skip_automation and _prompt_yes_no("Run `just vault-up` now?", default=True):
+        _run_just_recipe(ctx, "vault-up", topic="secrets")
+        steps[0] = "Started the dev signer via `just vault-up`."
 
     warnings: list[str] = [
         (
@@ -150,7 +150,7 @@ def run_vault_hcp(
         "Ensure the Transit secrets engine is enabled and the specified key exists.",
         "Configure a minimally scoped token/AppRole with transit:sign + transit:verify.",
         "Update backend/CLI env files with the values above and restart FastAPI.",
-        "Run `make verify-vault` (pointed at the HCP cluster) to smoke test signatures.",
+        "Run `just verify-vault` (pointed at the HCP cluster) to smoke test signatures.",
     ]
 
     warnings = [
@@ -193,9 +193,9 @@ def _prompt_yes_no(question: str, *, default: bool) -> bool:
         console.warn("Please answer yes or no.", topic="secrets")
 
 
-def _run_make_target(ctx: CLIContext, target: str, *, topic: str) -> None:
-    console.info(f"Running `make {target}` …", topic=topic)
-    subprocess.run(["make", target], cwd=ctx.project_root, check=True)
+def _run_just_recipe(ctx: CLIContext, target: str, *, topic: str) -> None:
+    console.info(f"Running `just {target}` …", topic=topic)
+    subprocess.run(["just", target], cwd=ctx.project_root, check=True)
 
 
 __all__ = ["run_vault_dev", "run_vault_hcp"]

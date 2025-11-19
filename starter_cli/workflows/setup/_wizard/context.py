@@ -202,7 +202,7 @@ class WizardContext:
         subprocess.run(cmd, check=check, cwd=self.cli_ctx.project_root)
 
     def run_migrations(self) -> None:
-        self.run_subprocess(["make", "migrate"], topic="migrate")
+        self.run_subprocess(["just", "migrate"], topic="migrate")
 
     def record_verification(
         self,

@@ -12,11 +12,16 @@ jobs:
     env:
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
-      - name: Enable Corepack
-        run: corepack enable
-
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Install just
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y just
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

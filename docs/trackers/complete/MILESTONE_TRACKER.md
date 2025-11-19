@@ -70,17 +70,17 @@ This tracker captures the Starter CLI setup flow plus the recommended environmen
    - Regenerate `docs/trackers/templates/STARTER_CLI_CHECKLIST.md` via `python -m starter_cli.app setup wizard --profile <profile> --report-only --output checklist --markdown-summary-path docs/trackers/templates/STARTER_CLI_CHECKLIST.md` so Platform Foundations has the latest checkbox set.
    - Update this tracker whenever prompts change or new providers appear.
 
-## Makefile Automation
+## Just Automation
 Use the new Make targets to keep each milestone repeatable:
 
 | Target | Description | Notes |
 | --- | --- | --- |
-| `make setup-local-lite` | Runs dependency check, launches the wizard with Local-Lite flags, then seeds a dev user. | Requires user input for secrets; auto-starts Compose for seeding. Afterwards run `make api` + `make issue-demo-token`. |
-| `make setup-local-full` | Same as Local-Lite but keeps every automation switch on (`--auto-geoip`, `--auto-stripe`). | Useful for parity testing once Resend/Stripe creds exist. |
-| `make setup-staging [SETUP_STAGING_ANSWERS=path]` | Runs the wizard with staging-safe automation; optional answers file enables headless mode. | Compose/Vault helpers disabled; ensure hosted Postgres/Redis URLs exist beforehand. |
-| `make setup-production SETUP_PRODUCTION_ANSWERS=path` | Strict, headless production run. | Provide an answers JSON per environment (committed to a secure store). |
-| `make seed-dev-user` | Starts Compose (if needed) and reuses `scripts/seed_users.py`. | Customize via `SETUP_USER_EMAIL`, `SETUP_USER_PASSWORD`, `SETUP_USER_TENANT`, etc. |
-| `make issue-demo-token` | Calls the CLI token issuer once FastAPI is running. | `SETUP_SERVICE_ACCOUNT`, `SETUP_SERVICE_SCOPES`, `SETUP_SERVICE_TENANT` override defaults. |
+| `just setup-local-lite` | Runs dependency check, launches the wizard with Local-Lite flags, then seeds a dev user. | Requires user input for secrets; auto-starts Compose for seeding. Afterwards run `just api` + `just issue-demo-token`. |
+| `just setup-local-full` | Same as Local-Lite but keeps every automation switch on (`--auto-geoip`, `--auto-stripe`). | Useful for parity testing once Resend/Stripe creds exist. |
+| `just setup-staging [setup_staging_answers=path]` | Runs the wizard with staging-safe automation; optional answers file enables headless mode. | Compose/Vault helpers disabled; ensure hosted Postgres/Redis URLs exist beforehand. |
+| `just setup-production setup_production_answers=path` | Strict, headless production run. | Provide an answers JSON per environment (committed to a secure store). |
+| `just seed-dev-user` | Starts Compose (if needed) and reuses `scripts/seed_users.py`. | Customize via `SETUP_USER_EMAIL`, `SETUP_USER_PASSWORD`, `SETUP_USER_TENANT`, etc. |
+| `just issue-demo-token` | Calls the CLI token issuer once FastAPI is running. | `SETUP_SERVICE_ACCOUNT`, `SETUP_SERVICE_SCOPES`, `SETUP_SERVICE_TENANT` override defaults. |
 
 Environment variable knobs for automation:
 

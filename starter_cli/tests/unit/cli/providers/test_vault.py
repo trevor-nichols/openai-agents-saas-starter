@@ -27,7 +27,7 @@ def test_run_vault_dev_collects_env(cli_ctx) -> None:
     result = vault.run_vault_dev(
         ctx,
         provider,
-        options=SecretsWorkflowOptions(skip_make=True),
+        options=SecretsWorkflowOptions(skip_automation=True),
     )
 
     assert result.env_updates == {
@@ -37,7 +37,7 @@ def test_run_vault_dev_collects_env(cli_ctx) -> None:
         "VAULT_TRANSIT_KEY": "cli-service",
         "VAULT_VERIFY_ENABLED": "true",
     }
-    assert result.steps[0].startswith("Run `make vault-up`")
+    assert result.steps[0].startswith("Run `just vault-up`")
     assert "Dev Vault" in result.warnings[0]
 
 
@@ -62,7 +62,7 @@ def test_run_vault_hcp_includes_namespace(cli_ctx) -> None:
     result = vault.run_vault_hcp(
         ctx,
         provider,
-        options=SecretsWorkflowOptions(skip_make=True),
+        options=SecretsWorkflowOptions(skip_automation=True),
     )
 
     assert result.env_updates["VAULT_NAMESPACE"] == "tenant"

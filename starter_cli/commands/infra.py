@@ -68,7 +68,7 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     compose_parser.add_argument(
         "action",
         choices=sorted(_COMPOSE_ACTION_TARGETS.keys()),
-        help="Compose action to run via Makefile wrappers.",
+        help="Compose action to run via Just automation wrappers.",
     )
     compose_parser.set_defaults(handler=handle_compose)
 
@@ -79,7 +79,7 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     vault_parser.add_argument(
         "action",
         choices=sorted(_VAULT_ACTION_TARGETS.keys()),
-        help="Vault helper action to run via Make targets.",
+        help="Vault helper action to run via Just recipes.",
     )
     vault_parser.set_defaults(handler=handle_vault)
 
@@ -125,7 +125,7 @@ def handle_compose(args: argparse.Namespace, ctx: CLIContext) -> int:
     target = _COMPOSE_ACTION_TARGETS.get(args.action)
     if not target:  # pragma: no cover - argparse guards choices
         raise CLIError(f"Unknown compose action: {args.action}")
-    _run_make(ctx, target)
+    _run_just(ctx, target)
     return 0
 
 
@@ -133,7 +133,7 @@ def handle_vault(args: argparse.Namespace, ctx: CLIContext) -> int:
     target = _VAULT_ACTION_TARGETS.get(args.action)
     if not target:  # pragma: no cover - argparse guards choices
         raise CLIError(f"Unknown vault action: {args.action}")
-    _run_make(ctx, target)
+    _run_just(ctx, target)
     return 0
 
 
@@ -194,8 +194,8 @@ def _first_existing_binary(candidates: Iterable[str]) -> tuple[str, ...] | None:
     return None
 
 
-def _run_make(ctx: CLIContext, target: str) -> None:
-    cmd = ["make", target]
+def _run_just(ctx: CLIContext, target: str) -> None:
+    cmd = ["just", target]
     console.info(f"$ {' '.join(cmd)}", topic="infra")
     subprocess.run(cmd, cwd=ctx.project_root, check=True)
 

@@ -20,7 +20,7 @@ Every Playwright flow in `app-regressions.spec.ts` assumes specific tenants, pla
 | Self-serve signup + email verification | Invitation-free signup tenant plus disposable inbox token | Enable `ALLOW_PUBLIC_SIGNUP=true`, provision `signup_pending@example.com`, and generate an email token via `hatch run manage tokens issue --email`. Store the token in the seed file so the test can consume it deterministically. |
 | Plan upgrade/downgrade + audit | Stripe plan codes `starter`, `scale`, plus mock invoices/events | Seed via `starter_cli.app seed billing --tenant playwright-starter --plans starter,scale`. Run backend with `ENABLE_BILLING=true` and Stripe stubs (`STRIPE_PRODUCT_PRICE_MAP="starter=price_test_starter,scale=price_test_scale"`). |
 | Billing ledger & usage | Redis stream (`agents-redis`), usage rows via `/api/v1/billing/tenants/{id}/usage` | After seeding plans, call `python scripts/seed_usage.py --tenant playwright-starter --feature messages --quantity 42` (script lives under `scripts/`). Ensure `BILLING_EVENTS_REDIS_URL` matches the docker compose service. |
-| Service-account issue/revoke | Operator tenant + Vault dev signer | Run `make vault-up` before tests. Seed operator `platform-ops@example.com` with `service_accounts:manage` scope and persist Vault token in `.env.local.playwright`. |
+| Service-account issue/revoke | Operator tenant + Vault dev signer | Run `just vault-up` before tests. Seed operator `platform-ops@example.com` with `service_accounts:manage` scope and persist Vault token in `.env.local.playwright`. |
 | Tenant settings update | Webhook echo endpoint + billing contacts | Include a webhook echo service (e.g., `http://localhost:8787/webhook-echo`) and seed default contacts so the spec can mutate + revert them. |
 | Transcript export | Conversation with attachments + storage fake | Start backend with `USE_STORAGE_FAKE=true` and `STORAGE_FAKE_ROOT=tmp/playwright-storage`. Seed a conversation `transcript-seed` with at least three messages so export produces a file. |
 | Conversations archive | Archived + active conversations across billing tiers | Seed one archived conversation per tenant and expose an API helper `scripts/seed_archive.py` that can reset the state between runs. |
@@ -31,7 +31,7 @@ Recommended workflow for keeping fixtures fresh:
 1. `pnpm test:seed` (or `PLAYWRIGHT_SEED_FILE=custom.yaml pnpm test:seed`)
 2. `python scripts/seed_usage.py --tenant playwright-starter`
 3. `python scripts/seed_archive.py --tenant playwright-starter`
-4. `make vault-up` (if not already running)
+4. `just vault-up` (if not already running)
 5. `docker compose up -d agents-redis agents-postgres`
 
 Each seed script writes its outputs (tenant IDs, auth tokens, webhook URLs) to `tests/.fixtures.json`. Playwright helpers read that file so specs never reach into `.env` directly.
@@ -56,6 +56,6 @@ agent-next-15-frontend/tests/
 ## 5. Open Questions
 - Do we want per-tenant cleanup hooks after billing plan mutations? (Consider using the CLI release command to reset catalog state.)
 - Should transcript export downloads be stored under `tmp/playwright-downloads` for CI artifact uploads?
-- Do we need a mocked Vault Transit server for CI, or is the existing `make vault-up` stack sufficient?
+- Do we need a mocked Vault Transit server for CI, or is the existing `just vault-up` stack sufficient?
 
 Document decisions here as the team finishes the scenarios.

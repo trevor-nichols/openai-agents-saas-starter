@@ -55,9 +55,16 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         help="Override a prompt answer, e.g. --var VAULT_ADDR=https://vault.local",
     )
     onboard_parser.add_argument(
+        "--skip-automation",
+        action="store_true",
+        dest="skip_automation",
+        help="Skip invoking local automation recipes (e.g., just dev-up) even if offered.",
+    )
+    onboard_parser.add_argument(
         "--skip-make",
         action="store_true",
-        help="Do not invoke make targets even if the workflow normally offers to do so.",
+        dest="skip_automation",
+        help=argparse.SUPPRESS,
     )
     onboard_parser.set_defaults(handler=handle_onboard)
 
@@ -83,7 +90,7 @@ def handle_onboard(args: argparse.Namespace, ctx: CLIContext) -> int:
         input_provider = InteractiveInputProvider(answers)
 
     runner = registry.get_runner(option.literal)
-    options = SecretsWorkflowOptions(skip_make=args.skip_make)
+    options = SecretsWorkflowOptions(skip_automation=args.skip_automation)
     result = runner(ctx, input_provider, options=options)
     render_onboard_result(result)
     emit_cli_telemetry(result.provider.value, success=True)
