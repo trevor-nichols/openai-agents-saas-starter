@@ -8,7 +8,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Billing plan management', () => {
   test('tenant admin can upgrade and downgrade plans with optimistic UI + audit trail', async ({ page }) => {
-    test.skip('Waiting for seeded billing fixtures + automation account.');
+    test.skip(true, 'Waiting for seeded billing fixtures + automation account.');
 
     // TODO Platform Foundations
     // 1. Seed a tenant with Starter plan + valid billing metadata (Stripe stub ok).
@@ -22,7 +22,7 @@ test.describe('Billing plan management', () => {
   });
 
   test('usage logging reflects latest plan quota without cache busting', async ({ page }) => {
-    test.skip('Pending usage event fixtures + deterministic SSE stream.');
+    test.skip(true, 'Pending usage event fixtures + deterministic SSE stream.');
 
     // TODO steps: log usage, assert KPI/sse.
     await page.goto('/billing');
@@ -32,7 +32,7 @@ test.describe('Billing plan management', () => {
 
 test.describe('Service account lifecycle', () => {
   test('operator can issue and revoke Vault-signed service accounts', async ({ page }) => {
-    test.skip('Needs Vault test signer + seeded automation tenant.');
+    test.skip(true, 'Needs Vault test signer + seeded automation tenant.');
 
     // Outline
     // 1. Login as platform operator (scope service_accounts:manage).
@@ -44,7 +44,7 @@ test.describe('Service account lifecycle', () => {
   });
 
   test('tenant admin sees filtered list scoped to their tenant', async ({ page }) => {
-    test.skip('Requires tenant-level fixtures for sessions + service accounts.');
+    test.skip(true, 'Requires tenant-level fixtures for sessions + service accounts.');
     await page.goto('/account/service-accounts');
   });
 });
@@ -52,7 +52,7 @@ test.describe('Service account lifecycle', () => {
 
 test.describe('Chat transcript export', () => {
   test('user exports a conversation and download is available', async ({ page }) => {
-    test.skip('Waiting for deterministic conversation fixture and storage bucket.');
+    test.skip(true, 'Waiting for deterministic conversation fixture and storage bucket.');
 
     // Steps: login, open chat, select conversation, open drawer, click export, verify notification + file (maybe intercept).
     await page.goto('/chat');

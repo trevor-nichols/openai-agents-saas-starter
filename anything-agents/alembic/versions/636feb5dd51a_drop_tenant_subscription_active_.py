@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from alembic import op
+from sqlalchemy import inspect
 
 # revision identifiers, used by Alembic.
 revision = "636feb5dd51a"
@@ -16,11 +17,17 @@ def upgrade() -> None:
     if bind.dialect.name == "sqlite":  # pragma: no cover - sqlite cannot drop constraints easily
         return
 
-    op.drop_constraint(
-        "uq_tenant_subscriptions_active",
-        "tenant_subscriptions",
-        type_="unique",
-    )
+    inspector = inspect(bind)
+    existing_constraints = {
+        constraint["name"]
+        for constraint in inspector.get_unique_constraints("tenant_subscriptions")
+    }
+    if "uq_tenant_subscriptions_active" in existing_constraints:
+        op.drop_constraint(
+            "uq_tenant_subscriptions_active",
+            "tenant_subscriptions",
+            type_="unique",
+        )
 
 
 def downgrade() -> None:
