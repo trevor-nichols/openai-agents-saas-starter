@@ -18,7 +18,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { GlassPanel, InlineTag, KeyValueList, SectionHeader } from '@/components/ui/foundation';
+import { GlassPanel, InlineTag, KeyValueList, PasswordPolicyList, SectionHeader } from '@/components/ui/foundation';
 import { Input } from '@/components/ui/input';
 import { EmptyState, ErrorState, SkeletonPanel } from '@/components/ui/states';
 import {
@@ -29,6 +29,8 @@ import {
 } from '@/components/ui/tooltip';
 import { useToast } from '@/components/ui/use-toast';
 import type { AccountProfileTokenPayload } from '@/types/account';
+import { AdminPasswordResetCard } from './AdminPasswordResetCard';
+import { PASSWORD_POLICY_RULES } from '../constants';
 
 const passwordSchema = z
   .object({
@@ -43,7 +45,11 @@ const passwordSchema = z
 
 type PasswordFormValues = z.infer<typeof passwordSchema>;
 
-const MFA_DOC_URL = 'https://github.com/openai/openai-agents-starter/blob/main/docs/security/mfa-roadmap.md';
+const MFA_DOC_URL =
+  'https://github.com/openai/openai-agents-starter/blob/main/docs/security/mfa-roadmap.md';
+const ADMIN_RESET_DOC_URL =
+  'https://github.com/openai/openai-agents-starter/blob/main/docs/security/auth-threat-model.md';
+const SUPPORT_SCOPE = 'support:read';
 
 export function SecurityPanel() {
   const { profile, isLoadingProfile, profileError, refetchProfile } = useAccountProfileQuery();
@@ -86,6 +92,12 @@ export function SecurityPanel() {
     const payload = profile.raw.session?.profile?.token_payload;
     return (payload ?? null) as AccountProfileTokenPayload | null;
   }, [profile]);
+
+  const hasSupportScope = useMemo(
+    () => profile?.session.scopes?.includes(SUPPORT_SCOPE) ?? false,
+    [profile?.session.scopes],
+  );
+  const hasTenantContext = Boolean(profile?.tenant?.id);
 
   const lastLoginAt = extractDateField(tokenPayload, ['last_login_at', 'last_login']);
   const passwordChangedAt = extractDateField(tokenPayload, ['password_changed_at']);
@@ -194,14 +206,7 @@ export function SecurityPanel() {
             </form>
           </Form>
 
-          <div className="rounded-lg border border-white/10 bg-white/5 p-4 text-sm text-foreground/70">
-            <p className="font-medium text-foreground">Password requirements</p>
-            <ul className="mt-2 list-disc space-y-1 pl-5">
-              <li>14+ characters with upper, lower, number, and symbol.</li>
-              <li>No reuse of the last 5 passwords.</li>
-              <li>Strength score ≥3 on our policy engine.</li>
-            </ul>
-          </div>
+          <PasswordPolicyList items={PASSWORD_POLICY_RULES} />
         </GlassPanel>
 
         <GlassPanel className="space-y-6">
@@ -239,6 +244,30 @@ export function SecurityPanel() {
           </Alert>
         </GlassPanel>
       </div>
+
+      {hasSupportScope && hasTenantContext ? (
+        <AdminPasswordResetCard tenantName={profile.tenant?.name ?? null} />
+      ) : (
+        <GlassPanel className="space-y-4">
+          <SectionHeader
+            title="Admin password reset"
+            description="Restricted to support operators with tenant context. Ask an admin if a teammate is locked out."
+            actions={<InlineTag tone="warning">{hasSupportScope ? 'Tenant required' : 'Restricted'}</InlineTag>}
+          />
+          <p className="text-sm text-foreground/70">
+            Initiating a reset on behalf of another user requires both the support:read scope and an active tenant
+            context so audit trails keep their actor and tenant attribution. Review the auth threat model before widening
+            access.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Button asChild variant="outline" size="sm">
+              <Link href={ADMIN_RESET_DOC_URL} target="_blank" rel="noreferrer">
+                Review auth controls
+              </Link>
+            </Button>
+          </div>
+        </GlassPanel>
+      )}
 
       <GlassPanel className="space-y-6">
         <SectionHeader

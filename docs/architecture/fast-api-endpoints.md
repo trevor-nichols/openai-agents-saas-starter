@@ -92,7 +92,7 @@ POST /api/v1/auth/password/change
 
 ### Admin Reset Password
 ```
-POST /api/v1/auth/password/reset
+POST /api/v1/auth/password/reset   # Backend contract; frontend proxies via /api/auth/password/admin-reset.
 ```
 
 ### Issue Service Account Token

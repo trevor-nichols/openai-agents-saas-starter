@@ -1,4 +1,8 @@
-import type { PasswordChangeRequest, SuccessResponse } from '@/lib/api/client/types.gen';
+import type {
+  PasswordChangeRequest,
+  PasswordResetRequest,
+  SuccessResponse,
+} from '@/lib/api/client/types.gen';
 
 async function parseJson<T>(response: Response): Promise<T> {
   try {
@@ -22,6 +26,29 @@ export async function changePasswordRequest(payload: PasswordChangeRequest): Pro
 
   if (!response.ok) {
     const message = 'message' in data && data.message ? data.message : 'Failed to change password.';
+    throw new Error(message);
+  }
+
+  return data as SuccessResponse;
+}
+
+export async function adminResetPasswordRequest(payload: PasswordResetRequest): Promise<SuccessResponse> {
+  const response = await fetch('/api/auth/password/admin-reset', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+    cache: 'no-store',
+  });
+
+  const data = await parseJson<SuccessResponse | { message?: string }>(response);
+
+  if (!response.ok) {
+    const message =
+      'message' in data && data.message
+        ? data.message
+        : 'Failed to reset password.';
     throw new Error(message);
   }
 
