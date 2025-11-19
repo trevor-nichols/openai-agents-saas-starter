@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from types import MethodType, SimpleNamespace
+from types import MethodType
 from typing import cast
 
 import pytest
-from agents.usage import Usage
 
 from app.api.v1.chat.schemas import AgentChatRequest
-from app.services.agent_service import AgentRegistry, AgentService, ConversationActorContext
+from app.domain.ai import AgentDescriptor, AgentRunResult, AgentRunUsage, AgentStreamEvent
+from app.domain.ai.ports import AgentStreamingHandle
+from app.services.agent_service import AgentService, ConversationActorContext
+from app.services.agents.provider_registry import AgentProviderRegistry
 from app.services.conversation_service import ConversationService
 from app.services.usage_recorder import UsageEntry, UsageRecorder
 
@@ -37,35 +39,100 @@ class FakeConversationService:
         return None
 
 
-class FakeAgentRegistry:
-    def __init__(self):
-        self._agent = SimpleNamespace(model="gpt-5.1")
+class FakeSessionStore:
+    def build(self, session_id: str) -> str:  # pragma: no cover - unused in assertions
+        return f"session:{session_id}"
 
-    def get_agent(self, _name):
-        return self._agent
+
+class FakeStreamingHandle(AgentStreamingHandle):
+    def __init__(self):
+        self._events = [
+            AgentStreamEvent(content_delta="chunk"),
+            AgentStreamEvent(content_delta="", is_terminal=True),
+        ]
+        self._usage = AgentRunUsage(input_tokens=10, output_tokens=5)
+        self._last_response_id = "resp-stream"
+
+    async def events(self):
+        for event in self._events:
+            yield event
+
+    @property
+    def usage(self) -> AgentRunUsage:
+        return self._usage
+
+    @property
+    def last_response_id(self) -> str | None:
+        return self._last_response_id
+
+
+class FakeRuntime:
+    def __init__(self, result: AgentRunResult, stream_handle: AgentStreamingHandle):
+        self._result = result
+        self._stream_handle = stream_handle
+
+    async def run(self, *args, **kwargs) -> AgentRunResult:
+        return self._result
+
+    def run_stream(self, *args, **kwargs) -> AgentStreamingHandle:
+        return self._stream_handle
+
+
+class FakeProvider:
+    name = "fake"
+
+    def __init__(self, runtime: FakeRuntime):
+        self._descriptor = AgentDescriptor(
+            key="triage",
+            display_name="Triage",
+            description="",
+            model="gpt-5.1",
+        )
+        self._runtime = runtime
+        self._session_store = FakeSessionStore()
+
+    @property
+    def runtime(self) -> FakeRuntime:
+        return self._runtime
+
+    @property
+    def session_store(self) -> FakeSessionStore:
+        return self._session_store
 
     def list_agents(self):  # pragma: no cover - not used
-        return ["triage"]
+        return [self._descriptor]
+
+    def resolve_agent(self, preferred_key: str | None = None) -> AgentDescriptor:
+        return self._descriptor
+
+    def get_agent(self, agent_key: str) -> AgentDescriptor | None:
+        return self._descriptor if agent_key == self._descriptor.key else None
+
+    def default_agent_key(self) -> str:
+        return self._descriptor.key
+
+    def tool_overview(self) -> dict[str, list[str]]:  # pragma: no cover - not used
+        return {"tool_names": []}
 
 
 @pytest.mark.asyncio
-async def test_chat_records_usage(monkeypatch):
+async def test_chat_records_usage():
     recorder = StubUsageRecorder()
+    run_result = AgentRunResult(
+        final_output="ok",
+        response_id="resp-sync",
+        usage=AgentRunUsage(input_tokens=123, output_tokens=45),
+        metadata={"model": "gpt-5.1"},
+    )
+    runtime = FakeRuntime(run_result, FakeStreamingHandle())
+    provider = FakeProvider(runtime)
+    registry = AgentProviderRegistry()
+    registry.register(provider, set_default=True)
     service = AgentService(
         conversation_service=cast(ConversationService, FakeConversationService()),
         usage_recorder=cast(UsageRecorder, recorder),
+        provider_registry=registry,
     )
-    service._agent_registry = cast(AgentRegistry, FakeAgentRegistry())
-
-    async def fake_run(agent, agent_input, **kwargs):
-        usage = Usage(requests=1, input_tokens=123, output_tokens=45, total_tokens=168)
-        return SimpleNamespace(
-            final_output="ok",
-            context_wrapper=SimpleNamespace(usage=usage),
-            last_response_id="resp-sync",
-        )
-
-    monkeypatch.setattr("app.services.agent_service.agent_runner.run", fake_run)
 
     actor = ConversationActorContext(tenant_id="tenant-123", user_id="user" )
     request = AgentChatRequest(message="hello")
@@ -80,31 +147,23 @@ async def test_chat_records_usage(monkeypatch):
     assert feature_keys == {"messages", "input_tokens", "output_tokens"}
 
 
-class _StreamStub:
-    def __init__(self):
-        usage = Usage(requests=1, input_tokens=10, output_tokens=5, total_tokens=15)
-        self.context_wrapper = SimpleNamespace(usage=usage)
-        self.last_response_id = "resp-stream"
-
-    async def stream_events(self):
-        if False:  # pragma: no cover - ensures async generator type
-            yield None
-        return
-
-
 @pytest.mark.asyncio
-async def test_chat_stream_records_usage(monkeypatch):
+async def test_chat_stream_records_usage():
     recorder = StubUsageRecorder()
+    run_result = AgentRunResult(
+        final_output="streamed",
+        response_id="resp-stream",
+        usage=AgentRunUsage(input_tokens=5, output_tokens=5),
+    )
+    runtime = FakeRuntime(run_result, FakeStreamingHandle())
+    provider = FakeProvider(runtime)
+    registry = AgentProviderRegistry()
+    registry.register(provider, set_default=True)
     service = AgentService(
         conversation_service=cast(ConversationService, FakeConversationService()),
         usage_recorder=cast(UsageRecorder, recorder),
+        provider_registry=registry,
     )
-    service._agent_registry = cast(AgentRegistry, FakeAgentRegistry())
-
-    def fake_stream(agent, agent_input, **kwargs):
-        return _StreamStub()
-
-    monkeypatch.setattr("app.services.agent_service.agent_runner.run_streamed", fake_stream)
 
     calls: list[dict[str, object]] = []
 

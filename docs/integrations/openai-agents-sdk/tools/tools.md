@@ -40,7 +40,7 @@ metadata describing how the triage platform can use it. When calling
 - `capabilities`: Arbitrary capability tags (`"web_search"`, `"billing"`, …)
   that the registry can match against each agent’s declared skills.
 
-`AgentRegistry` requests tools via `registry.get_tools_for_agent(name, capabilities=...)`
+`OpenAIAgentRegistry` requests tools via `registry.get_tools_for_agent(name, capabilities=...)`
 so each agent only sees the subset of tools it is cleared for. Example:
 
 ```python

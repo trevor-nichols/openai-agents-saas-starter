@@ -33,7 +33,7 @@ os.environ.setdefault("ALLOW_PUBLIC_SIGNUP", "true")
 os.environ.setdefault("STARTER_CLI_SKIP_ENV", "true")
 os.environ.setdefault("STARTER_CLI_SKIP_VAULT_PROBE", "true")
 
-from app.bootstrap import reset_container
+from app.bootstrap import get_container, reset_container
 from app.core import config as config_module
 from app.domain.conversations import (
     ConversationMessage,
@@ -42,10 +42,9 @@ from app.domain.conversations import (
     ConversationRepository,
     ConversationSessionState,
 )
-from app.infrastructure.openai.sessions import (
-    configure_sdk_session_store,
-    reset_sdk_session_store,
-)
+from app.infrastructure.providers.openai import build_openai_provider
+from app.infrastructure.persistence.models.base import Base
+from app.services.agents.provider_registry import get_provider_registry
 from app.services.conversation_service import conversation_service
 
 config_module.get_settings.cache_clear()
@@ -73,6 +72,10 @@ def pytest_configure(config: pytest.Config) -> None:
     """Ensure markers are known to pytest."""
 
     register_stripe_replay_marker(config)
+    config.addinivalue_line(
+        "markers",
+        "auto_migrations(enabled=True): toggle AUTO_RUN_MIGRATIONS for a test or module.",
+    )
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
@@ -85,23 +88,64 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
 def _reset_application_container() -> Generator[None, None, None]:
     """Ensure each test starts with a fresh dependency container."""
 
-    reset_container()
+    container = reset_container()
+    # Use in-memory conversation repository to avoid DB/migration coupling in tests
+    container.conversation_service.set_repository(EphemeralConversationRepository())
     yield
 
 
-@pytest.fixture(scope="session", autouse=True)
-def _configure_sdk_session() -> Generator[None, None, None]:
-    """Configure the SDK session store for tests using an in-memory SQLite engine."""
-
+@pytest.fixture(scope="session")
+def _provider_engine() -> Generator[sqla_async.AsyncEngine, None, None]:
     engine = sqla_async.create_async_engine("sqlite+aiosqlite:///:memory:")
-    configure_sdk_session_store(engine, auto_create_tables=True)
     try:
-        yield
+        yield engine
     finally:
-        reset_sdk_session_store()
         loop = asyncio.new_event_loop()
         loop.run_until_complete(engine.dispose())
         loop.close()
+
+
+@pytest.fixture(autouse=True)
+def _configure_agent_provider(
+    _reset_application_container, _provider_engine
+) -> Generator[None, None, None]:
+    """Register the OpenAI provider against the in-memory test engine."""
+
+    async def _create_tables():
+        async with _provider_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+    asyncio.get_event_loop().run_until_complete(_create_tables())
+
+    registry = get_provider_registry()
+    registry.clear()
+    registry.register(
+        build_openai_provider(
+            settings_factory=config_module.get_settings,
+            conversation_searcher=lambda tenant_id, query: conversation_service.search(
+                tenant_id=tenant_id, query=query
+            ),
+            engine=_provider_engine,
+            auto_create_tables=True,
+        ),
+        set_default=True,
+    )
+    # Ensure AgentService will be rebuilt against the freshly populated registry
+    get_container().agent_service = None
+    yield
+
+
+@pytest.fixture(autouse=True)
+def _configure_auto_run_migrations(
+    request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
+) -> Generator[None, None, None]:
+    """Allow tests to opt into auto migrations without forcing suite-wide behavior."""
+
+    marker = request.node.get_closest_marker("auto_migrations")
+    if marker is not None:
+        enabled = marker.kwargs.get("enabled", True)
+        monkeypatch.setenv("AUTO_RUN_MIGRATIONS", "true" if enabled else "false")
+    yield
 
 
 @pytest.fixture(autouse=True)

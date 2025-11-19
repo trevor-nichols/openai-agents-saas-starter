@@ -2,7 +2,6 @@
 
 import os
 from datetime import UTC, datetime
-from types import SimpleNamespace
 from typing import cast
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
@@ -15,15 +14,17 @@ os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("RATE_LIMIT_REDIS_URL", os.environ["REDIS_URL"])
 os.environ.setdefault("AUTH_CACHE_REDIS_URL", os.environ["REDIS_URL"])
 os.environ.setdefault("SECURITY_TOKEN_REDIS_URL", os.environ["REDIS_URL"])
-os.environ.setdefault("AUTO_RUN_MIGRATIONS", "false")
 os.environ.setdefault("ENABLE_BILLING", "false")
 os.environ.setdefault("ENABLE_USAGE_GUARDRAILS", "false")
+
+pytestmark = pytest.mark.auto_migrations(enabled=True)
 
 from app.api.dependencies import usage as usage_dependencies
 from app.api.dependencies.auth import require_current_user
 from app.api.v1.chat import router as chat_router
 from app.api.v1.chat.schemas import AgentChatResponse
 from app.bootstrap.container import get_container
+from app.domain.ai import AgentRunResult
 from app.domain.conversations import ConversationMessage, ConversationMetadata
 from app.services.agent_service import agent_service
 from app.services.shared.rate_limit_service import RateLimitExceeded, rate_limiter
@@ -65,8 +66,8 @@ def _override_current_user():
             app.dependency_overrides[require_current_user] = previous
 
 
-@pytest.fixture(scope="module")
-def client():
+@pytest.fixture(scope="function")
+def client(_configure_agent_provider):
     with TestClient(app) as test_client:
         yield test_client
 
@@ -94,10 +95,13 @@ def test_get_nonexistent_agent_status(client: TestClient) -> None:
     assert response.status_code == 404
 
 
-@patch("app.infrastructure.openai.runner.run", new_callable=AsyncMock)
+@patch("app.infrastructure.providers.openai.runtime.Runner.run", new_callable=AsyncMock)
 def test_chat_with_agent(mock_run: AsyncMock, client: TestClient) -> None:
-    mock_run.return_value = SimpleNamespace(
-        final_output="Hello! I'm here to help you.", context_wrapper=None, last_response_id="resp"
+    mock_run.return_value = AgentRunResult(
+        final_output="Hello! I'm here to help you.",
+        response_id="resp",
+        usage=None,
+        metadata=None,
     )
 
     chat_request = {"message": "Hello, how are you?", "agent_type": "triage"}
@@ -111,10 +115,13 @@ def test_chat_with_agent(mock_run: AsyncMock, client: TestClient) -> None:
     assert payload["conversation_id"]
 
 
-@patch("app.infrastructure.openai.runner.run", new_callable=AsyncMock)
+@patch("app.infrastructure.providers.openai.runtime.Runner.run", new_callable=AsyncMock)
 def test_chat_falls_back_to_triage(mock_run: AsyncMock, client: TestClient) -> None:
-    mock_run.return_value = SimpleNamespace(
-        final_output="Fallback engaged.", context_wrapper=None, last_response_id="resp"
+    mock_run.return_value = AgentRunResult(
+        final_output="Fallback engaged.",
+        response_id="resp",
+        usage=None,
+        metadata=None,
     )
 
     chat_request = {"message": "Route me", "agent_type": "nonexistent"}
@@ -127,10 +134,13 @@ def test_chat_falls_back_to_triage(mock_run: AsyncMock, client: TestClient) -> N
     assert payload["agent_used"] == "triage"
 
 
-@patch("app.infrastructure.openai.runner.run", new_callable=AsyncMock)
+@patch("app.infrastructure.providers.openai.runtime.Runner.run", new_callable=AsyncMock)
 def test_conversation_lifecycle(mock_run: AsyncMock, client: TestClient) -> None:
-    mock_run.return_value = SimpleNamespace(
-        final_output="Sure, let's get started.", context_wrapper=None, last_response_id="resp"
+    mock_run.return_value = AgentRunResult(
+        final_output="Sure, let's get started.",
+        response_id="resp",
+        usage=None,
+        metadata=None,
     )
 
     chat_request = {"message": "Start a new plan", "agent_type": "triage"}
@@ -238,7 +248,7 @@ def test_chat_rate_limit_blocks(monkeypatch: pytest.MonkeyPatch, client: TestCli
     assert "Rate limit exceeded" in second.text
 
 
-@patch("app.infrastructure.openai.runner.run", new_callable=AsyncMock)
+@patch("app.infrastructure.providers.openai.runtime.Runner.run", new_callable=AsyncMock)
 def test_chat_blocks_when_usage_guardrail_hits(
     mock_run: AsyncMock, monkeypatch: pytest.MonkeyPatch, client: TestClient
 ) -> None:

@@ -29,7 +29,7 @@ from app.infrastructure.db import (
     get_engine,
     init_engine,
 )
-from app.infrastructure.openai.sessions import configure_sdk_session_store
+from app.infrastructure.providers.openai import build_openai_provider
 from app.infrastructure.persistence.auth.repository import get_refresh_token_repository
 from app.infrastructure.persistence.auth.session_repository import (
     get_user_session_repository,
@@ -58,6 +58,7 @@ from app.presentation import health as health_routes
 from app.presentation import metrics as metrics_routes
 from app.presentation import well_known as well_known_routes
 from app.presentation.webhooks import stripe as stripe_webhook
+from app.services.agents.provider_registry import get_provider_registry
 from app.services.agent_service import build_agent_service
 from app.services.auth.builders import (
     build_service_account_token_service,
@@ -187,13 +188,33 @@ async def lifespan(app: FastAPI):
     engine = get_engine()
     if engine is None:
         raise RuntimeError("Database engine failed to initialise; cannot configure sessions.")
-    configure_sdk_session_store(engine)
     session_factory = get_async_sessionmaker()
     container.session_factory = session_factory
-    postgres_repository = PostgresConversationRepository(session_factory)
-    container.conversation_service.set_repository(postgres_repository)
+
+    try:
+        _ = container.conversation_service.repository
+        repo_already_set = True
+    except RuntimeError:
+        repo_already_set = False
+
+    if not repo_already_set:
+        postgres_repository = PostgresConversationRepository(session_factory)
+        container.conversation_service.set_repository(postgres_repository)
     container.tenant_settings_service.set_repository(
         PostgresTenantSettingsRepository(session_factory)
+    )
+
+    provider_registry = get_provider_registry()
+    provider_registry.clear()
+    provider_registry.register(
+        build_openai_provider(
+            settings_factory=lambda: settings,
+            conversation_searcher=lambda tenant_id, query: container.conversation_service.search(
+                tenant_id=tenant_id, query=query
+            ),
+            engine=engine,
+        ),
+        set_default=True,
     )
 
     user_repository = get_user_repository(settings)
@@ -239,6 +260,7 @@ async def lifespan(app: FastAPI):
     container.agent_service = build_agent_service(
         conversation_service=container.conversation_service,
         usage_recorder=container.usage_recorder,
+        provider_registry=provider_registry,
     )
 
     invite_repository = PostgresSignupInviteRepository(session_factory)

@@ -4,183 +4,32 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import AsyncGenerator
-from contextvars import ContextVar
-from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, ClassVar
+from typing import Any
 
-from agents import Agent, function_tool, handoff, trace
-from agents.extensions.handoff_prompt import prompt_with_handoff_instructions
-from agents.extensions.memory.sqlalchemy_session import SQLAlchemySession
-from agents.usage import Usage
-from openai.types.responses import ResponseTextDeltaEvent
+from agents import trace
 
 from app.api.v1.agents.schemas import AgentStatus, AgentSummary
 from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse, StreamingChatResponse
 from app.api.v1.conversations.schemas import ChatMessage, ConversationHistory, ConversationSummary
-from app.core.config import get_settings
+from app.domain.ai import AgentRunUsage
 from app.domain.conversations import (
     ConversationMessage,
     ConversationMetadata,
     ConversationRepository,
     ConversationSessionState,
 )
-from app.infrastructure.openai import runner as agent_runner
-from app.infrastructure.openai.sessions import build_conversation_session
+from app.services.agents.context import (
+    ConversationActorContext,
+    reset_current_actor,
+    set_current_actor,
+)
+from app.services.agents.provider_registry import (
+    AgentProviderRegistry,
+    get_provider_registry,
+)
 from app.services.conversation_service import ConversationService, get_conversation_service
 from app.services.usage_recorder import UsageEntry, UsageRecorder
-from app.utils.tools import ToolRegistry, initialize_tools
-
-
-@function_tool
-async def get_current_time() -> str:
-    """Return the current UTC timestamp."""
-
-    return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-
-
-@function_tool
-async def search_conversations(query: str) -> str:
-    """Search cached conversations for a query string."""
-
-    actor = _CURRENT_ACTOR.get()
-    if actor is None:
-        return "Conversation search is unavailable until tenant context is established."
-
-    results = await get_conversation_service().search(tenant_id=actor.tenant_id, query=query)
-    if not results:
-        return "No conversations contained the requested text."
-
-    top_matches = "\n".join(f"{result.conversation_id}: {result.preview}" for result in results[:5])
-    return f"Found {len(results)} matching conversations:\n{top_matches}"
-
-
-@dataclass(slots=True)
-class ConversationActorContext:
-    tenant_id: str
-    user_id: str
-
-
-_CURRENT_ACTOR: ContextVar[ConversationActorContext | None] = ContextVar(
-    "conversation_actor_context",
-    default=None,
-)
-
-
-class AgentRegistry:
-    """Manage lifecycle of agent instances and their tool configuration."""
-
-    _AGENT_CAPABILITIES: ClassVar[dict[str, tuple[str, ...]]] = {
-        "triage": ("general", "search", "handoff"),
-        "code_assistant": ("code", "search"),
-        "data_analyst": ("analysis", "search"),
-    }
-
-    def __init__(self, tool_registry: ToolRegistry):
-        self._settings = get_settings()
-        self._tool_registry = tool_registry
-        self._agents: dict[str, Agent] = {}
-        self._register_builtin_tools()
-        self._build_default_agents()
-
-    def _resolve_agent_model(self, agent_key: str) -> str:
-        overrides = {
-            "triage": self._settings.agent_triage_model,
-            "code_assistant": self._settings.agent_code_model,
-            "data_analyst": self._settings.agent_data_model,
-        }
-        return overrides.get(agent_key) or self._settings.agent_default_model
-
-    def _register_builtin_tools(self) -> None:
-        self._tool_registry.register_tool(
-            get_current_time,
-            category="utility",
-            metadata={
-                "description": "Return the current UTC timestamp.",
-                "core": True,
-                "capabilities": ["general"],
-            },
-        )
-        self._tool_registry.register_tool(
-            search_conversations,
-            category="conversation",
-            metadata={
-                "description": "Search cached conversation history.",
-                "core": True,
-                "capabilities": ["conversation", "search"],
-            },
-        )
-
-    def _build_default_agents(self) -> None:
-        triage_tools = self._select_tools("triage")
-        code_tools = self._select_tools("code_assistant")
-        data_tools = self._select_tools("data_analyst")
-
-        code_assistant = Agent(
-            name="Code Assistant",
-            instructions="""
-            You specialise in software engineering guidance. Focus on code
-            quality, architecture, and modern best practices. Provide
-            step-by-step reasoning when helpful.
-            """,
-            handoff_description="Handles software engineering questions and code reviews.",
-            model=self._resolve_agent_model("code_assistant"),
-            tools=code_tools,
-        )
-
-        data_analyst = Agent(
-            name="Data Analyst",
-            instructions="""
-            You specialise in data interpretation, statistical analysis, and
-            communicating insights clearly. When applicable, propose visual
-            summaries or sanity checks.
-            """,
-            handoff_description="Supports analytical and quantitative queries.",
-            model=self._resolve_agent_model("data_analyst"),
-            tools=data_tools,
-        )
-
-        triage_instructions = prompt_with_handoff_instructions(
-            """
-            You are the primary triage assistant. Handle general inquiries
-            with a helpful, professional tone and decide when to leverage
-            specialised teammates. Provide concise, actionable answers, and
-            hand off to the code or data analyst agents when they are better
-            suited to respond.
-            """
-        )
-
-        triage_agent = Agent(
-            name="Triage Assistant",
-            instructions=triage_instructions,
-            model=self._resolve_agent_model("triage"),
-            tools=triage_tools,
-            handoffs=[handoff(code_assistant), handoff(data_analyst)],
-        )
-
-        self._agents["code_assistant"] = code_assistant
-        self._agents["data_analyst"] = data_analyst
-        self._agents["triage"] = triage_agent
-
-    def _select_tools(self, agent_key: str) -> list[Any]:
-        capabilities = self._AGENT_CAPABILITIES.get(agent_key, ())
-        return self._tool_registry.get_tools_for_agent(
-            agent_key,
-            capabilities=capabilities,
-        )
-
-    def get_agent(self, agent_name: str) -> Agent | None:
-        return self._agents.get(agent_name)
-
-    def list_agents(self) -> list[str]:
-        return sorted(self._agents.keys())
-
-    def tool_overview(self) -> dict[str, Any]:
-        return {
-            "total_tools": len(self._tool_registry.list_tool_names()),
-            "tool_names": self._tool_registry.list_tool_names(),
-            "categories": self._tool_registry.list_categories(),
-        }
 
 
 class AgentService:
@@ -192,51 +41,50 @@ class AgentService:
         conversation_repo: ConversationRepository | None = None,
         conversation_service: ConversationService | None = None,
         usage_recorder: UsageRecorder | None = None,
+        provider_registry: AgentProviderRegistry | None = None,
     ) -> None:
         self._conversation_service = conversation_service or get_conversation_service()
         if conversation_repo is not None:
             self._conversation_service.set_repository(conversation_repo)
 
-        self._tool_registry = initialize_tools()
-        self._agent_registry = AgentRegistry(self._tool_registry)
         self._usage_recorder = usage_recorder
+        self._provider_registry = provider_registry or get_provider_registry()
 
     async def chat(
         self, request: AgentChatRequest, *, actor: ConversationActorContext
     ) -> AgentChatResponse:
+        provider = self._get_provider()
+        descriptor = provider.resolve_agent(request.agent_type)
         conversation_id = request.conversation_id or str(uuid.uuid4())
-        session_id, session_handle = await self._acquire_sdk_session(
-            actor.tenant_id, conversation_id
+        session_id, session_handle = await self._acquire_session(
+            provider, actor.tenant_id, conversation_id
         )
-
-        preferred_agent = request.agent_type or "triage"
-        agent_name, agent = self._resolve_agent(preferred_agent)
 
         user_message = ConversationMessage(role="user", content=request.message)
         await self._conversation_service.append_message(
             conversation_id,
             user_message,
             tenant_id=actor.tenant_id,
-            metadata=ConversationMetadata(
+            metadata=self._build_metadata(
                 tenant_id=actor.tenant_id,
-                agent_entrypoint=preferred_agent,
-                active_agent=None,
-                sdk_session_id=session_id,
+                agent_entrypoint=request.agent_type or descriptor.key,
+                active_agent=descriptor.key,
+                session_id=session_id,
                 user_id=actor.user_id,
             ),
         )
 
-        token = _CURRENT_ACTOR.set(actor)
+        token = set_current_actor(actor)
         try:
             with trace(workflow_name="Agent Chat", group_id=conversation_id):
-                result = await agent_runner.run(
-                    agent,
+                result = await provider.runtime.run(
+                    descriptor.key,
                     request.message,
                     session=session_handle,
                     conversation_id=conversation_id,
                 )
         finally:
-            _CURRENT_ACTOR.reset(token)
+            reset_current_actor(token)
 
         assistant_message = ConversationMessage(
             role="assistant",
@@ -246,11 +94,11 @@ class AgentService:
             conversation_id,
             assistant_message,
             tenant_id=actor.tenant_id,
-            metadata=ConversationMetadata(
+            metadata=self._build_metadata(
                 tenant_id=actor.tenant_id,
-                agent_entrypoint=preferred_agent,
-                active_agent=agent_name,
-                sdk_session_id=session_id,
+                agent_entrypoint=request.agent_type or descriptor.key,
+                active_agent=descriptor.key,
+                session_id=session_id,
                 user_id=actor.user_id,
             ),
         )
@@ -258,18 +106,19 @@ class AgentService:
         await self._record_usage_metrics(
             tenant_id=actor.tenant_id,
             conversation_id=conversation_id,
-            response_id=result.last_response_id,
-            usage=result.context_wrapper.usage if result.context_wrapper else None,
+            response_id=result.response_id,
+            usage=result.usage,
         )
 
+        tool_overview = provider.tool_overview()
         return AgentChatResponse(
             response=str(result.final_output),
             conversation_id=conversation_id,
-            agent_used=agent_name,
+            agent_used=descriptor.key,
             handoff_occurred=False,
             metadata={
-                "model_used": agent.model,
-                "tools_available": self._tool_registry.list_tool_names(),
+                "model_used": descriptor.model,
+                "tools_available": tool_overview.get("tool_names", []),
             },
         )
 
@@ -279,63 +128,55 @@ class AgentService:
         *,
         actor: ConversationActorContext,
     ) -> AsyncGenerator[StreamingChatResponse, None]:
+        provider = self._get_provider()
+        descriptor = provider.resolve_agent(request.agent_type)
         conversation_id = request.conversation_id or str(uuid.uuid4())
-        session_id, session_handle = await self._acquire_sdk_session(
-            actor.tenant_id, conversation_id
+        session_id, session_handle = await self._acquire_session(
+            provider, actor.tenant_id, conversation_id
         )
-
-        preferred_agent = request.agent_type or "triage"
-        agent_name, agent = self._resolve_agent(preferred_agent)
 
         user_message = ConversationMessage(role="user", content=request.message)
         await self._conversation_service.append_message(
             conversation_id,
             user_message,
             tenant_id=actor.tenant_id,
-            metadata=ConversationMetadata(
+            metadata=self._build_metadata(
                 tenant_id=actor.tenant_id,
-                agent_entrypoint=preferred_agent,
-                active_agent=None,
-                sdk_session_id=session_id,
+                agent_entrypoint=request.agent_type or descriptor.key,
+                active_agent=descriptor.key,
+                session_id=session_id,
                 user_id=actor.user_id,
             ),
         )
 
         complete_response = ""
-
-        token = _CURRENT_ACTOR.set(actor)
+        token = set_current_actor(actor)
         try:
             with trace(workflow_name="Agent Chat Stream", group_id=conversation_id):
-                stream = agent_runner.run_streamed(
-                    agent,
+                stream_handle = provider.runtime.run_stream(
+                    descriptor.key,
                     request.message,
                     session=session_handle,
                     conversation_id=conversation_id,
                 )
-
-                async for event in stream.stream_events():
-                    if event.type == "raw_response_event" and isinstance(
-                        event.data, ResponseTextDeltaEvent
-                    ):
-                        chunk = event.data.delta
-                        complete_response += chunk
+                async for event in stream_handle.events():
+                    if event.content_delta:
+                        complete_response += event.content_delta
                         yield StreamingChatResponse(
-                            chunk=chunk,
+                            chunk=event.content_delta,
                             conversation_id=conversation_id,
                             is_complete=False,
-                            agent_used=agent_name,
+                            agent_used=descriptor.key,
                         )
-                    elif event.type == "run_item_stream_event" and (
-                        event.item.type == "message_output_item"
-                    ):
+                    if event.is_terminal:
                         yield StreamingChatResponse(
                             chunk="",
                             conversation_id=conversation_id,
                             is_complete=True,
-                            agent_used=agent_name,
+                            agent_used=descriptor.key,
                         )
         finally:
-            _CURRENT_ACTOR.reset(token)
+            reset_current_actor(token)
 
         assistant_message = ConversationMessage(
             role="assistant",
@@ -345,11 +186,11 @@ class AgentService:
             conversation_id,
             assistant_message,
             tenant_id=actor.tenant_id,
-            metadata=ConversationMetadata(
+            metadata=self._build_metadata(
                 tenant_id=actor.tenant_id,
-                agent_entrypoint=preferred_agent,
-                active_agent=agent_name,
-                sdk_session_id=session_id,
+                agent_entrypoint=request.agent_type or descriptor.key,
+                active_agent=descriptor.key,
+                session_id=session_id,
                 user_id=actor.user_id,
             ),
         )
@@ -357,8 +198,8 @@ class AgentService:
         await self._record_usage_metrics(
             tenant_id=actor.tenant_id,
             conversation_id=conversation_id,
-            response_id=stream.last_response_id,
-            usage=stream.context_wrapper.usage if stream.context_wrapper else None,
+            response_id=stream_handle.last_response_id,
+            usage=stream_handle.usage,
         )
 
     async def get_conversation_history(
@@ -422,43 +263,45 @@ class AgentService:
         return self._conversation_service.repository
 
     def list_available_agents(self) -> list[AgentSummary]:
+        provider = self._get_provider()
         return [
             AgentSummary(
-                name=name,
-                status="active",
-                description=f"Agent specialised for {name.replace('_', ' ')} tasks.",
+                name=descriptor.key,
+                status=descriptor.status,
+                description=descriptor.description,
             )
-            for name in self._agent_registry.list_agents()
+            for descriptor in provider.list_agents()
         ]
 
     def get_agent_status(self, agent_name: str) -> AgentStatus:
-        agent = self._agent_registry.get_agent(agent_name)
-        if not agent:
+        provider = self._get_provider()
+        descriptor = provider.get_agent(agent_name)
+        if not descriptor:
             raise ValueError(f"Agent '{agent_name}' not found")
-
         return AgentStatus(
-            name=agent_name,
+            name=descriptor.key,
             status="active",
             last_used=None,
             total_conversations=0,
         )
 
     def get_tool_information(self) -> dict[str, Any]:
-        return self._agent_registry.tool_overview()
+        provider = self._get_provider()
+        return dict(provider.tool_overview())
 
-    def _resolve_agent(self, preferred_name: str) -> tuple[str, Agent]:
-        agent = self._agent_registry.get_agent(preferred_name)
-        if agent:
-            return preferred_name, agent
+    def _get_provider(self):
+        try:
+            return self._provider_registry.get_default()
+        except RuntimeError as exc:
+            raise RuntimeError(
+                "No agent providers registered. Register a provider (e.g., build_openai_provider)"
+                " before invoking AgentService, or use the test fixture that populates the"
+                " AgentProviderRegistry."
+            ) from exc
 
-        fallback = self._agent_registry.get_agent("triage")
-        if not fallback:
-            raise RuntimeError("No triage agent configured.")
-        return "triage", fallback
-
-    async def _acquire_sdk_session(
-        self, tenant_id: str, conversation_id: str
-    ) -> tuple[str, SQLAlchemySession]:
+    async def _acquire_session(
+        self, provider, tenant_id: str, conversation_id: str
+    ) -> tuple[str, Any]:
         state = await self._conversation_service.get_session_state(
             conversation_id, tenant_id=tenant_id
         )
@@ -466,7 +309,7 @@ class AgentService:
             session_id = state.sdk_session_id
         else:
             session_id = conversation_id
-        session_handle = build_conversation_session(session_id)
+        session_handle = provider.session_store.build(session_id)
         return session_id, session_handle
 
     async def _sync_session_state(
@@ -487,7 +330,7 @@ class AgentService:
         tenant_id: str,
         conversation_id: str,
         response_id: str | None,
-        usage: Usage | None,
+        usage: AgentRunUsage | None,
     ) -> None:
         if not self._usage_recorder:
             return
@@ -504,7 +347,7 @@ class AgentService:
         ]
 
         if usage:
-            if usage.input_tokens > 0:
+            if usage.input_tokens:
                 entries.append(
                     UsageEntry(
                         feature_key="input_tokens",
@@ -514,7 +357,7 @@ class AgentService:
                         period_end=timestamp,
                     )
                 )
-            if usage.output_tokens > 0:
+            if usage.output_tokens:
                 entries.append(
                     UsageEntry(
                         feature_key="output_tokens",
@@ -535,16 +378,36 @@ class AgentService:
             timestamp=message.timestamp.isoformat(),
         )
 
+    @staticmethod
+    def _build_metadata(
+        *,
+        tenant_id: str,
+        agent_entrypoint: str,
+        active_agent: str,
+        session_id: str,
+        user_id: str,
+    ) -> ConversationMetadata:
+        return ConversationMetadata(
+            tenant_id=tenant_id,
+            agent_entrypoint=agent_entrypoint,
+            active_agent=active_agent,
+            sdk_session_id=session_id,
+            user_id=user_id,
+        )
+
+
 def build_agent_service(
     *,
     conversation_service: ConversationService | None = None,
     conversation_repository: ConversationRepository | None = None,
     usage_recorder: UsageRecorder | None = None,
+    provider_registry: AgentProviderRegistry | None = None,
 ) -> AgentService:
     return AgentService(
         conversation_repo=conversation_repository,
         conversation_service=conversation_service,
         usage_recorder=usage_recorder,
+        provider_registry=provider_registry,
     )
 
 
@@ -557,6 +420,7 @@ def get_agent_service() -> AgentService:
             conversation_service=container.conversation_service,
             conversation_repository=None,
             usage_recorder=container.usage_recorder,
+            provider_registry=get_provider_registry(),
         )
     return container.agent_service
 
@@ -576,7 +440,6 @@ agent_service = _AgentServiceHandle()
 
 
 __all__ = [
-    "AgentRegistry",
     "AgentService",
     "ConversationActorContext",
     "agent_service",

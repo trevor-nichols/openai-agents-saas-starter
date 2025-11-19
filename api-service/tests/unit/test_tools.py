@@ -4,11 +4,13 @@
 # Used by: Test suite for validating tool integration
 
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import Mock, call, create_autospec, patch
 
 import pytest
 
-from app.services.agent_service import AgentRegistry
+from app.core.settings import Settings
+from app.infrastructure.providers.openai.registry import OpenAIAgentRegistry
 from app.utils.tools import ToolRegistry, get_tool_registry, initialize_tools
 from app.utils.tools.web_search import get_tavily_client, tavily_search_tool
 
@@ -175,11 +177,33 @@ def test_tool_can_be_used_by_agent():
     assert agent.tools[0].name == "tavily_search_tool"
 
 
-def test_tool_registry_provides_tools_for_agents(registry_settings):
+async def _noop_search(*args, **kwargs):  # pragma: no cover - helper
+    return []
+
+
+def _build_openai_registry(monkeypatch, registry: ToolRegistry):
+    class _StubSettings:
+        agent_default_model: str = "gpt-5.1"
+        agent_triage_model: str | None = None
+        agent_code_model: str | None = None
+        agent_data_model: str | None = None
+
+    settings = _StubSettings()
+    monkeypatch.setattr(
+        "app.infrastructure.providers.openai.registry.initialize_tools",
+        lambda: registry,
+    )
+    return OpenAIAgentRegistry(
+        settings_factory=lambda: cast(Settings, settings),
+        conversation_searcher=_noop_search,
+    )
+
+
+def test_tool_registry_provides_tools_for_agents(registry_settings, monkeypatch):
     """Test that the tool registry can provide tools for agent creation."""
     registry_settings()
     registry = initialize_tools()
-    AgentRegistry(registry)
+    _build_openai_registry(monkeypatch, registry)
 
     triage_tools = registry.get_tools_for_agent("triage")
 
@@ -235,34 +259,52 @@ def test_get_tools_for_agent_filters_by_metadata():
     assert data_names == {"core_tool", "data_tool"}
 
 
-def test_agent_registry_requests_scoped_tools():
-    """AgentRegistry asks the ToolRegistry for scoped tool lists per agent."""
+def test_agent_registry_requests_scoped_tools(monkeypatch):
+    """OpenAIAgentRegistry asks the ToolRegistry for scoped tool lists per agent."""
 
     tool_registry = create_autospec(ToolRegistry, instance=True)
     tool_registry.list_tool_names.return_value = []
     tool_registry.list_categories.return_value = []
     tool_registry.get_tools_for_agent.side_effect = lambda agent_name, **_: [f"{agent_name}_tool"]
 
+    monkeypatch.setattr(
+        "app.infrastructure.providers.openai.registry.initialize_tools",
+        lambda: tool_registry,
+    )
     with (
-        patch("app.services.agent_service.Agent") as agent_cls,
-        patch("app.services.agent_service.handoff", side_effect=lambda agent: agent),
+        patch("app.infrastructure.providers.openai.registry.Agent") as agent_cls,
         patch(
-            "app.services.agent_service.prompt_with_handoff_instructions",
+            "app.infrastructure.providers.openai.registry.handoff",
+            side_effect=lambda agent: agent,
+        ),
+        patch(
+            "app.infrastructure.providers.openai.registry.prompt_with_handoff_instructions",
             side_effect=lambda text: text,
         ),
     ):
-        agent_cls.return_value = object()
-        AgentRegistry(tool_registry)
+        fake_agent = SimpleNamespace(name="foo", model="gpt-5.1")
+        agent_cls.return_value = fake_agent
+        class _StubSettings:
+            agent_default_model: str = "gpt-5.1"
+            agent_triage_model: str | None = None
+            agent_code_model: str | None = None
+            agent_data_model: str | None = None
+
+        settings = _StubSettings()
+        OpenAIAgentRegistry(
+            settings_factory=lambda: cast(Settings, settings),
+            conversation_searcher=_noop_search,
+        )
 
     expected_calls = [
-        call("triage", capabilities=AgentRegistry._AGENT_CAPABILITIES["triage"]),
+        call("triage", capabilities=OpenAIAgentRegistry._AGENT_CAPABILITIES["triage"]),
         call(
             "code_assistant",
-            capabilities=AgentRegistry._AGENT_CAPABILITIES["code_assistant"],
+            capabilities=OpenAIAgentRegistry._AGENT_CAPABILITIES["code_assistant"],
         ),
         call(
             "data_analyst",
-            capabilities=AgentRegistry._AGENT_CAPABILITIES["data_analyst"],
+            capabilities=OpenAIAgentRegistry._AGENT_CAPABILITIES["data_analyst"],
         ),
     ]
 
