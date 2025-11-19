@@ -25,8 +25,10 @@ Every Playwright flow in `app-regressions.spec.ts` assumes specific tenants, pla
 | Transcript export | Conversation with attachments + storage fake | Start backend with `USE_STORAGE_FAKE=true` and `STORAGE_FAKE_ROOT=tmp/playwright-storage`. Seed a conversation `transcript-seed` with at least three messages so export produces a file. |
 | Conversations archive | Archived + active conversations across billing tiers | Seed one archived conversation per tenant and expose an API helper `scripts/seed_archive.py` that can reset the state between runs. |
 
+Use `pnpm test:seed` to apply the canonical specification in `seeds/playwright.yaml`. Override the backend target with `PLAYWRIGHT_API_URL` (defaults to `http://localhost:8000`) or the spec file with `PLAYWRIGHT_SEED_FILE`. The command writes resolved identifiers to `tests/.fixtures.json` so Playwright helpers stay environment-agnostic.
+
 Recommended workflow for keeping fixtures fresh:
-1. `python -m starter_cli.app seed playground --answers-file ./seeds/playwright.yaml`
+1. `pnpm test:seed` (or `PLAYWRIGHT_SEED_FILE=custom.yaml pnpm test:seed`)
 2. `python scripts/seed_usage.py --tenant playwright-starter`
 3. `python scripts/seed_archive.py --tenant playwright-starter`
 4. `make vault-up` (if not already running)

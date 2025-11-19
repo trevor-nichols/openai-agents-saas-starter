@@ -1,0 +1,47 @@
+tenants:
+  - slug: playwright-starter
+    name: Playwright Starter Tenant
+    plan_code: starter
+    billing_email: billing+starter@example.com
+    users:
+      - email: user@example.com
+        password: SuperSecret123!
+        display_name: Playwright Admin
+        role: owner
+      - email: analyst@example.com
+        password: Analyst123!
+        display_name: Playwright Analyst
+        role: admin
+    conversations:
+      - key: transcript-export-seed
+        agent_entrypoint: default
+        status: active
+        user_email: user@example.com
+        messages:
+          - role: user
+            text: "Provide a summary of the latest release notes."
+          - role: assistant
+            text: "Release v1.2 shipped Playwright harness scaffolding and billing mocks."
+          - role: assistant
+            text: "Would you like the changelog emailed to your billing contacts?"
+      - key: archived-conversation-seed
+        status: archived
+        user_email: analyst@example.com
+        messages:
+          - role: user
+            text: "Archive this conversation for retention policy validation."
+          - role: assistant
+            text: "Conversation archived. Restore anytime from the archive tab."
+    usage:
+      - feature_key: messages
+        quantity: 125
+        period_start: "2025-01-01T00:00:00Z"
+        idempotency_key: "playwright-starter-usage"
+  - slug: platform-ops
+    name: Platform Operations
+    users:
+      - email: platform-ops@example.com
+        password: OpsAccount123!
+        display_name: Platform Ops
+        role: owner
+

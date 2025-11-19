@@ -10,6 +10,7 @@
     "type-check": "tsc --noEmit",
     "validate": "pnpm lint && pnpm type-check",
     "generate": "openapi-ts",
+    "test:seed": "node ./scripts/test-seed.js",
     "test:e2e": "playwright test",
     "test:unit": "vitest run --exclude tests/**",
     "storybook": "storybook dev -p 6006",
@@ -101,6 +102,7 @@
     "@storybook/nextjs": "^8.2.9",
     "@storybook/react": "^8.2.9",
     "@storybook/test": "^8.2.9",
-    "storybook": "^8.2.9"
+    "storybook": "^8.2.9",
+    "yaml": "^2.6.0"
   }
 }

@@ -10,6 +10,7 @@ from app.api.v1.conversations.router import router as conversations_router
 from app.api.v1.status.router import legacy_router as status_legacy_router
 from app.api.v1.status.router import router as status_router
 from app.api.v1.tenants.router import router as tenants_router
+from app.api.v1.test_fixtures.router import router as test_fixtures_router
 from app.api.v1.tools.router import router as tools_router
 from app.core.config import get_settings
 
@@ -26,3 +27,5 @@ router.include_router(tenants_router)
 settings = get_settings()
 if settings.enable_billing:
     router.include_router(billing_router)
+if settings.use_test_fixtures:
+    router.include_router(test_fixtures_router)

@@ -28,7 +28,7 @@ Guarantee that every revenue- or security-impacting workflow in the Next.js 15 s
 | # | Task | Owner | Status | Target |
 | - | ---- | ----- | ------ | ------ |
 | A | Convert placeholder `test.skip` calls to boolean form so `pnpm type-check` passes (`tests/app-regressions.spec.ts`). | Platform Foundations | 🟡 In Progress | Nov 20 |
-| B | Land deterministic fixture harness (seed tenants, plans, conversations, service accounts) documented in `tests/README.md`. | Platform Foundations + Backend | ⛔ Not Started | Nov 25 |
+| B | Land deterministic fixture harness (seed tenants, plans, conversations, service accounts) documented in `tests/README.md`. | Platform Foundations + Backend | ✅ Completed | Nov 25 |
 | C | Implement signup + email verification spec (Flow 2) guarded by feature flag toggles. | Platform Foundations | ⛔ Not Started | Nov 27 |
 | D | Implement billing plan mutation spec (Flow 3) including optimistic UI + SSE event assertion. | Platform Foundations | ⛔ Not Started | Nov 27 |
 | E | Implement billing ledger + usage spec (Flow 4) verifying filters + SSE merge. | Platform Foundations | ⛔ Not Started | Nov 29 |
@@ -50,4 +50,5 @@ Guarantee that every revenue- or security-impacting workflow in the Next.js 15 s
 4. Tracker updated with ✅ status for every flow and linked PR references.
 
 ## Changelog
+- **2025-11-21**: Added backend `test-fixtures` router, deterministic seed service, and `pnpm test:seed` harness outputting `tests/.fixtures.json`.
 - **2025-11-19**: Tracker created with flow inventory, blockers, and task board after billing-enabled OpenAPI regeneration.

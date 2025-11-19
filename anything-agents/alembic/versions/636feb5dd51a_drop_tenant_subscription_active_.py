@@ -1,4 +1,5 @@
 """Drop tenant subscription unique constraint relying on deferrable semantics."""
+# ruff: noqa: I001
 
 from __future__ import annotations
 

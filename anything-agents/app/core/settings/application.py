@@ -42,6 +42,14 @@ class ApplicationSettingsMixin(BaseModel):
     )
     allowed_headers: str = Field(default="*", description="CORS allowed headers (comma-separated)")
     log_level: str = Field(default="INFO", description="Logging level")
+    use_test_fixtures: bool = Field(
+        default=False,
+        description=(
+            "Expose deterministic seeding endpoints for local and CI test environments. "
+            "Never enable in production."
+        ),
+        alias="USE_TEST_FIXTURES",
+    )
 
     def get_allowed_hosts_list(self) -> list[str]:
         normalized_hosts: list[str] = []
