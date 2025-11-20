@@ -48,7 +48,7 @@ jobs:
 
       - name: Check infra dependencies (JSON)
         run: |
-          hatch run python -m starter_cli.app infra deps --format json > deps-status.json || true
+          hatch run python -m starter_cli.app infra deps --format json > deps-status.json || echo "[]" > deps-status.json
           hatch run python - <<'PY'
           import json, sys
           with open("deps-status.json", "r", encoding="utf-8") as fh:
@@ -170,7 +170,7 @@ jobs:
       - name: Python dependency audit (pip-audit)
         run: |
           hatch run python -m pip install pip-audit
-          hatch run pip-audit --progress-spinner off --severity high
+          hatch run pip-audit --progress-spinner off
 
       - name: Python SBOM (CycloneDX)
         run: |

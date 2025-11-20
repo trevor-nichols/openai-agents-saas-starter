@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * CI guard: ensure billing endpoints remain in the committed OpenAPI artifact.
  *
@@ -7,8 +5,8 @@
  * api-service/.artifacts/openapi-billing.json.
  */
 
-const { readFileSync } = require('node:fs');
-const { resolve } = require('node:path');
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 const artifactPath = resolve(process.cwd(), 'api-service/.artifacts/openapi-billing.json');
 const requiredPaths = [

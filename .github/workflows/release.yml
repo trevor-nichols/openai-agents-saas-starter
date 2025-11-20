@@ -45,7 +45,7 @@ jobs:
 
       - name: Python dependency audit (pip-audit)
         run: |
-          hatch run pip-audit --progress-spinner off --severity high --format cyclonedx-json --output backend-sbom.json
+          hatch run pip-audit --progress-spinner off --format cyclonedx-json --output backend-sbom.json
 
       - name: Install frontend dependencies
         working-directory: web-app
