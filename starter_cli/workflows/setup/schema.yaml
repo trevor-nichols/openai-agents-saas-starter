@@ -48,6 +48,21 @@ prompts:
     when:
       - key: LOGGING_SINK
         equals: datadog
+  LOGGING_FILE_PATH:
+    section: observability
+    when:
+      - key: LOGGING_SINK
+        equals: file
+  LOGGING_FILE_MAX_MB:
+    section: observability
+    when:
+      - key: LOGGING_SINK
+        equals: file
+  LOGGING_FILE_BACKUPS:
+    section: observability
+    when:
+      - key: LOGGING_SINK
+        equals: file
   LOGGING_OTLP_ENDPOINT:
     section: observability
     when:
@@ -193,6 +208,12 @@ prompts:
     when:
       - key: BILLING_RETRY_DEPLOYMENT_MODE
         equals: inline
+  ENABLE_FRONTEND_LOG_INGEST:
+    section: observability
+  NEXT_PUBLIC_LOG_LEVEL:
+    section: frontend
+  NEXT_PUBLIC_LOG_SINK:
+    section: frontend
   ENABLE_USAGE_GUARDRAILS:
     section: usage
     when:

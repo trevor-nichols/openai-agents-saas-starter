@@ -10,6 +10,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -295,6 +296,22 @@ def _resolve_handler_config(
                 "level": log_level,
             },
         )
+    if sink == "file":
+        path = Path(settings.logging_file_path or "var/log/api-service.log")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        max_bytes = int(settings.logging_file_max_mb * 1024 * 1024)
+        return (
+            "file",
+            {
+                "class": "logging.handlers.RotatingFileHandler",
+                "level": log_level,
+                "formatter": formatter_ref,
+                "filename": str(path),
+                "maxBytes": max_bytes,
+                "backupCount": settings.logging_file_backups,
+                "delay": True,
+            },
+        )
     if sink == "datadog":
         if not settings.logging_datadog_api_key:
             raise ValueError("LOGGING_DATADOG_API_KEY is required when LOGGING_SINK=datadog")
@@ -322,7 +339,9 @@ def _resolve_handler_config(
                 "headers": headers,
             },
         )
-    raise ValueError(f"Unsupported LOGGING_SINK '{sink}'. Expected stdout, datadog, otlp, or none.")
+    raise ValueError(
+        f"Unsupported LOGGING_SINK '{sink}'. Expected stdout, file, datadog, otlp, or none."
+    )
 
 
 def _parse_headers(raw_headers: str | None) -> dict[str, str] | None:

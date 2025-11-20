@@ -7,8 +7,30 @@ from pydantic import BaseModel, Field
 class ObservabilitySettingsMixin(BaseModel):
     logging_sink: str = Field(
         default="stdout",
-        description="Logging sink (stdout, datadog, otlp, or none).",
+        description="Logging sink (stdout, file, datadog, otlp, or none).",
         alias="LOGGING_SINK",
+    )
+    logging_file_path: str = Field(
+        default="var/log/api-service.log",
+        description="Filesystem path for file sink when logging_sink=file.",
+        alias="LOGGING_FILE_PATH",
+    )
+    logging_file_max_mb: int = Field(
+        default=10,
+        ge=1,
+        description="Maximum megabytes per log file when logging_sink=file.",
+        alias="LOGGING_FILE_MAX_MB",
+    )
+    logging_file_backups: int = Field(
+        default=5,
+        ge=0,
+        description="Rotated backup files to retain when logging_sink=file.",
+        alias="LOGGING_FILE_BACKUPS",
+    )
+    enable_frontend_log_ingest: bool = Field(
+        default=False,
+        description="Expose authenticated frontend log ingest endpoint.",
+        alias="ENABLE_FRONTEND_LOG_INGEST",
     )
     logging_datadog_api_key: str | None = Field(
         default=None,

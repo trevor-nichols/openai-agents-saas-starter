@@ -41,6 +41,7 @@ def test_validate_redis_url_requires_auth_for_managed() -> None:
 
 def test_logging_sink_normalization() -> None:
     assert normalize_logging_sink("Datadog") == "datadog"
+    assert normalize_logging_sink("file") == "file"
     with pytest.raises(CLIError):
         normalize_logging_sink("syslog")
 

@@ -1,3 +1,5 @@
+import { createLogger } from '@/lib/logging';
+
 export interface AnalyticsEventPayload {
   event: string;
   channel?: string;
@@ -5,6 +7,8 @@ export interface AnalyticsEventPayload {
   metadata?: Record<string, unknown>;
   context?: Record<string, unknown>;
 }
+
+const log = createLogger('analytics');
 
 function dispatchBrowserEvent(name: string, detail: Record<string, unknown>) {
   if (typeof window === 'undefined') {
@@ -21,9 +25,7 @@ function dispatchBrowserEvent(name: string, detail: Record<string, unknown>) {
     try {
       analytics.track(detail.event as string, detail);
     } catch (error) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.debug('[analytics] track failed', error);
-      }
+      log.debug('Browser analytics track failed', { error });
     }
   }
 }
@@ -34,9 +36,7 @@ export function trackEvent(payload: AnalyticsEventPayload): void {
     timestamp: new Date().toISOString(),
   } satisfies Record<string, unknown>;
 
-  if (process.env.NODE_ENV !== 'production') {
-    console.debug('[analytics]', detail);
-  }
+  log.debug('Analytics event', detail);
 
   dispatchBrowserEvent('analytics:track', detail);
 }

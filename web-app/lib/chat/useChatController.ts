@@ -8,12 +8,9 @@ import { queryKeys } from '@/lib/queries/keys';
 import type { ConversationHistory, ConversationListItem, ConversationMessage } from '@/types/conversations';
 import type { ChatMessage } from './types';
 
-const isProduction = typeof process !== 'undefined' && process.env.NODE_ENV === 'production';
-const logDebug = (...details: unknown[]) => {
-  if (!isProduction) {
-    console.debug('[chat-controller]', ...details);
-  }
-};
+import { createLogger } from '@/lib/logging';
+
+const log = createLogger('chat-controller');
 
 interface ChatControllerCallbacks {
   onConversationAdded?: (conversation: ConversationListItem) => void;
@@ -81,7 +78,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
         return;
       }
 
-      logDebug('Selecting conversation', { conversationId });
+      log.debug('Selecting conversation', { conversationId });
       setIsLoadingHistory(true);
       setMessages([]);
       setErrorMessage(null);
@@ -93,7 +90,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
         });
         setCurrentConversationId(history.conversation_id);
         setMessages(mapHistoryToChatMessages(history));
-        logDebug('Conversation history loaded', {
+        log.debug('Conversation history loaded', {
           conversationId: history.conversation_id,
           messageCount: history.messages.length,
         });
@@ -102,7 +99,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
         const message =
           error instanceof Error ? error.message : 'Unable to load conversation history.';
         setErrorMessage(message);
-        logDebug('Conversation history failed', {
+        log.debug('Conversation history failed', {
           conversationId,
           error,
         });
@@ -114,7 +111,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
   );
 
   const startNewConversation = useCallback(() => {
-    logDebug('Starting new conversation context');
+    log.debug('Starting new conversation context');
     setCurrentConversationId(null);
     setMessages([]);
     setIsLoadingHistory(false);
@@ -129,7 +126,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
 
       setIsSending(true);
       setErrorMessage(null);
-      logDebug('Sending message', {
+      log.debug('Sending message', {
         currentConversationId,
         length: messageText.length,
       });
@@ -178,7 +175,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
             if (chunk.conversationId) {
               finalConversationId = chunk.conversationId;
             }
-            logDebug('Processed stream chunk', {
+            log.debug('Processed stream chunk', {
               conversationId: chunk.conversationId,
               accumulatedLength: accumulatedContent.length,
             });
@@ -206,7 +203,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
 
         if (finalConversationId) {
           const resolvedConversationId = finalConversationId;
-          logDebug('Stream completed', {
+          log.debug('Stream completed', {
             conversationId: resolvedConversationId,
             createdNew: !previousConversationId,
           });
@@ -243,7 +240,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
         }
       } catch (error) {
         console.error('[useChatController] Streaming failed, falling back to mutation:', error);
-        logDebug('Stream failed, attempting fallback', {
+        log.debug('Stream failed, attempting fallback', {
           error,
           previousConversationId,
         });
@@ -266,7 +263,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
           const fallbackConversationId = fallbackResponse.conversation_id;
           if (fallbackConversationId) {
             const resolvedConversationId = fallbackConversationId;
-            logDebug('Fallback succeeded', {
+            log.debug('Fallback succeeded', {
               conversationId: resolvedConversationId,
               createdNew:
                 !previousConversationId || previousConversationId !== resolvedConversationId,
@@ -307,7 +304,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
           const message =
             fallbackError instanceof Error ? fallbackError.message : 'Fallback send failed.';
           setErrorMessage(message);
-          logDebug('Fallback send failed', {
+          log.debug('Fallback send failed', {
             error: fallbackError,
           });
           setMessages((prevMessages) =>
@@ -342,7 +339,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
         return;
       }
 
-      logDebug('Deleting conversation', { conversationId });
+      log.debug('Deleting conversation', { conversationId });
       setIsClearingConversation(true);
       setErrorMessage(null);
 
@@ -364,7 +361,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
         const message =
           error instanceof Error ? error.message : 'Failed to delete conversation.';
         setErrorMessage(message);
-        logDebug('Delete conversation failed', { conversationId, error });
+        log.debug('Delete conversation failed', { conversationId, error });
       } finally {
         setIsClearingConversation(false);
       }
@@ -412,4 +409,3 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
     ],
   );
 }
-

@@ -7,6 +7,7 @@ from app.api.v1.auth.router import router as auth_router
 from app.api.v1.billing.router import router as billing_router
 from app.api.v1.chat.router import router as chat_router
 from app.api.v1.conversations.router import router as conversations_router
+from app.api.v1.logs.router import router as logs_router
 from app.api.v1.status.router import legacy_router as status_legacy_router
 from app.api.v1.status.router import router as status_router
 from app.api.v1.tenants.router import router as tenants_router
@@ -29,3 +30,5 @@ if settings.enable_billing:
     router.include_router(billing_router)
 if settings.use_test_fixtures:
     router.include_router(test_fixtures_router)
+if settings.enable_frontend_log_ingest:
+    router.include_router(logs_router)

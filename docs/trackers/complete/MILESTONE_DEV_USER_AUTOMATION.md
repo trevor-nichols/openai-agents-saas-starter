@@ -31,7 +31,7 @@ Fold the local dev-user seeding flow into the Starter CLI setup wizard so operat
 - [x] Add demo-token automation to mint a local service-account token without starting the API.
 - [x] Add catalog entry for `demo-bot` service account (chat:write, conversations:read).
 - [x] Add unit test covering demo-token automation trigger.
-- [ ] Manual verification: `just setup-local-lite` end-to-end run and confirm console password handling + demo token output.
+- [x] Manual verification: `just setup-local-lite` end-to-end run and confirm console password handling + demo token output.
 - [ ] Fix CLI inventory parsing to tolerate generated format and re-run full CLI unit suite.
 
 ## Notes / Risks

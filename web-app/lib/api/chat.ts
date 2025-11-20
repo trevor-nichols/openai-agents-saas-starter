@@ -15,16 +15,11 @@ import type {
   StreamChatParams,
   StreamChunk,
 } from '@/lib/chat/types';
+import { createLogger } from '@/lib/logging';
 
 const CHAT_ROUTE = '/api/chat';
 const CHAT_STREAM_ROUTE = '/api/chat/stream';
-const isProduction = typeof process !== 'undefined' && process.env.NODE_ENV === 'production';
-
-const logDebug = (...messages: unknown[]) => {
-  if (!isProduction) {
-    console.debug('[chat-api]', ...messages);
-  }
-};
+const log = createLogger('chat-api');
 
 export class ChatApiError extends Error {
   public readonly status: number;
@@ -44,7 +39,7 @@ export class ChatApiError extends Error {
  * Send a non-streaming chat request through the proxy route.
  */
 export async function sendChatMessage(payload: AgentChatRequest): Promise<AgentChatResponse> {
-  logDebug('Sending chat message', {
+  log.debug('Sending chat message', {
     hasConversationId: Boolean(payload.conversation_id),
     agentType: payload.agent_type,
   });
@@ -76,7 +71,7 @@ export async function sendChatMessage(payload: AgentChatRequest): Promise<AgentC
       (parsed?.error as string | undefined) ??
       `Chat request failed (HTTP ${response.status})`;
 
-    logDebug('Chat message failed', {
+    log.debug('Chat message failed', {
       status: response.status,
       error: message,
       details: parsed ?? undefined,
@@ -90,7 +85,7 @@ export async function sendChatMessage(payload: AgentChatRequest): Promise<AgentC
   }
 
   if (!rawBody) {
-    logDebug('Chat message returned empty body');
+    log.debug('Chat message returned empty body');
     throw new ChatApiError('Empty chat response received.', {
       status: response.status,
     });
@@ -98,12 +93,12 @@ export async function sendChatMessage(payload: AgentChatRequest): Promise<AgentC
 
   try {
     const parsed = JSON.parse(rawBody) as AgentChatResponse;
-    logDebug('Chat message succeeded', {
+    log.debug('Chat message succeeded', {
       conversationId: parsed.conversation_id,
     });
     return parsed;
   } catch (error) {
-    logDebug('Failed to parse chat response', {
+    log.debug('Failed to parse chat response', {
       error,
     });
     throw new ChatApiError(
@@ -121,7 +116,7 @@ export async function* streamChat(
 ): AsyncGenerator<StreamChunk, void, unknown> {
   const { message, conversationId, agentType = 'triage' } = params;
 
-  logDebug('Starting chat stream', {
+  log.debug('Starting chat stream', {
     agentType,
     hasConversationId: Boolean(conversationId),
   });
@@ -141,7 +136,7 @@ export async function* streamChat(
 
   if (!response.ok) {
     const payload = await response.text();
-    logDebug('Chat stream rejected', {
+    log.debug('Chat stream rejected', {
       status: response.status,
       payload,
     });
@@ -156,7 +151,7 @@ export async function* streamChat(
   }
 
   if (!response.body) {
-    logDebug('Chat stream missing body');
+    log.debug('Chat stream missing body');
     yield {
       type: 'error',
       payload: 'No response body received from chat stream.',
@@ -184,7 +179,7 @@ export async function* streamChat(
           const data: BackendStreamData = JSON.parse(segment.slice(6));
 
           if (data.error) {
-            logDebug('Chat stream reported tool error', {
+            log.debug('Chat stream reported tool error', {
               conversationId: data.conversation_id,
               error: data.error,
             });
@@ -196,7 +191,7 @@ export async function* streamChat(
             return;
           }
 
-          logDebug('Chat stream chunk received', {
+          log.debug('Chat stream chunk received', {
             conversationId: data.conversation_id,
             isComplete: data.is_complete,
             chunkLength: data.chunk.length,
@@ -214,7 +209,7 @@ export async function* streamChat(
         } catch (error) {
           const message =
             error instanceof Error ? error.message : 'Unknown streaming parse error';
-          logDebug('Chat stream failed to parse payload', {
+          log.debug('Chat stream failed to parse payload', {
             segment,
             errorMessage: message,
           });
@@ -227,9 +222,8 @@ export async function* streamChat(
       }
     }
   } catch (error) {
-    logDebug('Chat stream reader threw error', { error });
+    log.debug('Chat stream reader threw error', { error });
   } finally {
     reader.releaseLock();
   }
 }
-

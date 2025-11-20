@@ -76,11 +76,11 @@ def validate_redis_url(url: str, *, require_tls: bool, role: str) -> None:
 
 
 def normalize_logging_sink(value: str) -> str:
-    options = {"stdout", "datadog", "otlp", "none"}
+    options = {"stdout", "file", "datadog", "otlp", "none"}
     normalized = value.strip().lower()
     if normalized not in options:
         raise CLIError(
-            "Logging sink must be one of stdout, datadog, otlp, or none."
+            "Logging sink must be one of stdout, file, datadog, otlp, or none."
         )
     return normalized
 

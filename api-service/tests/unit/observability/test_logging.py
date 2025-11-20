@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 
 import pytest
 
@@ -71,3 +72,25 @@ def test_configure_logging_requires_datadog_api_key() -> None:
     settings = Settings.model_validate({"LOGGING_SINK": "datadog"})
     with pytest.raises(ValueError):
         configure_logging(settings)
+
+
+def test_configure_logging_writes_json_to_file(tmp_path: Path) -> None:
+    log_path = tmp_path / "test.log"
+    settings = Settings.model_validate(
+        {
+            "LOGGING_SINK": "file",
+            "LOGGING_FILE_PATH": str(log_path),
+            "LOGGING_FILE_MAX_MB": 1,
+        }
+    )
+
+    configure_logging(settings)
+    log_event("unit.file_sink", message="hello", tenant="tenant-1")
+
+    assert log_path.exists(), "Log file was not created"
+    contents = log_path.read_text().strip().splitlines()
+    assert contents, "No log records written to file sink"
+
+    payload = json.loads(contents[-1])
+    assert payload["event"] == "unit.file_sink"
+    assert payload["tenant"] == "tenant-1"

@@ -49,3 +49,25 @@ def configure(context: WizardContext, provider: InputProvider) -> None:
         ),
     )
     context.set_frontend_bool("AGENT_ALLOW_INSECURE_COOKIES", allow_insecure)
+
+    log_level = provider.prompt_string(
+        key="NEXT_PUBLIC_LOG_LEVEL",
+        prompt="Frontend log level (debug/info/warn/error)",
+        default=context.frontend_env.get("NEXT_PUBLIC_LOG_LEVEL") or "info",
+        required=True,
+    ).lower()
+    context.set_frontend("NEXT_PUBLIC_LOG_LEVEL", log_level)
+
+    raw_sink = provider.prompt_string(
+        key="NEXT_PUBLIC_LOG_SINK",
+        prompt="Frontend log sink (console/beacon/none)",
+        default=context.frontend_env.get("NEXT_PUBLIC_LOG_SINK") or "console",
+        required=True,
+    ).strip().lower()
+    sink = raw_sink if raw_sink in {"console", "beacon", "none"} else "console"
+    if sink == "beacon" and not context.current_bool("ENABLE_FRONTEND_LOG_INGEST", False):
+        console.warn(
+            "Frontend beacon sink selected, but ENABLE_FRONTEND_LOG_INGEST is false; enable ingest to receive browser logs.",
+            topic="frontend-logging",
+        )
+    context.set_frontend("NEXT_PUBLIC_LOG_SINK", sink)

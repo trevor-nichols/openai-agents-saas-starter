@@ -8,7 +8,12 @@ from starter_cli.core import CLIError
 from ...automation import AutomationPhase, AutomationStatus
 from ...geoip import download_maxmind_database
 from ...inputs import InputProvider
-from ...validators import normalize_geoip_provider, normalize_logging_sink
+from ...validators import (
+    normalize_geoip_provider,
+    normalize_logging_sink,
+    parse_non_negative_int,
+    parse_positive_int,
+)
 from ..context import WizardContext
 
 
@@ -28,13 +33,41 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     sink = normalize_logging_sink(
         provider.prompt_string(
             key="LOGGING_SINK",
-            prompt="Logging sink (stdout/datadog/otlp/none)",
+            prompt="Logging sink (stdout/file/datadog/otlp/none)",
             default=context.current("LOGGING_SINK") or "stdout",
             required=True,
         )
     )
     context.set_backend("LOGGING_SINK", sink)
-    if sink == "datadog":
+    if sink == "file":
+        log_path = provider.prompt_string(
+            key="LOGGING_FILE_PATH",
+            prompt="Log file path (rotating)",
+            default=context.current("LOGGING_FILE_PATH") or "var/log/api-service.log",
+            required=True,
+        )
+        max_mb = provider.prompt_string(
+            key="LOGGING_FILE_MAX_MB",
+            prompt="Max file size (MB)",
+            default=context.current("LOGGING_FILE_MAX_MB") or "10",
+            required=True,
+        )
+        backups = provider.prompt_string(
+            key="LOGGING_FILE_BACKUPS",
+            prompt="Number of rotated backups to keep",
+            default=context.current("LOGGING_FILE_BACKUPS") or "5",
+            required=True,
+        )
+        context.set_backend("LOGGING_FILE_PATH", log_path)
+        context.set_backend(
+            "LOGGING_FILE_MAX_MB",
+            str(parse_positive_int(max_mb, field="LOGGING_FILE_MAX_MB", minimum=1)),
+        )
+        context.set_backend(
+            "LOGGING_FILE_BACKUPS",
+            str(parse_non_negative_int(backups, field="LOGGING_FILE_BACKUPS")),
+        )
+    elif sink == "datadog":
         api_key = provider.prompt_secret(
             key="LOGGING_DATADOG_API_KEY",
             prompt="Datadog API key",
@@ -87,6 +120,13 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     else:
         context.set_backend_bool("ENABLE_OTEL_COLLECTOR", False)
         _clear_collector_exporters(context)
+
+    ingest_enabled = provider.prompt_bool(
+        key="ENABLE_FRONTEND_LOG_INGEST",
+        prompt="Accept authenticated frontend logs at /api/v1/logs?",
+        default=context.current_bool("ENABLE_FRONTEND_LOG_INGEST", False),
+    )
+    context.set_backend_bool("ENABLE_FRONTEND_LOG_INGEST", ingest_enabled)
 
     geo = normalize_geoip_provider(
         provider.prompt_string(
