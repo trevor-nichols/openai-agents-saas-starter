@@ -602,7 +602,7 @@ function IssuedTokenView({ token, onDone, onIssueAnother }: IssuedTokenViewProps
       await navigator.clipboard.writeText(token.refreshToken);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
+    } catch (_error) {
       setCopied(false);
     }
   };

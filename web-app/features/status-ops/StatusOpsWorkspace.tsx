@@ -45,7 +45,7 @@ export function StatusOpsWorkspace({ defaultTenantId }: StatusOpsWorkspaceProps)
   });
 
   const statusQuery = usePlatformStatusQuery();
-  const incidents = statusQuery.status?.incidents ?? [];
+  const incidents = useMemo(() => statusQuery.status?.incidents ?? [], [statusQuery.status?.incidents]);
 
   useEffect(() => {
     if (!selectedIncidentId && incidents.length > 0) {

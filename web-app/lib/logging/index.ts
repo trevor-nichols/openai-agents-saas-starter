@@ -78,16 +78,12 @@ function emitConsole(payload: LogPayload) {
     args.push(fields);
   }
   if (level === 'debug') {
-    // eslint-disable-next-line no-console
     console.debug(...args);
   } else if (level === 'info') {
-    // eslint-disable-next-line no-console
     console.info(...args);
   } else if (level === 'warn') {
-    // eslint-disable-next-line no-console
     console.warn(...args);
   } else {
-    // eslint-disable-next-line no-console
     console.error(...args);
   }
 }

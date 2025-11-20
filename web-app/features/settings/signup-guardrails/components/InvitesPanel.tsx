@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 
 import { Badge } from '@/components/ui/badge';
@@ -50,19 +50,22 @@ export function InvitesPanel() {
     setEmailFilter(searchInput.trim());
   };
 
-  const handleRevoke = async (invite: SignupInviteSummary) => {
-    try {
-      await revokeMutation.mutateAsync({ inviteId: invite.id });
-      toast.success({
-        title: 'Invite revoked',
-        description: `The invite ${invite.tokenHint} can no longer be used.`,
-      });
-      refetch();
-    } catch (err) {
-      const description = err instanceof Error ? err.message : 'Unable to revoke invite.';
-      toast.error({ title: 'Revoke failed', description });
-    }
-  };
+  const handleRevoke = useCallback(
+    async (invite: SignupInviteSummary) => {
+      try {
+        await revokeMutation.mutateAsync({ inviteId: invite.id });
+        toast.success({
+          title: 'Invite revoked',
+          description: `The invite ${invite.tokenHint} can no longer be used.`,
+        });
+        refetch();
+      } catch (err) {
+        const description = err instanceof Error ? err.message : 'Unable to revoke invite.';
+        toast.error({ title: 'Revoke failed', description });
+      }
+    },
+    [revokeMutation, toast, refetch],
+  );
 
   const columns: ColumnDef<SignupInviteSummary>[] = useMemo(
     () => [

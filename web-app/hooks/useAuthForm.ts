@@ -12,7 +12,7 @@ type ToastContent = {
   description?: string;
 };
 
-type AuthSchema = z.ZodObject<any>;
+type AuthSchema = z.ZodObject<Record<string, z.ZodTypeAny>>;
 
 interface UseAuthFormOptions<TSchema extends AuthSchema> {
   schema: TSchema;

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/no-require-imports */
 
 /**
  * Deterministic seed runner for Playwright critical flow tests.
@@ -43,7 +44,6 @@ function parseArgs(argv) {
 }
 
 function printUsage() {
-  // eslint-disable-next-line no-console
   console.log(
     [
       'Usage: pnpm test:seed [--spec path/to/spec.yaml] [--output path/to/output.json]',
@@ -103,20 +103,16 @@ async function main() {
 
   try {
     const spec = await loadSpec(options.specPath);
-    // eslint-disable-next-line no-console
     console.log(`Seeding fixtures via ${apiUrl}...`);
 
     const result = await applyFixtures(apiUrl, spec);
     const outputPath = await writeOutput(options.outputPath, result);
 
-    // eslint-disable-next-line no-console
     console.log(`Fixture seeding complete. Results written to ${outputPath}`);
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;
   }
 }
 
 void main();
-

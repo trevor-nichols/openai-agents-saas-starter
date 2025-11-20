@@ -159,7 +159,7 @@ export function SessionsPanel() {
           ) : null}
         </div>
         <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-xs text-foreground/60">
-          Revoke sessions you don't recognize. "Sign out everywhere" will also log you out of this browser.
+          Revoke sessions you do not recognize. Selecting Sign out everywhere will also log you out of this browser.
         </div>
       </GlassPanel>
 
@@ -215,7 +215,7 @@ export function SessionsPanel() {
             columns={columns}
             data={data}
             isLoading={isLoading}
-            emptyState={<EmptyState title="No sessions" description="We didn't find any active sessions." />}
+            emptyState={<EmptyState title="No sessions" description="We did not find any active sessions." />}
           />
         )}
       </GlassPanel>
@@ -225,7 +225,7 @@ export function SessionsPanel() {
           <AlertDialogHeader>
             <AlertDialogTitle>Sign out everywhere?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will revoke every active session, including this browser. You'll need to sign in again afterwards.
+              This will revoke every active session, including this browser. You will need to sign in again afterwards.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
