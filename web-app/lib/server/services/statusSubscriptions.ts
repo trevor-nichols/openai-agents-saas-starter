@@ -160,6 +160,7 @@ export async function listStatusSubscriptions(options?: {
   limit?: number;
   cursor?: string | null;
   tenantId?: string | null;
+  includeAllTenants?: boolean;
 }): Promise<StatusSubscriptionListResponse> {
   const { client, auth } = await getServerApiClient();
   const response = await listStatusSubscriptionsApiV1StatusSubscriptionsGet({
@@ -171,6 +172,8 @@ export async function listStatusSubscriptions(options?: {
       limit: options?.limit,
       cursor: options?.cursor,
       tenant_id: options?.tenantId,
+      // @ts-expect-error allow "all" flag until SDK is regenerated
+      all: options?.includeAllTenants ? true : undefined,
     },
   });
 

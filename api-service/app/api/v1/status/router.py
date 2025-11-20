@@ -222,10 +222,26 @@ async def list_status_subscriptions(
         default=None,
         description="Tenant identifier to inspect (operators only).",
     ),
+    all_tenants: bool = Query(
+        default=False,
+        alias="all",
+        description="When true, ignore token tenant scoping and return subscriptions across all tenants.",
+    ),
     user: CurrentUser = Depends(require_scopes("status:manage")),
 ):
     service = _get_subscription_service()
-    tenant_scope = _resolve_tenant_id(user) or tenant_id
+    session_tenant = _resolve_tenant_id(user)
+
+    if session_tenant and not all_tenants:
+        if tenant_id and tenant_id != session_tenant:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Tenant-scoped tokens cannot override tenant_id without all=true.",
+            )
+        tenant_scope = session_tenant
+    else:
+        tenant_scope = tenant_id if tenant_id is not None else (None if all_tenants else session_tenant)
+
     safe_cursor = _validate_cursor(cursor)
     result = await service.list_subscriptions(
         tenant_id=tenant_scope,

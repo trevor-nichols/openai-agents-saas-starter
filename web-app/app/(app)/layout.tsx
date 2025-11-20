@@ -7,6 +7,7 @@
 import Link from 'next/link';
 
 import { SilentRefresh } from '@/components/auth/SilentRefresh';
+import { getSessionMetaFromCookies } from '@/lib/auth/cookies';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -27,7 +28,11 @@ const accountNav = [
 ];
 
 // --- AppLayout component ---
-export default function AppLayout({ children }: AppLayoutProps) {
+export default async function AppLayout({ children }: AppLayoutProps) {
+  const session = await getSessionMetaFromCookies();
+  const hasStatusScope = session?.scopes?.includes('status:manage') ?? false;
+  const navItems = hasStatusScope ? [...primaryNav, { href: '/ops/status', label: 'Ops' }] : primaryNav;
+
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <SilentRefresh />
@@ -41,7 +46,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </p>
 
         <nav aria-label="Primary navigation" className="mt-8 flex flex-col gap-1 text-sm font-medium">
-          {primaryNav.map((item) => (
+          {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -79,7 +84,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             </div>
 
             <nav aria-label="Primary navigation mobile" className="flex gap-2 overflow-x-auto text-sm font-medium lg:hidden">
-              {primaryNav.map((item) => (
+              {navItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
