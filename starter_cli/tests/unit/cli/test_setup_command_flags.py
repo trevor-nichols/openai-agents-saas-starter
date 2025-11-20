@@ -29,6 +29,8 @@ def _build_args(**overrides) -> argparse.Namespace:
         "auto_migrations": None,
         "auto_redis": None,
         "auto_geoip": None,
+        "auto_dev_user": None,
+        "auto_demo_token": None,
         # flags that map to argparse choices but default via Namespace
         "setup_command": "wizard",
     }

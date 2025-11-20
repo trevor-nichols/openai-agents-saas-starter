@@ -52,6 +52,11 @@ SECTION_SPECS: list[SectionSpec] = [
         summary="Choose signup access policy, throttles, and billing worker defaults.",
     ),
     SectionSpec(
+        key="dev_user",
+        label="Dev User",
+        summary="Collect local dev user defaults and credentials for seeding.",
+    ),
+    SectionSpec(
         key="frontend",
         label="Frontend",
         summary="Finalize Next.js env config for API URLs, Playwright, and cookie posture.",

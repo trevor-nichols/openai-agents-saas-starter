@@ -11,6 +11,7 @@ from ._wizard import audit
 from ._wizard.context import FRONTEND_ENV_RELATIVE, WizardContext, build_env_files
 from ._wizard.sections import (
     core,
+    dev_user,
     frontend,
     integrations,
     observability,
@@ -25,6 +26,8 @@ from .automation import ALL_AUTOMATION_PHASES, AutomationPhase
 from .infra import InfraSession
 from .inputs import InputProvider, InteractiveInputProvider, is_headless_provider
 from .models import SectionResult
+from .dev_user import run_dev_user_automation
+from .demo_token import run_demo_token_automation
 from .preflight import run_preflight
 from .schema import load_schema
 from .schema_provider import SchemaAwareInputProvider
@@ -69,6 +72,16 @@ _AUTOMATION_PROMPTS: dict[AutomationPhase, tuple[str, str, bool]] = {
         "Automatically download GeoIP datasets when required?",
         False,
     ),
+    AutomationPhase.DEV_USER: (
+        "AUTO_DEV_USER",
+        "Seed a local dev user after setup completes?",
+        True,
+    ),
+    AutomationPhase.DEMO_TOKEN: (
+        "AUTO_DEMO_TOKEN",
+        "Mint a demo service-account token for local testing?",
+        True,
+    ),
 }
 
 _AUTOMATION_DEPENDENCIES: dict[AutomationPhase, set[str]] = {
@@ -78,6 +91,8 @@ _AUTOMATION_DEPENDENCIES: dict[AutomationPhase, set[str]] = {
     AutomationPhase.MIGRATIONS: set(),
     AutomationPhase.REDIS: set(),
     AutomationPhase.GEOIP: set(),
+    AutomationPhase.DEV_USER: set(),
+    AutomationPhase.DEMO_TOKEN: set(),
 }
 
 _AUTOMATION_PROFILE_LIMITS: dict[AutomationPhase, set[str] | None] = {
@@ -87,6 +102,8 @@ _AUTOMATION_PROFILE_LIMITS: dict[AutomationPhase, set[str] | None] = {
     AutomationPhase.MIGRATIONS: None,
     AutomationPhase.REDIS: None,
     AutomationPhase.GEOIP: None,
+    AutomationPhase.DEV_USER: {"local"},
+    AutomationPhase.DEMO_TOKEN: {"local"},
 }
 
 _AUTOMATION_LABELS: dict[AutomationPhase, str] = {
@@ -96,6 +113,8 @@ _AUTOMATION_LABELS: dict[AutomationPhase, str] = {
     AutomationPhase.MIGRATIONS: "DB Migrations",
     AutomationPhase.REDIS: "Redis Warm-up",
     AutomationPhase.GEOIP: "GeoIP Downloads",
+    AutomationPhase.DEV_USER: "Dev User Seed",
+    AutomationPhase.DEMO_TOKEN: "Demo Token",
 }
 
 
@@ -226,7 +245,9 @@ class SetupWizard:
         self.context.save_env_files()
         self.context.load_environment()
         self.context.refresh_settings_cache()
+        run_dev_user_automation(self.context)
         capture_tenant_summary(self.context)
+        run_demo_token_automation(self.context)
 
         sections = audit.build_sections(self.context)
         self._render(sections)
@@ -245,6 +266,7 @@ class SetupWizard:
             "observability": partial(observability.run, self.context, provider),
             "integrations": partial(integrations.run, self.context, provider),
             "signup": partial(signup.run, self.context, provider),
+            "dev_user": partial(dev_user.run, self.context, provider),
             "frontend": partial(frontend.configure, self.context, provider),
         }
 

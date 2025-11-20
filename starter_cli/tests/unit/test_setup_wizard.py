@@ -15,7 +15,7 @@ from starter_cli.workflows.setup import (
 from starter_cli.workflows.setup import wizard as wizard_module
 from starter_cli.workflows.setup._wizard import audit
 from starter_cli.workflows.setup._wizard.sections import providers as provider_section
-from starter_cli.workflows.setup.automation import AutomationPhase
+from starter_cli.workflows.setup.automation import AutomationPhase, AutomationStatus
 from starter_cli.workflows.setup.models import CheckResult, SectionResult
 from starter_cli.workflows.setup.validators import set_vault_probe_request
 
@@ -250,6 +250,66 @@ def test_wizard_headless_export_invalid_number_raises(temp_ctx: CLIContext) -> N
     with pytest.raises(CLIError, match="SIGNUP_RATE_LIMIT_PER_HOUR must be an integer"):
         wizard.execute()
 
+    _cleanup_env(snapshot)
+
+
+def test_dev_user_automation_invoked_when_enabled(
+    monkeypatch: pytest.MonkeyPatch, temp_ctx: CLIContext
+) -> None:
+    snapshot = dict(os.environ)
+    answers = _local_headless_answers()
+    called: dict[str, int] = {"count": 0}
+
+    def fake_run(context):
+        called["count"] += 1
+        context.automation.update(
+            AutomationPhase.DEV_USER, AutomationStatus.SUCCEEDED, "ok"
+        )
+
+    monkeypatch.setattr(wizard_module, "run_dev_user_automation", fake_run)
+
+    overrides = {phase: False for phase in AutomationPhase}
+    overrides[AutomationPhase.DEV_USER] = True
+    wizard = _create_setup_wizard(
+        ctx=temp_ctx,
+        profile="local",
+        output_format="summary",
+        input_provider=HeadlessInputProvider(answers=answers),
+        automation_overrides=overrides,
+    )
+    wizard.execute()
+
+    assert called["count"] == 1
+    _cleanup_env(snapshot)
+
+
+def test_demo_token_automation_invoked_when_enabled(
+    monkeypatch: pytest.MonkeyPatch, temp_ctx: CLIContext
+) -> None:
+    snapshot = dict(os.environ)
+    answers = _local_headless_answers()
+    called: dict[str, int] = {"count": 0}
+
+    def fake_run(context):
+        called["count"] += 1
+        context.automation.update(
+            AutomationPhase.DEMO_TOKEN, AutomationStatus.SUCCEEDED, "ok"
+        )
+
+    monkeypatch.setattr(wizard_module, "run_demo_token_automation", fake_run)
+
+    overrides = {phase: False for phase in AutomationPhase}
+    overrides[AutomationPhase.DEMO_TOKEN] = True
+    wizard = _create_setup_wizard(
+        ctx=temp_ctx,
+        profile="local",
+        output_format="summary",
+        input_provider=HeadlessInputProvider(answers=answers),
+        automation_overrides=overrides,
+    )
+    wizard.execute()
+
+    assert called["count"] == 1
     _cleanup_env(snapshot)
 
 

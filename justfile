@@ -180,14 +180,8 @@ setup-local-lite:
         --auto-secrets \
         --auto-migrations \
         --auto-redis \
-        --no-auto-geoip
-    just seed-dev-user \
-        setup_user_email="{{setup_user_email}}" \
-        setup_user_name="{{setup_user_name}}" \
-        setup_user_password="{{setup_user_password}}" \
-        setup_user_tenant="{{setup_user_tenant}}" \
-        setup_user_tenant_name="{{setup_user_tenant_name}}" \
-        setup_user_role="{{setup_user_role}}"
+        --no-auto-geoip \
+        --auto-dev-user
     @echo ""
     @echo "Next steps:"
     @echo "  1. Run 'just api' in a new terminal to start FastAPI."
@@ -203,14 +197,8 @@ setup-local-full:
         --auto-migrations \
         --auto-redis \
         --auto-geoip \
-        --auto-stripe
-    just seed-dev-user \
-        setup_user_email="{{setup_user_email}}" \
-        setup_user_name="{{setup_user_name}}" \
-        setup_user_password="{{setup_user_password}}" \
-        setup_user_tenant="{{setup_user_tenant}}" \
-        setup_user_tenant_name="{{setup_user_tenant_name}}" \
-        setup_user_role="{{setup_user_role}}"
+        --auto-stripe \
+        --auto-dev-user
     @echo ""
     @echo "Local-Full ready. Start FastAPI with 'just api' and run 'just issue-demo-token' if needed."
 

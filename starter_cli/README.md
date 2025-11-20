@@ -54,6 +54,8 @@ The flow covers five milestones plus frontend wiring:
 
 GeoIP prompts cover IPinfo/IP2Location SaaS tokens plus self-hosted MaxMind/IP2Location databases. When you choose the MaxMind database provider, the wizard can download/refresh the GeoLite2 City bundle (using `GEOIP_MAXMIND_LICENSE_KEY`) and will warn if the on-disk `.mmdb` file is missing. Cache TTL/capacity and HTTP timeout knobs are recorded alongside the provider choice so backend services stay in sync with operator expectations.
 
+Local runs now also include a "Dev User" section: the wizard collects the dev admin email/tenant/role and either uses your supplied password or generates a strong one (shown once, never written to disk). Automation seeds the user after migrations complete.
+
 #### Interactive shell
 
 Interactive runs now open with a shell-style home screen instead of dropping you straight into prompts. The panel shows every section, its completion state, and the next recommended milestone. Commands:
@@ -78,6 +80,8 @@ Flags:
 - `--summary-path PATH` writes the audit JSON (defaults to `var/reports/setup-summary.json`).
 - `--auto-infra/--no-auto-infra`, `--auto-secrets/--no-auto-secrets`, and `--auto-stripe/--no-auto-stripe` opt in or out of the legacy automation hooks (Docker compose, Vault dev signer, embedded Stripe provisioning).
 - `--auto-migrations/--no-auto-migrations`, `--auto-redis/--no-auto-redis`, and `--auto-geoip/--no-auto-geoip` control the new automation phases for database migrations, Redis warm-up, and GeoIP dataset downloads.
+- `--auto-dev-user/--no-auto-dev-user` seeds (or skips) the local dev admin user at the end of the local profile run.
+- `--auto-demo-token/--no-auto-demo-token` mints (or skips) a demo service-account refresh token for local testing without starting the API.
 - `--markdown-summary-path PATH` writes a Markdown recap (defaults to `var/reports/cli-one-stop-summary.md`).
   When combined with `--report-only --output checklist`, the CLI writes the checklist directly to the
   provided path so Platform Foundations can drop it into trackers.

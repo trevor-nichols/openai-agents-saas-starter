@@ -196,6 +196,36 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         const=False,
         help="Skip GeoIP download automation.",
     )
+    wizard_parser.add_argument(
+        "--auto-dev-user",
+        dest="auto_dev_user",
+        action="store_const",
+        const=True,
+        default=None,
+        help="Seed the local dev user automatically after setup completes.",
+    )
+    wizard_parser.add_argument(
+        "--no-auto-dev-user",
+        dest="auto_dev_user",
+        action="store_const",
+        const=False,
+        help="Disable dev-user seeding automation.",
+    )
+    wizard_parser.add_argument(
+        "--auto-demo-token",
+        dest="auto_demo_token",
+        action="store_const",
+        const=True,
+        default=None,
+        help="Mint a demo service-account token at the end of setup (local profile).",
+    )
+    wizard_parser.add_argument(
+        "--no-auto-demo-token",
+        dest="auto_demo_token",
+        action="store_const",
+        const=False,
+        help="Disable demo token automation.",
+    )
     wizard_parser.set_defaults(handler=handle_setup_wizard)
 
 
@@ -232,6 +262,8 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
             AutomationPhase.MIGRATIONS: args.auto_migrations,
             AutomationPhase.REDIS: args.auto_redis,
             AutomationPhase.GEOIP: args.auto_geoip,
+            AutomationPhase.DEV_USER: args.auto_dev_user,
+            AutomationPhase.DEMO_TOKEN: args.auto_demo_token,
         }.items()
         if value is not None
     }

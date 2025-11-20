@@ -20,6 +20,7 @@ from starter_cli.telemetry import (
 )
 
 from ..automation import AutomationPhase, AutomationState
+from ..demo_token import DemoTokenConfig
 from ..inputs import InputProvider
 from ..schema import WizardSchema
 from ..state import WizardStateStore
@@ -28,6 +29,7 @@ from ..ui import WizardUIView, automation_status_to_state
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from ..infra import InfraSession
     from ..tenant_summary import TenantSummary
+    from ..dev_user import DevUserConfig
 
 FRONTEND_ENV_RELATIVE = Path("web-app/.env.local")
 
@@ -55,6 +57,8 @@ class WizardContext:
     verification_log_path: Path = field(init=False)
     historical_verifications: list[VerificationArtifact] = field(init=False)
     tenant_summary: TenantSummary | None = None
+    dev_user_config: "DevUserConfig | None" = None
+    demo_token_config: "DemoTokenConfig | None" = None
 
     def __post_init__(self) -> None:
         self.verification_log_path = (

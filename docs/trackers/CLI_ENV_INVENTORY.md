@@ -160,6 +160,7 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | USAGE_GUARDRAIL_CACHE_TTL_SECONDS | int | 30 |  | ✅ | TTL for cached usage rollups (seconds). Set to 0 to disable caching. |
 | USAGE_GUARDRAIL_REDIS_URL | str \| NoneType | — |  | ✅ | Redis URL dedicated to usage guardrail caches (defaults to REDIS_URL). |
 | USAGE_GUARDRAIL_SOFT_LIMIT_MODE | warn \| block | warn |  | ✅ | How to react when soft limits are exceeded: 'warn' logs a warning but allows the request, while 'block' treats soft limits like hard caps. |
+| USE_TEST_FIXTURES | bool | False |  |  | Enable fixture overrides for tests/local runs. |
 | VAULT_ADDR | str \| NoneType | — |  | ✅ | HashiCorp Vault address for Transit verification. |
 | VAULT_NAMESPACE | str \| NoneType | — |  | ✅ | Optional Vault namespace for HCP or multi-tenant clusters. |
 | VAULT_TOKEN | str \| NoneType | — |  | ✅ | Vault token/AppRole secret with transit:verify capability. |

@@ -218,3 +218,27 @@ prompts:
     when:
       - key: USAGE_GUARDRAIL_CACHE_BACKEND
         equals: redis
+
+  # Dev user seeding
+  DEV_USER_EMAIL:
+    section: dev_user
+    label: Dev user email
+  DEV_USER_DISPLAY_NAME:
+    section: dev_user
+    label: Dev user display name
+  DEV_USER_TENANT_SLUG:
+    section: dev_user
+    label: Dev user tenant slug
+  DEV_USER_TENANT_NAME:
+    section: dev_user
+    label: Dev user tenant name
+  DEV_USER_ROLE:
+    section: dev_user
+    label: Dev user tenant role
+  DEV_USER_PASSWORD:
+    section: dev_user
+    label: Dev user password
+    skip_message: "Password will be generated if left blank."
+  DEV_USER_LOCKED:
+    section: dev_user
+    label: Dev user locked flag

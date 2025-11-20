@@ -12,6 +12,8 @@ class AutomationPhase(str, Enum):
     MIGRATIONS = "migrations"
     REDIS = "redis"
     GEOIP = "geoip"
+    DEV_USER = "dev_user"
+    DEMO_TOKEN = "demo_token"
 
 
 class AutomationStatus(str, Enum):
@@ -89,6 +91,8 @@ ALL_AUTOMATION_PHASES: tuple[AutomationPhase, ...] = (
     AutomationPhase.MIGRATIONS,
     AutomationPhase.REDIS,
     AutomationPhase.GEOIP,
+    AutomationPhase.DEV_USER,
+    AutomationPhase.DEMO_TOKEN,
 )
 
 
