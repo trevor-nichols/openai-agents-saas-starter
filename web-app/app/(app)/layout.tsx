@@ -8,6 +8,7 @@ import Link from 'next/link';
 
 import { SilentRefresh } from '@/components/auth/SilentRefresh';
 import { getSessionMetaFromCookies } from '@/lib/auth/cookies';
+import { billingEnabled } from '@/lib/config/features';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -18,7 +19,7 @@ const primaryNav = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/chat', label: 'Workspace' },
   { href: '/agents', label: 'Agents' },
-  { href: '/billing', label: 'Billing' },
+  ...(billingEnabled ? [{ href: '/billing', label: 'Billing' }] : []),
 ];
 
 const accountNav = [
@@ -32,6 +33,10 @@ export default async function AppLayout({ children }: AppLayoutProps) {
   const session = await getSessionMetaFromCookies();
   const hasStatusScope = session?.scopes?.includes('status:manage') ?? false;
   const navItems = hasStatusScope ? [...primaryNav, { href: '/ops/status', label: 'Ops' }] : primaryNav;
+
+  const subtitle = billingEnabled
+    ? 'Configure agents, monitor conversations, and keep billing healthy.'
+    : 'Configure agents and monitor conversations.';
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -78,9 +83,7 @@ export default async function AppLayout({ children }: AppLayoutProps) {
           <div className="flex flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
             <div className="flex flex-col gap-1">
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-foreground/50">Acme Console</p>
-              <p className="text-sm text-foreground/70">
-                Configure agents, monitor conversations, and keep billing healthy.
-              </p>
+              <p className="text-sm text-foreground/70">{subtitle}</p>
             </div>
 
             <nav aria-label="Primary navigation mobile" className="flex gap-2 overflow-x-auto text-sm font-medium lg:hidden">

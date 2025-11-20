@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { BillingEvent, BillingStreamStatus } from '@/types/billing';
 import { readClientSessionMeta } from '@/lib/auth/clientMeta';
 import { connectBillingStream } from '@/lib/api/billing';
+import { billingEnabled } from '@/lib/config/features';
 
 const MAX_EVENTS = 20;
 
@@ -36,6 +37,11 @@ export function useBillingStream(): UseBillingStreamReturn {
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
+    if (!billingEnabled) {
+      setStatus('disabled');
+      return undefined;
+    }
+
     // Check if user has a tenant (required for billing stream)
     const meta = readClientSessionMeta();
     if (!meta?.tenantId) {

@@ -15,6 +15,7 @@ import {
   updateSubscriptionRequest,
 } from '@/lib/api/billingSubscriptions';
 import { queryKeys } from './keys';
+import { billingEnabled } from '@/lib/config/features';
 
 interface SubscriptionOptions {
   tenantId: string | null;
@@ -23,7 +24,7 @@ interface SubscriptionOptions {
 
 export function useTenantSubscription(options: SubscriptionOptions) {
   const { tenantId, tenantRole = null } = options;
-  const enabled = Boolean(tenantId);
+  const enabled = billingEnabled && Boolean(tenantId);
 
   const query = useQuery({
     queryKey: tenantId
@@ -48,6 +49,9 @@ export function useStartSubscriptionMutation(options: SubscriptionOptions) {
 
   return useMutation({
     mutationFn: async (payload: SubscriptionStartPayload) => {
+      if (!billingEnabled) {
+        throw new Error('Billing is disabled.');
+      }
       if (!tenantId) {
         throw new Error('Tenant id required');
       }
@@ -69,6 +73,9 @@ export function useUpdateSubscriptionMutation(options: SubscriptionOptions) {
 
   return useMutation({
     mutationFn: async (payload: SubscriptionUpdatePayload) => {
+      if (!billingEnabled) {
+        throw new Error('Billing is disabled.');
+      }
       if (!tenantId) {
         throw new Error('Tenant id required');
       }
@@ -90,6 +97,9 @@ export function useCancelSubscriptionMutation(options: SubscriptionOptions) {
 
   return useMutation({
     mutationFn: async (payload: SubscriptionCancelPayload) => {
+      if (!billingEnabled) {
+        throw new Error('Billing is disabled.');
+      }
       if (!tenantId) {
         throw new Error('Tenant id required');
       }
@@ -110,6 +120,9 @@ export function useUsageRecordMutation(options: SubscriptionOptions) {
 
   return useMutation({
     mutationFn: async (payload: UsageRecordPayload) => {
+      if (!billingEnabled) {
+        throw new Error('Billing is disabled.');
+      }
       if (!tenantId) {
         throw new Error('Tenant id required');
       }

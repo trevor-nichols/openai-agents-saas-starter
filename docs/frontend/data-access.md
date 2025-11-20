@@ -7,7 +7,7 @@ This document codifies how the Next.js frontend talks to the FastAPI backend. Ev
 ## Layered Architecture
 
 1. **Generated SDK (`web-app/lib/api/client`)**  
-   - Auto-generated via HeyAPI.  
+   - Auto-generated via HeyAPI against the committed billing-on spec `../api-service/.artifacts/openapi-billing.json` (see `openapi-ts.config.ts`).  
    - Never imported directly from React components.  
    - Only server-side services may create SDK clients, typically via `lib/server/apiClient.ts`.
 
@@ -65,6 +65,7 @@ This document codifies how the Next.js frontend talks to the FastAPI backend. Ev
   - Keep the domain service for server-side orchestration.
   - Add a lightweight API route + fetch helper for browser access.  
 - Example: billing subscription flows now share `lib/api/billingSubscriptions.ts`, and `lib/queries/billingSubscriptions.ts` exclusively calls those helpers. Server components that need the same data can still import `lib/server/services/billing.ts`.  
+- Billing visibility: `NEXT_PUBLIC_ENABLE_BILLING` (default `false`) controls nav/pages/API routes/query `enabled` flags. The Starter CLI writes it to `.env.local` alongside backend `ENABLE_BILLING`.
 - If a hook only ever runs in a server component, prefer a server action instead of creating a redundant `/api` route.
 
 ## Streaming Guidance

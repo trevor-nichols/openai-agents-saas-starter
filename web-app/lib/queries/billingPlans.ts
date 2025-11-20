@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchBillingPlans } from '@/lib/api/billingPlans';
 import { queryKeys } from './keys';
 import type { BillingPlan } from '@/types/billing';
+import { billingEnabled } from '@/lib/config/features';
 
 interface UseBillingPlansResult {
   plans: BillingPlan[];
@@ -21,6 +22,7 @@ export function useBillingPlans(): UseBillingPlansResult {
     queryKey: queryKeys.billing.plans(),
     queryFn: fetchBillingPlans,
     staleTime: 5 * 60 * 1000,
+    enabled: billingEnabled,
   });
 
   return {

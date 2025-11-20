@@ -15,6 +15,15 @@ type ErrorPayload = {
   error?: string;
 };
 
+function isBillingDisabled(status: number, payload: ErrorPayload | TenantSubscription | null): boolean {
+  if (status !== 404 || !payload) return false;
+  const message =
+    (typeof payload === 'object' && 'message' in payload && payload.message) ||
+    (typeof payload === 'object' && 'error' in payload && (payload as ErrorPayload).error) ||
+    '';
+  return typeof message === 'string' && message.toLowerCase().includes('billing is disabled');
+}
+
 const subscriptionPath = (tenantId: string) => {
   if (!tenantId || tenantId.trim().length === 0) {
     throw new Error('Tenant id is required.');
@@ -74,6 +83,9 @@ export async function fetchTenantSubscription(
   });
 
   const payload = await parseResponse<TenantSubscription>(response);
+  if (isBillingDisabled(response.status, payload)) {
+    throw new Error('Billing is disabled.');
+  }
 
   if (!response.ok) {
     throw new Error(resolveErrorMessage(payload, 'Failed to load subscription.'));
@@ -98,6 +110,9 @@ export async function startSubscriptionRequest(
     body: JSON.stringify(payload),
   });
   const data = await parseResponse<TenantSubscription>(response);
+  if (isBillingDisabled(response.status, data)) {
+    throw new Error('Billing is disabled.');
+  }
 
   if (!response.ok) {
     throw new Error(resolveErrorMessage(data, 'Failed to start subscription.'));
@@ -120,6 +135,9 @@ export async function updateSubscriptionRequest(
     body: JSON.stringify(payload),
   });
   const data = await parseResponse<TenantSubscription>(response);
+  if (isBillingDisabled(response.status, data)) {
+    throw new Error('Billing is disabled.');
+  }
 
   if (!response.ok) {
     throw new Error(resolveErrorMessage(data, 'Failed to update subscription.'));
@@ -142,6 +160,9 @@ export async function cancelSubscriptionRequest(
     body: JSON.stringify(payload),
   });
   const data = await parseResponse<TenantSubscription>(response);
+  if (isBillingDisabled(response.status, data)) {
+    throw new Error('Billing is disabled.');
+  }
 
   if (!response.ok) {
     throw new Error(resolveErrorMessage(data, 'Failed to cancel subscription.'));
@@ -164,8 +185,13 @@ export async function recordUsageRequest(
     body: JSON.stringify(payload),
   });
 
+  const data = await parseResponse<ErrorPayload>(response);
+
+  if (isBillingDisabled(response.status, data)) {
+    throw new Error('Billing is disabled.');
+  }
+
   if (!response.ok) {
-    const data = await parseResponse<ErrorPayload>(response);
     throw new Error(resolveErrorMessage(data, 'Failed to record usage.'));
   }
 }

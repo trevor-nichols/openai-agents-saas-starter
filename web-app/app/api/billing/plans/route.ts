@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 
 import { listBillingPlans } from '@/lib/server/services/billing';
+import { billingEnabled } from '@/lib/config/features';
 
 export async function GET() {
+  if (!billingEnabled) {
+    return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
+  }
   try {
     const plans = await listBillingPlans();
     return NextResponse.json({

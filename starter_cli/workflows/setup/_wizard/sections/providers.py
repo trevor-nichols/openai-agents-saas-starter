@@ -174,6 +174,7 @@ def _collect_billing(context: WizardContext, provider: InputProvider) -> None:
         default=context.current_bool("ENABLE_BILLING", False),
     )
     context.set_backend_bool("ENABLE_BILLING", enable_billing)
+    context.set_frontend_bool("NEXT_PUBLIC_ENABLE_BILLING", enable_billing)
 
     enable_stream = provider.prompt_bool(
         key="ENABLE_BILLING_STREAM",

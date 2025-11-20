@@ -5,7 +5,7 @@ This package contains the Next.js 15 UI that talks to the FastAPI backend. It re
 ## Prerequisites
 
 - Node.js 20+
-- A running backend on `http://localhost:8000` (the OpenAPI document is fetched from `/openapi.json`).
+- No backend required for client generation: the HeyAPI config now points at the committed billing-on artifact (`../api-service/.artifacts/openapi-billing.json`).
 
 ## Install & Dev Server
 
@@ -27,7 +27,11 @@ npm run generate
 
 This executes `openapi-ts` with the configuration in `openapi-ts.config.ts` and refreshes the contents of `lib/api/client/`. Because that directory is ignored by git, each clone (or CI environment) must run the command at least once.
 
-If the backend is hosted at a different URL, update `input` in `openapi-ts.config.ts` accordingly.
+If you intentionally switch the source spec (e.g., regenerating in a fork), ensure billing endpoints remain present; otherwise, set `NEXT_PUBLIC_ENABLE_BILLING=false` so the UI stays coherent.
+
+## Feature Flags
+
+- `NEXT_PUBLIC_ENABLE_BILLING` (default: `false`): Drives billing navigation/pages/API routes/hooks. Set by the Starter CLI alongside backend `ENABLE_BILLING`.
 
 ## Production Builds
 

@@ -34,7 +34,15 @@ export async function fetchBillingHistory(params: FetchBillingHistoryParams): Pr
     signal,
   });
 
-  const payload = (await response.json()) as BillingEventHistoryResponse & { message?: string };
+  const payload = (await response.json()) as BillingEventHistoryResponse & { message?: string; error?: string };
+
+  if (response.status === 404) {
+    const message = payload?.message || payload?.error || '';
+    if (message.toLowerCase().includes('billing is disabled')) {
+      return { items: [], next_cursor: null };
+    }
+    throw new Error(payload?.message || 'Failed to load billing history.');
+  }
 
   if (!response.ok) {
     throw new Error(payload?.message || 'Failed to load billing history.');

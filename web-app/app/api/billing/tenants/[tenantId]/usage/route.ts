@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
+import { billingEnabled } from '@/lib/config/features';
 import { recordTenantUsage } from '@/lib/server/services/billing';
 
 interface RouteContext {
@@ -26,6 +27,9 @@ function mapErrorToStatus(message: string): number {
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
+  if (!billingEnabled) {
+    return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
+  }
   const tenantId = resolveTenantId(context);
   if (!tenantId) {
     return NextResponse.json({ message: 'Tenant id is required.' }, { status: 400 });
@@ -50,4 +54,3 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ message }, { status });
   }
 }
-

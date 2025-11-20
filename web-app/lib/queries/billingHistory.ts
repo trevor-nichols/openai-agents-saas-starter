@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { fetchBillingHistory } from '@/lib/api/billingHistory';
 import { readClientSessionMeta } from '@/lib/auth/clientMeta';
 import type { BillingEvent, BillingEventProcessingStatus } from '@/types/billing';
+import { billingEnabled } from '@/lib/config/features';
 import { queryKeys } from './keys';
 
 interface UseBillingHistoryOptions {
@@ -49,7 +50,7 @@ export function useBillingHistory(options?: UseBillingHistoryOptions): UseBillin
         processingStatus,
       });
     },
-    enabled: Boolean(tenantId),
+    enabled: billingEnabled && Boolean(tenantId),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
     staleTime: 30 * 1000,
