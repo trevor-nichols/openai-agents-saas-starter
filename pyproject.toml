@@ -103,6 +103,8 @@ exclude = [
   "**/__pycache__",
   "**/*.pyc",
 ]
+[tool.hatch.build.targets.wheel.force-include]
+"starter_cli/adapters/env" = "starter_cli/adapters/env"
 
 [tool.hatch.build.targets.sdist]
 include = [
@@ -118,6 +120,8 @@ exclude = [
   "**/__pycache__",
   "**/*.pyc",
 ]
+[tool.hatch.build.targets.sdist.force-include]
+"starter_cli/adapters/env" = "starter_cli/adapters/env"
 
 [tool.hatch.envs.default]
 features = ["dev"]
