@@ -79,6 +79,7 @@ def run(context: WizardContext, provider: InputProvider) -> None:
         password=password,
         locked=locked,
         generated_password=generated,
+        rotate_existing=True,
     )
     context.demo_token_config = DemoTokenConfig(
         account="demo-bot",

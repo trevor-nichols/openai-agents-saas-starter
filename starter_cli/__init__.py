@@ -1,8 +1,12 @@
 """Starter CLI package.
 
-This module also injects the backend source directory (``api-service``)
-into ``sys.path`` so that CLI commands can reuse the FastAPI project's
-modules (``app.*``) without requiring callers to set ``PYTHONPATH`` manually.
+This module injects the backend source directory (``api-service``)
+into ``sys.path`` so CLI commands can import FastAPI modules (``app.*``)
+without manual ``PYTHONPATH`` edits.
+
+Avoid importing ``starter_cli.app`` here to keep ``python -m starter_cli.app``
+free of runpy warnings about preloaded modules. The app module remains
+accessible via a lazy module attribute below.
 """
 
 from __future__ import annotations
@@ -18,6 +22,13 @@ if _BACKEND_ROOT.exists():
     if backend_path not in sys.path:
         sys.path.insert(0, backend_path)
 
-from . import app as app  # noqa: E402
+
+def __getattr__(name: str):
+    if name == "app":
+        import importlib
+
+        return importlib.import_module("starter_cli.app")
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = ["app"]

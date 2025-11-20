@@ -182,6 +182,7 @@ setup-local-lite:
         --auto-redis \
         --no-auto-geoip \
         --auto-dev-user
+    python scripts/ensure_dev_user_and_print.py
     @echo ""
     @echo "Next steps:"
     @echo "  1. Run 'just api' in a new terminal to start FastAPI."
