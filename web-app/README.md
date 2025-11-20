@@ -30,7 +30,7 @@ This executes `openapi-ts` with the configuration in `openapi-ts.config.ts` and 
 - To include test-fixture endpoints (e.g., for Playwright/CI seeding), first export the fixture-enabled spec:
 
   ```bash
-  python scripts/export_openapi.py \
+  python -m starter_cli.app api export-openapi \
     --output api-service/.artifacts/openapi-billing-fixtures.json \
     --enable-billing --enable-test-fixtures
   ```

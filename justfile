@@ -3,8 +3,8 @@ set shell := ["bash", "-uc"]
 # Select the application env file: prefer .env.local, fall back to .env
 env_file := `python -c "import os; print(next((f for f in ['.env.local', '.env'] if os.path.exists(f)), ''))"`
 
-# Environment runner wrapper
-env_runner := "python scripts/run_with_env.py"
+# Environment runner wrapper (merges env files then execs the command)
+env_runner := "python -m starter_cli.app --skip-env util run-with-env"
 vault_dev_compose := "docker compose -f docker-compose.vault-dev.yml"
 
 # Defaults
@@ -55,7 +55,7 @@ help:
     echo "  just bootstrap              # Provision the Hatch environment" && \
     echo "  just api                    # Run the FastAPI server via hatch" && \
     echo "  just test-stripe            # Run fixture-driven Stripe replay tests" && \
-    echo "  just stripe-replay args     # Invoke the Stripe replay CLI" && \
+    echo "  just stripe-replay args     # Invoke the Stripe dispatch replay via starter-cli" && \
     echo "  just stripe-listen          # Capture a Stripe webhook secret via Stripe CLI" && \
     echo "  just lint-stripe-fixtures   # Validate Stripe fixture JSON files" && \
     echo "  just cli cmd                # Run the consolidated operator CLI" && \
@@ -149,7 +149,7 @@ test-stripe: _check_env
 
 # Invoke the Stripe replay CLI (usage: just stripe-replay "list --status failed")
 stripe-replay args: _check_env
-    {{env_runner}} .env.compose {{env_file}} -- python scripts/stripe/replay_events.py {{args}}
+    {{env_runner}} .env.compose {{env_file}} -- python -m starter_cli.app stripe dispatches {{args}}
 
 # Capture a webhook signing secret via Stripe CLI and write .env.local
 stripe-listen:
@@ -157,7 +157,7 @@ stripe-listen:
 
 # Validate Stripe fixture JSON files
 lint-stripe-fixtures:
-    python scripts/stripe/replay_events.py validate-fixtures
+    python -m starter_cli.app stripe dispatches validate-fixtures
 
 # Check docs/trackers/CLI_ENV_INVENTORY.md vs runtime settings
 cli-verify-env:
@@ -182,7 +182,7 @@ setup-local-lite:
         --auto-redis \
         --no-auto-geoip \
         --auto-dev-user
-    python scripts/ensure_dev_user_and_print.py
+    python -m starter_cli.app users ensure-dev
     @echo ""
     @echo "Next steps:"
     @echo "  1. Run 'just api' in a new terminal to start FastAPI."
@@ -236,7 +236,7 @@ setup-production:
 seed-dev-user: dev-up _check_env
     {{env_runner}} .env.compose {{env_file}} -- bash -c ' \
         set -euo pipefail; \
-        cmd=(python scripts/seed_users.py \
+        cmd=(python -m starter_cli.app users seed \
             --email "{{setup_user_email}}" \
             --tenant-slug "{{setup_user_tenant}}" \
             --tenant-name "{{setup_user_tenant_name}}" \

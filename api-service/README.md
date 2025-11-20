@@ -206,13 +206,13 @@ The API will be available at `http://localhost:8000`
 
 ### 6. Seed a Local Admin User
 
-Once Postgres is running and the new auth tables are migrated, create a bootstrap user via the helper script (the Just recipes automatically load both `.env.compose` and `.env.local`):
+Once Postgres is running and the new auth tables are migrated, create a bootstrap user via the CLI (the Just recipes automatically load both `.env.compose` and `.env.local`):
 
 ```bash
-python scripts/seed_users.py --email admin@example.com --tenant-slug default --role admin
+python -m starter_cli.app users seed --email admin@example.com --tenant-slug default --role admin
 ```
 
-You will be prompted for the password unless you pass `--password`. The script ensures the tenant exists, hashes the password with the configured pepper, stores password history, and prints the resulting credentials for quick testing.
+You will be prompted for the password unless you pass `--password`. The command ensures the tenant exists, hashes the password with the configured pepper, stores password history, and prints the resulting credentials for quick testing.
 
 ### 7. Quality Checks
 

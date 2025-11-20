@@ -13,6 +13,7 @@ else:  # pragma: no cover - runtime shim
     ParserSubparsers = argparse._SubParsersAction
 
 _COMMAND_MODULES = (
+    "starter_cli.commands.api",
     "starter_cli.commands.auth",
     "starter_cli.commands.config",
     "starter_cli.commands.infra",
@@ -22,7 +23,9 @@ _COMMAND_MODULES = (
     "starter_cli.commands.status",
     "starter_cli.commands.stripe",
     "starter_cli.commands.setup",
+    "starter_cli.commands.users",
     "starter_cli.commands.usage",
+    "starter_cli.commands.util",
 )
 
 

@@ -1,17 +1,20 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import os
 import re
 import signal
 import subprocess
 import time
+import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
+from pathlib import Path
 from types import FrameType
-from typing import Any, TypedDict, cast
+from typing import Any, Awaitable, Callable, TypedDict, cast
 
 try:  # pragma: no cover - optional dependency
     import stripe as stripe_module
@@ -272,6 +275,81 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         help="Skip Stripe CLI verification (assumes the CLI is installed and authenticated).",
     )
     webhook_parser.set_defaults(handler=handle_webhook_secret)
+
+    dispatch_parser = stripe_subparsers.add_parser(
+        "dispatches",
+        help="Inspect and replay stored Stripe webhook dispatches.",
+    )
+    dispatch_subparsers = dispatch_parser.add_subparsers(dest="dispatch_command")
+
+    dispatch_list = dispatch_subparsers.add_parser(
+        "list",
+        help="List stored Stripe dispatches.",
+    )
+    dispatch_list.add_argument(
+        "--status",
+        choices=[*_dispatch_status_choices(), "all"],
+        default="failed",
+        help="Filter by status (default: failed). Use 'all' to show every status.",
+    )
+    dispatch_list.add_argument(
+        "--handler",
+        default="billing_sync",
+        help="Handler name to filter (default: billing_sync).",
+    )
+    dispatch_list.add_argument(
+        "--limit",
+        type=int,
+        default=20,
+        help="Maximum rows to return (default: 20).",
+    )
+    dispatch_list.add_argument(
+        "--page",
+        type=int,
+        default=1,
+        help="Page number (1-indexed).",
+    )
+    dispatch_list.set_defaults(handler=handle_dispatch_list)
+
+    dispatch_replay = dispatch_subparsers.add_parser(
+        "replay",
+        help="Replay stored dispatches through the dispatcher.",
+    )
+    dispatch_replay.add_argument("--dispatch-id", action="append", help="Dispatch UUID(s) to replay.")
+    dispatch_replay.add_argument("--event-id", action="append", help="Replay dispatches derived from Stripe event IDs.")
+    dispatch_replay.add_argument(
+        "--status",
+        choices=_dispatch_status_choices(),
+        help="Replay all dispatches with the given status (respects --limit).",
+    )
+    dispatch_replay.add_argument(
+        "--limit",
+        type=int,
+        default=5,
+        help="Limit when replaying by status (default: 5).",
+    )
+    dispatch_replay.add_argument(
+        "--handler",
+        default="billing_sync",
+        help="Handler name to target (default: billing_sync).",
+    )
+    dispatch_replay.add_argument(
+        "--yes",
+        action="store_true",
+        help="Skip the confirmation prompt.",
+    )
+    dispatch_replay.set_defaults(handler=handle_dispatch_replay)
+
+    fixtures_parser = dispatch_subparsers.add_parser(
+        "validate-fixtures",
+        help="Validate local Stripe fixture JSON files.",
+    )
+    fixtures_parser.add_argument(
+        "--path",
+        default="api-service/tests/fixtures/stripe",
+        help="Directory containing *.json fixtures (default: api-service/tests/fixtures/stripe).",
+    )
+    fixtures_parser.set_defaults(handler=handle_dispatch_validate_fixtures)
 
 
 def handle_stripe_setup(args: argparse.Namespace, ctx: CLIContext) -> int:
@@ -649,3 +727,209 @@ class WebhookSecretFlow(StripeCLIBase):
             f"Saved STRIPE_WEBHOOK_SECRET={self._mask(secret)} to .env.local",
             topic="stripe",
         )
+
+
+# --- Dispatch inspection/replay helpers ---
+
+
+def handle_dispatch_list(args: argparse.Namespace, _ctx: CLIContext) -> int:
+    return _run_dispatch_task(
+        lambda: _list_dispatches(
+            handler=args.handler,
+            status=args.status,
+            limit=args.limit,
+            page=args.page,
+        )
+    )
+
+
+def handle_dispatch_replay(args: argparse.Namespace, _ctx: CLIContext) -> int:
+    return _run_dispatch_task(
+        lambda: _replay_dispatches(
+            dispatch_ids=args.dispatch_id,
+            event_ids=args.event_id,
+            status=args.status,
+            limit=args.limit,
+            handler=args.handler,
+            assume_yes=args.yes,
+        )
+    )
+
+
+def handle_dispatch_validate_fixtures(args: argparse.Namespace, ctx: CLIContext) -> int:
+    directory = Path(args.path)
+    if not directory.is_absolute():
+        directory = (ctx.project_root / directory).resolve()
+    if not directory.exists():
+        raise CLIError(f"Fixture directory '{directory}' not found.")
+    failures = 0
+    for file in sorted(directory.glob("*.json")):
+        try:
+            json.loads(file.read_text(encoding="utf-8"))
+            console.success(f"{file.relative_to(directory)}", topic="stripe-fixtures")
+        except json.JSONDecodeError as exc:
+            failures += 1
+            console.error(f"{file}: invalid JSON ({exc})", topic="stripe-fixtures")
+    if failures:
+        raise CLIError(f"Fixture validation failed ({failures} files).")
+    return 0
+
+
+def _dispatch_status_choices() -> tuple[str, ...]:
+    from app.infrastructure.persistence.stripe.models import StripeDispatchStatus
+
+    return tuple(status.value for status in StripeDispatchStatus)
+
+
+def _run_dispatch_task(task: Callable[[], Awaitable[int]]) -> int:
+    async def _runner() -> int:
+        from app.core import config as config_module
+        from app.infrastructure.db import dispose_engine
+
+        try:
+            result = await task()
+        finally:
+            await dispose_engine()
+            config_module.get_settings.cache_clear()
+        return result
+
+    try:
+        return asyncio.run(_runner())
+    except CLIError:
+        raise
+    except Exception as exc:  # pragma: no cover - runtime safety
+        raise CLIError(str(exc)) from exc
+
+
+async def _init_dispatch_repo():
+    from app.core import config as config_module
+    from app.infrastructure.db import get_async_sessionmaker, init_engine
+    from app.infrastructure.persistence.billing import PostgresBillingRepository
+    from app.infrastructure.persistence.stripe.repository import StripeEventRepository
+    from app.services.billing.billing_service import billing_service
+
+    config_module.get_settings.cache_clear()
+    await init_engine(run_migrations=False)
+    session_factory = get_async_sessionmaker()
+    billing_service.set_repository(PostgresBillingRepository(session_factory))
+    return StripeEventRepository(session_factory)
+
+
+async def _list_dispatches(
+    *,
+    handler: str,
+    status: str,
+    limit: int,
+    page: int,
+) -> int:
+    repo = await _init_dispatch_repo()
+    status_filter = None if status == "all" else status
+    offset = max(page - 1, 0) * limit
+    dispatches = await repo.list_dispatches(
+        handler=handler,
+        status=status_filter,
+        limit=limit,
+        offset=offset,
+    )
+    if not dispatches:
+        console.info("No dispatches found.", topic="stripe")
+        return 0
+
+    console.info(f"Page {page} (limit {limit})", topic="stripe")
+    for dispatch, event in dispatches:
+        print(
+            f"{dispatch.id}\t{dispatch.status}\thandler={dispatch.handler}\t"
+            f"attempts={dispatch.attempts}\tevent={event.stripe_event_id} "
+            f"({event.event_type})\ttenant={event.tenant_hint}"
+        )
+    return 0
+
+
+async def _replay_dispatches(
+    *,
+    dispatch_ids: list[str] | None,
+    event_ids: list[str] | None,
+    status: str | None,
+    limit: int,
+    handler: str,
+    assume_yes: bool,
+) -> int:
+    repo = await _init_dispatch_repo()
+    return await replay_dispatches_with_repo(
+        repo,
+        dispatch_ids=dispatch_ids,
+        event_ids=event_ids,
+        status=status,
+        limit=limit,
+        handler=handler,
+        assume_yes=assume_yes,
+    )
+
+
+async def replay_dispatches_with_repo(
+    repo: Any,
+    *,
+    dispatch_ids: list[str] | None,
+    event_ids: list[str] | None,
+    status: str | None,
+    limit: int,
+    handler: str,
+    assume_yes: bool,
+    dispatcher: Any | None = None,
+    billing: Any | None = None,
+    confirm: Callable[[list[uuid.UUID]], bool] | None = None,
+) -> int:
+    from app.services.billing.billing_service import billing_service
+    from app.services.billing.stripe.dispatcher import stripe_event_dispatcher
+
+    dispatcher = dispatcher or stripe_event_dispatcher
+    billing = billing or billing_service
+    dispatcher.configure(repository=repo, billing=billing)
+
+    targets: list[uuid.UUID] = []
+    if dispatch_ids:
+        targets.extend(uuid.UUID(value) for value in dispatch_ids)
+    elif event_ids:
+        for event_id in event_ids:
+            event = await repo.get_by_event_id(event_id)
+            if event is None:
+                console.warn(f"Event {event_id} not found; skipping.", topic="stripe")
+                continue
+            dispatch = await repo.ensure_dispatch(event_id=event.id, handler=handler)
+            targets.append(dispatch.id)
+    elif status:
+        rows = await repo.list_dispatches(handler=handler, status=status, limit=limit)
+        targets.extend(row[0].id for row in rows)
+    else:
+        raise CLIError("Provide --dispatch-id, --event-id, or --status for replay.")
+
+    if not targets:
+        console.info("No dispatches to replay.", topic="stripe")
+        return 0
+
+    confirmation = confirm or _confirm_replay
+    if not assume_yes and not confirmation(targets):
+        console.info("Replay aborted by user.", topic="stripe")
+        return 0
+
+    for dispatch_id in targets:
+        try:
+            result = await dispatcher.replay_dispatch(dispatch_id)
+            when = result.processed_at.isoformat() if result.processed_at else "n/a"
+            console.success(
+                f"Replayed dispatch {dispatch_id} (processed_at={when})",
+                topic="stripe",
+            )
+        except Exception as exc:  # pragma: no cover - runtime
+            console.error(f"Failed to replay {dispatch_id}: {exc}", topic="stripe")
+    return 0
+
+
+def _confirm_replay(targets: list[uuid.UUID]) -> bool:
+    preview = "\n".join(str(t) for t in targets[:5])
+    if len(targets) > 5:
+        preview += f"\n...and {len(targets) - 5} more"
+    console.info("About to replay the following dispatch IDs:", topic="stripe")
+    print(preview)
+    answer = input("Proceed? [y/N]: ").strip().lower()
+    return answer in {"y", "yes"}

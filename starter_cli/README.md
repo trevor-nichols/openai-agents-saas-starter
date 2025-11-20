@@ -36,6 +36,13 @@ Environment loading rules:
 Most subcommands support headless execution. Provide answers via one or more JSON files
 (`--answers-file path/to/answers.json`) or individual overrides (`--var KEY=VALUE`).
 
+### Tooling layout
+
+- Operator-facing flows live in `starter_cli` commands (see catalog below).
+- `scripts/` is reserved for CI/engineering guardrails (OpenAPI assertions, secret checks, type
+  checks, env inventory verification, and Vault dev helpers). User-facing helpers formerly in
+  `scripts/` have been folded into the CLI.
+
 ## Command Catalog
 
 ### 1. `setup wizard`
@@ -113,7 +120,7 @@ This workflow keeps a single schema-driven wizard while avoiding ad-hoc copying 
 
 ### Tenant IDs & Conversation APIs
 
-Conversation storage no longer auto-creates a "default" tenant. After the wizard captures the slug (`TENANT_DEFAULT_SLUG`), run `scripts/seed_users.py` (or your tenant provisioning workflow). Once the database contains at least one tenant, rerunning the wizard (or finishing another run) will automatically surface the matching tenant UUID—copy it into your operator docs/CI secrets so API clients can populate the `tenant_id` claim or `X-Tenant-Id` header. Without that scope, `/api/v1/chat` and `/api/v1/conversations` now reject the request before it reaches the agent service. Keep at least one tenant UUID handy for CI smoke tests and staging operators.
+Conversation storage no longer auto-creates a "default" tenant. After the wizard captures the slug (`TENANT_DEFAULT_SLUG`), run `python -m starter_cli.app users seed --email admin@example.com --tenant-slug <slug>` (or your tenant provisioning workflow). Once the database contains at least one tenant, rerunning the wizard (or finishing another run) will automatically surface the matching tenant UUID—copy it into your operator docs/CI secrets so API clients can populate the `tenant_id` claim or `X-Tenant-Id` header. Without that scope, `/api/v1/chat` and `/api/v1/conversations` now reject the request before it reaches the agent service. Keep at least one tenant UUID handy for CI smoke tests and staging operators.
 
 
 After prompting, the wizard reloads the environment and clears cached settings so subsequent CLI
@@ -227,6 +234,46 @@ Flags:
 - `--plan CODE=CENTS` – forwarded to the embedded Stripe flow and required per plan when `--non-interactive` is used.
 
 See `docs/ops/db-release-playbook.md` for the full pre-flight checklist, evidence expectations, and rollback guidance.
+
+### 11. `users`
+
+- `users ensure-dev` — idempotently creates/rotates the local developer admin (defaults: `dev@example.com`, tenant `default`, role `admin`). Flags: `--email`, `--password`, `--tenant-slug`, `--tenant-name`, `--role`, `--display-name`, `--locked`, `--no-rotate-existing`.
+- `users seed` — seeds a specific account; fails if it already exists unless `--rotate-existing` is passed. Supports `--prompt-password` to avoid echoing secrets.
+
+Credentials are also written to `var/reports/dev-user-credentials.json` when the password is created/rotated.
+
+### 12. `stripe dispatches`
+
+Stripe event replay + fixture validation (formerly `scripts/stripe/replay_events.py`):
+
+- `stripe dispatches list --status failed --handler billing_sync` — page through stored dispatches.
+- `stripe dispatches replay --dispatch-id <uuid> [--yes]` — replay specific dispatch IDs.
+- `stripe dispatches replay --event-id evt_123 --handler billing_sync` — requeue by Stripe event ID.
+- `stripe dispatches replay --status failed --limit 5 [--yes]` — retry failed dispatches in bulk.
+- `stripe dispatches validate-fixtures [--path api-service/tests/fixtures/stripe]` — ensure fixture JSON parses cleanly.
+
+### 13. `api export-openapi`
+
+Exports the FastAPI OpenAPI schema with optional feature flags. Example:
+
+```bash
+python -m starter_cli.app api export-openapi \
+  --output api-service/.artifacts/openapi-billing.json \
+  --enable-billing \
+  --enable-test-fixtures
+```
+
+Use this before regenerating the HeyAPI SDK so billing/test-fixture endpoints stay in sync.
+
+### 14. `util run-with-env`
+
+Utility to merge env files and exec another command (replacement for `scripts/run_with_env.py`):
+
+```bash
+python -m starter_cli.app --skip-env util run-with-env .env.compose .env.local -- hatch run serve
+```
+
+Later env files win on conflicts; the current shell env is preserved.
 
 ## Headless & CI Patterns
 

@@ -102,7 +102,7 @@ No. `AUTO_RUN_MIGRATIONS` remains `false` outside local dev, so pods refuse to a
 Use the `--skip-stripe` flag (once the release command lands) and follow the manual plan seeding steps. Attach the manual evidence to the release summary.
 
 **Q: How do I know which database the CLI targets?**
-`just migrate` loads env files via `scripts/run_with_env.py`, respecting `.env.compose` + `.env.local`. Confirm `DATABASE_URL` before running the commands, especially when using remote Postgres.
+`just migrate` loads env files via `starter_cli util run-with-env`, respecting `.env.compose` + `.env.local`. Confirm `DATABASE_URL` before running the commands, especially when using remote Postgres.
 
 **Q: When should this runbook be updated?**
 Whenever a new migration workflow, plan catalog change, or CLI flag lands. Log the update in `docs/trackers/MILESTONE_DB_RELEASE_AUTOMATION.md` and reference the change in release notes.

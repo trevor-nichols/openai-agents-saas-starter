@@ -51,7 +51,7 @@ This tracker captures the Starter CLI setup flow plus the recommended environmen
    ```
 3. **Seed a test tenant/user** (unblocks frontend login)  
    ```bash
-   python scripts/seed_users.py \
+   python -m starter_cli.app users seed \
      --email dev@example.com \
      --password "Passw0rd!" \
      --display-name "Dev Admin"
@@ -79,7 +79,7 @@ Use the new Make targets to keep each milestone repeatable:
 | `just setup-local-full` | Same as Local-Lite but keeps every automation switch on (`--auto-geoip`, `--auto-stripe`). | Useful for parity testing once Resend/Stripe creds exist. |
 | `just setup-staging [setup_staging_answers=path]` | Runs the wizard with staging-safe automation; optional answers file enables headless mode. | Compose/Vault helpers disabled; ensure hosted Postgres/Redis URLs exist beforehand. |
 | `just setup-production setup_production_answers=path` | Strict, headless production run. | Provide an answers JSON per environment (committed to a secure store). |
-| `just seed-dev-user` | Starts Compose (if needed) and reuses `scripts/seed_users.py`. | Customize via `SETUP_USER_EMAIL`, `SETUP_USER_PASSWORD`, `SETUP_USER_TENANT`, etc. |
+| `just seed-dev-user` | Starts Compose (if needed) and uses `starter_cli users seed`. | Customize via `SETUP_USER_EMAIL`, `SETUP_USER_PASSWORD`, `SETUP_USER_TENANT`, etc. |
 | `just issue-demo-token` | Calls the CLI token issuer once FastAPI is running. | `SETUP_SERVICE_ACCOUNT`, `SETUP_SERVICE_SCOPES`, `SETUP_SERVICE_TENANT` override defaults. |
 
 Environment variable knobs for automation:

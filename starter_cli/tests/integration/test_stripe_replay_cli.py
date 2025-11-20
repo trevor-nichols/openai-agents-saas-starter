@@ -1,11 +1,7 @@
 """Integration tests for the Stripe replay CLI helpers."""
 
 from __future__ import annotations
-
-import importlib.util
 from collections.abc import AsyncIterator
-from importlib.abc import Loader
-from pathlib import Path
 from typing import Any, cast
 
 import pytest
@@ -20,17 +16,10 @@ from app.infrastructure.persistence.stripe.models import (
 )
 from app.infrastructure.persistence.stripe.repository import StripeEventRepository
 from app.services.billing.billing_service import BillingService
-from app.services.billing.stripe.dispatcher import stripe_event_dispatcher
+from app.services.billing.stripe.dispatcher import StripeEventDispatcher
 from tests.utils.sqlalchemy import create_tables
 
-_REPLAY_MODULE = Path(__file__).resolve().parents[3] / "scripts" / "stripe" / "replay_events.py"
-_SPEC = importlib.util.spec_from_file_location("replay_events", _REPLAY_MODULE)
-if _SPEC is None or _SPEC.loader is None:
-    raise RuntimeError("stripe replay module could not be loaded")
-_replay_module = importlib.util.module_from_spec(_SPEC)
-loader = cast(Loader, _SPEC.loader)
-loader.exec_module(_replay_module)
-replay_events = cast(Any, _replay_module)
+from starter_cli.commands.stripe import replay_dispatches_with_repo
 
 pytestmark = pytest.mark.stripe_replay
 
@@ -60,17 +49,8 @@ async def sqlite_repo() -> AsyncIterator[tuple[StripeEventRepository, _FakeBilli
     session_factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     repo = StripeEventRepository(session_factory)
     fake_billing = _FakeBillingService()
-    original_billing = replay_events.billing_service
-    stripe_event_dispatcher.configure(
-        repository=repo,
-        billing=cast(BillingService, fake_billing),
-    )
-    try:
-        replay_events.billing_service = cast(BillingService, fake_billing)
-        yield repo, fake_billing
-    finally:
-        replay_events.billing_service = original_billing
-        await engine.dispose()
+    yield repo, fake_billing
+    await engine.dispose()
 
 
 @pytest.mark.asyncio
@@ -87,7 +67,10 @@ async def test_cli_replay_completes_failed_dispatch(sqlite_repo, capsys):
     dispatch = await repo.ensure_dispatch(event_id=event.id, handler="billing_sync")
     await repo.mark_dispatch_failed(dispatch.id, error="boom")
 
-    await replay_events.cmd_replay(
+    dispatcher = StripeEventDispatcher()
+    dispatcher.configure(repository=repo, billing=cast(BillingService, fake_billing))
+
+    await replay_dispatches_with_repo(
         repo,
         dispatch_ids=[str(dispatch.id)],
         event_ids=None,
@@ -95,6 +78,9 @@ async def test_cli_replay_completes_failed_dispatch(sqlite_repo, capsys):
         limit=1,
         handler="billing_sync",
         assume_yes=True,
+        dispatcher=dispatcher,
+        billing=cast(BillingService, fake_billing),
+        confirm=lambda _targets: True,
     )
 
     refreshed = await repo.get_dispatch(dispatch.id)
