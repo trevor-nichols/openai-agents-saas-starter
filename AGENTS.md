@@ -47,6 +47,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
   ```
 
 - **Pages stay lean:** `app/.../page.tsx` imports the feature orchestrator and handles only layout/metadata. Shared chrome for a route group belongs in `_components/` next to the layout, while the feature content stays within `features/**`.
+- **Route chrome vs. shared UI:** For marketing, keep persistent chrome (header, footer, nav, layout scaffolding) in `app/(marketing)/_components/`. Place marketing-specific sections reusable across pages in `features/marketing/components/`. Put cross-app primitives (buttons, banners, cards) in `components/ui/` so they remain Shadcn-style and domain agnostic.
 - **Data layer remains centralized:** Continue using `lib/api`, `lib/queries`, `lib/chat`, and `/types` for network/data contracts. Feature hooks only compose those primitives; anything broadly useful graduates to `components/ui/` or `components/shared/`.
 - **Ownership split:** Engineering owns the shared hooks/services in `lib/**`; the design/UI team iterates inside `features/<domain>/components` using those hooks. Any new cross-feature logic graduates back into `lib/**` so other surfaces stay consistent.
 - **Testing:** Colocate unit/interaction tests with the orchestrator (`ChatWorkspace.test.tsx`). Promote reusable test helpers to existing shared testing utilities when multiple features need them.
