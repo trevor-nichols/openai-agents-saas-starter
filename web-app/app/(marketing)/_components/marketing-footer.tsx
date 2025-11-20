@@ -2,7 +2,6 @@ import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import { InlineTag } from '@/components/ui/foundation/InlineTag';
-import { KeyValueList } from '@/components/ui/foundation/KeyValueList';
 import { SectionHeader } from '@/components/ui/foundation/SectionHeader';
 import type { HealthResponse } from '@/lib/api/client/types.gen';
 
@@ -31,6 +30,9 @@ export function MarketingFooter({ health }: MarketingFooterProps) {
     },
   ];
 
+  const statusTone = health?.status?.toLowerCase() === 'healthy' ? 'positive' : 'warning';
+  const statusText = metrics.map((metric) => `${metric.label}: ${metric.value}`).join(' · ');
+
   return (
     <footer className="border-t border-white/10 bg-background/80 py-12 text-sm text-foreground/80 backdrop-blur-glass">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6">
@@ -45,34 +47,35 @@ export function MarketingFooter({ health }: MarketingFooterProps) {
           }
         />
 
-        <div className="grid gap-8 md:grid-cols-[2fr,1fr]">
-          <div className="grid gap-8 sm:grid-cols-3">
-            {MARKETING_FOOTER_COLUMNS.map((column) => (
-              <div key={column.title} className="flex flex-col gap-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-foreground/50">{column.title}</p>
-                <ul className="space-y-2">
-                  {column.links.map((link) => (
-                    <li key={link.href}>
-                      <Link href={link.href} className="text-foreground/70 transition hover:text-foreground">
-                        {link.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-foreground">
-            <div className="flex items-center gap-2">
-              <InlineTag tone="positive">Live</InlineTag>
-              <p className="text-sm font-semibold">Backend telemetry</p>
+        <div className="grid gap-8 sm:grid-cols-3">
+          {MARKETING_FOOTER_COLUMNS.map((column) => (
+            <div key={column.title} className="flex flex-col gap-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-foreground/50">{column.title}</p>
+              <ul className="space-y-2">
+                {column.links.map((link) => (
+                  <li key={link.href}>
+                    <Link href={link.href} className="text-foreground/70 transition hover:text-foreground">
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <p className="mt-2 text-xs text-foreground/60">
-              Pulled directly from <code className="font-mono text-xs">/api/health</code> every minute.
-            </p>
-            <KeyValueList items={metrics} className="mt-6" />
-          </div>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-foreground">
+          <InlineTag tone={statusTone}>Live</InlineTag>
+          <p className="text-sm font-semibold">Backend telemetry</p>
+          {metrics.map((metric, index) => (
+            <div key={metric.label} className="flex items-center gap-2 text-xs sm:text-sm text-foreground/80">
+              {index > 0 ? <span className="text-foreground/40">|</span> : null}
+              <span className="uppercase tracking-[0.2em] text-foreground/50">{metric.label}</span>
+              <span className="text-foreground">{metric.value}</span>
+            </div>
+          ))}
+          <span className="text-xs text-foreground/50">Pulled from /api/health every minute.</span>
+          <span className="sr-only">{statusText}</span>
         </div>
 
         <div className="flex flex-col gap-4 border-t border-white/10 pt-6 text-xs text-foreground/60 sm:flex-row sm:items-center sm:justify-between">

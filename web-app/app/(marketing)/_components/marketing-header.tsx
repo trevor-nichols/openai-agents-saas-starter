@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
+import { Banner, BannerAction, BannerClose, BannerTitle } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
 import {
   CommandDialog,
@@ -64,14 +65,33 @@ export function MarketingHeader() {
     <header className="sticky top-0 z-40 border-b border-white/10 bg-background/70 backdrop-blur-glass">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-6 py-4">
         {MARKETING_ANNOUNCEMENT ? (
-          <Link
-            href={MARKETING_ANNOUNCEMENT.href}
-            className="inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-foreground/80 transition hover:border-white/20 hover:bg-white/10"
+          <Banner
+            variant="muted"
+            inset
+            className="flex-col items-start gap-3 rounded-2xl text-xs font-medium text-foreground/80 sm:flex-row sm:items-center sm:justify-between"
           >
-            <InlineTag tone="positive">{MARKETING_ANNOUNCEMENT.tag}</InlineTag>
-            <span>{MARKETING_ANNOUNCEMENT.message}</span>
-            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
-          </Link>
+            <div className="flex items-center gap-3">
+              <InlineTag tone="positive">{MARKETING_ANNOUNCEMENT.tag}</InlineTag>
+              <BannerTitle className="text-foreground/80 sm:text-sm">{MARKETING_ANNOUNCEMENT.message}</BannerTitle>
+            </div>
+            <div className="flex items-center gap-2">
+              <BannerAction
+                asChild
+                variant="ghost"
+                size="sm"
+                className="border-none px-2 text-foreground/80 hover:text-foreground"
+              >
+                <Link href={MARKETING_ANNOUNCEMENT.href} className="inline-flex items-center gap-1">
+                  View docs
+                  <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+                </Link>
+              </BannerAction>
+              <BannerClose
+                aria-label="Dismiss announcement"
+                className="text-foreground/50 hover:text-foreground/80"
+              />
+            </div>
+          </Banner>
         ) : null}
 
         <div className="flex items-center justify-between gap-3">
@@ -92,10 +112,7 @@ export function MarketingHeader() {
                           pathname === link.href ? 'text-foreground' : undefined,
                         )}
                       >
-                        <span className="flex items-center gap-2">
-                          {link.label}
-                          {link.badge ? <InlineTag tone="positive">{link.badge}</InlineTag> : null}
-                        </span>
+                        <span className="flex items-center gap-2">{link.label}</span>
                       </Link>
                     </NavigationMenuLink>
                   </NavigationMenuItem>
@@ -189,7 +206,6 @@ function MobileNavSheet({ links, ctaLink }: { links: MarketingNavLink[]; ctaLink
               onClick={() => handleNavigate(link.href)}
             >
               <span>{link.label}</span>
-              {link.badge ? <InlineTag tone="positive">{link.badge}</InlineTag> : null}
             </Button>
           ))}
           <Button className="rounded-full" onClick={() => handleNavigate(ctaLink.href)}>
