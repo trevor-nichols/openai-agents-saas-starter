@@ -172,7 +172,6 @@ export async function listStatusSubscriptions(options?: {
       limit: options?.limit,
       cursor: options?.cursor,
       tenant_id: options?.tenantId,
-      // @ts-expect-error allow "all" flag until SDK is regenerated
       all: options?.includeAllTenants ? true : undefined,
     },
   });

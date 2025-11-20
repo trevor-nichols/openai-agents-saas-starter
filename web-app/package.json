@@ -10,6 +10,7 @@
     "type-check": "tsc --noEmit",
     "validate": "pnpm lint && pnpm type-check",
     "generate": "openapi-ts",
+    "generate:fixtures": "OPENAPI_INPUT=../api-service/.artifacts/openapi-billing-fixtures.json pnpm generate",
     "test:seed": "node ./scripts/test-seed.js",
     "test:e2e": "playwright test",
     "test:unit": "vitest run --exclude tests/**",

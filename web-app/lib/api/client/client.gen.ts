@@ -13,6 +13,15 @@ import type { ClientOptions as ClientOptions2 } from './types.gen';
  */
 export type CreateClientConfig<T extends ClientOptions = ClientOptions2> = (override?: Config<ClientOptions & T>) => Config<Required<ClientOptions> & T>;
 
-export const client = createClient(createConfig<ClientOptions2>({
-    baseUrl: 'http://localhost:8000'
-}));
+export const client = createClient(
+  createConfig<ClientOptions2>({
+    // Fail fast on non-2xx to surface structured errors to callers.
+    throwOnError: true,
+    // Provide a sensible default base URL for node/browser usage; callers can override per-request.
+    baseUrl:
+      process.env.NEXT_PUBLIC_API_URL ||
+      process.env.API_URL ||
+      process.env.BACKEND_API_URL ||
+      'http://localhost:8000',
+  }),
+);
