@@ -28,7 +28,7 @@ from starter_cli.workflows.setup.inputs import InputProvider
 from starter_cli.workflows.setup.models import CheckResult, SectionResult
 from starter_cli.workflows.setup.schema_provider import SchemaAwareInputProvider
 from starter_cli.workflows.setup.state import WizardStateStore
-from starter_shared.secrets.models import SecretsProviderLiteral
+from starter_contracts.secrets.models import SecretsProviderLiteral
 
 
 @dataclass(slots=True)

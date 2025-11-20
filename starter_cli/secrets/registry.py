@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from starter_shared.config import StarterSettingsProtocol
-from starter_shared.secrets.models import (
+from starter_contracts.config import StarterSettingsProtocol
+from starter_contracts.secrets.models import (
     AWSSecretsManagerConfig,
     AzureKeyVaultConfig,
     InfisicalProviderConfig,

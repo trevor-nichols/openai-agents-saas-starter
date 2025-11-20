@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from starter_shared.config import get_settings
+from starter_contracts.config import get_settings
 
 from starter_cli.adapters.env import EnvFile
 from starter_cli.adapters.io.console import console

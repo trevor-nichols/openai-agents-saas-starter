@@ -12,7 +12,7 @@ from functools import lru_cache
 from importlib import import_module
 from typing import Any, Literal, Protocol, cast, runtime_checkable
 
-from starter_shared.secrets.models import (
+from starter_contracts.secrets.models import (
     AWSSecretsManagerConfig,
     AzureKeyVaultConfig,
     InfisicalProviderConfig,

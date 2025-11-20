@@ -19,8 +19,8 @@ from azure.identity import (
     ManagedIdentityCredential,
 )
 from azure.keyvault.secrets import SecretClient
-from starter_shared.config import StarterSettingsProtocol
-from starter_shared.secrets.models import SecretsProviderLiteral
+from starter_contracts.config import StarterSettingsProtocol
+from starter_contracts.secrets.models import SecretsProviderLiteral
 
 from ...core.constants import SAFE_ENVIRONMENTS
 from ...core.exceptions import CLIError

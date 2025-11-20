@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from dotenv import load_dotenv
-from starter_shared.config import StarterSettingsProtocol, get_settings
+from starter_contracts.config import StarterSettingsProtocol, get_settings
 
 from .constants import DEFAULT_ENV_FILES, PROJECT_ROOT, SKIP_ENV_FLAG, TRUE_LITERALS
 from .exceptions import CLIError

@@ -23,7 +23,7 @@ def main() -> None:
                 "mypy",
                 "api-service",
                 "starter_cli",
-                "starter_shared",
+                "starter_contracts",
             ],
         ),
     ]

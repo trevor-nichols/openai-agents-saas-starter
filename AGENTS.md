@@ -54,7 +54,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 
 ## CLI Charter – Starter CLI (SC)
 - **Purpose:** The SC is the single operator entrypoint for provisioning secrets, wiring third-party providers, generating env files for both the FastAPI backend and the Next.js frontend, and exporting audit artifacts. It replaces the legacy branding from earlier iterations.
-- **Boundaries:** SC never imports `api-service/app` modules directly. Shared logic (key generation, schema validation) must live in neutral `starter_shared/*` modules to keep imports acyclic and to allow the CLI to run without initializing the server stack.
+- **Boundaries:** SC never imports `api-service/app` modules directly. Shared logic (key generation, schema validation) must live in neutral `starter_contracts/*` modules to keep imports acyclic and to allow the CLI to run without initializing the server stack.
 - **Execution modes:** Every workflow supports interactive prompts for first-time operators and headless execution via flags (`--non-interactive`, `--answers-file`, `--var`) so CI/CD can drive the same flows deterministically.
 - **Testing contract:** Importing `python -m starter_cli.app` must be side-effect free (no DB/Vault connections). Unit tests stub network calls, and the repo-root `conftest.py` enforces SQLite/fakeredis overrides for all CLI modules.
 - **Ownership & roadmap:** Platform Foundations owns the CLI. Work is tracked in `docs/trackers/CLI_MILESTONE.md` with phases for rebrand, config extraction, adapter rewrites, hermetic testing, and CI guardrails. Any new CLI feature must update that tracker before merge.
@@ -80,6 +80,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 - Refer to `docs/trackers/` for the latest status of the codebase. Keep these trackers up to date with the latest changes and status of the codebase.
 - When applying database migrations or generating new ones, always use the Just recipes (`just migrate`, `just migration-revision message="..."`) so your `.env.local`/`.env` secrets and `.env.compose` values are loaded consistently. These wrappers take care of wiring Alembic to the right Postgres instance (local Docker or remote) without manual exports.
 - Need to test Vault Transit locally? Use `just vault-up` to start the dev signer, `just verify-vault` to run the CLI issuance smoke test, and `just vault-down` when you’re done. Details live in `docs/security/vault-transit-signing.md`.
+- Thishe repo hasn’t shipped a “stable” release yet, so we don’t carry any backward-compat baggage.
 
 # Codebase Patterns
 openai-agents-starter/

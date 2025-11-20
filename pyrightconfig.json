@@ -1,6 +1,6 @@
 {
-  "include": ["api-service", "starter_cli", "starter_shared"],
+  "include": ["api-service", "starter_cli", "starter_contracts"],
   "typeCheckingMode": "basic",
   "pythonVersion": "3.11",
-  "extraPaths": ["api-service", "starter_cli", "starter_shared"]
+  "extraPaths": ["api-service", "starter_cli", "starter_contracts"]
 }

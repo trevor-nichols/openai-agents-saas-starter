@@ -7,13 +7,13 @@ import sys
 from typing import TYPE_CHECKING, Any, TypeAlias
 
 import httpx
-from starter_shared.keys import (
+from starter_contracts.keys import (
     KeyStorageError,
     generate_ed25519_keypair,
     load_keyset,
     save_keyset,
 )
-from starter_shared.vault_kv import configure_vault_secret_manager
+from starter_contracts.vault_kv import configure_vault_secret_manager
 
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext, CLIError, build_context

@@ -15,7 +15,7 @@
 ## Starter CLI Highlights
 1. **Setup Wizard** – Milestones M1–M4 gather envs, rotate secrets, configure Vault/Redis/DB/Stripe/Resend/GeoIP/signup, manage automation (Docker/Vault/Stripe), run migrations, capture tenant summaries, and emit JSON + Markdown audits under `var/reports`.
 2. **Operator Commands** – `auth`, `providers`, `infra`, `stripe`, `release`, `status`, and `secrets` commands provide signing, provider validation, dependency checks, Stripe provisioning, DB release evidence, and secrets onboarding workflows.
-3. **Shared Contracts** – CLI uses `starter_shared` provider validation, key storage, and config protocols so it mirrors backend expectations without importing FastAPI modules at import-time.
+3. **Shared Contracts** – CLI uses `starter_contracts` provider validation, key storage, and config protocols so it mirrors backend expectations without importing FastAPI modules at import-time.
 
 ## Validation & Observability
 - Prometheus counters/gauges cover JWT, rate limits, billing, signup, email delivery, and Stripe retries; `/health` and `/health/ready` probes exist.

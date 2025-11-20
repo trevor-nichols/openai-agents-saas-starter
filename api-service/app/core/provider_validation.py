@@ -1,6 +1,6 @@
 """Compatibility shim re-exporting provider validation helpers."""
 
-from starter_shared.provider_validation import (
+from starter_contracts.provider_validation import (
     ProviderSettingsProtocol,
     ProviderViolation,
     ensure_provider_parity,

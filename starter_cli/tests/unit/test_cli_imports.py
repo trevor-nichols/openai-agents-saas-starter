@@ -9,7 +9,7 @@ from collections.abc import Generator
 from pathlib import Path
 
 import pytest
-from starter_shared import config as shared_config
+from starter_contracts import config as shared_config
 
 
 @pytest.fixture()

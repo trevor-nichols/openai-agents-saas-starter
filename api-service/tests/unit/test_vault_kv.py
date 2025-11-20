@@ -7,7 +7,7 @@ from collections.abc import Callable
 
 import httpx
 import pytest
-from starter_shared import vault_kv as shared_vault_kv
+from starter_contracts import vault_kv as shared_vault_kv
 
 from app.core import config as config_module
 from app.infrastructure.security import vault_kv

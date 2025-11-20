@@ -20,7 +20,7 @@ from cryptography.hazmat.primitives.serialization import (
     PublicFormat,
 )
 
-from starter_shared.config import StarterSettingsProtocol, get_settings
+from starter_contracts.config import StarterSettingsProtocol, get_settings
 
 UTC = UTC
 KEYSET_SCHEMA_VERSION = 1

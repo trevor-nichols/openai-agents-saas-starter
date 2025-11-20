@@ -37,6 +37,9 @@ jobs:
       - name: CLI smoke test
         run: hatch run python -m starter_cli.app --help
 
+      - name: CLI setup dry-run
+        run: hatch run python -m starter_cli.app setup --non-interactive --dry-run
+
       - name: Run CLI unit tests
         run: hatch run pytest starter_cli/tests
 

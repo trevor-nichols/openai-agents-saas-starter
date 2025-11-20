@@ -1,0 +1,1430 @@
+{
+  "$defs": {
+    "SecretsProviderLiteral": {
+      "description": "Enumerates supported secrets providers.",
+      "enum": [
+        "vault_dev",
+        "vault_hcp",
+        "infisical_cloud",
+        "infisical_self_host",
+        "aws_sm",
+        "azure_kv"
+      ],
+      "title": "SecretsProviderLiteral",
+      "type": "string"
+    }
+  },
+  "description": "Concrete application settings composed from mixins.",
+  "properties": {
+    "AGENT_MODEL_CODE": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Override for the code assistant model; defaults to agent_default_model.",
+      "title": "Agent Model Code"
+    },
+    "AGENT_MODEL_DATA": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Override for the data analyst model; defaults to agent_default_model.",
+      "title": "Agent Model Data"
+    },
+    "AGENT_MODEL_DEFAULT": {
+      "default": "gpt-5.1",
+      "description": "Default reasoning model for triage and agent fallbacks.",
+      "title": "Agent Model Default",
+      "type": "string"
+    },
+    "AGENT_MODEL_TRIAGE": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Override for the triage agent model; defaults to agent_default_model.",
+      "title": "Agent Model Triage"
+    },
+    "ALLOW_PUBLIC_SIGNUP": {
+      "default": true,
+      "description": "Allow unauthenticated tenants to self-register via /auth/register. Derived from SIGNUP_ACCESS_POLICY.",
+      "title": "Allow Public Signup",
+      "type": "boolean"
+    },
+    "APP_PUBLIC_URL": {
+      "default": "http://localhost:3000",
+      "description": "Public base URL used when generating email links.",
+      "title": "App Public Url",
+      "type": "string"
+    },
+    "AUTH_CACHE_REDIS_URL": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Redis URL dedicated to auth/session caches like refresh tokens and lockouts.",
+      "title": "Auth Cache Redis Url"
+    },
+    "AUTH_EMAIL_VERIFICATION_TOKEN_PEPPER": {
+      "default": "local-email-verify-pepper",
+      "description": "Pepper used when hashing email verification token secrets.",
+      "title": "Auth Email Verification Token Pepper",
+      "type": "string"
+    },
+    "AUTH_IP_LOCKOUT_DURATION_MINUTES": {
+      "default": 10,
+      "description": "Duration in minutes to block an IP/subnet after threshold breaches.",
+      "title": "Auth Ip Lockout Duration Minutes",
+      "type": "integer"
+    },
+    "AUTH_IP_LOCKOUT_THRESHOLD": {
+      "default": 50,
+      "description": "Failed attempts per IP or /24 subnet per minute before throttling.",
+      "title": "Auth Ip Lockout Threshold",
+      "type": "integer"
+    },
+    "AUTH_IP_LOCKOUT_WINDOW_MINUTES": {
+      "default": 10,
+      "description": "Window in minutes used for IP-based throttling heuristics.",
+      "title": "Auth Ip Lockout Window Minutes",
+      "type": "integer"
+    },
+    "AUTH_JWKS_CACHE_SECONDS": {
+      "default": 300,
+      "description": "Cache max-age for /.well-known/jwks.json responses.",
+      "title": "Auth Jwks Cache Seconds",
+      "type": "integer"
+    },
+    "AUTH_JWKS_ETAG_SALT": {
+      "default": "local-jwks-salt",
+      "description": "Salt mixed into JWKS ETag derivation to avoid predictable hashes.",
+      "title": "Auth Jwks Etag Salt",
+      "type": "string"
+    },
+    "AUTH_JWKS_MAX_AGE_SECONDS": {
+      "default": 300,
+      "description": "Preferred Cache-Control max-age for JWKS responses.",
+      "title": "Auth Jwks Max Age Seconds",
+      "type": "integer"
+    },
+    "AUTH_LOCKOUT_DURATION_MINUTES": {
+      "default": 60.0,
+      "description": "Automatic unlock window for locked users (minutes).",
+      "title": "Auth Lockout Duration Minutes",
+      "type": "number"
+    },
+    "AUTH_LOCKOUT_THRESHOLD": {
+      "default": 5,
+      "description": "Failed login attempts allowed before locking the account.",
+      "title": "Auth Lockout Threshold",
+      "type": "integer"
+    },
+    "AUTH_LOCKOUT_WINDOW_MINUTES": {
+      "default": 60.0,
+      "description": "Rolling window in minutes for lockout threshold calculations.",
+      "title": "Auth Lockout Window Minutes",
+      "type": "number"
+    },
+    "AUTH_PASSWORD_HISTORY_COUNT": {
+      "default": 5,
+      "description": "Number of historical password hashes retained per user.",
+      "title": "Auth Password History Count",
+      "type": "integer"
+    },
+    "AUTH_PASSWORD_PEPPER": {
+      "default": "local-dev-password-pepper",
+      "description": "Pepper prepended to human passwords prior to hashing.",
+      "title": "Auth Password Pepper",
+      "type": "string"
+    },
+    "AUTH_PASSWORD_RESET_TOKEN_PEPPER": {
+      "default": "local-reset-token-pepper",
+      "description": "Pepper used to hash password reset token secrets.",
+      "title": "Auth Password Reset Token Pepper",
+      "type": "string"
+    },
+    "AUTH_REFRESH_TOKEN_PEPPER": {
+      "default": "local-dev-refresh-pepper",
+      "description": "Server-side pepper prepended when hashing refresh tokens.",
+      "title": "Auth Refresh Token Pepper",
+      "type": "string"
+    },
+    "AUTH_REFRESH_TOKEN_TTL_MINUTES": {
+      "default": 43200,
+      "description": "Default refresh token lifetime for human users (minutes).",
+      "title": "Auth Refresh Token Ttl Minutes",
+      "type": "integer"
+    },
+    "AUTH_SESSION_ENCRYPTION_KEY": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Base64-compatible secret used to encrypt stored IP metadata for user sessions.",
+      "title": "Auth Session Encryption Key"
+    },
+    "AUTH_SESSION_IP_HASH_SALT": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Salt blended into session IP hash derivation (defaults to SECRET_KEY).",
+      "title": "Auth Session Ip Hash Salt"
+    },
+    "AWS_ACCESS_KEY_ID": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "AWS access key ID (overrides profile/IMDS when set).",
+      "title": "Aws Access Key Id"
+    },
+    "AWS_PROFILE": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Named AWS profile to use when loading credentials.",
+      "title": "Aws Profile"
+    },
+    "AWS_REGION": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "AWS region for Secrets Manager requests.",
+      "title": "Aws Region"
+    },
+    "AWS_SECRET_ACCESS_KEY": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "AWS secret access key.",
+      "title": "Aws Secret Access Key"
+    },
+    "AWS_SESSION_TOKEN": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "AWS session token (for temporary credentials).",
+      "title": "Aws Session Token"
+    },
+    "AWS_SM_CACHE_TTL_SECONDS": {
+      "default": 60,
+      "description": "TTL (seconds) for cached Secrets Manager values.",
+      "title": "Aws Sm Cache Ttl Seconds",
+      "type": "integer"
+    },
+    "AWS_SM_SIGNING_SECRET_ARN": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Secrets Manager ARN/name containing the signing secret value.",
+      "title": "Aws Sm Signing Secret Arn"
+    },
+    "AZURE_CLIENT_ID": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Azure AD application (client) ID.",
+      "title": "Azure Client Id"
+    },
+    "AZURE_CLIENT_SECRET": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Azure AD application secret.",
+      "title": "Azure Client Secret"
+    },
+    "AZURE_KEY_VAULT_URL": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Azure Key Vault URL (https://<name>.vault.azure.net).",
+      "title": "Azure Key Vault Url"
+    },
+    "AZURE_KV_CACHE_TTL_SECONDS": {
+      "default": 60,
+      "description": "TTL (seconds) for cached Key Vault secret values.",
+      "title": "Azure Kv Cache Ttl Seconds",
+      "type": "integer"
+    },
+    "AZURE_KV_SIGNING_SECRET_NAME": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Key Vault secret name containing the signing secret value.",
+      "title": "Azure Kv Signing Secret Name"
+    },
+    "AZURE_MANAGED_IDENTITY_CLIENT_ID": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "User-assigned managed identity client ID (optional).",
+      "title": "Azure Managed Identity Client Id"
+    },
+    "AZURE_TENANT_ID": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Azure AD tenant ID for service principal auth.",
+      "title": "Azure Tenant Id"
+    },
+    "BILLING_EVENTS_REDIS_URL": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Redis URL used for billing event pub/sub (defaults to REDIS_URL when unset)",
+      "title": "Billing Events Redis Url"
+    },
+    "BILLING_RETRY_DEPLOYMENT_MODE": {
+      "default": "inline",
+      "description": "Documented deployment target for the Stripe retry worker (inline/dedicated).",
+      "title": "Billing Retry Deployment Mode",
+      "type": "string"
+    },
+    "BILLING_STREAM_CONCURRENT_LIMIT": {
+      "default": 3,
+      "description": "Simultaneous billing stream connections allowed per tenant.",
+      "title": "Billing Stream Concurrent Limit",
+      "type": "integer"
+    },
+    "BILLING_STREAM_RATE_LIMIT_PER_MINUTE": {
+      "default": 20,
+      "description": "Maximum billing stream subscriptions allowed per tenant per minute.",
+      "title": "Billing Stream Rate Limit Per Minute",
+      "type": "integer"
+    },
+    "CHAT_RATE_LIMIT_PER_MINUTE": {
+      "default": 60,
+      "description": "Maximum chat completions allowed per user per minute.",
+      "title": "Chat Rate Limit Per Minute",
+      "type": "integer"
+    },
+    "CHAT_STREAM_CONCURRENT_LIMIT": {
+      "default": 5,
+      "description": "Simultaneous streaming chat sessions allowed per user.",
+      "title": "Chat Stream Concurrent Limit",
+      "type": "integer"
+    },
+    "CHAT_STREAM_RATE_LIMIT_PER_MINUTE": {
+      "default": 30,
+      "description": "Maximum streaming chat sessions started per user per minute.",
+      "title": "Chat Stream Rate Limit Per Minute",
+      "type": "integer"
+    },
+    "DATABASE_URL": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Async SQLAlchemy URL for the primary Postgres database",
+      "title": "Database Url"
+    },
+    "EMAIL_VERIFICATION_EMAIL_RATE_LIMIT_PER_HOUR": {
+      "default": 3,
+      "description": "Verification email sends per account per hour.",
+      "title": "Email Verification Email Rate Limit Per Hour",
+      "type": "integer"
+    },
+    "EMAIL_VERIFICATION_IP_RATE_LIMIT_PER_HOUR": {
+      "default": 10,
+      "description": "Verification email sends per IP per hour.",
+      "title": "Email Verification Ip Rate Limit Per Hour",
+      "type": "integer"
+    },
+    "EMAIL_VERIFICATION_TOKEN_TTL_MINUTES": {
+      "default": 60,
+      "description": "Email verification token lifetime in minutes.",
+      "title": "Email Verification Token Ttl Minutes",
+      "type": "integer"
+    },
+    "ENABLE_BILLING_RETRY_WORKER": {
+      "default": true,
+      "description": "Run the Stripe dispatch retry worker inside this process",
+      "title": "Enable Billing Retry Worker",
+      "type": "boolean"
+    },
+    "ENABLE_BILLING_STREAM": {
+      "default": false,
+      "description": "Enable real-time billing event streaming endpoints",
+      "title": "Enable Billing Stream",
+      "type": "boolean"
+    },
+    "ENABLE_BILLING_STREAM_REPLAY": {
+      "default": true,
+      "description": "Replay processed Stripe events into Redis billing streams during startup",
+      "title": "Enable Billing Stream Replay",
+      "type": "boolean"
+    },
+    "ENABLE_FRONTEND_LOG_INGEST": {
+      "default": false,
+      "description": "Expose authenticated frontend log ingest endpoint.",
+      "title": "Enable Frontend Log Ingest",
+      "type": "boolean"
+    },
+    "ENABLE_SECRETS_PROVIDER_TELEMETRY": {
+      "default": false,
+      "description": "Emit structured metrics/logs about secrets provider selection (no payloads).",
+      "title": "Enable Secrets Provider Telemetry",
+      "type": "boolean"
+    },
+    "ENABLE_SLACK_STATUS_NOTIFICATIONS": {
+      "default": false,
+      "description": "Toggle Slack fan-out for status incidents.",
+      "title": "Enable Slack Status Notifications",
+      "type": "boolean"
+    },
+    "ENABLE_USAGE_GUARDRAILS": {
+      "default": false,
+      "description": "If true, enforce plan usage limits before servicing chat requests. Requires billing to be enabled.",
+      "title": "Enable Usage Guardrails",
+      "type": "boolean"
+    },
+    "ENVIRONMENT": {
+      "default": "development",
+      "description": "Deployment environment label (development, staging, production, etc.)",
+      "title": "Environment",
+      "type": "string"
+    },
+    "GEOIP_CACHE_MAX_ENTRIES": {
+      "default": 4096,
+      "description": "Maximum cached GeoIP lookups to retain in memory.",
+      "minimum": 1,
+      "title": "Geoip Cache Max Entries",
+      "type": "integer"
+    },
+    "GEOIP_CACHE_TTL_SECONDS": {
+      "default": 900.0,
+      "description": "TTL (seconds) for GeoIP lookup cache entries.",
+      "minimum": 0.0,
+      "title": "Geoip Cache Ttl Seconds",
+      "type": "number"
+    },
+    "GEOIP_HTTP_TIMEOUT_SECONDS": {
+      "default": 2.0,
+      "description": "HTTP timeout (seconds) for SaaS GeoIP providers.",
+      "exclusiveMinimum": 0.0,
+      "title": "Geoip Http Timeout Seconds",
+      "type": "number"
+    },
+    "GEOIP_IP2LOCATION_API_KEY": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "IP2Location API key when geoip_provider=ip2location.",
+      "title": "Geoip Ip2Location Api Key"
+    },
+    "GEOIP_IP2LOCATION_DB_PATH": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Filesystem path to the IP2Location BIN database.",
+      "title": "Geoip Ip2Location Db Path"
+    },
+    "GEOIP_IPINFO_TOKEN": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "IPinfo API token when geoip_provider=ipinfo.",
+      "title": "Geoip Ipinfo Token"
+    },
+    "GEOIP_MAXMIND_DB_PATH": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Filesystem path to the MaxMind GeoIP2/GeoLite2 database.",
+      "title": "Geoip Maxmind Db Path"
+    },
+    "GEOIP_MAXMIND_LICENSE_KEY": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "MaxMind license key when geoip_provider=maxmind.",
+      "title": "Geoip Maxmind License Key"
+    },
+    "GEOIP_PROVIDER": {
+      "default": "none",
+      "description": "GeoIP provider selection (none, ipinfo, ip2location, maxmind_db, ip2location_db).",
+      "title": "Geoip Provider",
+      "type": "string"
+    },
+    "INFISICAL_BASE_URL": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Base URL for Infisical API (set when using Infisical providers).",
+      "title": "Infisical Base Url"
+    },
+    "INFISICAL_CACHE_TTL_SECONDS": {
+      "default": 60,
+      "description": "TTL (seconds) for Infisical secret cache entries.",
+      "title": "Infisical Cache Ttl Seconds",
+      "type": "integer"
+    },
+    "INFISICAL_CA_BUNDLE_PATH": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional CA bundle path for self-hosted Infisical instances.",
+      "title": "Infisical Ca Bundle Path"
+    },
+    "INFISICAL_ENVIRONMENT": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Infisical environment slug (e.g., dev, staging, prod).",
+      "title": "Infisical Environment"
+    },
+    "INFISICAL_PROJECT_ID": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Infisical project identifier associated with this deployment.",
+      "title": "Infisical Project Id"
+    },
+    "INFISICAL_SECRET_PATH": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Secret path (e.g., /backend) to read when seeding env vars.",
+      "title": "Infisical Secret Path"
+    },
+    "INFISICAL_SERVICE_TOKEN": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Infisical service token used for non-interactive secret access.",
+      "title": "Infisical Service Token"
+    },
+    "INFISICAL_SIGNING_SECRET_NAME": {
+      "default": "auth-service-signing-secret",
+      "description": "Infisical secret name holding the shared signing key for service-account payloads.",
+      "title": "Infisical Signing Secret Name",
+      "type": "string"
+    },
+    "LOGGING_DATADOG_API_KEY": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Datadog API key when logging_sink=datadog.",
+      "title": "Logging Datadog Api Key"
+    },
+    "LOGGING_DATADOG_SITE": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "datadoghq.com",
+      "description": "Datadog site (datadoghq.com, datadoghq.eu, etc.).",
+      "title": "Logging Datadog Site"
+    },
+    "LOGGING_FILE_BACKUPS": {
+      "default": 5,
+      "description": "Rotated backup files to retain when logging_sink=file.",
+      "minimum": 0,
+      "title": "Logging File Backups",
+      "type": "integer"
+    },
+    "LOGGING_FILE_MAX_MB": {
+      "default": 10,
+      "description": "Maximum megabytes per log file when logging_sink=file.",
+      "minimum": 1,
+      "title": "Logging File Max Mb",
+      "type": "integer"
+    },
+    "LOGGING_FILE_PATH": {
+      "default": "var/log/api-service.log",
+      "description": "Filesystem path for file sink when logging_sink=file.",
+      "title": "Logging File Path",
+      "type": "string"
+    },
+    "LOGGING_OTLP_ENDPOINT": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "OTLP/HTTP endpoint when logging_sink=otlp.",
+      "title": "Logging Otlp Endpoint"
+    },
+    "LOGGING_OTLP_HEADERS": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional OTLP headers JSON when logging_sink=otlp.",
+      "title": "Logging Otlp Headers"
+    },
+    "LOGGING_SINK": {
+      "default": "stdout",
+      "description": "Logging sink (stdout, file, datadog, otlp, or none).",
+      "title": "Logging Sink",
+      "type": "string"
+    },
+    "PASSWORD_RESET_EMAIL_RATE_LIMIT_PER_HOUR": {
+      "default": 5,
+      "description": "Password reset requests allowed per email per hour.",
+      "title": "Password Reset Email Rate Limit Per Hour",
+      "type": "integer"
+    },
+    "PASSWORD_RESET_IP_RATE_LIMIT_PER_HOUR": {
+      "default": 20,
+      "description": "Password reset requests allowed per IP per hour.",
+      "title": "Password Reset Ip Rate Limit Per Hour",
+      "type": "integer"
+    },
+    "PASSWORD_RESET_TOKEN_TTL_MINUTES": {
+      "default": 30,
+      "description": "Password reset token lifetime in minutes.",
+      "title": "Password Reset Token Ttl Minutes",
+      "type": "integer"
+    },
+    "RATE_LIMIT_KEY_PREFIX": {
+      "default": "rate-limit",
+      "description": "Redis key namespace used by the rate limiter service.",
+      "title": "Rate Limit Key Prefix",
+      "type": "string"
+    },
+    "RATE_LIMIT_REDIS_URL": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Redis URL dedicated to rate limiting (defaults to REDIS_URL when unset).",
+      "title": "Rate Limit Redis Url"
+    },
+    "REQUIRE_EMAIL_VERIFICATION": {
+      "default": true,
+      "description": "Require verified email before accessing protected APIs.",
+      "title": "Require Email Verification",
+      "type": "boolean"
+    },
+    "RESEND_API_KEY": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Resend API key (re_...). Required when RESEND_EMAIL_ENABLED=true.",
+      "title": "Resend Api Key"
+    },
+    "RESEND_BASE_URL": {
+      "default": "https://api.resend.com",
+      "description": "Override Resend API base URL for testing/sandbox environments.",
+      "title": "Resend Base Url",
+      "type": "string"
+    },
+    "RESEND_DEFAULT_FROM": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Fully-qualified From address verified in Resend.",
+      "title": "Resend Default From"
+    },
+    "RESEND_EMAIL_ENABLED": {
+      "default": false,
+      "description": "When true, use Resend for transactional email delivery.",
+      "title": "Resend Email Enabled",
+      "type": "boolean"
+    },
+    "RESEND_EMAIL_VERIFICATION_TEMPLATE_ID": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional Resend template ID for email verification messages.",
+      "title": "Resend Email Verification Template Id"
+    },
+    "RESEND_PASSWORD_RESET_TEMPLATE_ID": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional Resend template ID for password reset messages.",
+      "title": "Resend Password Reset Template Id"
+    },
+    "SECRETS_PROVIDER": {
+      "$ref": "#/$defs/SecretsProviderLiteral",
+      "default": "vault_dev",
+      "description": "Which secrets provider implementation to use (vault_dev, vault_hcp, infisical_cloud, infisical_self_host)."
+    },
+    "SECURITY_TOKEN_REDIS_URL": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Redis URL dedicated to nonce/email/password token stores (falls back to REDIS_URL).",
+      "title": "Security Token Redis Url"
+    },
+    "SIGNUP_ACCESS_POLICY": {
+      "default": "invite_only",
+      "description": "Signup exposure posture: public, invite_only, or approval.",
+      "enum": [
+        "public",
+        "invite_only",
+        "approval"
+      ],
+      "title": "Signup Access Policy",
+      "type": "string"
+    },
+    "SIGNUP_CONCURRENT_REQUESTS_LIMIT": {
+      "default": 3,
+      "description": "Maximum pending signup requests allowed per IP before operators respond.",
+      "title": "Signup Concurrent Requests Limit",
+      "type": "integer"
+    },
+    "SIGNUP_INVITE_RESERVATION_TTL_SECONDS": {
+      "default": 900,
+      "description": "How long (seconds) a reserved invite remains valid while signup provisioning runs.",
+      "title": "Signup Invite Reservation Ttl Seconds",
+      "type": "integer"
+    },
+    "SIGNUP_RATE_LIMIT_PER_DOMAIN_DAY": {
+      "default": 20,
+      "description": "Maximum signup attempts permitted per email domain each day.",
+      "title": "Signup Rate Limit Per Domain Day",
+      "type": "integer"
+    },
+    "SIGNUP_RATE_LIMIT_PER_EMAIL_DAY": {
+      "default": 3,
+      "description": "Maximum signup attempts permitted per email address each day.",
+      "title": "Signup Rate Limit Per Email Day",
+      "type": "integer"
+    },
+    "SIGNUP_RATE_LIMIT_PER_HOUR": {
+      "default": 20,
+      "description": "Maximum signup attempts permitted per IP address each hour.",
+      "title": "Signup Rate Limit Per Hour",
+      "type": "integer"
+    },
+    "SIGNUP_RATE_LIMIT_PER_IP_DAY": {
+      "default": 100,
+      "description": "Maximum signup attempts permitted per IP address each day.",
+      "title": "Signup Rate Limit Per Ip Day",
+      "type": "integer"
+    },
+    "SLACK_API_BASE_URL": {
+      "default": "https://slack.com/api",
+      "description": "Slack Web API base URL (override for tests).",
+      "title": "Slack Api Base Url",
+      "type": "string"
+    },
+    "SLACK_HTTP_TIMEOUT_SECONDS": {
+      "default": 5.0,
+      "description": "HTTP timeout for Slack API requests.",
+      "exclusiveMinimum": 0.0,
+      "title": "Slack Http Timeout Seconds",
+      "type": "number"
+    },
+    "SLACK_STATUS_BOT_TOKEN": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "OAuth bot token with chat:write scope.",
+      "title": "Slack Status Bot Token"
+    },
+    "SLACK_STATUS_DEFAULT_CHANNELS": {
+      "description": "Default Slack channel IDs (comma-separated or JSON list).",
+      "items": {
+        "type": "string"
+      },
+      "title": "Slack Status Default Channels",
+      "type": "array"
+    },
+    "SLACK_STATUS_MAX_RETRIES": {
+      "default": 3,
+      "description": "Maximum retry attempts for Slack delivery failures.",
+      "minimum": 1,
+      "title": "Slack Status Max Retries",
+      "type": "integer"
+    },
+    "SLACK_STATUS_RATE_LIMIT_WINDOW_SECONDS": {
+      "default": 1.0,
+      "description": "Per-channel throttle window for Slack posts.",
+      "exclusiveMinimum": 0.0,
+      "title": "Slack Status Rate Limit Window Seconds",
+      "type": "number"
+    },
+    "SLACK_STATUS_TENANT_CHANNEL_MAP": {
+      "additionalProperties": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "description": "JSON map of tenant_id \u2192 channel list overrides.",
+      "title": "Slack Status Tenant Channel Map",
+      "type": "object"
+    },
+    "STATUS_SUBSCRIPTION_EMAIL_RATE_LIMIT_PER_HOUR": {
+      "default": 5,
+      "description": "Email subscription attempts per IP per hour.",
+      "title": "Status Subscription Email Rate Limit Per Hour",
+      "type": "integer"
+    },
+    "STATUS_SUBSCRIPTION_ENCRYPTION_KEY": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Override secret used to encrypt subscription targets and webhook secrets.",
+      "title": "Status Subscription Encryption Key"
+    },
+    "STATUS_SUBSCRIPTION_IP_RATE_LIMIT_PER_HOUR": {
+      "default": 20,
+      "description": "Webhook subscription attempts per IP per hour.",
+      "title": "Status Subscription Ip Rate Limit Per Hour",
+      "type": "integer"
+    },
+    "STATUS_SUBSCRIPTION_TOKEN_PEPPER": {
+      "default": "status-subscription-token-pepper",
+      "description": "Pepper used to hash status subscription verification tokens.",
+      "title": "Status Subscription Token Pepper",
+      "type": "string"
+    },
+    "STATUS_SUBSCRIPTION_TOKEN_TTL_MINUTES": {
+      "default": 60,
+      "description": "Status subscription email verification token lifetime in minutes.",
+      "title": "Status Subscription Token Ttl Minutes",
+      "type": "integer"
+    },
+    "STATUS_SUBSCRIPTION_WEBHOOK_TIMEOUT_SECONDS": {
+      "default": 5,
+      "description": "HTTP timeout applied when delivering webhook challenges (seconds).",
+      "title": "Status Subscription Webhook Timeout Seconds",
+      "type": "integer"
+    },
+    "STRIPE_PRODUCT_PRICE_MAP": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Mapping of billing plan codes to Stripe price IDs. Provide as JSON or comma-delimited entries such as 'starter=price_123,pro=price_456'.",
+      "title": "Stripe Product Price Map",
+      "type": "object"
+    },
+    "STRIPE_SECRET_KEY": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Stripe secret API key (sk_live_*/sk_test_*).",
+      "title": "Stripe Secret Key"
+    },
+    "STRIPE_WEBHOOK_SECRET": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Stripe webhook signing secret (whsec_*).",
+      "title": "Stripe Webhook Secret"
+    },
+    "TENANT_DEFAULT_SLUG": {
+      "default": "default",
+      "description": "Tenant slug recorded by the CLI when seeding the initial org.",
+      "title": "Tenant Default Slug",
+      "type": "string"
+    },
+    "USAGE_GUARDRAIL_CACHE_BACKEND": {
+      "default": "redis",
+      "description": "Cache backend for usage totals (`redis` or `memory`).",
+      "enum": [
+        "memory",
+        "redis"
+      ],
+      "title": "Usage Guardrail Cache Backend",
+      "type": "string"
+    },
+    "USAGE_GUARDRAIL_CACHE_TTL_SECONDS": {
+      "default": 30,
+      "description": "TTL for cached usage rollups (seconds). Set to 0 to disable caching.",
+      "minimum": 0,
+      "title": "Usage Guardrail Cache Ttl Seconds",
+      "type": "integer"
+    },
+    "USAGE_GUARDRAIL_REDIS_URL": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Redis URL dedicated to usage guardrail caches (defaults to REDIS_URL).",
+      "title": "Usage Guardrail Redis Url"
+    },
+    "USAGE_GUARDRAIL_SOFT_LIMIT_MODE": {
+      "default": "warn",
+      "description": "How to react when soft limits are exceeded: 'warn' logs a warning but allows the request, while 'block' treats soft limits like hard caps.",
+      "enum": [
+        "warn",
+        "block"
+      ],
+      "title": "Usage Guardrail Soft Limit Mode",
+      "type": "string"
+    },
+    "USE_TEST_FIXTURES": {
+      "default": false,
+      "description": "Expose deterministic seeding endpoints for local and CI test environments. Never enable in production.",
+      "title": "Use Test Fixtures",
+      "type": "boolean"
+    },
+    "VAULT_ADDR": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "HashiCorp Vault address for Transit verification.",
+      "title": "Vault Addr"
+    },
+    "VAULT_NAMESPACE": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional Vault namespace for HCP or multi-tenant clusters.",
+      "title": "Vault Namespace"
+    },
+    "VAULT_TOKEN": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Vault token/AppRole secret with transit:verify capability.",
+      "title": "Vault Token"
+    },
+    "VAULT_TRANSIT_KEY": {
+      "default": "auth-service",
+      "description": "Transit key name used for signing/verification.",
+      "title": "Vault Transit Key",
+      "type": "string"
+    },
+    "VAULT_VERIFY_ENABLED": {
+      "default": false,
+      "description": "When true, enforce Vault Transit verification for service-account issuance.",
+      "title": "Vault Verify Enabled",
+      "type": "boolean"
+    },
+    "access_token_expire_minutes": {
+      "default": 30,
+      "description": "Access token expiration time in minutes",
+      "title": "Access Token Expire Minutes",
+      "type": "integer"
+    },
+    "allow_signup_trial_override": {
+      "default": false,
+      "description": "Permit /auth/register callers to request trial periods up to the plan/default cap.",
+      "title": "Allow Signup Trial Override",
+      "type": "boolean"
+    },
+    "allowed_headers": {
+      "default": "*",
+      "description": "CORS allowed headers (comma-separated)",
+      "title": "Allowed Headers",
+      "type": "string"
+    },
+    "allowed_hosts": {
+      "default": "localhost,localhost:8000,127.0.0.1,testserver,testclient",
+      "description": "Trusted hosts for FastAPI TrustedHostMiddleware (comma-separated host[:port] entries).",
+      "title": "Allowed Hosts",
+      "type": "string"
+    },
+    "allowed_methods": {
+      "default": "GET,POST,PUT,DELETE,OPTIONS",
+      "description": "CORS allowed methods (comma-separated)",
+      "title": "Allowed Methods",
+      "type": "string"
+    },
+    "allowed_origins": {
+      "default": "http://localhost:3000,http://localhost:8000",
+      "description": "CORS allowed origins (comma-separated)",
+      "title": "Allowed Origins",
+      "type": "string"
+    },
+    "anthropic_api_key": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Anthropic API key",
+      "title": "Anthropic Api Key"
+    },
+    "app_description": {
+      "default": "api-service FastAPI microservice",
+      "description": "Application description",
+      "title": "App Description",
+      "type": "string"
+    },
+    "app_name": {
+      "default": "api-service",
+      "description": "Application name",
+      "title": "App Name",
+      "type": "string"
+    },
+    "app_version": {
+      "default": "1.0.0",
+      "description": "Application version",
+      "title": "App Version",
+      "type": "string"
+    },
+    "auth_audience": {
+      "description": "Ordered list of permitted JWT audiences. Provide as JSON array via AUTH_AUDIENCE or comma-separated strings.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Auth Audience",
+      "type": "array"
+    },
+    "auth_key_secret_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Secret-manager key/path storing keyset JSON when backend=secret-manager.",
+      "title": "Auth Key Secret Name"
+    },
+    "auth_key_storage_backend": {
+      "default": "file",
+      "description": "Key storage backend (file or secret-manager).",
+      "title": "Auth Key Storage Backend",
+      "type": "string"
+    },
+    "auth_key_storage_path": {
+      "default": "var/keys/keyset.json",
+      "description": "Filesystem path for keyset JSON when using file backend.",
+      "title": "Auth Key Storage Path",
+      "type": "string"
+    },
+    "auto_run_migrations": {
+      "default": false,
+      "description": "Automatically run Alembic migrations on startup (dev convenience)",
+      "title": "Auto Run Migrations",
+      "type": "boolean"
+    },
+    "database_echo": {
+      "default": false,
+      "description": "Enable SQLAlchemy engine echo for debugging",
+      "title": "Database Echo",
+      "type": "boolean"
+    },
+    "database_health_timeout": {
+      "default": 5.0,
+      "description": "Timeout for database health checks (seconds)",
+      "title": "Database Health Timeout",
+      "type": "number"
+    },
+    "database_max_overflow": {
+      "default": 10,
+      "description": "Maximum overflow connections for the SQLAlchemy pool",
+      "title": "Database Max Overflow",
+      "type": "integer"
+    },
+    "database_pool_recycle": {
+      "default": 1800,
+      "description": "Seconds before recycling idle connections",
+      "title": "Database Pool Recycle",
+      "type": "integer"
+    },
+    "database_pool_size": {
+      "default": 5,
+      "description": "SQLAlchemy async pool size",
+      "title": "Database Pool Size",
+      "type": "integer"
+    },
+    "database_pool_timeout": {
+      "default": 30.0,
+      "description": "Seconds to wait for a connection from the pool",
+      "title": "Database Pool Timeout",
+      "type": "number"
+    },
+    "debug": {
+      "default": false,
+      "description": "Debug mode",
+      "title": "Debug",
+      "type": "boolean"
+    },
+    "enable_billing": {
+      "default": false,
+      "description": "Expose billing features and APIs once subscriptions are implemented",
+      "title": "Enable Billing",
+      "type": "boolean"
+    },
+    "gemini_api_key": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Google Gemini API key",
+      "title": "Gemini Api Key"
+    },
+    "jwt_algorithm": {
+      "default": "HS256",
+      "description": "JWT algorithm",
+      "title": "Jwt Algorithm",
+      "type": "string"
+    },
+    "log_level": {
+      "default": "INFO",
+      "description": "Logging level",
+      "title": "Log Level",
+      "type": "string"
+    },
+    "openai_api_key": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "OpenAI API key",
+      "title": "Openai Api Key"
+    },
+    "port": {
+      "default": 8000,
+      "description": "Server port",
+      "title": "Port",
+      "type": "integer"
+    },
+    "redis_url": {
+      "default": "redis://localhost:6379/0",
+      "description": "Redis connection URL",
+      "title": "Redis Url",
+      "type": "string"
+    },
+    "secret_key": {
+      "default": "your-secret-key-here-change-in-production",
+      "description": "JWT secret key",
+      "title": "Secret Key",
+      "type": "string"
+    },
+    "signup_default_plan_code": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "starter",
+      "description": "Plan code automatically provisioned for new tenants when billing is enabled.",
+      "title": "Signup Default Plan Code"
+    },
+    "signup_default_trial_days": {
+      "default": 14,
+      "description": "Fallback trial length (days) for tenants when processor metadata is unavailable.",
+      "title": "Signup Default Trial Days",
+      "type": "integer"
+    },
+    "tavily_api_key": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Tavily web search API key",
+      "title": "Tavily Api Key"
+    },
+    "xai_api_key": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "xAI API key",
+      "title": "Xai Api Key"
+    }
+  },
+  "title": "Settings",
+  "type": "object"
+}

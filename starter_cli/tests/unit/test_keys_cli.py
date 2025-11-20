@@ -6,7 +6,7 @@ import json
 import time
 
 from starter_cli.commands.auth import build_parser, handle_keys_rotate
-from starter_shared import config as shared_config
+from starter_contracts import config as shared_config
 
 from app.core import config as config_module
 from app.core.keys import FileKeyStorage

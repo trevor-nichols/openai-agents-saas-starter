@@ -13,7 +13,7 @@ import sqlalchemy.ext.asyncio as sqla_async
 from fakeredis.aioredis import FakeRedis
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB
 from sqlalchemy.ext.compiler import compiles
-from starter_shared import config as shared_config
+from starter_contracts import config as shared_config
 
 from tests.utils.pytest_stripe import (
     configure_stripe_replay_option,

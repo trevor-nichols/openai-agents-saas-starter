@@ -1,6 +1,6 @@
 """Backend-facing aliases for shared secret provider models."""
 
-from starter_shared.secrets.models import (
+from starter_contracts.secrets.models import (
     AWSSecretsManagerConfig,
     AzureKeyVaultConfig,
     InfisicalProviderConfig,

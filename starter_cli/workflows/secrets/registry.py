@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from starter_shared.secrets.models import SecretsProviderLiteral
+from starter_contracts.secrets.models import SecretsProviderLiteral
 
 from .models import ProviderOption, SecretsWorkflow
 from .providers import aws, azure, infisical, vault

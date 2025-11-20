@@ -66,12 +66,12 @@ Our SaaS starter currently hardcodes Vault as the only secrets/signing backend. 
 ## 6. Phase 0 Findings (2025-11-15)
 
 ### 6.1 Current Vault Touchpoints
-- **Backend:** `app/infrastructure/security/vault.py` exposes `VaultTransitClient` used by `app/services/service_account_bridge.py` and auth routers for signature verification. Settings live under `app/core/config.Settings` (`vault_addr`, `vault_token`, `vault_transit_key`, `vault_verify_enabled`). KV helpers for signing-key storage proxy through `starter_shared.vault_kv`.
+- **Backend:** `app/infrastructure/security/vault.py` exposes `VaultTransitClient` used by `app/services/service_account_bridge.py` and auth routers for signature verification. Settings live under `app/core/config.Settings` (`vault_addr`, `vault_token`, `vault_transit_key`, `vault_verify_enabled`). KV helpers for signing-key storage proxy through `starter_contracts.vault_kv`.
 - **CLI:** `starter_cli/services/security/signing.py` builds Vault envelopes + signatures; `starter_cli/commands/auth.py` depends on Vault headers; setup wizard validators probe the Transit key; `starter_cli/commands/infra.py` shells into Make targets for dev Vault.
-- **Shared:** `starter_shared/config.py` exposes only the Vault-centric settings to the CLI; `starter_shared/vault_kv.py` registers the KV client when `auth_key_storage_backend=secret-manager`.
+- **Shared:** `starter_contracts/config.py` exposes only the Vault-centric settings to the CLI; `starter_contracts/vault_kv.py` registers the KV client when `auth_key_storage_backend=secret-manager`.
 
 ### 6.2 SecretProvider Protocol (backend + CLI)
-Located in new module `api-service/app/domain/secrets.py` (mirrored under `starter_shared/secrets/models.py`):
+Located in new module `api-service/app/domain/secrets.py` (mirrored under `starter_contracts/secrets/models.py`):
 ```python
 class SecretProviderProtocol(Protocol):
     async def get_secret(self, key: str, *, scope: SecretScope | None = None) -> str: ...
@@ -104,14 +104,14 @@ class SecretProviderProtocol(Protocol):
 - Output artifacts: `.env.local` snippets for backend/frontend, optional CI secret checklist, post-setup validation summary.
 
 ### 6.6 Next Steps (Phase 1 Prep)
-1. Scaffold `app/domain/secrets.py` + `starter_shared/secrets/models.py` with the Protocol/types above.
+1. Scaffold `app/domain/secrets.py` + `starter_contracts/secrets/models.py` with the Protocol/types above.
 2. Introduce config enum + nested settings, updating `StarterSettingsProtocol`.
 3. Build registry skeletons and wrap the current Vault implementation without changing behavior.
 4. Update docs (`ISSUE_TRACKER` entry BE-007) to reference these concrete deliverables.
 
 ## 7. Phase 1 Progress (2025-11-15)
 
-- Added shared `SecretProviderProtocol` + config dataclasses (`starter_shared/secrets/models.py`) and backend re-export (`app/domain/secrets.py`).
+- Added shared `SecretProviderProtocol` + config dataclasses (`starter_contracts/secrets/models.py`) and backend re-export (`app/domain/secrets.py`).
 - Extended FastAPI settings + CLI bridge to include `SECRETS_PROVIDER`, Vault namespace, and Infisical settings, plus typed `vault_settings`/`infisical_settings` accessors.
 - Implemented backend provider registry + `VaultSecretProvider` shim, plus CLI registry stubs (Vault only for now).
 - Refactored service-account issuance flows (browser + CLI endpoints) to resolve the provider abstraction instead of `get_vault_transit_client`, preserving Vault behavior while isolating future providers.

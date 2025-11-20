@@ -14,7 +14,7 @@ from starter_cli.workflows.usage import (
     UsageReport,
     UsageReportArtifacts,
 )
-from starter_shared.config import StarterSettingsProtocol
+from starter_contracts.config import StarterSettingsProtocol
 
 
 def _build_args(**overrides):

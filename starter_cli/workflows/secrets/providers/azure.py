@@ -11,7 +11,7 @@ from azure.identity import (
     ManagedIdentityCredential,
 )
 from azure.keyvault.secrets import SecretClient
-from starter_shared.secrets.models import SecretsProviderLiteral
+from starter_contracts.secrets.models import SecretsProviderLiteral
 
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext

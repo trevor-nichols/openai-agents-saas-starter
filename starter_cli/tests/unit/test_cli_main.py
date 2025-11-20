@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 from starter_cli import app as cli_app
-from starter_shared import config as shared_config
+from starter_contracts import config as shared_config
 
 
 class _FailingSettings:

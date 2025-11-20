@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      STARTER_CLI_SKIP_ENV: "true"
+      STARTER_CLI_SKIP_VAULT_PROBE: "true"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install just
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y just
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Enable Corepack / pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.15.0 --activate
+
+      - name: Install Hatch and tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch pip-audit cyclonedx-bom
+
+      - name: Create Hatch environment
+        run: hatch env create
+
+      - name: Build wheel artifacts
+        run: hatch build -t wheel
+
+      - name: Python dependency audit (pip-audit)
+        run: |
+          hatch run pip-audit --progress-spinner off --severity high --format cyclonedx-json --output backend-sbom.json
+
+      - name: Install frontend dependencies
+        working-directory: web-app
+        run: pnpm install --frozen-lockfile
+
+      - name: Node dependency audit
+        working-directory: web-app
+        run: pnpm audit --audit-level=high
+
+      - name: Node SBOM (CycloneDX)
+        working-directory: web-app
+        run: pnpm dlx @cyclonedx/bom -o ../frontend-sbom.json
+
+      - name: Publish GitHub Release assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/*.whl
+            backend-sbom.json
+            frontend-sbom.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

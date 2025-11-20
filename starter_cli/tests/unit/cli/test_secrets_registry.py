@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from starter_cli.workflows.secrets import registry
-from starter_shared.secrets.models import SecretsProviderLiteral
+from starter_contracts.secrets.models import SecretsProviderLiteral
 
 
 def test_registry_covers_all_literals() -> None:

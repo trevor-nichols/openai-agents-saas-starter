@@ -3,7 +3,7 @@ from __future__ import annotations
 import subprocess
 from typing import TYPE_CHECKING
 
-from starter_shared.secrets.models import SecretsProviderLiteral
+from starter_contracts.secrets.models import SecretsProviderLiteral
 
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext

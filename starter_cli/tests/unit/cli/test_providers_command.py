@@ -7,8 +7,8 @@ from typing import cast
 import pytest
 from starter_cli.commands import providers as providers_commands
 from starter_cli.core import CLIContext
-from starter_shared.config import StarterSettingsProtocol
-from starter_shared.provider_validation import ProviderViolation
+from starter_contracts.config import StarterSettingsProtocol
+from starter_contracts.provider_validation import ProviderViolation
 
 
 @dataclass(slots=True)

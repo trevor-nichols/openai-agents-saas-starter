@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "api-service"
-version = "0.1.0"
+version = "0.1.1"
 description = "FastAPI-based AI agent service powered by the OpenAI Agents SDK."
 readme = "api-service/README.md"
 requires-python = ">=3.11"
@@ -91,10 +91,10 @@ allow-direct-references = true
 [tool.hatch.build.sources]
 app = "api-service/app"
 starter_cli = "starter_cli"
-starter_shared = "starter_shared"
+starter_contracts = "starter_contracts"
 
 [tool.hatch.build.targets.wheel]
-packages = ["app", "starter_cli", "starter_shared"]
+packages = ["app", "starter_cli", "starter_contracts"]
 include = [
   "run.py",
   "api-service/main.py",
@@ -108,7 +108,7 @@ exclude = [
 include = [
   "api-service/**",
   "starter_cli/**",
-  "starter_shared/**",
+  "starter_contracts/**",
   "docs/**",
   "run.py",
   "README.md",
@@ -127,10 +127,10 @@ path = ".venv"
 PYTHONPATH = "."
 
 [tool.hatch.envs.default.scripts]
-serve = "uvicorn main:app --reload --app-dir api-service --reload-dir api-service --reload-dir starter_cli --reload-dir starter_shared --host 127.0.0.1 --port 8000"
+serve = "uvicorn main:app --reload --app-dir api-service --reload-dir api-service --reload-dir starter_cli --reload-dir starter_contracts --host 127.0.0.1 --port 8000"
 test = "pytest"
-lint = "ruff check api-service starter_cli starter_shared"
-format = "ruff format api-service starter_cli starter_shared"
+lint = "ruff check api-service starter_cli starter_contracts"
+format = "ruff format api-service starter_cli starter_contracts"
 typecheck = "python -m scripts.typecheck"
 coverage = "python -m coverage run -m pytest && python -m coverage report"
 pyright = "python -m pyright"
@@ -139,7 +139,7 @@ migration-revision = "alembic -c api-service/alembic.ini revision -m \"{args}\""
 
 [tool.ruff]
 line-length = 100
-src = ["api-service", "starter_cli", "starter_shared"]
+src = ["api-service", "starter_cli", "starter_contracts"]
 target-version = "py311"
 
 [tool.ruff.lint]
@@ -208,14 +208,14 @@ module = ["IP2Location", "IP2Location.*"]
 ignore_missing_imports = true
 
 [tool.pyright]
-include = ["api-service", "starter_cli", "starter_shared"]
+include = ["api-service", "starter_cli", "starter_contracts"]
 typeCheckingMode = "basic"
 pythonVersion = "3.11"
-extraPaths = ["api-service", "starter_cli", "starter_shared"]
+extraPaths = ["api-service", "starter_cli", "starter_contracts"]
 
 [tool.pytest.ini_options]
 pythonpath = ["api-service", "."]
-testpaths = ["api-service/tests"]
+testpaths = ["api-service/tests", "starter_contracts/tests"]
 asyncio_mode = "auto"
 addopts = "--strict-markers --disable-warnings"
 markers = [

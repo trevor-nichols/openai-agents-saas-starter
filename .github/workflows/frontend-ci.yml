@@ -40,6 +40,27 @@ jobs:
         working-directory: web-app
         run: pnpm install --frozen-lockfile
 
+      - name: Dependency audit (pnpm)
+        working-directory: web-app
+        run: |
+          pnpm audit --prod --severity high --json > ../frontend-audit.json || (cat ../frontend-audit.json && exit 1)
+          pnpm dlx @cyclonedx/cyclonedx-npm --output-file ../frontend-sbom.json --output-format json
+
+      - name: Upload frontend audit artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-audit
+          path: |
+            frontend-audit.json
+            frontend-sbom.json
+
+      - name: SDK drift check (generate + diff)
+        working-directory: web-app
+        run: |
+          pnpm generate
+          git diff --exit-code -- lib/api/client
+
       - name: Lint
         working-directory: web-app
         run: pnpm lint
