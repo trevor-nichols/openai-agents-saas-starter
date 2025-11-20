@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from app.api.v1.logs.router import FrontendLogPayload, MAX_FIELDS
+from app.api.v1.logs.router import MAX_FIELDS, FrontendLogPayload
 
 
 def test_frontend_log_payload_rejects_extra_fields() -> None:

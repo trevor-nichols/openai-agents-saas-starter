@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict
 
 from app.domain.ai import AgentProvider
 
@@ -12,7 +11,7 @@ from app.domain.ai import AgentProvider
 class AgentProviderRegistry:
     """Keeps track of configured providers and the default selection."""
 
-    _providers: Dict[str, AgentProvider] = field(default_factory=dict)
+    _providers: dict[str, AgentProvider] = field(default_factory=dict)
     _default_key: str | None = None
 
     def register(self, provider: AgentProvider, *, set_default: bool = False) -> None:

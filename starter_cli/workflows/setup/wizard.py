@@ -23,11 +23,11 @@ from ._wizard.sections import (
 )
 from .answer_recorder import AnswerRecorder, RecordingInputProvider
 from .automation import ALL_AUTOMATION_PHASES, AutomationPhase
+from .demo_token import run_demo_token_automation
+from .dev_user import run_dev_user_automation
 from .infra import InfraSession
 from .inputs import InputProvider, InteractiveInputProvider, is_headless_provider
 from .models import SectionResult
-from .dev_user import run_dev_user_automation
-from .demo_token import run_demo_token_automation
 from .preflight import run_preflight
 from .schema import load_schema
 from .schema_provider import SchemaAwareInputProvider

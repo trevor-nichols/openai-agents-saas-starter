@@ -82,7 +82,7 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | ENABLE_BILLING_RETRY_WORKER | bool | True |  | ✅ | Run the Stripe dispatch retry worker inside this process |
 | ENABLE_BILLING_STREAM | bool | False |  | ✅ | Enable real-time billing event streaming endpoints |
 | ENABLE_BILLING_STREAM_REPLAY | bool | True |  | ✅ | Replay processed Stripe events into Redis billing streams during startup |
-| ENABLE_FRONTEND_LOG_INGEST | bool | False |  | ✅ | Expose authenticated frontend log ingest endpoint. |
+| ENABLE_FRONTEND_LOG_INGEST | bool | False |  |  | Expose authenticated frontend log ingest endpoint. |
 | ENABLE_SECRETS_PROVIDER_TELEMETRY | bool | False |  | ✅ | Emit structured metrics/logs about secrets provider selection (no payloads). |
 | ENABLE_SLACK_STATUS_NOTIFICATIONS | bool | False |  | ✅ | Toggle Slack fan-out for status incidents. |
 | ENABLE_USAGE_GUARDRAILS | bool | False |  | ✅ | If true, enforce plan usage limits before servicing chat requests. Requires billing to be enabled. |
@@ -108,15 +108,13 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | JWT_ALGORITHM | str | HS256 |  | ✅ | JWT algorithm |
 | LOGGING_DATADOG_API_KEY | str \| NoneType | — |  | ✅ | Datadog API key when logging_sink=datadog. |
 | LOGGING_DATADOG_SITE | str \| NoneType | datadoghq.com |  | ✅ | Datadog site (datadoghq.com, datadoghq.eu, etc.). |
-| LOGGING_FILE_BACKUPS | int | 5 |  | ✅ | Rotated backup files to retain when logging_sink=file. |
-| LOGGING_FILE_MAX_MB | int | 10 |  | ✅ | Maximum megabytes per log file when logging_sink=file. |
-| LOGGING_FILE_PATH | str | var/log/api-service.log |  | ✅ | Filesystem path for file sink when logging_sink=file. |
+| LOGGING_FILE_BACKUPS | int | 5 |  |  | Rotated backup files to retain when logging_sink=file. |
+| LOGGING_FILE_MAX_MB | int | 10 |  |  | Maximum megabytes per log file when logging_sink=file. |
+| LOGGING_FILE_PATH | str | var/log/api-service.log |  |  | Filesystem path for file sink when logging_sink=file. |
 | LOGGING_OTLP_ENDPOINT | str \| NoneType | — |  | ✅ | OTLP/HTTP endpoint when logging_sink=otlp. |
 | LOGGING_OTLP_HEADERS | str \| NoneType | — |  | ✅ | Optional OTLP headers JSON when logging_sink=otlp. |
 | LOGGING_SINK | str | stdout |  | ✅ | Logging sink (stdout, file, datadog, otlp, or none). |
 | LOG_LEVEL | str | INFO |  | ✅ | Logging level |
-| NEXT_PUBLIC_LOG_LEVEL | str | info |  | ✅ | Frontend log level (debug, info, warn, error). |
-| NEXT_PUBLIC_LOG_SINK | str | console |  | ✅ | Frontend log sink (console, beacon, none). |
 | OPENAI_API_KEY | str \| NoneType | — |  | ✅ | OpenAI API key |
 | PASSWORD_RESET_EMAIL_RATE_LIMIT_PER_HOUR | int | 5 |  | ✅ | Password reset requests allowed per email per hour. |
 | PASSWORD_RESET_IP_RATE_LIMIT_PER_HOUR | int | 20 |  | ✅ | Password reset requests allowed per IP per hour. |

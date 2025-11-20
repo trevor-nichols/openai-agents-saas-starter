@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any, AsyncIterator, Mapping
+from collections.abc import AsyncIterator, Mapping
+from typing import Any
 
 from agents import Runner
 from agents.usage import Usage
-from openai.types.responses import ResponseTextDeltaEvent
 
 from app.domain.ai import AgentRunResult, AgentRunUsage, AgentStreamEvent
 from app.domain.ai.ports import (
@@ -14,6 +14,7 @@ from app.domain.ai.ports import (
     AgentSessionHandle,
     AgentStreamingHandle,
 )
+from openai.types.responses import ResponseTextDeltaEvent
 
 
 def _convert_usage(usage: Usage | None) -> AgentRunUsage | None:

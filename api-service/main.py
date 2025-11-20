@@ -29,7 +29,6 @@ from app.infrastructure.db import (
     get_engine,
     init_engine,
 )
-from app.infrastructure.providers.openai import build_openai_provider
 from app.infrastructure.persistence.auth.repository import get_refresh_token_repository
 from app.infrastructure.persistence.auth.session_repository import (
     get_user_session_repository,
@@ -49,6 +48,7 @@ from app.infrastructure.persistence.stripe.repository import (
     configure_stripe_event_repository,
 )
 from app.infrastructure.persistence.tenants import PostgresTenantSettingsRepository
+from app.infrastructure.providers.openai import build_openai_provider
 from app.infrastructure.redis.factory import get_redis_factory
 from app.infrastructure.redis_types import RedisBytesClient
 from app.infrastructure.security.vault_kv import configure_vault_secret_manager
@@ -58,8 +58,8 @@ from app.presentation import health as health_routes
 from app.presentation import metrics as metrics_routes
 from app.presentation import well_known as well_known_routes
 from app.presentation.webhooks import stripe as stripe_webhook
-from app.services.agents.provider_registry import get_provider_registry
 from app.services.agent_service import build_agent_service
+from app.services.agents.provider_registry import get_provider_registry
 from app.services.auth.builders import (
     build_service_account_token_service,
     build_session_service,

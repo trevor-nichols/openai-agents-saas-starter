@@ -1,12 +1,14 @@
 """Integration tests for the Stripe replay CLI helpers."""
 
 from __future__ import annotations
+
 from collections.abc import AsyncIterator
 from typing import Any, cast
 
 import pytest
 from sqlalchemy import Table
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from starter_cli.commands.stripe import replay_dispatches_with_repo
 
 import app.infrastructure.persistence.tenants.models  # noqa: F401  # register tenant models for SA relationships
 from app.infrastructure.persistence.stripe.models import (
@@ -18,8 +20,6 @@ from app.infrastructure.persistence.stripe.repository import StripeEventReposito
 from app.services.billing.billing_service import BillingService
 from app.services.billing.stripe.dispatcher import StripeEventDispatcher
 from tests.utils.sqlalchemy import create_tables
-
-from starter_cli.commands.stripe import replay_dispatches_with_repo
 
 pytestmark = pytest.mark.stripe_replay
 

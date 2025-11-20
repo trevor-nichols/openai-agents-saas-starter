@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from starter_cli.adapters.io.console import console
-from starter_cli.core import CLIError
 
 from .automation import AutomationPhase, AutomationStatus
 
@@ -40,13 +39,11 @@ async def _issue_demo_token(config: DemoTokenConfig, tenant_id: str | None):
     refresh_mod = import_module("app.services.auth.refresh_token_manager")
     sa_service_mod = import_module("app.services.auth.service_account_service")
 
-    get_default_service_account_registry = getattr(
-        service_accounts, "get_default_service_account_registry"
-    )
-    init_engine = getattr(db_engine, "init_engine")
-    get_refresh_token_repository = getattr(auth_repo, "get_refresh_token_repository")
-    RefreshTokenManager = getattr(refresh_mod, "RefreshTokenManager")
-    ServiceAccountTokenService = getattr(sa_service_mod, "ServiceAccountTokenService")
+    get_default_service_account_registry = service_accounts.get_default_service_account_registry
+    init_engine = db_engine.init_engine
+    get_refresh_token_repository = auth_repo.get_refresh_token_repository
+    RefreshTokenManager = refresh_mod.RefreshTokenManager
+    ServiceAccountTokenService = sa_service_mod.ServiceAccountTokenService
 
     await init_engine(run_migrations=False)
     registry = get_default_service_account_registry()
@@ -63,7 +60,7 @@ async def _issue_demo_token(config: DemoTokenConfig, tenant_id: str | None):
     )
 
 
-def run_demo_token_automation(context: "WizardContext") -> None:
+def run_demo_token_automation(context: WizardContext) -> None:
     record = context.automation.get(AutomationPhase.DEMO_TOKEN)
     if not record.enabled:
         return
@@ -73,7 +70,10 @@ def run_demo_token_automation(context: "WizardContext") -> None:
         return
 
     migrations = context.automation.get(AutomationPhase.MIGRATIONS)
-    if migrations.enabled and migrations.status not in {AutomationStatus.SUCCEEDED, AutomationStatus.SKIPPED}:
+    if migrations.enabled and migrations.status not in {
+        AutomationStatus.SUCCEEDED,
+        AutomationStatus.SKIPPED,
+    }:
         context.automation.update(
             AutomationPhase.DEMO_TOKEN,
             AutomationStatus.BLOCKED,
@@ -91,7 +91,8 @@ def run_demo_token_automation(context: "WizardContext") -> None:
         force=False,
     )
 
-    # demo-bot is defined with requires_tenant=false; avoid passing tenant_id to keep issuance valid.
+    # demo-bot is defined with requires_tenant=false; avoid passing tenant_id to keep
+    # issuance valid.
     tenant_id = None
 
     context.automation.update(
@@ -103,7 +104,7 @@ def run_demo_token_automation(context: "WizardContext") -> None:
 
     _ensure_import_paths(context.cli_ctx.project_root)
     try:
-        get_settings = getattr(import_module("app.core.config"), "get_settings")
+        get_settings = import_module("app.core.config").get_settings
         get_settings()
         result = asyncio.run(_issue_demo_token(config, tenant_id))
     except Exception as exc:  # pragma: no cover - runtime failures

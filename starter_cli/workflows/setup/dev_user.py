@@ -49,7 +49,7 @@ def _ensure_import_paths(project_root: Path) -> None:
         sys.path.insert(0, backend_root.as_posix())
 
 
-def _resolve_config(context: "WizardContext") -> DevUserConfig:
+def _resolve_config(context: WizardContext) -> DevUserConfig:
     # If the wizard already captured a config, reuse it. Otherwise synthesize sensible defaults
     # so reruns (or headless runs) still emit credentials.
     if context.dev_user_config:
@@ -88,18 +88,18 @@ async def _seed_dev_user(config: DevUserConfig) -> str:
     import_module("app.infrastructure.persistence.tenants.models")
     conv_models = import_module("app.infrastructure.persistence.conversations.models")
 
-    PasswordPolicyError = getattr(password_module, "PasswordPolicyError")
-    validate_password_strength = getattr(password_module, "validate_password_strength")
-    PASSWORD_HASH_VERSION = getattr(security_module, "PASSWORD_HASH_VERSION")
-    get_password_hash = getattr(security_module, "get_password_hash")
-    get_async_sessionmaker = getattr(db_engine_module, "get_async_sessionmaker")
-    init_engine = getattr(db_engine_module, "init_engine")
-    PasswordHistory = getattr(auth_models, "PasswordHistory")
-    TenantUserMembership = getattr(auth_models, "TenantUserMembership")
-    UserAccount = getattr(auth_models, "UserAccount")
-    UserProfile = getattr(auth_models, "UserProfile")
-    UserStatus = getattr(auth_models, "UserStatus")
-    TenantAccount = getattr(conv_models, "TenantAccount")
+    PasswordPolicyError = password_module.PasswordPolicyError
+    validate_password_strength = password_module.validate_password_strength
+    PASSWORD_HASH_VERSION = security_module.PASSWORD_HASH_VERSION
+    get_password_hash = security_module.get_password_hash
+    get_async_sessionmaker = db_engine_module.get_async_sessionmaker
+    init_engine = db_engine_module.init_engine
+    PasswordHistory = auth_models.PasswordHistory
+    TenantUserMembership = auth_models.TenantUserMembership
+    UserAccount = auth_models.UserAccount
+    UserProfile = auth_models.UserProfile
+    UserStatus = auth_models.UserStatus
+    TenantAccount = conv_models.TenantAccount
 
     await init_engine(run_migrations=False)
     sessionmaker = get_async_sessionmaker()
@@ -135,7 +135,9 @@ async def _seed_dev_user(config: DevUserConfig) -> str:
             await session.commit()
             return "rotated"
 
-        tenant_result = await session.execute(select(TenantAccount).where(TenantAccount.slug == config.tenant_slug))
+        tenant_result = await session.execute(
+            select(TenantAccount).where(TenantAccount.slug == config.tenant_slug)
+        )
         tenant = tenant_result.scalars().first()
         if tenant is None:
             tenant = TenantAccount(
@@ -185,10 +187,10 @@ async def _seed_dev_user(config: DevUserConfig) -> str:
         return "created"
 
 
-def seed_dev_user(context: "WizardContext", config: DevUserConfig) -> str:
+def seed_dev_user(context: WizardContext, config: DevUserConfig) -> str:
     _ensure_import_paths(context.cli_ctx.project_root)
     try:
-        get_settings = getattr(import_module("app.core.config"), "get_settings")
+        get_settings = import_module("app.core.config").get_settings
     except ImportError as exc:  # pragma: no cover - environment dependent
         raise CLIError(
             "Unable to import backend modules. Ensure api-service is on PYTHONPATH or run the CLI "
@@ -221,7 +223,7 @@ def seed_dev_user(context: "WizardContext", config: DevUserConfig) -> str:
     return result or "unknown"
 
 
-def _persist_and_announce(context: "WizardContext", config: DevUserConfig, status: str) -> None:
+def _persist_and_announce(context: WizardContext, config: DevUserConfig, status: str) -> None:
     # Console output (Rich) and plain stdout for shells that suppress styling.
     console.section("Dev User Ready", "Use these credentials to sign in locally.")
     console.info(f"Email: {config.email}", topic="dev-user")
@@ -237,7 +239,10 @@ def _persist_and_announce(context: "WizardContext", config: DevUserConfig, statu
         console.info("Password unchanged from previous run (not recoverable).", topic="dev-user")
 
     # Plain prints for minimal environments (and for the user transcript).
-    print(f"[dev-user] email={config.email} tenant={config.tenant_slug} role={config.role} status={status}")
+    print(
+        f"[dev-user] email={config.email} tenant={config.tenant_slug} "
+        f"role={config.role} status={status}"
+    )
     if status in {"created", "rotated"}:
         print(f"[dev-user] password={config.password}")
 
@@ -265,7 +270,7 @@ def _persist_and_announce(context: "WizardContext", config: DevUserConfig, statu
     )
 
 
-def run_dev_user_automation(context: "WizardContext") -> None:
+def run_dev_user_automation(context: WizardContext) -> None:
     record = context.automation.get(AutomationPhase.DEV_USER)
     if not record.enabled:
         return

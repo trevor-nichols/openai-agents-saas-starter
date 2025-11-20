@@ -7,7 +7,11 @@ import json
 import httpx
 
 from starter_contracts.config import StarterSettingsProtocol, get_settings
-from starter_contracts.keys import KeyStorageError, SecretManagerClient, register_secret_manager_client
+from starter_contracts.keys import (
+    KeyStorageError,
+    SecretManagerClient,
+    register_secret_manager_client,
+)
 
 
 class VaultKVSecretManagerClient(SecretManagerClient):

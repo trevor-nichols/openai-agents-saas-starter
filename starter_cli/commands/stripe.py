@@ -9,12 +9,12 @@ import signal
 import subprocess
 import time
 import uuid
-from collections.abc import Iterable
+from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from types import FrameType
-from typing import Any, Awaitable, Callable, TypedDict, cast
+from typing import Any, TypedDict, cast
 
 try:  # pragma: no cover - optional dependency
     import stripe as stripe_module
@@ -179,6 +179,14 @@ class StripeCLIBase:
         subprocess.run(cmd, check=True)
 
     @staticmethod
+    def _mask(value: str | None) -> str:
+        if not value:
+            return "(empty)"
+        if len(value) <= 8:
+            return "*" * len(value)
+        return f"{value[:4]}…{value[-4:]}"
+
+    @staticmethod
     def _open_url(url: str) -> None:
         import sys
 
@@ -230,7 +238,10 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     setup_parser.add_argument(
         "--webhook-forward-url",
         default=DEFAULT_WEBHOOK_FORWARD_URL,
-        help="Forwarding URL passed to `stripe listen --forward-to` when generating webhook secrets.",
+        help=(
+            "Forwarding URL passed to `stripe listen --forward-to` "
+            "when generating webhook secrets."
+        ),
     )
     setup_parser.add_argument(
         "--plan",
@@ -315,8 +326,16 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         "replay",
         help="Replay stored dispatches through the dispatcher.",
     )
-    dispatch_replay.add_argument("--dispatch-id", action="append", help="Dispatch UUID(s) to replay.")
-    dispatch_replay.add_argument("--event-id", action="append", help="Replay dispatches derived from Stripe event IDs.")
+    dispatch_replay.add_argument(
+        "--dispatch-id",
+        action="append",
+        help="Dispatch UUID(s) to replay.",
+    )
+    dispatch_replay.add_argument(
+        "--event-id",
+        action="append",
+        help="Replay dispatches derived from Stripe event IDs.",
+    )
     dispatch_replay.add_argument(
         "--status",
         choices=_dispatch_status_choices(),
@@ -692,15 +711,6 @@ class StripeSetupFlow(StripeCLIBase):
         console.warn(f"Received signal {signum}. Exiting.")
         raise SystemExit(1)
 
-    @staticmethod
-    def _mask(value: str | None) -> str:
-        if not value:
-            return "(empty)"
-        if len(value) <= 8:
-            return "*" * len(value)
-        return f"{value[:4]}…{value[-4:]}"
-
-
 @dataclass(slots=True)
 class WebhookSecretFlow(StripeCLIBase):
     ctx: CLIContext
@@ -776,15 +786,21 @@ def handle_dispatch_validate_fixtures(args: argparse.Namespace, ctx: CLIContext)
 
 
 def _dispatch_status_choices() -> tuple[str, ...]:
-    from app.infrastructure.persistence.stripe.models import StripeDispatchStatus
+    from importlib import import_module
+
+    models = import_module("app.infrastructure.persistence.stripe.models")
+    StripeDispatchStatus = models.StripeDispatchStatus
 
     return tuple(status.value for status in StripeDispatchStatus)
 
 
 def _run_dispatch_task(task: Callable[[], Awaitable[int]]) -> int:
     async def _runner() -> int:
-        from app.core import config as config_module
-        from app.infrastructure.db import dispose_engine
+        from importlib import import_module
+
+        config_module = import_module("app.core.config")
+        db_module = import_module("app.infrastructure.db")
+        dispose_engine = db_module.dispose_engine
 
         try:
             result = await task()
@@ -802,11 +818,19 @@ def _run_dispatch_task(task: Callable[[], Awaitable[int]]) -> int:
 
 
 async def _init_dispatch_repo():
-    from app.core import config as config_module
-    from app.infrastructure.db import get_async_sessionmaker, init_engine
-    from app.infrastructure.persistence.billing import PostgresBillingRepository
-    from app.infrastructure.persistence.stripe.repository import StripeEventRepository
-    from app.services.billing.billing_service import billing_service
+    from importlib import import_module
+
+    config_module = import_module("app.core.config")
+    db_module = import_module("app.infrastructure.db")
+    billing_repo_module = import_module("app.infrastructure.persistence.billing")
+    stripe_repo_module = import_module("app.infrastructure.persistence.stripe.repository")
+    billing_service_module = import_module("app.services.billing.billing_service")
+
+    init_engine = db_module.init_engine
+    get_async_sessionmaker = db_module.get_async_sessionmaker
+    PostgresBillingRepository = billing_repo_module.PostgresBillingRepository
+    StripeEventRepository = stripe_repo_module.StripeEventRepository
+    billing_service = billing_service_module.billing_service
 
     config_module.get_settings.cache_clear()
     await init_engine(run_migrations=False)
@@ -879,11 +903,20 @@ async def replay_dispatches_with_repo(
     billing: Any | None = None,
     confirm: Callable[[list[uuid.UUID]], bool] | None = None,
 ) -> int:
-    from app.services.billing.billing_service import billing_service
-    from app.services.billing.stripe.dispatcher import stripe_event_dispatcher
+    from importlib import import_module
+
+    billing_service_module = import_module("app.services.billing.billing_service")
+    dispatcher_module = import_module("app.services.billing.stripe.dispatcher")
+
+    billing_service = billing_service_module.billing_service
+    stripe_event_dispatcher = dispatcher_module.stripe_event_dispatcher
 
     dispatcher = dispatcher or stripe_event_dispatcher
     billing = billing or billing_service
+
+    if dispatcher is None or billing is None:
+        raise CLIError("Stripe dispatcher or billing service unavailable.")
+
     dispatcher.configure(repository=repo, billing=billing)
 
     targets: list[uuid.UUID] = []

@@ -68,7 +68,8 @@ def capture_tenant_summary(context) -> TenantSummary | None:
 
     if summary is None:
         console.warn(
-            "No tenant records found. Run `python -m starter_cli.app users seed` to provision the first tenant.",
+            "No tenant records found. Run `python -m starter_cli.app users seed` "
+            "to provision the first tenant.",
             topic="tenant",
         )
         return None

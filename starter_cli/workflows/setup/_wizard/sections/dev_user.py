@@ -4,8 +4,8 @@ import secrets
 
 from starter_cli.adapters.io.console import console
 
-from ...dev_user import DevUserConfig
 from ...demo_token import DemoTokenConfig
+from ...dev_user import DevUserConfig
 from ...inputs import InputProvider
 from ..context import WizardContext
 

@@ -42,8 +42,8 @@ from app.domain.conversations import (
     ConversationRepository,
     ConversationSessionState,
 )
-from app.infrastructure.providers.openai import build_openai_provider
 from app.infrastructure.persistence.models.base import Base
+from app.infrastructure.providers.openai import build_openai_provider
 from app.services.agents.provider_registry import get_provider_registry
 from app.services.conversation_service import conversation_service
 

@@ -23,7 +23,10 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     openapi_parser.add_argument(
         "--output",
         required=True,
-        help="Destination path for the JSON schema (e.g., api-service/.artifacts/openapi-billing.json).",
+        help=(
+            "Destination path for the JSON schema "
+            "(e.g., api-service/.artifacts/openapi-billing.json)."
+        ),
     )
     openapi_parser.add_argument(
         "--enable-billing",
@@ -93,7 +96,7 @@ class OpenAPIExporter:
         if self.enable_test_fixtures:
             os.environ["USE_TEST_FIXTURES"] = "true"
 
-        app_module = self._load_module("app", api_service_dir / "app" / "__init__.py")
+        self._load_module("app", api_service_dir / "app" / "__init__.py")
         main_module = self._load_module("app.main", api_service_dir / "main.py")
 
         create_application = getattr(main_module, "create_application", None)

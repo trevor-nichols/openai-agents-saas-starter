@@ -1,5 +1,6 @@
 from . import (
     core,
+    dev_user,
     frontend,
     integrations,
     observability,
@@ -8,7 +9,6 @@ from . import (
     security,
     signup,
     usage,
-    dev_user,
 )
 
 __all__ = [

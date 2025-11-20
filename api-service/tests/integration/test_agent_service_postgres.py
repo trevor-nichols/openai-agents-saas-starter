@@ -11,15 +11,13 @@ from app.api.v1.chat.schemas import AgentChatRequest
 from app.bootstrap import reset_container
 from app.core import config as config_module
 from app.domain.ai import AgentRunResult
-from app.infrastructure.providers.openai import build_openai_provider
 from app.infrastructure.persistence.conversations.postgres import (
     PostgresConversationRepository,
 )
+from app.infrastructure.providers.openai import build_openai_provider
 from app.services.agent_service import ConversationActorContext, get_agent_service
 from app.services.agents.provider_registry import get_provider_registry
 from app.services.conversation_service import conversation_service
-
-from .test_postgres_migrations import migrated_engine
 
 pytestmark = pytest.mark.postgres
 
@@ -59,8 +57,15 @@ async def test_agent_service_persists_messages_postgres(
     actor = ConversationActorContext(tenant_id="tenant-pg", user_id="user-pg")
     request = AgentChatRequest(message="Hello durable world", agent_type="triage")
 
-    with patch("app.infrastructure.providers.openai.runtime.Runner.run", new_callable=AsyncMock) as mock_run:
-        mock_run.return_value = AgentRunResult(final_output="Hi back", response_id="resp", usage=None)
+    with patch(
+        "app.infrastructure.providers.openai.runtime.Runner.run",
+        new_callable=AsyncMock,
+    ) as mock_run:
+        mock_run.return_value = AgentRunResult(
+            final_output="Hi back",
+            response_id="resp",
+            usage=None,
+        )
 
         response = await service.chat(request, actor=actor)
 

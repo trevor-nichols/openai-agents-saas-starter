@@ -8,8 +8,8 @@ import subprocess
 from redis.asyncio import Redis
 
 from starter_cli.adapters.io.console import console
-from starter_cli.core import CLIError
 from starter_cli.commands.stripe import WebhookSecretFlow
+from starter_cli.core import CLIError
 
 from ...automation import AutomationPhase, AutomationStatus
 from ...inputs import InputProvider

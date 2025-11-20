@@ -225,12 +225,15 @@ async def list_status_subscriptions(
     all_tenants: bool = Query(
         default=False,
         alias="all",
-        description="When true, ignore token tenant scoping and return subscriptions across all tenants.",
+        description=(
+            "When true, ignore token tenant scoping and return subscriptions across all tenants."
+        ),
     ),
     user: CurrentUser = Depends(require_scopes("status:manage")),
 ):
     service = _get_subscription_service()
     session_tenant = _resolve_tenant_id(user)
+    tenant_scope: UUID | None
 
     if session_tenant and not all_tenants:
         if tenant_id and tenant_id != session_tenant:
@@ -240,7 +243,11 @@ async def list_status_subscriptions(
             )
         tenant_scope = session_tenant
     else:
-        tenant_scope = tenant_id if tenant_id is not None else (None if all_tenants else session_tenant)
+        tenant_scope = (
+            tenant_id
+            if tenant_id is not None
+            else (None if all_tenants else session_tenant)
+        )
 
     safe_cursor = _validate_cursor(cursor)
     result = await service.list_subscriptions(

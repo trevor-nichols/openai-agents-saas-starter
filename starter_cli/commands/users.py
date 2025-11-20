@@ -4,8 +4,8 @@ import argparse
 import getpass
 import secrets
 from types import SimpleNamespace
+from typing import Any
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext, CLIError
 from starter_cli.workflows.setup.dev_user import (
     DEFAULT_EMAIL,
@@ -14,7 +14,7 @@ from starter_cli.workflows.setup.dev_user import (
     DEFAULT_TENANT,
     DEFAULT_TENANT_NAME,
     DevUserConfig,
-    _persist_and_announce,  # type: ignore
+    _persist_and_announce,
     seed_dev_user,
 )
 
@@ -37,7 +37,10 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
 
     seed_parser = users_subparsers.add_parser(
         "seed",
-        help="Seed a specific user into a tenant (fails if the user already exists unless rotation is requested).",
+        help=(
+            "Seed a specific user into a tenant (fails if the user already exists "
+            "unless rotation is requested)."
+        ),
     )
     _add_shared_user_args(seed_parser, display_default="")
     seed_parser.add_argument(
@@ -48,7 +51,10 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     seed_parser.add_argument(
         "--prompt-password",
         action="store_true",
-        help="Prompt for the password instead of generating one (ignored when --password is supplied).",
+        help=(
+            "Prompt for the password instead of generating one "
+            "(ignored when --password is supplied)."
+        ),
     )
     seed_parser.set_defaults(handler=handle_seed_user)
 
@@ -135,7 +141,7 @@ def handle_seed_user(args: argparse.Namespace, ctx: CLIContext) -> int:
 
 
 def _seed_and_announce(ctx: CLIContext, config: DevUserConfig) -> str:
-    context = SimpleNamespace(cli_ctx=ctx, dev_user_config=None)
+    context: Any = SimpleNamespace(cli_ctx=ctx, dev_user_config=None)
     result = seed_dev_user(context, config)
     _persist_and_announce(context, config, result)
     return result

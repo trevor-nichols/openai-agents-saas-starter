@@ -23,7 +23,7 @@ from starter_cli.adapters.env import (
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext, CLIError
 
-from .stripe import PLAN_CATALOG, StripeSetupFlow
+from .stripe import DEFAULT_WEBHOOK_FORWARD_URL, PLAN_CATALOG, StripeSetupFlow
 
 _ENV_KEYS = (
     "DATABASE_URL",
@@ -206,6 +206,8 @@ class DatabaseReleaseWorkflow:
                 non_interactive=self.args.non_interactive,
                 secret_key=self.aggregated_env.get("STRIPE_SECRET_KEY"),
                 webhook_secret=self.aggregated_env.get("STRIPE_WEBHOOK_SECRET"),
+                auto_webhook_secret=False,
+                webhook_forward_url=DEFAULT_WEBHOOK_FORWARD_URL,
                 plan_overrides=self.args.plan or [],
                 skip_postgres=True,
                 skip_stripe_cli=self.args.non_interactive,

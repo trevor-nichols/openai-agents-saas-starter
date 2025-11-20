@@ -7,7 +7,6 @@ from typing import Any, Protocol, runtime_checkable
 
 from .models import AgentDescriptor, AgentRunResult, AgentRunUsage, AgentStreamEvent
 
-
 AgentSessionHandle = Any
 
 

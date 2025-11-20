@@ -8,7 +8,6 @@ changes are deliberate.
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 from typing import Any, get_args
 
@@ -50,13 +49,14 @@ def test_settings_schema_snapshot() -> None:
 
 
 def test_provider_literal_snapshot() -> None:
-    from app.core.settings import SignupAccessPolicyLiteral
     from starter_contracts.secrets.models import (
         SecretProviderStatus,
         SecretPurpose,
         SecretScope,
         SecretsProviderLiteral,
     )
+
+    from app.core.settings import SignupAccessPolicyLiteral
 
     actual = {
         "secrets_provider_literal": sorted(item.value for item in SecretsProviderLiteral),

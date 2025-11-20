@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import datetime
-from typing import Any, Callable, Dict
+from typing import Any, ClassVar
 
 from agents import Agent, function_tool, handoff
 from agents.extensions.handoff_prompt import prompt_with_handoff_instructions
@@ -18,7 +18,7 @@ from app.utils.tools import ToolRegistry, initialize_tools
 class OpenAIAgentRegistry:
     """Maintains concrete Agent instances and metadata."""
 
-    _AGENT_CAPABILITIES: Dict[str, tuple[str, ...]] = {
+    _AGENT_CAPABILITIES: ClassVar[dict[str, tuple[str, ...]]] = {
         "triage": ("general", "search", "handoff"),
         "code_assistant": ("code", "search"),
         "data_analyst": ("analysis", "search"),
@@ -33,8 +33,8 @@ class OpenAIAgentRegistry:
         self._settings_factory = settings_factory
         self._conversation_searcher = conversation_searcher
         self._tool_registry: ToolRegistry = initialize_tools()
-        self._agents: Dict[str, Agent] = {}
-        self._descriptors: Dict[str, AgentDescriptor] = {}
+        self._agents: dict[str, Agent] = {}
+        self._descriptors: dict[str, AgentDescriptor] = {}
         self._register_builtin_tools()
         self._build_default_agents()
 

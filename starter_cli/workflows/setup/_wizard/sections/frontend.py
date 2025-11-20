@@ -67,7 +67,8 @@ def configure(context: WizardContext, provider: InputProvider) -> None:
     sink = raw_sink if raw_sink in {"console", "beacon", "none"} else "console"
     if sink == "beacon" and not context.current_bool("ENABLE_FRONTEND_LOG_INGEST", False):
         console.warn(
-            "Frontend beacon sink selected, but ENABLE_FRONTEND_LOG_INGEST is false; enable ingest to receive browser logs.",
+            "Frontend beacon sink selected, but ENABLE_FRONTEND_LOG_INGEST is false; "
+            "enable ingest to receive browser logs.",
             topic="frontend-logging",
         )
     context.set_frontend("NEXT_PUBLIC_LOG_SINK", sink)

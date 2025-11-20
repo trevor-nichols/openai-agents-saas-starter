@@ -19,22 +19,22 @@ os.environ.setdefault("ENABLE_USAGE_GUARDRAILS", "false")
 
 pytestmark = pytest.mark.auto_migrations(enabled=True)
 
-from app.api.dependencies import usage as usage_dependencies
-from app.api.dependencies.auth import require_current_user
-from app.api.v1.chat import router as chat_router
-from app.api.v1.chat.schemas import AgentChatResponse
-from app.bootstrap.container import get_container
-from app.domain.ai import AgentRunResult
-from app.domain.conversations import ConversationMessage, ConversationMetadata
-from app.services.agent_service import agent_service
-from app.services.shared.rate_limit_service import RateLimitExceeded, rate_limiter
-from app.services.usage_policy_service import (
+from app.api.dependencies import usage as usage_dependencies  # noqa: E402
+from app.api.dependencies.auth import require_current_user  # noqa: E402
+from app.api.v1.chat import router as chat_router  # noqa: E402
+from app.api.v1.chat.schemas import AgentChatResponse  # noqa: E402
+from app.bootstrap.container import get_container  # noqa: E402
+from app.domain.ai import AgentRunResult  # noqa: E402
+from app.domain.conversations import ConversationMessage, ConversationMetadata  # noqa: E402
+from app.services.agent_service import agent_service  # noqa: E402
+from app.services.shared.rate_limit_service import RateLimitExceeded, rate_limiter  # noqa: E402
+from app.services.usage_policy_service import (  # noqa: E402
     UsagePolicyDecision,
     UsagePolicyResult,
     UsagePolicyService,
     UsageViolation,
 )
-from main import app
+from main import app  # noqa: E402
 
 TEST_TENANT_ID = str(uuid4())
 
