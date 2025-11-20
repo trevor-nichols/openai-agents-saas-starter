@@ -49,13 +49,13 @@ def _local_headless_answers() -> dict[str, str]:
     return {
         "ENVIRONMENT": "development",
         "DEBUG": "true",
-        "PORT": "8001",
+        "PORT": "8000",
         "APP_PUBLIC_URL": "http://localhost:3000",
         "ALLOWED_HOSTS": "localhost",
         "ALLOWED_ORIGINS": "http://localhost:3000",
         "AUTO_RUN_MIGRATIONS": "false",
         "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents",
-        "API_BASE_URL": "http://127.0.0.1:8001",
+        "API_BASE_URL": "http://127.0.0.1:8000",
         "ROTATE_SIGNING_KEYS": "false",
         "VAULT_VERIFY_ENABLED": "true",
         "VAULT_ADDR": "https://vault.example.com",
@@ -118,7 +118,7 @@ def test_wizard_headless_local_generates_env(temp_ctx: CLIContext) -> None:
     env_body = (temp_ctx.project_root / ".env.local").read_text(encoding="utf-8")
     assert "OPENAI_API_KEY" in env_body
     assert "TENANT_DEFAULT_SLUG=local" in env_body
-    assert "API_BASE_URL=http://127.0.0.1:8001" in env_body
+    assert "API_BASE_URL=http://127.0.0.1:8000" in env_body
     assert "LOGGING_SINK=stdout" in env_body
     assert "SIGNUP_ACCESS_POLICY=public" in env_body
     assert "ALLOW_PUBLIC_SIGNUP=true" in env_body
@@ -318,7 +318,7 @@ def test_wizard_writes_dedicated_worker_artifacts(temp_ctx: CLIContext) -> None:
     answers = {
         "ENVIRONMENT": "production",
         "DEBUG": "false",
-        "PORT": "8001",
+        "PORT": "8000",
         "APP_PUBLIC_URL": "https://example.com",
         "ALLOWED_HOSTS": "example.com",
         "ALLOWED_ORIGINS": "https://example.com",
@@ -402,13 +402,13 @@ def test_wizard_refreshes_cached_settings(temp_ctx: CLIContext) -> None:
     answers = {
         "ENVIRONMENT": "development",
         "DEBUG": "true",
-        "PORT": "8001",
+        "PORT": "8000",
         "APP_PUBLIC_URL": "http://localhost:3000",
         "ALLOWED_HOSTS": "localhost",
         "ALLOWED_ORIGINS": "http://localhost:3000",
         "AUTO_RUN_MIGRATIONS": "false",
         "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents",
-        "API_BASE_URL": "http://127.0.0.1:8001",
+        "API_BASE_URL": "http://127.0.0.1:8000",
         "ROTATE_SIGNING_KEYS": "false",
         "VAULT_VERIFY_ENABLED": "false",
         "OPENAI_API_KEY": "sk-openai",
