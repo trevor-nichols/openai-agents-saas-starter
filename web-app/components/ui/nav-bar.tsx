@@ -213,15 +213,15 @@ const UserMenu = ({
 );
 
 // Types
-export interface Navbar05NavItem {
+export interface NavBarNavItem {
   href?: string;
   label: string;
 }
 
-export interface Navbar05Props extends React.HTMLAttributes<HTMLElement> {
+export interface NavBarProps extends React.HTMLAttributes<HTMLElement> {
   logo?: React.ReactNode;
-  logoHref?: string;
-  navigationLinks?: Navbar05NavItem[];
+  navigationLinks?: NavBarNavItem[];
+  actions?: React.ReactNode;
   userName?: string;
   userEmail?: string;
   userAvatar?: string;
@@ -233,24 +233,24 @@ export interface Navbar05Props extends React.HTMLAttributes<HTMLElement> {
 }
 
 // Default navigation links
-const defaultNavigationLinks: Navbar05NavItem[] = [
+const defaultNavigationLinks: NavBarNavItem[] = [
   { href: '#', label: 'Home' },
   { href: '#', label: 'Features' },
   { href: '#', label: 'Pricing' },
   { href: '#', label: 'About' },
 ];
 
-export const Navbar05 = React.forwardRef<HTMLElement, Navbar05Props>(
+export const NavBar = React.forwardRef<HTMLElement, NavBarProps>(
   (
     {
       className,
       logo = <Logo />,
-      logoHref: _logoHref = '#',
       navigationLinks = defaultNavigationLinks,
       userName = 'John Doe',
       userEmail = 'john@example.com',
       userAvatar,
       notificationCount = 3,
+      actions,
       onNavItemClick,
       onInfoItemClick,
       onNotificationItemClick,
@@ -339,15 +339,9 @@ export const Navbar05 = React.forwardRef<HTMLElement, Navbar05Props>(
             )}
             {/* Main nav */}
             <div className="flex items-center gap-6">
-              <button
-                onClick={(e) => e.preventDefault()}
-                className="flex items-center space-x-2 text-primary hover:text-primary/90 transition-colors cursor-pointer"
-              >
-                <div className="text-2xl">
-                  {logo}
-                </div>
-                <span className="hidden font-bold text-xl sm:inline-block">shadcn.io</span>
-              </button>
+              <div className="flex items-center space-x-2 text-primary">
+                <div className="text-2xl">{logo}</div>
+              </div>
               {/* Navigation menu */}
               {!isMobile && (
                 <NavigationMenu className="flex">
@@ -373,22 +367,28 @@ export const Navbar05 = React.forwardRef<HTMLElement, Navbar05Props>(
           </div>
           {/* Right side */}
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              {/* Info menu */}
-              <InfoMenu onItemClick={onInfoItemClick} />
-              {/* Notification */}
-              <NotificationMenu 
-                notificationCount={notificationCount}
-                onItemClick={onNotificationItemClick}
-              />
-            </div>
-            {/* User menu */}
-            <UserMenu 
-              userName={userName}
-              userEmail={userEmail}
-              userAvatar={userAvatar}
-              onItemClick={onUserItemClick}
-            />
+            {actions ? (
+              actions
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  {/* Info menu */}
+                  <InfoMenu onItemClick={onInfoItemClick} />
+                  {/* Notification */}
+                  <NotificationMenu
+                    notificationCount={notificationCount}
+                    onItemClick={onNotificationItemClick}
+                  />
+                </div>
+                {/* User menu */}
+                <UserMenu
+                  userName={userName}
+                  userEmail={userEmail}
+                  userAvatar={userAvatar}
+                  onItemClick={onUserItemClick}
+                />
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -396,6 +396,6 @@ export const Navbar05 = React.forwardRef<HTMLElement, Navbar05Props>(
   }
 );
 
-Navbar05.displayName = 'Navbar05';
+NavBar.displayName = 'NavBar';
 
 export { Logo, HamburgerIcon, InfoMenu, NotificationMenu, UserMenu };

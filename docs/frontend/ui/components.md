@@ -69,6 +69,7 @@
 ├── hover-card.tsx                                 # Hover card component using Radix UI
 ├── input.tsx                                      # Text input field component
 ├── label.tsx                                      # Form label component using Radix UI
+├── nav-bar.tsx                                    # Responsive navbar with actions/user/notification slots
 ├── navigation-menu.tsx                            # Navigation menu component using Radix UI
 ├── pagination.tsx                                 # Pagination control component
 ├── popover.tsx                                    # Popover component using Radix UI
@@ -115,8 +116,6 @@
 │   │   └── index.tsx                              # Magnetic hover effect wrapper
 │   ├── marquee/                                   # Infinite scroll
 │   │   └── index.tsx                              # Infinite scrolling marquee
-│   ├── navbar-05/                                 # Navigation bar
-│   │   └── index.tsx                              # Responsive navbar implementation
 │   ├── spinner/                                   # Loading indicators
 │   │   └── index.tsx                              # Multi-variant spinner component
 │   ├── status/                                    # Status indicators

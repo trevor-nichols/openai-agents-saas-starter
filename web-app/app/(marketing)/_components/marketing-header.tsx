@@ -1,10 +1,11 @@
 'use client';
 
-import { ArrowUpRight, Command as CommandIcon, Menu } from 'lucide-react';
+import { ArrowUpRight, Command as CommandIcon } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
+import { NavBar } from '@/components/ui/nav-bar';
 import { Banner, BannerAction, BannerClose, BannerTitle } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,13 +20,6 @@ import {
 import { InlineTag } from '@/components/ui/foundation/InlineTag';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { cn } from '@/lib/utils';
-import {
-  NavigationMenu,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-} from '@/components/ui/navigation-menu';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
 import {
   MARKETING_ANNOUNCEMENT,
@@ -37,7 +31,7 @@ import {
 import { useSignupCtaTarget } from '@/features/marketing/hooks/useSignupCtaTarget';
 
 export function MarketingHeader() {
-  const pathname = usePathname();
+  const router = useRouter();
   const [isCommandOpen, setIsCommandOpen] = useState(false);
   const { cta } = useSignupCtaTarget();
 
@@ -63,16 +57,18 @@ export function MarketingHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-background/70 backdrop-blur-glass">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-6 py-4">
+      <div className="mx-auto w-full max-w-6xl px-6 py-4">
         {MARKETING_ANNOUNCEMENT ? (
           <Banner
             variant="muted"
             inset
-            className="flex-col items-start gap-3 rounded-2xl text-xs font-medium text-foreground/80 sm:flex-row sm:items-center sm:justify-between"
+            className="mb-3 flex-col items-start gap-3 rounded-2xl text-xs font-medium text-foreground/80 sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="flex items-center gap-3">
               <InlineTag tone="positive">{MARKETING_ANNOUNCEMENT.tag}</InlineTag>
-              <BannerTitle className="text-foreground/80 sm:text-sm">{MARKETING_ANNOUNCEMENT.message}</BannerTitle>
+              <BannerTitle className="text-foreground/80 sm:text-sm">
+                {MARKETING_ANNOUNCEMENT.message}
+              </BannerTitle>
             </div>
             <div className="flex items-center gap-2">
               <BannerAction
@@ -94,51 +90,30 @@ export function MarketingHeader() {
           </Banner>
         ) : null}
 
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex flex-1 items-center gap-8">
-            <Link href="/" className="text-lg font-semibold tracking-tight">
+        <NavBar
+          className="bg-transparent px-0"
+          navigationLinks={navLinks.map((link) => ({ href: link.href, label: link.label }))}
+          onNavItemClick={(href) => router.push(href)}
+          actions={
+            <div className="flex items-center gap-2">
+              <CommandMenuButton onClick={() => setIsCommandOpen(true)} compact />
+              <ThemeToggle />
+              <Button
+                asChild
+                variant="secondary"
+                className="rounded-full border border-white/10 bg-white/5 text-sm font-semibold text-foreground"
+              >
+                <Link href={cta.href}>{cta.label}</Link>
+              </Button>
+            </div>
+          }
+          logo={
+            <Link href="/" className="text-lg font-semibold tracking-tight text-foreground no-underline">
               Acme
             </Link>
-
-            <NavigationMenu className="hidden flex-1 md:flex">
-              <NavigationMenuList className="gap-1">
-                {[...MARKETING_PRIMARY_LINKS, ...MARKETING_SECONDARY_LINKS].map((link) => (
-                  <NavigationMenuItem key={link.href}>
-                    <NavigationMenuLink asChild>
-                      <Link
-                        href={link.href}
-                        className={cn(
-                          'rounded-full px-4 py-2 text-sm font-medium text-foreground/70 transition-colors duration-200 hover:text-foreground',
-                          pathname === link.href ? 'text-foreground' : undefined,
-                        )}
-                      >
-                        <span className="flex items-center gap-2">{link.label}</span>
-                      </Link>
-                    </NavigationMenuLink>
-                  </NavigationMenuItem>
-                ))}
-              </NavigationMenuList>
-            </NavigationMenu>
-          </div>
-
-          <div className="hidden items-center gap-2 md:flex">
-            <CommandMenuButton onClick={() => setIsCommandOpen(true)} />
-            <ThemeToggle />
-            <Button
-              asChild
-              variant="secondary"
-              className="rounded-full border border-white/10 bg-white/5 text-sm font-semibold text-foreground"
-            >
-              <Link href={cta.href}>{cta.label}</Link>
-            </Button>
-          </div>
-
-          <div className="flex items-center gap-2 md:hidden">
-            <CommandMenuButton onClick={() => setIsCommandOpen(true)} compact />
-            <ThemeToggle />
-            <MobileNavSheet links={navLinks} ctaLink={ctaNavLink} />
-          </div>
-        </div>
+          }
+          aria-label="Marketing navigation"
+        />
       </div>
 
       <MarketingCommandMenu
@@ -170,50 +145,6 @@ function CommandMenuButton({ onClick, compact }: { onClick: () => void; compact?
         </span>
       ) : null}
     </Button>
-  );
-}
-
-function MobileNavSheet({ links, ctaLink }: { links: MarketingNavLink[]; ctaLink: MarketingNavLink }) {
-  const [open, setOpen] = useState(false);
-  const router = useRouter();
-
-  const handleNavigate = useCallback(
-    (href: string) => {
-      setOpen(false);
-      router.push(href);
-    },
-    [router],
-  );
-
-  return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button variant="outline" size="icon" className="rounded-full border-white/10 bg-white/5 text-foreground">
-          <Menu className="h-4 w-4" aria-hidden="true" />
-          <span className="sr-only">Open navigation</span>
-        </Button>
-      </SheetTrigger>
-      <SheetContent side="right" className="w-full max-w-sm border-white/10 bg-background/95 text-foreground">
-        <SheetHeader>
-          <SheetTitle>Navigate</SheetTitle>
-        </SheetHeader>
-        <div className="mt-6 flex flex-col gap-4">
-          {links.map((link) => (
-            <Button
-              key={link.href}
-              variant="ghost"
-              className="flex items-center justify-between rounded-2xl border border-white/10 px-4 py-3 text-base text-foreground/80 hover:border-white/20"
-              onClick={() => handleNavigate(link.href)}
-            >
-              <span>{link.label}</span>
-            </Button>
-          ))}
-          <Button className="rounded-full" onClick={() => handleNavigate(ctaLink.href)}>
-            {ctaLink.label}
-          </Button>
-        </div>
-      </SheetContent>
-    </Sheet>
   );
 }
 
