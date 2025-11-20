@@ -4,14 +4,14 @@ import { MarketingFooter } from './_components/marketing-footer';
 import { MarketingHeader } from './_components/marketing-header';
 
 import { getHealthStatus } from '@/lib/server/services/health';
-import type { HealthResponse } from '@/lib/api/client/types.gen';
+import type { PlatformStatusResponse } from '@/lib/api/client/types.gen';
 
 interface MarketingLayoutProps {
   children: ReactNode;
 }
 
 export default async function MarketingLayout({ children }: MarketingLayoutProps) {
-  const health = await fetchMarketingHealth();
+  const status = await fetchMarketingStatus();
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-background text-foreground">
@@ -25,17 +25,17 @@ export default async function MarketingLayout({ children }: MarketingLayoutProps
         </div>
       </main>
 
-      <MarketingFooter health={health} />
+      <MarketingFooter status={status} />
     </div>
   );
 }
 
-async function fetchMarketingHealth(): Promise<HealthResponse | null> {
+async function fetchMarketingStatus(): Promise<PlatformStatusResponse | null> {
   try {
     const payload = await getHealthStatus();
     return payload;
   } catch (error) {
-    console.debug('[marketing-layout] Failed to load health status', error);
+    console.debug('[marketing-layout] Failed to load platform status', error);
     return null;
   }
 }

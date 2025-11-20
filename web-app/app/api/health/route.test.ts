@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 
-import type { HealthResponse } from '@/lib/api/client/types.gen';
+import type { PlatformStatusResponse } from '@/lib/api/client/types.gen';
 
 import { GET } from './route';
 
@@ -16,11 +16,16 @@ describe('/api/health route', () => {
   });
 
   it('returns the backend health payload on success', async () => {
-    const payload: HealthResponse = {
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      version: '1.0.0',
-      uptime: 12,
+    const payload: PlatformStatusResponse = {
+      generated_at: new Date().toISOString(),
+      overview: {
+        state: 'operational',
+        description: 'All systems nominal',
+        updated_at: new Date().toISOString(),
+      },
+      services: [],
+      incidents: [],
+      uptime_metrics: [],
     };
     getHealthStatus.mockResolvedValueOnce(payload);
 
@@ -41,4 +46,3 @@ describe('/api/health route', () => {
     expect(getHealthStatus).toHaveBeenCalledTimes(1);
   });
 });
-

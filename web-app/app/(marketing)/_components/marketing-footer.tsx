@@ -3,34 +3,39 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { InlineTag } from '@/components/ui/foundation/InlineTag';
 import { SectionHeader } from '@/components/ui/foundation/SectionHeader';
-import type { HealthResponse } from '@/lib/api/client/types.gen';
+import type { PlatformStatusResponse } from '@/lib/api/client/types.gen';
 
 import { MARKETING_FOOTER_COLUMNS, MARKETING_SOCIAL_LINKS } from './nav-links';
 
 interface MarketingFooterProps {
-  health?: HealthResponse | null;
+  status?: PlatformStatusResponse | null;
 }
 
-export function MarketingFooter({ health }: MarketingFooterProps) {
+export function MarketingFooter({ status }: MarketingFooterProps) {
+  const updatedAt = status?.overview?.updated_at ?? status?.generated_at;
+  const uptimeMetric = status?.uptime_metrics?.[0];
   const metrics = [
     {
       label: 'Status',
-      value: health?.status ?? 'Unavailable',
-      hint: health ? `Updated ${formatTimestamp(health.timestamp)}` : 'Waiting for next probe.',
-    },
-    {
-      label: 'Version',
-      value: health?.version ?? '—',
-      hint: 'Backend semantic version reported by /health.',
+      value: status?.overview?.state ?? 'Unavailable',
+      hint: status
+        ? status?.overview?.description ?? 'Operational summary from status snapshot.'
+        : 'Waiting for next probe.',
     },
     {
       label: 'Uptime',
-      value: formatUptime(health?.uptime),
-      hint: 'Process uptime sourced from the API payload.',
+      value: uptimeMetric?.value ?? '—',
+      hint: uptimeMetric?.helper_text ?? 'Rolling uptime reported by the status API.',
+    },
+    {
+      label: 'Incidents',
+      value: status ? status.incidents.length : '—',
+      hint: 'Open incidents across tracked services.',
     },
   ];
 
-  const statusTone = health?.status?.toLowerCase() === 'healthy' ? 'positive' : 'warning';
+  const statusLabel = status?.overview?.state?.toLowerCase() ?? '';
+  const statusTone = ['healthy', 'operational', 'ok'].includes(statusLabel) ? 'positive' : 'warning';
   const statusText = metrics.map((metric) => `${metric.label}: ${metric.value}`).join(' · ');
 
   return (
@@ -74,7 +79,9 @@ export function MarketingFooter({ health }: MarketingFooterProps) {
               <span className="text-foreground">{metric.value}</span>
             </div>
           ))}
-          <span className="text-xs text-foreground/50">Pulled from /api/health every minute.</span>
+          <span className="text-xs text-foreground/50">
+            Pulled from /api/v1/status {updatedAt ? `(${formatTimestamp(updatedAt)})` : 'every minute'}.
+          </span>
           <span className="sr-only">{statusText}</span>
         </div>
 
@@ -97,18 +104,6 @@ export function MarketingFooter({ health }: MarketingFooterProps) {
       </div>
     </footer>
   );
-}
-
-function formatUptime(uptime?: number | null) {
-  if (!uptime || uptime <= 0) {
-    return '—';
-  }
-  const hours = Math.floor(uptime / 3600);
-  const minutes = Math.floor((uptime % 3600) / 60);
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`;
-  }
-  return `${minutes}m`;
 }
 
 function formatTimestamp(timestamp?: string) {

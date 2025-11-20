@@ -4,16 +4,26 @@
  * These should not be wired into production UI flows.
  */
 
-import {
-  applyTestFixturesApiV1TestFixturesApplyPost,
-  issueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPost,
-} from '@/lib/api/client/sdk.gen';
-import type {
-  ApplyTestFixturesApiV1TestFixturesApplyPostResponses,
-  EmailVerificationTokenRequest,
-  EmailVerificationTokenResponse,
-  PlaywrightFixtureSpec,
-} from '@/lib/api/client/types.gen';
+type PlaywrightFixtureSpec = {
+  tenants?: Array<Record<string, unknown>>;
+};
+
+type FixtureApplyResult = {
+  tenants: Record<string, unknown>;
+  generated_at: string;
+};
+
+type EmailVerificationTokenRequest = {
+  email: string;
+  ip_address?: string | null;
+  user_agent?: string | null;
+};
+
+type EmailVerificationTokenResponse = {
+  token: string;
+  user_id: string;
+  expires_at: string;
+};
 
 type ClientOptions = { baseUrl?: string };
 
@@ -24,17 +34,23 @@ type ClientOptions = { baseUrl?: string };
 export async function applyTestFixtures(
   spec: PlaywrightFixtureSpec,
   options?: ClientOptions,
-): Promise<ApplyTestFixturesApiV1TestFixturesApplyPostResponses['201']> {
-  const clientOptions = options?.baseUrl ? { baseUrl: options.baseUrl } : {};
-  const response = await applyTestFixturesApiV1TestFixturesApplyPost({
-    body: spec,
-    responseStyle: 'fields',
-    ...clientOptions,
+): Promise<FixtureApplyResult> {
+  const baseUrl = options?.baseUrl ? options.baseUrl.replace(/\/$/, '') : '';
+  const response = await fetch(`${baseUrl}/api/v1/test-fixtures/apply`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(spec),
   });
-  if (!response.data) {
+
+  if (!response.ok) {
+    throw new Error(`Fixture apply failed (${response.status})`);
+  }
+
+  const data = (await response.json()) as FixtureApplyResult | undefined;
+  if (!data) {
     throw new Error('Fixture apply returned empty response.');
   }
-  return response.data;
+  return data;
 }
 
 /**
@@ -44,14 +60,20 @@ export async function issueEmailVerificationToken(
   request: EmailVerificationTokenRequest,
   options?: ClientOptions,
 ): Promise<EmailVerificationTokenResponse> {
-  const clientOptions = options?.baseUrl ? { baseUrl: options.baseUrl } : {};
-  const response = await issueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPost({
-    body: request,
-    responseStyle: 'fields',
-    ...clientOptions,
+  const baseUrl = options?.baseUrl ? options.baseUrl.replace(/\/$/, '') : '';
+  const response = await fetch(`${baseUrl}/api/v1/test-fixtures/email-verification-token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
   });
-  if (!response.data) {
+
+  if (!response.ok) {
+    throw new Error(`Email verification token request failed (${response.status})`);
+  }
+
+  const data = (await response.json()) as EmailVerificationTokenResponse | undefined;
+  if (!data) {
     throw new Error('Email verification token response was empty.');
   }
-  return response.data;
+  return data;
 }
