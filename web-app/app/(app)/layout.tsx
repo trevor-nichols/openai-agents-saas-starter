@@ -15,12 +15,14 @@ interface AppLayoutProps {
 }
 
 // --- Navigation configuration ---
-const primaryNav = [
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/chat', label: 'Workspace' },
-  { href: '/agents', label: 'Agents' },
-  ...(billingEnabled ? [{ href: '/billing', label: 'Billing' }] : []),
-];
+export function buildPrimaryNav() {
+  return [
+    { href: '/dashboard', label: 'Dashboard' },
+    { href: '/chat', label: 'Workspace' },
+    { href: '/agents', label: 'Agents' },
+    ...(billingEnabled ? [{ href: '/billing', label: 'Billing' }] : []),
+  ];
+}
 
 const accountNav = [
   { href: '/account', label: 'Account' },
@@ -28,11 +30,16 @@ const accountNav = [
   { href: '/settings/tenant', label: 'Tenant settings' },
 ];
 
+export function buildNavItems(hasStatusScope: boolean) {
+  const primaryNav = buildPrimaryNav();
+  return hasStatusScope ? [...primaryNav, { href: '/ops/status', label: 'Ops' }] : primaryNav;
+}
+
 // --- AppLayout component ---
 export default async function AppLayout({ children }: AppLayoutProps) {
   const session = await getSessionMetaFromCookies();
   const hasStatusScope = session?.scopes?.includes('status:manage') ?? false;
-  const navItems = hasStatusScope ? [...primaryNav, { href: '/ops/status', label: 'Ops' }] : primaryNav;
+  const navItems = buildNavItems(hasStatusScope);
 
   const subtitle = billingEnabled
     ? 'Configure agents, monitor conversations, and keep billing healthy.'

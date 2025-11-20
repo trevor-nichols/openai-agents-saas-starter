@@ -11,7 +11,7 @@ const SUBSCRIPTIONS_ENDPOINT = '/api/status/subscriptions';
 const INCIDENT_RESEND_ENDPOINT = (incidentId: string) =>
   `/api/status/incidents/${incidentId}/resend`;
 
-interface ApiEnvelope<T> {
+interface ApiEnvelope {
   success?: boolean;
   error?: string;
   items?: StatusSubscriptionListResponse['items'];
@@ -44,7 +44,7 @@ export async function fetchStatusSubscriptions(
     { cache: 'no-store' },
   );
 
-  const payload = (await response.json().catch(() => ({}))) as ApiEnvelope<StatusSubscriptionListResponse>;
+  const payload = (await response.json().catch(() => ({}))) as ApiEnvelope;
 
   if (!response.ok || payload.success !== true) {
     throw new Error(payload.error ?? 'Unable to load status subscriptions.');
@@ -82,7 +82,7 @@ export async function resendIncident(
     }),
   });
 
-  const payload = (await response.json().catch(() => ({}))) as ApiEnvelope<StatusIncidentResendResponse>;
+  const payload = (await response.json().catch(() => ({}))) as ApiEnvelope;
 
   if (!response.ok || payload.success === false) {
     throw new Error(payload.error ?? 'Unable to resend incident notifications.');

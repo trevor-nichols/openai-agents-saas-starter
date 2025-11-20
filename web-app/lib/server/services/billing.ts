@@ -31,6 +31,40 @@ const STREAM_HEADERS = {
   Connection: 'keep-alive',
 } as const;
 
+function assertBillingSdkPresent() {
+  const missing: string[] = [];
+  if (!billingEventStreamApiV1BillingStreamGet) missing.push('billingEventStreamApiV1BillingStreamGet');
+  if (!listBillingPlansApiV1BillingPlansGet) missing.push('listBillingPlansApiV1BillingPlansGet');
+  if (!listBillingEventsApiV1BillingTenantsTenantIdEventsGet) {
+    missing.push('listBillingEventsApiV1BillingTenantsTenantIdEventsGet');
+  }
+  if (!getTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGet) {
+    missing.push('getTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGet');
+  }
+  if (!startSubscriptionApiV1BillingTenantsTenantIdSubscriptionPost) {
+    missing.push('startSubscriptionApiV1BillingTenantsTenantIdSubscriptionPost');
+  }
+  if (!updateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatch) {
+    missing.push('updateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatch');
+  }
+  if (!cancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPost) {
+    missing.push('cancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPost');
+  }
+  if (!recordUsageApiV1BillingTenantsTenantIdUsagePost) {
+    missing.push('recordUsageApiV1BillingTenantsTenantIdUsagePost');
+  }
+
+  if (missing.length) {
+    throw new Error(
+      `Billing SDK exports missing: ${missing.join(
+        ', ',
+      )}. Regenerate via "pnpm generate" against api-service/.artifacts/openapi-billing.json.`,
+    );
+  }
+}
+
+assertBillingSdkPresent();
+
 export interface BillingStreamOptions {
   signal: AbortSignal;
   tenantRole?: string | null;

@@ -34,7 +34,7 @@ export function useStatusSubscriptionsQuery(
   };
 
   const query = useInfiniteQuery({
-    queryKey: queryKeys.statusOps.subscriptions(normalizedFilters),
+    queryKey: queryKeys.statusOps.subscriptions(normalizedFilters as Record<string, unknown>),
     initialPageParam: normalizedFilters.cursor ?? null,
     queryFn: ({ pageParam }) =>
       fetchStatusSubscriptions({

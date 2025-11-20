@@ -48,7 +48,10 @@ export function StatusOpsWorkspace({ defaultTenantId }: StatusOpsWorkspaceProps)
 
   useEffect(() => {
     if (!selectedIncidentId && incidents.length > 0) {
-      setSelectedIncidentId(incidents[0].id);
+      const firstIncident = incidents[0];
+      if (firstIncident) {
+        setSelectedIncidentId(firstIncident.id);
+      }
     }
   }, [incidents, selectedIncidentId]);
 

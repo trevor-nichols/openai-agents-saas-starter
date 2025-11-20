@@ -8,7 +8,7 @@ describe('fetchBillingHistory', () => {
       JSON.stringify({ message: 'Billing is disabled.' }),
       { status: 404, headers: { 'Content-Type': 'application/json' } },
     );
-    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse as any);
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse as unknown as Response);
 
     const result = await fetchBillingHistory({ tenantId: 't1' });
 
@@ -21,7 +21,7 @@ describe('fetchBillingHistory', () => {
       JSON.stringify({ message: 'Tenant not found.' }),
       { status: 404, headers: { 'Content-Type': 'application/json' } },
     );
-    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse as any);
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse as unknown as Response);
 
     await expect(fetchBillingHistory({ tenantId: 'missing' })).rejects.toThrow('Tenant not found.');
     fetchSpy.mockRestore();

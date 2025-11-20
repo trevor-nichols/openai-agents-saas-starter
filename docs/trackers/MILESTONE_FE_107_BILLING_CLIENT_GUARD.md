@@ -1,6 +1,6 @@
 # Milestone: FE-107 Billing Client Regen Guard
 
-**Status:** Not Started  
+**Status:** Complete  
 **Milestone Owner:** *@codex*  
 **Target Window:** 20–22 Nov 2025  
 
@@ -18,11 +18,11 @@ Prevent billing-off environments from breaking the Next.js build while keeping b
 ### 1) Canonical OpenAPI Artifact
 - [x] Export billing-enabled OpenAPI spec from FastAPI CI (e.g., `api-service/.artifacts/openapi-billing.json`) and reference it in `web-app/openapi-ts.config.ts` instead of hitting the live dev server.
 - [x] Document the source of truth in `web-app/README.md` and `docs/frontend/data-access.md`; warn contributors not to regenerate against a billing-off backend.
-- [ ] Add a lightweight CI guard that fails if the billing endpoints disappear from the artifact.
+- [x] Add a lightweight CI guard that fails if the billing endpoints disappear from the artifact.
 
 ### 2) Runtime Feature Flag Plumbing
 - [x] Add `billingEnabled` to `web-app/lib/config/features.ts` with default `false`; read `process.env.NEXT_PUBLIC_ENABLE_BILLING` and allow optional hydration from a features health endpoint if present.
-- [ ] Expose a minimal `/app/api/health/features` proxy (optional) that surfaces backend `ENABLE_BILLING`, keeping browser code env-light.
+- [x] Expose a minimal `/app/api/health/features` proxy (optional) that surfaces backend `ENABLE_BILLING`, keeping browser code env-light.
 
 ### 3) UI & Routing Guards
 - [x] Hide billing links in the authenticated shell/nav when `!billingEnabled`.
@@ -32,20 +32,20 @@ Prevent billing-off environments from breaking the Next.js build while keeping b
 ### 4) Data Layer Guards
 - [x] Update billing TanStack hooks (`lib/queries/billing*.ts`) to pass `enabled: billingEnabled` and avoid issuing requests in billing-off mode.
 - [x] Ensure client fetch helpers handle the 404 from guarded API routes cleanly (no user-facing error toasts when feature is off).
-- [ ] Keep server services importing the generated client directly; optional defensive import wrapper can emit a clear dev error if the SDK was regenerated incorrectly.
+- [x] Keep server services importing the generated client directly; optional defensive import wrapper can emit a clear dev error if the SDK was regenerated incorrectly.
 
 ### 5) Starter CLI & Env Parity
 - [x] Update CLI wizard section to write both `ENABLE_BILLING` (backend) and `NEXT_PUBLIC_ENABLE_BILLING` (frontend) together; default both to false unless the operator opts in.
-- [ ] Note the coupling in `docs/trackers/complete/CLI_MILESTONE.md` or the relevant CLI tracker if more guidance is needed.
+- [x] Note the coupling in `docs/trackers/complete/CLI_MILESTONE.md` or the relevant CLI tracker if more guidance is needed.
 
 ### 6) Tests & DX
-- [ ] Add a minimal test asserting that with `NEXT_PUBLIC_ENABLE_BILLING=false`, the nav omits billing and hitting `/app/api/billing/plans` returns 404.
-- [ ] Add a unit test that billing queries are not enabled (query key not fired) when the flag is false.
+- [x] Add a minimal test asserting that with `NEXT_PUBLIC_ENABLE_BILLING=false`, the nav omits billing and hitting `/app/api/billing/plans` returns 404.
+- [x] Add a unit test that billing queries are not enabled (query key not fired) when the flag is false.
 
 ### 7) Quality Gates
-- [ ] Run `pnpm lint` and `pnpm type-check` in `web-app`.
-- [ ] (If backend artifact generation changes) run `hatch run lint` / `hatch run typecheck` in `api-service` for safety.
-- [ ] Update `docs/trackers/ISSUE_TRACKER.md` status when milestone completes.
+- [x] Run `pnpm lint` and `pnpm type-check` in `web-app`.
+- [x] (If backend artifact generation changes) run `hatch run lint` / `hatch run typecheck` in `api-service` for safety. *(N/A this round — no backend changes.)*
+- [x] Update `docs/trackers/ISSUE_TRACKER.md` status when milestone completes.
 
 ## Notes / Decisions
 - Compile-time surface is always “billing-on”; runtime flag controls visibility/behavior. This avoids TypeScript breakage and keeps future billing expansions additive.

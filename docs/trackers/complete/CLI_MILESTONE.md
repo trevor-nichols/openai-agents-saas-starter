@@ -28,3 +28,4 @@ Deliver a clean implementation of the redesigned Starter CLI wizard so operators
 2. Add regression tests that cover schema skip-logic plus automation fallbacks (tracked under QA backlog).
 3. Socialize the new `--auto-*` flags and dashboard workflow with the ops and DX channels.
 4. Roll out the `--export-answers` helper + production `--strict` alias to onboarding docs and gather DX feedback after two production runs.
+5. Document billing env parity: the wizard writes `ENABLE_BILLING` and `NEXT_PUBLIC_ENABLE_BILLING` together; keep them in lockstep when adding new profiles.

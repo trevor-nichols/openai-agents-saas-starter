@@ -30,6 +30,9 @@ jobs:
           cache: pnpm
           cache-dependency-path: web-app/pnpm-lock.yaml
 
+      - name: Verify billing OpenAPI artifact
+        run: node scripts/assert-billing-openapi.js
+
       - name: Use pnpm 10.15.0
         run: corepack prepare pnpm@10.15.0 --activate
 
