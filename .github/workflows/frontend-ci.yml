@@ -43,7 +43,7 @@ jobs:
       - name: Dependency audit (pnpm)
         working-directory: web-app
         run: |
-          pnpm audit --prod --severity high --json > ../frontend-audit.json || (cat ../frontend-audit.json && exit 1)
+          pnpm audit --prod --audit-level=high --json > ../frontend-audit.json || (cat ../frontend-audit.json && exit 1)
           pnpm dlx @cyclonedx/cyclonedx-npm --output-file ../frontend-sbom.json --output-format json
 
       - name: Upload frontend audit artifacts

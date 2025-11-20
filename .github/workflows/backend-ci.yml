@@ -49,6 +49,7 @@ jobs:
       - name: Check infra dependencies (JSON)
         run: |
           hatch run python -m starter_cli.app infra deps --format json > deps-status.json || echo "[]" > deps-status.json
+          if [ ! -s deps-status.json ]; then echo "[]">deps-status.json; fi
           hatch run python - <<'PY'
           import json, sys
           with open("deps-status.json", "r", encoding="utf-8") as fh:
