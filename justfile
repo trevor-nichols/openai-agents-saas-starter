@@ -185,7 +185,7 @@ setup-local-lite:
     @echo ""
     @echo "Next steps:"
     @echo "  1. Run 'just api' in a new terminal to start FastAPI."
-    @echo "  2. Once the API is up, run 'just issue-demo-token' to mint a service-account token."
+    @echo "  2. (Optional) If demo-token automation was disabled, run 'just issue-demo-token' after the API is up."
 
 # Run Starter CLI wizard with Local-Full automation toggles
 setup-local-full:
