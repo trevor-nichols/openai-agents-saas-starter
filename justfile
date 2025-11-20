@@ -56,6 +56,7 @@ help:
     echo "  just api                    # Run the FastAPI server via hatch" && \
     echo "  just test-stripe            # Run fixture-driven Stripe replay tests" && \
     echo "  just stripe-replay args     # Invoke the Stripe replay CLI" && \
+    echo "  just stripe-listen          # Capture a Stripe webhook secret via Stripe CLI" && \
     echo "  just lint-stripe-fixtures   # Validate Stripe fixture JSON files" && \
     echo "  just cli cmd                # Run the consolidated operator CLI" && \
     echo "  just setup-local-lite       # Run Starter CLI wizard with Local-Lite defaults" && \
@@ -149,6 +150,10 @@ test-stripe: _check_env
 # Invoke the Stripe replay CLI (usage: just stripe-replay "list --status failed")
 stripe-replay args: _check_env
     {{env_runner}} .env.compose {{env_file}} -- python scripts/stripe/replay_events.py {{args}}
+
+# Capture a webhook signing secret via Stripe CLI and write .env.local
+stripe-listen:
+    python -m starter_cli.app stripe webhook-secret
 
 # Validate Stripe fixture JSON files
 lint-stripe-fixtures:

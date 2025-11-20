@@ -3,8 +3,10 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import signal
 import subprocess
+import time
 from collections.abc import Iterable
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
@@ -29,6 +31,8 @@ from starter_cli.core import CLIContext, CLIError
 
 REQUIRED_ENV_KEYS = ("STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_PRODUCT_PRICE_MAP")
 AGGREGATED_KEYS = (*REQUIRED_ENV_KEYS, "DATABASE_URL")
+DEFAULT_WEBHOOK_FORWARD_URL = "http://localhost:8000/api/v1/webhooks/stripe"
+WHSEC_PATTERN = re.compile(r"whsec_[A-Za-z0-9]+")
 
 
 class PlanConfig(TypedDict):
@@ -42,6 +46,150 @@ PLAN_CATALOG: tuple[PlanConfig, ...] = (
     {"code": "pro", "name": "Pro", "default_cents": 9900},
 )
 PLAN_METADATA_KEY = "starter_cli_plan_code"
+
+
+class StripeCLIBase:
+    """Shared Stripe CLI helpers used across flows."""
+
+    skip_stripe_cli: bool
+    non_interactive: bool
+
+    def _ensure_stripe_cli(self) -> None:
+        if self.skip_stripe_cli:
+            return
+        console.info("Checking Stripe CLI installation…", topic="stripe")
+        try:
+            result = self._run_command(["stripe", "--version"], capture_output=True)
+        except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+            raise CLIError(
+                "Stripe CLI not found. Install from https://docs.stripe.com/stripe-cli."
+            ) from exc
+        console.success(result.stdout.strip(), topic="stripe")
+        try:
+            self._run_command(["stripe", "config", "--list"], capture_output=True)
+            console.success("Stripe CLI authentication verified.", topic="stripe")
+        except subprocess.CalledProcessError as exc:
+            console.warn("Stripe CLI is not authenticated.", topic="stripe")
+            if not self.non_interactive and self._prompt_yes_no(
+                "Open the Stripe CLI auth page?", default=False
+            ):
+                self._open_url("https://dashboard.stripe.com/stripe-cli/auth")
+            if not self.non_interactive and self._prompt_yes_no(
+                "Run `stripe login --interactive` now?", default=True
+            ):
+                self._run_interactive(["stripe", "login", "--interactive"])
+                self._run_command(["stripe", "config", "--list"], capture_output=True)
+                console.success("Stripe CLI authentication confirmed.", topic="stripe")
+            else:
+                raise CLIError(
+                    "Cannot continue without Stripe CLI authentication."
+                ) from exc
+
+    def _capture_webhook_secret(self, forward_url: str, *, timeout_sec: float = 15.0) -> str:
+        if not self.skip_stripe_cli:
+            self._ensure_stripe_cli()
+        console.info(
+            f"Requesting webhook secret via Stripe CLI (forward → {forward_url})",
+            topic="stripe",
+        )
+        listener_cmd = [
+            "stripe",
+            "listen",
+            "--print-secret",
+            "--forward-to",
+            forward_url,
+        ]
+        try:
+            process = subprocess.Popen(
+                listener_cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+        except FileNotFoundError as exc:  # pragma: no cover - runtime dependency
+            raise CLIError(
+                "Stripe CLI not found. Install from https://docs.stripe.com/stripe-cli."
+            ) from exc
+
+        secret: str | None = None
+        last_line: str | None = None
+        start = time.monotonic()
+        try:
+            if process.stdout is None:  # pragma: no cover - defensive
+                raise CLIError("Unable to read output from Stripe CLI.")
+            for line in process.stdout:
+                last_line = line.rstrip()
+                match = WHSEC_PATTERN.search(last_line)
+                if match:
+                    secret = match.group(0)
+                    break
+                if (time.monotonic() - start) > timeout_sec:
+                    break
+        finally:
+            process.terminate()
+            try:
+                process.wait(timeout=3)
+            except subprocess.TimeoutExpired:  # pragma: no cover - defensive
+                process.kill()
+
+        if not secret:
+            detail = f" Last Stripe CLI output: {last_line}" if last_line else ""
+            raise CLIError(
+                "Stripe CLI did not emit a webhook signing secret. "
+                "Ensure `stripe login` has completed and try again." + detail
+            )
+
+        console.success("Captured webhook signing secret via Stripe CLI.", topic="stripe")
+        return secret
+
+    @staticmethod
+    def _prompt_yes_no(question: str, *, default: bool = True) -> bool:
+        hint = "Y/n" if default else "y/N"
+        while True:
+            answer = input(f"{question} ({hint}) ").strip().lower()
+            if not answer:
+                return default
+            if answer in {"y", "yes"}:
+                return True
+            if answer in {"n", "no"}:
+                return False
+            console.warn("Please answer yes or no.")
+
+    @staticmethod
+    def _prompt_input(question: str) -> str:
+        return input(f"{question}: ").strip()
+
+    @staticmethod
+    def _run_command(
+        cmd: list[str], *, check: bool = True, capture_output: bool = False
+    ) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            cmd,
+            check=check,
+            text=True,
+            capture_output=capture_output,
+        )
+
+    @staticmethod
+    def _run_interactive(cmd: list[str]) -> None:
+        console.info(" ".join(cmd), topic="exec")
+        subprocess.run(cmd, check=True)
+
+    @staticmethod
+    def _open_url(url: str) -> None:
+        import sys
+
+        if sys.platform.startswith("darwin"):
+            opener = "open"
+        elif os.name == "nt":
+            opener = "start"
+        else:
+            opener = "xdg-open"
+        try:
+            subprocess.Popen([opener, url])
+            console.info(f"Opened {url} in your browser.")
+        except OSError:
+            console.warn(f"Unable to open {url}. Please visit it manually.")
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -72,6 +220,16 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         help="Stripe webhook signing secret. Required for --non-interactive.",
     )
     setup_parser.add_argument(
+        "--auto-webhook-secret",
+        action="store_true",
+        help="Use Stripe CLI to generate a webhook signing secret (interactive only).",
+    )
+    setup_parser.add_argument(
+        "--webhook-forward-url",
+        default=DEFAULT_WEBHOOK_FORWARD_URL,
+        help="Forwarding URL passed to `stripe listen --forward-to` when generating webhook secrets.",
+    )
+    setup_parser.add_argument(
         "--plan",
         action="append",
         metavar="CODE=CENTS",
@@ -94,6 +252,27 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     )
     setup_parser.set_defaults(handler=handle_stripe_setup)
 
+    webhook_parser = stripe_subparsers.add_parser(
+        "webhook-secret",
+        help="Capture a Stripe webhook signing secret via Stripe CLI.",
+    )
+    webhook_parser.add_argument(
+        "--forward-url",
+        default=DEFAULT_WEBHOOK_FORWARD_URL,
+        help="Forwarding URL passed to Stripe CLI (default: local FastAPI webhook endpoint).",
+    )
+    webhook_parser.add_argument(
+        "--print-only",
+        action="store_true",
+        help="Print the secret without writing .env.local.",
+    )
+    webhook_parser.add_argument(
+        "--skip-stripe-cli",
+        action="store_true",
+        help="Skip Stripe CLI verification (assumes the CLI is installed and authenticated).",
+    )
+    webhook_parser.set_defaults(handler=handle_webhook_secret)
+
 
 def handle_stripe_setup(args: argparse.Namespace, ctx: CLIContext) -> int:
     flow = StripeSetupFlow(
@@ -103,6 +282,8 @@ def handle_stripe_setup(args: argparse.Namespace, ctx: CLIContext) -> int:
         non_interactive=args.non_interactive,
         secret_key=args.secret_key,
         webhook_secret=args.webhook_secret,
+        auto_webhook_secret=args.auto_webhook_secret,
+        webhook_forward_url=args.webhook_forward_url,
         plan_overrides=args.plan or [],
         skip_postgres=args.skip_postgres_check,
         skip_stripe_cli=args.skip_stripe_cli,
@@ -111,14 +292,27 @@ def handle_stripe_setup(args: argparse.Namespace, ctx: CLIContext) -> int:
     return 0
 
 
+def handle_webhook_secret(args: argparse.Namespace, ctx: CLIContext) -> int:
+    flow = WebhookSecretFlow(
+        ctx=ctx,
+        forward_url=args.forward_url,
+        print_only=args.print_only,
+        skip_stripe_cli=args.skip_stripe_cli,
+    )
+    flow.run()
+    return 0
+
+
 @dataclass(slots=True)
-class StripeSetupFlow:
+class StripeSetupFlow(StripeCLIBase):
     ctx: CLIContext
     currency: str
     trial_days: int
     non_interactive: bool
     secret_key: str | None
     webhook_secret: str | None
+    auto_webhook_secret: bool
+    webhook_forward_url: str
     plan_overrides: Iterable[str]
     skip_postgres: bool
     skip_stripe_cli: bool
@@ -141,11 +335,7 @@ class StripeSetupFlow:
             aggregated.get("STRIPE_SECRET_KEY"),
             provided=self.secret_key,
         )
-        webhook_secret = self._obtain_secret(
-            "Stripe webhook secret",
-            aggregated.get("STRIPE_WEBHOOK_SECRET"),
-            provided=self.webhook_secret,
-        )
+        webhook_secret = self._collect_webhook_secret(aggregated.get("STRIPE_WEBHOOK_SECRET"))
 
         plan_amounts = self._resolve_plan_amounts()
         console.info("Provisioning Stripe products/prices…", topic="stripe")
@@ -244,6 +434,30 @@ class StripeSetupFlow:
                 console.success("psql connectivity verified.", topic="postgres")
             except (FileNotFoundError, subprocess.CalledProcessError):
                 console.warn("psql test failed. Ensure Postgres is reachable.", topic="postgres")
+
+    def _collect_webhook_secret(self, existing: str | None) -> str:
+        if self.webhook_secret:
+            return self.webhook_secret
+
+        if self.non_interactive:
+            return self._obtain_secret(
+                "Stripe webhook secret",
+                existing,
+                provided=self.webhook_secret,
+            )
+
+        if existing and self._prompt_yes_no(
+            f"Reuse existing webhook secret {self._mask(existing)}?", default=True
+        ):
+            return existing
+
+        if self.auto_webhook_secret or self._prompt_yes_no(
+            "Generate a webhook signing secret via Stripe CLI now?",
+            default=True,
+        ):
+            return self._capture_webhook_secret(self.webhook_forward_url)
+
+        return self._obtain_secret("Stripe webhook secret", existing, provided=None)
 
     def _obtain_secret(self, label: str, existing: str | None, *, provided: str | None) -> str:
         if self.non_interactive:
@@ -379,59 +593,26 @@ class StripeSetupFlow:
         env_local.set("ENABLE_BILLING", "true")
         env_local.save()
 
+        self._update_frontend_env()
+
+    def _update_frontend_env(self) -> None:
+        frontend_path = self.ctx.project_root / "web-app" / ".env.local"
+        if not frontend_path.parent.exists():
+            console.warn(
+                "Frontend directory missing; skipped web-app/.env.local.",
+                topic="stripe",
+            )
+            return
+
+        env_frontend = EnvFile(frontend_path)
+        env_frontend.set("NEXT_PUBLIC_ENABLE_BILLING", "true")
+        env_frontend.save()
+        console.success("Updated web-app/.env.local", topic="stripe")
+
     @staticmethod
     def _graceful_exit(signum: int, _frame: FrameType | None) -> None:
         console.warn(f"Received signal {signum}. Exiting.")
         raise SystemExit(1)
-
-    @staticmethod
-    def _prompt_yes_no(question: str, *, default: bool = True) -> bool:
-        hint = "Y/n" if default else "y/N"
-        while True:
-            answer = input(f"{question} ({hint}) ").strip().lower()
-            if not answer:
-                return default
-            if answer in {"y", "yes"}:
-                return True
-            if answer in {"n", "no"}:
-                return False
-            console.warn("Please answer yes or no.")
-
-    @staticmethod
-    def _prompt_input(question: str) -> str:
-        return input(f"{question}: ").strip()
-
-    @staticmethod
-    def _run_command(
-        cmd: list[str], *, check: bool = True, capture_output: bool = False
-    ) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
-            cmd,
-            check=check,
-            text=True,
-            capture_output=capture_output,
-        )
-
-    @staticmethod
-    def _run_interactive(cmd: list[str]) -> None:
-        console.info(" ".join(cmd), topic="exec")
-        subprocess.run(cmd, check=True)
-
-    @staticmethod
-    def _open_url(url: str) -> None:
-        import sys
-
-        if sys.platform.startswith("darwin"):
-            opener = "open"
-        elif os.name == "nt":
-            opener = "start"
-        else:
-            opener = "xdg-open"
-        try:
-            subprocess.Popen([opener, url])
-            console.info(f"Opened {url} in your browser.")
-        except OSError:
-            console.warn(f"Unable to open {url}. Please visit it manually.")
 
     @staticmethod
     def _mask(value: str | None) -> str:
@@ -440,3 +621,31 @@ class StripeSetupFlow:
         if len(value) <= 8:
             return "*" * len(value)
         return f"{value[:4]}…{value[-4:]}"
+
+
+@dataclass(slots=True)
+class WebhookSecretFlow(StripeCLIBase):
+    ctx: CLIContext
+    forward_url: str
+    print_only: bool
+    skip_stripe_cli: bool
+    non_interactive: bool = False
+
+    def run(self) -> None:
+        if not self.skip_stripe_cli:
+            self._ensure_stripe_cli()
+        secret = self._capture_webhook_secret(self.forward_url)
+
+        if self.print_only:
+            console.info("Webhook signing secret (not saved):", topic="stripe")
+            print(secret)
+            return
+
+        env_local = EnvFile(self.ctx.project_root / ".env.local")
+        env_local.set("STRIPE_WEBHOOK_SECRET", secret)
+        env_local.save()
+        os.environ["STRIPE_WEBHOOK_SECRET"] = secret
+        console.success(
+            f"Saved STRIPE_WEBHOOK_SECRET={self._mask(secret)} to .env.local",
+            topic="stripe",
+        )

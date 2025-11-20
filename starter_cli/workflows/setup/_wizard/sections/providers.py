@@ -9,6 +9,7 @@ from redis.asyncio import Redis
 
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIError
+from starter_cli.commands.stripe import WebhookSecretFlow
 
 from ...automation import AutomationPhase, AutomationStatus
 from ...inputs import InputProvider
@@ -193,12 +194,14 @@ def _collect_billing(context: WizardContext, provider: InputProvider) -> None:
         existing=context.current("STRIPE_SECRET_KEY"),
         required=True,
     )
-    webhook = provider.prompt_secret(
-        key="STRIPE_WEBHOOK_SECRET",
-        prompt="Stripe webhook signing secret",
-        existing=context.current("STRIPE_WEBHOOK_SECRET"),
-        required=True,
-    )
+    webhook = _maybe_generate_webhook_secret(context, provider)
+    if not webhook:
+        webhook = provider.prompt_secret(
+            key="STRIPE_WEBHOOK_SECRET",
+            prompt="Stripe webhook signing secret",
+            existing=context.current("STRIPE_WEBHOOK_SECRET"),
+            required=True,
+        )
     plan_map_raw = provider.prompt_string(
         key="STRIPE_PRODUCT_PRICE_MAP",
         prompt="Stripe product price map (JSON)",
@@ -217,6 +220,36 @@ def _collect_billing(context: WizardContext, provider: InputProvider) -> None:
     )
 
     _maybe_run_stripe_setup(context, provider)
+
+
+def _maybe_generate_webhook_secret(context: WizardContext, provider: InputProvider) -> str | None:
+    allow_auto = context.profile == "local" and not context.is_headless
+    if not allow_auto:
+        return None
+
+    default_yes = not bool(context.current("STRIPE_WEBHOOK_SECRET"))
+    if not provider.prompt_bool(
+        key="STRIPE_WEBHOOK_SECRET_AUTO",
+        prompt="Generate webhook signing secret via Stripe CLI now?",
+        default=default_yes,
+    ):
+        return None
+
+    forward_url = f"{context.api_base_url.rstrip('/')}/api/v1/webhooks/stripe"
+    try:
+        flow = WebhookSecretFlow(
+            ctx=context.cli_ctx,
+            forward_url=forward_url,
+            print_only=True,
+            skip_stripe_cli=False,
+        )
+        secret = flow._capture_webhook_secret(forward_url)
+    except CLIError as exc:
+        console.warn(f"Stripe CLI webhook capture failed: {exc}", topic="stripe")
+        return None
+
+    console.success("Captured webhook signing secret via Stripe CLI.", topic="stripe")
+    return secret
 
 
 def _collect_email(context: WizardContext, provider: InputProvider) -> None:

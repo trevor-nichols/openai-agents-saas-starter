@@ -133,10 +133,16 @@ Interactive provisioning of Stripe products/prices plus secret capture:
 - Verifies the `stripe` Python package and Stripe CLI are present (unless `--skip-stripe-cli`).
 - Optionally runs `just dev-up` and tests `psql` connectivity before seeding plan data.
 - Prompts for secret key/webhook secret (or requires `--secret-key/--webhook-secret` in
-  `--non-interactive` mode).
+  `--non-interactive` mode). Interactive runs can now generate the webhook signing secret via
+  `stripe listen --print-secret --forward-to http://localhost:8000/api/v1/webhooks/stripe` using
+  `--auto-webhook-secret` or the wizard prompt (local profile).
 - Ensures one product & price per plan (`starter`, `pro`) in Stripe and writes
   `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRODUCT_PRICE_MAP`, and `ENABLE_BILLING=true`
-  into `.env.local`.
+  into `.env.local`, plus `NEXT_PUBLIC_ENABLE_BILLING=true` into `web-app/.env.local` when present.
+
+Convenience command: `python -m starter_cli.app stripe webhook-secret --forward-url <url>` (also
+available as `just stripe-listen`) captures the signing secret via Stripe CLI and writes it to
+`.env.local`.
 
 Useful flags: `--currency`, `--trial-days`, `--plan code=amount`, `--skip-postgres-check`.
 
