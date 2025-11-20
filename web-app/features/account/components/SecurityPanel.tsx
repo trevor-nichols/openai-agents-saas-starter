@@ -152,47 +152,51 @@ export function SecurityPanel() {
           />
           <Form {...form}>
             <form className="space-y-4" onSubmit={handleSubmit} noValidate>
-              <FormField
-                control={form.control}
-                name="currentPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Current password</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="password" autoComplete="current-password" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="currentPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Current password</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="password" autoComplete="current-password" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="newPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>New password</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="password" autoComplete="new-password" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="newPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>New password</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="password" autoComplete="new-password" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-              <FormField
-                control={form.control}
-                name="confirmNewPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Confirm new password</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="password" autoComplete="new-password" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="confirmNewPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Confirm new password</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="password" autoComplete="new-password" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               {form.formState.errors.root ? (
                 <p className="text-sm font-medium text-destructive" role="alert">
@@ -200,13 +204,14 @@ export function SecurityPanel() {
                 </p>
               ) : null}
 
-              <Button className="w-full" type="submit" disabled={changePassword.isPending}>
-                {changePassword.isPending ? 'Saving...' : 'Update password'}
-              </Button>
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <PasswordPolicyList items={PASSWORD_POLICY_RULES} />
+                <Button className="md:w-auto" type="submit" disabled={changePassword.isPending}>
+                  {changePassword.isPending ? 'Saving...' : 'Update password'}
+                </Button>
+              </div>
             </form>
           </Form>
-
-          <PasswordPolicyList items={PASSWORD_POLICY_RULES} />
         </GlassPanel>
 
         <GlassPanel className="space-y-6">

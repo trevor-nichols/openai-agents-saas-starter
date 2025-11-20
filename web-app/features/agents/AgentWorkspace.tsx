@@ -3,9 +3,10 @@
 
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import { SectionHeader } from '@/components/ui/foundation';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ConversationDetailDrawer } from '@/components/shared/conversations/ConversationDetailDrawer';
 import { useChatController } from '@/lib/chat/useChatController';
 
@@ -58,6 +59,8 @@ export function AgentWorkspace() {
 
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [detailConversationId, setDetailConversationId] = useState<string | null>(null);
+  const [insightsOpen, setInsightsOpen] = useState(false);
+  const [insightsTab, setInsightsTab] = useState<'archive' | 'tools'>('archive');
 
   const rosterErrorMessage = agentsError?.message ?? toolsError;
 
@@ -108,41 +111,6 @@ export function AgentWorkspace() {
     [selectedAgent, setSelectedAgent, startNewConversation],
   );
 
-  const insightsColumn = useMemo(
-    () => (
-      <div className="space-y-6">
-        <ConversationArchivePanel
-          conversationList={conversationList}
-          isLoading={isLoadingConversations}
-          error={conversationsError}
-          onRefresh={loadConversations}
-          onSelectConversation={handleSelectConversationFromArchive}
-        />
-        <AgentToolsPanel
-          summary={toolsSummary}
-          toolsByAgent={toolsByAgent}
-          selectedAgent={selectedAgent}
-          isLoading={isLoadingTools}
-          error={toolsError}
-          onRefresh={refetchTools}
-        />
-      </div>
-    ),
-    [
-      conversationList,
-      conversationsError,
-      handleSelectConversationFromArchive,
-      isLoadingConversations,
-      isLoadingTools,
-      refetchTools,
-      selectedAgent,
-      toolsByAgent,
-      toolsError,
-      toolsSummary,
-      loadConversations,
-    ],
-  );
-
   return (
     <section className="space-y-8">
       <SectionHeader
@@ -151,7 +119,7 @@ export function AgentWorkspace() {
         description={AGENT_WORKSPACE_COPY.description}
       />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(280px,360px)_minmax(480px,1fr)_minmax(280px,360px)]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(280px,340px)_minmax(540px,1fr)]">
         <AgentCatalogGrid
           agents={agents}
           toolsByAgent={toolsByAgent}
@@ -181,9 +149,68 @@ export function AgentWorkspace() {
           onStartNewConversation={startNewConversation}
           onShowConversationDetail={handleShowCurrentConversation}
         />
-
-        {insightsColumn}
       </div>
+
+      <div className="flex justify-start">
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setInsightsOpen(true);
+              setInsightsTab('archive');
+            }}
+            className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-foreground/80 transition hover:bg-white/10"
+          >
+            View archive
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setInsightsOpen(true);
+              setInsightsTab('tools');
+            }}
+            className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-foreground/80 transition hover:bg-white/10"
+          >
+            View tools
+          </button>
+        </div>
+      </div>
+
+      {insightsOpen ? (
+        <div className="rounded-2xl border border-white/10 bg-background/70 p-4 shadow-lg shadow-black/20 backdrop-blur">
+          <Tabs
+            value={insightsTab}
+            onValueChange={(value) => setInsightsTab(value as 'archive' | 'tools')}
+            className="space-y-4"
+          >
+            <TabsList className="w-full max-w-md">
+              <TabsTrigger value="archive">Conversation archive</TabsTrigger>
+              <TabsTrigger value="tools">Agent tools</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="archive" className="space-y-4">
+              <ConversationArchivePanel
+                conversationList={conversationList}
+                isLoading={isLoadingConversations}
+                error={conversationsError}
+                onRefresh={loadConversations}
+                onSelectConversation={handleSelectConversationFromArchive}
+              />
+            </TabsContent>
+
+            <TabsContent value="tools" className="space-y-4">
+              <AgentToolsPanel
+                summary={toolsSummary}
+                toolsByAgent={toolsByAgent}
+                selectedAgent={selectedAgent}
+                isLoading={isLoadingTools}
+                error={toolsError}
+                onRefresh={refetchTools}
+              />
+            </TabsContent>
+          </Tabs>
+        </div>
+      ) : null}
 
       <ConversationDetailDrawer
         conversationId={detailConversationId}

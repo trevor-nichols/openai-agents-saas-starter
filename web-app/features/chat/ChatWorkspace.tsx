@@ -3,12 +3,13 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { InlineTag, SectionHeader } from '@/components/ui/foundation';
 import { ErrorState } from '@/components/ui/states';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 import { ConversationDetailDrawer } from '@/components/shared/conversations/ConversationDetailDrawer';
 
@@ -22,6 +23,7 @@ import { useChatWorkspace } from './hooks/useChatWorkspace';
 import { formatConversationLabel } from './utils/formatters';
 
 export function ChatWorkspace() {
+  const [insightsTab, setInsightsTab] = useState<'tools' | 'billing'>('tools');
   const {
     conversationList,
     isLoadingConversations,
@@ -71,18 +73,27 @@ export function ChatWorkspace() {
       <Sheet open={toolDrawerOpen} onOpenChange={setToolDrawerOpen}>
         <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md">
           <SheetHeader>
-            <SheetTitle>{CHAT_COPY.toolDrawer.title}</SheetTitle>
+            <SheetTitle>Insights</SheetTitle>
             <SheetDescription>{CHAT_COPY.toolDrawer.description(selectedAgentLabel)}</SheetDescription>
           </SheetHeader>
-          <div className="mt-4">
-            <ToolMetadataPanel
-              selectedAgent={selectedAgentLabel}
-              tools={tools}
-              isLoading={isLoadingTools}
-              error={toolsError}
-              onRefresh={refetchTools}
-            />
-          </div>
+          <Tabs value={insightsTab} onValueChange={(value) => setInsightsTab(value as 'tools' | 'billing')} className="mt-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="tools">Tools</TabsTrigger>
+              <TabsTrigger value="billing">Billing</TabsTrigger>
+            </TabsList>
+            <TabsContent value="tools" className="mt-4 space-y-4">
+              <ToolMetadataPanel
+                selectedAgent={selectedAgentLabel}
+                tools={tools}
+                isLoading={isLoadingTools}
+                error={toolsError}
+                onRefresh={refetchTools}
+              />
+            </TabsContent>
+            <TabsContent value="billing" className="mt-4">
+              <BillingEventsPanel events={billingEvents} status={billingStreamStatus} />
+            </TabsContent>
+          </Tabs>
         </SheetContent>
       </Sheet>
 
@@ -138,10 +149,10 @@ export function ChatWorkspace() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="lg:hidden"
+                  className=""
                   onClick={() => setToolDrawerOpen(true)}
                 >
-                  View tools
+                  Insights
                 </Button>
               </div>
             </div>
@@ -163,20 +174,7 @@ export function ChatWorkspace() {
             }
             isClearingConversation={isClearingConversation}
             isLoadingHistory={isLoadingHistory}
-            className="min-h-[520px]"
-          />
-
-          <BillingEventsPanel events={billingEvents} status={billingStreamStatus} />
-        </div>
-
-        <div className="hidden xl:block xl:w-[320px]">
-          <ToolMetadataPanel
-            selectedAgent={selectedAgentLabel}
-            tools={tools}
-            isLoading={isLoadingTools}
-            error={toolsError}
-            onRefresh={refetchTools}
-            className="h-full"
+            className="min-h-[520px] xl:max-w-4xl"
           />
         </div>
       </div>

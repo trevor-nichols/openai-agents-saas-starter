@@ -8,18 +8,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { GlassPanel, InlineTag, KeyValueList, SectionHeader } from '@/components/ui/foundation';
 import { EmptyState, ErrorState, SkeletonPanel } from '@/components/ui/states';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { useToast } from '@/components/ui/use-toast';
 import { useAccountProfileQuery, useResendVerificationMutation } from '@/lib/queries/account';
 
@@ -167,16 +155,9 @@ export function ProfilePanel() {
             >
               {resendVerification.isPending ? 'Sending...' : 'Resend verification'}
             </Button>
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" disabled>
-                    Edit profile
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">Coming soon</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Button variant="outline" disabled>
+              Edit profile (coming soon)
+            </Button>
           </div>
         </GlassPanel>
 
@@ -246,61 +227,54 @@ export function ProfilePanel() {
           title="Metadata & quick actions"
           description="Jump into deeper account tools as needed."
         />
-        <Accordion type="multiple" className="w-full space-y-2">
-          <AccordionItem value="activity">
-            <AccordionTrigger className="text-left text-sm font-semibold uppercase tracking-[0.3em] text-foreground/60">
-              Recent activity
-            </AccordionTrigger>
-            <AccordionContent>
-              <KeyValueList
-                items={[
-                  {
-                    label: 'Last login',
-                    value: 'See Sessions for full device history',
-                  },
-                  {
-                    label: 'Session expires',
-                    value: formatDateTime(profile.session.expiresAt),
-                  },
-                ]}
-              />
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem value="service-accounts">
-            <AccordionTrigger className="text-left text-sm font-semibold uppercase tracking-[0.3em] text-foreground/60">
-              Service accounts
-            </AccordionTrigger>
-            <AccordionContent className="space-y-3">
-              <p className="text-sm text-foreground/70">
-                Audit and revoke automation tokens from the Automation tab. Issuing new credentials still flows through
-                the Starter CLI until Vault-backed self-serve flows launch.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Button asChild variant="secondary">
-                  <Link href="/account?tab=automation">Open automation tab</Link>
-                </Button>
-                <Button asChild variant="outline">
-                  <Link href="/docs/frontend/features/account-service-accounts.md">CLI guide</Link>
-                </Button>
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/50">Recent activity</p>
+            <div className="mt-2 space-y-2 text-sm text-foreground/80">
+              <div className="flex justify-between">
+                <span>Last login</span>
+                <span className="text-right text-foreground/60">See Sessions</span>
               </div>
-            </AccordionContent>
-          </AccordionItem>
+              <div className="flex justify-between">
+                <span>Session expires</span>
+                <span className="text-right">{formatDateTime(profile.session.expiresAt)}</span>
+              </div>
+            </div>
+            <Button asChild variant="outline" size="sm" className="mt-3 w-full">
+              <Link href="/account?tab=sessions">View sessions</Link>
+            </Button>
+          </div>
 
-          <AccordionItem value="sessions">
-            <AccordionTrigger className="text-left text-sm font-semibold uppercase tracking-[0.3em] text-foreground/60">
-              Session management
-            </AccordionTrigger>
-            <AccordionContent className="space-y-3">
-              <p className="text-sm text-foreground/70">
-                Review active devices, revoke stale sessions, and audit login activity.
-              </p>
-              <Button asChild variant="outline">
-                <Link href="/account?tab=sessions">View sessions</Link>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/50">Service accounts</p>
+            <p className="mt-2 text-sm text-foreground/70">
+              Issue or revoke automation tokens from the Automation tab.
+            </p>
+            <div className="mt-3 flex flex-col gap-2">
+              <Button asChild variant="secondary" size="sm">
+                <Link href="/account?tab=automation">Open automation</Link>
               </Button>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/docs/frontend/features/account-service-accounts.md">CLI guide</Link>
+              </Button>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/50">Billing</p>
+            <p className="mt-2 text-sm text-foreground/70">
+              Update plan, seats, and payment details from Billing.
+            </p>
+            <div className="mt-3 flex flex-col gap-2">
+              <Button asChild variant="secondary" size="sm">
+                <Link href="/billing">Open billing</Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/settings/tenant">Tenant settings</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
       </GlassPanel>
     </section>
   );

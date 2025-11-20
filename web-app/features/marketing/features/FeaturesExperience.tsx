@@ -24,27 +24,38 @@ export function FeaturesExperience() {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-6 py-16">
-      <FeatureHero
-        eyebrow="Features"
-        title="Enterprise-grade building blocks for AI agent SaaS"
-        description="Agents, billing, tenant settings, and ops tooling live in their own feature directories, ready to scale with your roadmap."
-        primaryCta={ctaConfig.primaryCta}
-        secondaryCta={ctaConfig.secondaryCta}
-        navItems={navItems}
-        onCtaClick={trackCtaClick}
-      />
+      <section className="space-y-10 rounded-3xl border border-white/10 bg-white/5 px-6 py-8 shadow-lg shadow-black/10">
+        <FeatureHero
+          eyebrow="Features"
+          title="Enterprise-grade building blocks for AI agent SaaS"
+          description="Agents, billing, tenant settings, and ops tooling live in their own feature directories, ready to scale with your roadmap."
+          primaryCta={ctaConfig.primaryCta}
+          secondaryCta={ctaConfig.secondaryCta}
+          navItems={navItems}
+          onCtaClick={trackCtaClick}
+        />
+      </section>
 
-      <MetricsRow metrics={metrics} />
+      <section className="rounded-3xl border border-white/5 bg-background/75 px-6 py-8 backdrop-blur">
+        <MetricsRow metrics={metrics} />
+      </section>
 
-      <PillarsGrid pillars={pillars} onCtaClick={({ location, cta }) => trackCtaClick({ location, cta })} />
+      <section className="space-y-8 rounded-3xl border border-white/10 bg-white/5 px-6 py-8">
+        <PillarsGrid pillars={pillars} onCtaClick={({ location, cta }) => trackCtaClick({ location, cta })} />
+        <ShowcaseTabs tabs={showcaseTabs} />
+      </section>
 
-      <ShowcaseTabs tabs={showcaseTabs} />
+      <section className="rounded-3xl border border-white/5 bg-background/80 px-6 py-8">
+        <TestimonialPanel testimonial={testimonial} />
+      </section>
 
-      <TestimonialPanel testimonial={testimonial} />
+      <section className="rounded-3xl border border-white/10 bg-white/5 px-6 py-8">
+        <FaqSection items={faq} title="Features & capabilities" description="Common questions about extending the starter." />
+      </section>
 
-      <FaqSection items={faq} title="Features & capabilities" description="Common questions about extending the starter." />
-
-      <CtaBand config={ctaConfig} onCtaClick={trackCtaClick} />
+      <section className="rounded-3xl border border-white/10 bg-white/5 px-6 py-8">
+        <CtaBand config={ctaConfig} onCtaClick={trackCtaClick} />
+      </section>
     </div>
   );
 }

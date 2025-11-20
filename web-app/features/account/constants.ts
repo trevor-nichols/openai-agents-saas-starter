@@ -1,8 +1,8 @@
 export const ACCOUNT_TABS = [
-  { key: 'profile', label: 'Profile' },
-  { key: 'security', label: 'Security' },
-  { key: 'sessions', label: 'Sessions' },
-  { key: 'automation', label: 'Automation' },
+  { key: 'profile', label: 'Profile', helper: 'Identity & tenant' },
+  { key: 'security', label: 'Security', helper: 'Password & MFA' },
+  { key: 'sessions', label: 'Sessions', helper: 'Devices & activity' },
+  { key: 'automation', label: 'Automation', helper: 'Service accounts' },
 ] as const;
 
 export const ACCOUNT_COPY = {

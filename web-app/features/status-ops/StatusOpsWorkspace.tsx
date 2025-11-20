@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useToast } from '@/components/ui/use-toast';
 import { GlassPanel, SectionHeader, StatCard } from '@/components/ui/foundation';
 import { usePlatformStatusQuery } from '@/lib/queries/status';
@@ -94,6 +95,8 @@ export function StatusOpsWorkspace({ defaultTenantId }: StatusOpsWorkspaceProps)
   }, [subscriptionsQuery.subscriptions]);
 
   const resendMutation = useResendIncidentMutation();
+  const [filtersOpen, setFiltersOpen] = useState(true);
+  const [resendOpen, setResendOpen] = useState(false);
 
   const handleSelectSubscription = (subscription: StatusSubscriptionSummary) => {
     setSelectedSubscriptionId(subscription.id);
@@ -199,131 +202,148 @@ export function StatusOpsWorkspace({ defaultTenantId }: StatusOpsWorkspaceProps)
         </GlassPanel>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
-          <GlassPanel className="space-y-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <Filter className="h-4 w-4 text-foreground/60" aria-hidden />
-              <Select value={channelFilter} onValueChange={(value) => setChannelFilter(value as ChannelFilter)}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Channel" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All channels</SelectItem>
-                  <SelectItem value="email">Email</SelectItem>
-                  <SelectItem value="webhook">Webhook</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as StatusFilter)}>
-                <SelectTrigger className="w-[170px]">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All statuses</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="pending_verification">Pending verification</SelectItem>
-                  <SelectItem value="revoked">Revoked</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={severityFilter} onValueChange={(value) => setSeverityFilter(value as SeverityFilter)}>
-                <SelectTrigger className="w-[170px]">
-                  <SelectValue placeholder="Severity" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="any">Any severity</SelectItem>
-                  <SelectItem value="major">Major</SelectItem>
-                  <SelectItem value="maintenance">Maintenance</SelectItem>
-                  <SelectItem value="all">All</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Input
-                className="min-w-[200px] flex-1"
-                placeholder="Search subscriber or creator"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="ghost" onClick={() => setFiltersOpen((open) => !open)}>
+            <Filter className="h-4 w-4" aria-hidden />
+            {filtersOpen ? 'Hide filters' : 'Show filters'}
+          </Button>
+        </div>
+        <Sheet open={resendOpen} onOpenChange={setResendOpen}>
+          <SheetTrigger asChild>
+            <Button>Replay incident</Button>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-full sm:max-w-lg">
+            <SheetHeader>
+              <SheetTitle>Replay incident</SheetTitle>
+            </SheetHeader>
+            <div className="mt-4">
+              <ResendIncidentPanel
+                incidents={incidents}
+                isLoadingIncidents={statusQuery.isLoading}
+                selectedIncidentId={selectedIncidentId}
+                severity={severityForDispatch}
+                tenantScope={dispatchTenantScope}
+                onIncidentChange={setSelectedIncidentId}
+                onSeverityChange={setSeverityForDispatch}
+                onTenantScopeChange={setDispatchTenantScope}
+                onClearTenantScope={() => setDispatchTenantScope('')}
+                onSubmit={handleResend}
+                isSubmitting={resendMutation.isPending}
               />
             </div>
+          </SheetContent>
+        </Sheet>
+      </div>
 
-            <div className="flex flex-wrap items-end gap-2">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="tenant-filter">Tenant filter</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="tenant-filter"
-                    placeholder="Tenant UUID (optional)"
-                    value={tenantInput}
-                    onChange={(event) => setTenantInput(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') handleApplyTenantFilter();
-                    }}
-                  />
-                  <Button variant="outline" onClick={handleApplyTenantFilter}>
-                    Apply
-                  </Button>
-                  {appliedTenantId ? (
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        setTenantInput('');
-                        setAppliedTenantId(null);
-                        setDispatchTenantScope('');
-                      }}
-                    >
-                      Clear
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
+      {filtersOpen ? (
+        <GlassPanel className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <Select value={channelFilter} onValueChange={(value) => setChannelFilter(value as ChannelFilter)}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Channel" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All channels</SelectItem>
+                <SelectItem value="email">Email</SelectItem>
+                <SelectItem value="webhook">Webhook</SelectItem>
+              </SelectContent>
+            </Select>
 
-              <Button variant="ghost" onClick={handleResetFilters}>
-                Reset filters
-              </Button>
-            </div>
-          </GlassPanel>
+            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as StatusFilter)}>
+              <SelectTrigger className="w-[170px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="pending_verification">Pending verification</SelectItem>
+                <SelectItem value="revoked">Revoked</SelectItem>
+              </SelectContent>
+            </Select>
 
-          <SubscriptionsTable
-            subscriptions={filteredSubscriptions}
-            isLoading={subscriptionsQuery.isLoading}
-            isError={subscriptionsQuery.isError}
-            error={subscriptionsQuery.error?.message}
-            onRetry={() => subscriptionsQuery.refetch()}
-            onRowSelect={handleSelectSubscription}
-            selectedId={selectedSubscriptionId}
-          />
+            <Select value={severityFilter} onValueChange={(value) => setSeverityFilter(value as SeverityFilter)}>
+              <SelectTrigger className="w-[170px]">
+                <SelectValue placeholder="Severity" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">Any severity</SelectItem>
+                <SelectItem value="major">Major</SelectItem>
+                <SelectItem value="maintenance">Maintenance</SelectItem>
+                <SelectItem value="all">All</SelectItem>
+              </SelectContent>
+            </Select>
 
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-foreground/60">
-              Showing {filteredSubscriptions.length} of {subscriptionsQuery.subscriptions.length} loaded · Last refresh{' '}
-              {statusQuery.status ? formatDateTime(statusQuery.status.generatedAt) : '—'}
-            </div>
-            {subscriptionsQuery.hasNextPage ? (
-              <Button
-                variant="outline"
-                onClick={() => subscriptionsQuery.fetchNextPage()}
-                disabled={subscriptionsQuery.isFetchingNextPage}
-              >
-                {subscriptionsQuery.isFetchingNextPage ? 'Loading…' : 'Load more'}
-              </Button>
-            ) : null}
+            <Input
+              className="min-w-[200px] flex-1"
+              placeholder="Search subscriber or creator"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+            />
           </div>
-        </div>
 
-        <ResendIncidentPanel
-          incidents={incidents}
-          isLoadingIncidents={statusQuery.isLoading}
-          selectedIncidentId={selectedIncidentId}
-          severity={severityForDispatch}
-          tenantScope={dispatchTenantScope}
-          onIncidentChange={setSelectedIncidentId}
-          onSeverityChange={setSeverityForDispatch}
-          onTenantScopeChange={setDispatchTenantScope}
-          onClearTenantScope={() => setDispatchTenantScope('')}
-          onSubmit={handleResend}
-          isSubmitting={resendMutation.isPending}
-        />
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="tenant-filter">Tenant filter</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="tenant-filter"
+                  placeholder="Tenant UUID (optional)"
+                  value={tenantInput}
+                  onChange={(event) => setTenantInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') handleApplyTenantFilter();
+                  }}
+                />
+                <Button variant="outline" onClick={handleApplyTenantFilter}>
+                  Apply
+                </Button>
+                {appliedTenantId ? (
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setTenantInput('');
+                      setAppliedTenantId(null);
+                      setDispatchTenantScope('');
+                    }}
+                  >
+                    Clear
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+
+            <Button variant="ghost" onClick={handleResetFilters}>
+              Reset filters
+            </Button>
+          </div>
+        </GlassPanel>
+      ) : null}
+
+      <SubscriptionsTable
+        subscriptions={filteredSubscriptions}
+        isLoading={subscriptionsQuery.isLoading}
+        isError={subscriptionsQuery.isError}
+        error={subscriptionsQuery.error?.message}
+        onRetry={() => subscriptionsQuery.refetch()}
+        onRowSelect={handleSelectSubscription}
+        selectedId={selectedSubscriptionId}
+      />
+
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-foreground/60">
+          Showing {filteredSubscriptions.length} of {subscriptionsQuery.subscriptions.length} loaded · Last refresh{' '}
+          {statusQuery.status ? formatDateTime(statusQuery.status.generatedAt) : '—'}
+        </div>
+        {subscriptionsQuery.hasNextPage ? (
+          <Button
+            variant="outline"
+            onClick={() => subscriptionsQuery.fetchNextPage()}
+            disabled={subscriptionsQuery.isFetchingNextPage}
+          >
+            {subscriptionsQuery.isFetchingNextPage ? 'Loading…' : 'Load more'}
+          </Button>
+        ) : null}
       </div>
     </section>
   );

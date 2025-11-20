@@ -36,8 +36,13 @@ export function AccountOverview({ initialTab = 'profile' }: AccountOverviewProps
       <Tabs value={tab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList className="flex flex-wrap gap-2 bg-transparent p-0">
           {ACCOUNT_TABS.map((option) => (
-            <TabsTrigger key={option.key} value={option.key} className="rounded-full px-4 py-2">
-              {option.label}
+            <TabsTrigger
+              key={option.key}
+              value={option.key}
+              className="rounded-full px-4 py-2 data-[state=active]:border data-[state=active]:border-white/15"
+            >
+              <span className="block text-sm font-medium">{option.label}</span>
+              <span className="block text-xs text-foreground/60">{option.helper}</span>
             </TabsTrigger>
           ))}
         </TabsList>
