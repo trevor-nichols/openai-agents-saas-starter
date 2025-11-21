@@ -15,10 +15,7 @@ from app.services.shared.rate_limit_service import RateLimitExceeded, RateLimitQ
 router = APIRouter(prefix="/logs", tags=["observability"])
 
 LOG_INGEST_QUOTA = RateLimitQuota(
-    name="frontend_log_ingest.per_minute",
-    limit=60,
-    window_seconds=60,
-    scope="user",
+    name="frontend_log_ingest.per_minute", limit=60, window_seconds=60, scope="user"
 )
 MAX_BODY_BYTES = 16_384
 MAX_FIELDS = 50
@@ -35,7 +32,11 @@ _RESERVED_FIELDS = {
 
 
 class FrontendLogPayload(BaseModel):
-    event: str = Field(..., max_length=128, description="Logical event name from the frontend logger.")
+    event: str = Field(
+        ...,
+        max_length=128,
+        description="Logical event name from the frontend logger.",
+    )
     level: Literal["debug", "info", "warn", "error"] = Field(
         default="info", description="Severity level from the frontend logger."
     )
@@ -79,7 +80,12 @@ async def ingest_frontend_log(
         or current_user.get("payload", {}).get("tenant_id")
         or "unknown"
     )
-    user_id = str(current_user.get("sub") or current_user.get("user_id") or current_user.get("id") or "unknown")
+    user_id = str(
+        current_user.get("sub")
+        or current_user.get("user_id")
+        or current_user.get("id")
+        or "unknown"
+    )
 
     try:
         await rate_limiter.enforce(LOG_INGEST_QUOTA, [tenant_id, user_id])

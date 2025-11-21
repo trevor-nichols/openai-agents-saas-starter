@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -24,6 +25,12 @@ def _ensure_import_paths() -> None:
         path_str = str(path)
         if path_str not in sys.path:
             sys.path.insert(0, path_str)
+
+    # Configure deterministic key storage so auth-dependent tests can sign tokens.
+    test_keyset = api_dir / "tests" / "fixtures" / "keysets" / "test_keyset.json"
+    os.environ.setdefault("AUTH_KEY_STORAGE_BACKEND", "file")
+    os.environ.setdefault("AUTH_KEY_STORAGE_PATH", str(test_keyset))
+    os.environ.setdefault("STARTER_CLI_SKIP_VAULT_PROBE", "true")
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:

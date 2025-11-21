@@ -52,6 +52,10 @@ os.environ.setdefault("ENABLE_RESEND_EMAIL_DELIVERY", "false")
 os.environ.setdefault("ALLOW_PUBLIC_SIGNUP", "true")
 os.environ.setdefault("AUTO_RUN_MIGRATIONS", "false")
 os.environ.setdefault("OPENAI_API_KEY", "dummy-smoke-key")
+# Use deterministic test keyset for JWKS so smoke can validate /.well-known/jwks.json
+TEST_KEYSET = ROOT / "api-service" / "tests" / "fixtures" / "keysets" / "test_keyset.json"
+os.environ.setdefault("AUTH_KEY_STORAGE_BACKEND", "file")
+os.environ.setdefault("AUTH_KEY_STORAGE_PATH", str(TEST_KEYSET))
 # Avoid CLI probes inside app bootstrap
 os.environ.setdefault("STARTER_CLI_SKIP_ENV", "true")
 os.environ.setdefault("STARTER_CLI_SKIP_VAULT_PROBE", "true")
