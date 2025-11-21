@@ -75,6 +75,9 @@ Need another sink (Grafana Loki, Honeycomb, Splunk, etc.)? Copy `ops/observabili
 # Start the stack with the collector enabled
 $ just dev-up
 
+# Tail service logs from one place
+$ python -m starter_cli.app logs tail --service api --service collector
+
 # Tail collector logs
 $ docker compose logs -f otel-collector
 
@@ -83,6 +86,11 @@ $ curl http://localhost:${OTEL_COLLECTOR_DIAG_PORT:-13133}/healthz
 ```
 
 You should see structured JSON logs coming from FastAPI and mirrored by the collector’s debug exporter. If Sentry/Datadog credentials are wrong, the collector logs emit transport errors—fix the env vars and rerun `just dev-up` to regenerate the config.
+
+### Log Tailing Notes
+
+- `logs tail` reads the backend rotating file sink when `LOGGING_SINK=file` (set via the wizard). For stdout-only deployments, run the API in a separate terminal instead.
+- When `ENABLE_FRONTEND_LOG_INGEST=true`, the Next.js beacon transport forwards browser events to `/api/v1/logs`; they appear as `frontend.log` entries in backend tails. Without ingest, view the Next.js dev server stdout.
 
 ### Automated Smoke Test
 

@@ -19,6 +19,7 @@ _COMMAND_MODULES = (
     "starter_cli.commands.doctor",
     "starter_cli.commands.home",
     "starter_cli.commands.infra",
+    "starter_cli.commands.logs",
     "starter_cli.commands.providers",
     "starter_cli.commands.release",
     "starter_cli.commands.secrets",

@@ -24,8 +24,8 @@ Provide a single, professional-grade logging experience across backend, frontend
 | Backend sink options | ✅ Complete | File sink added with rotating handler + JSON output; defaults remain stdout. |
 | Frontend logger abstraction | ✅ Complete | Shared `lib/logging` added; chat + analytics migrated; beacon transport stubbed. |
 | Frontend log ingest API | ✅ Complete | Feature-gated POST route with rate limit + size cap; Next.js proxy at /api/logs forwards to /api/v1/logs. |
-| CLI ergonomics | ⏳ Not started | Wizard prompts + `infra logs` command to be added. |
-| Docs/runbooks | ⏳ Not started | Observability quickstart + env snippets pending. |
+| CLI ergonomics | ✅ Complete | `starter-cli logs tail` added for api/frontend (ingest), postgres/redis, and OTEL collector. |
+| Docs/runbooks | ✅ Complete | Observability README and CLI docs updated with log tailing and ingest notes. |
 
 ## Work Plan
 | # | Task | Owner | Status | Target |
@@ -33,8 +33,8 @@ Provide a single, professional-grade logging experience across backend, frontend
 | 1 | Add file sink support (env configurable path/rotation) + unit tests in backend logging module. | Platform Foundations | ✅ Completed | Nov 2025 |
 | 2 | Introduce shared frontend logger (`lib/logging`) with level gating, scrubbing, console/beacon transports; migrate chat/analytics callers. | Platform Foundations | ✅ Completed | Nov 2025 |
 | 3 | Add feature-gated frontend log ingest endpoint with auth, rate limit, body size cap; tests for auth/limit/error paths. | Platform Foundations | ✅ Completed | Nov 2025 |
-| 4 | Update Starter CLI wizard (observability section) to surface new envs; add `infra logs` command for api/web/collector tails. | Platform Foundations | ⏳ Not started | Nov 2025 |
-| 5 | Update docs (`docs/observability` + trackers) and add quickstart/just recipes for local tails and optional OTel helper. | Platform Foundations | ⏳ Not started | Nov 2025 |
+| 4 | Update Starter CLI wizard (observability section) to surface new envs; add `logs tail` command for api/frontend/collector + compose infra. | Platform Foundations | ✅ Completed | Nov 2025 |
+| 5 | Update docs (`docs/observability` + trackers) and add quickstart/just recipes for local tails and optional OTel helper. | Platform Foundations | ✅ Completed | Nov 2025 |
 
 ## Risks & Mitigations
 | Risk | Impact | Mitigation |

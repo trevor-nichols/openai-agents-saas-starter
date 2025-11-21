@@ -186,14 +186,23 @@ Wraps Just recipes for local infrastructure and dependency checks:
 - `infra vault {up,down,logs,verify}` → `just vault-*` helpers for the dev signer.
 - `infra deps [--format {table,json}]` → verifies Docker, Compose v2, Hatch, Node, pnpm.
 
-### 6. `status`
+### 6. `logs`
+
+Tails service logs without crossing imports into FastAPI/Next.js:
+
+- `logs tail` — supports `--service/-s {api,frontend,collector,postgres,redis,all}`, `--lines/-n`, and `--no-follow`.
+- Backend file sink: requires `LOGGING_SINK=file` (wizard can set) so `tail` hits `LOGGING_FILE_PATH`.
+- Frontend: when `ENABLE_FRONTEND_LOG_INGEST=true`, browser logs arrive in backend as `frontend.log` events; otherwise view Next.js dev server stdout.
+- Infra: Postgres/Redis/collector streamed via `docker compose logs` using the same env files as other commands.
+
+### 7. `status`
 
 Manages the `/api/v1/status` surface:
 
 - `status subscriptions list|revoke` for alert subscriptions (requires `STATUS_API_TOKEN`).
 - `status incidents resend` to redispatch a stored incident (optionally by tenant and severity).
 
-### 7. `providers validate`
+### 8. `providers validate`
 
 Validates Stripe, Resend, and Tavily configuration before you boot FastAPI or deploy:
 
@@ -203,7 +212,7 @@ Validates Stripe, Resend, and Tavily configuration before you boot FastAPI or de
 - Use `just validate-providers` or `python -m starter_cli.app providers validate --strict` in CI to
   fail the pipeline before Docker builds or migrations.
 
-### 8. `usage`
+### 9. `usage`
 
 Guardrail-focused operator helpers:
 
@@ -216,7 +225,7 @@ Guardrail-focused operator helpers:
   threshold (`--warn-threshold 0.75`) and redirect or disable specific artifacts via
   `--output-json PATH`, `--output-csv PATH`, `--no-json`, or `--no-csv`.
 
-### 9. `config dump-schema`
+### 10. `config dump-schema`
 
 Renders every FastAPI setting and its env alias, default, type, and wizard coverage. Use this to audit
 what remains unprompted after running the wizard. Supports `--format table` (default) or `json`.
