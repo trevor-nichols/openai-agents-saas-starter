@@ -9,9 +9,7 @@ from typing import Any
 
 from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.types import JSON, TypeDecorator
 
 # Ensure dependent ORM models register before SQLAlchemy configures relationship
 # targets when Stripe models load in isolation (e.g., billing stream unit tests).
@@ -21,20 +19,7 @@ from app.infrastructure.persistence.conversations import (  # noqa: F401
 )
 from app.infrastructure.persistence.models.base import UTC_NOW, Base, uuid_pk
 from app.infrastructure.persistence.tenants import models as _tenant_models  # noqa: F401
-
-
-class JSONBCompat(TypeDecorator[Any]):
-    """JSON type that prefers JSONB on Postgres but falls back to JSON elsewhere."""
-
-    impl = JSON
-    cache_ok = True
-
-    def load_dialect_impl(self, dialect: Dialect) -> Any:
-        if dialect.name == "postgresql":
-            from sqlalchemy.dialects.postgresql import JSONB
-
-            return dialect.type_descriptor(JSONB(astext_type=Text()))
-        return dialect.type_descriptor(JSON())
+from app.infrastructure.persistence.types import JSONBCompat
 
 
 class StripeEventStatus(str, Enum):

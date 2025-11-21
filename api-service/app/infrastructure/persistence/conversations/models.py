@@ -7,11 +7,11 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.persistence.models.base import UTC_NOW, Base, uuid_pk
+from app.infrastructure.persistence.types import JSONBCompat
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from app.infrastructure.persistence.auth.models import (
@@ -134,7 +134,7 @@ class AgentMessage(Base):
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     role: Mapped[str] = mapped_column(String(16), nullable=False)
     agent_type: Mapped[str | None] = mapped_column(String(64))
-    content: Mapped[Any] = mapped_column(JSONB, nullable=False)
+    content: Mapped[Any] = mapped_column(JSONBCompat, nullable=False)
     tool_name: Mapped[str | None] = mapped_column(String(128))
     tool_call_id: Mapped[str | None] = mapped_column(String(64))
     token_count_prompt: Mapped[int | None] = mapped_column(Integer)

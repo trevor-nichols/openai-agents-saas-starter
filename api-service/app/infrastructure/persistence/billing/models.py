@@ -17,28 +17,14 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.types import JSON, TypeDecorator
 
 from app.infrastructure.persistence.models.base import UTC_NOW, Base, uuid_pk
+from app.infrastructure.persistence.types import JSONBCompat
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from app.infrastructure.persistence.conversations.models import TenantAccount
-
-
-class JSONBCompat(TypeDecorator[Any]):
-    """JSON type that prefers JSONB on Postgres but works on SQLite."""
-
-    impl = JSON
-    cache_ok = True
-
-    def load_dialect_impl(self, dialect: Dialect) -> Any:
-        if dialect.name == "postgresql":
-            return dialect.type_descriptor(JSONB(astext_type=Text()))
-        return dialect.type_descriptor(JSON())
 
 
 class BillingPlan(Base):

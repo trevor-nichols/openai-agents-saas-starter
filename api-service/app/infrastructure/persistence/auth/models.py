@@ -20,11 +20,8 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.engine import Dialect
-from sqlalchemy.types import JSON, TypeDecorator, String as SAString
 
 from app.domain.signup import (
     SignupInviteReservationStatus,
@@ -32,41 +29,13 @@ from app.domain.signup import (
     SignupRequestStatus,
 )
 from app.infrastructure.persistence.models.base import UTC_NOW, Base, uuid_pk
+from app.infrastructure.persistence.types import CITEXTCompat, JSONBCompat
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from app.infrastructure.persistence.conversations.models import (
         AgentConversation,
         TenantAccount,
     )
-
-
-class CITEXTCompat(TypeDecorator[str]):
-    """CITEXT-compatible type that degrades to VARCHAR on non-Postgres backends."""
-
-    impl = SAString
-    cache_ok = True
-
-    def load_dialect_impl(self, dialect: Dialect):
-        if dialect.name == "postgresql":
-            from sqlalchemy.dialects.postgresql import CITEXT
-
-            return dialect.type_descriptor(CITEXT())
-        # SQLite/MySQL fallback to case-sensitive string; tests patch comparisons as needed.
-        return dialect.type_descriptor(SAString(255))
-
-
-class JSONBCompat(TypeDecorator[Any]):
-    """JSON type that prefers JSONB on Postgres but works elsewhere."""
-
-    impl = JSON
-    cache_ok = True
-
-    def load_dialect_impl(self, dialect: Dialect) -> Any:
-        if dialect.name == "postgresql":
-            from sqlalchemy.dialects.postgresql import JSONB as PGJSONB
-
-            return dialect.type_descriptor(PGJSONB(astext_type=Text()))
-        return dialect.type_descriptor(JSON())
 
 
 class UserStatus(str, Enum):
@@ -274,7 +243,7 @@ class TenantSignupRequest(Base):
     ip_address: Mapped[str | None] = mapped_column(String(64))
     user_agent: Mapped[str | None] = mapped_column(String(512))
     honeypot_value: Mapped[str | None] = mapped_column(String(64))
-    metadata_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=None)
+    metadata_json: Mapped[dict[str, Any] | None] = mapped_column(JSONBCompat, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=UTC_NOW
     )
@@ -328,7 +297,7 @@ class TenantSignupInvite(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     revoked_reason: Mapped[str | None] = mapped_column(Text)
     note: Mapped[str | None] = mapped_column(Text)
-    metadata_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=None)
+    metadata_json: Mapped[dict[str, Any] | None] = mapped_column(JSONBCompat, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=UTC_NOW
     )
@@ -469,7 +438,7 @@ class ServiceAccountToken(Base):
     account: Mapped[str] = mapped_column(String(128), nullable=False)
     tenant_id: Mapped[str | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
     scope_key: Mapped[str] = mapped_column(String(256), nullable=False)
-    scopes: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    scopes: Mapped[list[str]] = mapped_column(JSONBCompat, nullable=False)
     refresh_token_hash: Mapped[str] = mapped_column(Text, nullable=False)
     refresh_jti: Mapped[str] = mapped_column(String(64), nullable=False)
     signing_kid: Mapped[str] = mapped_column(String(64), nullable=False, default="legacy-hs256")
