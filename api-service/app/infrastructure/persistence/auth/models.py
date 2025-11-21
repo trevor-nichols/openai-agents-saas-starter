@@ -20,9 +20,11 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy.dialects.postgresql import CITEXT, JSONB
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.engine import Dialect
+from sqlalchemy.types import JSON, TypeDecorator, String as SAString
 
 from app.domain.signup import (
     SignupInviteReservationStatus,
@@ -36,6 +38,35 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
         AgentConversation,
         TenantAccount,
     )
+
+
+class CITEXTCompat(TypeDecorator[str]):
+    """CITEXT-compatible type that degrades to VARCHAR on non-Postgres backends."""
+
+    impl = SAString
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect: Dialect):
+        if dialect.name == "postgresql":
+            from sqlalchemy.dialects.postgresql import CITEXT
+
+            return dialect.type_descriptor(CITEXT())
+        # SQLite/MySQL fallback to case-sensitive string; tests patch comparisons as needed.
+        return dialect.type_descriptor(SAString(255))
+
+
+class JSONBCompat(TypeDecorator[Any]):
+    """JSON type that prefers JSONB on Postgres but works elsewhere."""
+
+    impl = JSON
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect: Dialect) -> Any:
+        if dialect.name == "postgresql":
+            from sqlalchemy.dialects.postgresql import JSONB as PGJSONB
+
+            return dialect.type_descriptor(PGJSONB(astext_type=Text()))
+        return dialect.type_descriptor(JSON())
 
 
 class UserStatus(str, Enum):
@@ -57,7 +88,7 @@ class UserAccount(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk)
-    email: Mapped[str] = mapped_column(CITEXT(), nullable=False)
+    email: Mapped[str] = mapped_column(CITEXTCompat(), nullable=False)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
     password_pepper_version: Mapped[str] = mapped_column(String(32), nullable=False, default="v1")
     status: Mapped[UserStatus] = mapped_column(
@@ -128,7 +159,7 @@ class UserProfile(Base):
     avatar_url: Mapped[str | None] = mapped_column(String(512))
     timezone: Mapped[str | None] = mapped_column(String(64))
     locale: Mapped[str | None] = mapped_column(String(32))
-    metadata_json: Mapped[dict[str, str | None] | None] = mapped_column(JSONB)
+    metadata_json: Mapped[dict[str, str | None] | None] = mapped_column(JSONBCompat)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=UTC_NOW
     )
@@ -221,7 +252,7 @@ class TenantSignupRequest(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk)
-    email: Mapped[str] = mapped_column(CITEXT(), nullable=False)
+    email: Mapped[str] = mapped_column(CITEXTCompat(), nullable=False)
     organization: Mapped[str | None] = mapped_column(String(128))
     full_name: Mapped[str | None] = mapped_column(String(128))
     message: Mapped[str | None] = mapped_column(Text)
@@ -271,7 +302,7 @@ class TenantSignupInvite(Base):
     id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk)
     token_hash: Mapped[str] = mapped_column(String(128), nullable=False)
     token_hint: Mapped[str] = mapped_column(String(16), nullable=False)
-    invited_email: Mapped[str | None] = mapped_column(CITEXT())
+    invited_email: Mapped[str | None] = mapped_column(CITEXTCompat())
     issuer_user_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
@@ -332,7 +363,7 @@ class TenantSignupInviteReservation(Base):
     invite_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("tenant_signup_invites.id", ondelete="CASCADE"), nullable=False
     )
-    email: Mapped[str] = mapped_column(CITEXT(), nullable=False)
+    email: Mapped[str] = mapped_column(CITEXTCompat(), nullable=False)
     status: Mapped[SignupInviteReservationStatus] = mapped_column(
         SAEnum(
             SignupInviteReservationStatus,

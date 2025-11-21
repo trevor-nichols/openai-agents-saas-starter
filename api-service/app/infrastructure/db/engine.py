@@ -134,9 +134,7 @@ async def run_migrations_if_configured(*, force: bool = False) -> None:
 
     database_url = settings.database_url
     if not database_url:
-        raise RuntimeError(
-            "auto_run_migrations is enabled but DATABASE_URL is not configured."
-        )
+        raise RuntimeError("auto_run_migrations is enabled but DATABASE_URL is not configured.")
 
     url = make_url(database_url)
     if url.get_backend_name().startswith("sqlite"):
@@ -197,16 +195,23 @@ def _import_all_models() -> None:
 
     # Auth + identities
     from app.infrastructure.persistence.auth import models as _auth_models  # noqa: F401
-    # Conversations and tenant accounts
-    from app.infrastructure.persistence.conversations import models as _conversation_models  # noqa: F401
+
     # Billing and subscriptions
     from app.infrastructure.persistence.billing import models as _billing_models  # noqa: F401
-    # Stripe events/dispatch
-    from app.infrastructure.persistence.stripe import models as _stripe_models  # noqa: F401
-    # Tenant settings
-    from app.infrastructure.persistence.tenants import models as _tenant_models  # noqa: F401
+
+    # Conversations and tenant accounts
+    from app.infrastructure.persistence.conversations import (
+        models as _conversation_models,  # noqa: F401
+    )
+
     # Status telemetry
     from app.infrastructure.persistence.status import models as _status_models  # noqa: F401
+
+    # Stripe events/dispatch
+    from app.infrastructure.persistence.stripe import models as _stripe_models  # noqa: F401
+
+    # Tenant settings
+    from app.infrastructure.persistence.tenants import models as _tenant_models  # noqa: F401
 
 
 @asynccontextmanager
