@@ -103,10 +103,6 @@ exclude = [
   "**/__pycache__",
   "**/*.pyc",
 ]
-[tool.hatch.build.targets.wheel.force-include]
-"starter_cli/adapters/env/__init__.py" = "starter_cli/adapters/env/__init__.py"
-"starter_cli/adapters/env/files.py" = "starter_cli/adapters/env/files.py"
-
 [tool.hatch.build.targets.sdist]
 include = [
   "api-service/**",
