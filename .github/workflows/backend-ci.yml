@@ -178,7 +178,7 @@ jobs:
       - name: Python SBOM (CycloneDX)
         run: |
           hatch run python -m pip install cyclonedx-bom
-          hatch run cyclonedx-py -e -o backend-sbom.json -F json
+          hatch run cyclonedx-py environment --of JSON --output-file backend-sbom.json
 
       - name: Install pnpm
         run: corepack prepare pnpm@10.15.0 --activate

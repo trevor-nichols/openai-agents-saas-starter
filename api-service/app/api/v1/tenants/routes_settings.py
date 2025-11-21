@@ -6,7 +6,7 @@ from app.api.dependencies.tenant import TenantContext, TenantRole, require_tenan
 from app.api.models.tenant_settings import TenantSettingsResponse, TenantSettingsUpdateRequest
 from app.services.tenant.tenant_settings_service import (
     TenantSettingsValidationError,
-    tenant_settings_service,
+    get_tenant_settings_service,
 )
 
 router = APIRouter()
@@ -16,7 +16,8 @@ router = APIRouter()
 async def get_tenant_settings(
     context: TenantContext = Depends(require_tenant_role(TenantRole.ADMIN, TenantRole.OWNER)),
 ) -> TenantSettingsResponse:
-    snapshot = await tenant_settings_service.get_settings(context.tenant_id)
+    service = get_tenant_settings_service()
+    snapshot = await service.get_settings(context.tenant_id)
     return TenantSettingsResponse.from_snapshot(snapshot)
 
 
@@ -26,8 +27,9 @@ async def update_tenant_settings(
     context: TenantContext = Depends(require_tenant_role(TenantRole.ADMIN, TenantRole.OWNER)),
 ) -> TenantSettingsResponse:
     mapped = payload.dict_for_service()
+    service = get_tenant_settings_service()
     try:
-        snapshot = await tenant_settings_service.update_settings(
+        snapshot = await service.update_settings(
             context.tenant_id,
             billing_contacts=mapped["billing_contacts"],
             billing_webhook_url=mapped["billing_webhook_url"],
