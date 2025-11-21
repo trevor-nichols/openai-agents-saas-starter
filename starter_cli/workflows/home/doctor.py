@@ -173,13 +173,14 @@ class DoctorRunner:
     def _serialize_probe(probe: ProbeResult) -> dict[str, object]:
         data = asdict(probe)
         data.pop("created_at", None)  # keep JSON schema v1 contract
-        return data
+        # Drop None to satisfy schema optional fields
+        return {k: v for k, v in data.items() if v is not None}
 
     @staticmethod
     def _serialize_service(service: ServiceStatus) -> dict[str, object]:
         data = asdict(service)
         data.pop("created_at", None)
-        return data
+        return {k: v for k, v in data.items() if v is not None}
 
 
 def detect_profile() -> str:
