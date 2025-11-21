@@ -77,6 +77,19 @@ Deliver a first-class operator “home hub” inside the Starter CLI that surfac
 | 4 – Start Launcher | Orchestrate dev/backend/frontend starts with health waiters and opt-in browser open. | `start dev` reliably brings stack up or fails fast with guidance. | ✅ Completed (2025-11-21) |
 | 5 – Polish & Packaging | Themes, docs, CI recipe, pipx/uvx guidance, optional Textual extra. | Docs and tracker updated; packaging guidance published. | ⏳ Pending |
 
+## Follow-up Execution Plan (clean architecture, no chromatic coupling)
+Phased, review-after-each-step cadence. Owners: Platform Foundations unless noted.
+
+| # | Phase | Scope (what we will do) | Exit Criteria | Status | Target |
+| - | ----- | ----------------------- | ------------- | ------ | ------ |
+| 0 | Baseline alignment | Re-read CLI/contracts/scripts snapshots; reaffirm dependency directions; lock `doctor_v1` contract notes in `status_models.py`; add import-boundary test to prevent `workflows/home/*` from pulling `api-service`/`web-app`. | Tracker updated; boundary test passing; contract comment present. | 🟡 Planned | Nov 2025 |
+| 1 | Probe maturity | Upgrade probes: DB/Redis ping (timeout-bound), migrations head vs DB current, Stripe/Vault auth ping (warn-only local), stricter profile handling; add remediation + metadata; expand unit coverage for failure cases. | All probes return deterministic metadata; unit tests cover success/failure/timeouts; local warns respected. | 🟡 Planned | Nov 2025 |
+| 2 | Doctor robustness | Validate JSON against `doctor_v1` via jsonschema test; exit-code matrix (`--strict`); artifact path override test; add `var/reports/README.md`. | Doctor run fails on schema violations; strict/non-strict behaviors tested; artifacts documented. | 🟡 Planned | Nov 2025 |
+| 3 | Start orchestrator hardening | Add minimal supervisor (PID tracking, prefixed logs, clean shutdown on SIGINT); per-step timeouts; log tail on failure; reuse probes for health; remediation messages. | Start exits cleanly, reports failing step, tails logs on failure; unit tests for flapping health and missing commands. | 🟡 Planned | Dec 2025 |
+| 4 | Home hub TUI | Live refresh loop; optional `[tui]` extra (Textual) while keeping Rich fallback; keyboard shortcuts (rerun probes, open reports, launch start, toggle strict, open browser); summary path stays pure stdout. | `home` interactive mode navigable; `--no-tui` unchanged; view uses only controller callbacks (no subprocess coupling). | 🟡 Planned | Dec 2025 |
+| 5 | Docs & ergonomics | README updates (pipx/uvx + `[tui]` extra, command examples); add small screenshot/GIF; `just doctor` / `just start-dev` helpers; report retention note. | Docs merged; just commands runnable; screenshot linked; CI recipe documented. | 🟡 Planned | Dec 2025 |
+| 6 | Quality gates | Record runs: `hatch run lint`, `hatch run typecheck`, `pytest starter_cli/tests/unit/home`; optional smoke script for doctor without network; update tracker log with dates. | All gates green; tracker log updated; smoke script side-effect free. | 🟡 Planned | Dec 2025 |
+
 ## Phase 0 Decisions
 - **UI stack**: Rich remains baseline; Textual added as optional extra (`starter_cli[tui]`) for the hub. Fallback to plain console with `--no-tui`.
 - **Doctor schema**: Versioned at `starter_contracts/doctor_v1.json` (draft 2020-12), enumerating probes and services with states `ok|warn|error|skipped`.
