@@ -171,7 +171,8 @@ jobs:
       - name: Python dependency audit (pip-audit)
         run: |
           hatch run python -m pip install pip-audit
-          hatch run pip-audit --progress-spinner off
+          pip freeze | grep -v "^api-service==" > /tmp/pip-audit-req.txt
+          hatch run pip-audit --progress-spinner off -r /tmp/pip-audit-req.txt
 
       - name: Python SBOM (CycloneDX)
         run: |

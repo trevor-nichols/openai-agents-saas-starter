@@ -143,6 +143,9 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+# allow env adapter package to be tracked
+!starter_cli/adapters/env/
+!starter_cli/adapters/env/**
 
 # Spyder project settings
 .spyderproject
