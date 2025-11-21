@@ -66,6 +66,7 @@ All commands run via `python -m starter_cli.app …` or `just cli cmd='…'`.
 - `infra` – wraps `just dev-*` and `just vault-*` plus dependency checks.
 - `status` – manages `/api/v1/status` subscriptions/incidents.
 - `config dump-schema` – audits every FastAPI setting with env alias, default, type, and wizard coverage.
+- `home` / `doctor` – probe-driven health with TUI. Probes are grouped by category (core, secrets, billing) and can be suppressed intentionally via `EXPECT_API_DOWN`, `EXPECT_FRONTEND_DOWN`, `EXPECT_DB_DOWN`, `EXPECT_REDIS_DOWN` (logged once at startup, not shown in the TUI). Services panel collapses when it would duplicate backend/frontend probes; probes remain the source of truth in TUI and JSON/Markdown reports.
 
 Refer to `starter_cli/README.md` for detailed flags, answers-file formats, and contribution rules (imports must stay side-effect free; new env knobs require inventory + tracker updates).
 

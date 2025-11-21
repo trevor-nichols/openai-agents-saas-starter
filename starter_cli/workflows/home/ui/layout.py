@@ -24,16 +24,21 @@ def build_home_layout(
         Layout(name="body"),
         Layout(name="footer", size=7),
     )
-    layout["body"].split_row(
-        Layout(name="probes"),
-        Layout(name="services", size=40),
-    )
+    show_services = _should_show_services(services)
+    if show_services:
+        layout["body"].split_row(
+            Layout(name="probes"),
+            Layout(name="services", size=40),
+        )
+    else:
+        layout["body"].split_row(Layout(name="probes"))
     layout["footer"].split_column(
         Layout(name="footer_shortcuts", size=6),
         Layout(name="footer_summary", size=1),
     )
     layout["probes"].update(Panel(probes_panel(probes), title="Probes", border_style="magenta"))
-    layout["services"].update(_services_panel(services))
+    if show_services:
+        layout["services"].update(_services_panel(services))
     layout["footer_shortcuts"].update(_shortcuts_panel(shortcuts))
     layout["footer_summary"].update(_summary_line(summary, profile, strict))
     return layout
@@ -72,6 +77,15 @@ def _summary_line(summary: dict[str, int], profile: str, strict: bool) -> Text:
     text.append(f"error={summary.get('error',0)} ", style="bold red")
     text.append(f"skipped={summary.get('skipped',0)}", style="bright_black")
     return text
+
+
+def _should_show_services(services: list[ServiceStatus]) -> bool:
+    if not services:
+        return False
+    # Hide when services mirror probes (backend/frontend) to avoid duplication; show when others appear.
+    known_duplicates = {"backend", "frontend"}
+    labels = {svc.label for svc in services}
+    return any(label not in known_duplicates for label in labels)
 
 
 __all__ = ["build_home_layout"]

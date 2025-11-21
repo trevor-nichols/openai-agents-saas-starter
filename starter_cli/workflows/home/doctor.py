@@ -24,7 +24,7 @@ class DoctorRunner:
         self.profile = profile
         self.strict = strict
         self.warn_only = (profile.lower() in SAFE_ENVIRONMENTS) and not strict
-        self.expect_down = self._detect_expect_down(dict(os.environ))
+        self.expect_down = _detect_expect_down(dict(os.environ))
 
     # ------------------------------------------------------------------
     # Public API
@@ -42,7 +42,7 @@ class DoctorRunner:
         try:
             probes = self._run_probes(log_suppressed=log_suppressed)
         except TypeError:
-            # Backward/monkeypatch compatibility for tests that stub _run_probes without args
+            # compatibility for test stubs that don't accept kwargs
             probes = self._run_probes()
         services = self._build_services(probes)
         summary = self._summarize(probes)
@@ -96,7 +96,7 @@ class DoctorRunner:
                     metadata=probe.metadata,
                 )
             )
-        return services
+        return _prune_duplicate_services(services, probes)
 
     def _summarize(self, probes: list[ProbeResult]) -> dict[str, int]:
         summary = {state.value: 0 for state in ProbeState}
@@ -191,21 +191,6 @@ class DoctorRunner:
         return {k: v for k, v in data.items() if v is not None}
 
     @staticmethod
-    def _detect_expect_down(env: Mapping[str, str]) -> set[str]:
-        expect_flags = {
-            "api": "EXPECT_API_DOWN",
-            "frontend": "EXPECT_FRONTEND_DOWN",
-            "database": "EXPECT_DB_DOWN",
-            "redis": "EXPECT_REDIS_DOWN",
-        }
-        lowered = {k: v.lower() for k, v in env.items() if isinstance(v, str)}
-        return {
-            name
-            for name, flag in expect_flags.items()
-            if lowered.get(flag, "") in {"1", "true", "yes"}
-        }
-
-    @staticmethod
     def _with_category(result: ProbeResult, category: str) -> ProbeResult:
         metadata = dict(result.metadata) if result.metadata else {}
         metadata.setdefault("category", category)
@@ -218,6 +203,38 @@ class DoctorRunner:
             metadata=metadata,
             created_at=result.created_at,
         )
+
+
+def _prune_duplicate_services(
+    services: list[ServiceStatus], probes: list[ProbeResult]
+) -> list[ServiceStatus]:
+    if not services:
+        return services
+    probe_names = {p.name for p in probes}
+    filtered: list[ServiceStatus] = []
+    for svc in services:
+        # Drop services that just mirror probes (backend/api, frontend/frontend)
+        if svc.label == "backend" and "api" in probe_names:
+            continue
+        if svc.label == "frontend" and "frontend" in probe_names:
+            continue
+        filtered.append(svc)
+    return filtered
+
+
+def _detect_expect_down(env: Mapping[str, str]) -> set[str]:
+    expect_flags = {
+        "api": "EXPECT_API_DOWN",
+        "frontend": "EXPECT_FRONTEND_DOWN",
+        "database": "EXPECT_DB_DOWN",
+        "redis": "EXPECT_REDIS_DOWN",
+    }
+    lowered = {k: v.lower() for k, v in env.items() if isinstance(v, str)}
+    return {
+        name
+        for name, flag in expect_flags.items()
+        if lowered.get(flag, "") in {"1", "true", "yes"}
+    }
 
 
 def detect_profile() -> str:
