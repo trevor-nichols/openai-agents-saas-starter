@@ -17,7 +17,11 @@ def upgrade() -> None:
         "refresh_token",
         new_column_name="refresh_token_hash",
     )
-    op.execute("TRUNCATE TABLE service_account_tokens")
+    bind = op.get_bind()
+    if bind is not None and bind.dialect.name == "sqlite":
+        op.execute("DELETE FROM service_account_tokens")
+    else:
+        op.execute("TRUNCATE TABLE service_account_tokens")
 
 
 def downgrade() -> None:

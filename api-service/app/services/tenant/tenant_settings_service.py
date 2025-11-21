@@ -158,6 +158,8 @@ def get_tenant_settings_service() -> TenantSettingsService:
 
 class _TenantSettingsHandle:
     def __getattr__(self, name: str):
+        if name == "get_tenant_settings_service":
+            return get_tenant_settings_service
         return getattr(get_tenant_settings_service(), name)
 
 

@@ -16,7 +16,17 @@ branch_labels = None
 depends_on = None
 
 
+def _utcnow_default() -> sa.TextClause:
+    """Return a cross-dialect 'now' expression compatible with SQLite and Postgres."""
+
+    bind = op.get_bind()
+    if bind is not None and bind.dialect.name == "sqlite":
+        return sa.text("CURRENT_TIMESTAMP")
+    return sa.text("timezone('utc', now())")
+
+
 def upgrade() -> None:
+    utc_now = _utcnow_default()
     op.create_table(
         "tenant_accounts",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
@@ -25,7 +35,7 @@ def upgrade() -> None:
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
-            server_default=sa.text("timezone('utc', now())"),
+            server_default=utc_now,
             nullable=False,
         ),
     )
@@ -46,13 +56,13 @@ def upgrade() -> None:
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
-            server_default=sa.text("timezone('utc', now())"),
+            server_default=utc_now,
             nullable=False,
         ),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
-            server_default=sa.text("timezone('utc', now())"),
+            server_default=utc_now,
             nullable=False,
         ),
         sa.UniqueConstraint("code", name="uq_billing_plans_code"),
@@ -67,7 +77,7 @@ def upgrade() -> None:
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
-            server_default=sa.text("timezone('utc', now())"),
+            server_default=utc_now,
             nullable=False,
         ),
         sa.ForeignKeyConstraint(
@@ -97,7 +107,7 @@ def upgrade() -> None:
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
-            server_default=sa.text("timezone('utc', now())"),
+            server_default=utc_now,
             nullable=False,
         ),
         sa.ForeignKeyConstraint(
@@ -124,7 +134,7 @@ def upgrade() -> None:
             "starts_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("timezone('utc', now())"),
+            server_default=utc_now,
         ),
         sa.Column("current_period_start", sa.DateTime(timezone=True), nullable=True),
         sa.Column("current_period_end", sa.DateTime(timezone=True), nullable=True),
@@ -136,13 +146,13 @@ def upgrade() -> None:
             "created_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("timezone('utc', now())"),
+            server_default=utc_now,
         ),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("timezone('utc', now())"),
+            server_default=utc_now,
         ),
         sa.ForeignKeyConstraint(
             ["tenant_id"],
@@ -178,7 +188,7 @@ def upgrade() -> None:
             "created_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("timezone('utc', now())"),
+            server_default=utc_now,
         ),
         sa.ForeignKeyConstraint(
             ["subscription_id"],
@@ -206,7 +216,7 @@ def upgrade() -> None:
             "reported_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("timezone('utc', now())"),
+            server_default=utc_now,
         ),
         sa.Column("external_event_id", sa.String(length=128), nullable=True),
         sa.ForeignKeyConstraint(
@@ -261,13 +271,13 @@ def upgrade() -> None:
             "created_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("timezone('utc', now())"),
+            server_default=utc_now,
         ),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("timezone('utc', now())"),
+            server_default=utc_now,
         ),
         sa.ForeignKeyConstraint(
             ["tenant_id"],
@@ -314,7 +324,7 @@ def upgrade() -> None:
             "created_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("timezone('utc', now())"),
+            server_default=utc_now,
         ),
         sa.ForeignKeyConstraint(
             ["conversation_id"],
