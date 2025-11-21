@@ -193,7 +193,7 @@ jobs:
 
       - name: Node SBOM (CycloneDX)
         working-directory: web-app
-        run: pnpm dlx @cyclonedx/bom -o ../frontend-sbom.json
+        run: pnpm dlx @cyclonedx/cdxgen -o ../frontend-sbom.json -t javascript --no-analytics
 
       - name: Upload SBOM artifacts
         if: always()

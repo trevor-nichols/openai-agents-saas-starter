@@ -131,6 +131,13 @@ def _validate_tavily(
     settings: ProviderSettingsProtocol,
     strict: bool,
 ) -> Iterable[ProviderViolation]:
+    """Warn when Tavily search is unavailable.
+
+    Tavily is an optional enhancement for agent web-search. Missing credentials
+    should never block startup, even when strict parity checks are enabled, so
+    this violation is always non-fatal.
+    """
+
     if settings.tavily_api_key and settings.tavily_api_key.strip():
         return []
 
@@ -138,8 +145,10 @@ def _validate_tavily(
         ProviderViolation(
             provider="tavily",
             code="missing_tavily_api_key",
-            message="Web search tools require TAVILY_API_KEY. Agents will continue "
-            "without the Tavily tool when this value is unset.",
-            fatal=strict,
+            message=(
+                "Web search tools require TAVILY_API_KEY; Tavily tools will be disabled "
+                "until it is configured."
+            ),
+            fatal=False,
         )
     ]

@@ -14,6 +14,9 @@ depends_on = None
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    dialect = bind.dialect.name if bind is not None else ""
+
     op.add_column(
         "service_account_tokens",
         sa.Column(
@@ -23,7 +26,8 @@ def upgrade() -> None:
             server_default="legacy-hs256",
         ),
     )
-    op.alter_column("service_account_tokens", "signing_kid", server_default=None)
+    if dialect != "sqlite":
+        op.alter_column("service_account_tokens", "signing_kid", server_default=None)
 
 
 def downgrade() -> None:
