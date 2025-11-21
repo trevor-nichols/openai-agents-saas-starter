@@ -12,8 +12,11 @@ from starter_cli.workflows.home.start import StartRunner
 
 class FakeProc(SimpleNamespace):
     def __init__(self, pid: int = 1234):
-        super().__init__(pid=pid)
+        super().__init__(pid=pid, stdout=None)
+        self._poll = None
 
+    def poll(self):
+        return self._poll
 
 def test_start_runner_handles_missing_command(monkeypatch):
     ctx = build_context()
@@ -33,7 +36,7 @@ def test_start_runner_success_with_stubbed_health(monkeypatch):
     monkeypatch.setattr(
         start_mod,
         "subprocess",
-        SimpleNamespace(Popen=lambda *args, **kwargs: fake_proc),
+        SimpleNamespace(Popen=lambda *args, **kwargs: fake_proc, PIPE="PIPE", STDOUT="STDOUT"),
     )
 
     ok_result = ProbeResult(name="api", state=ProbeState.OK, detail="ok")
@@ -42,3 +45,25 @@ def test_start_runner_success_with_stubbed_health(monkeypatch):
     runner = StartRunner(ctx, target="dev", timeout=0.1, open_browser=False, skip_infra=True)
     assert runner.run() == 0
 
+
+def test_start_runner_flapping_health(monkeypatch):
+    ctx = build_context()
+    fake_proc = FakeProc()
+    monkeypatch.setattr(
+        start_mod,
+        "subprocess",
+        SimpleNamespace(Popen=lambda *args, **kwargs: fake_proc, PIPE="PIPE", STDOUT="STDOUT"),
+    )
+
+    calls = {"api": 0}
+
+    def api_probe_flap():
+        calls["api"] += 1
+        state = ProbeState.ERROR if calls["api"] == 1 else ProbeState.OK
+        return ProbeResult(name="api", state=state, detail="flap")
+
+    ok_result = ProbeResult(name="frontend", state=ProbeState.OK, detail="ok")
+    monkeypatch.setattr(start_mod, "api_probe", api_probe_flap)
+    monkeypatch.setattr(start_mod, "frontend_probe", lambda: ok_result)
+    runner = StartRunner(ctx, target="backend", timeout=1.5, open_browser=False)
+    assert runner.run() == 0
