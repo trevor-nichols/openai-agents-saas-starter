@@ -201,6 +201,9 @@ class Console:
     ) -> None:
         self._log("SUCCESS", message, topic, stream or self.stream)
 
+    def rule(self, title: str) -> None:
+        self._rich_out.rule(title, style="section.rule")
+
     def note(self, message: str, topic: str | None = None) -> None:
         self._log("NOTE", message, topic, self.stream)
 
