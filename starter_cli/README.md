@@ -15,6 +15,7 @@ values written here are exactly what FastAPI and the CLI share at runtime.
 - Docker + Docker Compose v2 (for `just dev-up` / `just vault-up`).
 - `just` task runner (install via `brew install just` or `sudo apt-get install just`).
 - Stripe CLI (required for `stripe setup` unless you pass `--skip-stripe-cli`).
+- Optional: install the CLI via `pipx install .` or `uvx --from . starter-cli` for global access.
 
 From the repo root run:
 
@@ -44,6 +45,12 @@ Most subcommands support headless execution. Provide answers via one or more JSO
   `scripts/` have been folded into the CLI.
 
 ## Command Catalog
+
+### 0. `home` / `doctor` / `start`
+
+- `home` — interactive hub (Rich layout) or summary (`--no-tui`) that surfaces probe status for env, ports, DB, Redis, API, frontend, Stripe/Vault config.
+- `doctor` — runs the same probes headlessly; writes `var/reports/operator-dashboard.{json,md}` by default; `--json PATH` / `--markdown PATH` override; `--strict` promotes warnings to errors; `--profile` overrides `ENVIRONMENT`. Suggested CI gate: `python -m starter_cli.app doctor --strict --profile staging`.
+- `start` — convenience launcher for `dev|backend|frontend`; boots services (`just dev-up`, `hatch run serve`, `pnpm dev --filter web-app`), waits for health up to `--timeout` (default 120s), optional `--open-browser`, and `--skip-infra` to avoid compose.
 
 ### 1. `setup wizard`
 

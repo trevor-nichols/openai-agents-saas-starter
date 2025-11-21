@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://starter.openai-agents.local/schemas/doctor_v1.json",
+  "title": "Starter CLI Doctor Report v1",
+  "type": "object",
+  "required": ["version", "probes", "services"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "profile": {
+      "type": "string",
+      "description": "CLI profile (local/staging/production)."
+    },
+    "strict": {
+      "type": "boolean"
+    },
+    "probes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/probe" }
+    },
+    "services": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/service" }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["ok", "warn", "error", "skipped"],
+      "properties": {
+        "ok": { "type": "integer", "minimum": 0 },
+        "warn": { "type": "integer", "minimum": 0 },
+        "error": { "type": "integer", "minimum": 0 },
+        "skipped": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+  "$defs": {
+    "state": {
+      "type": "string",
+      "enum": ["ok", "warn", "error", "skipped"]
+    },
+    "probe": {
+      "type": "object",
+      "required": ["name", "state"],
+      "properties": {
+        "name": { "type": "string" },
+        "state": { "$ref": "#/$defs/state" },
+        "detail": { "type": "string" },
+        "remediation": { "type": "string" },
+        "duration_ms": { "type": "number", "minimum": 0 },
+        "metadata": { "type": "object", "additionalProperties": true }
+      },
+      "additionalProperties": false
+    },
+    "service": {
+      "type": "object",
+      "required": ["label", "state"],
+      "properties": {
+        "label": { "type": "string" },
+        "state": { "$ref": "#/$defs/state" },
+        "endpoints": {
+          "type": "array",
+          "items": { "type": "string", "format": "uri" }
+        },
+        "pid": { "type": "integer" },
+        "detail": { "type": "string" },
+        "metadata": { "type": "object", "additionalProperties": true }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
