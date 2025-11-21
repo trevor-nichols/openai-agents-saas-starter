@@ -22,10 +22,16 @@ def ports_probe() -> ProbeResult:
     failing = [c for c in checks if not c[1]]
     success = not failing
     detail = ", ".join(
-        f"{label}:{host}:{port}={'up' if ok else 'down'}" for label, ok, detail, host, port in checks
+        f"{label}:{host}:{port}={'up' if ok else 'down'}"
+        for label, ok, detail, host, port in checks
     )
-    remediation = None if success else "Start the missing service or adjust API_BASE_URL/APP_PUBLIC_URL."
-    metadata = {label: {"host": host, "port": port, "detail": detail} for label, ok, detail, host, port in checks}
+    remediation = (
+        None if success else "Start the missing service or adjust API_BASE_URL/APP_PUBLIC_URL."
+    )
+    metadata = {
+        label: {"host": host, "port": port, "detail": detail}
+        for label, ok, detail, host, port in checks
+    }
     return simple_result(
         name="ports",
         success=success,

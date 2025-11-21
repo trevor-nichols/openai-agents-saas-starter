@@ -6,12 +6,7 @@ from rich.panel import Panel
 from rich.text import Text
 
 from starter_cli.core.status_models import ActionShortcut, ProbeResult, ServiceStatus
-from starter_cli.workflows.home.ui.widgets import (
-    probes_table,
-    services_table,
-    shortcuts_panel,
-    state_chip,
-)
+from starter_cli.workflows.home.ui.widgets import probes_table, services_table, shortcuts_panel
 
 
 def build_home_layout(

@@ -5,8 +5,6 @@ import socket
 import threading
 import time
 
-import pytest
-
 from starter_cli.core.status_models import ProbeResult, ProbeState
 from starter_cli.workflows.home.probes.util import (
     guard_probe,
@@ -18,7 +16,7 @@ from starter_cli.workflows.home.probes.util import (
 
 
 class _OKHandler(http.server.BaseHTTPRequestHandler):
-    def do_GET(self):  # noqa: N802
+    def do_GET(self):
         self.send_response(200)
         self.end_headers()
 

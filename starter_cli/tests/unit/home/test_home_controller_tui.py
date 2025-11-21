@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 from starter_cli.core.context import build_context
 from starter_cli.core.status_models import ProbeResult, ProbeState, ServiceStatus
 from starter_cli.workflows.home import service as home_service
@@ -46,7 +44,7 @@ def test_home_controller_refresh_loop(monkeypatch):
     monkeypatch.setattr(home_service, "DoctorRunner", lambda ctx, profile, strict: FakeRunner())
     monkeypatch.setattr(home_service, "Live", lambda *args, **kwargs: DummyLive())
     # avoid sleep blocking
-    monkeypatch.setattr(home_service.console._rich_out, "sleep", lambda s: None, raising=False)
+    monkeypatch.setattr(home_service.time, "sleep", lambda s: None)
 
     try:
         controller.run(use_tui=True)

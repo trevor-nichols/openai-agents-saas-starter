@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import os
-from typing import Tuple
+from typing import Any
 from urllib.parse import urlparse
 
-from starter_cli.core.status_models import ProbeResult, ProbeState
+from starter_cli.core.status_models import ProbeResult
 from starter_cli.workflows.home.probes.util import simple_result, tcp_check
 
 try:  # optional dependency; backend already uses asyncpg
@@ -67,7 +67,7 @@ def db_probe() -> ProbeResult:
     )
 
 
-def _pg_ping(url: str, *, timeout: float = 1.5) -> Tuple[bool | None, str]:
+def _pg_ping(url: str, *, timeout: float = 1.5) -> tuple[bool | None, str]:
     """Lightweight Postgres ping using asyncpg when available.
 
     Returns (ok|False|None, detail). ``None`` means ping skipped (asyncpg unavailable).
@@ -77,7 +77,8 @@ def _pg_ping(url: str, *, timeout: float = 1.5) -> Tuple[bool | None, str]:
         return None, "asyncpg not installed; ping skipped"
 
     async def _run_ping() -> str:
-        conn = await asyncpg.connect(dsn=url, timeout=timeout)
+        assert asyncpg is not None
+        conn = await asyncpg.connect(dsn=url, timeout=int(timeout))
         try:
             await conn.execute("SELECT 1")
             return "select 1 ok"

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from typing import Any
 from urllib.parse import urlparse
 
 from starter_cli.core.status_models import ProbeResult
@@ -9,7 +10,7 @@ from starter_cli.workflows.home.probes.util import simple_result, tcp_check
 try:
     import redis
 except Exception:  # pragma: no cover - optional dependency
-    redis = None
+    redis = None  # type: ignore[assignment]
 
 
 def redis_probe() -> ProbeResult:

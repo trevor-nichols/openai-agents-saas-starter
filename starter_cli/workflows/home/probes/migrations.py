@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Tuple
 
 from starter_cli.core.constants import PROJECT_ROOT
 from starter_cli.core.status_models import ProbeResult, ProbeState
@@ -81,7 +80,7 @@ def _latest_migration_version(versions_dir: Path) -> str | None:
     return stem.split("_")[0] if "_" in stem else stem
 
 
-def _db_revision(db_url: str) -> Tuple[str | None, str | None]:
+def _db_revision(db_url: str) -> tuple[str | None, str | None]:
     """Fetch the current alembic revision from the database.
 
     Returns (revision|None, detail). None means unknown/unavailable.
@@ -92,12 +91,12 @@ def _db_revision(db_url: str) -> Tuple[str | None, str | None]:
         return None, detail
 
     try:
-        import asyncpg  # type: ignore
+        import asyncpg
     except Exception:  # pragma: no cover - same fallback as _pg_ping
         return None, "asyncpg not installed; cannot read alembic_version"
 
     async def _fetch_rev() -> str | None:
-        conn = await asyncpg.connect(dsn=db_url, timeout=1.5)
+        conn = await asyncpg.connect(dsn=db_url, timeout=2)
         try:
             row = await conn.fetchrow("SELECT version_num FROM alembic_version LIMIT 1;")
             return row["version_num"] if row else None

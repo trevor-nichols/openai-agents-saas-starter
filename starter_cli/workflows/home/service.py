@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable
+import time
 
 from rich.live import Live
-from rich.panel import Panel
 
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext
@@ -48,6 +47,7 @@ class HomeController:
     ) -> None:
         shortcuts = self._build_shortcuts(runner)
         refresh_seconds = 2.0
+        refresh_hz = 1 / refresh_seconds
         with Live(
             build_home_layout(
                 probes=probes,
@@ -57,7 +57,7 @@ class HomeController:
                 strict=runner.strict,
                 shortcuts=shortcuts,
             ),
-            refresh_per_second=1 / refresh_seconds if refresh_seconds else None,
+            refresh_per_second=refresh_hz,
             console=console._rich_out,
         ) as live:
             # Simple refresh loop; could be replaced with Textual for richer interactivity
@@ -74,7 +74,7 @@ class HomeController:
                         shortcuts=shortcuts,
                     )
                 )
-                console._rich_out.sleep(refresh_seconds)
+                time.sleep(refresh_seconds)
 
     def _print_summary(self, summary: HomeSummary) -> None:
         console.rule("Starter CLI Home")

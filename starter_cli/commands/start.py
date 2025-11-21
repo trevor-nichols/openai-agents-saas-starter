@@ -5,7 +5,6 @@ import argparse
 from starter_cli.core import CLIContext
 from starter_cli.workflows.home.start import StartRunner
 
-
 TARGET_CHOICES = ("dev", "backend", "frontend")
 
 

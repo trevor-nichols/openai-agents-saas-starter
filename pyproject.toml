@@ -71,6 +71,7 @@ dev = [
   "types-redis>=4.6.0.12,<4.7.0",
   "types-PyYAML>=6.0.12.20240917,<7.0.0",
   "types-zxcvbn>=4.5.0,<5.0.0",
+  "types-jsonschema>=4.25.1.20251009,<5.0.0",
   "boto3-stubs>=1.35.0,<2.0.0",
   "stripe>=10.11.0,<11.0.0",
   "jsonschema>=4.22.0,<5.0.0",

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from typing import Tuple
 
 import httpx
 
@@ -44,7 +43,7 @@ def stripe_probe(*, warn_only: bool) -> ProbeResult:
     )
 
 
-def _stripe_ping(secret_key: str, *, timeout: float = 1.5) -> Tuple[bool, str, int | None]:
+def _stripe_ping(secret_key: str, *, timeout: float = 1.5) -> tuple[bool, str, int | None]:
     """Minimal auth check against Stripe balance endpoint."""
 
     try:

@@ -2,19 +2,18 @@ from __future__ import annotations
 
 import signal
 import subprocess
-import sys
 import threading
 import time
 import webbrowser
 from collections import deque
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext
 from starter_cli.core.constants import PROJECT_ROOT
-from starter_cli.core.status_models import ProbeResult, ProbeState
+from starter_cli.core.status_models import ProbeState
 from starter_cli.workflows.home.probes.api import api_probe
 from starter_cli.workflows.home.probes.frontend import frontend_probe
 
@@ -57,7 +56,7 @@ class StartRunner:
         if self.target in {"dev", "frontend"}:
             launches.append(self._spawn("frontend", ["pnpm", "dev", "--filter", "web-app"]))
 
-        failures = [l for l in launches if l.error]
+        failures = [launch for launch in launches if launch.error]
         if failures:
             for failure in failures:
                 console.error(f"Failed to start {failure.label}: {failure.error}")
@@ -67,16 +66,22 @@ class StartRunner:
         deadline = time.time() + (self.timeout or 120)
         api_ok = frontend_ok = False
         while time.time() < deadline:
-            api_ok = api_probe().state is ProbeState.OK if self.target in {"dev", "backend"} else True
+            api_ok = (
+                api_probe().state is ProbeState.OK if self.target in {"dev", "backend"} else True
+            )
             frontend_ok = (
-                frontend_probe().state is ProbeState.OK if self.target in {"dev", "frontend"} else True
+                frontend_probe().state is ProbeState.OK
+                if self.target in {"dev", "frontend"}
+                else True
             )
             if api_ok and frontend_ok:
                 break
             time.sleep(1)
 
         console.info(
-            f"Health check: api={'ok' if api_ok else 'down'} frontend={'ok' if frontend_ok else 'down'}"
+            "Health check: api="
+            f"{'ok' if api_ok else 'down'} "
+            f"frontend={'ok' if frontend_ok else 'down'}"
         )
 
         if not (api_ok and frontend_ok):
@@ -179,4 +184,4 @@ class StartRunner:
         signal.signal(signal.SIGTERM, _handler)
 
 
-__all__ = ["StartRunner", "LaunchResult"]
+__all__ = ["LaunchResult", "StartRunner"]

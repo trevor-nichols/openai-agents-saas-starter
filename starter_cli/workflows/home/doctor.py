@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Callable
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable
 
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext
@@ -21,7 +21,6 @@ from starter_cli.workflows.home.probes.ports import ports_probe
 from starter_cli.workflows.home.probes.redis import redis_probe
 from starter_cli.workflows.home.probes.stripe import stripe_probe
 from starter_cli.workflows.home.probes.vault import vault_probe
-
 
 DEFAULT_JSON_REPORT = PROJECT_ROOT / "var" / "reports" / "operator-dashboard.json"
 DEFAULT_MD_REPORT = PROJECT_ROOT / "var" / "reports" / "operator-dashboard.md"
@@ -113,7 +112,8 @@ class DoctorRunner:
     ) -> None:
         console.rule("Doctor report")
         console.info(
-            f"Profile={self.profile} strict={'yes' if self.strict else 'no'} warn_only={self.warn_only}"
+            f"Profile={self.profile} strict={'yes' if self.strict else 'no'} "
+            f"warn_only={self.warn_only}"
         )
         console.info(
             f"Probes: ok={summary.get('ok',0)} warn={summary.get('warn',0)} "
@@ -137,7 +137,7 @@ class DoctorRunner:
     ) -> None:
         payload = {
             "version": "v1",
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "profile": self.profile,
             "strict": self.strict,
             "probes": [self._serialize_probe(p) for p in probes],

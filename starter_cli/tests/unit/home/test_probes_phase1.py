@@ -1,10 +1,6 @@
 from __future__ import annotations
 
-import os
-
 import httpx
-import pytest
-
 from starter_cli.core.status_models import ProbeState
 from starter_cli.workflows.home.probes import db, migrations, redis, stripe, vault
 
@@ -56,7 +52,9 @@ def test_stripe_probe_warns_on_http_error(monkeypatch):
     def fake_get(*args, **kwargs):
         raise httpx.HTTPError("network down")
 
-    monkeypatch.setattr(stripe, "_stripe_ping", lambda key, timeout=1.5: (False, "http_error: x", None))
+    monkeypatch.setattr(
+        stripe, "_stripe_ping", lambda key, timeout=1.5: (False, "http_error: x", None)
+    )
     result = stripe.stripe_probe(warn_only=True)
     assert result.state is ProbeState.WARN
 
@@ -67,4 +65,3 @@ def test_vault_probe_missing_addr_warn(monkeypatch):
     result = vault.vault_probe(warn_only=True)
     assert result.state is ProbeState.WARN
     assert "VAULT_ADDR" in (result.detail or "")
-

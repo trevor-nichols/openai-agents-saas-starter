@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 
 import jsonschema
-
 from starter_cli.core.context import build_context
 from starter_cli.core.status_models import ProbeResult, ProbeState
 from starter_cli.workflows.home.doctor import DoctorRunner

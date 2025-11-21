@@ -11,10 +11,10 @@ import from both interactive TUIs and headless/reporting code paths.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from time import time
-from typing import Callable, Iterable, Mapping, Sequence
 
 
 class ProbeState(str, Enum):

@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-import pytest
-
 from starter_cli.core.context import build_context
 from starter_cli.core.status_models import ProbeResult, ProbeState
 from starter_cli.workflows.home import start as start_mod
