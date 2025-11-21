@@ -93,8 +93,11 @@ class StartRunner:
         code = 0 if api_ok and frontend_ok else 1
         if code != 0:
             console.error("Start failed; see above logs and remediation.")
-        self._cleanup_processes()
-        return code
+            self._cleanup_processes()
+            return code
+
+        console.success("Stack is running. Use Ctrl+C to stop processes started by this command.")
+        return 0
 
     # ------------------------------------------------------------------
     # Helpers
