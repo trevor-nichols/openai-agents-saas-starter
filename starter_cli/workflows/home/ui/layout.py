@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from rich import box
-from rich.console import Group
+from rich.console import Group, RenderableType
 from rich.layout import Layout
 from rich.panel import Panel
 from rich.text import Text
@@ -46,7 +46,7 @@ def _services_panel(services: list[ServiceStatus]) -> Panel:
 
 
 def _shortcuts_panel(shortcuts: list[ActionShortcut]) -> Panel:
-    shortcuts_content: Group | Text
+    shortcuts_content: RenderableType
     if not shortcuts:
         shortcuts_content = Text("No shortcuts available")
     else:

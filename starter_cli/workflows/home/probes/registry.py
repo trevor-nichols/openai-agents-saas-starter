@@ -37,10 +37,10 @@ class ProbeSpec:
 PROBE_SPECS: tuple[ProbeSpec, ...] = (
     ProbeSpec("environment", lambda ctx: _env_probe(), category="core"),
     ProbeSpec("ports", lambda ctx: _ports_probe(), category="core"),
-    ProbeSpec("database", lambda ctx: _db_probe(), category="core"),
-    ProbeSpec("redis", lambda ctx: _redis_probe(), category="core"),
-    ProbeSpec("api", lambda ctx: _api_probe(), category="core"),
-    ProbeSpec("frontend", lambda ctx: _frontend_probe(), category="core"),
+    ProbeSpec("database", lambda ctx: _db_probe(ctx.warn_only), category="core"),
+    ProbeSpec("redis", lambda ctx: _redis_probe(ctx.warn_only), category="core"),
+    ProbeSpec("api", lambda ctx: _api_probe(ctx.warn_only), category="core"),
+    ProbeSpec("frontend", lambda ctx: _frontend_probe(ctx.warn_only), category="core"),
     ProbeSpec("migrations", lambda ctx: _migrations_probe(), category="core"),
     ProbeSpec("secrets", lambda ctx: _secrets_probe(ctx), category="secrets", optional=True),
     ProbeSpec("billing", lambda ctx: _billing_probe(ctx), category="billing", optional=True),
@@ -59,28 +59,28 @@ def _ports_probe() -> ProbeResult:
     return ports_probe()
 
 
-def _db_probe() -> ProbeResult:
+def _db_probe(warn_only: bool) -> ProbeResult:
     from starter_cli.workflows.home.probes.db import db_probe
 
-    return db_probe()
+    return db_probe(warn_only=warn_only)
 
 
-def _redis_probe() -> ProbeResult:
+def _redis_probe(warn_only: bool) -> ProbeResult:
     from starter_cli.workflows.home.probes.redis import redis_probe
 
-    return redis_probe()
+    return redis_probe(warn_only=warn_only)
 
 
-def _api_probe() -> ProbeResult:
+def _api_probe(warn_only: bool) -> ProbeResult:
     from starter_cli.workflows.home.probes.api import api_probe
 
-    return api_probe()
+    return api_probe(warn_only=warn_only)
 
 
-def _frontend_probe() -> ProbeResult:
+def _frontend_probe(warn_only: bool) -> ProbeResult:
     from starter_cli.workflows.home.probes.frontend import frontend_probe
 
-    return frontend_probe()
+    return frontend_probe(warn_only=warn_only)
 
 
 def _migrations_probe() -> ProbeResult:

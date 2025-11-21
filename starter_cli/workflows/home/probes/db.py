@@ -13,7 +13,7 @@ except Exception:  # pragma: no cover - optional import
     asyncpg = None
 
 
-def db_probe() -> ProbeResult:
+def db_probe(*, warn_only: bool = False) -> ProbeResult:
     url = os.getenv("DATABASE_URL")
     if not url:
         return simple_result(
@@ -47,7 +47,7 @@ def db_probe() -> ProbeResult:
 
     success = tcp_ok and (ping_ok is not False)
     # Promote to WARN when we had to skip ping; ERROR when ping fails.
-    warn_on_failure = ping_ok is None
+    warn_on_failure = ping_ok is None or warn_only
     detail = "; ".join(
         part for part in (f"tcp={tcp_detail}", f"ping={ping_detail}") if part
     )

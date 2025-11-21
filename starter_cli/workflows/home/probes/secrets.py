@@ -54,7 +54,7 @@ def secrets_probe(ctx: ProbeContext) -> ProbeResult:
 # Provider-specific helpers
 # ---------------------------------------------------------------------------
 
-def _infisical_probe(ctx: ProbeContext, provider_raw: str) -> ProbeResult:
+def _infisical_probe(ctx: ProbeContext, provider_raw: str | None) -> ProbeResult:
     required = ("INFISICAL_PROJECT_ID", "INFISICAL_ENVIRONMENT", "INFISICAL_SERVICE_TOKEN")
     missing = _missing_keys(ctx.env, required)
     if missing:
@@ -69,7 +69,7 @@ def _infisical_probe(ctx: ProbeContext, provider_raw: str) -> ProbeResult:
     )
 
 
-def _aws_sm_probe(ctx: ProbeContext, provider_raw: str) -> ProbeResult:
+def _aws_sm_probe(ctx: ProbeContext, provider_raw: str | None) -> ProbeResult:
     region = ctx.env.get("AWS_REGION")
     has_keys = bool(ctx.env.get("AWS_ACCESS_KEY_ID") and ctx.env.get("AWS_SECRET_ACCESS_KEY"))
     has_profile = bool(ctx.env.get("AWS_PROFILE"))
@@ -90,7 +90,7 @@ def _aws_sm_probe(ctx: ProbeContext, provider_raw: str) -> ProbeResult:
     )
 
 
-def _azure_kv_probe(ctx: ProbeContext, provider_raw: str) -> ProbeResult:
+def _azure_kv_probe(ctx: ProbeContext, provider_raw: str | None) -> ProbeResult:
     vault_url = ctx.env.get("AZURE_KEY_VAULT_URL") or ctx.env.get("AZURE_KEY_VAULT_NAME")
     client_id = ctx.env.get("AZURE_CLIENT_ID")
     client_secret = ctx.env.get("AZURE_CLIENT_SECRET")
@@ -134,7 +134,7 @@ def _missing_keys(env: Mapping[str, str], keys: Iterable[str]) -> list[str]:
     return sorted(key for key in keys if not env.get(key))
 
 
-def _missing_env_result(provider_raw: str, missing: Iterable[str], warn_only: bool) -> ProbeResult:
+def _missing_env_result(provider_raw: str | None, missing: Iterable[str], warn_only: bool) -> ProbeResult:
     missing_list = list(missing)
     detail = f"missing env: {', '.join(missing_list)}"
     return ProbeResult(
@@ -146,7 +146,7 @@ def _missing_env_result(provider_raw: str, missing: Iterable[str], warn_only: bo
     )
 
 
-def _wrap(provider_name: str, provider_raw: str, result: ProbeResult) -> ProbeResult:
+def _wrap(provider_name: str, provider_raw: str | None, result: ProbeResult) -> ProbeResult:
     """Rename underlying provider probe to 'secrets' while keeping metadata."""
     base_metadata = dict(result.metadata) if result.metadata else {}
     base_metadata["provider"] = provider_raw or provider_name

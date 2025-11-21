@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Mapping
 from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
@@ -11,7 +12,7 @@ from starter_cli.core import CLIContext
 from starter_cli.core.constants import PROJECT_ROOT, SAFE_ENVIRONMENTS
 from starter_cli.core.status_models import ProbeResult, ProbeState, ServiceStatus
 from starter_cli.workflows.home.probes import util
-from starter_cli.workflows.home.probes.registry import PROBE_SPECS, ProbeContext
+from starter_cli.workflows.home.probes.registry import PROBE_SPECS, ProbeContext, ProbeSpec
 
 DEFAULT_JSON_REPORT = PROJECT_ROOT / "var" / "reports" / "operator-dashboard.json"
 DEFAULT_MD_REPORT = PROJECT_ROOT / "var" / "reports" / "operator-dashboard.md"
@@ -23,6 +24,7 @@ class DoctorRunner:
         self.profile = profile
         self.strict = strict
         self.warn_only = (profile.lower() in SAFE_ENVIRONMENTS) and not strict
+        self.expect_down = self._detect_expect_down(dict(os.environ))
 
     # ------------------------------------------------------------------
     # Public API
@@ -36,8 +38,12 @@ class DoctorRunner:
         self._write_markdown(md_out, probes, summary)
         return 1 if self._has_failures(probes) else 0
 
-    def collect(self) -> tuple[list[ProbeResult], list[ServiceStatus], dict[str, int]]:
-        probes = self._run_probes()
+    def collect(self, *, log_suppressed: bool = False) -> tuple[list[ProbeResult], list[ServiceStatus], dict[str, int]]:
+        try:
+            probes = self._run_probes(log_suppressed=log_suppressed)
+        except TypeError:
+            # Backward/monkeypatch compatibility for tests that stub _run_probes without args
+            probes = self._run_probes()
         services = self._build_services(probes)
         summary = self._summarize(probes)
         return probes, services, summary
@@ -45,7 +51,7 @@ class DoctorRunner:
     # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
-    def _run_probes(self) -> list[ProbeResult]:
+    def _run_probes(self, *, log_suppressed: bool = False) -> list[ProbeResult]:
         ctx = ProbeContext(
             env=os.environ,
             settings=self.ctx.optional_settings(),
@@ -53,9 +59,23 @@ class DoctorRunner:
             strict=self.strict,
             warn_only=self.warn_only,
         )
+        if log_suppressed and self.expect_down:
+            console.info(
+                "Suppressed probes via EXPECT_*_DOWN: " + ", ".join(sorted(self.expect_down)),
+                topic="probes",
+            )
         results: list[ProbeResult] = []
         for spec in PROBE_SPECS:
-            result = util.guard_probe(spec.name, lambda spec=spec: spec.factory(ctx))
+            def _runner(spec: object = spec) -> ProbeResult:
+                assert isinstance(spec, ProbeSpec)
+                return spec.factory(ctx)
+
+            result = util.guard_probe(
+                spec.name,
+                _runner,
+                force_skip=spec.name in self.expect_down,
+                skip_reason="suppressed by EXPECT_*_DOWN",
+            )
             results.append(self._with_category(result, spec.category))
         return results
 
@@ -169,6 +189,21 @@ class DoctorRunner:
         data = asdict(service)
         data.pop("created_at", None)
         return {k: v for k, v in data.items() if v is not None}
+
+    @staticmethod
+    def _detect_expect_down(env: Mapping[str, str]) -> set[str]:
+        expect_flags = {
+            "api": "EXPECT_API_DOWN",
+            "frontend": "EXPECT_FRONTEND_DOWN",
+            "database": "EXPECT_DB_DOWN",
+            "redis": "EXPECT_REDIS_DOWN",
+        }
+        lowered = {k: v.lower() for k, v in env.items() if isinstance(v, str)}
+        return {
+            name
+            for name, flag in expect_flags.items()
+            if lowered.get(flag, "") in {"1", "true", "yes"}
+        }
 
     @staticmethod
     def _with_category(result: ProbeResult, category: str) -> ProbeResult:

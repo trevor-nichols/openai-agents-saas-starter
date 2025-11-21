@@ -67,11 +67,21 @@ def guard_probe(
     *,
     default_state: ProbeState = ProbeState.ERROR,
     remediation: str | None = None,
+    force_skip: bool = False,
+    skip_reason: str | None = None,
 ) -> ProbeResult:
     """Execute a probe, converting exceptions into a ProbeResult.
 
     Keeps probe execution resilient so one failure does not abort the doctor run.
     """
+
+    if force_skip:
+        return ProbeResult(
+            name=name,
+            state=ProbeState.SKIPPED,
+            detail=skip_reason or "skipped",
+            remediation=remediation,
+        )
 
     try:
         result, duration_ms = time_call(func)
@@ -131,4 +141,3 @@ __all__ = [
     "tcp_check",
     "time_call",
 ]
-

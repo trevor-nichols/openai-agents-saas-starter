@@ -28,7 +28,10 @@ class HomeController:
 
     def run(self, use_tui: bool = True) -> int:
         runner = DoctorRunner(self.ctx, profile=detect_profile(), strict=False)
-        probes, services, summary = runner.collect()
+        try:
+            probes, services, summary = runner.collect(log_suppressed=True)
+        except TypeError:
+            probes, services, summary = runner.collect()
         try:
             if use_tui:
                 self._render_tui(runner, probes, services, summary)
@@ -69,7 +72,10 @@ class HomeController:
             ) as live:
                 while True:
                     runner = DoctorRunner(self.ctx, profile=detect_profile(), strict=False)
-                    probes, services, summary = runner.collect()
+                    try:
+                        probes, services, summary = runner.collect(log_suppressed=False)
+                    except TypeError:
+                        probes, services, summary = runner.collect()
                     live.update(
                         build_home_layout(
                             probes=probes,

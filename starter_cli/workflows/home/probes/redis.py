@@ -12,7 +12,7 @@ except Exception:  # pragma: no cover - optional dependency
     redis = None  # type: ignore[assignment]
 
 
-def redis_probe() -> ProbeResult:
+def redis_probe(*, warn_only: bool = False) -> ProbeResult:
     url = os.getenv("RATE_LIMIT_REDIS_URL") or os.getenv("REDIS_URL")
     if not url:
         return simple_result(
@@ -44,7 +44,7 @@ def redis_probe() -> ProbeResult:
         ping_ok, ping_detail = _redis_ping(url)
 
     success = tcp_ok and (ping_ok is not False)
-    warn_on_failure = ping_ok is None
+    warn_on_failure = (ping_ok is None) or warn_only
     detail = "; ".join(part for part in (f"tcp={tcp_detail}", f"ping={ping_detail}") if part)
     remediation = "Ensure Redis is running and reachable at configured URL."
     return simple_result(
