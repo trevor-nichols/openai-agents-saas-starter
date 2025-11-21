@@ -161,9 +161,23 @@ class StartRunner:
 
         try:
             while not self._stop_event.is_set():
-                for launch in self._launches:
+                for launch in list(self._launches):
                     proc = launch.process
                     if proc and proc.poll() is not None:
+                        # Allow transient infra/bootstrap commands (e.g., just dev-up)
+                        # to exit cleanly
+                        if launch.label == "infra" and proc.returncode == 0:
+                            console.info("infra completed successfully; continuing supervision")
+                            self._launches.remove(launch)
+                            continue
+
+                        if proc.returncode == 0:
+                            console.warn(
+                                f"{launch.label} exited cleanly; stopping remaining processes."
+                            )
+                            self._cleanup_processes()
+                            return 0
+
                         console.error(
                             f"{launch.label} exited with code {proc.returncode}; shutting down."
                         )
