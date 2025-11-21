@@ -12,14 +12,17 @@
 - Docs updated to describe new probe behavior and extensibility.
 
 ## Work Plan & Status
-- [ ] Design freeze: finalize ProbeSpec/ProbeContext shapes and registry contract.
-- [ ] Implement registry + runner wiring (doctor uses registry for probe execution).
-- [ ] Implement `secrets_probe` with provider dispatch (Vault/Infisical/AWS SM/Azure KV) and SKIP when not configured.
-- [ ] Implement `billing_probe` with Stripe awareness and SKIP when billing disabled; tighten Stripe error semantics.
-- [ ] Update tests: table-driven coverage for secrets/billing probes; runner maintains ordering; adjust fixtures as needed.
-- [ ] Docs: snapshot updates and brief note on probe extensibility/TUI expectations.
+- [x] Design freeze: finalize ProbeSpec/ProbeContext shapes and registry contract.
+- [x] Implement registry + runner wiring (doctor uses registry for probe execution).
+- [x] Implement `secrets_probe` with provider dispatch (Vault/Infisical/AWS SM/Azure KV) and SKIP when not configured.
+- [x] Implement `billing_probe` with Stripe awareness and SKIP when billing disabled; tighten Stripe error semantics.
+- [x] Update tests: table-driven coverage for secrets/billing probes; runner maintains ordering; adjust fixtures as needed.
+- [x] Docs: snapshot updates and brief note on probe extensibility/TUI expectations.
 
 ## Notes
 - Respect existing “safe env” warn-only semantics.
 - Keep `ProbeResult` contract stable; add category metadata via ProbeSpec for future UI grouping.
 - Avoid noisy WARNs for features the operator hasn’t enabled.
+
+### Docs quick note
+- Home/doctor probes now run from `probes/registry.py` with provider-aware `secrets` and billing-aware `billing` probes. Optional features SKIP when unconfigured, keeping the TUI clean. Future providers are added by appending a `ProbeSpec`.

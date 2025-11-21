@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-from collections.abc import Callable
 from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
@@ -12,15 +11,7 @@ from starter_cli.core import CLIContext
 from starter_cli.core.constants import PROJECT_ROOT, SAFE_ENVIRONMENTS
 from starter_cli.core.status_models import ProbeResult, ProbeState, ServiceStatus
 from starter_cli.workflows.home.probes import util
-from starter_cli.workflows.home.probes.api import api_probe
-from starter_cli.workflows.home.probes.db import db_probe
-from starter_cli.workflows.home.probes.env import env_coverage_probe
-from starter_cli.workflows.home.probes.frontend import frontend_probe
-from starter_cli.workflows.home.probes.migrations import migrations_probe
-from starter_cli.workflows.home.probes.ports import ports_probe
-from starter_cli.workflows.home.probes.redis import redis_probe
-from starter_cli.workflows.home.probes.stripe import stripe_probe
-from starter_cli.workflows.home.probes.vault import vault_probe
+from starter_cli.workflows.home.probes.registry import PROBE_SPECS, ProbeContext
 
 DEFAULT_JSON_REPORT = PROJECT_ROOT / "var" / "reports" / "operator-dashboard.json"
 DEFAULT_MD_REPORT = PROJECT_ROOT / "var" / "reports" / "operator-dashboard.md"
@@ -55,20 +46,17 @@ class DoctorRunner:
     # Internals
     # ------------------------------------------------------------------
     def _run_probes(self) -> list[ProbeResult]:
-        probe_fns: list[tuple[str, Callable[[], ProbeResult]]] = [
-            ("environment", env_coverage_probe),
-            ("ports", ports_probe),
-            ("database", db_probe),
-            ("redis", redis_probe),
-            ("api", api_probe),
-            ("frontend", frontend_probe),
-            ("migrations", migrations_probe),
-            ("stripe", lambda: stripe_probe(warn_only=self.warn_only)),
-            ("vault", lambda: vault_probe(warn_only=self.warn_only)),
-        ]
+        ctx = ProbeContext(
+            env=os.environ,
+            settings=self.ctx.optional_settings(),
+            profile=self.profile,
+            strict=self.strict,
+            warn_only=self.warn_only,
+        )
         results: list[ProbeResult] = []
-        for name, fn in probe_fns:
-            results.append(util.guard_probe(name, fn))
+        for spec in PROBE_SPECS:
+            result = util.guard_probe(spec.name, lambda spec=spec: spec.factory(ctx))
+            results.append(self._with_category(result, spec.category))
         return results
 
     def _build_services(self, probes: list[ProbeResult]) -> list[ServiceStatus]:
@@ -181,6 +169,20 @@ class DoctorRunner:
         data = asdict(service)
         data.pop("created_at", None)
         return {k: v for k, v in data.items() if v is not None}
+
+    @staticmethod
+    def _with_category(result: ProbeResult, category: str) -> ProbeResult:
+        metadata = dict(result.metadata) if result.metadata else {}
+        metadata.setdefault("category", category)
+        return ProbeResult(
+            name=result.name,
+            state=result.state,
+            detail=result.detail,
+            remediation=result.remediation,
+            duration_ms=result.duration_ms,
+            metadata=metadata,
+            created_at=result.created_at,
+        )
 
 
 def detect_profile() -> str:

@@ -7,7 +7,7 @@ from rich.panel import Panel
 from rich.text import Text
 
 from starter_cli.core.status_models import ActionShortcut, ProbeResult, ServiceStatus
-from starter_cli.workflows.home.ui.widgets import probes_table, services_table, shortcuts_panel
+from starter_cli.workflows.home.ui.widgets import probes_panel, services_table, shortcuts_panel
 
 
 def build_home_layout(
@@ -32,7 +32,7 @@ def build_home_layout(
         Layout(name="footer_shortcuts", size=6),
         Layout(name="footer_summary", size=1),
     )
-    layout["probes"].update(Panel(probes_table(probes), title="Probes", border_style="magenta"))
+    layout["probes"].update(Panel(probes_panel(probes), title="Probes", border_style="magenta"))
     layout["services"].update(_services_panel(services))
     layout["footer_shortcuts"].update(_shortcuts_panel(shortcuts))
     layout["footer_summary"].update(_summary_line(summary, profile, strict))
