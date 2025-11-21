@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 _PACKAGE_ROOT = Path(__file__).resolve().parent
 _BACKEND_ROOT = _PACKAGE_ROOT.parent / "api-service"
@@ -21,6 +22,9 @@ if _BACKEND_ROOT.exists():
     backend_path = str(_BACKEND_ROOT)
     if backend_path not in sys.path:
         sys.path.insert(0, backend_path)
+
+if TYPE_CHECKING:
+    from starter_cli import adapters, app, workflows
 
 
 def __getattr__(name: str):

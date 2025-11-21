@@ -5,13 +5,13 @@ import { rejectSignupRequest } from '@/lib/server/services/auth/signupGuardrails
 import type { RejectSignupRequestInput } from '@/types/signup';
 
 interface RouteParams {
-  params: {
-    requestId?: string;
-  };
+  params: Promise<{
+    requestId: string;
+  }>;
 }
 
 export async function POST(request: Request, { params }: RouteParams) {
-  const requestId = params?.requestId;
+  const { requestId } = await params;
   if (!requestId) {
     return NextResponse.json(
       {

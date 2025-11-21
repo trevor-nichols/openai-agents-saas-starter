@@ -94,7 +94,14 @@ def main(argv: list[str] | None = None, *, container: ApplicationContainer | Non
         width=args.console_width,
         no_color=args.no_color,
     )
-    ctx = _load_environment(app_container, args)
+    if (
+        getattr(args, "command", None) == "util"
+        and getattr(args, "util_command", None) == "run-with-env"
+    ):
+        # run-with-env manages its own env merging; avoid double-loading via CLI.
+        ctx = app_container.create_context(env_files=None)
+    else:
+        ctx = _load_environment(app_container, args)
 
     handler: Handler | None = getattr(args, "handler", None)
     if handler is None:
@@ -109,3 +116,7 @@ def main(argv: list[str] | None = None, *, container: ApplicationContainer | Non
 
 
 __all__ = ["build_parser", "main"]
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

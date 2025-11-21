@@ -6,13 +6,14 @@ import { listTenantBillingEvents } from '@/lib/server/services/billing';
 import type { StripeEventStatus } from '@/lib/api/client/types.gen';
 
 interface RouteContext {
-  params: {
-    tenantId?: string;
-  };
+  params: Promise<{
+    tenantId: string;
+  }>;
 }
 
-function resolveTenantId(context: RouteContext): string | null {
-  return context.params.tenantId ?? null;
+async function resolveTenantId(context: RouteContext): Promise<string | null> {
+  const { tenantId } = await context.params;
+  return tenantId ?? null;
 }
 
 function resolveTenantRole(request: NextRequest): string | null {
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   if (!billingEnabled) {
     return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
   }
-  const tenantId = resolveTenantId(context);
+  const tenantId = await resolveTenantId(context);
   if (!tenantId) {
     return NextResponse.json({ message: 'Tenant id is required.' }, { status: 400 });
   }

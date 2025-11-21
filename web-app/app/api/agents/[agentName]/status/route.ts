@@ -4,9 +4,9 @@ import { NextResponse } from 'next/server';
 import { getAgentStatus } from '@/lib/server/services/agents';
 
 interface RouteContext {
-  params: {
-    agentName?: string;
-  };
+  params: Promise<{
+    agentName: string;
+  }>;
 }
 
 function resolveErrorStatus(message: string): number {
@@ -21,7 +21,7 @@ function resolveErrorStatus(message: string): number {
 }
 
 export async function GET(_request: NextRequest, context: RouteContext) {
-  const agentName = context.params.agentName;
+  const { agentName } = await context.params;
   if (!agentName) {
     return NextResponse.json({ message: 'Agent name is required.' }, { status: 400 });
   }
@@ -36,4 +36,3 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     return NextResponse.json({ message }, { status });
   }
 }
-

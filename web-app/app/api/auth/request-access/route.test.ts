@@ -4,9 +4,21 @@ import type { NextRequest } from 'next/server';
 import { POST } from './route';
 
 const submitSignupAccessRequest = vi.hoisted(() => vi.fn());
+const SignupGuardrailServiceError = vi.hoisted(
+  () =>
+    class SignupGuardrailServiceError extends Error {
+      status: number;
+      constructor(message: string, status = 500) {
+        super(message);
+        this.name = 'SignupGuardrailServiceError';
+        this.status = status;
+      }
+    },
+);
 
 vi.mock('@/lib/server/services/auth/signupGuardrails', () => ({
   submitSignupAccessRequest,
+  SignupGuardrailServiceError,
 }));
 
 const buildRequest = (payload: unknown): NextRequest =>

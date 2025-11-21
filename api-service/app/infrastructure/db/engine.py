@@ -154,6 +154,7 @@ async def run_migrations_if_configured(*, force: bool = False) -> None:
 
     alembic_cfg = Config(str(_resolve_alembic_ini()))
     alembic_cfg.set_main_option("sqlalchemy.url", database_url)
+    alembic_cfg.set_main_option("script_location", str(_resolve_alembic_scripts()))
 
     logger.info("Running Alembic migrations (database_url=%s)", database_url)
     await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
@@ -164,6 +165,13 @@ def _resolve_alembic_ini() -> Path:
 
     project_root = Path(__file__).resolve().parents[3]
     return project_root / "alembic.ini"
+
+
+def _resolve_alembic_scripts() -> Path:
+    """Return the absolute path to the Alembic migrations directory."""
+
+    project_root = Path(__file__).resolve().parents[3]
+    return project_root / "alembic"
 
 
 async def _create_sqlite_schema() -> None:

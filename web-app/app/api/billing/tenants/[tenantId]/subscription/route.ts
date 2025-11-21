@@ -9,13 +9,13 @@ import {
 } from '@/lib/server/services/billing';
 
 interface RouteContext {
-  params: {
-    tenantId?: string;
-  };
+  params: Promise<{
+    tenantId: string;
+  }>;
 }
 
-function resolveTenantId(context: RouteContext): string | null {
-  const tenantId = context.params.tenantId;
+async function resolveTenantId(context: RouteContext): Promise<string | null> {
+  const { tenantId } = await context.params;
   if (!tenantId) {
     return null;
   }
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   if (!billingEnabled) {
     return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
   }
-  const tenantId = resolveTenantId(context);
+  const tenantId = await resolveTenantId(context);
   if (!tenantId) {
     return NextResponse.json({ message: 'Tenant id is required.' }, { status: 400 });
   }
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   if (!billingEnabled) {
     return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
   }
-  const tenantId = resolveTenantId(context);
+  const tenantId = await resolveTenantId(context);
   if (!tenantId) {
     return NextResponse.json({ message: 'Tenant id is required.' }, { status: 400 });
   }
@@ -86,7 +86,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   if (!billingEnabled) {
     return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
   }
-  const tenantId = resolveTenantId(context);
+  const tenantId = await resolveTenantId(context);
   if (!tenantId) {
     return NextResponse.json({ message: 'Tenant id is required.' }, { status: 400 });
   }

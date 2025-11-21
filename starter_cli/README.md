@@ -53,7 +53,8 @@ Most subcommands support headless execution. Provide answers via one or more JSO
 
 - `home` — interactive hub (Rich layout) or summary (`--no-tui`) that surfaces probe status for env, ports, DB, Redis, API, frontend, Stripe/Vault config.
 - `doctor` — runs the same probes headlessly; writes `var/reports/operator-dashboard.{json,md}` by default; `--json PATH` / `--markdown PATH` override; `--strict` promotes warnings to errors; `--profile` overrides `ENVIRONMENT`. Suggested CI gate: `python -m starter_cli.app doctor --strict --profile staging`.
-- `start` — convenience launcher for `dev|backend|frontend`; boots services (`just dev-up`, `hatch run serve`, `pnpm dev --filter web-app`), waits for health up to `--timeout` (default 120s), optional `--open-browser`, and `--skip-infra` to avoid compose.
+- `start` — convenience launcher for `dev|backend|frontend`; boots services (`just dev-up`, `hatch run serve`, `pnpm dev --filter web-app`), waits for health up to `--timeout` (default 120s), optional `--open-browser`, and `--skip-infra` to avoid compose. Use `--detached` to leave the stack running in the background (PIDs + logs recorded under `var/run/stack.json` / `var/log`) and `--force` to replace a previously tracked stack.
+- `stop` — stops the CLI-managed stack started with `start --detached`, sends SIGTERM/SIGKILL to tracked PIDs, runs `docker compose down` when infra was started, and clears `var/run/stack.json`.
 - `setup menu` — setup hub (alias `setup dashboard`) that lists wizard/secrets/stripe/db-release/usage/dev-user/geoip status with progress; interactive by default, `--no-tui` for a table, `--json` for machine output. Also reachable from the Home shortcut `S`.
 - Quick starts: `just start-dev` (compose + backend + frontend), `just start-backend`, `just start-frontend`, and `just doctor` (strict, JSON+MD reports).
 

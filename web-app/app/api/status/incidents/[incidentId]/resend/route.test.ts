@@ -27,6 +27,9 @@ const buildRequest = (payload: unknown): NextRequest =>
     json: vi.fn().mockResolvedValue(payload),
   }) as unknown as NextRequest;
 
+const context = (incidentId: string): Parameters<typeof POST>[1] => ({
+  params: Promise.resolve({ incidentId }),
+});
 describe('POST /api/status/incidents/[incidentId]/resend', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -36,22 +39,22 @@ describe('POST /api/status/incidents/[incidentId]/resend', () => {
 
   it('returns 202 when dispatch succeeds', async () => {
     const response = await POST(
-      buildRequest({ severity: 'major', tenant_id: 'tenant-1' }),
-      { params: { incidentId: 'inc-1' } },
+      buildRequest({ severity: 'major', tenant_id: '6b1b4a3e-9d2c-4f6a-8a4b-123456789abc' }),
+      context('inc-1'),
     );
 
     expect(response.status).toBe(202);
     await expect(response.json()).resolves.toEqual({ success: true, dispatched: 3 });
     expect(resendStatusIncident).toHaveBeenCalledWith('inc-1', {
       severity: 'major',
-      tenant_id: 'tenant-1',
+      tenant_id: '6b1b4a3e-9d2c-4f6a-8a4b-123456789abc',
     });
   });
 
   it('returns 401 when session is missing', async () => {
     getSessionMetaFromCookies.mockResolvedValueOnce(null);
 
-    const response = await POST(buildRequest({ severity: 'all' }), { params: { incidentId: 'inc-1' } });
+    const response = await POST(buildRequest({ severity: 'all' }), context('inc-1'));
 
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toEqual({ success: false, error: 'Missing access token.' });
@@ -63,7 +66,7 @@ describe('POST /api/status/incidents/[incidentId]/resend', () => {
       scopes: ['conversations:read'],
     });
 
-    const response = await POST(buildRequest({ severity: 'all' }), { params: { incidentId: 'inc-1' } });
+    const response = await POST(buildRequest({ severity: 'all' }), context('inc-1'));
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({
@@ -73,7 +76,7 @@ describe('POST /api/status/incidents/[incidentId]/resend', () => {
   });
 
   it('returns 422 for invalid payload', async () => {
-    const response = await POST(buildRequest({ severity: 'low' }), { params: { incidentId: 'inc-1' } });
+    const response = await POST(buildRequest({ severity: 'low' }), context('inc-1'));
 
     expect(response.status).toBe(422);
     const body = await response.json();
@@ -84,7 +87,7 @@ describe('POST /api/status/incidents/[incidentId]/resend', () => {
   it('maps not found errors to 404', async () => {
     resendStatusIncident.mockRejectedValueOnce(new Error('Not found'));
 
-    const response = await POST(buildRequest({ severity: 'major' }), { params: { incidentId: 'missing' } });
+    const response = await POST(buildRequest({ severity: 'major' }), context('missing'));
 
     expect(response.status).toBe(404);
     await expect(response.json()).resolves.toEqual({ success: false, error: 'Not found' });

@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ConversationHistory } from '@/types/conversations';
 import { useChatController } from '@/lib/chat/useChatController';
@@ -27,10 +27,21 @@ const { fetchConversationHistory, deleteConversationById } = vi.mocked(
 const { streamChat } = vi.mocked(await import('@/lib/api/chat'));
 const { useSendChatMutation } = vi.mocked(await import('@/lib/queries/chat'));
 
+const makeHistory = (id: string): ConversationHistory => ({
+  conversation_id: id,
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z',
+  messages: [],
+});
+
 describe('useChatController', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
+  });
+
+  beforeEach(() => {
+    fetchConversationHistory.mockImplementation(async (id: string) => makeHistory(id));
   });
 
   it('loads conversation history via selectConversation', async () => {
@@ -192,4 +203,3 @@ describe('useChatController', () => {
     expect(result.current.messages).toHaveLength(0);
   });
 });
-

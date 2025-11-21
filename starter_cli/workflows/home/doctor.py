@@ -83,6 +83,16 @@ class DoctorRunner:
 
     def _build_services(self, probes: list[ProbeResult]) -> list[ServiceStatus]:
         services: list[ServiceStatus] = []
+        stack_probe = next((p for p in probes if p.name == "stack"), None)
+        if stack_probe:
+            services.append(
+                ServiceStatus(
+                    label="stack",
+                    state=stack_probe.state,
+                    detail=stack_probe.detail,
+                    metadata=stack_probe.metadata,
+                )
+            )
         for key, label in (("api", "backend"), ("frontend", "frontend")):
             probe = next((p for p in probes if p.name == key), None)
             if probe is None:

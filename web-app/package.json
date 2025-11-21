@@ -14,7 +14,7 @@
     "generate:fixtures": "OPENAPI_INPUT=../api-service/.artifacts/openapi-billing-fixtures.json pnpm generate",
     "test:seed": "node ./scripts/test-seed.js",
     "test:e2e": "playwright test",
-    "test:unit": "vitest run --exclude tests/**",
+    "test:unit": "vitest run",
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build"
   },

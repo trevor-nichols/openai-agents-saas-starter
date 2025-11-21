@@ -26,12 +26,9 @@ const mockRequest = (overrides: Partial<NextRequest> = {}): NextRequest =>
     ...overrides,
   }) as unknown as NextRequest;
 
-const context = (tenantId?: string) =>
-  ({
-    params: {
-      tenantId,
-    },
-  }) as { params: { tenantId?: string } };
+const context = (tenantId?: string): Parameters<typeof GET>[1] => ({
+  params: Promise.resolve({ tenantId: tenantId as string }),
+});
 
 describe('/api/billing/tenants/[tenantId]/subscription route', () => {
   afterEach(() => {
@@ -133,4 +130,3 @@ describe('/api/billing/tenants/[tenantId]/subscription route', () => {
     });
   });
 });
-

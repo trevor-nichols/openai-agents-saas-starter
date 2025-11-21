@@ -4,13 +4,13 @@ import { normalizeSignupGuardrailError } from '@/app/api/auth/_utils/signupGuard
 import { revokeSignupInvite } from '@/lib/server/services/auth/signupGuardrails';
 
 interface RouteParams {
-  params: {
-    inviteId?: string;
-  };
+  params: Promise<{
+    inviteId: string;
+  }>;
 }
 
 export async function POST(_request: Request, { params }: RouteParams) {
-  const inviteId = params?.inviteId;
+  const { inviteId } = await params;
   if (!inviteId) {
     return NextResponse.json(
       {

@@ -27,10 +27,9 @@ function mapErrorToStatus(message: string): number {
   return 500;
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { incidentId: string } },
-) {
+type RouteParams = { params: Promise<{ incidentId: string }> };
+
+export async function POST(request: NextRequest, { params }: RouteParams) {
   const session = await getSessionMetaFromCookies();
   if (!session) {
     return NextResponse.json({ success: false, error: 'Missing access token.' }, { status: 401 });
@@ -42,7 +41,7 @@ export async function POST(
     );
   }
 
-  const incidentId = params.incidentId;
+  const { incidentId } = await params;
   if (!incidentId) {
     return NextResponse.json(
       { success: false, error: 'Incident id is required.' },

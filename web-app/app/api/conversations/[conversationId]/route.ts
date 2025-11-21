@@ -4,9 +4,14 @@ import { NextResponse } from 'next/server';
 import { deleteConversation, getConversationHistory } from '@/lib/server/services/conversations';
 
 interface RouteContext {
-  params: {
+  params: Promise<{
     conversationId?: string;
-  };
+  }>;
+}
+
+async function extractConversationId(context: RouteContext): Promise<string | undefined> {
+  const { conversationId } = await context.params;
+  return conversationId;
 }
 
 function resolveErrorStatus(message: string): number {
@@ -21,7 +26,7 @@ function resolveErrorStatus(message: string): number {
 }
 
 export async function GET(_request: NextRequest, context: RouteContext) {
-  const conversationId = context.params?.conversationId;
+  const conversationId = await extractConversationId(context);
   if (!conversationId) {
     return NextResponse.json({ message: 'Conversation id is required.' }, { status: 400 });
   }
@@ -38,7 +43,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 }
 
 export async function DELETE(_request: NextRequest, context: RouteContext) {
-  const conversationId = context.params?.conversationId;
+  const conversationId = await extractConversationId(context);
   if (!conversationId) {
     return NextResponse.json({ message: 'Conversation id is required.' }, { status: 400 });
   }
@@ -53,4 +58,3 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     return NextResponse.json({ message }, { status });
   }
 }
-

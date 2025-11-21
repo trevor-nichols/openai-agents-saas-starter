@@ -27,6 +27,8 @@ class StarterTUI(App[None]):
         Binding("s", "go_setup", "Setup", show=True),
         Binding("r", "refresh", "Refresh", show=True),
         Binding("g", "start_dev", "Start Dev", show=False),
+        Binding("x", "stop_stack", "Stop Stack", show=False),
+        Binding("l", "open_logs", "Logs", show=False),
         Binding("d", "doctor_strict", "Doctor Strict", show=False),
         Binding("o", "open_reports", "Reports", show=False),
         Binding("q", "quit", "Quit", show=True),
@@ -58,11 +60,17 @@ class StarterTUI(App[None]):
     async def action_start_dev(self) -> None:
         await self._dispatch_to_screen("handle_start_dev")
 
+    async def action_stop_stack(self) -> None:
+        await self._dispatch_to_screen("handle_stop_stack")
+
     async def action_doctor_strict(self) -> None:
         await self._dispatch_to_screen("handle_doctor_strict")
 
     async def action_open_reports(self) -> None:
         await self._dispatch_to_screen("handle_open_reports")
+
+    async def action_open_logs(self) -> None:
+        await self._dispatch_to_screen("handle_open_logs")
 
     async def action_quit(self) -> None:
         self.exit()

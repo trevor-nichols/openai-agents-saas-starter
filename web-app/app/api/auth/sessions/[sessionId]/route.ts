@@ -4,9 +4,9 @@ import { NextResponse } from 'next/server';
 import { revokeUserSession } from '@/lib/server/services/auth/sessions';
 
 interface RouteContext {
-  params: {
-    sessionId?: string;
-  };
+  params: Promise<{
+    sessionId: string;
+  }>;
 }
 
 function mapErrorToStatus(message: string): number {
@@ -21,7 +21,7 @@ function mapErrorToStatus(message: string): number {
 }
 
 export async function DELETE(_request: NextRequest, context: RouteContext) {
-  const sessionId = context.params.sessionId;
+  const { sessionId } = await context.params;
   if (!sessionId) {
     return NextResponse.json({ message: 'Session id is required.' }, { status: 400 });
   }
@@ -35,4 +35,3 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     return NextResponse.json({ message }, { status });
   }
 }
-

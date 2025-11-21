@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { revokeServiceAccountToken } from '@/lib/server/services/auth/serviceAccounts';
 
-interface RouteParams {
-  params: {
+type RouteParams = {
+  params: Promise<{
     jti: string;
-  };
-}
+  }>;
+};
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
-  const tokenId = params?.jti;
+  const { jti: tokenId } = await params;
   if (!tokenId) {
     return NextResponse.json(
       {

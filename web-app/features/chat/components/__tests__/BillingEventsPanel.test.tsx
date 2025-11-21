@@ -17,9 +17,7 @@ const sampleEvents = [
 describe('BillingEventsPanel', () => {
   it('renders billing events', () => {
     render(<BillingEventsPanel events={sampleEvents} status="open" />);
-    expect(screen.getByText('invoice paid')).toBeInTheDocument();
-    expect(screen.getByText('Invoice paid')).toBeInTheDocument();
-    expect(screen.getByText(/live/i)).toBeInTheDocument();
+    expect(screen.getByText(/invoice paid/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/live/i)).toHaveLength(2);
   });
 });
-

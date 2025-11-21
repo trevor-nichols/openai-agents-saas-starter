@@ -7,13 +7,13 @@ import { queryKeys } from '@/lib/queries/keys';
 
 type UseQueryOptionsParam = UseQueryOptions<unknown, unknown, unknown, readonly unknown[]>;
 type UseQueryFn = (options?: UseQueryOptionsParam) => unknown;
-const mockedUseQuery = vi.fn<UseQueryFn>();
+const mockedUseQuery = vi.hoisted(() => vi.fn<UseQueryFn>());
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: mockedUseQuery,
 }));
 
-const fetchUserSessions = vi.fn();
+const fetchUserSessions = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/api/accountSessions', () => ({
   fetchUserSessions: (...args: unknown[]) => fetchUserSessions(...args),
 }));
@@ -25,7 +25,8 @@ describe('useUserSessionsQuery', () => {
   });
 
   it('includes tenantId in query key and fetch params when provided', () => {
-    mockedUseQuery.mockImplementation(() => {
+    mockedUseQuery.mockImplementation((options) => {
+      options?.queryFn?.();
       return {};
     });
 
@@ -51,7 +52,8 @@ describe('useUserSessionsQuery', () => {
   });
 
   it('defaults to all tenants when no filter is supplied', () => {
-    mockedUseQuery.mockImplementation(() => {
+    mockedUseQuery.mockImplementation((options) => {
+      options?.queryFn?.();
       return {};
     });
 

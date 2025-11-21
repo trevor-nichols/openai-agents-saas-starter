@@ -13,8 +13,9 @@ vi.mock('@/lib/server/services/conversations', () => ({
   deleteConversation,
 }));
 
-const context = (conversationId?: string) =>
-  ({ params: { conversationId } } as { params: { conversationId?: string } });
+const context = (conversationId?: string): Parameters<typeof GET>[1] => ({
+  params: Promise.resolve({ conversationId }),
+});
 
 describe('/api/conversations/[conversationId] route', () => {
   afterEach(() => {
@@ -89,4 +90,3 @@ describe('/api/conversations/[conversationId] route', () => {
     });
   });
 });
-

@@ -11,8 +11,9 @@ vi.mock('@/lib/server/services/agents', () => ({
   getAgentStatus,
 }));
 
-const context = (agentName?: string) =>
-  ({ params: { agentName } } as { params: { agentName?: string } });
+const context = (agentName?: string): Parameters<typeof GET>[1] => ({
+  params: Promise.resolve({ agentName: agentName as string }),
+});
 
 describe('/api/agents/[agentName]/status route', () => {
   afterEach(() => {
@@ -52,4 +53,3 @@ describe('/api/agents/[agentName]/status route', () => {
     await expect(response.json()).resolves.toEqual({ message: 'Agent not found' });
   });
 });
-

@@ -12,8 +12,13 @@ vi.mock('@/lib/server/services/auth/serviceAccounts', () => ({
 
 const buildRequest = (body?: unknown): NextRequest =>
   ({
-    json: body !== undefined ? vi.fn().mockResolvedValue(body) : vi.fn().mockRejectedValue(new Error('parse error')),
+    json:
+      body !== undefined ? vi.fn().mockResolvedValue(body) : vi.fn().mockRejectedValue(new Error('parse error')),
   }) as unknown as NextRequest;
+
+const context = (jti: string): Parameters<typeof POST>[1] => ({
+  params: Promise.resolve({ jti }),
+});
 
 describe('/api/auth/service-accounts/tokens/[jti]/revoke route', () => {
   afterEach(() => {
@@ -23,7 +28,7 @@ describe('/api/auth/service-accounts/tokens/[jti]/revoke route', () => {
   it('revokes a token and returns success payload', async () => {
     const response = await POST(
       buildRequest({ reason: 'suspected leak' }),
-      { params: { jti: 'token-123' } },
+      context('token-123'),
     );
 
     expect(response.status).toBe(200);
@@ -35,7 +40,7 @@ describe('/api/auth/service-accounts/tokens/[jti]/revoke route', () => {
   });
 
   it('handles missing body by passing undefined reason', async () => {
-    const response = await POST(buildRequest(undefined), { params: { jti: 'token-abc' } });
+    const response = await POST(buildRequest(undefined), context('token-abc'));
 
     expect(response.status).toBe(200);
     expect(revokeServiceAccountToken).toHaveBeenCalledWith('token-abc', undefined);
@@ -44,7 +49,7 @@ describe('/api/auth/service-accounts/tokens/[jti]/revoke route', () => {
   it('maps auth errors to 401 responses', async () => {
     revokeServiceAccountToken.mockRejectedValueOnce(new Error('Missing access token'));
 
-    const response = await POST(buildRequest({ reason: 'test' }), { params: { jti: 'token-xyz' } });
+    const response = await POST(buildRequest({ reason: 'test' }), context('token-xyz'));
 
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toEqual({

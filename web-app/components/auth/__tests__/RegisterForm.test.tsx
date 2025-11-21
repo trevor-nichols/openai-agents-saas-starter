@@ -17,12 +17,17 @@ vi.mock('@/app/actions/auth/signup', () => ({
   registerTenantAction: (...args: unknown[]) => registerTenantAction(...args),
 }));
 
+const toast = vi.hoisted(() =>
+  Object.assign(vi.fn(), {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    dismiss: vi.fn(),
+  }),
+);
+
 vi.mock('sonner', () => ({
-  toast: vi.fn(),
-  success: vi.fn(),
-  error: vi.fn(),
-  info: vi.fn(),
-  dismiss: vi.fn(),
+  toast,
 }));
 
 const buildPolicy = (mode: 'public' | 'invite_only' | 'approval'): SignupAccessPolicy => ({

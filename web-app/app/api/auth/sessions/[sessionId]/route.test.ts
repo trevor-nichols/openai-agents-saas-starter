@@ -10,12 +10,9 @@ vi.mock('@/lib/server/services/auth/sessions', () => ({
   revokeUserSession,
 }));
 
-const context = (sessionId?: string) =>
-  ({
-    params: {
-      sessionId,
-    },
-  }) as { params: { sessionId?: string } };
+const context = (sessionId?: string): Parameters<typeof DELETE>[1] => ({
+  params: Promise.resolve({ sessionId: sessionId as string }),
+});
 
 describe('/api/auth/sessions/[sessionId] route', () => {
   afterEach(() => {
@@ -53,4 +50,3 @@ describe('/api/auth/sessions/[sessionId] route', () => {
     await expect(response.json()).resolves.toEqual({ message: 'Missing access token' });
   });
 });
-

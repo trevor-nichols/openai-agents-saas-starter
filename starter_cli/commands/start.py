@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 
 from starter_cli.core import CLIContext
 from starter_cli.workflows.home.start import StartRunner
@@ -34,6 +35,34 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         action="store_true",
         help="Skip running just dev-up when target=dev.",
     )
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
+        "--detached",
+        action="store_true",
+        help="Run services in background and return immediately (records PIDs).",
+    )
+    mode.add_argument(
+        "--foreground",
+        action="store_true",
+        help="Keep processes attached (default).",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Replace an existing CLI-managed stack (stops tracked PIDs first).",
+    )
+    parser.add_argument(
+        "--log-dir",
+        type=Path,
+        default=None,
+        help="Directory for detached-mode logs (default var/log).",
+    )
+    parser.add_argument(
+        "--pidfile",
+        type=Path,
+        default=None,
+        help="Path to stack state file (default var/run/stack.json).",
+    )
     parser.set_defaults(handler=_handle_start)
 
 
@@ -44,6 +73,10 @@ def _handle_start(args: argparse.Namespace, ctx: CLIContext) -> int:
         timeout=float(args.timeout),
         open_browser=args.open_browser,
         skip_infra=args.skip_infra,
+        detach=args.detached,
+        force=args.force,
+        pidfile=args.pidfile,
+        log_dir=args.log_dir,
     )
     return runner.run()
 

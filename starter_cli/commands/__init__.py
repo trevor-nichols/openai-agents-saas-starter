@@ -27,6 +27,7 @@ _COMMAND_MODULES = (
     "starter_cli.commands.status",
     "starter_cli.commands.stripe",
     "starter_cli.commands.setup",
+    "starter_cli.commands.stop",
     "starter_cli.commands.users",
     "starter_cli.commands.usage",
     "starter_cli.commands.util",
