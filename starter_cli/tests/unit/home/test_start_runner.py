@@ -40,6 +40,7 @@ def test_start_runner_success_with_stubbed_health(monkeypatch):
     ok_result = ProbeResult(name="api", state=ProbeState.OK, detail="ok")
     monkeypatch.setattr(start_mod, "api_probe", lambda: ok_result)
     monkeypatch.setattr(start_mod, "frontend_probe", lambda: ok_result)
+    monkeypatch.setattr(start_mod.StartRunner, "_wait_for_processes", lambda self: 0)
     runner = StartRunner(ctx, target="dev", timeout=0.1, open_browser=False, skip_infra=True)
     assert runner.run() == 0
 
@@ -63,5 +64,6 @@ def test_start_runner_flapping_health(monkeypatch):
     ok_result = ProbeResult(name="frontend", state=ProbeState.OK, detail="ok")
     monkeypatch.setattr(start_mod, "api_probe", api_probe_flap)
     monkeypatch.setattr(start_mod, "frontend_probe", lambda: ok_result)
+    monkeypatch.setattr(start_mod.StartRunner, "_wait_for_processes", lambda self: 0)
     runner = StartRunner(ctx, target="backend", timeout=1.5, open_browser=False)
     assert runner.run() == 0

@@ -96,8 +96,8 @@ class StartRunner:
             self._cleanup_processes()
             return code
 
-        console.success("Stack is running. Use Ctrl+C to stop processes started by this command.")
-        return 0
+        console.success("Stack is running. Press Ctrl+C to stop processes started by this command.")
+        return self._wait_for_processes()
 
     # ------------------------------------------------------------------
     # Helpers
@@ -156,6 +156,26 @@ class StartRunner:
             for line in launch.log_tail:
                 console.info(line)
 
+    def _wait_for_processes(self) -> int:
+        """Block until stop requested or a managed process exits."""
+
+        try:
+            while not self._stop_event.is_set():
+                for launch in self._launches:
+                    proc = launch.process
+                    if proc and proc.poll() is not None:
+                        console.error(
+                            f"{launch.label} exited with code {proc.returncode}; shutting down."
+                        )
+                        self._dump_tail()
+                        self._cleanup_processes()
+                        return 1
+                time.sleep(0.5)
+        except KeyboardInterrupt:
+            console.warn("Interrupted; cleaning up processes...")
+        self._cleanup_processes()
+        return 0
+
     def _cleanup_processes(self) -> None:
         self._stop_event.set()
         for launch in self._launches:
@@ -180,8 +200,7 @@ class StartRunner:
     def _install_signal_handlers(self) -> None:
         def _handler(signum, frame):
             console.warn(f"Received signal {signum}; cleaning up started processes...")
-            self._cleanup_processes()
-            raise SystemExit(1)
+            self._stop_event.set()
 
         signal.signal(signal.SIGINT, _handler)
         signal.signal(signal.SIGTERM, _handler)
