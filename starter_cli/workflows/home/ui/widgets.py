@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rich.panel import Panel
+from rich import box
 from rich.table import Table
 from rich.text import Text
 
@@ -17,14 +17,20 @@ def state_chip(state: ProbeState) -> Text:
     return Text(state.value.upper(), style=colors.get(state, "white"))
 
 
-def shortcuts_panel(shortcuts: list[ActionShortcut]) -> Panel:
-    table = Table(box=None, expand=True, show_edge=False, show_header=False, padding=(0, 1))
+def shortcuts_panel(shortcuts: list[ActionShortcut], *, bordered: bool = True) -> Table:
+    table = Table(
+        box=None if not bordered else box.SQUARE,
+        expand=True,
+        show_edge=False,
+        show_header=False,
+        padding=(0, 1),
+    )
     for shortcut in shortcuts:
         key = Text(shortcut.key, style="bold cyan")
         label = Text(shortcut.label, style="bold white")
         desc = Text(shortcut.description or "", style="dim")
         table.add_row(key, label, desc)
-    return Panel(table, title="Shortcuts", border_style="green")
+    return table
 
 
 def probes_table(probes: list[ProbeResult]) -> Table:

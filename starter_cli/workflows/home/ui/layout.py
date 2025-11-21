@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from rich import box
 from rich.console import Group
 from rich.layout import Layout
 from rich.panel import Panel
@@ -20,40 +21,57 @@ def build_home_layout(
 ) -> Layout:
     layout = Layout(name="root")
     layout.split_column(
-        Layout(name="summary", size=6),
         Layout(name="body"),
+        Layout(name="footer", size=7),
     )
     layout["body"].split_row(
         Layout(name="probes"),
         Layout(name="services", size=40),
     )
-    layout["summary"].update(_summary_panel(summary, profile, strict, shortcuts))
+    layout["footer"].split_column(
+        Layout(name="footer_shortcuts", size=6),
+        Layout(name="footer_summary", size=1),
+    )
     layout["probes"].update(Panel(probes_table(probes), title="Probes", border_style="magenta"))
     layout["services"].update(_services_panel(services))
+    layout["footer_shortcuts"].update(_shortcuts_panel(shortcuts))
+    layout["footer_summary"].update(_summary_line(summary, profile, strict))
     return layout
-
-
-def _summary_panel(
-    summary: dict[str, int], profile: str, strict: bool, shortcuts: list[ActionShortcut]
-) -> Panel:
-    text = Text()
-    text.append(f"Profile: {profile}\n")
-    text.append(f"Strict: {'yes' if strict else 'no'}\n")
-    text.append(
-        f"Probes → ok={summary.get('ok',0)}, warn={summary.get('warn',0)}, "
-        f"error={summary.get('error',0)}, skipped={summary.get('skipped',0)}"
-    )
-    return Panel(
-        Group(text, shortcuts_panel(shortcuts)),
-        title="Overview",
-        border_style="cyan",
-    )
 
 
 def _services_panel(services: list[ServiceStatus]) -> Panel:
     if not services:
         return Panel(Text("No services detected"), title="Services", border_style="cyan")
     return Panel(Group(services_table(services)), title="Services", border_style="cyan")
+
+
+def _shortcuts_panel(shortcuts: list[ActionShortcut]) -> Panel:
+    shortcuts_content: Group | Text
+    if not shortcuts:
+        shortcuts_content = Text("No shortcuts available")
+    else:
+        shortcuts_content = shortcuts_panel(shortcuts, bordered=False)
+    return Panel(
+        shortcuts_content,
+        title="Shortcuts",
+        border_style="green",
+        box=box.SQUARE,
+        padding=(0, 1),
+    )
+
+
+def _summary_line(summary: dict[str, int], profile: str, strict: bool) -> Text:
+    text = Text()
+    text.append("Profile: ", style="dim")
+    text.append(profile, style="bold cyan")
+    text.append("  Strict: ", style="dim")
+    text.append("yes" if strict else "no", style="bold magenta" if strict else "bold green")
+    text.append("  Probes ", style="dim")
+    text.append(f"ok={summary.get('ok',0)} ", style="bold green")
+    text.append(f"warn={summary.get('warn',0)} ", style="bold yellow")
+    text.append(f"error={summary.get('error',0)} ", style="bold red")
+    text.append(f"skipped={summary.get('skipped',0)}", style="bright_black")
+    return text
 
 
 __all__ = ["build_home_layout"]

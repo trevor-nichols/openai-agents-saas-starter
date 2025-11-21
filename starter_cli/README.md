@@ -15,13 +15,15 @@ values written here are exactly what FastAPI and the CLI share at runtime.
 - Docker + Docker Compose v2 (for `just dev-up` / `just vault-up`).
 - `just` task runner (install via `brew install just` or `sudo apt-get install just`).
 - Stripe CLI (required for `stripe setup` unless you pass `--skip-stripe-cli`).
-- Optional global install: `pipx install .` or `uvx --from . starter-cli`.
+- Optional global install: `pipx install .` (installs `starter-cli` and `aa-cli`) or `uvx --from . starter-cli`.
 - Optional TUI extra (better terminal UI dependencies): `pipx install '.[tui]'` or `uvx --from . 'starter-cli[tui]'`.
 
 From the repo root run:
 
 ```bash
 python -m starter_cli.app --help
+# or, after a global install
+starter-cli --help
 ```
 
 > The legacy `starter_cli.cli` shim has been removed; use `python -m starter_cli.app` going forward.

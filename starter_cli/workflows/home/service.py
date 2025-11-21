@@ -29,10 +29,14 @@ class HomeController:
     def run(self, use_tui: bool = True) -> int:
         runner = DoctorRunner(self.ctx, profile=detect_profile(), strict=False)
         probes, services, summary = runner.collect()
-        if use_tui:
-            self._render_tui(runner, probes, services, summary)
-        else:
-            self._print_summary(HomeSummary(probes=tuple(probes), services=tuple(services)))
+        try:
+            if use_tui:
+                self._render_tui(runner, probes, services, summary)
+            else:
+                self._print_summary(HomeSummary(probes=tuple(probes), services=tuple(services)))
+        except KeyboardInterrupt:
+            console.warn("Interrupted. Goodbye!", topic="home")
+            return 130  # conventional exit code for SIGINT
         return 0
 
     # ------------------------------------------------------------------
@@ -48,33 +52,40 @@ class HomeController:
         shortcuts = self._build_shortcuts(runner)
         refresh_seconds = 2.0
         refresh_hz = 1 / refresh_seconds
-        with Live(
-            build_home_layout(
-                probes=probes,
-                services=services,
-                summary=summary,
-                profile=runner.profile,
-                strict=runner.strict,
-                shortcuts=shortcuts,
-            ),
-            refresh_per_second=refresh_hz,
-            console=console._rich_out,
-        ) as live:
-            # Simple refresh loop; could be replaced with Textual for richer interactivity
-            while True:
-                runner = DoctorRunner(self.ctx, profile=detect_profile(), strict=False)
-                probes, services, summary = runner.collect()
-                live.update(
-                    build_home_layout(
-                        probes=probes,
-                        services=services,
-                        summary=summary,
-                        profile=runner.profile,
-                        strict=runner.strict,
-                        shortcuts=shortcuts,
+        layout = build_home_layout(
+            probes=probes,
+            services=services,
+            summary=summary,
+            profile=runner.profile,
+            strict=runner.strict,
+            shortcuts=shortcuts,
+        )
+
+        try:
+            with Live(
+                layout,
+                refresh_per_second=refresh_hz,
+                console=console._rich_out,
+            ) as live:
+                while True:
+                    runner = DoctorRunner(self.ctx, profile=detect_profile(), strict=False)
+                    probes, services, summary = runner.collect()
+                    live.update(
+                        build_home_layout(
+                            probes=probes,
+                            services=services,
+                            summary=summary,
+                            profile=runner.profile,
+                            strict=runner.strict,
+                            shortcuts=shortcuts,
+                        )
                     )
-                )
-                time.sleep(refresh_seconds)
+                    time.sleep(refresh_seconds)
+        except KeyboardInterrupt:
+            console.note("Closing home dashboard…", topic="home")
+        except Exception as exc:  # pragma: no cover - defensive guard
+            console.error(f"Home dashboard error: {exc}; showing summary instead.", topic="home")
+            self._print_summary(HomeSummary(probes=tuple(probes), services=tuple(services)))
 
     def _print_summary(self, summary: HomeSummary) -> None:
         console.rule("Starter CLI Home")
