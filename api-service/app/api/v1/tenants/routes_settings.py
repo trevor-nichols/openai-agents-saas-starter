@@ -4,10 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.dependencies.tenant import TenantContext, TenantRole, require_tenant_role
 from app.api.models.tenant_settings import TenantSettingsResponse, TenantSettingsUpdateRequest
-from app.services.tenant.tenant_settings_service import (
-    TenantSettingsValidationError,
-    get_tenant_settings_service,
-)
+from app.services.tenant import tenant_settings_service as tenant_settings_module
+from app.services.tenant.tenant_settings_service import TenantSettingsValidationError
 
 router = APIRouter()
 
@@ -16,7 +14,7 @@ router = APIRouter()
 async def get_tenant_settings(
     context: TenantContext = Depends(require_tenant_role(TenantRole.ADMIN, TenantRole.OWNER)),
 ) -> TenantSettingsResponse:
-    service = get_tenant_settings_service()
+    service = tenant_settings_module.get_tenant_settings_service()
     snapshot = await service.get_settings(context.tenant_id)
     return TenantSettingsResponse.from_snapshot(snapshot)
 
@@ -27,7 +25,7 @@ async def update_tenant_settings(
     context: TenantContext = Depends(require_tenant_role(TenantRole.ADMIN, TenantRole.OWNER)),
 ) -> TenantSettingsResponse:
     mapped = payload.dict_for_service()
-    service = get_tenant_settings_service()
+    service = tenant_settings_module.get_tenant_settings_service()
     try:
         snapshot = await service.update_settings(
             context.tenant_id,

@@ -88,8 +88,18 @@ class OpenAIAgentRuntime(AgentRuntime):
             session=session,
             conversation_id=conversation_id,
         )
-        context = getattr(result, "context_wrapper", None)
-        usage = _convert_usage(getattr(context, "usage", None) if context else None)
+        # Tests often mock Runner.run to return our domain AgentRunResult directly;
+        # support both the SDK response shape and the domain model to keep the
+        # runtime resilient to test doubles.
+        if isinstance(result, AgentRunResult):
+            usage = result.usage
+            response_id = result.response_id
+            final_output = result.final_output
+        else:
+            context = getattr(result, "context_wrapper", None)
+            usage = _convert_usage(getattr(context, "usage", None) if context else None)
+            response_id = getattr(result, "last_response_id", None)
+            final_output = getattr(result, "final_output", "")
         base_metadata: dict[str, Any] = {"agent_key": agent_key, "model": str(agent.model)}
         metadata_payload: Mapping[str, Any]
         if metadata:
@@ -97,8 +107,8 @@ class OpenAIAgentRuntime(AgentRuntime):
         else:
             metadata_payload = base_metadata
         return AgentRunResult(
-            final_output=str(result.final_output),
-            response_id=result.last_response_id,
+            final_output=str(final_output),
+            response_id=response_id,
             usage=usage,
             metadata=metadata_payload,
         )

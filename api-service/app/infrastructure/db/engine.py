@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from sqlalchemy import text
+from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -90,7 +91,7 @@ async def init_engine(*, run_migrations: bool = False) -> AsyncEngine | None:
             )
 
             if run_migrations:
-                await run_migrations_if_configured()
+                await run_migrations_if_configured(force=True)
 
             await verify_database_connection()
 
@@ -123,12 +124,27 @@ async def verify_database_connection(timeout: float | None = None) -> None:
             await connection.execute(text("SELECT 1"))
 
 
-async def run_migrations_if_configured() -> None:
+async def run_migrations_if_configured(*, force: bool = False) -> None:
     """Run Alembic migrations when auto-run is enabled in settings."""
 
     settings = get_settings()
-    if not settings.auto_run_migrations:
+    if not settings.auto_run_migrations and not force:
         logger.debug("Auto-run migrations disabled; skipping.")
+        return
+
+    database_url = settings.database_url
+    if not database_url:
+        raise RuntimeError(
+            "auto_run_migrations is enabled but DATABASE_URL is not configured."
+        )
+
+    url = make_url(database_url)
+    if url.get_backend_name().startswith("sqlite"):
+        logger.info(
+            "auto_run_migrations enabled for SQLite; applying SQLAlchemy metadata "
+            "instead of Alembic migrations (tests/dev convenience)."
+        )
+        await _create_sqlite_schema()
         return
 
     try:
@@ -137,12 +153,6 @@ async def run_migrations_if_configured() -> None:
     except ModuleNotFoundError as exc:  # pragma: no cover - dev configuration issue
         logger.warning("auto_run_migrations is enabled but Alembic is not installed: %s", exc)
         return
-
-    database_url = settings.database_url
-    if not database_url:
-        raise RuntimeError(
-            "auto_run_migrations is enabled but DATABASE_URL is not configured."
-        )
 
     alembic_cfg = Config(str(_resolve_alembic_ini()))
     alembic_cfg.set_main_option("sqlalchemy.url", database_url)
@@ -156,6 +166,47 @@ def _resolve_alembic_ini() -> Path:
 
     project_root = Path(__file__).resolve().parents[3]
     return project_root / "alembic.ini"
+
+
+async def _create_sqlite_schema() -> None:
+    """Populate an in-memory SQLite database using SQLAlchemy metadata.
+
+    Alembic migrations target Postgres and rely on extensions such as CITEXT,
+    which are unavailable in SQLite. For test environments that set
+    DATABASE_URL=sqlite+aiosqlite:///:memory: and enable auto_run_migrations,
+    fall back to creating tables directly from the ORM models.
+    """
+
+    if _engine is None:
+        raise RuntimeError("Engine must be initialised before bootstrapping SQLite schema.")
+
+    _import_all_models()
+
+    async with _engine.begin() as conn:
+        await conn.run_sync(lambda sync_conn: _create_all_tables(sync_conn))
+
+
+def _create_all_tables(connection) -> None:
+    from app.infrastructure.persistence.models.base import Base
+
+    Base.metadata.create_all(bind=connection)
+
+
+def _import_all_models() -> None:
+    """Import all ORM models so they register with the Base metadata."""
+
+    # Auth + identities
+    from app.infrastructure.persistence.auth import models as _auth_models  # noqa: F401
+    # Conversations and tenant accounts
+    from app.infrastructure.persistence.conversations import models as _conversation_models  # noqa: F401
+    # Billing and subscriptions
+    from app.infrastructure.persistence.billing import models as _billing_models  # noqa: F401
+    # Stripe events/dispatch
+    from app.infrastructure.persistence.stripe import models as _stripe_models  # noqa: F401
+    # Tenant settings
+    from app.infrastructure.persistence.tenants import models as _tenant_models  # noqa: F401
+    # Status telemetry
+    from app.infrastructure.persistence.status import models as _status_models  # noqa: F401
 
 
 @asynccontextmanager

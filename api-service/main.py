@@ -10,7 +10,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.errors import register_exception_handlers
 from app.api.router import api_router
-from app.bootstrap import ApplicationContainer, set_container, shutdown_container
+from app.bootstrap import get_container, shutdown_container
 from app.core.config import (
     Settings,
     enforce_secret_overrides,
@@ -142,8 +142,7 @@ async def lifespan(app: FastAPI):
         _log_provider_violations(provider_violations)
     ensure_provider_parity(settings, violations=provider_violations)
 
-    container = ApplicationContainer()
-    set_container(container)
+    container = get_container()
     container.geoip_service = build_geoip_service(settings)
     warnings = settings.secret_warnings()
     try:
@@ -184,7 +183,14 @@ async def lifespan(app: FastAPI):
         _ensure_billing_prerequisites(settings)
         container.billing_service.set_gateway(stripe_gateway)
 
-    await init_engine(run_migrations=settings.auto_run_migrations)
+    run_migrations = settings.auto_run_migrations
+    database_url = settings.database_url or ""
+    if database_url.startswith("sqlite"):
+        # SQLite test environments need schema bootstrap even when auto_run_migrations
+        # is left at the default False.
+        run_migrations = True
+
+    await init_engine(run_migrations=run_migrations)
     engine = get_engine()
     if engine is None:
         raise RuntimeError("Database engine failed to initialise; cannot configure sessions.")

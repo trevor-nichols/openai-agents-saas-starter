@@ -56,6 +56,12 @@ def validate_providers(
     violations.extend(_validate_resend(settings, strict_mode))
     violations.extend(_validate_tavily(settings, strict_mode))
 
+    # When any fatal issues exist (e.g., billing enabled without Stripe keys),
+    # surface those first and suppress optional warnings to keep the signal
+    # focused on the blockers.
+    if any(violation.fatal for violation in violations):
+        return [violation for violation in violations if violation.fatal]
+
     return violations
 
 
