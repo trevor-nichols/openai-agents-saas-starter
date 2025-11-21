@@ -46,6 +46,9 @@ help:
     echo "  just dev-down               # Stop the infrastructure stack" && \
     echo "  just dev-logs               # Tail Postgres/Redis logs" && \
     echo "  just dev-ps                 # Show running containers" && \
+    echo "  just start-dev              # Run CLI start dev (compose + backend + frontend + health)" && \
+    echo "  just start-backend          # Run CLI start backend only" && \
+    echo "  just start-frontend         # Run CLI start frontend only" && \
     echo "  just vault-up               # Start the local Vault dev signer" && \
     echo "  just vault-down             # Stop the local Vault dev signer" && \
     echo "  just vault-logs             # Tail logs for the dev Vault container" && \
@@ -59,6 +62,7 @@ help:
     echo "  just stripe-listen          # Capture a Stripe webhook secret via Stripe CLI" && \
     echo "  just lint-stripe-fixtures   # Validate Stripe fixture JSON files" && \
     echo "  just cli cmd                # Run the consolidated operator CLI" && \
+    echo "  just doctor                 # Run CLI doctor (strict, JSON+MD reports)" && \
     echo "  just setup-local-lite       # Run Starter CLI wizard with Local-Lite defaults" && \
     echo "  just setup-local-full       # Run Starter CLI wizard with Local-Full automation" && \
     echo "  just setup-staging          # Run Starter CLI wizard with staging-safe automation" && \
@@ -170,6 +174,20 @@ validate-providers:
 # Run the consolidated operator CLI (usage: just cli "providers validate")
 cli cmd:
     python -m starter_cli.app {{cmd}}
+
+# Doctor reports
+doctor: _check_env
+    {{env_runner}} .env.compose {{env_file}} -- python -m starter_cli.app doctor --strict --json var/reports/operator-dashboard.json --markdown var/reports/operator-dashboard.md
+
+# Start stacks via CLI
+start-dev: _check_env
+    {{env_runner}} .env.compose {{env_file}} -- python -m starter_cli.app start dev --timeout 180
+
+start-backend: _check_env
+    {{env_runner}} .env.compose {{env_file}} -- python -m starter_cli.app start backend --timeout 120
+
+start-frontend: _check_env
+    {{env_runner}} .env.compose {{env_file}} -- python -m starter_cli.app start frontend --timeout 120
 
 # Run Starter CLI wizard with Local-Lite defaults + seed a dev user
 setup-local-lite:
