@@ -6,12 +6,12 @@ import shlex
 import shutil
 import subprocess
 import threading
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 from starter_cli.adapters.io.console import console
-from starter_cli.core import CLIContext, CLIError
+from starter_cli.core import CLIContext
 
 DEFAULT_LINES = 200
 SERVICE_CHOICES = ("all", "api", "frontend", "collector", "postgres", "redis")
@@ -159,37 +159,34 @@ def _plan_targets(
                     cmd.insert(2, "-f")
                 targets.append(TailTarget(name="api", command=cmd, cwd=ctx.project_root))
             else:
-                notes.append(
-                    (
-                        "warn",
-                        f"LOGGING_SINK=file but log path {log_path} does not exist; start the API once or adjust LOGGING_FILE_PATH.",
-                    )
+                message = (
+                    "LOGGING_SINK=file but log path"
+                    f" {log_path} does not exist; start the API once"
+                    " or adjust LOGGING_FILE_PATH."
                 )
+                notes.append(("warn", message))
         else:
-            notes.append(
-                (
-                    "info",
-                    "API is not writing to a file sink. Run the API in another terminal or set LOGGING_SINK=file to enable tailing.",
-                )
+            message = (
+                "API is not writing to a file sink. Run the API in another terminal"
+                " or set LOGGING_SINK=file to enable tailing."
             )
+            notes.append(("info", message))
 
     # Frontend guidance
     if "frontend" in normalized:
         ingest_enabled = env_bool("ENABLE_FRONTEND_LOG_INGEST", False)
         if ingest_enabled:
-            notes.append(
-                (
-                    "info",
-                    "Frontend logs flow into backend via /api/v1/logs. Use --service api to view them (frontend.log event).",
-                )
+            message = (
+                "Frontend logs flow into backend via /api/v1/logs."
+                " Use --service api to view them (frontend.log event)."
             )
+            notes.append(("info", message))
         else:
-            notes.append(
-                (
-                    "info",
-                    "Frontend runtime logs come from the Next.js dev server; run `pnpm dev --filter web-app` in another terminal to see them.",
-                )
+            message = (
+                "Frontend runtime logs come from the Next.js dev server;"
+                " run `pnpm dev --filter web-app` in another terminal to see them."
             )
+            notes.append(("info", message))
 
     return targets, notes
 
@@ -236,7 +233,12 @@ def _terminate_processes_named(binary: str) -> None:
     if not path:
         return
     try:
-        subprocess.run(["pkill", "-f", shlex.quote(path)], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(
+            ["pkill", "-f", shlex.quote(path)],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
     except Exception:
         pass
 

@@ -17,7 +17,6 @@ def test_expect_flags_skip_probes(monkeypatch):
             ProbeSpec(name="api", factory=lambda ctx: fake_probe(ctx), category="core"),
         ),
     )
-    env = {"EXPECT_API_DOWN": "true"}
     monkeypatch.setenv("EXPECT_API_DOWN", "true")
     runner = doctor_mod.DoctorRunner(build_context(), profile="local", strict=False)
     probes = runner._run_probes()

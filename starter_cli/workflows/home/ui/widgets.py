@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from rich import box
 from rich.console import Group
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
-from typing import Mapping, Sequence
 
 from starter_cli.core.status_models import ActionShortcut, ProbeResult, ProbeState, ServiceStatus
 
@@ -42,7 +43,11 @@ def probes_table(probes: list[ProbeResult]) -> Table:
     table.add_column("Probe")
     table.add_column("Detail")
     for probe in sorted(probes, key=lambda p: (-p.severity_rank, p.name)):
-        table.add_row(state_chip(probe.state), Text(probe.name, style="bold white"), probe.detail or "")
+        table.add_row(
+            state_chip(probe.state),
+            Text(probe.name, style="bold white"),
+            probe.detail or "",
+        )
     return table
 
 
@@ -136,7 +141,7 @@ def _render_probe_detail(probe: ProbeResult) -> Text:
 def _env_detail(probe: ProbeResult) -> Text:
     md = probe.metadata or {}
     coverage_raw = md.get("coverage")
-    coverage = coverage_raw if isinstance(coverage_raw, (int, float)) else None
+    coverage = coverage_raw if isinstance(coverage_raw, int | float) else None
     missing_raw = md.get("missing", [])
     missing: list[str] = list(missing_raw) if isinstance(missing_raw, Sequence) else []
     text = Text()
@@ -161,7 +166,10 @@ def _ports_detail(probe: ProbeResult) -> Text:
         return Text(detail)
     for idx, part in enumerate(parts):
         # expected format: label:host:port=up/down
-        label, status = (part.split("=", 1) + [""])[:2] if "=" in part else (part, "")
+        if "=" in part:
+            label, status = [*part.split("=", 1), ""][:2]
+        else:
+            label, status = part, ""
         status_style = "bold green" if status == "up" else "bold red"
         text.append(label, style="cyan")
         text.append(" ")
@@ -212,7 +220,11 @@ def _redis_detail(probe: ProbeResult) -> Text:
 def _http_detail(probe: ProbeResult) -> Text:
     md = probe.metadata or {}
     status_raw = md.get("status")
-    status = int(status_raw) if isinstance(status_raw, (int, str)) and str(status_raw).isdigit() else None
+    status = (
+        int(status_raw)
+        if isinstance(status_raw, int | str) and str(status_raw).isdigit()
+        else None
+    )
     url_raw = md.get("url")
     url = str(url_raw) if isinstance(url_raw, str) else None
     text = Text()
@@ -278,7 +290,11 @@ def _billing_detail(probe: ProbeResult) -> Text:
     md = probe.metadata or {}
     provider = str(md.get("provider", "stripe"))
     status_raw = md.get("status")
-    status = int(status_raw) if isinstance(status_raw, (int, str)) and str(status_raw).isdigit() else None
+    status = (
+        int(status_raw)
+        if isinstance(status_raw, int | str) and str(status_raw).isdigit()
+        else None
+    )
     reason_raw = md.get("reason")
     reason = str(reason_raw) if isinstance(reason_raw, str) else None
     text = Text()

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable, Mapping
+from collections.abc import Iterable, Mapping
 
 from starter_contracts.secrets.models import SecretsProviderLiteral
 
@@ -33,7 +33,10 @@ def secrets_probe(ctx: ProbeContext) -> ProbeResult:
     if provider in (SecretsProviderLiteral.VAULT_DEV, SecretsProviderLiteral.VAULT_HCP):
         return _wrap("vault", provider_raw, vault_probe(warn_only=ctx.warn_only))
 
-    if provider in (SecretsProviderLiteral.INFISICAL_CLOUD, SecretsProviderLiteral.INFISICAL_SELF_HOST):
+    if provider in (
+        SecretsProviderLiteral.INFISICAL_CLOUD,
+        SecretsProviderLiteral.INFISICAL_SELF_HOST,
+    ):
         return _infisical_probe(ctx, provider_raw)
 
     if provider is SecretsProviderLiteral.AWS_SM:
@@ -86,7 +89,11 @@ def _aws_sm_probe(ctx: ProbeContext, provider_raw: str | None) -> ProbeResult:
         name="secrets",
         success=True,
         detail="aws secrets manager configured",
-        metadata={"provider": provider_raw, "region": region, "auth": "keys" if has_keys else "profile"},
+        metadata={
+            "provider": provider_raw,
+            "region": region,
+            "auth": "keys" if has_keys else "profile",
+        },
     )
 
 
@@ -102,7 +109,10 @@ def _azure_kv_probe(ctx: ProbeContext, provider_raw: str | None) -> ProbeResult:
         missing.append("AZURE_KEY_VAULT_URL")
     auth_ok = bool(managed_id or (client_id and client_secret and tenant_id))
     if not auth_ok:
-        missing.append("AZURE_CLIENT_ID/AZURE_CLIENT_SECRET/AZURE_TENANT_ID or AZURE_MANAGED_IDENTITY_CLIENT_ID")
+        missing.append(
+            "AZURE_CLIENT_ID/AZURE_CLIENT_SECRET/AZURE_TENANT_ID"
+            " or AZURE_MANAGED_IDENTITY_CLIENT_ID"
+        )
 
     if missing:
         return _missing_env_result(provider_raw, missing, ctx.warn_only)
@@ -134,7 +144,9 @@ def _missing_keys(env: Mapping[str, str], keys: Iterable[str]) -> list[str]:
     return sorted(key for key in keys if not env.get(key))
 
 
-def _missing_env_result(provider_raw: str | None, missing: Iterable[str], warn_only: bool) -> ProbeResult:
+def _missing_env_result(
+    provider_raw: str | None, missing: Iterable[str], warn_only: bool
+) -> ProbeResult:
     missing_list = list(missing)
     detail = f"missing env: {', '.join(missing_list)}"
     return ProbeResult(

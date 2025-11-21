@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from starter_cli.core.status_models import ProbeResult, ProbeState
 from starter_cli.workflows.home.probes.billing import billing_probe
-from starter_cli.workflows.home.probes.registry import ProbeContext, PROBE_SPECS, ProbeSpec
+from starter_cli.workflows.home.probes.registry import PROBE_SPECS, ProbeContext, ProbeSpec
 from starter_cli.workflows.home.probes.secrets import secrets_probe
 
 
@@ -38,14 +38,17 @@ def test_secrets_probe_skips_when_unset():
 
 
 def test_secrets_probe_vault_uses_vault_probe(monkeypatch):
-    from starter_cli.workflows.home import probes as probes_pkg
     from starter_cli.workflows.home.probes import secrets as secrets_mod
 
     def fake_vault_probe(*, warn_only: bool) -> ProbeResult:
         return ProbeResult(name="vault", state=ProbeState.OK, detail="ok")
 
     monkeypatch.setattr(secrets_mod, "vault_probe", fake_vault_probe)
-    env = {"SECRETS_PROVIDER": "vault_dev", "VAULT_ADDR": "http://localhost:18200", "VAULT_TOKEN": "root"}
+    env = {
+        "SECRETS_PROVIDER": "vault_dev",
+        "VAULT_ADDR": "http://localhost:18200",
+        "VAULT_TOKEN": "root",
+    }
     result = secrets_probe(_ctx(env))
     assert result.state is ProbeState.OK
     assert result.name == "secrets"
@@ -115,7 +118,12 @@ def test_billing_probe_delegates_to_stripe(monkeypatch):
     from starter_cli.workflows.home.probes import billing as billing_mod
 
     def fake_stripe_probe(*, warn_only: bool) -> ProbeResult:
-        return ProbeResult(name="stripe", state=ProbeState.OK, detail="ok", metadata={"status": 200})
+        return ProbeResult(
+            name="stripe",
+            state=ProbeState.OK,
+            detail="ok",
+            metadata={"status": 200},
+        )
 
     monkeypatch.setattr(billing_mod, "stripe_probe", fake_stripe_probe)
     env = {"ENABLE_BILLING": "true", "STRIPE_SECRET_KEY": "sk_test_x"}
@@ -125,8 +133,8 @@ def test_billing_probe_delegates_to_stripe(monkeypatch):
 
 
 def test_doctor_attaches_category(monkeypatch):
-    from starter_cli.workflows.home import doctor as doctor_mod
     from starter_cli.core.context import build_context
+    from starter_cli.workflows.home import doctor as doctor_mod
 
     def fake_probe(ctx):
         return ProbeResult(name="alpha", state=ProbeState.OK, detail="ok")

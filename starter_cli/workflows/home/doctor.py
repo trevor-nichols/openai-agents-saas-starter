@@ -38,7 +38,9 @@ class DoctorRunner:
         self._write_markdown(md_out, probes, summary)
         return 1 if self._has_failures(probes) else 0
 
-    def collect(self, *, log_suppressed: bool = False) -> tuple[list[ProbeResult], list[ServiceStatus], dict[str, int]]:
+    def collect(
+        self, *, log_suppressed: bool = False
+    ) -> tuple[list[ProbeResult], list[ServiceStatus], dict[str, int]]:
         try:
             probes = self._run_probes(log_suppressed=log_suppressed)
         except TypeError:

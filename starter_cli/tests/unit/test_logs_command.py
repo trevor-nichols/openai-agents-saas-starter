@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from starter_cli.commands import logs as logs_cmd
 from starter_cli.core.context import CLIContext
 
@@ -56,7 +55,7 @@ def test_plan_targets_warns_when_no_file_sink(monkeypatch, tmp_path: Path) -> No
 def test_normalize_services_skips_collector_when_disabled(monkeypatch) -> None:
     called = []
 
-    def fake_warn(msg: str, topic: str | None = None, stream=None) -> None:  # noqa: ANN001
+    def fake_warn(msg: str, topic: str | None = None, stream=None) -> None:
         called.append(msg)
 
     monkeypatch.setattr(logs_cmd.console, "warn", fake_warn)

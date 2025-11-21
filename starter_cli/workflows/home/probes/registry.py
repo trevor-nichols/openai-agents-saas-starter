@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import Callable, Mapping
 
 from starter_contracts.config import StarterSettingsProtocol
 

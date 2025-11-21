@@ -82,7 +82,8 @@ def _summary_line(summary: dict[str, int], profile: str, strict: bool) -> Text:
 def _should_show_services(services: list[ServiceStatus]) -> bool:
     if not services:
         return False
-    # Hide when services mirror probes (backend/frontend) to avoid duplication; show when others appear.
+    # Hide when services mirror probes (backend/frontend) to avoid duplication.
+    # Show when any additional services appear.
     known_duplicates = {"backend", "frontend"}
     labels = {svc.label for svc in services}
     return any(label not in known_duplicates for label in labels)
