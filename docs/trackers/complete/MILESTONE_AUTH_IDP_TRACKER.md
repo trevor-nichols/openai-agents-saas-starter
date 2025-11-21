@@ -67,11 +67,11 @@ sequenceDiagram
 - **Exit**: Reviewed/approved doc, tracker updated with decisions.
 
 ### IDP-002 — Data Model & Migration (BE-004, DB-001)
-- **Status:** Completed (2025-11-07) — migration `0e52ba5ab089` applied via `make migrate`; ORM/Pydantic models and `scripts/seed_users.py` merged with docs/env guidance.
+- **Status:** Completed (2025-11-07) — migration `0e52ba5ab089` applied via `just migrate`; ORM/Pydantic models and the user seeding helper (`python -m starter_cli.app users seed`) merged with docs/env guidance.
 - Alembic revision adding `users`, `user_profiles`, `user_login_events`, indexes for email + tenant.
-- Seed utility (`scripts/seed_users.py`) emitting one-time admin credentials.
+- Seed utility (`starter_cli users seed`) emitting one-time admin credentials.
 - SQLAlchemy models + Pydantic schemas for DTOs.
-- **Exit**: Migration passes `make migrate` + integration tests; seed script documented.
+- **Exit**: Migration passes `just migrate` + integration tests; seed script documented.
 
 ### IDP-003 — Domain & Service Layer (AUTH-003)
 - **Status:** Completed (2025-11-07) — repository/service stack merged with Redis-backed lockouts, bcrypt+pepper hashing, and AuthService login/refresh helpers plus unit/contract coverage.
@@ -91,8 +91,8 @@ sequenceDiagram
 - **Exit**: Contract suite green, OpenAPI regenerated for Next client.
 
 ### IDP-005 — Frontend Integration (AUTH-003)
-- **Status:** Completed (2025-11-07) — login page, secure cookie/session helpers, middleware guard, silent refresh hook, and Playwright smoke test landed in `agent-next-15-frontend`.
-- Update `agent-next-15-frontend` actions/hooks to call new endpoints, store tokens via secure cookies (`next/headers` middleware) with silent refresh.
+- **Status:** Completed (2025-11-07) — login page, secure cookie/session helpers, middleware guard, silent refresh hook, and Playwright smoke test landed in `web-app`.
+- Update `web-app` actions/hooks to call new endpoints, store tokens via secure cookies (`next/headers` middleware) with silent refresh.
 - Add sign-in/out components, error states, and protected-route guard using server actions.
 - Unit tests for hooks, e2e smoke (Playwright) verifying login + token refresh.
 - **Exit**: Frontend build/tests green, UX reviewed with product.

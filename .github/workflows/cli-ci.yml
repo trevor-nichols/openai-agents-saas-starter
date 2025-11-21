@@ -1,0 +1,47 @@
+name: Starter CLI CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      STARTER_CLI_SKIP_ENV: "true"
+      STARTER_CLI_SKIP_VAULT_PROBE: "true"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install just
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y just
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Hatch
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch
+
+      - name: Create Hatch environment
+        run: hatch env create
+
+      - name: CLI smoke test
+        run: hatch run python -m starter_cli.app --help
+
+      - name: CLI setup dry-run
+        run: hatch run python -m starter_cli.app setup --non-interactive --dry-run
+
+      - name: Run CLI unit tests
+        run: hatch run pytest starter_cli/tests
+
+      - name: Verify CLI environment inventory
+        run: hatch run python -m scripts.cli.verify_env_inventory

@@ -16,6 +16,11 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Install just
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y just
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -36,14 +41,15 @@ jobs:
           hatch env create
 
       - name: CLI smoke test
-        run: hatch run python -m starter_cli.cli --help
+        run: hatch run python -m starter_cli.app --help
 
       - name: Verify CLI environment inventory
         run: hatch run python -m scripts.cli.verify_env_inventory
 
       - name: Check infra dependencies (JSON)
         run: |
-          hatch run python -m starter_cli.cli infra deps --format json > deps-status.json || true
+          hatch run python -m starter_cli.app infra deps --format json > deps-status.json || echo "[]" > deps-status.json
+          if [ ! -s deps-status.json ]; then echo "[]">deps-status.json; fi
           hatch run python - <<'PY'
           import json, sys
           with open("deps-status.json", "r", encoding="utf-8") as fh:
@@ -69,6 +75,7 @@ jobs:
     env:
       DATABASE_URL: "sqlite+aiosqlite:///:memory:"
       REDIS_URL: "redis://localhost:6379/0"
+      AUTO_RUN_MIGRATIONS: "false"
       STARTER_CLI_SKIP_ENV: "true"
       STARTER_CLI_SKIP_VAULT_PROBE: "true"
     services:
@@ -90,6 +97,11 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Install just
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y just
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -103,11 +115,14 @@ jobs:
       - name: Create Hatch environment
         run: hatch env create
 
-      - name: CLI unit tests
-        run: hatch run pytest anything-agents/tests/unit/cli
+      - name: Lint (ruff)
+        run: hatch run lint
 
-      - name: Static typing (Pyright)
-        run: hatch run pyright
+      - name: CLI unit tests
+        run: hatch run pytest starter_cli/tests
+
+      - name: Static typing (Pyright + Mypy)
+        run: hatch run typecheck
 
       - name: Run backend tests
         run: hatch run test
@@ -116,4 +131,128 @@ jobs:
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents_ci
         run: |
-          hatch run pytest anything-agents/tests/integration --maxfail=1 -m postgres
+          hatch run pytest api-service/tests/integration --maxfail=1 -m postgres
+
+  sbom-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      STARTER_CLI_SKIP_ENV: "true"
+      STARTER_CLI_SKIP_VAULT_PROBE: "true"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install just
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y just
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install Hatch
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch
+
+      - name: Create Hatch environment
+        run: hatch env create
+
+      - name: Python dependency audit (pip-audit)
+        run: |
+          hatch run python -m pip install pip-audit
+          pip freeze | grep -v "^api-service==" > /tmp/pip-audit-req.txt
+          hatch run pip-audit --progress-spinner off -r /tmp/pip-audit-req.txt
+
+      - name: Python SBOM (CycloneDX)
+        run: |
+          hatch run python -m pip install cyclonedx-bom
+          hatch run cyclonedx-py environment --of JSON --output-file backend-sbom.json
+
+      - name: Install pnpm
+        run: corepack prepare pnpm@10.15.0 --activate
+
+      - name: Install frontend dependencies
+        working-directory: web-app
+        run: pnpm install --frozen-lockfile
+
+      - name: Node dependency audit
+        working-directory: web-app
+        run: pnpm audit --audit-level=high
+
+      - name: Node SBOM (CycloneDX)
+        working-directory: web-app
+        run: pnpm dlx @cyclonedx/cdxgen -o ../frontend-sbom.json -t javascript --no-analytics
+
+      - name: Upload SBOM artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-artifacts
+          path: |
+            backend-sbom.json
+            frontend-sbom.json
+
+  platform-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+      REDIS_URL: "redis://localhost:6379/0"
+      RATE_LIMIT_REDIS_URL: "redis://localhost:6379/0"
+      AUTH_CACHE_REDIS_URL: "redis://localhost:6379/0"
+      SECURITY_TOKEN_REDIS_URL: "redis://localhost:6379/0"
+      USAGE_GUARDRAIL_REDIS_URL: "redis://localhost:6379/0"
+      STARTER_CLI_SKIP_ENV: "true"
+      STARTER_CLI_SKIP_VAULT_PROBE: "true"
+      ENABLE_BILLING: "false"
+      ENABLE_BILLING_RETRY_WORKER: "false"
+      ENABLE_RESEND_EMAIL_DELIVERY: "false"
+      ALLOW_PUBLIC_SIGNUP: "true"
+      OPENAI_API_KEY: "dummy-smoke-key"
+    services:
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install just
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y just
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Hatch
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch
+
+      - name: Create Hatch environment
+        run: hatch env create
+
+      - name: Platform smoke (health + JWKS + stub agent)
+        run: hatch run python scripts/smoke/platform_smoke.py

@@ -1,4 +1,4 @@
-You are a professional engineer and developer in charge of the OpenAI Agent Starter Codebase. The OpenAI Agent Starter Codebase contains a Next.js frontend and a FastAPI backend. The FastAPI backend is based on the latest new OpenAI Agents SDK (v0.5.0)and uses the brand new GPT-5 model with reasoning. 
+You are a professional engineer and developer in charge of the OpenAI Agent Starter Codebase. The OpenAI Agent Starter Codebase contains a Next.js frontend and a FastAPI backend. The FastAPI backend is based on the latest new OpenAI Agents SDK (v0.5.0)and uses the brand new GPT-5.1 model with reasoning. 
 
 # Overview
 - This is a SaaS starter repo people can easily clone and quickly set up their own AI Agent SaaS website
@@ -47,42 +47,45 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
   ```
 
 - **Pages stay lean:** `app/.../page.tsx` imports the feature orchestrator and handles only layout/metadata. Shared chrome for a route group belongs in `_components/` next to the layout, while the feature content stays within `features/**`.
+- **Route chrome vs. shared UI:** For marketing, keep persistent chrome (header, footer, nav, layout scaffolding) in `app/(marketing)/_components/`. Place marketing-specific sections reusable across pages in `features/marketing/components/`. Put cross-app primitives (buttons, banners, cards) in `components/ui/` so they remain Shadcn-style and domain agnostic.
 - **Data layer remains centralized:** Continue using `lib/api`, `lib/queries`, `lib/chat`, and `/types` for network/data contracts. Feature hooks only compose those primitives; anything broadly useful graduates to `components/ui/` or `components/shared/`.
 - **Ownership split:** Engineering owns the shared hooks/services in `lib/**`; the design/UI team iterates inside `features/<domain>/components` using those hooks. Any new cross-feature logic graduates back into `lib/**` so other surfaces stay consistent.
 - **Testing:** Colocate unit/interaction tests with the orchestrator (`ChatWorkspace.test.tsx`). Promote reusable test helpers to existing shared testing utilities when multiple features need them.
 
 ## CLI Charter – Starter CLI (SC)
-- **Purpose:** The SC is the single operator entrypoint for provisioning secrets, wiring third-party providers, generating env files for both the FastAPI backend and the Next.js frontend, and exporting audit artifacts. It replaces the legacy “Anything Agents” branding.
-- **Boundaries:** SC never imports `anything-agents/app` modules directly. Shared logic (key generation, schema validation) must live in neutral `starter_shared/*` modules to keep imports acyclic and to allow the CLI to run without initializing the server stack.
+- **Purpose:** The SC is the single operator entrypoint for provisioning secrets, wiring third-party providers, generating env files for both the FastAPI backend and the Next.js frontend, and exporting audit artifacts. It replaces the legacy branding from earlier iterations.
+- **Boundaries:** SC never imports `api-service/app` modules directly. Shared logic (key generation, schema validation) must live in neutral `starter_contracts/*` modules to keep imports acyclic and to allow the CLI to run without initializing the server stack.
 - **Execution modes:** Every workflow supports interactive prompts for first-time operators and headless execution via flags (`--non-interactive`, `--answers-file`, `--var`) so CI/CD can drive the same flows deterministically.
-- **Testing contract:** Importing `python -m starter_cli.cli` must be side-effect free (no DB/Vault connections). Unit tests stub network calls, and the repo-root `conftest.py` enforces SQLite/fakeredis overrides for all CLI modules.
+- **Testing contract:** Importing `python -m starter_cli.app` must be side-effect free (no DB/Vault connections). Unit tests stub network calls, and the repo-root `conftest.py` enforces SQLite/fakeredis overrides for all CLI modules.
 - **Ownership & roadmap:** Platform Foundations owns the CLI. Work is tracked in `docs/trackers/CLI_MILESTONE.md` with phases for rebrand, config extraction, adapter rewrites, hermetic testing, and CI guardrails. Any new CLI feature must update that tracker before merge.
 - **Operator guide:** Day-to-day workflows and command references live in `starter_cli/README.md`.
 
 # Development Guidelines
 - You must maintain a professional clean architecture, referring to the documentations of the OpenAI Agents SDK and the `docs/openai-agents-sdk` directory whenever needed in order to ensure you abide by the latest API framework. 
 - Avoid feature gates/flags and any backwards compability changes - since our app is still unreleased
-- **Backend**: Run `hatch run lint` and `hatch run pyright` after all edits in backend to ensure there are no errors
+- **Backend**: Run `hatch run lint` and `hatch run typecheck` (Pyright + Mypy) after all edits in backend; CI blocks merges on `hatch run typecheck`, so keep it green locally.
 - **Fronted**: Run `pnpm lint` and `pnpm type-check` after all edits in frontend to ensure there are no errors
 - Keep FastAPI routers roughly ≤300 lines by default—split files when workflows/dependencies diverge, but it’s acceptable for a single router to exceed that limit when it embeds tightly coupled security or validation helpers; extract those helpers into shared modules only once they are reused elsewhere.
 - Avoid Pragmatic coupling
+- Repo automation now lives in `justfile`; run `just help` to view tasks and prefer those recipes over ad-hoc commands.
 
 # Test Environment Contract
 - `conftest.py` at the repository root forces the entire pytest run onto SQLite + fakeredis and disables billing/auto migrations. **Do not** remove or bypass this file; any new package (CLI included) must behave correctly when those overrides are in effect.
-- Any test that mutates `os.environ` must snapshot and restore the original values to avoid leaking state into other suites. Use the helpers in `anything-agents/tests/conftest.py` or mimic their pattern.
+- Any test that mutates `os.environ` must snapshot and restore the original values to avoid leaking state into other suites. Use the helpers in `api-service/tests/conftest.py` or mimic their pattern.
 - When adding CLI modules, ensure module import has no side effects (e.g., avoid calling `get_settings()` or hitting the database at import time). If you need settings, fetch them inside the handler after env overrides have loaded.
 - Postgres integration suites (`tests/integration/test_postgres_migrations.py`) remain skipped unless `USE_REAL_POSTGRES=true`; leave this off for local/unit CI runs so we never accidentally hit a developer's Postgres instance.
 
 # Notes
 - Throughout the codebase, you will see `SNAPSHOT.md` files. `SNAPSHOT.md` files contain the full structure of the codebase at a given point in time. Refer to these files when you need understand the architecture or need help navigating the codebase.
 - Refer to `docs/trackers/` for the latest status of the codebase. Keep these trackers up to date with the latest changes and status of the codebase.
-- When applying database migrations or generating new ones, always use the Makefile targets (`make migrate`, `make migration-revision`) so your `.env.local`/`.env` secrets and `.env.compose` values are loaded consistently. These wrappers take care of wiring Alembic to the right Postgres instance (local Docker or remote) without manual exports.
-- Need to test Vault Transit locally? Use `make vault-up` to start the dev signer, `make verify-vault` to run the CLI issuance smoke test, and `make vault-down` when you’re done. Details live in `docs/security/vault-transit-signing.md`.
+- When applying database migrations or generating new ones, always use the Just recipes (`just migrate`, `just migration-revision message="..."`) so your `.env.local`/`.env` secrets and `.env.compose` values are loaded consistently. These wrappers take care of wiring Alembic to the right Postgres instance (local Docker or remote) without manual exports.
+- Need to test Vault Transit locally? Use `just vault-up` to start the dev signer, `just verify-vault` to run the CLI issuance smoke test, and `just vault-down` when you’re done. Details live in `docs/security/vault-transit-signing.md`.
+- Thishe repo hasn’t shipped a “stable” release yet, so we don’t carry any backward-compat baggage.
 
 # Codebase Patterns
 openai-agents-starter/
 ├── pyproject.toml
-├── agent-next-15-frontend/
+├── web-app/
 │   ├── app/
 │   │   ├── (agent)/
 │   │   │   ├── actions.ts
@@ -104,7 +107,7 @@ openai-agents-starter/
 │   ├── types/
 │   │   └── generated/… (OpenAPI types)
 │   └── config + tooling files (package.json, tailwind.config.ts, etc.)
-├── anything-agents/
+├── api-service/
 │   ├── alembic/ (database migrations)
 │   ├── app/
 │   │   ├── api/ (FastAPI layer - versioned routes, dependencies, models)

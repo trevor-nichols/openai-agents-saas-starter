@@ -32,7 +32,7 @@ Owner: Frontend Platform (Account & Security workstream)
 | Profile mutation (display name/photo) | TBD – confirm backend capability | `useUpdateProfileMutation` (optional) | Stubs out in UI until backend supports writes. |
 
 Implementation Notes:
-- House hooks in `agent-next-15-frontend/lib/queries/account.ts`.
+- House hooks in `web-app/lib/queries/account.ts`.
 - Return structured data object `{ user, tenant, verification, meta }` so UI components stay simple.
 - Skeleton: reuse `components/ui/states/SkeletonPanel`.
 - Errors: bubble to route-level `error.tsx` (once added) that renders `ErrorState` + “Try again” button calling `router.refresh()`.

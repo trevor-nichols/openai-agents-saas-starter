@@ -7,8 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping
 
-from starter_cli.cli.inventory import WIZARD_PROMPTED_ENV_VARS
-from starter_shared.config import get_settings
+from starter_cli.core.inventory import WIZARD_PROMPTED_ENV_VARS
+from starter_contracts.config import get_settings
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DOC_PATH = REPO_ROOT / "docs/trackers/CLI_ENV_INVENTORY.md"
@@ -40,15 +40,15 @@ def _parse_inventory_doc(path: Path) -> dict[str, EnvEntry]:
         if "Env Var" in line and "Wizard" in line:
             wizard_idx = _detect_column_index(line, target="wizard")
             continue
-        if not line.startswith("| `") or line.startswith("| `Env Var`"):
+        if line.startswith("| ---"):
             continue
         segments = _split_markdown_row(line)
         if len(segments) < 4:
             continue
         env_cell = segments[0].strip()
-        if env_cell.startswith("---"):
+        if env_cell.startswith("Env Var"):
             continue
-        env_var = env_cell.strip("`").strip().upper()
+        env_var = env_cell.strip("` ").upper()
         wizard_cell = _extract_wizard_cell(segments, wizard_idx)
         wizard_prompted = "✅" in wizard_cell
         entries[env_var] = EnvEntry(env_var=env_var, wizard_prompted=wizard_prompted)
@@ -81,6 +81,11 @@ def _split_markdown_row(line: str) -> list[str]:
     i = 0
     while i < len(inner):
         ch = inner[i]
+        # Treat escaped pipes as literals.
+        if ch == "\\" and i + 1 < len(inner) and inner[i + 1] == "|":
+            current.append("|")
+            i += 2
+            continue
         if ch == "`":
             in_code = not in_code
             current.append(ch)

@@ -7,7 +7,7 @@
 
 | Provider | Use Cases | Status | Notes |
 | --- | --- | --- | --- |
-| Vault Dev (Docker) | Local development and smoke tests | ✅ Available | `make vault-up`, static root token, no TLS. Never expose to production traffic. |
+| Vault Dev (Docker) | Local development and smoke tests | ✅ Available | `just vault-up`, static root token, no TLS. Never expose to production traffic. |
 | HCP Vault (Dedicated/SaaS) | Production/staging Vault Transit | ✅ Available | Requires Transit engine + namespace. CLI onboarding collects addr/token/namespace. |
 | Infisical Cloud | Managed secrets + signing for cost-sensitive tenants | ✅ Available | Service token + workspace metadata stored in env. Uses HMAC-SHA256 signing secret. |
 | Infisical Self-Hosted | Enterprises needing VPC-only installs | ✅ Available | Same flow as cloud plus optional CA bundle path. |
@@ -44,14 +44,20 @@
 | `AZURE_MANAGED_IDENTITY_CLIENT_ID` | — | — | Optional | User-assigned managed identity client ID. |
 | `AZURE_KV_CACHE_TTL_SECONDS` | — | — | Optional | Local cache TTL for Azure secrets. |
 
+> **Hardening requirement (Nov 2025):** FastAPI now refuses to start when `ENVIRONMENT`
+> is anything other than `development/dev/local/test` (and `DEBUG` is false) unless
+> `VAULT_VERIFY_ENABLED=true`. The Starter CLI wizard sets this automatically for
+> `--profile staging` and `--profile production`, so providers must be fully configured
+> before those profiles can complete.
+
 ## 3. Operational Runbooks
 
 ### 3.1 Vault Dev
 
-1. Run `make vault-up`. Script enables Transit and prints env exports.  
+1. Run `just vault-up`. Script enables Transit and prints env exports.  
 2. Update `.env.local`/`.env.compose` with printed values.  
-3. Boot FastAPI (`make api`) and run `make verify-vault` to smoke test CLI issuance.  
-4. Tear down with `make vault-down`. Remember storage is memory-only and root token is static.
+3. Boot FastAPI (`just api`) and run `just verify-vault` to smoke test CLI issuance.  
+4. Tear down with `just vault-down`. Remember storage is memory-only and root token is static.
 
 ### 3.2 HCP Vault
 
@@ -59,7 +65,7 @@
 2. Enable Transit engine and create `auth-service` key (or configure CLI-specified name).  
 3. Create a scoped token/AppRole with `transit:sign` + `transit:verify` capabilities.  
 4. Run `starter_cli secrets onboard --provider vault_hcp` to capture env vars.  
-5. Update backend/CLI env files and run `make verify-vault` (pointed at HCP address).  
+5. Update backend/CLI env files and run `just verify-vault` (pointed at HCP address).  
 6. Rotate Transit keys via Vault policies; update `VAULT_TRANSIT_KEY` if names change.
 
 ### 3.3 Infisical Cloud/Self-Host

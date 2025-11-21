@@ -24,7 +24,7 @@ Close the remaining data-layer gaps uncovered during the 11 Nov 2025 review so t
 - [x] Document the flow in `docs/frontend/features/account-service-accounts.md` and `docs/security/vault-transit-signing.md`.
 
 ### 2. Billing Subscription Fetchers & Hooks
-- [x] Add REST fetchers under `agent-next-15-frontend/lib/api/billingSubscriptions.ts` for get/start/update/cancel/usage that call the existing Next API endpoints.
+- [x] Add REST fetchers under `web-app/lib/api/billingSubscriptions.ts` for get/start/update/cancel/usage that call the existing Next API endpoints.
 - [x] Refactor `lib/queries/billingSubscriptions.ts` to depend on the new fetchers (no direct `use server` imports) and update related tests/mocks.
 - [x] Ensure server components still use server helpers via actions where appropriate (document best practice in `docs/frontend/data-access.md`).
 
@@ -39,8 +39,8 @@ Close the remaining data-layer gaps uncovered during the 11 Nov 2025 review so t
 - [x] Add regression tests to `app/api/auth/sessions/route.test.ts` validating tenant-id propagation and to the React Query hook to ensure query keys include the filter.
 
 ### 5. Quality Gates
-- [x] Run `pnpm lint` / `pnpm type-check` inside `agent-next-15-frontend`.
-- [x] Run `hatch run lint` / `hatch run pyright` inside `anything-agents`.
+- [x] Run `pnpm lint` / `pnpm type-check` inside `web-app`.
+- [x] Run `hatch run lint` / `hatch run pyright` inside `api-service`.
 - [x] Update `docs/trackers/ISSUE_TRACKER.md` statuses to “In Progress” / “Resolved” as tasks complete.
 
 ## Open Questions / Dependencies

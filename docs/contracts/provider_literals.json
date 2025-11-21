@@ -1,0 +1,31 @@
+{
+  "secret_provider_status": [
+    "degraded",
+    "healthy",
+    "unavailable"
+  ],
+  "secret_purpose": [
+    "cli_bridge",
+    "generic",
+    "service_account_issuance"
+  ],
+  "secret_scope": [
+    "database",
+    "internal",
+    "service_account",
+    "third_party_api"
+  ],
+  "secrets_provider_literal": [
+    "aws_sm",
+    "azure_kv",
+    "infisical_cloud",
+    "infisical_self_host",
+    "vault_dev",
+    "vault_hcp"
+  ],
+  "signup_access_policy_literal": [
+    "approval",
+    "invite_only",
+    "public"
+  ]
+}

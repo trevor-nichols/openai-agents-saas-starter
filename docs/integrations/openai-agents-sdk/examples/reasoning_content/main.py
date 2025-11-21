@@ -20,7 +20,7 @@ from agents import ModelSettings
 from agents.models.interface import ModelTracing
 from agents.models.openai_provider import OpenAIProvider
 
-MODEL_NAME = os.getenv("EXAMPLE_MODEL_NAME") or "gpt-5"
+MODEL_NAME = os.getenv("EXAMPLE_MODEL_NAME") or "gpt-5.1"
 
 
 async def stream_with_reasoning_content():
@@ -118,7 +118,7 @@ async def main():
     except Exception as e:
         print(f"Error: {e}")
         print("\nNote: This example requires a model that supports reasoning content.")
-        print("You may need to use a specific model like gpt-5 or similar.")
+        print("You may need to use a specific model like gpt-5.1 or similar.")
 
 
 if __name__ == "__main__":

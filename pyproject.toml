@@ -3,10 +3,10 @@ requires = ["hatchling>=1.25.0"]
 build-backend = "hatchling.build"
 
 [project]
-name = "anything-agents"
-version = "0.1.0"
+name = "api-service"
+version = "0.1.1"
 description = "FastAPI-based AI agent service powered by the OpenAI Agents SDK."
-readme = "anything-agents/README.md"
+readme = "api-service/README.md"
 requires-python = ">=3.11"
 license = { file = "LICENSE" }
 authors = [
@@ -46,10 +46,13 @@ dependencies = [
   "openai-agents==0.5.0",
   "tavily-python>=0.3.3,<0.4.0",
   "prometheus-client>=0.20.0,<0.21.0",
+  "rich>=13.9.0,<14.0.0",
   "zxcvbn-python>=4.4.0,<5.0.0",
   "boto3>=1.35.0,<2.0.0",
   "azure-identity>=1.17.0,<2.0.0",
   "azure-keyvault-secrets>=4.9.0,<5.0.0",
+  "geoip2>=4.8.0,<5.0.0",
+  "IP2Location>=8.10.0,<9.0.0",
 ]
 
 [project.optional-dependencies]
@@ -66,6 +69,9 @@ dev = [
   "types-PyJWT>=1.7.0,<2.0.0",
   "types-passlib>=1.7.7.16,<1.8.0",
   "types-redis>=4.6.0.12,<4.7.0",
+  "types-PyYAML>=6.0.12.20240917,<7.0.0",
+  "types-zxcvbn>=4.5.0,<5.0.0",
+  "boto3-stubs>=1.35.0,<2.0.0",
   "stripe>=10.11.0,<11.0.0",
 ]
 
@@ -76,33 +82,32 @@ documentation = "https://github.com/openai/openai-agents-starter/tree/main/docs/
 issues = "https://github.com/openai/openai-agents-starter/issues"
 
 [project.scripts]
-anything-agents = "run:main"
-aa-cli = "starter_cli.cli.main:main"
+api-service = "run:main"
+aa-cli = "starter_cli.app:main"
 
 [tool.hatch.metadata]
 allow-direct-references = true
 
 [tool.hatch.build.sources]
-app = "anything-agents/app"
+app = "api-service/app"
 starter_cli = "starter_cli"
-starter_shared = "starter_shared"
+starter_contracts = "starter_contracts"
 
 [tool.hatch.build.targets.wheel]
-packages = ["app", "starter_cli", "starter_shared"]
+packages = ["app", "starter_cli", "starter_contracts"]
 include = [
   "run.py",
-  "anything-agents/main.py",
+  "api-service/main.py",
 ]
 exclude = [
   "**/__pycache__",
   "**/*.pyc",
 ]
-
 [tool.hatch.build.targets.sdist]
 include = [
-  "anything-agents/**",
+  "api-service/**",
   "starter_cli/**",
-  "starter_shared/**",
+  "starter_contracts/**",
   "docs/**",
   "run.py",
   "README.md",
@@ -112,27 +117,30 @@ exclude = [
   "**/__pycache__",
   "**/*.pyc",
 ]
+[tool.hatch.build.targets.sdist.force-include]
+"starter_cli/adapters/env" = "starter_cli/adapters/env"
 
 [tool.hatch.envs.default]
 features = ["dev"]
 python = "3.11"
+path = ".venv"
 [tool.hatch.envs.default.env-vars]
 PYTHONPATH = "."
 
 [tool.hatch.envs.default.scripts]
-serve = "uvicorn main:app --reload --app-dir anything-agents --reload-dir anything-agents --reload-dir starter_cli --reload-dir starter_shared --host 127.0.0.1 --port 8000"
+serve = "uvicorn main:app --reload --app-dir api-service --reload-dir api-service --reload-dir starter_cli --reload-dir starter_contracts --host 127.0.0.1 --port 8000"
 test = "pytest"
-lint = "ruff check anything-agents starter_cli starter_shared"
-format = "ruff format anything-agents starter_cli starter_shared"
-typecheck = "mypy anything-agents starter_cli starter_shared"
+lint = "ruff check api-service starter_cli starter_contracts"
+format = "ruff format api-service starter_cli starter_contracts"
+typecheck = "python -m scripts.typecheck"
 coverage = "python -m coverage run -m pytest && python -m coverage report"
 pyright = "python -m pyright"
-migrate = "alembic -c anything-agents/alembic.ini upgrade head"
-migration-revision = "alembic -c anything-agents/alembic.ini revision -m \"{args}\""
+migrate = "alembic -c api-service/alembic.ini upgrade head"
+migration-revision = "alembic -c api-service/alembic.ini revision -m \"{args}\""
 
 [tool.ruff]
 line-length = 100
-src = ["anything-agents", "starter_cli", "starter_shared"]
+src = ["api-service", "starter_cli", "starter_contracts"]
 target-version = "py311"
 
 [tool.ruff.lint]
@@ -149,6 +157,33 @@ ignore = [
   "B008",
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"api-service/app/services/**/*.py" = [
+  "I252",  # allow transitional relative imports while services are reorganized
+]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "parents"
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"app.services.billing_service" = { msg = "Import via app.services.billing.*" }
+"app.services.billing_events" = { msg = "Import via app.services.billing.*" }
+"app.services.payment_gateway" = { msg = "Import via app.services.billing.payment_gateway" }
+"app.services.stripe_dispatcher" = { msg = "Import via app.services.billing.stripe.dispatcher" }
+"app.services.stripe_event_models" = { msg = "Import via app.services.billing.stripe.event_models" }
+"app.services.stripe_retry_worker" = { msg = "Import via app.services.billing.stripe.retry_worker" }
+"app.services.email_verification_service" = { msg = "Import via app.services.signup.email_verification_service" }
+"app.services.invite_service" = { msg = "Import via app.services.signup.invite_service" }
+"app.services.password_recovery_service" = { msg = "Import via app.services.signup.password_recovery_service" }
+"app.services.signup_request_service" = { msg = "Import via app.services.signup.signup_request_service" }
+"app.services.signup_service" = { msg = "Import via app.services.signup.signup_service" }
+"app.services.status_service" = { msg = "Import via app.services.status.status_service" }
+"app.services.status_alert_dispatcher" = { msg = "Import via app.services.status.status_alert_dispatcher" }
+"app.services.status_subscription_service" = { msg = "Import via app.services.status.status_subscription_service" }
+"app.services.tenant_settings_service" = { msg = "Import via app.services.tenant.tenant_settings_service" }
+"app.services.user_service" = { msg = "Import via app.services.users.user_service" }
+"app.services.rate_limit_service" = { msg = "Import via app.services.shared.rate_limit_service" }
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
@@ -163,31 +198,40 @@ disallow_any_generics = true
 disallow_subclassing_any = true
 ignore_missing_imports = false
 namespace_packages = true
-mypy_path = ["anything-agents", "starter_cli", "starter_shared"]
+mypy_path = ["api-service", "."]
 
 [[tool.mypy.overrides]]
 module = ["tavily", "tavily.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = ["IP2Location", "IP2Location.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["asyncpg", "asyncpg.*"]
+ignore_missing_imports = true
+
 [tool.pyright]
-include = ["anything-agents", "starter_cli", "starter_shared"]
+include = ["api-service", "starter_cli", "starter_contracts"]
 typeCheckingMode = "basic"
 pythonVersion = "3.11"
-extraPaths = ["anything-agents", "starter_cli", "starter_shared"]
+extraPaths = ["api-service", "starter_cli", "starter_contracts"]
 
 [tool.pytest.ini_options]
-pythonpath = ["anything-agents", "."]
-testpaths = ["anything-agents/tests"]
+pythonpath = ["api-service", "."]
+testpaths = ["api-service/tests", "starter_contracts/tests"]
 asyncio_mode = "auto"
 addopts = "--strict-markers --disable-warnings"
 markers = [
   "postgres: marks tests that require a running Postgres instance",
   "stripe_replay: fixture-driven Stripe webhook replay tests",
+  "integration: long-running integration tests (docker, external services)",
 ]
 
 [tool.coverage.run]
 branch = true
-source = ["anything-agents/app"]
+source = ["api-service/app"]
 omit = ["*/__init__.py"]
 
 [tool.coverage.report]

@@ -1,8 +1,8 @@
 # Status Alert Subscription Contract
 
-**Last Updated:** 2025-11-12  
+**Last Updated:** 2025-11-17  
 **Owner:** Platform Foundations (Status Workstream)  
-**Status:** Proposed – awaiting backend plumbing sign-off
+**Status:** Launched — backend APIs, CLI, and `/status` marketing UX are live
 
 ## 1. Goals & Non-Goals
 
@@ -179,11 +179,11 @@ Soft delete (status → `revoked`). Requires email-token auth (link in unsubscri
 ## 6. Frontend Integration
 
 ### Status Page CTA
-- Replace the placeholder buttons in `app/(marketing)/status/page.tsx` with a `SubscribeStatusCTA` component once the POST endpoint lands.
+- `features/marketing/status/StatusExperience.tsx` renders the `StatusAlertsCard`, verification/unsubscribe banners, and CTA instrumentation now that the POST endpoint is live.
 - Component responsibilities:
-  - Mode toggle (email vs webhook) with channel-specific fields.
+  - Email-only lead capture for public visitors (webhook mode deferred to tenant settings).
   - Uses `useStatusSubscriptionMutation` hook (TanStack Query) that wraps `POST /api/v1/status/subscriptions`.
-  - Surfaces success toast + inline copy showing next steps (verify email, respond to webhook challenge).
+  - Surfaces success toast + inline copy showing next steps (verify email, respond to unsubscribe link).
   - Falls back to linking the RSS feed while the mutation is pending/failed to maintain UX continuity.
 
 ### Account Settings (Future)
@@ -208,4 +208,4 @@ Soft delete (status → `revoked`). Requires email-token auth (link in unsubscri
 - ✅ Scaffold FastAPI endpoints, Pydantic models, and service layer (2025-11-12).  
 - ✅ Implement Postgres repository + rate-limit enforcement (2025-11-12).  
 - ✅ Add `StatusAlertDispatcher` worker + CLI resend/list commands (2025-11-12).  
-- ⏳ Update `/status` CTA + TanStack mutation once backend scaffolding lands.
+- ✅ Update `/status` CTA + TanStack mutation once backend scaffolding landed (2025-11-17).

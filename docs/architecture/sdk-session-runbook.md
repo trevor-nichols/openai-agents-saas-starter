@@ -7,11 +7,11 @@
 
 ## Components
 - **Tables**: `sdk_agent_sessions`, `sdk_agent_session_messages` (migrations add both; no auto-creation at runtime).
-- **Engine source**: Shared async engine configured via `init_engine()`; the lifespan hook calls `configure_sdk_session_store(engine)`.
-- **Application hooks**: `AgentService` pulls/updates session metadata via `ConversationService`, then calls `Runner.run(..., session=...)`.
+- **Engine source**: Shared async engine configured via `init_engine()`; FastAPI bootstrap passes it into `build_openai_provider(..., engine=engine)` which constructs the SQLAlchemy session store.
+- **Application hooks**: `AgentService` pulls/updates session metadata via `ConversationService`, then requests session handles from `provider.session_store.build(session_id)` and feeds them to the OpenAI runtime.
 
 ## Provisioning Checklist
-1. Run `make migrate` (uses `.env.compose` + local env) to apply `6724700351b6_add_sdk_session_columns`.
+1. Run `just migrate` (uses `.env.compose` + local env) to apply `6724700351b6_add_sdk_session_columns`.
 2. Verify the tables exist:
    ```sql
    \d sdk_agent_sessions;
@@ -32,11 +32,11 @@
 ## Recovery Procedures
 1. **Corrupted session history**: Delete from `sdk_agent_session_messages` for the affected `session_id` and blank the associated columns on `agent_conversations`. Agents will rebuild state from durable conversation logs.
 2. **Rolling back code**: Downgrade the migration (`alembic downgrade 45c4400e74d9`) only after clearing the new columns/tables.
-3. **Stuck migrations**: Use `make migrate` to rerun with verbose output; all SQL runs inside the managed virtualenv.
+3. **Stuck migrations**: Use `just migrate` to rerun with verbose output; all SQL runs inside the managed virtualenv.
 
 ## Local Development Notes
-- Tests rely on the new tables; ensure `pytest -m postgres` runs against a database that has the migration.
-- The in-memory `EphemeralConversationRepository` now mirrors `ConversationSessionState`, so unit tests can run without PostgreSQL.
+- Provider bootstrap in tests uses the in-memory SQLite engine via `build_openai_provider` (see `api-service/tests/conftest.py`).
+- The in-memory `EphemeralConversationRepository` mirrors `ConversationSessionState`, so unit tests can run without PostgreSQL.
 - Developers can inspect session payloads locally with:
   ```sql
   SELECT session_id, message_data FROM sdk_agent_session_messages ORDER BY created_at DESC LIMIT 10;

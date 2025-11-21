@@ -1,6 +1,6 @@
 # Stripe Billing Runbook
 
-This document outlines the operator workflows for receiving, inspecting, and replaying Stripe webhook events in the `anything-agents` backend.
+This document outlines the operator workflows for receiving, inspecting, and replaying Stripe webhook events in the `api-service` backend.
 
 ## Event Intake
 
@@ -40,16 +40,16 @@ This document outlines the operator workflows for receiving, inspecting, and rep
 
    ```bash
    # List failed dispatches for the billing_sync handler (page 2)
-   make stripe-replay ARGS="list --handler billing_sync --status failed --page 2"
+   just stripe-replay args="list --handler billing_sync --status failed --page 2"
 
    # Replay a specific dispatch UUID
-   make stripe-replay ARGS="replay --dispatch-id 7ad7c7bc-..."
+   just stripe-replay args="replay --dispatch-id 7ad7c7bc-..."
 
    # Replay everything currently failed (limit 10, auto-confirm)
-   make stripe-replay ARGS="replay --status failed --limit 10 --yes"
+   just stripe-replay args="replay --status failed --limit 10 --yes"
 
    # Replay based on Stripe event ids (dispatch rows are created automatically)
-   make stripe-replay ARGS="replay --event-id evt_123 --event-id evt_456"
+   just stripe-replay args="replay --event-id evt_123 --event-id evt_456"
    ```
 
    The CLI now talks directly to Postgres: it resets the `stripe_event_dispatch` rows to `pending`, invokes the dispatcher in-process, and updates the parent `stripe_events` row—no webhook POSTs required.
@@ -115,20 +115,20 @@ Normalized `BillingEventPayload` messages delivered over `/api/v1/billing/stream
   stripe trigger customer.subscription.created \
     --override '{"customer":"{{CUSTOMER_ID}}","metadata":{"tenant_id":"default"}}'
   ```
-- Inspect stored events via `psql` or any SQL client pointed at the Postgres instance started by `make dev-up`.
+- Inspect stored events via `psql` or any SQL client pointed at the Postgres instance started by `just dev-up`.
 - Validate fixture coverage locally:
   ```bash
-  make lint-stripe-fixtures
-  make test-stripe
+  just lint-stripe-fixtures
+  just test-stripe
   ```
 
 ## Streaming Health Checks
 
-1. **Redis** – `make dev-up` already launches Redis. Inspect `billing:events:last_processed_at` via `redis-cli` to ensure bookmarks advance.
+1. **Redis** – `just dev-up` already launches Redis. Inspect `billing:events:last_processed_at` via `redis-cli` to ensure bookmarks advance.
 2. **SSE endpoint** – `curl -H "X-Tenant-Id: <tenant>" -H "X-Tenant-Role: owner" http://localhost:8000/api/v1/billing/stream` should return a continuous event stream (ping comments every 15s). Headers are optional but, when provided, must align with the tenant/role embedded in the JWT.
 3. **Frontend panel** – the Agent dashboard displays subscription/invoice/usage cards from the stream payload. If it stalls, verify cookies include the tenant metadata and inspect browser devtools for SSE disconnects.
 4. **Metrics** – monitor `stripe_webhook_events_total{result="dispatch_failed"}` plus `stripe_billing_stream_events_total{result="failed"}`/`stripe_billing_stream_backlog_seconds` to catch stuck fan-out or Redis lag.
-5. **Automated suites** – run `make test-stripe` (fixture-driven webhook + SSE tests) and `make lint-stripe-fixtures` before pushing changes so replay tooling stays in sync.
+5. **Automated suites** – run `just test-stripe` (fixture-driven webhook + SSE tests) and `just lint-stripe-fixtures` before pushing changes so replay tooling stays in sync.
 6. **Secret rotations** – after updating Stripe credentials, work through the validation checklist in the [Stripe Secret Rotation SOP](#stripe-secret-rotation-sop) to confirm new keys and webhook signatures are live.
 
 ## Stripe Secret Rotation SOP
@@ -155,7 +155,7 @@ This standard operating procedure covers the two long-lived Stripe credentials u
 1. In the Stripe Dashboard, create a **new restricted secret key** with the same permissions as the current one.
 2. Update the key in your secret manager (`.env.local`, Vault, Kubernetes secret, etc.) **without deleting** the previous value yet.
 3. Deploy/restart the FastAPI app so the new key is loaded; verify startup logs show the masked key prefix/suffix you expect.
-4. Run `make test-stripe` against a staging environment to exercise subscription creation and usage recording with the new key.
+4. Run `just test-stripe` against a staging environment to exercise subscription creation and usage recording with the new key.
 5. Once satisfied, delete or revoke the old key in Stripe to prevent reuse.
 
 ### Rotation steps – Webhook secret (`STRIPE_WEBHOOK_SECRET`)
@@ -167,7 +167,7 @@ This standard operating procedure covers the two long-lived Stripe credentials u
 
 ### Validation
 
-- Execute `make test-stripe` (or the CI workflow) and ensure both the webhook ingestion test and SSE test pass.
+- Execute `just test-stripe` (or the CI workflow) and ensure both the webhook ingestion test and SSE test pass.
 - Tail the application logs for `Stripe billing configuration validated` and confirm no `dispatch_failed` or `stream_failed` entries appear within five minutes of the rotation.
 - Check Prometheus: `stripe_gateway_operations_total{result!="success"}` should remain flat, and `stripe_webhook_events_total{result="invalid_signature"}` should be zero.
 - Confirm the frontend Billing Activity panel resumes streaming data for at least one tenant.
@@ -175,7 +175,7 @@ This standard operating procedure covers the two long-lived Stripe credentials u
 ### Rollback
 
 1. Keep the previous secrets until validation is complete. If issues arise, revert the env values to the prior key/secret and redeploy.
-2. Re-run `make test-stripe` to confirm the rollback restored functionality.
+2. Re-run `just test-stripe` to confirm the rollback restored functionality.
 3. Investigate the failed rotation (typically a missed redeploy or stale secret store) before attempting again. Document the incident in the ops log.
 
 
@@ -185,6 +185,27 @@ This standard operating procedure covers the two long-lived Stripe credentials u
 - **Dependencies** – reuses the configured `StripeEventRepository` + `StripeEventDispatcher`; no extra queues required.
 - **Behaviour** – polls every 30s, pulls failed dispatch rows whose `next_retry_at` has passed, and calls `dispatcher.replay_dispatch()` so the normal bookkeeping runs (status -> `completed`/`failed`, metrics, billing stream publish).
 - **Backoff** – dispatcher failures schedule retries with exponential backoff (30s to 10m). When the root cause persists, rows remain `failed` and alerts stay firing; use the CLI to inspect or force replay with `--yes`.
+
+### Deployment Modes (OPS-004)
+
+OPS-004 tracks “exactly one retry worker per fleet.” Use the table below to document which pods own the worker:
+
+| Mode | When to use | Required settings |
+| --- | --- | --- |
+| Inline | Single-instance or dev/staging stacks where only one FastAPI pod exists. | Keep `ENABLE_BILLING_RETRY_WORKER=true`, `ENABLE_BILLING_STREAM_REPLAY=true`, and `BILLING_RETRY_DEPLOYMENT_MODE=inline` (the setup wizard sets this automatically). |
+| Dedicated worker | Production clusters with multiple API replicas. | Customer-facing API pods: `ENABLE_BILLING_RETRY_WORKER=false`, `ENABLE_BILLING_STREAM_REPLAY=false`, `BILLING_RETRY_DEPLOYMENT_MODE=dedicated`. A separate “billing-worker” deployment (1 replica) keeps both flags true so it owns retries + stream replay. |
+
+The Starter CLI setup wizard now records these decisions automatically:
+
+- `var/reports/billing-worker-topology.md` — summarizes the chosen mode, profile, and timestamp so runbooks can link to the authoritative decision (generated on every wizard run).
+- `var/reports/billing-worker.env` — created when you pick `dedicated`. Copy these overrides on top of your `.env` for the single worker deployment; API pods must retain the disabled toggles.
+
+Implementation checklist:
+
+1. During `starter_cli.app setup wizard` answer **No** to “Run the Stripe retry worker inside this deployment?” for customer-facing pods and **Yes** for the worker pod. This keeps env files honest (`starter_cli/workflows/setup/_wizard/sections/signup.py`).
+2. In Kubernetes/Compose, create a dedicated deployment/statefulset for the worker with `replicas: 1`, `ENABLE_BILLING=true`, `ENABLE_BILLING_RETRY_WORKER=true`, and `ENABLE_BILLING_STREAM_REPLAY=true`. All other API deployments set the flags to `false`.
+3. Gate rollouts with metrics: alert on `stripe_dispatch_retry_total{result!="success"}` and watch for duplicate “stripe.dispatch.retry_success” log streams—two pods emitting those logs concurrently means the worker flag is misconfigured.
+4. Document the worker pod in your ops runbooks. During incidents, confirm logs show **one** pod starting the worker (“Stripe dispatch retry worker disabled” should appear on all others). If you ever need multiple replicas, add a Redis-backed lease before scaling out to avoid duplicate replays.
 
 ## Billing Stream Replay Worker
 

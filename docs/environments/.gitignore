@@ -1,0 +1,3 @@
+# Keep real answer files out of version control.
+*.answers.json
+!*.answers.template.json

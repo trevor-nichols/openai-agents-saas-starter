@@ -16,8 +16,8 @@ def random_number_tool(max: int) -> int:
 
 def spanish_handoff_message_filter(handoff_message_data: HandoffInputData) -> HandoffInputData:
     if is_gpt_5_default():
-        print("gpt-5 is enabled, so we're not filtering the input history")
-        # when using gpt-5, removing some of the items could break things, so we do this filtering only for other models
+        print("gpt-5.1 is enabled, so we're not filtering the input history")
+        # when using gpt-5.1, removing some of the items could break things, so we do this filtering only for other models
         return HandoffInputData(
             input_history=handoff_message_data.input_history,
             pre_handoff_items=tuple(handoff_message_data.pre_handoff_items),

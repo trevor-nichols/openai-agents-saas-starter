@@ -31,6 +31,7 @@
 │       └── tools.md           # Guide on using hosted tools, function tools, and agents as tools.
 ├── handoffs/                  # Documentation related to the agent handoff feature.
 │   └── handoff_prompt.md      # Provides a recommended system prompt for agents that use handoffs.
+├── provider_layer.md          # How api-service wires provider-agnostic ports and the OpenAI provider.
 ├── memory/                    # Documentation for specific memory/session implementations.
 │   └── sqlalchemy_session.md  # Documents a persistent session implementation using SQLAlchemy.
 ├── openai_raw_api_reference.md # Raw API reference documentation for the OpenAI Responses API.
