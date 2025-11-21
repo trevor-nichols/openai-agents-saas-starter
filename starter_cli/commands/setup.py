@@ -15,11 +15,29 @@ from starter_cli.workflows.setup import (
 from starter_cli.workflows.setup.automation import AutomationPhase
 from starter_cli.workflows.setup.inputs import InputProvider
 from starter_cli.workflows.setup.wizard import PROFILE_CHOICES
+from starter_cli.workflows.setup_menu import SetupMenuController
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     setup_parser = subparsers.add_parser("setup", help="Bootstrap and policy wizard.")
     setup_subparsers = setup_parser.add_subparsers(dest="setup_command")
+
+    menu_parser = setup_subparsers.add_parser(
+        "menu",
+        help="Setup hub that shows status of workflows and quick-launches them.",
+        aliases=["dashboard"],
+    )
+    menu_parser.add_argument(
+        "--no-tui",
+        action="store_true",
+        help="Print a summary table instead of the interactive menu.",
+    )
+    menu_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit setup status as JSON (implies --no-tui).",
+    )
+    menu_parser.set_defaults(handler=handle_setup_menu)
 
     wizard_parser = setup_subparsers.add_parser(
         "wizard",
@@ -302,6 +320,12 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
             wizard.markdown_summary_path = default_md
         wizard.execute()
     return 0
+
+
+def handle_setup_menu(args: argparse.Namespace, ctx: CLIContext) -> int:
+    controller = SetupMenuController(ctx)
+    use_tui = not args.no_tui and not args.json
+    return controller.run(use_tui=use_tui, output_json=args.json)
 
 
 __all__ = ["register"]

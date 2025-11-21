@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from typing import cast
+
 from starter_cli.core.context import build_context
 from starter_cli.core.status_models import ProbeResult, ProbeState, ServiceStatus
 from starter_cli.workflows.home import HomeController
 from starter_cli.workflows.home import service as home_service
+from starter_cli.workflows.home.doctor import DoctorRunner
 
 
 def test_home_controller_summary(monkeypatch):
@@ -27,3 +30,15 @@ def test_home_controller_summary(monkeypatch):
     result = controller.run(use_tui=False)
     assert result == 0
 
+
+def test_home_shortcuts_include_setup():
+    ctx = build_context()
+    controller = HomeController(ctx)
+
+    class DummyRunner:
+        profile = "local"
+        strict = False
+
+    shortcuts = controller._build_shortcuts(cast(DoctorRunner, DummyRunner()))
+    keys = {shortcut.key for shortcut in shortcuts}
+    assert "S" in keys

@@ -201,6 +201,14 @@ class Console:
     ) -> None:
         self._log("SUCCESS", message, topic, stream or self.stream)
 
+    def print(self, *renderables: RenderableType, **kwargs) -> None:
+        """Passthrough to the Rich console for generic rendering."""
+        self._rich_out.print(*renderables, **kwargs)
+
+    def input(self, prompt: str = "") -> str:
+        """Passthrough to the Rich console input helper."""
+        return self._rich_out.input(prompt)
+
     def rule(self, title: str) -> None:
         self._rich_out.rule(title, style="section.rule")
 
