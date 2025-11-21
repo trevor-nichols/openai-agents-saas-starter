@@ -7,7 +7,9 @@ import sys
 from pathlib import Path
 
 import pytest
+from starter_contracts import config as shared_config
 
+from app.core import config as api_config
 from tests.utils.pytest_stripe import (
     configure_stripe_replay_option,
     register_stripe_replay_marker,
@@ -28,9 +30,12 @@ def _ensure_import_paths() -> None:
 
     # Configure deterministic key storage so auth-dependent tests can sign tokens.
     test_keyset = api_dir / "tests" / "fixtures" / "keysets" / "test_keyset.json"
-    os.environ.setdefault("AUTH_KEY_STORAGE_BACKEND", "file")
-    os.environ.setdefault("AUTH_KEY_STORAGE_PATH", str(test_keyset))
-    os.environ.setdefault("STARTER_CLI_SKIP_VAULT_PROBE", "true")
+    os.environ["AUTH_KEY_STORAGE_BACKEND"] = "file"
+    os.environ["AUTH_KEY_STORAGE_PATH"] = str(test_keyset)
+    os.environ["STARTER_CLI_SKIP_VAULT_PROBE"] = "true"
+    # Ensure settings pick up the overrides
+    api_config.get_settings.cache_clear()
+    shared_config.get_settings.cache_clear()
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
