@@ -19,12 +19,26 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.types import JSON, TypeDecorator
 
 from app.infrastructure.persistence.models.base import UTC_NOW, Base, uuid_pk
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from app.infrastructure.persistence.conversations.models import TenantAccount
+
+
+class JSONBCompat(TypeDecorator[Any]):
+    """JSON type that prefers JSONB on Postgres but works on SQLite."""
+
+    impl = JSON
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect: Dialect) -> Any:
+        if dialect.name == "postgresql":
+            return dialect.type_descriptor(JSONB(astext_type=Text()))
+        return dialect.type_descriptor(JSON())
 
 
 class BillingPlan(Base):
@@ -42,7 +56,7 @@ class BillingPlan(Base):
     currency: Mapped[str] = mapped_column(String(3), default="USD", nullable=False)
     trial_days: Mapped[int | None] = mapped_column(Integer)
     seat_included: Mapped[int | None] = mapped_column(Integer)
-    feature_toggles: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    feature_toggles: Mapped[dict[str, Any] | None] = mapped_column(JSONBCompat)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=UTC_NOW, nullable=False
@@ -113,7 +127,7 @@ class TenantSubscription(Base):
     trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cancel_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     seat_count: Mapped[int | None] = mapped_column(Integer)
-    metadata_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    metadata_json: Mapped[dict[str, Any] | None] = mapped_column(JSONBCompat)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=UTC_NOW, nullable=False
     )
