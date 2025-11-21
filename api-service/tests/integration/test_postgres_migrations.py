@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
-import asyncpg  # type: ignore[import-untyped]
+import asyncpg
 import pytest
 from agents.extensions.memory.sqlalchemy_session import SQLAlchemySession
 from sqlalchemy import select, text

@@ -208,6 +208,10 @@ ignore_missing_imports = true
 module = ["IP2Location", "IP2Location.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = ["asyncpg", "asyncpg.*"]
+ignore_missing_imports = true
+
 [tool.pyright]
 include = ["api-service", "starter_cli", "starter_contracts"]
 typeCheckingMode = "basic"
