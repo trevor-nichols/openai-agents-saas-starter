@@ -12,7 +12,7 @@ required secrets or keeps the feature disabled.
 | --- | --- | --- | --- | --- |
 | Stripe | `ENABLE_BILLING=true` | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRODUCT_PRICE_MAP` | CLI still exits non-zero (see below), FastAPI logs warnings only when billing is disabled | Startup fails with `RuntimeError` until every variable is present |
 | Resend | `RESEND_EMAIL_ENABLED=true` | `RESEND_API_KEY`, `RESEND_DEFAULT_FROM` | Warning only | Startup fails with actionable `RuntimeError` |
-| Tavily | implicit (agents advertise `web_search` capability) | `TAVILY_API_KEY` | Tool is skipped and agents continue without web search | Startup fails so tenants cannot see a downgraded capability set |
+| Tavily | implicit (agents advertise `web_search` capability) | `TAVILY_API_KEY` | Tool is skipped and agents continue without web search | Warning only; tool is skipped, never fatal |
 
 The FastAPI lifespan now runs these checks before configuring Redis, billing, or agents. Any fatal
 violations halt the process immediately so health probes never turn green with a misconfigured stack.
@@ -51,10 +51,9 @@ The validator surfaces structured log output similar to:
 - **Resend:** Configure the API key and default From address in `.env.local`. Template IDs remain
   optional, but start populating them once you move beyond local testing so transactional email
   matches production copy.
-- **Tavily:** Local development can proceed without the API key, but the tool registry suppresses
-  `tavily_search_tool` to keep the agent catalog honest. Hardened environments must provide a valid
-  key or the backend refuses to start. When additional web search providers are introduced, extend
-  `app/core/provider_validation.py` rather than adding ad-hoc checks.
+- **Tavily:** All environments can run without the API key; the tool registry simply omits
+  `tavily_search_tool` when `TAVILY_API_KEY` is absent. When additional web search providers are
+  introduced, extend `app/core/provider_validation.py` rather than adding ad-hoc checks.
 
 ## Tracking & reporting
 

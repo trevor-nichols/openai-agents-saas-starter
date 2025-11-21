@@ -134,7 +134,6 @@ def _render_probe_detail(probe: ProbeResult) -> Text:
         return _secrets_detail(probe)
     if name == "billing":
         return _billing_detail(probe)
-    # fallback
     return Text(probe.detail or "", style="bright_black" if not probe.detail else "")
 
 
@@ -165,7 +164,6 @@ def _ports_detail(probe: ProbeResult) -> Text:
     if not parts:
         return Text(detail)
     for idx, part in enumerate(parts):
-        # expected format: label:host:port=up/down
         if "=" in part:
             label, status = [*part.split("=", 1), ""][:2]
         else:
@@ -357,4 +355,10 @@ def _list_preview(items: list[str], *, max_items: int = 3) -> str:
     return f"{head} +{len(items) - max_items} more"
 
 
-__all__ = ["state_chip", "shortcuts_panel", "probes_table", "probes_panel", "services_table"]
+__all__ = [
+    "state_chip",
+    "shortcuts_panel",
+    "probes_table",
+    "probes_panel",
+    "services_table",
+]

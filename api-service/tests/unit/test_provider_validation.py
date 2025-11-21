@@ -13,8 +13,7 @@ def test_validate_providers_returns_empty_when_features_disabled():
 
     violations = validate_providers(settings, strict=True)
 
-    assert {v.code for v in violations} == {"missing_tavily_api_key"}
-    assert all(not v.fatal for v in violations)
+    assert violations == []
 
 
 def test_validate_providers_flags_stripe_when_billing_enabled():
@@ -44,11 +43,10 @@ def test_validate_providers_handles_resend_in_non_strict_environment():
 
     violations = validate_providers(settings, strict=False)
 
-    assert len(violations) == 3
+    assert len(violations) == 2
     assert {v.code for v in violations} == {
         "missing_resend_api_key",
         "missing_resend_default_from",
-        "missing_tavily_api_key",
     }
     assert all(not v.fatal for v in violations)
 

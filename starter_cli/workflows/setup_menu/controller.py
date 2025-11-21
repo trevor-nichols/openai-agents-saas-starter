@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import subprocess
 from collections.abc import Iterable
 from datetime import timedelta
 
@@ -11,9 +10,10 @@ from rich.text import Text
 
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext
+from starter_cli.ui import StarterTUI
 
 from .detection import STALE_AFTER_DAYS, collect_setup_items
-from .models import SetupAction, SetupItem
+from .models import SetupItem
 
 
 class SetupMenuController:
@@ -29,7 +29,7 @@ class SetupMenuController:
         if not use_tui:
             self._render_table(items)
             return 0
-        self._interactive_loop()
+        StarterTUI(self.ctx, initial_screen="setup").run()
         return 0
 
     # ------------------------------------------------------------------
@@ -70,59 +70,6 @@ class SetupMenuController:
 
         console.print(table)
 
-    # ------------------------------------------------------------------
-    # Interaction
-    # ------------------------------------------------------------------
-
-    def _interactive_loop(self) -> None:
-        console.rule("Setup Hub")
-        console.info("Press the item number to run its primary action; R to refresh; Q to quit.")
-        items = collect_setup_items(self.ctx, stale_after=self.stale_window)
-        while True:
-            self._render_table(items, show_index=True)
-            choice = console.input("[cyan]Command[/] (#[run], R=refresh, Q=quit): ").strip()
-            if not choice:
-                continue
-            upper = choice.upper()
-            if upper == "Q":
-                console.note("Exiting setup hub.", topic="setup")
-                return
-            if upper == "R":
-                items = collect_setup_items(self.ctx, stale_after=self.stale_window)
-                continue
-            if not choice.isdigit():
-                console.warn("Enter a number, R, or Q.", topic="setup")
-                continue
-            idx = int(choice) - 1
-            if idx < 0 or idx >= len(items):
-                console.warn("Selection out of range.", topic="setup")
-                continue
-            item = items[idx]
-            if not item.actions:
-                console.warn("No actions available for this setup.", topic="setup")
-                continue
-            self._run_action(item.actions[0])
-            items = collect_setup_items(self.ctx, stale_after=self.stale_window)
-
-    def _run_action(self, action: SetupAction) -> None:
-        if action.warn_overwrite and console._rich_out.is_interactive:
-            confirm = console.input(
-                f"[yellow]This may overwrite .env files. Proceed with '{action.label}'?[/] (y/N): "
-            ).strip()
-            if confirm.lower() not in {"y", "yes"}:
-                console.note("Cancelled.", topic="setup")
-                return
-        try:
-            console.info(f"Running: {' '.join(action.command)}", topic="setup")
-            subprocess.run(
-                action.command,
-                cwd=self.ctx.project_root,
-                check=False,
-            )
-        except FileNotFoundError as exc:
-            console.error(f"Command not found: {exc}", topic="setup")
-        except Exception as exc:  # pragma: no cover - defensive
-            console.error(f"Action failed: {exc}", topic="setup")
 
 
 # ---------------------------------------------------------------------------

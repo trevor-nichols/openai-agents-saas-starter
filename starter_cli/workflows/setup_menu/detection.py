@@ -220,6 +220,8 @@ def _dev_user_item(ctx: CLIContext, stale_after: timedelta) -> SetupItem:
             label="Dev Admin User",
             status="missing",
             detail="Seed a local dev admin account.",
+            progress=0.0,
+            progress_label=_progress_label(0.0),
             actions=[_dev_user_action()],
         )
     last_run = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC)
@@ -231,6 +233,8 @@ def _dev_user_item(ctx: CLIContext, stale_after: timedelta) -> SetupItem:
         detail="Dev admin credentials recorded.",
         last_run=last_run,
         artifact=path,
+        progress=1.0,
+        progress_label=_progress_label(1.0),
         actions=[_dev_user_action()],
     )
 

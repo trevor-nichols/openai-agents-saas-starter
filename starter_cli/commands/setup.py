@@ -15,7 +15,7 @@ from starter_cli.workflows.setup import (
 from starter_cli.workflows.setup.automation import AutomationPhase
 from starter_cli.workflows.setup.inputs import InputProvider
 from starter_cli.workflows.setup.wizard import PROFILE_CHOICES
-from starter_cli.workflows.setup_menu import SetupMenuController
+from starter_cli.workflows.setup_menu.controller import SetupMenuController
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
