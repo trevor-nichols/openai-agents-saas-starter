@@ -16,8 +16,8 @@ import {
   Conversation,
   ConversationContent,
   ConversationScrollButton,
-} from '@/components/ui/shadcn-io/ai/conversation';
-import { Message, MessageAvatar, MessageContent } from '@/components/ui/shadcn-io/ai/message';
+} from '@/components/ui/ai/conversation';
+import { Message, MessageAvatar, MessageContent } from '@/components/ui/ai/message';
 import {
   PromptInput,
   PromptInputButton,
@@ -25,7 +25,7 @@ import {
   PromptInputTextarea,
   PromptInputToolbar,
   PromptInputTools,
-} from '@/components/ui/shadcn-io/ai/prompt-input';
+} from '@/components/ui/ai/prompt-input';
 
 interface ChatInterfaceProps {
   messages: ChatMessage[];
