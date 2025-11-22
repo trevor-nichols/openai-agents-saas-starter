@@ -13,6 +13,8 @@ export default defineConfig({
     path: 'lib/api/client',
     format: 'prettier',
     lint: 'eslint',
+    // Ensure imports point to .ts files during Next dev (pre-transpile)
+    importFileExtension: '.ts',
   },
   client: {
     name: '@hey-api/client-fetch',
