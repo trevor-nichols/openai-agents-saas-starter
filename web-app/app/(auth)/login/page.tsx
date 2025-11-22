@@ -10,11 +10,12 @@ export const metadata: Metadata = {
 };
 
 interface LoginPageProps {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default function LoginPage({ searchParams }: LoginPageProps) {
-  const redirectParam = typeof searchParams?.redirectTo === 'string' ? searchParams.redirectTo : undefined;
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const params = await searchParams;
+  const redirectParam = typeof params?.redirectTo === 'string' ? params.redirectTo : undefined;
   const redirectTo = redirectParam && redirectParam.startsWith('/') ? redirectParam : undefined;
 
   return (

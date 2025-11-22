@@ -16,25 +16,25 @@ export async function exchangeCredentials(
 ): Promise<UserSessionTokens> {
   if (USE_API_MOCK) {
     const tokens = createMockTokens();
-    persistSessionCookies(tokens);
+    await persistSessionCookies(tokens);
     return tokens;
   }
   const tokens = await loginWithCredentials(payload);
-  persistSessionCookies(tokens);
+  await persistSessionCookies(tokens);
   return tokens;
 }
 
 export async function refreshSessionWithBackend(refreshToken: string): Promise<UserSessionTokens> {
   if (USE_API_MOCK) {
     const tokens = createMockTokens();
-    persistSessionCookies(tokens);
+    await persistSessionCookies(tokens);
     return tokens;
   }
   const payload: UserRefreshRequest = {
     refresh_token: refreshToken,
   };
   const tokens = await refreshSessionTokens(payload);
-  persistSessionCookies(tokens);
+  await persistSessionCookies(tokens);
   return tokens;
 }
 
