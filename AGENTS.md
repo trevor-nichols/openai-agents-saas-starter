@@ -62,6 +62,12 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 - **Ownership split:** Engineering owns the shared hooks/services in `lib/**`; the design/UI team iterates inside `features/<domain>/components` using those hooks. Any new cross-feature logic graduates back into `lib/**` so other surfaces stay consistent.
 - **Testing:** Colocate unit/interaction tests with the orchestrator (`ChatWorkspace.test.tsx`). Promote reusable test helpers to existing shared testing utilities when multiple features need them.
 
+### Component placement guide (UI vs feature vs route chrome)
+- `components/ui/` – domain-agnostic primitives and small families (e.g., buttons, inputs, tooltip, marquee, motion wrappers, avatar, hero variants, code-block). Use lowercase dirs, PascalCase files, and a barrel `index.ts` per folder.
+- `features/<domain>/components/` – domain/workflow compositions that stitch data + UI (e.g., chat transcript drawer, billing panels). Reused across pages within that domain.
+- `app/(group)/_components/` – route-group chrome/layout (e.g., marketing header/footer, auth card). Keep close to the pages they serve.
+- Rule of thumb: generic everywhere → `ui`; cross-page domain → `features`; single route-group shell → `app/(group)/_components`.
+
 ## CLI Charter – Starter CLI (SC)
 - **Purpose:** The SC is the single operator entrypoint for provisioning secrets, wiring third-party providers, generating env files for both the FastAPI backend and the Next.js frontend, and exporting audit artifacts. It replaces the legacy branding from earlier iterations.
 - **Boundaries:** SC never imports `api-service/app` modules directly. Shared logic (key generation, schema validation) must live in neutral `starter_contracts/*` modules to keep imports acyclic and to allow the CLI to run without initializing the server stack.
