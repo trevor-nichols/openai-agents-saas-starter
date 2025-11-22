@@ -6,7 +6,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const config: StorybookConfig = {
   stories: ['../features/**/*.stories.@(ts|tsx)', '../components/**/*.stories.@(ts|tsx)'],
-  addons: ['@storybook/addon-docs'],
+  addons: [],
   framework: {
     name: '@storybook/nextjs',
     options: {},
@@ -16,6 +16,7 @@ const config: StorybookConfig = {
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
       'next/config': path.resolve(__dirname, './next-config-shim.js'),
+      '@': path.resolve(__dirname, '../'),
     };
     return config;
   },
