@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Menu } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { SectionHeader } from '@/components/ui/foundation/SectionHeader';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
@@ -34,24 +36,26 @@ export function AppMobileNav({ navItems, accountItems }: AppMobileNavProps) {
           <SheetTitle>Navigation</SheetTitle>
         </SheetHeader>
 
-        <div className="mt-6 space-y-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-foreground/50">Primary</p>
-            <AppNavLinks items={navItems} variant="mobile" onNavigate={() => setOpen(false)} className="mt-2" />
-          </div>
+        <ScrollArea className="mt-6 h-[80vh] pr-4">
+          <div className="space-y-6">
+            <div>
+              <SectionHeader title="Workspace" description="Jump to any surface" size="compact" />
+              <AppNavLinks items={navItems} variant="mobile" onNavigate={() => setOpen(false)} className="mt-3" />
+            </div>
 
-          <Separator className="bg-white/10" />
+            <Separator className="bg-white/10" />
 
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-foreground/50">Account</p>
-            <AppNavLinks
-              items={accountItems}
-              variant="mobile"
-              onNavigate={() => setOpen(false)}
-              className="mt-2"
-            />
+            <div>
+              <SectionHeader eyebrow="Account" title="Manage access" description="Profile, guardrails, tenant" size="compact" />
+              <AppNavLinks
+                items={accountItems}
+                variant="mobile"
+                onNavigate={() => setOpen(false)}
+                className="mt-3"
+              />
+            </div>
           </div>
-        </div>
+        </ScrollArea>
       </SheetContent>
     </Sheet>
   );

@@ -5,13 +5,14 @@
 // - AppLayout component: Renders persistent top navigation and main content area.
 
 import { Suspense } from 'react';
-import Link from 'next/link';
 
 import { SilentRefresh } from '@/components/auth/SilentRefresh';
 import { AppMobileNav } from '@/components/shell/AppMobileNav';
-import { AppNavLinks, type AppNavItem } from '@/components/shell/AppNavLinks';
+import type { AppNavItem } from '@/components/shell/AppNavLinks';
 import { AppPageHeading } from '@/components/shell/AppPageHeading';
+import { AppSidebar } from '@/components/shell/AppSidebar';
 import { AppUserMenu } from '@/components/shell/AppUserMenu';
+import { InfoMenu, NotificationMenu } from '@/components/ui/nav-bar';
 import { getSessionMetaFromCookies } from '@/lib/auth/cookies';
 import { billingEnabled } from '@/lib/config/features';
 
@@ -37,7 +38,18 @@ const accountNav: AppNavItem[] = [
 
 export async function buildNavItems(hasStatusScope: boolean) {
   const primaryNav = await buildPrimaryNav();
-  return hasStatusScope ? [...primaryNav, { href: '/ops/status', label: 'Ops' }] : primaryNav;
+  if (!hasStatusScope) {
+    return primaryNav;
+  }
+
+  const opsLink: AppNavItem = {
+    href: '/ops/status',
+    label: 'Ops',
+    badge: 'Admin',
+    badgeVariant: 'outline',
+  };
+
+  return [...primaryNav, opsLink];
 }
 
 // --- AppLayout component ---
@@ -62,32 +74,18 @@ async function AppLayoutContent({ children }: AppLayoutProps) {
     <div className="flex min-h-screen bg-background text-foreground">
       <SilentRefresh />
 
-      <aside className="relative hidden w-[280px] flex-col border-r border-white/10 bg-background/70 p-6 backdrop-blur-glass lg:flex">
-        <Link href="/dashboard" className="text-xl font-semibold tracking-tight">
-          Acme
-        </Link>
-        <p className="mt-2 text-sm text-foreground/60">
-          Operate your AI agent stack with confidence.
-        </p>
-
-        <nav aria-label="Primary navigation" className="mt-8 text-sm font-medium">
-          <AppNavLinks items={navItems} />
-        </nav>
-
-        <div className="mt-auto">
-          <p className="text-xs font-semibold uppercase tracking-wide text-foreground/50">Account</p>
-          <nav aria-label="Account navigation" className="mt-3 text-sm">
-            <AppNavLinks items={accountNav} />
-          </nav>
-        </div>
-      </aside>
+      <AppSidebar navItems={navItems} accountItems={accountNav} />
 
       <div className="flex min-h-screen flex-1 flex-col">
         <header className="sticky top-0 z-30 border-b border-white/10 bg-background/80 backdrop-blur-glass">
-          <div className="flex items-start justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
             <AppPageHeading navItems={navItems} accountItems={accountNav} subtitle={subtitle} />
-            <div className="flex items-center gap-3">
-              <div className="lg:hidden">
+            <div className="flex items-center gap-3 lg:justify-end">
+              <div className="hidden md:flex items-center gap-2">
+                <InfoMenu />
+                <NotificationMenu notificationCount={4} />
+              </div>
+              <div className="md:hidden">
                 <AppMobileNav navItems={navItems} accountItems={accountNav} />
               </div>
               <AppUserMenu userName={null} userEmail={session?.userId ?? null} tenantId={session?.tenantId ?? null} />

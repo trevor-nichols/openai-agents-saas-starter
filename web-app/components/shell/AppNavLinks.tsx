@@ -3,11 +3,14 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 export interface AppNavItem {
   href: string;
   label: string;
+  badge?: string;
+  badgeVariant?: BadgeProps['variant'];
 }
 
 interface AppNavLinksProps {
@@ -48,7 +51,17 @@ export function AppNavLinks({ items, variant = 'rail', onNavigate, className }: 
             className={cn(baseClasses, variant === 'rail' ? railClasses : mobileClasses)}
             onClick={onNavigate}
           >
-            {item.label}
+            <span className="flex items-center justify-between gap-2">
+              <span>{item.label}</span>
+              {item.badge ? (
+                <Badge
+                  variant={item.badgeVariant ?? 'secondary'}
+                  className="rounded-full border-white/10 bg-white/10 px-2 py-0 text-[11px] font-medium text-foreground"
+                >
+                  {item.badge}
+                </Badge>
+              ) : null}
+            </span>
           </Link>
         );
       })}

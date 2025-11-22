@@ -10,6 +10,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import { SectionHeader } from '@/components/ui/foundation/SectionHeader';
 
 import type { AppNavItem } from './AppNavLinks';
 
@@ -33,7 +34,7 @@ export function AppPageHeading({ navItems, accountItems, subtitle }: AppPageHead
   }, [allItems, pathname]);
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="space-y-3">
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -48,7 +49,7 @@ export function AppPageHeading({ navItems, accountItems, subtitle }: AppPageHead
         </BreadcrumbList>
       </Breadcrumb>
 
-      <p className="text-sm text-foreground/70">{subtitle}</p>
+      <SectionHeader title={active.label} description={subtitle} size="compact" />
     </div>
   );
 }
