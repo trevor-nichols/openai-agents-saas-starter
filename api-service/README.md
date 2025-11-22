@@ -91,7 +91,7 @@ AUTH_SESSION_ENCRYPTION_KEY=   # required for encrypted session metadata in prod
 AUTH_SESSION_IP_HASH_SALT=
 
 # Persistence / Redis
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/saas_strarter_db
 REDIS_URL=redis://localhost:6379/0
 BILLING_EVENTS_REDIS_URL=
 AUTO_RUN_MIGRATIONS=false      # dev convenience only
@@ -231,7 +231,7 @@ hatch run test
 Provision a Postgres instance (see step 5), then run:
 
 ```bash
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents \
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/saas_strarter_db \
 hatch run pytest api-service/tests/integration -m postgres
 ```
 

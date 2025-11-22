@@ -36,7 +36,7 @@ def collect_database(context: WizardContext, provider: InputProvider) -> None:
     if context.profile == "local":
         default_url = (
             existing_url
-            or "postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents"
+            or "postgresql+asyncpg://postgres:postgres@localhost:5432/saas_strarter_db"
         )
     else:
         default_url = existing_url

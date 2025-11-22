@@ -13,7 +13,12 @@ if ! vault secrets list -format=json | grep -q '"transit/"'; then
   vault secrets enable transit >/dev/null
 fi
 
-vault write -f transit/keys/"${TRANSIT_KEY}" >/dev/null 2>&1 || true
+# Ensure the transit key exists and supports signing (ed25519)
+if ! vault write transit/keys/"${TRANSIT_KEY}" type=ed25519 >/dev/null 2>&1; then
+  # If it already exists with a non-signing type (e.g., aes256-gcm96), recreate it
+  vault delete transit/keys/"${TRANSIT_KEY}" >/dev/null 2>&1 || true
+  vault write transit/keys/"${TRANSIT_KEY}" type=ed25519 >/dev/null
+fi
 
 cat <<EOM
 Vault dev environment is ready.

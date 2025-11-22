@@ -8,7 +8,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: anything_agents
+      POSTGRES_DB: saas_strarter_db
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:

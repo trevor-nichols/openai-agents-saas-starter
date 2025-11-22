@@ -61,7 +61,8 @@ def build_vault_headers(
     envelope = _build_vault_envelope(request_payload)
     payload_json = json.dumps(envelope, separators=(",", ":"))
     payload_bytes = payload_json.encode("utf-8")
-    payload_b64 = base64.urlsafe_b64encode(payload_bytes).decode("utf-8").rstrip("=")
+    # Keep padding so Vault transit can decode with strict base64 requirements
+    payload_b64 = base64.urlsafe_b64encode(payload_bytes).decode("utf-8")
 
     if provider in _VAULT_PROVIDERS:
         config = _resolve_vault_config(settings)

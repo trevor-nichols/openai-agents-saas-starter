@@ -50,7 +50,7 @@ will exit non-zero whenever billing is enabled but a Stripe variable is missing 
 When validation passes you will see a structured log similar to:
 
 ```
-INFO anything_agents.main Stripe billing configuration validated; 2 plan(s) mapped. stripe_config={'stripe_secret_key': 'sk**********1234', 'stripe_webhook_secret': 'wh**********abcd', 'plans_configured': ['pro', 'starter'], 'plan_count': 2, 'billing_stream_enabled': False, 'billing_stream_backend': 'disabled'}
+INFO saas_strarter_db.main Stripe billing configuration validated; 2 plan(s) mapped. stripe_config={'stripe_secret_key': 'sk**********1234', 'stripe_webhook_secret': 'wh**********abcd', 'plans_configured': ['pro', 'starter'], 'plan_count': 2, 'billing_stream_enabled': False, 'billing_stream_backend': 'disabled'}
 ```
 
 Use the masked prefixes/suffixes to confirm you copied the right keys without exposing them in plaintext logs.

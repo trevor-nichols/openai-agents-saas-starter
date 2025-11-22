@@ -24,7 +24,8 @@ from app.infrastructure.security.vault import VaultTransitClient, VaultVerificat
 def _b64encode(data: bytes) -> str:
     """Return base64url-encoded string without padding."""
 
-    return base64.urlsafe_b64encode(data).decode("utf-8").rstrip("=")
+    # Keep padding so Vault Transit can decode strictly base64 input
+    return base64.urlsafe_b64encode(data).decode("utf-8")
 
 
 @dataclass
