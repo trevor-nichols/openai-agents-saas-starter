@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import { getRefreshTokenFromCookies } from '@/lib/auth/cookies';
 import { destroySession } from '@/lib/auth/session';
 import { logoutSession } from '@/lib/server/services/auth/sessions';
 
@@ -13,8 +14,13 @@ function mapErrorToStatus(message: string): number {
 
 export async function POST(request: NextRequest) {
   try {
-    const payload = await request.json();
-    await logoutSession(payload);
+    const body = await request.json().catch(() => null);
+    const refreshToken = body?.refresh_token ?? (await getRefreshTokenFromCookies());
+
+    if (refreshToken) {
+      await logoutSession({ refresh_token: refreshToken });
+    }
+
     await destroySession();
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
@@ -23,4 +29,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: message }, { status });
   }
 }
-

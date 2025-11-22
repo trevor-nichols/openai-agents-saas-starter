@@ -11,6 +11,7 @@ import { SilentRefresh } from '@/components/auth/SilentRefresh';
 import { AppMobileNav } from '@/components/shell/AppMobileNav';
 import { AppNavLinks, type AppNavItem } from '@/components/shell/AppNavLinks';
 import { AppPageHeading } from '@/components/shell/AppPageHeading';
+import { AppUserMenu } from '@/components/shell/AppUserMenu';
 import { getSessionMetaFromCookies } from '@/lib/auth/cookies';
 import { billingEnabled } from '@/lib/config/features';
 
@@ -85,8 +86,11 @@ async function AppLayoutContent({ children }: AppLayoutProps) {
         <header className="sticky top-0 z-30 border-b border-white/10 bg-background/80 backdrop-blur-glass">
           <div className="flex items-start justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
             <AppPageHeading navItems={navItems} accountItems={accountNav} subtitle={subtitle} />
-            <div className="lg:hidden">
-              <AppMobileNav navItems={navItems} accountItems={accountNav} />
+            <div className="flex items-center gap-3">
+              <div className="lg:hidden">
+                <AppMobileNav navItems={navItems} accountItems={accountNav} />
+              </div>
+              <AppUserMenu userName={null} userEmail={session?.userId ?? null} tenantId={session?.tenantId ?? null} />
             </div>
           </div>
         </header>

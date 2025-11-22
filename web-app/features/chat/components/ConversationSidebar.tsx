@@ -3,7 +3,6 @@
 
 'use client';
 
-import { LogoutButton } from '@/components/auth/LogoutButton';
 import { Button } from '@/components/ui/button';
 import { GlassPanel } from '@/components/ui/foundation';
 import { EmptyState } from '@/components/ui/states';
@@ -103,10 +102,6 @@ export function ConversationSidebar({
           </ul>
         )}
       </ScrollArea>
-
-      <div className="border-t border-white/5 pt-4">
-        <LogoutButton />
-      </div>
     </GlassPanel>
   );
 }
