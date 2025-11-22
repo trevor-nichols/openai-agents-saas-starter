@@ -207,6 +207,8 @@ class EphemeralConversationRepository(ConversationRepository):
         self._messages[key].append(message)
         self._metadata[key] = metadata
         self._session_state[key] = ConversationSessionState(
+            provider=metadata.provider,
+            provider_conversation_id=metadata.provider_conversation_id,
             sdk_session_id=metadata.sdk_session_id,
             session_cursor=metadata.session_cursor,
             last_session_sync_at=metadata.last_session_sync_at,

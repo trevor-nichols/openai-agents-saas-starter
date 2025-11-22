@@ -37,6 +37,11 @@
 
 Context + event-specific keys are flattened at the top level except for `fields`, which groups mutable data that changes per event. This keeps indexes predictable while still allowing rich metadata.
 
+### Agent chat event fields (new)
+- `event`: `agent.chat.start` / `agent.chat.end` / `agent.chat_stream.start` / `agent.chat_stream.end`
+- Keys: `conversation_id` (our UUID), `provider_conversation_id` (`conv_*` when present), `tenant_id`, `agent`, `response_id` (end events only)
+- Purpose: correlate provider-hosted OpenAI Conversation state with our durable conversation threads and trace usage/latency per tenant.
+
 ## 3. Context Propagation Contract
 
 - Introduce `log_context` helpers backed by a `contextvars.ContextVar` to store `correlation_id`, `tenant_id`, `provider`, `worker_id`, etc.

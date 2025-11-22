@@ -85,6 +85,8 @@ class AgentConversation(Base):
     total_tokens_prompt: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     total_tokens_completion: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     reasoning_tokens: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    provider: Mapped[str | None] = mapped_column(String(32))
+    provider_conversation_id: Mapped[str | None] = mapped_column(String(128), unique=True)
     handoff_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     source_channel: Mapped[str | None] = mapped_column(String(32))
     topic_hint: Mapped[str | None] = mapped_column(String(256))

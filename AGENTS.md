@@ -68,7 +68,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
   - **Fronted**: Run `pnpm lint` and `pnpm type-check` after all edits in frontend to ensure there are no errors
 - Keep FastAPI routers roughly ≤300 lines by default—split files when workflows/dependencies diverge, but it’s acceptable for a single router to exceed that limit when it embeds tightly coupled security or validation helpers; extract those helpers into shared modules only once they are reused elsewhere.
 - Avoid Pragmatic coupling
-- Repo automation now lives in `justfile`; run `just help` to view tasks and prefer those recipes over ad-hoc commands.
+- Repo automation now lives in `justfile`; run `just help` to view tasks and prefer those recipes over ad-hoc commands. Use the Just recipes for infra + DB tasks (e.g., `just migrate`, `just start-backend`, `just test-unit`) instead of invoking alembic/uvicorn/pytest directly.
 
 # Test Environment Contract
 - `conftest.py` at the repository root forces the entire pytest run onto SQLite + fakeredis and disables billing/auto migrations. **Do not** remove or bypass this file; any new package (CLI included) must behave correctly when those overrides are in effect.

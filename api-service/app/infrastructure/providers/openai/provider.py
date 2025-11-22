@@ -10,6 +10,7 @@ from app.core.settings import Settings
 from app.domain.ai import AgentDescriptor
 from app.domain.ai.ports import AgentProvider
 
+from .conversation_client import OpenAIConversationFactory
 from .registry import OpenAIAgentRegistry
 from .runtime import OpenAIAgentRuntime
 from .session_store import OpenAISQLAlchemySessionStore
@@ -26,6 +27,7 @@ class OpenAIAgentProvider(AgentProvider):
         settings_factory: Callable[[], Settings],
         conversation_searcher: Callable[[str, str], Awaitable[object]],
         session_store: OpenAISQLAlchemySessionStore,
+        conversation_factory: OpenAIConversationFactory,
     ) -> None:
         self._registry = OpenAIAgentRegistry(
             settings_factory=settings_factory,
@@ -33,6 +35,7 @@ class OpenAIAgentProvider(AgentProvider):
         )
         self._runtime = OpenAIAgentRuntime(self._registry)
         self._session_store = session_store
+        self._conversation_factory = conversation_factory
 
     @property
     def runtime(self) -> OpenAIAgentRuntime:
@@ -41,6 +44,10 @@ class OpenAIAgentProvider(AgentProvider):
     @property
     def session_store(self) -> OpenAISQLAlchemySessionStore:
         return self._session_store
+
+    @property
+    def conversation_factory(self) -> OpenAIConversationFactory:
+        return self._conversation_factory
 
     def list_agents(self):
         return self._registry.list_descriptors()
@@ -65,6 +72,7 @@ def build_openai_provider(
     engine: AsyncEngine,
     auto_create_tables: bool | None = None,
 ) -> OpenAIAgentProvider:
+    conversation_factory = OpenAIConversationFactory(settings_factory)
     session_store = OpenAISQLAlchemySessionStore(
         engine,
         auto_create_tables=auto_create_tables,
@@ -73,6 +81,7 @@ def build_openai_provider(
         settings_factory=settings_factory,
         conversation_searcher=conversation_searcher,
         session_store=session_store,
+        conversation_factory=conversation_factory,
     )
 
 

@@ -109,6 +109,10 @@ class PostgresConversationRepository(ConversationRepository):
                 conversation.total_tokens_completion = metadata.total_tokens_completion
             if metadata.reasoning_tokens is not None:
                 conversation.reasoning_tokens = metadata.reasoning_tokens
+            if metadata.provider:
+                conversation.provider = metadata.provider
+            if metadata.provider_conversation_id:
+                conversation.provider_conversation_id = metadata.provider_conversation_id
             if metadata.sdk_session_id:
                 conversation.sdk_session_id = metadata.sdk_session_id
             if metadata.session_cursor:
@@ -250,6 +254,8 @@ class PostgresConversationRepository(ConversationRepository):
             if conversation is None:
                 return None
             return ConversationSessionState(
+                provider=conversation.provider,
+                provider_conversation_id=conversation.provider_conversation_id,
                 sdk_session_id=conversation.sdk_session_id,
                 session_cursor=conversation.session_cursor,
                 last_session_sync_at=conversation.last_session_sync_at,
@@ -281,6 +287,9 @@ class PostgresConversationRepository(ConversationRepository):
             conversation.sdk_session_id = state.sdk_session_id
             conversation.session_cursor = state.session_cursor
             conversation.last_session_sync_at = state.last_session_sync_at
+            conversation.provider = state.provider or conversation.provider
+            if state.provider_conversation_id:
+                conversation.provider_conversation_id = state.provider_conversation_id
 
             await session.commit()
 
@@ -305,6 +314,10 @@ class PostgresConversationRepository(ConversationRepository):
                 conversation.conversation_key = conversation_key
             if metadata.sdk_session_id:
                 conversation.sdk_session_id = metadata.sdk_session_id
+            if metadata.provider:
+                conversation.provider = metadata.provider
+            if metadata.provider_conversation_id:
+                conversation.provider_conversation_id = metadata.provider_conversation_id
             if metadata.session_cursor:
                 conversation.session_cursor = metadata.session_cursor
             if metadata.last_session_sync_at:
@@ -318,6 +331,8 @@ class PostgresConversationRepository(ConversationRepository):
             user_id=uuid.UUID(metadata.user_id) if metadata.user_id else None,
             agent_entrypoint=metadata.agent_entrypoint,
             active_agent=metadata.active_agent,
+            provider=metadata.provider,
+            provider_conversation_id=metadata.provider_conversation_id,
             source_channel=metadata.source_channel,
             topic_hint=metadata.topic_hint,
             message_count=0,

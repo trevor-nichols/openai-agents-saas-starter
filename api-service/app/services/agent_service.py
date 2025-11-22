@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import os
 import uuid
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
@@ -31,6 +33,8 @@ from app.services.agents.provider_registry import (
 from app.services.conversation_service import ConversationService, get_conversation_service
 from app.services.usage_recorder import UsageEntry, UsageRecorder
 
+logger = logging.getLogger(__name__)
+
 
 class AgentService:
     """Core façade that orchestrates agent interactions."""
@@ -56,8 +60,17 @@ class AgentService:
         provider = self._get_provider()
         descriptor = provider.resolve_agent(request.agent_type)
         conversation_id = request.conversation_id or str(uuid.uuid4())
+        state = await self._conversation_service.get_session_state(
+            conversation_id, tenant_id=actor.tenant_id
+        )
+        provider_conversation_id = await self._resolve_provider_conversation_id(
+            provider=provider,
+            actor=actor,
+            conversation_id=conversation_id,
+            existing_state=state,
+        )
         session_id, session_handle = await self._acquire_session(
-            provider, actor.tenant_id, conversation_id
+            provider, actor.tenant_id, conversation_id, provider_conversation_id
         )
 
         user_message = ConversationMessage(role="user", content=request.message)
@@ -67,6 +80,8 @@ class AgentService:
             tenant_id=actor.tenant_id,
             metadata=self._build_metadata(
                 tenant_id=actor.tenant_id,
+                provider=provider.name,
+                provider_conversation_id=provider_conversation_id,
                 agent_entrypoint=request.agent_type or descriptor.key,
                 active_agent=descriptor.key,
                 session_id=session_id,
@@ -76,12 +91,30 @@ class AgentService:
 
         token = set_current_actor(actor)
         try:
+            logger.info(
+                "agent.chat.start",
+                extra={
+                    "tenant_id": actor.tenant_id,
+                    "conversation_id": conversation_id,
+                    "provider_conversation_id": provider_conversation_id,
+                    "agent": descriptor.key,
+                },
+            )
+            runtime_conversation_id = provider_conversation_id if provider_conversation_id else None
+            allow_openai_uuid_fallback = os.getenv(
+                "ALLOW_OPENAI_CONVERSATION_UUID_FALLBACK", ""
+            ).lower() in ("1", "true", "yes")
+            if runtime_conversation_id is None:
+                if provider.name != "openai":
+                    runtime_conversation_id = conversation_id
+                elif allow_openai_uuid_fallback:
+                    runtime_conversation_id = conversation_id
             with trace(workflow_name="Agent Chat", group_id=conversation_id):
                 result = await provider.runtime.run(
                     descriptor.key,
                     request.message,
                     session=session_handle,
-                    conversation_id=conversation_id,
+                    conversation_id=runtime_conversation_id,
                 )
         finally:
             reset_current_actor(token)
@@ -96,13 +129,31 @@ class AgentService:
             tenant_id=actor.tenant_id,
             metadata=self._build_metadata(
                 tenant_id=actor.tenant_id,
+                provider=provider.name,
+                provider_conversation_id=provider_conversation_id,
                 agent_entrypoint=request.agent_type or descriptor.key,
                 active_agent=descriptor.key,
                 session_id=session_id,
                 user_id=actor.user_id,
             ),
         )
-        await self._sync_session_state(actor.tenant_id, conversation_id, session_id)
+        logger.info(
+            "agent.chat.end",
+            extra={
+                "tenant_id": actor.tenant_id,
+                "conversation_id": conversation_id,
+                "provider_conversation_id": provider_conversation_id,
+                "agent": descriptor.key,
+                "response_id": result.response_id,
+            },
+        )
+        await self._sync_session_state(
+            actor.tenant_id,
+            conversation_id,
+            session_id,
+            provider_name=provider.name,
+            provider_conversation_id=provider_conversation_id,
+        )
         await self._record_usage_metrics(
             tenant_id=actor.tenant_id,
             conversation_id=conversation_id,
@@ -131,8 +182,17 @@ class AgentService:
         provider = self._get_provider()
         descriptor = provider.resolve_agent(request.agent_type)
         conversation_id = request.conversation_id or str(uuid.uuid4())
+        state = await self._conversation_service.get_session_state(
+            conversation_id, tenant_id=actor.tenant_id
+        )
+        provider_conversation_id = await self._resolve_provider_conversation_id(
+            provider=provider,
+            actor=actor,
+            conversation_id=conversation_id,
+            existing_state=state,
+        )
         session_id, session_handle = await self._acquire_session(
-            provider, actor.tenant_id, conversation_id
+            provider, actor.tenant_id, conversation_id, provider_conversation_id
         )
 
         user_message = ConversationMessage(role="user", content=request.message)
@@ -142,6 +202,8 @@ class AgentService:
             tenant_id=actor.tenant_id,
             metadata=self._build_metadata(
                 tenant_id=actor.tenant_id,
+                provider=provider.name,
+                provider_conversation_id=provider_conversation_id,
                 agent_entrypoint=request.agent_type or descriptor.key,
                 active_agent=descriptor.key,
                 session_id=session_id,
@@ -152,12 +214,30 @@ class AgentService:
         complete_response = ""
         token = set_current_actor(actor)
         try:
+            logger.info(
+                "agent.chat_stream.start",
+                extra={
+                    "tenant_id": actor.tenant_id,
+                    "conversation_id": conversation_id,
+                    "provider_conversation_id": provider_conversation_id,
+                    "agent": descriptor.key,
+                },
+            )
+            runtime_conversation_id = provider_conversation_id if provider_conversation_id else None
+            allow_openai_uuid_fallback = os.getenv(
+                "ALLOW_OPENAI_CONVERSATION_UUID_FALLBACK", ""
+            ).lower() in ("1", "true", "yes")
+            if runtime_conversation_id is None:
+                if provider.name != "openai":
+                    runtime_conversation_id = conversation_id
+                elif allow_openai_uuid_fallback:
+                    runtime_conversation_id = conversation_id
             with trace(workflow_name="Agent Chat Stream", group_id=conversation_id):
                 stream_handle = provider.runtime.run_stream(
                     descriptor.key,
                     request.message,
                     session=session_handle,
-                    conversation_id=conversation_id,
+                    conversation_id=runtime_conversation_id,
                 )
                 async for event in stream_handle.events():
                     if event.content_delta:
@@ -188,13 +268,31 @@ class AgentService:
             tenant_id=actor.tenant_id,
             metadata=self._build_metadata(
                 tenant_id=actor.tenant_id,
+                provider=provider.name,
+                provider_conversation_id=provider_conversation_id,
                 agent_entrypoint=request.agent_type or descriptor.key,
                 active_agent=descriptor.key,
                 session_id=session_id,
                 user_id=actor.user_id,
             ),
         )
-        await self._sync_session_state(actor.tenant_id, conversation_id, session_id)
+        logger.info(
+            "agent.chat_stream.end",
+            extra={
+                "tenant_id": actor.tenant_id,
+                "conversation_id": conversation_id,
+                "provider_conversation_id": provider_conversation_id,
+                "agent": descriptor.key,
+                "response_id": stream_handle.last_response_id,
+            },
+        )
+        await self._sync_session_state(
+            actor.tenant_id,
+            conversation_id,
+            session_id,
+            provider_name=provider.name,
+            provider_conversation_id=provider_conversation_id,
+        )
         await self._record_usage_metrics(
             tenant_id=actor.tenant_id,
             conversation_id=conversation_id,
@@ -300,12 +398,23 @@ class AgentService:
             ) from exc
 
     async def _acquire_session(
-        self, provider, tenant_id: str, conversation_id: str
+        self,
+        provider,
+        tenant_id: str,
+        conversation_id: str,
+        provider_conversation_id: str | None,
     ) -> tuple[str, Any]:
         state = await self._conversation_service.get_session_state(
             conversation_id, tenant_id=tenant_id
         )
-        if state and state.sdk_session_id:
+        rebind_to_provider = os.getenv(
+            "FORCE_PROVIDER_SESSION_REBIND", ""
+        ).lower() in ("1", "true", "yes")
+        if provider_conversation_id and (
+            rebind_to_provider or not (state and state.sdk_session_id)
+        ):
+            session_id = provider_conversation_id
+        elif state and state.sdk_session_id:
             session_id = state.sdk_session_id
         else:
             session_id = conversation_id
@@ -313,12 +422,20 @@ class AgentService:
         return session_id, session_handle
 
     async def _sync_session_state(
-        self, tenant_id: str, conversation_id: str, session_id: str
+        self,
+        tenant_id: str,
+        conversation_id: str,
+        session_id: str,
+        *,
+        provider_name: str | None,
+        provider_conversation_id: str | None,
     ) -> None:
         await self._conversation_service.update_session_state(
             conversation_id,
             tenant_id=tenant_id,
             state=ConversationSessionState(
+                provider=provider_name,
+                provider_conversation_id=provider_conversation_id,
                 sdk_session_id=session_id,
                 last_session_sync_at=datetime.now(UTC),
             ),
@@ -382,6 +499,8 @@ class AgentService:
     def _build_metadata(
         *,
         tenant_id: str,
+        provider: str | None,
+        provider_conversation_id: str | None,
         agent_entrypoint: str,
         active_agent: str,
         session_id: str,
@@ -389,11 +508,57 @@ class AgentService:
     ) -> ConversationMetadata:
         return ConversationMetadata(
             tenant_id=tenant_id,
+            provider=provider,
+            provider_conversation_id=provider_conversation_id,
             agent_entrypoint=agent_entrypoint,
             active_agent=active_agent,
             sdk_session_id=session_id,
             user_id=user_id,
         )
+
+    async def _resolve_provider_conversation_id(
+        self,
+        *,
+        provider,
+        actor: ConversationActorContext,
+        conversation_id: str,
+        existing_state: ConversationSessionState | None,
+    ) -> str | None:
+        if existing_state and existing_state.provider_conversation_id:
+            if existing_state.provider_conversation_id.startswith("conv_"):
+                return existing_state.provider_conversation_id
+            logger.warning(
+                "Ignoring non-conv provider conversation id for conversation %s: %s",
+                conversation_id,
+                existing_state.provider_conversation_id,
+            )
+        if os.getenv("DISABLE_PROVIDER_CONVERSATION_CREATION", "").lower() in (
+            "1",
+            "true",
+            "yes",
+        ):
+            return None
+
+        factory = getattr(provider, "conversation_factory", None)
+        if not factory:
+            return None
+
+        try:
+            candidate = await factory.create(
+                tenant_id=actor.tenant_id,
+                user_id=actor.user_id,
+                conversation_key=conversation_id,
+            )
+            if not (candidate or "").startswith("conv_"):
+                logger.warning(
+                    "Provider conversation id did not match expected format; ignoring: %s",
+                    candidate,
+                )
+                return None
+            return candidate
+        except Exception:  # pragma: no cover - defensive fallback
+            logger.exception("Failed to create provider conversation; proceeding without conv id.")
+            return None
 
 
 def build_agent_service(

@@ -13,5 +13,7 @@ os.environ["ENABLE_BILLING"] = "false"
 os.environ["ALLOW_PUBLIC_SIGNUP"] = "true"
 os.environ["ALLOW_SIGNUP_TRIAL_OVERRIDE"] = "false"
 os.environ["STARTER_CLI_SKIP_ENV"] = "true"
+os.environ["DISABLE_PROVIDER_CONVERSATION_CREATION"] = "true"
+os.environ["ALLOW_OPENAI_CONVERSATION_UUID_FALLBACK"] = "true"
 
 config_module.get_settings.cache_clear()

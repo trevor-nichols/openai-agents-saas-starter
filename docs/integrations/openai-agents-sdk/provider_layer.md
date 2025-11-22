@@ -16,6 +16,7 @@ Encapsulate all model-provider specifics behind a narrow set of domain ports so 
   - `registry.py` — builds agent catalog, handoffs, and tool wiring using `ToolRegistry`.
   - `runtime.py` — wraps `agents.Runner` for sync/streaming runs, normalizes usage/events.
   - `session_store.py` — SQLAlchemy-backed SDK sessions (tables `sdk_agent_sessions`, `sdk_agent_session_messages`).
+  - `conversation_client.py` — creates OpenAI Conversations (`conv_*`) so the SDK can persist conversation state in the provider’s store.
 
 ## Bootstrap flow
 
@@ -24,6 +25,13 @@ FastAPI startup (`api-service/main.py`) now:
 2) Builds the OpenAI provider with the shared engine and conversation search callback.
 3) Registers the provider in the registry and sets it as default.
 4) Constructs `AgentService` with the registry rather than a concrete SDK.
+
+### Conversation ownership (UUID vs `conv_*`)
+
+- External/UI ID: our UUID (`conversation_id`) continues to identify threads in APIs, URLs, and Postgres (`agent_conversations` / `agent_messages`).
+- Provider ID: on first turn we call `OpenAIConversationFactory` to create a provider Conversation and store its `conv_*` in `provider_conversation_id`. The SDK receives that value as `conversation_id` so OpenAI-hosted state is authoritative for cross-turn context.
+- Session store: we key `SQLAlchemySession` with the same `conv_*` when available; otherwise we fall back to the local UUID for compatibility.
+- Guards: if a stored or returned provider ID is not `conv_*`, we ignore it and proceed without sending it to the provider.
 
 ## Adding a new OpenAI surface (future)
 
@@ -51,4 +59,3 @@ FastAPI startup (`api-service/main.py`) now:
 
 - Observability: tracing wraps `AgentService` execution via `agents.trace`; provider runtimes should emit provider-specific metadata in `AgentRunResult.metadata` for metrics/alerts.
 - CLI: No CLI changes were required; if future providers add env keys, update `starter_cli/README.md` and the provisioning flows before shipping.
-

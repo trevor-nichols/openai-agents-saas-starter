@@ -38,6 +38,8 @@ class ConversationMetadata:
 
     tenant_id: str
     agent_entrypoint: str
+    provider: str | None = None
+    provider_conversation_id: str | None = None
     active_agent: str | None = None
     source_channel: str | None = None
     topic_hint: str | None = None
@@ -60,6 +62,8 @@ class ConversationMetadata:
 class ConversationSessionState:
     """State container describing the SDK session associated with a conversation."""
 
+    provider: str | None = None
+    provider_conversation_id: str | None = None
     sdk_session_id: str | None = None
     session_cursor: str | None = None
     last_session_sync_at: datetime | None = None
