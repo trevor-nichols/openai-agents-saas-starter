@@ -3,8 +3,7 @@
 
 'use client';
 
-import type { FormEvent } from 'react';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import type { ChatStatus } from 'ai';
 
 import { Button } from '@/components/ui/button';

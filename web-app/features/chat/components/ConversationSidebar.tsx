@@ -3,8 +3,6 @@
 
 'use client';
 
-import React from 'react';
-
 import { LogoutButton } from '@/components/auth/LogoutButton';
 import { Button } from '@/components/ui/button';
 import { GlassPanel } from '@/components/ui/foundation';

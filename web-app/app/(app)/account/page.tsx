@@ -4,14 +4,16 @@
 // - Imports & helpers
 // - AccountPage component: normalizes the requested tab and renders the overview
 
+import { Suspense } from 'react';
+
 import { AccountOverview } from '@/features/account';
 
 const TAB_KEYS = new Set(['profile', 'security', 'sessions', 'automation']);
 
 interface AccountPageProps {
-  searchParams?: {
+  searchParams: Promise<{
     tab?: string;
-  };
+  } | undefined>;
 }
 
 function normalizeTab(value?: string | null): string {
@@ -24,6 +26,15 @@ export const metadata = {
 };
 
 export default function AccountPage({ searchParams }: AccountPageProps) {
-  const initialTab = normalizeTab(searchParams?.tab);
+  return (
+    <Suspense fallback={null}>
+      <AccountPageContent searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function AccountPageContent({ searchParams }: AccountPageProps) {
+  const params = await searchParams;
+  const initialTab = normalizeTab(params?.tab);
   return <AccountOverview initialTab={initialTab} />;
 }

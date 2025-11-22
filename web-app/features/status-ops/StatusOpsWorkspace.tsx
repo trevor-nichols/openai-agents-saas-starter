@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Filter, RefreshCcw } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -46,15 +46,7 @@ export function StatusOpsWorkspace({ defaultTenantId }: StatusOpsWorkspaceProps)
 
   const statusQuery = usePlatformStatusQuery();
   const incidents = useMemo(() => statusQuery.status?.incidents ?? [], [statusQuery.status?.incidents]);
-
-  useEffect(() => {
-    if (!selectedIncidentId && incidents.length > 0) {
-      const firstIncident = incidents[0];
-      if (firstIncident) {
-        setSelectedIncidentId(firstIncident.id);
-      }
-    }
-  }, [incidents, selectedIncidentId]);
+  const activeIncidentId = selectedIncidentId ?? incidents[0]?.id ?? '';
 
   const filteredSubscriptions = useMemo(() => {
     return subscriptionsQuery.subscriptions.filter((item) => {
@@ -129,7 +121,7 @@ export function StatusOpsWorkspace({ defaultTenantId }: StatusOpsWorkspaceProps)
   };
 
   const handleResend = async () => {
-    if (!selectedIncidentId) {
+    if (!activeIncidentId) {
       toast.info({
         title: 'Select an incident',
         description: 'Choose which incident to replay before dispatching alerts.',
@@ -140,7 +132,7 @@ export function StatusOpsWorkspace({ defaultTenantId }: StatusOpsWorkspaceProps)
     try {
       const tenantScope = dispatchTenantScope.trim();
       const response = await resendMutation.mutateAsync({
-        incidentId: selectedIncidentId,
+        incidentId: activeIncidentId,
         severity: severityForDispatch,
         tenantId: tenantScope || null,
       });
@@ -221,7 +213,7 @@ export function StatusOpsWorkspace({ defaultTenantId }: StatusOpsWorkspaceProps)
               <ResendIncidentPanel
                 incidents={incidents}
                 isLoadingIncidents={statusQuery.isLoading}
-                selectedIncidentId={selectedIncidentId}
+                selectedIncidentId={activeIncidentId}
                 severity={severityForDispatch}
                 tenantScope={dispatchTenantScope}
                 onIncidentChange={setSelectedIncidentId}

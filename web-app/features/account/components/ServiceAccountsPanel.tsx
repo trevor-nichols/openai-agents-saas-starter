@@ -87,12 +87,6 @@ export function ServiceAccountsPanel() {
   const [issuedToken, setIssuedToken] = useState<ServiceAccountIssueResult | null>(null);
   const [issueFormError, setIssueFormError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!issueDialogOpen && defaultTenantId && !issueForm.tenantId) {
-      setIssueForm((current) => ({ ...current, tenantId: defaultTenantId }));
-    }
-  }, [defaultTenantId, issueDialogOpen, issueForm.tenantId]);
-
   const openRevokeDialog = useCallback((token: ServiceAccountTokenRow) => {
     setDialogState({ token, reason: '' });
   }, []);

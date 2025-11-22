@@ -1,7 +1,5 @@
 'use client';
 
-import { useMemo } from 'react';
-
 import { GlassPanel, SectionHeader } from '@/components/ui/foundation';
 import { SkeletonPanel, ErrorState } from '@/components/ui/states';
 import { useTenantSettingsQuery, useUpdateTenantSettingsMutation } from '@/lib/queries/tenantSettings';
@@ -13,14 +11,9 @@ export function TenantSettingsWorkspace() {
   const { data, isLoading, error, refetch } = useTenantSettingsQuery();
   const updateMutation = useUpdateTenantSettingsMutation();
 
-  const lastUpdated = useMemo(() => {
-    if (!data?.updatedAt) return null;
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    });
-    return formatter.format(new Date(data.updatedAt));
-  }, [data?.updatedAt]);
+  const lastUpdated = data?.updatedAt
+    ? new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(data.updatedAt))
+    : null;
 
   if (error) {
     return (

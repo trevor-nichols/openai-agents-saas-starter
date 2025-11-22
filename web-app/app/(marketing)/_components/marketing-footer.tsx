@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { connection } from 'next/server';
 
 import { Button } from '@/components/ui/button';
 import { InlineTag } from '@/components/ui/foundation/InlineTag';
@@ -11,7 +12,9 @@ interface MarketingFooterProps {
   status?: PlatformStatusResponse | null;
 }
 
-export function MarketingFooter({ status }: MarketingFooterProps) {
+export async function MarketingFooter({ status }: MarketingFooterProps) {
+  await connection();
+
   const updatedAt = status?.overview?.updated_at ?? status?.generated_at;
   const uptimeMetric = status?.uptime_metrics?.[0];
   const metrics = [

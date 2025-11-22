@@ -1,28 +1,20 @@
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextConfig from "eslint-config-next";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const [nextBase, nextTypescript, nextIgnores] = nextConfig;
 
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
-
-const eslintConfig = [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+const eslintConfig = defineConfig([
   {
-    ignores: [
-      "lib/api/client/**/*",
-      ".next/**/*",
-      "node_modules/**/*",
-      "next-env.d.ts",
-      "pnpm-lock.yaml",
-      "package-lock.json",
-    ],
+    ...nextBase,
+    rules: {
+      ...nextBase.rules,
+      "react-hooks/incompatible-library": "off",
+    },
   },
   {
+    ...nextTypescript,
     rules: {
+      ...(nextTypescript.rules ?? {}),
       "@typescript-eslint/no-unused-vars": [
         "error",
         {
@@ -33,6 +25,18 @@ const eslintConfig = [
       ],
     },
   },
-];
+  nextIgnores,
+  globalIgnores([
+    "lib/api/client/**/*",
+    ".next/**/*",
+    "node_modules/**/*",
+    "next-env.d.ts",
+    "pnpm-lock.yaml",
+    "package-lock.json",
+    "storybook-static/**/*",
+    ".storybook/**/*.cjs",
+    ".storybook/**/*.js",
+  ]),
+]);
 
 export default eslintConfig;

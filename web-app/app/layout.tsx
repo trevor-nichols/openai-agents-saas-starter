@@ -8,6 +8,7 @@
 // - All page.tsx files in the application will be wrapped by this layout.
 
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { Geist, Geist_Mono } from 'next/font/google';
 
 import { cn } from '@/lib/utils';
@@ -43,10 +44,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={cn(geistSans.variable, geistMono.variable, 'min-h-screen bg-background text-foreground antialiased')}>
-        <Providers>
-          {/* children represents the content of the currently active page or nested layout */}
-          {children}
-        </Providers>
+        <Suspense fallback={null}>
+          <Providers>
+            {/* children represents the content of the currently active page or nested layout */}
+            {children}
+          </Providers>
+        </Suspense>
       </body>
     </html>
   );

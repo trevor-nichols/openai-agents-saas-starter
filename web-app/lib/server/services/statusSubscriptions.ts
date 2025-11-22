@@ -1,5 +1,3 @@
-'use server';
-
 import {
   createStatusSubscriptionApiV1StatusSubscriptionsPost,
   listStatusSubscriptionsApiV1StatusSubscriptionsGet,

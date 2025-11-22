@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
 
+import { Suspense } from 'react';
+
 import { AuthCard } from '@/app/(auth)/_components/AuthCard';
 import { VerifyEmailClient } from '@/app/(auth)/email/verify/VerifyEmailClient';
 
 interface VerifyEmailPageProps {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export const metadata: Metadata = {
@@ -12,9 +14,18 @@ export const metadata: Metadata = {
   description: 'Confirm your email address to finish setting up your Acme workspace.',
 };
 
-export default function VerifyEmailPage({ searchParams }: VerifyEmailPageProps) {
-  const token = typeof searchParams?.token === 'string' ? searchParams.token : undefined;
+export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageProps) {
+  const params = await searchParams;
+  const token = typeof params?.token === 'string' ? params.token : undefined;
 
+  return (
+    <Suspense fallback={null}>
+      <VerifyEmailContent token={token} />
+    </Suspense>
+  );
+}
+
+function VerifyEmailContent({ token }: { token?: string }) {
   return (
     <AuthCard
       title="Verify your email address"

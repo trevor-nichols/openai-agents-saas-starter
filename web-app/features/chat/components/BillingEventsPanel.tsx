@@ -4,7 +4,6 @@
 'use client';
 
 import Link from 'next/link';
-import React from 'react';
 
 import { GlassPanel, InlineTag, SectionHeader } from '@/components/ui/foundation';
 import { EmptyState } from '@/components/ui/states';

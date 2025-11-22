@@ -2,7 +2,7 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +26,11 @@ export const AnimatedTestimonials = ({
 }: AnimatedTestimonialsProps) => {
   const [active, setActive] = useState(0);
 
+  const rotations = useMemo(
+    () => testimonials.map((_, index) => ((index * 13 + 5) % 21) - 10),
+    [testimonials]
+  );
+
   const handleNext = useCallback(() => {
     setActive((prev) => (prev + 1) % testimonials.length);
   }, [testimonials.length]);
@@ -46,9 +51,7 @@ export const AnimatedTestimonials = ({
     return;
   }, [autoplay, handleNext]);
 
-  const randomRotateY = () => {
-    return Math.floor(Math.random() * 21) - 10;
-  };
+  const rotationFor = (index: number) => rotations[index % rotations.length] ?? 0;
 
   return (
     <div className={cn("mx-auto max-w-sm px-4 py-20 font-sans antialiased md:max-w-4xl md:px-8 lg:px-12", className)}>
@@ -63,13 +66,13 @@ export const AnimatedTestimonials = ({
                     opacity: 0,
                     scale: 0.9,
                     z: -100,
-                    rotate: randomRotateY(),
+                    rotate: rotationFor(index),
                   }}
                   animate={{
                     opacity: isActive(index) ? 1 : 0.7,
                     scale: isActive(index) ? 1 : 0.95,
                     z: isActive(index) ? 0 : -100,
-                    rotate: isActive(index) ? 0 : randomRotateY(),
+                    rotate: isActive(index) ? 0 : rotationFor(index),
                     zIndex: isActive(index)
                       ? 40
                       : testimonials.length + 2 - index,
@@ -79,7 +82,7 @@ export const AnimatedTestimonials = ({
                     opacity: 0,
                     scale: 0.9,
                     z: 100,
-                    rotate: randomRotateY(),
+                    rotate: rotationFor(index),
                   }}
                   transition={{
                     duration: 0.4,

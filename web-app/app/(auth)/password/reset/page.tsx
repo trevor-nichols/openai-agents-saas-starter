@@ -1,12 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
+import { Suspense } from 'react';
+
 import { AuthCard } from '@/app/(auth)/_components/AuthCard';
 import { ResetPasswordForm } from '@/components/auth/ResetPasswordForm';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface ResetPasswordPageProps {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export const metadata: Metadata = {
@@ -14,9 +16,18 @@ export const metadata: Metadata = {
   description: 'Choose a new password to secure your Acme account.',
 };
 
-export default function ResetPasswordPage({ searchParams }: ResetPasswordPageProps) {
-  const token = typeof searchParams?.token === 'string' ? searchParams.token : undefined;
+export default async function ResetPasswordPage({ searchParams }: ResetPasswordPageProps) {
+  const params = await searchParams;
+  const token = typeof params?.token === 'string' ? params.token : undefined;
 
+  return (
+    <Suspense fallback={null}>
+      <ResetPasswordContent token={token} />
+    </Suspense>
+  );
+}
+
+function ResetPasswordContent({ token }: { token?: string }) {
   return (
     <AuthCard
       title="Reset your password"

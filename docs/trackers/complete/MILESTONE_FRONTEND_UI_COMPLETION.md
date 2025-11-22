@@ -4,7 +4,7 @@
 _Last updated: November 17, 2025_
 
 ## Objective
-Re-align the frontend tracker with the current state of the Next.js 15 surface, capturing what already shipped, what remains in flight, and the concrete steps required to graduate the UI foundation into polish mode.
+Re-align the frontend tracker with the current state of the Next.js 16 surface, capturing what already shipped, what remains in flight, and the concrete steps required to graduate the UI foundation into polish mode.
 
 ## Current Health Snapshot
 | Area | Status | Notes |

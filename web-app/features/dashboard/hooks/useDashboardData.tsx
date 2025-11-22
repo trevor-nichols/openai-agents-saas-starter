@@ -25,10 +25,7 @@ export function useDashboardData(): DashboardData {
   const activeAgents = useMemo(() => agents.filter((agent) => agent.status === 'active').length, [agents]);
   const idleAgents = useMemo(() => Math.max(agents.length - activeAgents, 0), [agents, activeAgents]);
 
-  const conversationsLast24h = useMemo(() => {
-    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-    return conversationList.filter((conversation) => new Date(conversation.updated_at).getTime() >= cutoff).length;
-  }, [conversationList]);
+  const conversationsLast24h = conversationList.length;
 
   const kpis = useMemo<DashboardKpi[]>(() => {
     const utilization = agents.length ? Math.round((activeAgents / agents.length) * 100) : 0;

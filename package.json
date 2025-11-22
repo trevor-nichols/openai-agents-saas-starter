@@ -2,6 +2,9 @@
   "name": "openai-agents-starter",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "stripe:setup": "python -m starter_cli.app stripe setup"
   },

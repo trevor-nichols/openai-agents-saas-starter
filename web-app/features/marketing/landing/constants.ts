@@ -6,7 +6,7 @@ export const HERO_COPY = {
   eyebrow: 'OpenAI Agent Starter',
   title: 'Ship your GPT-5 agent console without rebuilding the stack.',
   description:
-    'Use the production FastAPI + Next.js 15 starter that already wires GPT-5 agents, Ed25519 auth, billing, and ops tooling. Clone it, drop in your brand, and launch.',
+    'Use the production FastAPI + Next.js 16 starter that already wires GPT-5 agents, Ed25519 auth, billing, and ops tooling. Clone it, drop in your brand, and launch.',
   primaryCta: {
     label: 'Launch the console',
     href: '/register',
@@ -22,7 +22,7 @@ export const HERO_COPY = {
 export const PROOF_POINTS: ProofPoint[] = [
   {
     label: 'Full-stack acceleration',
-    value: 'Shared auth, telemetry, and CLI scripts across FastAPI + Next.js 15.',
+    value: 'Shared auth, telemetry, and CLI scripts across FastAPI + Next.js 16.',
   },
   {
     label: 'Security-first defaults',

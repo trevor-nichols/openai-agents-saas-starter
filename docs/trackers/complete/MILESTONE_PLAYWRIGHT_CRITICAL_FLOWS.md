@@ -4,7 +4,7 @@
 _Last updated: November 19, 2025_
 
 ## Objective
-Guarantee that every revenue- or security-impacting workflow in the Next.js 15 surface is exercised end-to-end through Playwright before the December 2025 launch preview. This milestone tracks the coverage gap, data dependencies, and implementation tasks required to evolve from a single auth smoke test to a resilient suite that fails fast when critical UX flows regress.
+Guarantee that every revenue- or security-impacting workflow in the Next.js 16 surface is exercised end-to-end through Playwright before the December 2025 launch preview. This milestone tracks the coverage gap, data dependencies, and implementation tasks required to evolve from a single auth smoke test to a resilient suite that fails fast when critical UX flows regress.
 
 ## Scope & Principles
 - Validate outcomes, not pixels. Favor role-based selectors (`getByRole`, `getByLabel`) so future copy polish does not cause churn.

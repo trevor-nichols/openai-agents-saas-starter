@@ -1,10 +1,10 @@
 ## Agent Frontend
 
-This package contains the Next.js 15 UI that talks to the FastAPI backend. It relies on generated API clients from [@hey-api/openapi-ts](https://github.com/hey-api/openapi-ts) to stay in sync with the backend contract.
+This package contains the Next.js 16 UI that talks to the FastAPI backend. It relies on generated API clients from [@hey-api/openapi-ts](https://github.com/hey-api/openapi-ts) to stay in sync with the backend contract.
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 22+
 - No backend required for client generation: the HeyAPI config now points at the committed billing-on artifact (`../api-service/.artifacts/openapi-billing.json`).
 
 ## Install & Dev Server

@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
@@ -13,7 +14,15 @@ interface LoginPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default async function LoginPage({ searchParams }: LoginPageProps) {
+export default function LoginPage({ searchParams }: LoginPageProps) {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function LoginPageContent({ searchParams }: LoginPageProps) {
   const params = await searchParams;
   const redirectParam = typeof params?.redirectTo === 'string' ? params.redirectTo : undefined;
   const redirectTo = redirectParam && redirectParam.startsWith('/') ? redirectParam : undefined;

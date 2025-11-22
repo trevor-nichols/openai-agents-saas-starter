@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { Badge } from '@/components/ui/badge';
@@ -27,8 +27,6 @@ export function StatusExperience() {
   const subscriptionIdentifier = searchParams.get('subscription_id');
   const verificationAttemptedRef = useRef(false);
   const unsubscribeAttemptedRef = useRef(false);
-  const [verificationInProgress, setVerificationInProgress] = useState(false);
-  const [unsubscribeInProgress, setUnsubscribeInProgress] = useState(false);
   const { status, isLoading, error, refetch } = usePlatformStatusQuery();
   const { trackLeadSubmit, trackCtaClick } = useMarketingAnalytics();
 
@@ -48,7 +46,6 @@ export function StatusExperience() {
     }
 
     verificationAttemptedRef.current = true;
-    setVerificationInProgress(true);
 
     const redirectWithStatus = (state: 'success' | 'error') => {
       const params = new URLSearchParams(window.location.search);
@@ -65,9 +62,6 @@ export function StatusExperience() {
       })
       .catch(() => {
         redirectWithStatus('error');
-      })
-      .finally(() => {
-        setVerificationInProgress(false);
       });
   }, [verificationToken, router]);
 
@@ -93,7 +87,6 @@ export function StatusExperience() {
     }
 
     unsubscribeAttemptedRef.current = true;
-    setUnsubscribeInProgress(true);
 
     unsubscribeStatusSubscription(unsubscribeToken, subscriptionIdentifier)
       .then(() => {
@@ -101,14 +94,11 @@ export function StatusExperience() {
       })
       .catch(() => {
         redirectWithStatus('error');
-      })
-      .finally(() => {
-        setUnsubscribeInProgress(false);
       });
   }, [unsubscribeToken, subscriptionIdentifier, router]);
 
   const verificationBanner = useMemo(() => {
-    if (verificationInProgress) {
+    if (verificationToken && verificationParam === null) {
       return {
         tone: 'default' as const,
         title: 'Confirming subscription…',
@@ -116,7 +106,7 @@ export function StatusExperience() {
       };
     }
 
-    if (unsubscribeInProgress) {
+    if (unsubscribeToken && unsubscribeParam === null) {
       return {
         tone: 'default' as const,
         title: 'Updating preferences…',
@@ -157,7 +147,7 @@ export function StatusExperience() {
     }
 
     return null;
-  }, [verificationParam, unsubscribeParam, verificationInProgress, unsubscribeInProgress]);
+  }, [verificationParam, unsubscribeParam, verificationToken, unsubscribeToken]);
 
   return (
     <div className="space-y-10">

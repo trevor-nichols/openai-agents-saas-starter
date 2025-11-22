@@ -10,7 +10,7 @@ describe('App layout navigation guards', () => {
     process.env.NEXT_PUBLIC_ENABLE_BILLING = 'false';
     const { buildPrimaryNav } = await import('./layout');
 
-    const nav = buildPrimaryNav();
+    const nav = await buildPrimaryNav();
     expect(nav.some((item) => item.href === '/billing')).toBe(false);
   });
 
@@ -18,7 +18,7 @@ describe('App layout navigation guards', () => {
     process.env.NEXT_PUBLIC_ENABLE_BILLING = 'true';
     const { buildPrimaryNav } = await import('./layout');
 
-    const nav = buildPrimaryNav();
+    const nav = await buildPrimaryNav();
     expect(nav.some((item) => item.href === '/billing')).toBe(true);
   });
 });

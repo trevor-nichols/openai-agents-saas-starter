@@ -4,6 +4,7 @@
 // - Imports & navigation config: Shared nav structure for the shell.
 // - AppLayout component: Renders persistent top navigation and main content area.
 
+import { Suspense } from 'react';
 import Link from 'next/link';
 
 import { SilentRefresh } from '@/components/auth/SilentRefresh';
@@ -18,7 +19,7 @@ interface AppLayoutProps {
 }
 
 // --- Navigation configuration ---
-export function buildPrimaryNav(): AppNavItem[] {
+export async function buildPrimaryNav(): Promise<AppNavItem[]> {
   return [
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/chat', label: 'Workspace' },
@@ -33,16 +34,24 @@ const accountNav: AppNavItem[] = [
   { href: '/settings/tenant', label: 'Tenant settings' },
 ];
 
-export function buildNavItems(hasStatusScope: boolean) {
-  const primaryNav = buildPrimaryNav();
+export async function buildNavItems(hasStatusScope: boolean) {
+  const primaryNav = await buildPrimaryNav();
   return hasStatusScope ? [...primaryNav, { href: '/ops/status', label: 'Ops' }] : primaryNav;
 }
 
 // --- AppLayout component ---
-export default async function AppLayout({ children }: AppLayoutProps) {
+export default function AppLayout({ children }: AppLayoutProps) {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <AppLayoutContent>{children}</AppLayoutContent>
+    </Suspense>
+  );
+}
+
+async function AppLayoutContent({ children }: AppLayoutProps) {
   const session = await getSessionMetaFromCookies();
   const hasStatusScope = session?.scopes?.includes('status:manage') ?? false;
-  const navItems = buildNavItems(hasStatusScope);
+  const navItems = await buildNavItems(hasStatusScope);
 
   const subtitle = billingEnabled
     ? 'Configure agents, monitor conversations, and keep billing healthy.'

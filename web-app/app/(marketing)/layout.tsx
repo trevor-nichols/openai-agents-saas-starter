@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import type { ReactNode } from 'react';
 
 import { MarketingFooter } from './_components/marketing-footer';
@@ -10,9 +11,7 @@ interface MarketingLayoutProps {
   children: ReactNode;
 }
 
-export default async function MarketingLayout({ children }: MarketingLayoutProps) {
-  const status = await fetchMarketingStatus();
-
+export default function MarketingLayout({ children }: MarketingLayoutProps) {
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(110,181,255,0.18),_transparent_45%)]" />
@@ -25,13 +24,25 @@ export default async function MarketingLayout({ children }: MarketingLayoutProps
         </div>
       </main>
 
-      <MarketingFooter status={status} />
+      <Suspense fallback={<MarketingFooter status={null} />}>
+        <MarketingFooterWithStatus />
+      </Suspense>
     </div>
   );
 }
 
+async function MarketingFooterWithStatus() {
+  const status = await fetchMarketingStatus();
+  return <MarketingFooter status={status} />;
+}
+
 async function fetchMarketingStatus(): Promise<PlatformStatusResponse | null> {
   try {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
+    if (apiBase.includes('localhost') || apiBase.includes('127.0.0.1')) {
+      return null;
+    }
+
     const payload = await getHealthStatus();
     return payload;
   } catch (error) {

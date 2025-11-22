@@ -26,7 +26,8 @@ describe('useUserSessionsQuery', () => {
 
   it('includes tenantId in query key and fetch params when provided', () => {
     mockedUseQuery.mockImplementation((options) => {
-      options?.queryFn?.();
+      const queryFn = options?.queryFn as (() => unknown) | undefined;
+      queryFn?.();
       return {};
     });
 
@@ -53,7 +54,8 @@ describe('useUserSessionsQuery', () => {
 
   it('defaults to all tenants when no filter is supplied', () => {
     mockedUseQuery.mockImplementation((options) => {
-      options?.queryFn?.();
+      const queryFn = options?.queryFn as (() => unknown) | undefined;
+      queryFn?.();
       return {};
     });
 

@@ -4,9 +4,6 @@ import { NextResponse } from 'next/server';
 import { billingEnabled } from '@/lib/config/features';
 import { openBillingStream } from '@/lib/server/services/billing';
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
-
 export async function GET(request: NextRequest) {
   if (!billingEnabled) {
     return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });

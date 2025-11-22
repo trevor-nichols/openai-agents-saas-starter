@@ -79,6 +79,7 @@ export function DataTable<TData extends object>({
     pageSize,
   });
 
+  // TanStack Table returns mutable helpers; safe to opt out of React Compiler memoization here.
   const table = useReactTable<TData>({
     data,
     columns,

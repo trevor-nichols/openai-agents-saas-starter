@@ -1,5 +1,3 @@
-'use server';
-
 import {
   getTenantSettingsApiV1TenantsSettingsGet,
   updateTenantSettingsApiV1TenantsSettingsPut,

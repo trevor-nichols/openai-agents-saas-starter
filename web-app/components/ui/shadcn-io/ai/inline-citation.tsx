@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/hover-card';
 import { cn } from '@/lib/utils';
 import { ArrowLeftIcon, ArrowRightIcon } from 'lucide-react';
-import { type ComponentProps, useCallback, useEffect, useState, createContext, useContext } from 'react';
+import { type ComponentProps, useCallback, useMemo, useSyncExternalStore, useState, createContext, useContext } from 'react';
 
 // Context to share carousel API with child components
 const CarouselApiContext = createContext<CarouselApi | undefined>(undefined);
@@ -151,21 +151,28 @@ export const InlineCitationCarouselIndex = ({
   ...props
 }: InlineCitationCarouselIndexProps) => {
   const api = useCarouselApi();
-  const [current, setCurrent] = useState(0);
-  const [count, setCount] = useState(0);
+  const { current, count } = useSyncExternalStore(
+    (onStoreChange) => {
+      if (!api) return () => {};
+      const handler = () => onStoreChange();
+      api.on('select', handler);
+      api.on('reInit', handler);
+      return () => {
+        api.off?.('select', handler);
+        api.off?.('reInit', handler);
+      };
+    },
+    () => {
+      if (!api) return { current: 0, count: 0 };
+      return {
+        current: api.selectedScrollSnap() + 1,
+        count: api.scrollSnapList().length,
+      };
+    },
+    () => ({ current: 0, count: 0 }),
+  );
 
-  useEffect(() => {
-    if (!api) {
-      return;
-    }
-
-    setCount(api.scrollSnapList().length);
-    setCurrent(api.selectedScrollSnap() + 1);
-
-    api.on('select', () => {
-      setCurrent(api.selectedScrollSnap() + 1);
-    });
-  }, [api]);
+  const display = useMemo(() => children ?? `${current}/${count}`, [children, current, count]);
 
   return (
     <div
@@ -175,7 +182,7 @@ export const InlineCitationCarouselIndex = ({
       )}
       {...props}
     >
-      {children ?? `${current}/${count}`}
+      {display}
     </div>
   );
 };

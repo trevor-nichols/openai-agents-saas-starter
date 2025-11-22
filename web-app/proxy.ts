@@ -16,7 +16,7 @@ const PUBLIC_PREFIXES = ['/password', '/email', '/api', '/_next', '/favicon.ico'
 const AUTH_EXACT_PATHS = new Set(['/login', '/register']);
 const AUTH_PREFIXES = ['/password', '/email'];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
   const isPublic =

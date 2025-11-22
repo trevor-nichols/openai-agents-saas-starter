@@ -1,8 +1,18 @@
+import { Suspense } from 'react';
+
 import { StatusOpsWorkspace } from '@/features/status-ops';
 import { getSessionMetaFromCookies } from '@/lib/auth/cookies';
 import { GlassPanel, SectionHeader } from '@/components/ui/foundation';
 
-export default async function StatusOpsPage() {
+export default function StatusOpsPage() {
+  return (
+    <Suspense fallback={null}>
+      <StatusOpsContent />
+    </Suspense>
+  );
+}
+
+async function StatusOpsContent() {
   const session = await getSessionMetaFromCookies();
   const hasStatusScope = session?.scopes?.includes('status:manage') ?? false;
 

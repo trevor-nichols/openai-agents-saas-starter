@@ -33,21 +33,19 @@ interface UseBillingStreamReturn {
  */
 export function useBillingStream(): UseBillingStreamReturn {
   const [events, setEvents] = useState<BillingEvent[]>([]);
-  const [status, setStatus] = useState<BillingStreamStatus>('connecting');
+  const [status, setStatus] = useState<BillingStreamStatus>(() => {
+    if (!billingEnabled) return 'disabled';
+    const meta = readClientSessionMeta();
+    if (!meta?.tenantId) return 'disabled';
+    return 'connecting';
+  });
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    if (!billingEnabled) {
-      setStatus('disabled');
-      return undefined;
-    }
+    if (status === 'disabled') return undefined;
 
-    // Check if user has a tenant (required for billing stream)
     const meta = readClientSessionMeta();
-    if (!meta?.tenantId) {
-      setStatus('disabled');
-      return undefined;
-    }
+    if (!meta?.tenantId) return undefined;
 
     // Create abort controller for cleanup
     const controller = new AbortController();
@@ -70,7 +68,7 @@ export function useBillingStream(): UseBillingStreamReturn {
     return () => {
       controller.abort();
     };
-  }, []);
+  }, [status]);
 
   return { events, status };
 }

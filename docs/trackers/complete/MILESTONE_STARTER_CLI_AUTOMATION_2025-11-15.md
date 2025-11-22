@@ -61,7 +61,7 @@ This section captures every prerequisite a new operator must satisfy today. Each
 ### Frontend (Next.js) – from `web-app/README.md`
 | Area | Manual Steps Today | Auto? | Notes/Dependencies |
 | --- | --- | --- | --- |
-| Node toolchain | Install Node 20+, pnpm; run `pnpm install`. | ⚠️ Assist | CLI can verify versions via `infra deps` and prompt to run `pnpm install`, but not install automatically. |
+| Node toolchain | Install Node 22+, pnpm; run `pnpm install`. | ⚠️ Assist | CLI can verify versions via `infra deps` and prompt to run `pnpm install`, but not install automatically. |
 | Env file | `web-app/.env.local` with API URL, cookies, Playwright base URL. | ✅ Target | Wizard already writes; ensure automation regenerates file when backend URL changes. |
 | API client | Run `pnpm generate` (HeyAPI). | ⚠️ Assist | Document reminder post-wizard; optional future hook but not in current milestone scope. |
 | Dev server | `pnpm dev` once backend is reachable. | ℹ️ Inform | Out of scope to auto-launch UI, but summary should list command. |

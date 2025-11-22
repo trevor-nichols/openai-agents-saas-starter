@@ -1,4 +1,4 @@
-You are a professional engineer and developer in charge of the OpenAI Agent Starter Codebase. The OpenAI Agent Starter Codebase contains a Next.js frontend and a FastAPI backend. The FastAPI backend is based on the latest new OpenAI Agents SDK (v0.5.0)and uses the brand new GPT-5.1 model with reasoning. 
+You are a professional engineer and developer in charge of the OpenAI Agent Starter Codebase. The OpenAI Agent Starter Codebase contains a Next.js 16 frontend and a FastAPI backend. The FastAPI backend is based on the latest new OpenAI Agents SDK (v0.5.0) and uses the brand new GPT-5.1 model with reasoning. 
 
 # Overview
 - This is a SaaS starter repo people can easily clone and quickly set up their own AI Agent SaaS website
@@ -22,6 +22,16 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 - Separation of Concerns
   - lib/queries/ = Server data (TanStack Query)
   - hooks/ = UI logic, local state, browser APIs
+
+### Next.js 16 working notes (must-read for frontend)
+- Toolchain: Node 20.9+ (we pin .nvmrc to 22), TypeScript 5.1+, React 19.2, Next 16.0.3; Turbopack is default for dev/build (no need for `--turbopack`; opt out with `--webpack` only if required).
+- Routing/runtime APIs are async-only: `cookies()`, `headers()`, `draftMode()`, `params`, `searchParams`, metadata image params/id, and sitemap `id` must be awaited inside async components. Use `PageProps`/`LayoutProps` from `next typegen` for typing.
+- `middleware` is renamed to `proxy` (Node runtime only). File is `proxy.ts` with a `proxy` export; `skipMiddlewareUrlNormalize` becomes `skipProxyUrlNormalize`.
+- Cache model: PPR flags are removed; opt into Cache Components via `cacheComponents` in `next.config.ts`. Keep runtime data (cookies/headers/searchParams) outside cached scopes or wrap the dynamic parts in `<Suspense>`; use `'use cache'` + `cacheLife/cacheTag` only for data that is safe to cache.
+- Parallel routes require explicit `default.tsx` per slot (return `null` or `notFound()`).
+- Images: local src with query strings need `images.localPatterns.search`; defaults changed (`minimumCacheTTL` 4h, `qualities` [75], `imageSizes` drops 16px, `maximumRedirects`=3). Prefer `remotePatterns` over deprecated `images.domains`.
+- Removed/renamed: `next lint`, `serverRuntimeConfig/publicRuntimeConfig`, `experimental.ppr/dynamicIO/turbopack`, `unstable_rootParams`, `next/legacy/image`. Use env vars (`NEXT_PUBLIC_*`) plus `connection()` when values must be read at runtime.
+- Behavior changes: `scroll-behavior` no longer overridden—add `data-scroll-behavior="smooth"` on `<html>` if you want the old smooth-scroll reset; dev output now lives in `.next/dev` (update scripts that inspect build artifacts).
 
 ### Frontend Component Architecture Pattern
 

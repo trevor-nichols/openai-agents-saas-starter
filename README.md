@@ -1,10 +1,10 @@
 # OpenAI Agent Starter
 
-Production-ready starter kit for building AI Agent SaaS products. The repo bundles a FastAPI backend (OpenAI Agents SDK v0.5.0) and a Next.js 15 frontend, plus an operator-focused Starter CLI that wires secrets, infrastructure, and env files in one flow.
+Production-ready starter kit for building AI Agent SaaS products. The repo bundles a FastAPI backend (OpenAI Agents SDK v0.5.0) and a Next.js 16 frontend, plus an operator-focused Starter CLI that wires secrets, infrastructure, and env files in one flow.
 
 ## Architecture At A Glance
 - **Backend** (`api-service/`): FastAPI, async SQLAlchemy, Postgres + Redis (refresh tokens & billing), JWT auth, Alembic migrations, Ed25519 keys in `var/keys/`, OpenAI Agents SDK integrations, Stripe billing services.
-- **Frontend** (`web-app/`): Next.js 15, TanStack Query, Shadcn UI, HeyAPI-generated client under `lib/api/client`.
+- **Frontend** (`web-app/`): Next.js 16, TanStack Query, Shadcn UI, HeyAPI-generated client under `lib/api/client`.
 - **Starter CLI** (`starter_cli/`): Operator workflows (setup wizard, secrets onboarding, Stripe provisioning, auth tooling, infra helpers) with side-effect-free imports so CI/CD can run `python -m starter_cli.app`.
 - **Docs & Trackers** (`docs/`): SDK references, frontend UI/data-access guides, CLI milestones, and project trackers.
 
@@ -13,7 +13,7 @@ Production-ready starter kit for building AI Agent SaaS products. The repo bundl
 | --- | --- | --- |
 | Python | 3.11+ | Install backend extras: `pip install 'api-service[dev]'`. |
 | Hatch | Latest | Manages backend virtualenv + scripts. |
-| Node.js | 20+ | Paired with `pnpm` for the Next.js app. |
+| Node.js | 22+ | Paired with `pnpm` for the Next.js app. |
 | pnpm | 8+ | `pnpm install` in `web-app/`. |
 | just | Latest | Task runner replacing the old Makefile; install via `brew install just` or `sudo apt-get install just`. |
 | Docker & Compose v2 | — | Used by Just recipes for Postgres/Redis/Vault. |
