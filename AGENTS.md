@@ -98,6 +98,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 - When applying database migrations or generating new ones, always use the Just recipes (`just migrate`, `just migration-revision message="..."`) so your `.env.local`/`.env` secrets and `.env.compose` values are loaded consistently. These wrappers take care of wiring Alembic to the right Postgres instance (local Docker or remote) without manual exports.
 - Need to test Vault Transit locally? Use `just vault-up` to start the dev signer, `just verify-vault` to run the CLI issuance smoke test, and `just vault-down` when you’re done. Details live in `docs/security/vault-transit-signing.md`.
 - Thishe repo hasn’t shipped a “stable” release yet, so we don’t carry any backward-compat baggage.
+- When you come across a situation where you need the latest documentation, use your web search tool
 
 # Codebase Patterns
 openai-agents-starter/
