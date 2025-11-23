@@ -1,10 +1,77 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Agent SaaS API",
-    "version": "0.0.0"
+    "title": "anything-agents",
+    "description": "anything-agents FastAPI microservice",
+    "version": "1.0.0"
   },
   "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health Check",
+        "description": "Basic liveness probe.",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Readiness Check",
+        "description": "Readiness probe for orchestrators (extend with dependency checks).",
+        "operationId": "readiness_check_health_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhooks/stripe": {
+      "post": {
+        "summary": "Handle Stripe Webhook",
+        "operationId": "handle_stripe_webhook_webhooks_stripe_post",
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "type": "object",
+                  "title": "Response Handle Stripe Webhook Webhooks Stripe Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/token": {
       "post": {
         "tags": [
@@ -1865,6 +1932,54 @@
         ],
         "parameters": [
           {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque pagination cursor.",
+              "title": "Cursor"
+            },
+            "description": "Opaque pagination cursor."
+          },
+          {
+            "name": "agent",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by agent entrypoint.",
+              "title": "Agent"
+            },
+            "description": "Filter by agent entrypoint."
+          },
+          {
             "name": "X-Tenant-Id",
             "in": "header",
             "required": false,
@@ -1903,11 +2018,138 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConversationSummary"
-                  },
-                  "title": "Response List Conversations Api V1 Conversations Get"
+                  "$ref": "#/components/schemas/ConversationListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conversations/search": {
+      "get": {
+        "tags": [
+          "conversations"
+        ],
+        "summary": "Search Conversations",
+        "description": "Search conversations by message text.",
+        "operationId": "search_conversations_api_v1_conversations_search_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Search query.",
+              "title": "Q"
+            },
+            "description": "Search query."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque pagination cursor.",
+              "title": "Cursor"
+            },
+            "description": "Opaque pagination cursor."
+          },
+          {
+            "name": "agent",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by agent entrypoint.",
+              "title": "Agent"
+            },
+            "description": "Filter by agent entrypoint."
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Tenant-Role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationSearchResponse"
                 }
               }
             }
@@ -4115,6 +4357,109 @@
         "title": "ConversationHistory",
         "description": "Full detail view of a conversation."
       },
+      "ConversationListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ConversationSummary"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor",
+            "description": "Opaque cursor for fetching the next page."
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "ConversationListResponse",
+        "description": "Paginated list of conversation summaries."
+      },
+      "ConversationSearchResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ConversationSearchResult"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor",
+            "description": "Opaque cursor for fetching the next page of search results."
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "ConversationSearchResponse",
+        "description": "Paginated search results."
+      },
+      "ConversationSearchResult": {
+        "properties": {
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id",
+            "description": "Conversation identifier."
+          },
+          "preview": {
+            "type": "string",
+            "title": "Preview",
+            "description": "Matched message snippet."
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score",
+            "description": "Backend relevance score."
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At",
+            "description": "Last update timestamp."
+          }
+        },
+        "type": "object",
+        "required": [
+          "conversation_id",
+          "preview"
+        ],
+        "title": "ConversationSearchResult",
+        "description": "Search hit with preview and relevance score."
+      },
       "ConversationSummary": {
         "properties": {
           "conversation_id": {
@@ -4182,6 +4527,45 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Service health status."
+          },
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp",
+            "description": "ISO-8601 timestamp of the probe."
+          },
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "description": "Semantic version of the service."
+          },
+          "uptime": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uptime",
+            "description": "Process uptime in seconds when available."
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp",
+          "version"
+        ],
+        "title": "HealthResponse",
+        "description": "Health check response payload."
       },
       "IncidentSchema": {
         "properties": {
