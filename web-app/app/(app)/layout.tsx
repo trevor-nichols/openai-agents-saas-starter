@@ -94,7 +94,7 @@ async function AppLayoutContent({ children }: AppLayoutProps) {
         </header>
 
         <main className="relative flex-1 overflow-y-auto px-4 py-8 sm:px-6 lg:px-10">
-          <div className="mx-auto w-full max-w-6xl space-y-8">
+          <div className="mx-auto w-full max-w-[1400px] space-y-8">
             {children}
           </div>
         </main>

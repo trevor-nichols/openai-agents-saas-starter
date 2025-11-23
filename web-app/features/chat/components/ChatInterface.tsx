@@ -6,7 +6,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import type { ChatStatus } from 'ai';
 
-import { Button } from '@/components/ui/button';
 import { GlassPanel, InlineTag } from '@/components/ui/foundation';
 import { EmptyState, SkeletonPanel } from '@/components/ui/states';
 import { cn } from '@/lib/utils';
@@ -63,38 +62,8 @@ export function ChatInterface({
     await onSendMessage(value);
   };
 
-  const conversationStatus = currentConversationId ? 'History synced' : 'Start by briefing your agent';
-  const messageCount = messages.length;
-
   return (
     <GlassPanel className={cn('flex h-full flex-col overflow-hidden p-0', className)}>
-      <div className="flex flex-col gap-2 border-b border-white/5 px-6 py-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-foreground/50">Conversation</p>
-          <p className="text-lg font-semibold text-foreground">
-            {currentConversationId ? `#${currentConversationId.substring(0, 12)}…` : 'New conversation'}
-          </p>
-          <p className="text-xs text-foreground/60">{conversationStatus}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <InlineTag tone="positive">{messageCount} messages</InlineTag>
-          <InlineTag tone="default">{isLoadingHistory ? 'syncing' : isSending ? 'streaming' : 'idle'}</InlineTag>
-          {onClearConversation && currentConversationId ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="border border-white/10"
-              disabled={isClearingConversation || isLoadingHistory}
-              onClick={() => {
-                void onClearConversation();
-              }}
-            >
-              {isClearingConversation ? 'Clearing…' : 'Clear chat'}
-            </Button>
-          ) : null}
-        </div>
-      </div>
-
       <Conversation className="flex-1">
         <ConversationContent className="space-y-4 px-6 py-6">
           {isLoadingHistory ? (

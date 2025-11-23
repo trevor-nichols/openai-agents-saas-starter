@@ -55,8 +55,7 @@ export function ConversationSidebar({
         ) : conversationList.length === 0 ? (
           <EmptyState
             title="No transcripts yet"
-            description="Start a new conversation to generate your first transcript."
-            action={<Button onClick={onNewConversation}>Start chatting</Button>}
+            description="Use the New control to start your first transcript."
           />
         ) : (
           <ul className="space-y-2">

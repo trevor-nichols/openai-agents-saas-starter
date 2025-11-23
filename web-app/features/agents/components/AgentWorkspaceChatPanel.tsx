@@ -3,10 +3,7 @@
 
 'use client';
 
-import { useMemo } from 'react';
-
 import { Button } from '@/components/ui/button';
-import { InlineTag, SectionHeader } from '@/components/ui/foundation';
 import { ErrorState } from '@/components/ui/states';
 import type { AgentSummary } from '@/types/agents';
 import type { ChatMessage } from '@/lib/chat/types';
@@ -47,30 +44,8 @@ export function AgentWorkspaceChatPanel({
   onStartNewConversation,
   onShowConversationDetail,
 }: AgentWorkspaceChatPanelProps) {
-  const activeAgents = useMemo(() => agents.filter((agent) => agent.status === 'active').length, [agents]);
-  const selectedAgentLabel = useMemo(() => selectedAgent.replace(/_/g, ' '), [selectedAgent]);
-
   return (
     <div className="space-y-4">
-      <SectionHeader
-        eyebrow="Workspace"
-        title="Agent chat"
-        description={
-          currentConversationId
-            ? `Conversation ${currentConversationId.substring(0, 12)}…`
-            : 'Start a new conversation to brief your agent.'
-        }
-        actions={
-          <InlineTag tone={agentsError ? 'warning' : activeAgents ? 'positive' : 'default'}>
-            {isLoadingAgents
-              ? 'Loading agents…'
-              : agentsError
-                ? 'Inventory unavailable'
-                : `${activeAgents}/${agents.length || 0} active`}
-          </InlineTag>
-        }
-      />
-
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <AgentSwitcher
           className="w-full lg:max-w-sm"
@@ -113,10 +88,6 @@ export function AgentWorkspaceChatPanel({
         isLoadingHistory={isLoadingHistory}
         className="min-h-[520px]"
       />
-
-      <p className="text-xs text-foreground/50">
-        Selected agent: <span className="font-semibold text-foreground">{selectedAgentLabel}</span>
-      </p>
     </div>
   );
 }

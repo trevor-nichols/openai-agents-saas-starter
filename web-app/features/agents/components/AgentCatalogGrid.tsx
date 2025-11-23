@@ -107,7 +107,7 @@ export function AgentCatalogGrid({
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
         {agents.map((agent) => {
           const agentTools = toolsByAgent[agent.name] ?? [];
           const isSelected = selectedAgent === agent.name;

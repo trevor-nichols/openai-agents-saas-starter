@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { InlineTag, SectionHeader } from '@/components/ui/foundation';
+import { GlassPanel, InlineTag, SectionHeader } from '@/components/ui/foundation';
 import { ErrorState } from '@/components/ui/states';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -97,66 +97,22 @@ export function ChatWorkspace() {
         </SheetContent>
       </Sheet>
 
-      <div className="flex flex-1 flex-col gap-6 xl:flex-row">
-        <ConversationSidebar
-          conversationList={conversationList}
-          isLoadingConversations={isLoadingConversations}
-          currentConversationId={currentConversationId}
-          onSelectConversation={handleSelectConversation}
-          onNewConversation={handleNewConversation}
-          onDeleteConversation={handleDeleteConversation}
-          className="xl:w-[320px]"
-        />
-
-        <div className="flex w-full flex-1 flex-col gap-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <SectionHeader
-              eyebrow={CHAT_COPY.header.eyebrow}
-              title={CHAT_COPY.header.title}
-              description={formatConversationLabel(currentConversationId)}
-              actions={
-                <InlineTag tone={agentsError ? 'warning' : activeAgents ? 'positive' : 'default'}>
-                  {isLoadingAgents
-                    ? 'Loading agents…'
-                    : agentsError
-                      ? 'Inventory unavailable'
-                      : `${activeAgents}/${agents.length || 0} active`}
-                </InlineTag>
-              }
-            />
-
-            <div className="flex w-full flex-col gap-3 lg:max-w-sm">
-              <AgentSwitcher
-                className="w-full"
-                agents={agents}
-                selectedAgent={selectedAgent}
-                onChange={setSelectedAgent}
-                isLoading={isLoadingAgents}
-                error={agentsError}
-              />
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!currentConversationId}
-                  onClick={() => setDetailDrawerOpen(true)}
-                >
-                  Conversation details
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleExportTranscript}>
-                  Export transcript
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className=""
-                  onClick={() => setToolDrawerOpen(true)}
-                >
-                  Insights
-                </Button>
-              </div>
-            </div>
-          </div>
+      <div className="grid min-h-[70vh] gap-6 lg:grid-cols-[minmax(0,1.9fr)_minmax(320px,1fr)]">
+        <div className="flex flex-col gap-4">
+          <SectionHeader
+            eyebrow={CHAT_COPY.header.eyebrow}
+            title={CHAT_COPY.header.title}
+            description={formatConversationLabel(currentConversationId)}
+            actions={
+              <InlineTag tone={agentsError ? 'warning' : activeAgents ? 'positive' : 'default'}>
+                {isLoadingAgents
+                  ? 'Loading agents…'
+                  : agentsError
+                    ? 'Inventory unavailable'
+                    : `${activeAgents}/${agents.length || 0} active`}
+              </InlineTag>
+            }
+          />
 
           {errorMessage ? <ErrorState message={errorMessage} /> : null}
 
@@ -174,7 +130,44 @@ export function ChatWorkspace() {
             }
             isClearingConversation={isClearingConversation}
             isLoadingHistory={isLoadingHistory}
-            className="min-h-[520px] xl:max-w-4xl"
+            className="h-[78vh]"
+          />
+        </div>
+
+        <div className="grid h-full gap-4 xl:grid-rows-[auto_1fr]">
+          <GlassPanel className="space-y-3 p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/50">Agent</p>
+              <Button variant="ghost" size="sm" onClick={() => setToolDrawerOpen(true)}>
+                Insights
+              </Button>
+            </div>
+            <AgentSwitcher
+              className="w-full"
+              agents={agents}
+              selectedAgent={selectedAgent}
+              onChange={setSelectedAgent}
+              isLoading={isLoadingAgents}
+              error={agentsError}
+            />
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" disabled={!currentConversationId} onClick={() => setDetailDrawerOpen(true)}>
+                Conversation details
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExportTranscript}>
+                Export transcript
+              </Button>
+            </div>
+          </GlassPanel>
+
+          <ConversationSidebar
+            conversationList={conversationList}
+            isLoadingConversations={isLoadingConversations}
+            currentConversationId={currentConversationId}
+            onSelectConversation={handleSelectConversation}
+            onNewConversation={handleNewConversation}
+            onDeleteConversation={handleDeleteConversation}
+            className="h-full"
           />
         </div>
       </div>
