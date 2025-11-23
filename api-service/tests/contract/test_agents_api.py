@@ -156,7 +156,9 @@ def test_conversation_lifecycle(mock_run: AsyncMock, client: TestClient) -> None
 
     list_response = client.get("/api/v1/conversations")
     assert list_response.status_code == 200
-    conversations = list_response.json()
+    list_payload = list_response.json()
+    assert "items" in list_payload
+    conversations = list_payload["items"]
     assert any(item["conversation_id"] == conversation_id for item in conversations)
 
     delete_response = client.delete(f"/api/v1/conversations/{conversation_id}")

@@ -6,6 +6,7 @@ import asyncio
 import os
 from collections import defaultdict
 from collections.abc import Generator
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -38,8 +39,11 @@ from app.core import config as config_module
 from app.domain.conversations import (
     ConversationMessage,
     ConversationMetadata,
+    ConversationPage,
     ConversationRecord,
     ConversationRepository,
+    ConversationSearchHit,
+    ConversationSearchPage,
     ConversationSessionState,
 )
 from app.infrastructure.persistence.models.base import Base
@@ -235,6 +239,99 @@ class EphemeralConversationRepository(ConversationRepository):
                 continue
             records.append(ConversationRecord(conversation_id=cid, messages=list(messages)))
         return records
+
+    async def paginate_conversations(
+        self,
+        *,
+        tenant_id: str,
+        limit: int,
+        cursor: str | None = None,
+        agent_entrypoint: str | None = None,
+        updated_after: datetime | None = None,
+    ) -> ConversationPage:
+        tenant = self._require_tenant(tenant_id)
+        conversations = await self.iter_conversations(tenant_id=tenant)
+        conversations = [
+            c for c in conversations if (not updated_after or c.updated_at >= updated_after)
+        ]
+        conversations.sort(key=lambda c: (c.updated_at, c.conversation_id), reverse=True)
+
+        start = 0
+        if cursor:
+            try:
+                cursor_ts, cursor_id = cursor.split("::", 1)
+                cursor_dt = datetime.fromisoformat(cursor_ts)
+                for idx, conv in enumerate(conversations):
+                    if (conv.updated_at < cursor_dt) or (
+                        conv.updated_at == cursor_dt and conv.conversation_id < cursor_id
+                    ):
+                        start = idx
+                        break
+            except Exception:
+                start = 0
+
+        slice_items = conversations[start : start + limit + 1]
+        next_cursor = None
+        if len(slice_items) > limit:
+            tail = slice_items[limit]
+            next_cursor = f"{tail.updated_at.isoformat()}::{tail.conversation_id}"
+            slice_items = slice_items[:limit]
+
+        return ConversationPage(items=slice_items, next_cursor=next_cursor)
+
+    async def search_conversations(
+        self,
+        *,
+        tenant_id: str,
+        query: str,
+        limit: int,
+        cursor: str | None = None,
+        agent_entrypoint: str | None = None,
+    ) -> ConversationSearchPage:
+        tenant = self._require_tenant(tenant_id)
+        normalized = query.lower()
+        matches: list[ConversationSearchHit] = []
+        for (current_tenant, cid), messages in self._messages.items():
+            if current_tenant != tenant:
+                continue
+            for msg in messages:
+                if normalized in msg.content.lower():
+                    matches.append(
+                        ConversationSearchHit(
+                            record=ConversationRecord(conversation_id=cid, messages=list(messages)),
+                            score=float(len(msg.content)),
+                        )
+                    )
+                    break
+
+        matches.sort(
+            key=lambda hit: (hit.record.updated_at, hit.score, hit.record.conversation_id),
+            reverse=True,
+        )
+
+        start = 0
+        if cursor:
+            try:
+                cursor_ts, cursor_id = cursor.split("::", 1)
+                cursor_dt = datetime.fromisoformat(cursor_ts)
+                for idx, hit in enumerate(matches):
+                    if (hit.record.updated_at < cursor_dt) or (
+                        hit.record.updated_at == cursor_dt
+                        and hit.record.conversation_id < cursor_id
+                    ):
+                        start = idx
+                        break
+            except Exception:
+                start = 0
+
+        slice_hits = matches[start : start + limit + 1]
+        next_cursor = None
+        if len(slice_hits) > limit:
+            tail = slice_hits[limit].record
+            next_cursor = f"{tail.updated_at.isoformat()}::{tail.conversation_id}"
+            slice_hits = slice_hits[:limit]
+
+        return ConversationSearchPage(items=slice_hits, next_cursor=next_cursor)
 
     async def clear_conversation(self, conversation_id: str, *, tenant_id: str) -> None:
         key = self._key(tenant_id, conversation_id)

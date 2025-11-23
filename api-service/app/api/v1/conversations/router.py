@@ -1,21 +1,29 @@
 """Conversation management endpoints."""
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 
 from app.api.dependencies.auth import CurrentUser, require_verified_scopes
 from app.api.dependencies.tenant import TenantContext, TenantRole, get_tenant_context
-from app.api.v1.conversations.schemas import ConversationHistory, ConversationSummary
+from app.api.v1.conversations.schemas import (
+    ConversationHistory,
+    ConversationListResponse,
+    ConversationSearchResponse,
+    ConversationSearchResult,
+)
 from app.services.agent_service import ConversationActorContext, agent_service
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
 
-@router.get("", response_model=list[ConversationSummary])
+@router.get("", response_model=ConversationListResponse)
 async def list_conversations(
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:read")),
     tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
     tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
-) -> list[ConversationSummary]:
+    limit: int = Query(50, ge=1, le=100),
+    cursor: str | None = Query(None, description="Opaque pagination cursor."),
+    agent: str | None = Query(None, description="Filter by agent entrypoint."),
+) -> ConversationListResponse:
     """List stored conversations ordered by recency."""
 
     tenant_context = await _resolve_tenant_context(
@@ -25,7 +33,67 @@ async def list_conversations(
         min_role=TenantRole.VIEWER,
     )
     actor = _conversation_actor(current_user, tenant_context)
-    return await agent_service.list_conversations(actor=actor)
+    try:
+        summaries, next_cursor = await agent_service.list_conversations(
+            actor=actor,
+            limit=limit,
+            cursor=cursor,
+            agent_entrypoint=agent,
+        )
+    except ValueError as exc:  # e.g., malformed cursor
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    return ConversationListResponse(items=summaries, next_cursor=next_cursor)
+
+
+@router.get("/search", response_model=ConversationSearchResponse)
+async def search_conversations(
+    q: str = Query(..., min_length=1, description="Search query."),
+    current_user: CurrentUser = Depends(require_verified_scopes("conversations:read")),
+    tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
+    tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
+    limit: int = Query(20, ge=1, le=50),
+    cursor: str | None = Query(None, description="Opaque pagination cursor."),
+    agent: str | None = Query(None, description="Filter by agent entrypoint."),
+) -> ConversationSearchResponse:
+    """Search conversations by message text."""
+
+    tenant_context = await _resolve_tenant_context(
+        current_user,
+        tenant_id_header,
+        tenant_role_header,
+        min_role=TenantRole.VIEWER,
+    )
+    actor = _conversation_actor(current_user, tenant_context)
+
+    try:
+        results, next_cursor = await agent_service.search_conversations(
+            actor=actor,
+            query=q,
+            limit=limit,
+            cursor=cursor,
+            agent_entrypoint=agent,
+        )
+    except ValueError as exc:  # malformed cursor or query
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    response_items: list[ConversationSearchResult] = []
+    for result in results:
+        response_items.append(
+            ConversationSearchResult(
+                conversation_id=result.conversation_id,
+                preview=result.preview,
+                score=result.score,
+                updated_at=result.updated_at.isoformat() if result.updated_at else None,
+            )
+        )
+
+    return ConversationSearchResponse(items=response_items, next_cursor=next_cursor)
 
 
 @router.get("/{conversation_id}", response_model=ConversationHistory)

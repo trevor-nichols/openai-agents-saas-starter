@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 
-import type { ConversationListResponse } from '@/types/conversations';
+import type { ConversationListPage } from '@/types/conversations';
 
 import { GET } from './route';
 
@@ -16,36 +16,35 @@ describe('/api/conversations route', () => {
   });
 
   it('returns fetched conversations on success', async () => {
-    const payload: ConversationListResponse = {
+    const payload = {
       success: true,
-      conversations: [
-        {
-          id: 'conv-1',
-          title: 'Example',
-          updated_at: new Date().toISOString(),
-        },
+      items: [
+        { id: 'conv-1', title: 'Example', updated_at: new Date().toISOString() },
       ],
+      next_cursor: null,
     };
     listConversationsAction.mockResolvedValueOnce(payload);
 
-    const response = await GET();
+    const response = await GET(new Request('http://localhost/api/conversations'));
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual(payload);
+    const body = (await response.json()) as ConversationListPage;
+    expect(body.items).toEqual(payload.items);
+    expect(body.next_cursor).toBeNull();
     expect(listConversationsAction).toHaveBeenCalledTimes(1);
   });
 
   it('returns 500 when the server action fails', async () => {
-    const payload: ConversationListResponse = {
+    const payload = {
       success: false,
       error: 'boom',
     };
     listConversationsAction.mockResolvedValueOnce(payload);
 
-    const response = await GET();
+    const response = await GET(new Request('http://localhost/api/conversations'));
 
     expect(response.status).toBe(500);
-    await expect(response.json()).resolves.toEqual(payload);
+    await expect(response.json()).resolves.toEqual({ error: payload.error });
     expect(listConversationsAction).toHaveBeenCalledTimes(1);
   });
 });

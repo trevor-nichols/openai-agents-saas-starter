@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
+from datetime import datetime
 
 from app.domain.conversations import (
     ConversationMessage,
     ConversationMetadata,
+    ConversationPage,
     ConversationRecord,
     ConversationRepository,
     ConversationSessionState,
@@ -18,6 +20,14 @@ from app.domain.conversations import (
 class SearchResult:
     conversation_id: str
     preview: str
+    score: float | None = None
+    updated_at: datetime | None = None
+
+
+@dataclass(slots=True)
+class SearchPage:
+    items: list[SearchResult]
+    next_cursor: str | None
 
 
 class ConversationService:
@@ -83,35 +93,65 @@ class ConversationService:
         normalized_tenant = _require_tenant_id(tenant_id)
         return await self._require_repository().iter_conversations(tenant_id=normalized_tenant)
 
+    async def paginate_conversations(
+        self,
+        *,
+        tenant_id: str,
+        limit: int,
+        cursor: str | None = None,
+        agent_entrypoint: str | None = None,
+        updated_after: datetime | None = None,
+    ) -> ConversationPage:
+        normalized_tenant = _require_tenant_id(tenant_id)
+        return await self._require_repository().paginate_conversations(
+            tenant_id=normalized_tenant,
+            limit=limit,
+            cursor=cursor,
+            agent_entrypoint=agent_entrypoint,
+            updated_after=updated_after,
+        )
+
     async def clear_conversation(self, conversation_id: str, *, tenant_id: str) -> None:
         normalized_tenant = _require_tenant_id(tenant_id)
         await self._require_repository().clear_conversation(
             conversation_id, tenant_id=normalized_tenant
         )
 
-    async def search(self, *, tenant_id: str, query: str) -> list[SearchResult]:
-        """Lightweight search for conversation previews matching the query."""
-
-        normalized = query.lower()
-        matches: list[SearchResult] = []
+    async def search(
+        self,
+        *,
+        tenant_id: str,
+        query: str,
+        limit: int = 20,
+        cursor: str | None = None,
+        agent_entrypoint: str | None = None,
+    ) -> SearchPage:
+        normalized_query = (query or "").strip()
+        if not normalized_query:
+            return SearchPage(items=[], next_cursor=None)
 
         normalized_tenant = _require_tenant_id(tenant_id)
-        for record in await self._require_repository().iter_conversations(
-            tenant_id=normalized_tenant
-        ):
-            for message in record.messages:
-                if normalized in message.content.lower():
-                    preview = message.content[:120]
-                    suffix = "..." if len(message.content) > 120 else ""
-                    matches.append(
-                        SearchResult(
-                            conversation_id=record.conversation_id,
-                            preview=f"{preview}{suffix}",
-                        )
-                    )
-                    break
+        page = await self._require_repository().search_conversations(
+            tenant_id=normalized_tenant,
+            query=normalized_query,
+            limit=limit,
+            cursor=cursor,
+            agent_entrypoint=agent_entrypoint,
+        )
 
-        return matches
+        items: list[SearchResult] = []
+        for hit in page.items:
+            preview = _build_preview(hit.record.messages, normalized_query)
+            items.append(
+                SearchResult(
+                    conversation_id=hit.record.conversation_id,
+                    preview=preview,
+                    score=hit.score,
+                    updated_at=hit.record.updated_at,
+                )
+            )
+
+        return SearchPage(items=items, next_cursor=page.next_cursor)
 
     async def get_session_state(
         self, conversation_id: str, *, tenant_id: str
@@ -164,3 +204,18 @@ def _require_tenant_id(value: str) -> str:
 def _ensure_metadata_tenant(metadata: ConversationMetadata, tenant_id: str) -> None:
     if metadata.tenant_id != tenant_id:
         raise ValueError("ConversationMetadata tenant_id mismatch")
+
+
+def _build_preview(messages: list[ConversationMessage], query: str) -> str:
+    if not messages:
+        return ""
+    normalized = query.lower()
+    for message in messages:
+        if normalized in message.content.lower():
+            text = message.content
+            break
+    else:
+        text = messages[-1].content
+
+    preview = text[:160]
+    return f"{preview}..." if len(text) > 160 else preview

@@ -39,3 +39,32 @@ class ConversationSummary(BaseModel):
     last_message: str = Field(description="Content preview of the latest message.")
     created_at: str = Field(description="Creation timestamp.")
     updated_at: str = Field(description="Last update timestamp.")
+
+
+class ConversationListResponse(BaseModel):
+    """Paginated list of conversation summaries."""
+
+    items: list[ConversationSummary]
+    next_cursor: str | None = Field(
+        default=None,
+        description="Opaque cursor for fetching the next page.",
+    )
+
+
+class ConversationSearchResult(BaseModel):
+    """Search hit with preview and relevance score."""
+
+    conversation_id: str = Field(description="Conversation identifier.")
+    preview: str = Field(description="Matched message snippet.")
+    score: float | None = Field(default=None, description="Backend relevance score.")
+    updated_at: str | None = Field(default=None, description="Last update timestamp.")
+
+
+class ConversationSearchResponse(BaseModel):
+    """Paginated search results."""
+
+    items: list[ConversationSearchResult]
+    next_cursor: str | None = Field(
+        default=None,
+        description="Opaque cursor for fetching the next page of search results.",
+    )

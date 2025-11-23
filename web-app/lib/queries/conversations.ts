@@ -8,25 +8,42 @@
  * - Type-safe mutations
  */
 
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback } from 'react';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useMemo } from 'react';
 
-import type { ConversationHistory, ConversationListItem } from '@/types/conversations';
+import type {
+  ConversationHistory,
+  ConversationListItem,
+  ConversationListPage,
+  ConversationSearchResultItem,
+} from '@/types/conversations';
 import {
-  fetchConversations,
+  fetchConversationsPage,
   fetchConversationHistory,
   sortConversationsByDate,
+  searchConversations,
 } from '@/lib/api/conversations';
 import { queryKeys } from './keys';
+import type { InfiniteData } from '@tanstack/react-query';
 
 interface UseConversationsReturn {
   conversationList: ConversationListItem[];
   isLoadingConversations: boolean;
+  loadMore: () => void;
+  hasNextPage: boolean;
   loadConversations: () => void;
   error: string | null;
   addConversationToList: (newConversation: ConversationListItem) => void;
   updateConversationInList: (updatedConversation: ConversationListItem) => void;
   removeConversationFromList: (conversationId: string) => void;
+}
+
+interface UseConversationSearchReturn {
+  results: ConversationSearchResultItem[];
+  isLoading: boolean;
+  loadMore: () => void;
+  hasNextPage: boolean;
+  error: string | null;
 }
 
 interface UseConversationDetailReturn {
@@ -50,80 +67,147 @@ export function useConversations(): UseConversationsReturn {
   const queryClient = useQueryClient();
 
   const {
-    data: conversationList = [],
+    data,
     isLoading: isLoadingConversations,
     error,
-    refetch,
-  } = useQuery({
+    fetchNextPage,
+    hasNextPage,
+  } = useInfiniteQuery({
     queryKey: queryKeys.conversations.lists(),
-    queryFn: fetchConversations,
-    staleTime: 30 * 1000, // Consider data fresh for 30 seconds
+    queryFn: ({ pageParam }) =>
+      fetchConversationsPage({ limit: 50, cursor: (pageParam as string | null) ?? null }),
+    getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+    initialPageParam: null as string | null,
+    staleTime: 30 * 1000,
   });
 
-  // Manual refetch function (maintains same API as before)
+  const conversationList = useMemo(
+    () => sortConversationsByDate((data?.pages ?? []).flatMap((page) => page.items)),
+    [data?.pages],
+  );
+
+  const loadMore = useCallback(() => {
+    if (hasNextPage) {
+      void fetchNextPage();
+    }
+  }, [fetchNextPage, hasNextPage]);
+
   const loadConversations = useCallback(() => {
-    console.log('[useConversations] Manually refetching conversation list...');
-    refetch();
-  }, [refetch]);
+    void queryClient.invalidateQueries({ queryKey: queryKeys.conversations.lists() });
+  }, [queryClient]);
+
+  const applyLocalMutation = useCallback(
+    (
+      mutate: (items: ConversationListItem[]) => ConversationListItem[],
+    ): InfiniteData<ConversationListPage> | undefined => {
+      return queryClient.setQueryData<InfiniteData<ConversationListPage>>(
+        queryKeys.conversations.lists(),
+        (oldData) => {
+          const flattened = (oldData?.pages ?? []).flatMap((p) => p.items);
+          const nextItems = sortConversationsByDate(mutate(flattened));
+          // Reset pagination metadata so the next fetch uses a fresh cursor from the server.
+          return {
+            pages: [
+              {
+                items: nextItems,
+                next_cursor: null,
+              },
+            ],
+            pageParams: [null],
+          };
+        },
+      );
+    },
+    [queryClient],
+  );
 
   // Optimistically add a conversation to the list
   const addConversationToList = useCallback(
     (newConversation: ConversationListItem) => {
-      queryClient.setQueryData<ConversationListItem[]>(
-        queryKeys.conversations.lists(),
-        (oldData = []) => {
-          // If conversation already exists, update it; otherwise prepend
-          const exists = oldData.find((c) => c.id === newConversation.id);
-
-          if (exists) {
-            return sortConversationsByDate(
-              oldData.map((c) => (c.id === newConversation.id ? newConversation : c))
-            );
-          }
-
-          return sortConversationsByDate([newConversation, ...oldData]);
+      applyLocalMutation((items) => {
+        const existingIndex = items.findIndex((c) => c.id === newConversation.id);
+        if (existingIndex >= 0) {
+          const next = [...items];
+          next[existingIndex] = newConversation;
+          return next;
         }
-      );
+        return [newConversation, ...items];
+      });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.conversations.lists() });
     },
-    [queryClient]
+    [applyLocalMutation, queryClient],
   );
 
   // Optimistically update a conversation in the list
   const updateConversationInList = useCallback(
     (updatedConversation: ConversationListItem) => {
-      queryClient.setQueryData<ConversationListItem[]>(
-        queryKeys.conversations.lists(),
-        (oldData = []) => {
-          return sortConversationsByDate(
-            oldData.map((c) =>
-              c.id === updatedConversation.id ? updatedConversation : c
-            )
-          );
-        }
+      applyLocalMutation((items) =>
+        items.map((c) => (c.id === updatedConversation.id ? updatedConversation : c)),
       );
+      void queryClient.invalidateQueries({ queryKey: queryKeys.conversations.lists() });
     },
-    [queryClient]
+    [applyLocalMutation, queryClient],
   );
 
   const removeConversationFromList = useCallback(
     (conversationId: string) => {
-      queryClient.setQueryData<ConversationListItem[]>(
-        queryKeys.conversations.lists(),
-        (oldData = []) => oldData.filter((conversation) => conversation.id !== conversationId),
-      );
+      applyLocalMutation((items) => items.filter((conversation) => conversation.id !== conversationId));
       queryClient.removeQueries({ queryKey: queryKeys.conversations.detail(conversationId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.conversations.lists() });
     },
-    [queryClient],
+    [applyLocalMutation, queryClient],
   );
 
   return {
     conversationList,
     isLoadingConversations,
+    loadMore,
+    hasNextPage: Boolean(hasNextPage),
     loadConversations,
     error: error?.message ?? null,
     addConversationToList,
     updateConversationInList,
     removeConversationFromList,
+  };
+}
+
+export function useConversationSearch(query: string): UseConversationSearchReturn {
+  const trimmedQuery = query?.trim() ?? '';
+  const isActive = Boolean(trimmedQuery);
+
+  const {
+    data,
+    isLoading,
+    error,
+    fetchNextPage,
+    hasNextPage,
+  } = useInfiniteQuery({
+    queryKey: [...queryKeys.conversations.all, 'search', trimmedQuery],
+    queryFn: ({ pageParam }) =>
+      searchConversations({ query: trimmedQuery, limit: 20, cursor: (pageParam as string | null) ?? null }),
+    enabled: isActive,
+    getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+    initialPageParam: null as string | null,
+    staleTime: 10 * 1000,
+  });
+
+  const results = useMemo(
+    () => (isActive ? (data?.pages ?? []).flatMap((page) => page.items) : []),
+    [data?.pages, isActive],
+  );
+
+  const loadMore = useCallback(() => {
+    if (isActive && hasNextPage) {
+      void fetchNextPage();
+    }
+  }, [fetchNextPage, hasNextPage, isActive]);
+
+  return {
+    results,
+    isLoading: isActive ? isLoading : false,
+    loadMore,
+    hasNextPage: isActive ? Boolean(hasNextPage) : false,
+    error: isActive ? error?.message ?? null : null,
   };
 }
 

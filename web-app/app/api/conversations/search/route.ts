@@ -1,14 +1,19 @@
 import { NextResponse } from 'next/server';
 
-import { listConversationsAction } from '../../(app)/(workspace)/chat/actions';
+import { searchConversationsAction } from '@/app/(app)/(workspace)/chat/actions';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
+  const query = searchParams.get('q');
+  if (!query) {
+    return NextResponse.json({ error: 'Query is required' }, { status: 400 });
+  }
   const limit = searchParams.get('limit');
   const cursor = searchParams.get('cursor');
   const agent = searchParams.get('agent');
 
-  const result = await listConversationsAction({
+  const result = await searchConversationsAction({
+    query,
     limit: limit ? Number(limit) : undefined,
     cursor: cursor || null,
     agent: agent || null,
@@ -16,7 +21,7 @@ export async function GET(request: Request) {
 
   const status = result.success ? 200 : 500;
   if (!result.success) {
-    return NextResponse.json({ error: result.error ?? 'Failed to fetch conversations' }, { status });
+    return NextResponse.json({ error: result.error ?? 'Failed to search conversations' }, { status });
   }
 
   return NextResponse.json(

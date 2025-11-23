@@ -103,7 +103,10 @@ class OpenAIAgentRegistry:
             actor = get_current_actor()
             if actor is None:
                 return "Conversation search is unavailable until tenant context is established."
-            results = await conversation_searcher(actor.tenant_id, query)
+            results = await conversation_searcher(tenant_id=actor.tenant_id, query=query)
+            if hasattr(results, "items"):
+                # ConversationService.search returns a SearchPage
+                results = results.items
             if not results:
                 return "No conversations contained the requested text."
             top_matches = "\n".join(

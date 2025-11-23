@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useQueryClient } from '@tanstack/react-query';
@@ -15,6 +15,7 @@ import { GlassPanel, InlineTag, SectionHeader } from '@/components/ui/foundation
 import { EmptyState } from '@/components/ui/states';
 import { Input } from '@/components/ui/input';
 import { fetchConversationHistory } from '@/lib/api/conversations';
+import { useConversationSearch } from '@/lib/queries/conversations';
 import { queryKeys } from '@/lib/queries/keys';
 import { formatRelativeTime } from '@/lib/utils/time';
 import type { ConversationListItem } from '@/types/conversations';
@@ -24,6 +25,8 @@ interface ConversationArchivePanelProps {
   isLoading: boolean;
   error: string | null;
   onRefresh: () => void;
+   onLoadMore?: () => void;
+  hasNextPage?: boolean;
   onSelectConversation: (conversationId: string) => void;
 }
 
@@ -32,27 +35,42 @@ export function ConversationArchivePanel({
   isLoading,
   error,
   onRefresh,
+  onLoadMore,
+  hasNextPage,
   onSelectConversation,
 }: ConversationArchivePanelProps) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [debounced, setDebounced] = useState('');
   const queryClient = useQueryClient();
 
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(searchTerm.trim()), 250);
+    return () => clearTimeout(id);
+  }, [searchTerm]);
+
+  const {
+    results: searchResults,
+    isLoading: isSearching,
+    loadMore: loadMoreSearch,
+    hasNextPage: hasNextSearchPage,
+    error: searchError,
+  } = useConversationSearch(debounced);
+
   const filteredConversations = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return conversationList;
+    if (debounced) {
+      return searchResults.map((hit) => ({
+        id: hit.conversation_id,
+        title: hit.preview,
+        last_message_summary: hit.preview,
+        updated_at: hit.updated_at ?? new Date().toISOString(),
+      }));
     }
-    const term = searchTerm.toLowerCase();
-    return conversationList.filter((conversation) => {
-      const title = conversation.title?.toLowerCase() ?? '';
-      const summary = conversation.last_message_summary?.toLowerCase() ?? '';
-      const id = conversation.id.toLowerCase();
-      return title.includes(term) || summary.includes(term) || id.includes(term);
-    });
-  }, [conversationList, searchTerm]);
+    return conversationList;
+  }, [conversationList, debounced, searchResults]);
 
   const totalCount = conversationList.length;
   const visibleCount = filteredConversations.length;
-  const isSearching = Boolean(searchTerm.trim());
+  const isSearchingActive = Boolean(debounced);
 
   const columns = useMemo<ConversationColumn[]>(() => {
     return [
@@ -95,10 +113,10 @@ export function ConversationArchivePanel({
     [queryClient],
   );
 
-  const tableEmptyState = isSearching ? (
+  const tableEmptyState = isSearchingActive ? (
     <EmptyState
       title="No results found"
-      description="Try a different search term or clear the filter to see all transcripts."
+      description={searchError || 'Try a different search term or clear the filter to see all transcripts.'}
       action={
         <Button variant="ghost" onClick={() => setSearchTerm('')}>
           Clear search
@@ -124,16 +142,16 @@ export function ConversationArchivePanel({
         title="Conversation archive"
         description="Search, filter, and export transcripts for compliance-ready reviews."
         actions={
-          <div className="flex items-center gap-3">
-            <InlineTag tone={totalCount ? 'positive' : 'default'}>
-              {isLoading
-                ? 'Loading…'
-                : isSearching
-                  ? `${visibleCount}/${totalCount} matches`
-                  : `${totalCount} threads`}
-            </InlineTag>
-            <Button variant="ghost" size="sm" onClick={onRefresh} disabled={isLoading}>
-              Refresh
+        <div className="flex items-center gap-3">
+          <InlineTag tone={totalCount ? 'positive' : 'default'}>
+            {isLoading
+              ? 'Loading…'
+              : isSearchingActive
+                ? `${visibleCount}/${totalCount} matches`
+                : `${totalCount} threads`}
+          </InlineTag>
+          <Button variant="ghost" size="sm" onClick={onRefresh} disabled={isLoading}>
+            Refresh
             </Button>
           </div>
         }
@@ -151,8 +169,13 @@ export function ConversationArchivePanel({
             />
           </div>
         </div>
-        {isSearching ? (
-          <Button variant="secondary" size="sm" onClick={() => setSearchTerm('')}>
+        {isSearchingActive ? (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setSearchTerm('')}
+            disabled={isSearching}
+          >
             Clear filter
           </Button>
         ) : null}
@@ -172,6 +195,22 @@ export function ConversationArchivePanel({
         enableSorting={false}
         enablePagination={false}
       />
+
+      {!debounced && hasNextPage ? (
+        <div className="flex justify-center">
+          <Button variant="ghost" size="sm" onClick={onLoadMore} disabled={isLoading}>
+            Load more
+          </Button>
+        </div>
+      ) : null}
+
+      {debounced && hasNextSearchPage ? (
+        <div className="flex justify-center">
+          <Button variant="ghost" size="sm" onClick={loadMoreSearch} disabled={isSearching}>
+            Load more results
+          </Button>
+        </div>
+      ) : null}
     </GlassPanel>
   );
 }

@@ -8,7 +8,10 @@
 
 import type { StreamChunk } from '@/lib/chat/types';
 import { streamChatServer } from '@/lib/server/streaming/chat';
-import { listConversations } from '@/lib/server/services/conversations';
+import {
+  listConversationsPage,
+  searchConversationsPage,
+} from '@/lib/server/services/conversations';
 
 // --- Stream chat ---
 // Exposes the streaming chat server action to the client workspace components.
@@ -37,12 +40,17 @@ export async function* streamChatAgent(params: {
 
 // --- List conversations ---
 // Enables TanStack Query hooks to fetch the user’s conversations via a server action.
-export async function listConversationsAction() {
+export async function listConversationsAction(params?: {
+  limit?: number;
+  cursor?: string | null;
+  agent?: string | null;
+}) {
   try {
-    const conversations = await listConversations();
+    const page = await listConversationsPage(params);
     return {
       success: true,
-      conversations,
+      items: page.items,
+      next_cursor: page.next_cursor,
     };
   } catch (error) {
     return {
@@ -52,3 +60,23 @@ export async function listConversationsAction() {
   }
 }
 
+export async function searchConversationsAction(params: {
+  query: string;
+  limit?: number;
+  cursor?: string | null;
+  agent?: string | null;
+}) {
+  try {
+    const page = await searchConversationsPage(params);
+    return {
+      success: true,
+      items: page.items,
+      next_cursor: page.next_cursor,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to search conversations',
+    };
+  }
+}

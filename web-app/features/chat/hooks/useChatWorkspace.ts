@@ -16,6 +16,8 @@ export function useChatWorkspace() {
   const {
     conversationList,
     isLoadingConversations,
+    loadMore,
+    hasNextPage,
     addConversationToList,
     updateConversationInList,
     removeConversationFromList,
@@ -101,6 +103,8 @@ export function useChatWorkspace() {
     agents,
     isLoadingAgents,
     agentsError,
+    loadMoreConversations: loadMore,
+    hasNextConversationPage: hasNextPage,
     messages,
     isSending,
     isLoadingHistory,

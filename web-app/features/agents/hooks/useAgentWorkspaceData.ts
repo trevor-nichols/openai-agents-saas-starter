@@ -21,6 +21,8 @@ export interface AgentWorkspaceQueries {
   isLoadingConversations: boolean;
   conversationsError: ReturnType<typeof useConversations>['error'];
   loadConversations: ReturnType<typeof useConversations>['loadConversations'];
+  loadMoreConversations: ReturnType<typeof useConversations>['loadMore'];
+  hasNextConversationPage: ReturnType<typeof useConversations>['hasNextPage'];
   addConversationToList: ReturnType<typeof useConversations>['addConversationToList'];
   updateConversationInList: ReturnType<typeof useConversations>['updateConversationInList'];
   removeConversationFromList: ReturnType<typeof useConversations>['removeConversationFromList'];
@@ -55,6 +57,8 @@ export function useAgentWorkspaceData(): AgentWorkspaceQueries {
     isLoadingConversations: conversationsQuery.isLoadingConversations,
     conversationsError: conversationsQuery.error,
     loadConversations: conversationsQuery.loadConversations,
+    loadMoreConversations: conversationsQuery.loadMore,
+    hasNextConversationPage: conversationsQuery.hasNextPage,
     addConversationToList: conversationsQuery.addConversationToList,
     updateConversationInList: conversationsQuery.updateConversationInList,
     removeConversationFromList: conversationsQuery.removeConversationFromList,

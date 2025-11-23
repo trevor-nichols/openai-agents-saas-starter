@@ -7,11 +7,20 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy import Computed
+from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.persistence.models.base import UTC_NOW, Base, uuid_pk
 from app.infrastructure.persistence.types import JSONBCompat
+
+
+# SQLite test environment cannot compile PostgreSQL computed expressions; suppress them there.
+@compiles(Computed, "sqlite")  # pragma: no cover - dialect-specific DDL shim
+def _sqlite_omit_computed(element, compiler, **kwargs):
+    return ""
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from app.infrastructure.persistence.auth.models import (
@@ -145,6 +154,14 @@ class AgentMessage(Base):
     latency_ms: Mapped[int | None] = mapped_column(Integer)
     content_checksum: Mapped[str | None] = mapped_column(String(32))
     run_id: Mapped[str | None] = mapped_column(String(64))
+    text_tsv: Mapped[str | None] = mapped_column(
+        TSVECTOR().with_variant(String(), "sqlite"),
+        Computed(
+            "to_tsvector('english', coalesce(content->>'text', ''))",
+            persisted=True,
+        ),
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=UTC_NOW, nullable=False
     )

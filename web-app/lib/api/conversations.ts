@@ -11,29 +11,33 @@
 import type {
   ConversationHistory,
   ConversationListItem,
-  ConversationListResponse,
+  ConversationListPage,
+  ConversationSearchPage,
 } from '@/types/conversations';
 
 /**
- * Fetch all conversations for the current user
+ * Fetch paginated conversations for the current user
  */
-export async function fetchConversations(): Promise<ConversationListItem[]> {
-  const response = await fetch('/api/conversations', {
-    method: 'GET',
-    cache: 'no-store',
-  });
+export async function fetchConversationsPage(params?: {
+  limit?: number;
+  cursor?: string | null;
+  agent?: string | null;
+}): Promise<ConversationListPage> {
+  const searchParams = new URLSearchParams();
+  if (params?.limit) searchParams.set('limit', String(params.limit));
+  if (params?.cursor) searchParams.set('cursor', params.cursor);
+  if (params?.agent) searchParams.set('agent', params.agent);
 
-  const result = (await response.json()) as ConversationListResponse;
-
+  const response = await fetch(`/api/conversations${searchParams.toString() ? `?${searchParams.toString()}` : ''}`);
   if (!response.ok) {
-    throw new Error(result.error || 'Failed to load conversations');
+    throw new Error('Failed to load conversations');
   }
 
-  if (!result.success || !result.conversations) {
-    throw new Error(result.error || 'Unknown error loading conversations');
-  }
-
-  return result.conversations;
+  const result = (await response.json()) as ConversationListPage;
+  return {
+    items: result.items ?? [],
+    next_cursor: result.next_cursor ?? null,
+  };
 }
 
 /**
@@ -45,6 +49,30 @@ export function sortConversationsByDate(
   return [...conversations].sort(
     (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
   );
+}
+
+export async function searchConversations(params: {
+  query: string;
+  limit?: number;
+  cursor?: string | null;
+  agent?: string | null;
+}): Promise<ConversationSearchPage> {
+  const searchParams = new URLSearchParams();
+  searchParams.set('q', params.query);
+  if (params.limit) searchParams.set('limit', String(params.limit));
+  if (params.cursor) searchParams.set('cursor', params.cursor);
+  if (params.agent) searchParams.set('agent', params.agent);
+
+  const response = await fetch(`/api/conversations/search?${searchParams.toString()}`);
+  if (!response.ok) {
+    throw new Error('Failed to search conversations');
+  }
+
+  const result = (await response.json()) as ConversationSearchPage;
+  return {
+    items: result.items ?? [],
+    next_cursor: result.next_cursor ?? null,
+  };
 }
 
 /**

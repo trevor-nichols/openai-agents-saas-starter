@@ -2,26 +2,28 @@
 
 from __future__ import annotations
 
+import base64
+import json
 import logging
 import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Literal, cast
 
-from sqlalchemy import select
+from sqlalchemy import String, and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.domain.conversations import (
     ConversationMessage,
     ConversationMetadata,
+    ConversationPage,
     ConversationRecord,
     ConversationRepository,
+    ConversationSearchHit,
+    ConversationSearchPage,
     ConversationSessionState,
 )
-from app.infrastructure.persistence.conversations.models import (
-    AgentConversation,
-    AgentMessage,
-)
+from app.infrastructure.persistence.conversations.models import AgentConversation, AgentMessage
 
 logger = logging.getLogger("api-service.persistence")
 
@@ -61,6 +63,39 @@ def _parse_tenant_id(value: str | None) -> uuid.UUID:
         return uuid.UUID(value)
     except (TypeError, ValueError) as exc:  # pragma: no cover - invalid user input
         raise ValueError("tenant_id must be a valid UUID") from exc
+
+
+def _encode_cursor(ts: datetime, conversation_id: uuid.UUID) -> str:
+    payload = {"ts": ts.isoformat(), "id": str(conversation_id)}
+    raw = json.dumps(payload).encode("utf-8")
+    return base64.urlsafe_b64encode(raw).decode("utf-8")
+
+
+def _decode_cursor(cursor: str) -> tuple[datetime, uuid.UUID]:
+    try:
+        data = json.loads(base64.urlsafe_b64decode(cursor.encode("utf-8")).decode("utf-8"))
+        ts = datetime.fromisoformat(data["ts"])
+        conv_id = uuid.UUID(data["id"])
+        return ts, conv_id
+    except Exception as exc:  # pragma: no cover - invalid cursor input
+        raise ValueError("Invalid pagination cursor") from exc
+
+
+def _encode_search_cursor(rank: float, ts: datetime, conversation_id: uuid.UUID) -> str:
+    payload = {"rank": rank, "ts": ts.isoformat(), "id": str(conversation_id)}
+    raw = json.dumps(payload).encode("utf-8")
+    return base64.urlsafe_b64encode(raw).decode("utf-8")
+
+
+def _decode_search_cursor(cursor: str) -> tuple[float, datetime, uuid.UUID]:
+    try:
+        data = json.loads(base64.urlsafe_b64decode(cursor.encode("utf-8")).decode("utf-8"))
+        rank = float(data["rank"])
+        ts = datetime.fromisoformat(data["ts"])
+        conv_id = uuid.UUID(data["id"])
+        return rank, ts, conv_id
+    except Exception as exc:  # pragma: no cover - invalid cursor input
+        raise ValueError("Invalid search pagination cursor") from exc
 
 
 class PostgresConversationRepository(ConversationRepository):
@@ -225,6 +260,213 @@ class PostgresConversationRepository(ConversationRepository):
                     )
                 )
             return records
+
+    async def paginate_conversations(
+        self,
+        *,
+        tenant_id: str,
+        limit: int,
+        cursor: str | None = None,
+        agent_entrypoint: str | None = None,
+        updated_after: datetime | None = None,
+    ) -> ConversationPage:
+        tenant_uuid = _parse_tenant_id(tenant_id)
+        limit = max(1, min(limit, 100))
+
+        cursor_ts: datetime | None = None
+        cursor_uuid: uuid.UUID | None = None
+        if cursor:
+            cursor_ts, cursor_uuid = _decode_cursor(cursor)
+
+        filters = [AgentConversation.tenant_id == tenant_uuid]
+        if agent_entrypoint:
+            filters.append(AgentConversation.agent_entrypoint == agent_entrypoint)
+        if updated_after:
+            filters.append(AgentConversation.updated_at >= _to_utc(updated_after))
+        if cursor_ts and cursor_uuid:
+            filters.append(
+                or_(
+                    AgentConversation.updated_at < cursor_ts,
+                    and_(
+                        AgentConversation.updated_at == cursor_ts,
+                        AgentConversation.id < cursor_uuid,
+                    ),
+                )
+            )
+
+        async with self._session_factory() as session:
+            result = await session.execute(
+                select(AgentConversation)
+                .where(*filters)
+                .order_by(AgentConversation.updated_at.desc(), AgentConversation.id.desc())
+                .limit(limit + 1)
+            )
+            rows: list[AgentConversation] = list(result.scalars().all())
+
+            next_cursor = None
+            if len(rows) > limit:
+                tail = rows[limit]
+                next_cursor = _encode_cursor(tail.updated_at, tail.id)
+                rows = rows[:limit]
+
+            if not rows:
+                return ConversationPage(items=[], next_cursor=None)
+
+            ids = [conversation.id for conversation in rows]
+            messages = await session.execute(
+                select(AgentMessage)
+                .where(AgentMessage.conversation_id.in_(ids))
+                .order_by(AgentMessage.conversation_id, AgentMessage.position)
+            )
+            message_rows: Sequence[AgentMessage] = messages.scalars().all()
+
+            grouped: dict[uuid.UUID, list[AgentMessage]] = {}
+            for row in message_rows:
+                grouped.setdefault(row.conversation_id, []).append(row)
+
+            records: list[ConversationRecord] = []
+            for conversation in rows:
+                entries = grouped.get(conversation.id, [])
+                messages_list = [
+                    ConversationMessage(
+                        role=_coerce_role(item.role),
+                        content=_extract_message_content(item.content),
+                        timestamp=item.created_at,
+                    )
+                    for item in entries
+                ]
+                records.append(
+                    ConversationRecord(
+                        conversation_id=conversation.conversation_key,
+                        messages=messages_list,
+                    )
+                )
+
+            return ConversationPage(items=records, next_cursor=next_cursor)
+
+    async def search_conversations(
+        self,
+        *,
+        tenant_id: str,
+        query: str,
+        limit: int,
+        cursor: str | None = None,
+        agent_entrypoint: str | None = None,
+    ) -> ConversationSearchPage:
+        tenant_uuid = _parse_tenant_id(tenant_id)
+        limit = max(1, min(limit, 50))
+        if not query.strip():
+            raise ValueError("Query cannot be empty")
+
+        cursor_rank: float | None = None
+        cursor_ts: datetime | None = None
+        cursor_uuid: uuid.UUID | None = None
+        if cursor:
+            cursor_rank, cursor_ts, cursor_uuid = _decode_search_cursor(cursor)
+
+        async with self._session_factory() as session:
+            dialect = session.bind.dialect.name if session.bind else ""
+            base_filters = [AgentConversation.tenant_id == tenant_uuid]
+            if agent_entrypoint:
+                base_filters.append(AgentConversation.agent_entrypoint == agent_entrypoint)
+
+            # Build search query.
+            if dialect == "postgresql":
+                ts_query = func.plainto_tsquery("english", query)
+                rank_expr = func.ts_rank_cd(AgentMessage.text_tsv, ts_query)
+                search_filter = AgentMessage.text_tsv.op("@@")(ts_query)
+            else:
+                rank_expr = func.length(AgentMessage.content.cast(String))
+                search_filter = func.lower(AgentMessage.content.cast(String)).like(
+                    f"%{query.lower()}%"
+                )
+
+            base_query = (
+                select(
+                    AgentConversation.id.label("cid"),
+                    AgentConversation.updated_at.label("updated_at"),
+                    func.max(rank_expr).label("rank"),
+                )
+                .join(AgentMessage, AgentMessage.conversation_id == AgentConversation.id)
+                .where(*base_filters, search_filter)
+                .group_by(AgentConversation.id, AgentConversation.updated_at)
+            )
+
+            if cursor_rank is not None and cursor_ts and cursor_uuid:
+                base_query = base_query.having(
+                    or_(
+                        func.max(rank_expr) < cursor_rank,
+                        and_(
+                            func.max(rank_expr) == cursor_rank,
+                            or_(
+                                AgentConversation.updated_at < cursor_ts,
+                                and_(
+                                    AgentConversation.updated_at == cursor_ts,
+                                    AgentConversation.id < cursor_uuid,
+                                ),
+                            ),
+                        ),
+                    )
+                )
+
+            ranked = base_query.subquery()
+
+            result = await session.execute(
+                select(AgentConversation, ranked.c.rank)
+                .join(ranked, AgentConversation.id == ranked.c.cid)
+                .order_by(
+                    ranked.c.rank.desc(),
+                    AgentConversation.updated_at.desc(),
+                    AgentConversation.id.desc(),
+                )
+                .limit(limit + 1)
+            )
+
+            rows = result.all()
+            next_cursor = None
+            if len(rows) > limit:
+                tail_conv, tail_rank = rows[limit]
+                next_cursor = _encode_search_cursor(
+                    float(tail_rank or 0.0), tail_conv.updated_at, tail_conv.id
+                )
+                rows = rows[:limit]
+
+            if not rows:
+                return ConversationSearchPage(items=[], next_cursor=None)
+
+            ids = [row[0].id for row in rows]
+            messages = await session.execute(
+                select(AgentMessage)
+                .where(AgentMessage.conversation_id.in_(ids))
+                .order_by(AgentMessage.conversation_id, AgentMessage.position)
+            )
+            message_rows: Sequence[AgentMessage] = messages.scalars().all()
+            grouped: dict[uuid.UUID, list[AgentMessage]] = {}
+            for row in message_rows:
+                grouped.setdefault(row.conversation_id, []).append(row)
+
+            hits: list[ConversationSearchHit] = []
+            for conversation, rank in rows:
+                entries = grouped.get(conversation.id, [])
+                messages_list = [
+                    ConversationMessage(
+                        role=_coerce_role(item.role),
+                        content=_extract_message_content(item.content),
+                        timestamp=item.created_at,
+                    )
+                    for item in entries
+                ]
+                hits.append(
+                    ConversationSearchHit(
+                        record=ConversationRecord(
+                            conversation_id=conversation.conversation_key,
+                            messages=messages_list,
+                        ),
+                        score=float(rank or 0.0),
+                    )
+                )
+
+            return ConversationSearchPage(items=hits, next_cursor=next_cursor)
 
     async def clear_conversation(self, conversation_id: str, *, tenant_id: str) -> None:
         conversation_uuid = _coerce_conversation_uuid(conversation_id)

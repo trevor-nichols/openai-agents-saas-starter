@@ -31,6 +31,8 @@ export function AgentWorkspace() {
     isLoadingConversations,
     conversationsError,
     loadConversations,
+    loadMoreConversations,
+    hasNextConversationPage,
     addConversationToList,
     updateConversationInList,
     removeConversationFromList,
@@ -195,6 +197,8 @@ export function AgentWorkspace() {
                   isLoading={isLoadingConversations}
                   error={conversationsError}
                   onRefresh={loadConversations}
+                  onLoadMore={loadMoreConversations}
+                  hasNextPage={hasNextConversationPage}
                   onSelectConversation={handleSelectConversationFromArchive}
                 />
               </TabsContent>

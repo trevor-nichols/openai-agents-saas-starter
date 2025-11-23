@@ -33,6 +33,30 @@ class ConversationRecord:
 
 
 @dataclass(slots=True)
+class ConversationPage:
+    """Page of conversations plus a cursor for keyset pagination."""
+
+    items: list[ConversationRecord]
+    next_cursor: str | None
+
+
+@dataclass(slots=True)
+class ConversationSearchHit:
+    """Search hit with relevance score."""
+
+    record: ConversationRecord
+    score: float
+
+
+@dataclass(slots=True)
+class ConversationSearchPage:
+    """Page of search hits with pagination cursor."""
+
+    items: list[ConversationSearchHit]
+    next_cursor: str | None
+
+
+@dataclass(slots=True)
 class ConversationMetadata:
     """Metadata captured alongside a conversation event."""
 
@@ -91,6 +115,26 @@ class ConversationRepository(Protocol):
     async def list_conversation_ids(self, *, tenant_id: str) -> list[str]: ...
 
     async def iter_conversations(self, *, tenant_id: str) -> list[ConversationRecord]: ...
+
+    async def paginate_conversations(
+        self,
+        *,
+        tenant_id: str,
+        limit: int,
+        cursor: str | None = None,
+        agent_entrypoint: str | None = None,
+        updated_after: datetime | None = None,
+    ) -> ConversationPage: ...
+
+    async def search_conversations(
+        self,
+        *,
+        tenant_id: str,
+        query: str,
+        limit: int,
+        cursor: str | None = None,
+        agent_entrypoint: str | None = None,
+    ) -> ConversationSearchPage: ...
 
     async def clear_conversation(
         self,

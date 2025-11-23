@@ -30,7 +30,11 @@ from app.services.agents.provider_registry import (
     AgentProviderRegistry,
     get_provider_registry,
 )
-from app.services.conversation_service import ConversationService, get_conversation_service
+from app.services.conversation_service import (
+    ConversationService,
+    SearchResult,
+    get_conversation_service,
+)
 from app.services.usage_recorder import UsageEntry, UsageRecorder
 
 logger = logging.getLogger(__name__)
@@ -321,28 +325,53 @@ class AgentService:
         self,
         *,
         actor: ConversationActorContext,
-    ) -> list[ConversationSummary]:
-        summaries: list[ConversationSummary] = []
+        limit: int = 50,
+        cursor: str | None = None,
+        agent_entrypoint: str | None = None,
+        updated_after: datetime | None = None,
+    ) -> tuple[list[ConversationSummary], str | None]:
+        page = await self._conversation_service.paginate_conversations(
+            tenant_id=actor.tenant_id,
+            limit=limit,
+            cursor=cursor,
+            agent_entrypoint=agent_entrypoint,
+            updated_after=updated_after,
+        )
 
-        for record in await self._conversation_service.iterate_conversations(
-            tenant_id=actor.tenant_id
-        ):
+        summaries: list[ConversationSummary] = []
+        for record in page.items:
             if not record.messages:
                 continue
-
             last_message = record.messages[-1]
             summaries.append(
                 ConversationSummary(
                     conversation_id=record.conversation_id,
                     message_count=len(record.messages),
-                    last_message=last_message.content[:120],
+                    last_message=last_message.content[:160],
                     created_at=record.created_at.isoformat(),
                     updated_at=record.updated_at.isoformat(),
                 )
             )
 
-        summaries.sort(key=lambda item: item.updated_at, reverse=True)
-        return summaries
+        return summaries, page.next_cursor
+
+    async def search_conversations(
+        self,
+        *,
+        actor: ConversationActorContext,
+        query: str,
+        limit: int = 20,
+        cursor: str | None = None,
+        agent_entrypoint: str | None = None,
+    ) -> tuple[list[SearchResult], str | None]:
+        page = await self._conversation_service.search(
+            tenant_id=actor.tenant_id,
+            query=query,
+            limit=limit,
+            cursor=cursor,
+            agent_entrypoint=agent_entrypoint,
+        )
+        return page.items, page.next_cursor
 
     async def clear_conversation(
         self,

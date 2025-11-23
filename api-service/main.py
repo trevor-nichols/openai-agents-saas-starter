@@ -216,7 +216,9 @@ async def lifespan(app: FastAPI):
         build_openai_provider(
             settings_factory=lambda: settings,
             conversation_searcher=lambda tenant_id, query: container.conversation_service.search(
-                tenant_id=tenant_id, query=query
+                tenant_id=tenant_id,
+                query=query,
+                limit=20,
             ),
             engine=engine,
         ),

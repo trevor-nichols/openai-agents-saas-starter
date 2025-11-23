@@ -12,8 +12,26 @@ export interface ConversationListItem {
 
 export interface ConversationListResponse {
   success: boolean;
-  conversations?: ConversationListItem[];
+  items?: ConversationListItem[];
+  next_cursor?: string | null;
   error?: string;
+}
+
+export interface ConversationListPage {
+  items: ConversationListItem[];
+  next_cursor: string | null;
+}
+
+export interface ConversationSearchResultItem {
+  conversation_id: string;
+  preview: string;
+  score?: number | null;
+  updated_at?: string | null;
+}
+
+export interface ConversationSearchPage {
+  items: ConversationSearchResultItem[];
+  next_cursor: string | null;
 }
 
 export type ConversationHistory = BackendConversationHistory;
