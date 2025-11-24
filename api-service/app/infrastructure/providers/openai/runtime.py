@@ -87,7 +87,10 @@ class OpenAIStreamingHandle(AgentStreamingHandle):
 
                 if isinstance(raw, ResponseTextDeltaEvent):
                     text_delta = _coerce_delta(getattr(raw, "delta", None))
-                elif raw_type in {"response.reasoning_text.delta", "response.reasoning_summary_text.delta"}:
+                elif raw_type in {
+                    "response.reasoning_text.delta",
+                    "response.reasoning_summary_text.delta",
+                }:
                     reasoning_delta = _coerce_delta(getattr(raw, "delta", None))
 
                 is_terminal = raw_type in {

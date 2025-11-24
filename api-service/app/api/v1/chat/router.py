@@ -1,6 +1,5 @@
 """Chat-related API endpoints."""
 
-import json
 from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException, status

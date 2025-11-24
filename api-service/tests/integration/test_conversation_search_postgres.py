@@ -42,14 +42,35 @@ async def test_search_prioritizes_rank_over_recency(migrated_engine: AsyncEngine
     repo = PostgresConversationRepository(session_factory)
     tenant_id = await _seed_tenant(session_factory)
 
-    await _seed_message(repo, tenant_id=tenant_id, conversation_id="high-rank", text="alpha alpha beta", minutes_ago=10)
-    await _seed_message(repo, tenant_id=tenant_id, conversation_id="recent-low", text="alpha gamma", minutes_ago=1)
-    await _seed_message(repo, tenant_id=tenant_id, conversation_id="middle", text="alpha", minutes_ago=5)
+    await _seed_message(
+        repo,
+        tenant_id=tenant_id,
+        conversation_id="high-rank",
+        text="alpha alpha beta",
+        minutes_ago=10,
+    )
+    await _seed_message(
+        repo,
+        tenant_id=tenant_id,
+        conversation_id="recent-low",
+        text="alpha gamma",
+        minutes_ago=1,
+    )
+    await _seed_message(
+        repo,
+        tenant_id=tenant_id,
+        conversation_id="middle",
+        text="alpha",
+        minutes_ago=5,
+    )
 
     page = await repo.search_conversations(tenant_id=tenant_id, query="alpha", limit=2)
 
     ids = [hit.record.conversation_id for hit in page.items]
-    assert ids == ["high-rank", "recent-low"], "rank should outrank recency when query matches more strongly"
+    assert ids == [
+        "high-rank",
+        "recent-low",
+    ], "rank should outrank recency when query matches more strongly"
     assert page.next_cursor is not None, "cursor should be present when more results remain"
 
     # Scores are available on Postgres; ensure the top hit scored at least as high as the second.
@@ -66,9 +87,27 @@ async def test_search_cursor_paginates_results(migrated_engine: AsyncEngine) -> 
     repo = PostgresConversationRepository(session_factory)
     tenant_id = await _seed_tenant(session_factory)
 
-    await _seed_message(repo, tenant_id=tenant_id, conversation_id="conv-1", text="alpha", minutes_ago=3)
-    await _seed_message(repo, tenant_id=tenant_id, conversation_id="conv-2", text="alpha", minutes_ago=2)
-    await _seed_message(repo, tenant_id=tenant_id, conversation_id="conv-3", text="alpha", minutes_ago=1)
+    await _seed_message(
+        repo,
+        tenant_id=tenant_id,
+        conversation_id="conv-1",
+        text="alpha",
+        minutes_ago=3,
+    )
+    await _seed_message(
+        repo,
+        tenant_id=tenant_id,
+        conversation_id="conv-2",
+        text="alpha",
+        minutes_ago=2,
+    )
+    await _seed_message(
+        repo,
+        tenant_id=tenant_id,
+        conversation_id="conv-3",
+        text="alpha",
+        minutes_ago=1,
+    )
 
     first_page = await repo.search_conversations(tenant_id=tenant_id, query="alpha", limit=2)
     assert len(first_page.items) == 2
@@ -82,5 +121,7 @@ async def test_search_cursor_paginates_results(migrated_engine: AsyncEngine) -> 
     )
 
     remaining_ids = [hit.record.conversation_id for hit in second_page.items]
-    assert remaining_ids == ["conv-1"], "cursor should advance to the next set of ranked results"
+    assert remaining_ids == [
+        "conv-1",
+    ], "cursor should advance to the next set of ranked results"
     assert second_page.next_cursor is None

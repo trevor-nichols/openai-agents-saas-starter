@@ -46,7 +46,7 @@ export const MARKETING_CTA_LINK: MarketingNavLink = {
 
 export const MARKETING_ANNOUNCEMENT = {
   tag: 'Update',
-  message: 'Agents SDK v0.5 is fully wired into the starter.',
+  message: 'Agents SDK v0.6.1 is fully wired into the starter.',
   href: '/docs',
 };
 

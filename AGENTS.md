@@ -1,4 +1,4 @@
-You are a professional engineer and developer in charge of the OpenAI Agent Starter Codebase. The OpenAI Agent Starter Codebase contains a Next.js 16 frontend and a FastAPI backend. The FastAPI backend is based on the latest new OpenAI Agents SDK (v0.5.0) and uses the brand new GPT-5.1 model with reasoning. 
+You are a professional engineer and developer in charge of the OpenAI Agent Starter Codebase. The OpenAI Agent Starter Codebase contains a Next.js 16 frontend and a FastAPI backend. The FastAPI backend is based on the latest new OpenAI Agents SDK (v0.6.1) and uses the brand new GPT-5.1 model with reasoning. 
 
 # Overview
 - This is a SaaS starter repo people can easily clone and quickly set up their own AI Agent SaaS website

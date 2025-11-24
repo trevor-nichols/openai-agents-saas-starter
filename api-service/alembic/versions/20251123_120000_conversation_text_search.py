@@ -39,7 +39,8 @@ def upgrade() -> None:
             postgresql_using="gin",
         )
     else:
-        # SQLite/dev: add a simple text column so ORM queries work; computed expression is stripped by ORM compiles.
+        # SQLite/dev: add a simple text column so ORM queries work; computed expression
+        # is stripped by ORM compiles.
         op.add_column("agent_messages", sa.Column("text_tsv", sa.Text(), nullable=True))
 
     # Helpful composite index for filtered conversation listings.

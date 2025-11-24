@@ -47,19 +47,40 @@ class StreamingChatEvent(BaseModel):
     conversation_id: str = Field(description="Conversation identifier.")
     agent_used: str | None = Field(default=None, description="Agent that produced the event.")
 
-    response_id: str | None = Field(default=None, description="Upstream response id when available.")
-    sequence_number: int | None = Field(default=None, description="Sequence number from Responses API.")
+    response_id: str | None = Field(
+        default=None,
+        description="Upstream response id when available.",
+    )
+    sequence_number: int | None = Field(
+        default=None,
+        description="Sequence number from Responses API.",
+    )
 
-    raw_type: str | None = Field(default=None, description="Underlying Responses API event type.")
-    run_item_name: str | None = Field(default=None, description="RunItemStreamEvent name.")
-    run_item_type: str | None = Field(default=None, description="RunItem item.type.")
-    tool_call_id: str | None = Field(default=None, description="Tool call identifier if present.")
+    raw_type: str | None = Field(
+        default=None,
+        description="Underlying Responses API event type.",
+    )
+    run_item_name: str | None = Field(
+        default=None,
+        description="RunItemStreamEvent name.",
+    )
+    run_item_type: str | None = Field(
+        default=None,
+        description="RunItem item.type.",
+    )
+    tool_call_id: str | None = Field(
+        default=None,
+        description="Tool call identifier if present.",
+    )
     tool_name: str | None = Field(default=None, description="Tool name if present.")
     agent: str | None = Field(default=None, description="Agent associated with the event.")
     new_agent: str | None = Field(default=None, description="New agent after a handoff.")
 
     text_delta: str | None = Field(default=None, description="Streamed text chunk, if any.")
-    reasoning_delta: str | None = Field(default=None, description="Streamed reasoning chunk, if any.")
+    reasoning_delta: str | None = Field(
+        default=None,
+        description="Streamed reasoning chunk, if any.",
+    )
     is_terminal: bool = Field(default=False, description="Marks terminal event for the stream.")
 
     payload: dict[str, Any] | None = Field(

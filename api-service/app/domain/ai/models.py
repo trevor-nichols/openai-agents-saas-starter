@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass, is_dataclass
-from typing import Any, Literal, Mapping
+from typing import Any, Literal
 
 
 @dataclass(slots=True)
@@ -89,17 +89,23 @@ class AgentStreamEvent:
             return None
         if isinstance(obj, Mapping):
             return obj
-        if is_dataclass(obj):
+        if is_dataclass(obj) and not isinstance(obj, type):
             return asdict(obj)
         model_dump = getattr(obj, "model_dump", None)
         if callable(model_dump):
-            return model_dump()
+            dumped = model_dump()
+            if isinstance(dumped, Mapping):
+                return dumped
+            return {"value": dumped}
         dict_fn = getattr(obj, "dict", None)
-        if callable(dict_fn):  # type: ignore[truthy-bool]
+        if callable(dict_fn):
             try:
-                return dict_fn()
+                dumped = dict_fn()
             except TypeError:  # pragma: no cover - fallback when dict() needs params
-                return dict_fn(exclude_none=True)
+                dumped = dict_fn(exclude_none=True)
+            if isinstance(dumped, Mapping):
+                return dict(dumped)
+            return {"value": dumped}
         __dict__ = getattr(obj, "__dict__", None)
         if isinstance(__dict__, Mapping):
             return dict(__dict__)
