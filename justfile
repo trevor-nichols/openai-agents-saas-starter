@@ -167,7 +167,7 @@ lint-stripe-fixtures:
 cli-verify-env:
     python -m scripts.cli.verify_env_inventory
 
-# Validate Stripe/Resend/Tavily env configuration
+# Validate Stripe/Resend env configuration
 validate-providers:
     python -m starter_cli.app providers validate
 

@@ -93,25 +93,6 @@ def _collect_ai_providers(context: WizardContext, provider: InputProvider) -> No
         else:
             context.set_backend(key, "")
 
-    if provider.prompt_bool(
-        key="ENABLE_TAVILY",
-        prompt="Enable Tavily search tools?",
-        default=bool(context.current("TAVILY_API_KEY")),
-    ):
-        tavily_key = provider.prompt_secret(
-            key="TAVILY_API_KEY",
-            prompt="Tavily API key",
-            existing=context.current("TAVILY_API_KEY"),
-            required=False,
-        )
-        if tavily_key:
-            context.set_backend("TAVILY_API_KEY", tavily_key, mask=True)
-        else:
-            context.set_backend("TAVILY_API_KEY", "")
-    else:
-        context.set_backend("TAVILY_API_KEY", "")
-
-
 def _collect_redis(context: WizardContext, provider: InputProvider) -> None:
     primary = provider.prompt_string(
         key="REDIS_URL",

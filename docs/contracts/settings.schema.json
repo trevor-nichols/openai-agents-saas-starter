@@ -1398,19 +1398,6 @@
       "title": "Signup Default Trial Days",
       "type": "integer"
     },
-    "tavily_api_key": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "description": "Tavily web search API key",
-      "title": "Tavily Api Key"
-    },
     "xai_api_key": {
       "anyOf": [
         {

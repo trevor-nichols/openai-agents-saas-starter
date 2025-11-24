@@ -1,8 +1,8 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "api-service",
-    "description": "api-service FastAPI microservice",
+    "title": "anything-agents",
+    "description": "anything-agents FastAPI microservice",
     "version": "1.0.0"
   },
   "paths": {
@@ -1818,10 +1818,17 @@
         },
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Server-sent events stream of agent outputs.",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/StreamingChatEvent"
+                }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamingChatEvent"
+                }
               }
             }
           },
@@ -1932,6 +1939,54 @@
         ],
         "parameters": [
           {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque pagination cursor.",
+              "title": "Cursor"
+            },
+            "description": "Opaque pagination cursor."
+          },
+          {
+            "name": "agent",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by agent entrypoint.",
+              "title": "Agent"
+            },
+            "description": "Filter by agent entrypoint."
+          },
+          {
             "name": "X-Tenant-Id",
             "in": "header",
             "required": false,
@@ -1970,11 +2025,138 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConversationSummary"
-                  },
-                  "title": "Response List Conversations Api V1 Conversations Get"
+                  "$ref": "#/components/schemas/ConversationListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conversations/search": {
+      "get": {
+        "tags": [
+          "conversations"
+        ],
+        "summary": "Search Conversations",
+        "description": "Search conversations by message text.",
+        "operationId": "search_conversations_api_v1_conversations_search_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Search query.",
+              "title": "Q"
+            },
+            "description": "Search query."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque pagination cursor.",
+              "title": "Cursor"
+            },
+            "description": "Opaque pagination cursor."
+          },
+          {
+            "name": "agent",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by agent entrypoint.",
+              "title": "Agent"
+            },
+            "description": "Filter by agent entrypoint."
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Tenant-Role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationSearchResponse"
                 }
               }
             }
@@ -3516,6 +3698,23 @@
             ],
             "title": "Context",
             "description": "Optional, structured context to pass through."
+          },
+          "share_location": {
+            "type": "boolean",
+            "title": "Share Location",
+            "description": "When true, allows the assistant to use provided coarse location for web search.",
+            "default": false
+          },
+          "location": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LocationHint"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional coarse location (city/region/country/timezone) for location-biased search."
           }
         },
         "type": "object",
@@ -4264,6 +4463,109 @@
         "title": "ConversationHistory",
         "description": "Full detail view of a conversation."
       },
+      "ConversationListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ConversationSummary"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor",
+            "description": "Opaque cursor for fetching the next page."
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "ConversationListResponse",
+        "description": "Paginated list of conversation summaries."
+      },
+      "ConversationSearchResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ConversationSearchResult"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor",
+            "description": "Opaque cursor for fetching the next page of search results."
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "ConversationSearchResponse",
+        "description": "Paginated search results."
+      },
+      "ConversationSearchResult": {
+        "properties": {
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id",
+            "description": "Conversation identifier."
+          },
+          "preview": {
+            "type": "string",
+            "title": "Preview",
+            "description": "Matched message snippet."
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score",
+            "description": "Backend relevance score."
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At",
+            "description": "Last update timestamp."
+          }
+        },
+        "type": "object",
+        "required": [
+          "conversation_id",
+          "preview"
+        ],
+        "title": "ConversationSearchResult",
+        "description": "Search hit with preview and relevance score."
+      },
       "ConversationSummary": {
         "properties": {
           "conversation_id": {
@@ -4801,6 +5103,61 @@
           "state"
         ],
         "title": "IncidentSchema"
+      },
+      "LocationHint": {
+        "properties": {
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City",
+            "description": "City name (coarse, e.g., 'Austin')."
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region",
+            "description": "Region/subdivision (e.g., state/province) for coarse location."
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country",
+            "description": "Country code or name for coarse location."
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone",
+            "description": "IANA timezone identifier if relevant to the query."
+          }
+        },
+        "type": "object",
+        "title": "LocationHint",
+        "description": "Optional coarse location provided by the user/tenant for web search biasing."
       },
       "PasswordChangeRequest": {
         "properties": {
@@ -6300,6 +6657,196 @@
           "token"
         ],
         "title": "StatusSubscriptionVerifyRequest"
+      },
+      "StreamingChatEvent": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "raw_response",
+              "run_item",
+              "agent_update",
+              "usage",
+              "error"
+            ],
+            "title": "Kind"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id",
+            "description": "Conversation identifier."
+          },
+          "agent_used": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Used",
+            "description": "Agent that produced the event."
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id",
+            "description": "Upstream response id when available."
+          },
+          "sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sequence Number",
+            "description": "Sequence number from Responses API."
+          },
+          "raw_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Type",
+            "description": "Underlying Responses API event type."
+          },
+          "run_item_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Item Name",
+            "description": "RunItemStreamEvent name."
+          },
+          "run_item_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Item Type",
+            "description": "RunItem item.type."
+          },
+          "tool_call_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Call Id",
+            "description": "Tool call identifier if present."
+          },
+          "tool_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Name",
+            "description": "Tool name if present."
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent",
+            "description": "Agent associated with the event."
+          },
+          "new_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Agent",
+            "description": "New agent after a handoff."
+          },
+          "text_delta": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text Delta",
+            "description": "Streamed text chunk, if any."
+          },
+          "reasoning_delta": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Delta",
+            "description": "Streamed reasoning chunk, if any."
+          },
+          "is_terminal": {
+            "type": "boolean",
+            "title": "Is Terminal",
+            "description": "Marks terminal event for the stream.",
+            "default": false
+          },
+          "payload": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payload",
+            "description": "Full event body for consumers that need raw fidelity."
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "conversation_id"
+        ],
+        "title": "StreamingChatEvent",
+        "description": "Rich streaming envelope forwarded over SSE to the frontend."
       },
       "StripeEventStatus": {
         "type": "string",

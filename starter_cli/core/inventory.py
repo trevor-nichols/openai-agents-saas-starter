@@ -50,7 +50,6 @@ WIZARD_PROMPTED_ENV_VARS: Final[frozenset[str]] = frozenset(
         "ANTHROPIC_API_KEY",
         "GEMINI_API_KEY",
         "XAI_API_KEY",
-        "TAVILY_API_KEY",
         "REDIS_URL",
         "RATE_LIMIT_REDIS_URL",
         "AUTH_CACHE_REDIS_URL",

@@ -158,7 +158,6 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | STRIPE_PRODUCT_PRICE_MAP | dict[str, str] | — |  | ✅ | Mapping of billing plan codes to Stripe price IDs. Provide as JSON or comma-delimited entries such as 'starter=price_123,pro=price_456'. |
 | STRIPE_SECRET_KEY | str \| NoneType | — |  | ✅ | Stripe secret API key (sk_live_*/sk_test_*). |
 | STRIPE_WEBHOOK_SECRET | str \| NoneType | — |  | ✅ | Stripe webhook signing secret (whsec_*). |
-| TAVILY_API_KEY | str \| NoneType | — |  | ✅ | Tavily web search API key |
 | TENANT_DEFAULT_SLUG | str | default |  | ✅ | Tenant slug recorded by the CLI when seeding the initial org. |
 | USAGE_GUARDRAIL_CACHE_BACKEND | memory \| redis | redis |  | ✅ | Cache backend for usage totals (`redis` or `memory`). |
 | USAGE_GUARDRAIL_CACHE_TTL_SECONDS | int | 30 |  | ✅ | TTL for cached usage rollups (seconds). Set to 0 to disable caching. |

@@ -15,6 +15,15 @@ export async function* streamChatServer(
     message: params.message,
     conversation_id: params.conversationId,
     agent_type: params.agentType ?? 'triage',
+    share_location: params.shareLocation,
+    location: params.location
+      ? {
+          city: params.location.city,
+          region: params.location.region,
+          country: params.location.country,
+          timezone: params.location.timezone,
+        }
+      : undefined,
   };
 
   const abortController = new AbortController();

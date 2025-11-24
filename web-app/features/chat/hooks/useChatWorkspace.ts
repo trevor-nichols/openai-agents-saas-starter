@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 
 import { useChatController } from '@/lib/chat/useChatController';
+import type { LocationHint } from '@/lib/api/client/types.gen';
 import { useAgents } from '@/lib/queries/agents';
 import { useBillingStream } from '@/lib/queries/billing';
 import { useConversations } from '@/lib/queries/conversations';
@@ -53,6 +54,32 @@ export function useChatWorkspace() {
 
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [toolDrawerOpen, setToolDrawerOpen] = useState(false);
+  const [shareLocation, setShareLocation] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const stored = window.localStorage.getItem('chat.shareLocation');
+      if (stored !== null) {
+        return stored === 'true';
+      }
+    } catch {
+      /* ignore */
+    }
+    return false;
+  });
+  const [locationHint, setLocationHint] = useState<Partial<LocationHint>>(() => {
+    const fallback = { timezone: Intl?.DateTimeFormat?.().resolvedOptions().timeZone };
+    if (typeof window === 'undefined') return fallback;
+    try {
+      const stored = window.localStorage.getItem('chat.locationHint');
+      if (stored) {
+        const parsed = JSON.parse(stored) as Partial<LocationHint>;
+        return { ...fallback, ...parsed };
+      }
+    } catch {
+      /* ignore */
+    }
+    return fallback;
+  });
 
   const activeAgents = useMemo(() => agents.filter((agent) => agent.status === 'active').length, [agents]);
   const selectedAgentLabel = useMemo(() => normalizeAgentLabel(selectedAgent), [selectedAgent]);
@@ -99,6 +126,34 @@ export function useChatWorkspace() {
     clearError();
   }, [clearError, errorMessage]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem('chat.shareLocation', String(shareLocation));
+      window.localStorage.setItem('chat.locationHint', JSON.stringify(locationHint));
+    } catch {
+      // ignore storage errors
+    }
+  }, [shareLocation, locationHint]);
+
+  const handleSendMessage = useCallback(
+    (message: string) =>
+      sendMessage(message, {
+        shareLocation,
+        location: locationHint,
+      }),
+    [locationHint, sendMessage, shareLocation],
+  );
+
+  const updateLocationField = useCallback(
+    (field: keyof LocationHint, value: string) =>
+      setLocationHint((prev) => ({
+        ...prev,
+        [field]: value,
+      })),
+    [],
+  );
+
   return {
     conversationList,
     isLoadingConversations,
@@ -135,7 +190,11 @@ export function useChatWorkspace() {
     handleDeleteConversation,
     handleExportTranscript,
     handleWorkspaceError,
-    sendMessage,
+    sendMessage: handleSendMessage,
+    shareLocation,
+    setShareLocation,
+    locationHint,
+    updateLocationField,
     setSelectedAgent,
   };
 }

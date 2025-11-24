@@ -65,7 +65,6 @@ def _local_headless_answers() -> dict[str, str]:
         "ENABLE_ANTHROPIC_API_KEY": "false",
         "ENABLE_GEMINI_API_KEY": "false",
         "ENABLE_XAI_API_KEY": "false",
-        "ENABLE_TAVILY": "false",
         "REDIS_URL": "redis://localhost:6379/0",
         "RATE_LIMIT_REDIS_URL": "",
         "AUTH_CACHE_REDIS_URL": "",
@@ -124,7 +123,6 @@ def test_wizard_headless_local_generates_env(temp_ctx: CLIContext) -> None:
     assert "ALLOW_PUBLIC_SIGNUP=true" in env_body
     assert "BILLING_RETRY_DEPLOYMENT_MODE=inline" in env_body
     assert 'ANTHROPIC_API_KEY=""' in env_body
-    assert 'TAVILY_API_KEY=""' in env_body
     _cleanup_env(snapshot)
 
 
@@ -334,7 +332,6 @@ def test_wizard_writes_dedicated_worker_artifacts(temp_ctx: CLIContext) -> None:
         "ENABLE_ANTHROPIC_API_KEY": "false",
         "ENABLE_GEMINI_API_KEY": "false",
         "ENABLE_XAI_API_KEY": "false",
-        "ENABLE_TAVILY": "false",
         "REDIS_URL": "rediss://:secret@redis.example.com:6379/0",
         "RATE_LIMIT_REDIS_URL": "",
         "AUTH_CACHE_REDIS_URL": "",
@@ -415,7 +412,6 @@ def test_wizard_refreshes_cached_settings(temp_ctx: CLIContext) -> None:
         "ENABLE_ANTHROPIC_API_KEY": "false",
         "ENABLE_GEMINI_API_KEY": "false",
         "ENABLE_XAI_API_KEY": "false",
-        "ENABLE_TAVILY": "false",
         "REDIS_URL": "redis://localhost:6379/0",
         "RATE_LIMIT_REDIS_URL": "",
         "AUTH_CACHE_REDIS_URL": "",
@@ -466,7 +462,6 @@ def test_wizard_clears_optional_provider_keys(temp_ctx: CLIContext) -> None:
                 "ANTHROPIC_API_KEY=sk-ant",
                 "GEMINI_API_KEY=sk-gem",
                 "XAI_API_KEY=sk-xai",
-                "TAVILY_API_KEY=tv-key",
             ]
         ),
         encoding="utf-8",
@@ -489,7 +484,6 @@ def test_wizard_clears_optional_provider_keys(temp_ctx: CLIContext) -> None:
         "ENABLE_ANTHROPIC_API_KEY": "false",
         "ENABLE_GEMINI_API_KEY": "false",
         "ENABLE_XAI_API_KEY": "false",
-        "ENABLE_TAVILY": "false",
         "REDIS_URL": "redis://localhost:6379/0",
         "RATE_LIMIT_REDIS_URL": "",
         "AUTH_CACHE_REDIS_URL": "",
@@ -530,7 +524,6 @@ def test_wizard_clears_optional_provider_keys(temp_ctx: CLIContext) -> None:
     assert 'ANTHROPIC_API_KEY=""' in env_body
     assert 'GEMINI_API_KEY=""' in env_body
     assert 'XAI_API_KEY=""' in env_body
-    assert 'TAVILY_API_KEY=""' in env_body
     _cleanup_env(snapshot)
 
 
@@ -554,7 +547,6 @@ def test_wizard_does_not_leak_env_values(temp_ctx: CLIContext) -> None:
         "ENABLE_ANTHROPIC_API_KEY": "false",
         "ENABLE_GEMINI_API_KEY": "false",
         "ENABLE_XAI_API_KEY": "false",
-        "ENABLE_TAVILY": "false",
         "REDIS_URL": "redis://localhost:6379/0",
         "RATE_LIMIT_REDIS_URL": "",
         "AUTH_CACHE_REDIS_URL": "",
@@ -631,7 +623,6 @@ def test_wizard_rotates_new_peppers(monkeypatch, temp_ctx: CLIContext) -> None:
         "ENABLE_ANTHROPIC_API_KEY": "false",
         "ENABLE_GEMINI_API_KEY": "false",
         "ENABLE_XAI_API_KEY": "false",
-        "ENABLE_TAVILY": "false",
         "REDIS_URL": "redis://localhost:6379/0",
         "RATE_LIMIT_REDIS_URL": "",
         "AUTH_CACHE_REDIS_URL": "",
@@ -697,7 +688,6 @@ def test_wizard_staging_verifies_vault(
         "ENABLE_ANTHROPIC_API_KEY": "false",
         "ENABLE_GEMINI_API_KEY": "false",
         "ENABLE_XAI_API_KEY": "false",
-        "ENABLE_TAVILY": "false",
         "REDIS_URL": "rediss://:secret@redis.example:6380/0",
         "RATE_LIMIT_REDIS_URL": "rediss://:secret@redis.example:6380/2",
         "AUTH_CACHE_REDIS_URL": "rediss://:secret@redis.example:6380/3",

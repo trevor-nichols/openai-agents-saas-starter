@@ -5,6 +5,24 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 
+class LocationHint(BaseModel):
+    """Optional coarse location provided by the user/tenant for web search biasing."""
+
+    city: str | None = Field(default=None, description="City name (coarse, e.g., 'Austin').")
+    region: str | None = Field(
+        default=None,
+        description="Region/subdivision (e.g., state/province) for coarse location.",
+    )
+    country: str | None = Field(
+        default=None,
+        description="Country code or name for coarse location.",
+    )
+    timezone: str | None = Field(
+        default=None,
+        description="IANA timezone identifier if relevant to the query.",
+    )
+
+
 class AgentChatRequest(BaseModel):
     """Request body for initiating or continuing a chat session."""
 
@@ -20,6 +38,18 @@ class AgentChatRequest(BaseModel):
     context: dict[str, Any] | None = Field(
         default=None,
         description="Optional, structured context to pass through.",
+    )
+    share_location: bool = Field(
+        default=False,
+        description=(
+            "When true, allows the assistant to use provided coarse location for web search."
+        ),
+    )
+    location: LocationHint | None = Field(
+        default=None,
+        description=(
+            "Optional coarse location (city/region/country/timezone) for location-biased search."
+        ),
     )
 
 

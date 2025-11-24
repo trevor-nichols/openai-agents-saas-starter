@@ -1,21 +1,22 @@
-# File: tests/test_tools.py
-# Purpose: Test cases for agent tools functionality
-# Dependencies: pytest, app/utils/tools
-# Used by: Test suite for validating tool integration
+# File: tests/unit/test_tools.py
+# Purpose: Validate tool registry wiring and hosted web search integration
 
 from types import SimpleNamespace
 from typing import cast
-from unittest.mock import Mock, call, create_autospec, patch
 
 import pytest
+from agents import Agent, WebSearchTool
+from openai.types.responses.web_search_tool_param import UserLocation
 
+from app.agents._shared.loaders import topological_agent_order
+from app.agents._shared.prompt_context import PromptRuntimeContext
+from app.agents._shared.registry_loader import load_agent_specs
 from app.core.settings import Settings
 from app.infrastructure.providers.openai.registry import OpenAIAgentRegistry
 from app.utils.tools import ToolRegistry, get_tool_registry, initialize_tools
-from app.utils.tools.web_search import get_tavily_client, tavily_search_tool
 
 # =============================================================================
-# TOOL REGISTRY TESTS
+# FIXTURES
 # =============================================================================
 
 
@@ -26,20 +27,21 @@ def _reset_tool_registry():
     get_tool_registry.cache_clear()
 
 
-@pytest.fixture
-def registry_settings(monkeypatch):
-    """Patch tool registry settings with a configurable Tavily API key."""
+@pytest.fixture(autouse=True)
+def _web_search_settings(monkeypatch):
+    """Ensure initialize_tools sees an OpenAI API key so web search registers."""
 
-    def _configure(*, tavily_key: str | None = "test_key") -> SimpleNamespace:
-        settings = SimpleNamespace(tavily_api_key=tavily_key)
-        monkeypatch.setattr("app.utils.tools.registry.get_settings", lambda: settings)
-        return settings
+    settings = SimpleNamespace(openai_api_key="test-key")
+    monkeypatch.setattr("app.utils.tools.registry.get_settings", lambda: settings)
+    yield
 
-    return _configure
+
+# =============================================================================
+# TOOL REGISTRY TESTS
+# =============================================================================
 
 
 def test_tool_registry_initialization():
-    """Test that the tool registry initializes correctly."""
     registry = get_tool_registry()
 
     assert registry is not None
@@ -48,31 +50,17 @@ def test_tool_registry_initialization():
     assert hasattr(registry, "get_core_tools")
 
 
-def test_initialize_tools(registry_settings):
-    """Test that tools are properly initialized and registered."""
-    registry_settings()
+def test_initialize_tools_registers_web_search():
     registry = initialize_tools()
 
-    # Check that tools are registered
     tool_names = registry.list_tool_names()
-    assert "tavily_search_tool" in tool_names
+    assert "web_search" in tool_names
 
-    # Check categories
     categories = registry.list_categories()
     assert "web_search" in categories
 
 
-def test_initialize_tools_skips_tavily_without_key(registry_settings):
-    """Verify Tavily tool registration is skipped when API key is unavailable."""
-    registry_settings(tavily_key=None)
-    registry = initialize_tools()
-
-    assert "tavily_search_tool" not in registry.list_tool_names()
-
-
 def test_tool_registry_get_core_tools():
-    """Test that only tools flagged as core are returned."""
-
     registry = ToolRegistry()
 
     def core_tool():
@@ -97,84 +85,45 @@ def test_tool_registry_get_core_tools():
 # =============================================================================
 
 
-def test_tavily_search_tool_is_function_tool():
-    """Test that tavily_search_tool is a proper FunctionTool object."""
-    from agents.tool import FunctionTool
+def test_web_search_tool_defaults():
+    tool = WebSearchTool()
 
-    assert isinstance(tavily_search_tool, FunctionTool)
-    assert tavily_search_tool.name == "tavily_search_tool"
-    assert tavily_search_tool.description is not None
-    assert "Search the web using Tavily API" in tavily_search_tool.description
-    assert tavily_search_tool.params_json_schema is not None
+    assert tool.name == "web_search"
+    assert tool.user_location is None
+    assert tool.search_context_size == "medium"
 
 
-def test_get_tavily_client_no_api_key():
-    """Test getting Tavily client when no API key is configured."""
-    with patch("app.utils.tools.web_search.get_settings") as mock_settings:
-        mock_settings.return_value = Mock(spec=[])  # No tavily_api_key attribute
-
-        client = get_tavily_client()
-        assert client is None
-
-
-def test_get_tavily_client_with_api_key():
-    """Test getting Tavily client with API key configured."""
-    with patch("app.utils.tools.web_search.get_settings") as mock_settings:
-        mock_settings.return_value = Mock(tavily_api_key="test_key")
-
-        with patch("app.utils.tools.web_search.TavilyClient") as mock_tavily:
-            mock_tavily.return_value = Mock()
-
-            client = get_tavily_client()
-            assert client is not None
-            mock_tavily.assert_called_once_with(api_key="test_key")
-
-
-# =============================================================================
-# INTEGRATION TESTS
-# =============================================================================
-
-
-def test_tool_registry_integration(registry_settings):
-    """Test full tool registry integration."""
-    registry_settings()
+def test_tool_registry_integration():
     registry = initialize_tools()
 
-    # Test getting tool by name
-    search_tool = registry.get_tool("tavily_search_tool")
-    assert search_tool is not None
-    # For FunctionTool objects, check the name attribute
-    assert hasattr(search_tool, "name") and search_tool.name == "tavily_search_tool"
+    search_tool = registry.get_tool("web_search")
+    assert isinstance(search_tool, WebSearchTool)
 
-    # Test getting tools by category
     web_tools = registry.get_tools_by_category("web_search")
-    assert len(web_tools) > 0
-    # Check that we have the tavily search tool in web tools
     tool_names = [getattr(tool, "name", getattr(tool, "__name__", str(tool))) for tool in web_tools]
-    assert "tavily_search_tool" in tool_names
+    assert "web_search" in tool_names
 
-    # Test tool info
-    tool_info = registry.get_tool_info("tavily_search_tool")
+    tool_info = registry.get_tool_info("web_search")
     assert tool_info is not None
-    assert tool_info["name"] == "tavily_search_tool"
+    assert tool_info["name"] == "web_search"
     assert tool_info["category"] == "web_search"
     assert "metadata" in tool_info
+    assert tool_info["metadata"]["agents"] == ["data_analyst", "triage"]
 
 
 def test_tool_can_be_used_by_agent():
-    """Test that the tool can be properly used by an Agent."""
-    from agents import Agent
+    registry = initialize_tools()
+    search_tool = registry.get_tool("web_search")
+    assert search_tool is not None
 
-    # Create an agent with the tavily search tool
     agent = Agent(
         name="Test Agent",
         instructions="You are a test agent with web search capabilities.",
-        tools=[tavily_search_tool],
+        tools=[search_tool],
     )
 
-    # Verify the agent has the tool
     assert len(agent.tools) == 1
-    assert agent.tools[0].name == "tavily_search_tool"
+    assert agent.tools[0].name == "web_search"
 
 
 async def _noop_search(*args, **kwargs):  # pragma: no cover - helper
@@ -199,15 +148,11 @@ def _build_openai_registry(monkeypatch, registry: ToolRegistry):
     )
 
 
-def test_tool_registry_provides_tools_for_agents(registry_settings, monkeypatch):
-    """Test that the tool registry can provide tools for agent creation."""
-    registry_settings()
+def test_tool_registry_provides_tools_for_agents(monkeypatch):
     registry = initialize_tools()
     _build_openai_registry(monkeypatch, registry)
 
     triage_tools = registry.get_tools_for_agent("triage")
-
-    from agents import Agent
 
     agent = Agent(
         name="Test Agent",
@@ -215,15 +160,12 @@ def test_tool_registry_provides_tools_for_agents(registry_settings, monkeypatch)
         tools=triage_tools,
     )
 
-    assert len(agent.tools) > 0
     tool_names = [tool.name for tool in agent.tools]
-    assert "tavily_search_tool" in tool_names
+    assert "web_search" in tool_names
     assert "get_current_time" in tool_names
 
 
 def test_get_tools_for_agent_filters_by_metadata():
-    """Registry returns only tools targeted to the requested agent/capabilities."""
-
     registry = ToolRegistry()
 
     def core_tool():
@@ -259,53 +201,31 @@ def test_get_tools_for_agent_filters_by_metadata():
     assert data_names == {"core_tool", "data_tool"}
 
 
-def test_agent_registry_requests_scoped_tools(monkeypatch):
-    """OpenAIAgentRegistry asks the ToolRegistry for scoped tool lists per agent."""
+def test_web_search_tool_applies_request_location(monkeypatch):
+    registry = initialize_tools()
+    openai_registry = _build_openai_registry(monkeypatch, registry)
 
-    tool_registry = create_autospec(ToolRegistry, instance=True)
-    tool_registry.list_tool_names.return_value = []
-    tool_registry.list_categories.return_value = []
-    tool_registry.get_tools_for_agent.side_effect = lambda agent_name, **_: [f"{agent_name}_tool"]
-
-    monkeypatch.setattr(
-        "app.infrastructure.providers.openai.registry.initialize_tools",
-        lambda: tool_registry,
+    runtime_ctx = PromptRuntimeContext(
+        actor=None,
+        conversation_id="conv-1",
+        request_message="hi",
+        settings=None,
+        user_location=cast(UserLocation, {"type": "approximate", "city": "Austin"}),
     )
-    with (
-        patch("app.infrastructure.providers.openai.registry.Agent") as agent_cls,
-        patch(
-            "app.infrastructure.providers.openai.registry.handoff",
-            side_effect=lambda agent: agent,
-        ),
-        patch(
-            "app.infrastructure.providers.openai.registry.prompt_with_handoff_instructions",
-            side_effect=lambda text: text,
-        ),
-    ):
-        fake_agent = SimpleNamespace(name="foo", model="gpt-5.1")
-        agent_cls.return_value = fake_agent
-        class _StubSettings:
-            agent_default_model: str = "gpt-5.1"
-            agent_triage_model: str | None = None
-            agent_code_model: str | None = None
-            agent_data_model: str | None = None
 
-        settings = _StubSettings()
-        OpenAIAgentRegistry(
-            settings_factory=lambda: cast(Settings, settings),
-            conversation_searcher=_noop_search,
-        )
+    agent = openai_registry.get_agent_handle(
+        "triage", runtime_ctx=runtime_ctx, validate_prompts=False
+    )
+    assert agent is not None
 
-    expected_calls = [
-        call("triage", capabilities=OpenAIAgentRegistry._AGENT_CAPABILITIES["triage"]),
-        call(
-            "code_assistant",
-            capabilities=OpenAIAgentRegistry._AGENT_CAPABILITIES["code_assistant"],
-        ),
-        call(
-            "data_analyst",
-            capabilities=OpenAIAgentRegistry._AGENT_CAPABILITIES["data_analyst"],
-        ),
-    ]
+    web_tool = next(tool for tool in agent.tools if isinstance(tool, WebSearchTool))
+    assert web_tool.user_location == {"type": "approximate", "city": "Austin"}
 
-    assert tool_registry.get_tools_for_agent.call_args_list[:3] == expected_calls
+
+def test_agent_specs_are_sorted_topologically():
+    specs = load_agent_specs()
+    order = topological_agent_order(specs)
+
+    assert set(order) == {spec.key for spec in specs}
+    assert order.index("triage") > order.index("code_assistant")
+    assert order.index("triage") > order.index("data_analyst")

@@ -13,7 +13,7 @@ Source of truth for shared config/secrets/key contracts consumed by:
 ## Modules
 - `config`: `StarterSettingsProtocol`, `get_settings()` lazy loader for backend settings.
 - `keys`: Ed25519 key material, JWKS materialization, file/secret-manager adapters.
-- `provider_validation`: Shared Stripe/Resend/Tavily validation helpers.
+- `provider_validation`: Shared Stripe/Resend validation helpers.
 - `secrets.models`: Enums + dataclasses + protocols for secret providers (Vault, Infisical, AWS SM, Azure KV).
 - `vault_kv`: Minimal Vault KV v2 client + registration helper when keys live in a secret manager.
 
@@ -63,4 +63,3 @@ Commit the updated JSON along with the change that necessitated it.
 ## Tests enforcing boundaries
 - `starter_contracts/tests/test_import_boundaries.py`: ensures contracts don't pull backend/CLI modules on import and are only used from approved packages.
 - `api-service/tests/unit/test_contract_schemas_snapshot.py`: freezes settings + enum schemas.
-

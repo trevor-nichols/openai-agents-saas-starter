@@ -36,6 +36,16 @@ export type AgentChatRequest = {
   context?: {
     [key: string]: unknown;
   } | null;
+  /**
+   * Share Location
+   *
+   * When true, allows the assistant to use provided coarse location for web search.
+   */
+  share_location?: boolean;
+  /**
+   * Optional coarse location (city/region/country/timezone) for location-biased search.
+   */
+  location?: LocationHint | null;
 };
 
 /**
@@ -621,6 +631,242 @@ export type EmailVerificationConfirmRequest = {
 };
 
 /**
+ * EmailVerificationTokenRequest
+ */
+export type EmailVerificationTokenRequest = {
+  /**
+   * Email
+   */
+  email: string;
+  /**
+   * Ip Address
+   */
+  ip_address?: string | null;
+  /**
+   * User Agent
+   */
+  user_agent?: string | null;
+};
+
+/**
+ * EmailVerificationTokenResponse
+ */
+export type EmailVerificationTokenResponse = {
+  /**
+   * Token
+   */
+  token: string;
+  /**
+   * User Id
+   */
+  user_id: string;
+  /**
+   * Expires At
+   */
+  expires_at: string;
+};
+
+/**
+ * FixtureApplyResult
+ */
+export type FixtureApplyResult = {
+  /**
+   * Tenants
+   */
+  tenants: {
+    [key: string]: FixtureTenantResult;
+  };
+  /**
+   * Generated At
+   */
+  generated_at: string;
+};
+
+/**
+ * FixtureConversation
+ */
+export type FixtureConversation = {
+  /**
+   * Key
+   */
+  key: string;
+  /**
+   * Agent Entrypoint
+   */
+  agent_entrypoint?: string;
+  /**
+   * Status
+   */
+  status?: "active" | "archived";
+  /**
+   * User Email
+   */
+  user_email?: string | null;
+  /**
+   * Messages
+   */
+  messages?: Array<FixtureConversationMessage>;
+};
+
+/**
+ * FixtureConversationMessage
+ */
+export type FixtureConversationMessage = {
+  /**
+   * Role
+   */
+  role: "user" | "assistant" | "system";
+  /**
+   * Text
+   */
+  text: string;
+};
+
+/**
+ * FixtureConversationResult
+ */
+export type FixtureConversationResult = {
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Status
+   */
+  status: string;
+};
+
+/**
+ * FixtureTenant
+ */
+export type FixtureTenant = {
+  /**
+   * Slug
+   */
+  slug: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Plan Code
+   */
+  plan_code?: string | null;
+  /**
+   * Billing Email
+   */
+  billing_email?: string | null;
+  /**
+   * Users
+   */
+  users?: Array<FixtureUser>;
+  /**
+   * Conversations
+   */
+  conversations?: Array<FixtureConversation>;
+  /**
+   * Usage
+   */
+  usage?: Array<FixtureUsageEntry>;
+};
+
+/**
+ * FixtureTenantResult
+ */
+export type FixtureTenantResult = {
+  /**
+   * Tenant Id
+   */
+  tenant_id: string;
+  /**
+   * Plan Code
+   */
+  plan_code: string | null;
+  /**
+   * Users
+   */
+  users: {
+    [key: string]: FixtureUserResult;
+  };
+  /**
+   * Conversations
+   */
+  conversations: {
+    [key: string]: FixtureConversationResult;
+  };
+};
+
+/**
+ * FixtureUsageEntry
+ */
+export type FixtureUsageEntry = {
+  /**
+   * Feature Key
+   */
+  feature_key: string;
+  /**
+   * Quantity
+   */
+  quantity: number;
+  /**
+   * Unit
+   */
+  unit?: string;
+  /**
+   * Period Start
+   */
+  period_start: string;
+  /**
+   * Period End
+   */
+  period_end?: string | null;
+  /**
+   * Idempotency Key
+   */
+  idempotency_key?: string | null;
+};
+
+/**
+ * FixtureUser
+ */
+export type FixtureUser = {
+  /**
+   * Email
+   */
+  email: string;
+  /**
+   * Password
+   */
+  password: string;
+  /**
+   * Display Name
+   */
+  display_name?: string | null;
+  /**
+   * Role
+   */
+  role?: string;
+  /**
+   * Verify Email
+   */
+  verify_email?: boolean;
+};
+
+/**
+ * FixtureUserResult
+ */
+export type FixtureUserResult = {
+  /**
+   * User Id
+   */
+  user_id: string;
+  /**
+   * Role
+   */
+  role: string;
+};
+
+/**
  * HTTPValidationError
  */
 export type HttpValidationError = {
@@ -696,6 +942,38 @@ export type IncidentSchema = {
    * Current incident lifecycle state.
    */
   state: string;
+};
+
+/**
+ * LocationHint
+ *
+ * Optional coarse location provided by the user/tenant for web search biasing.
+ */
+export type LocationHint = {
+  /**
+   * City
+   *
+   * City name (coarse, e.g., 'Austin').
+   */
+  city?: string | null;
+  /**
+   * Region
+   *
+   * Region/subdivision (e.g., state/province) for coarse location.
+   */
+  region?: string | null;
+  /**
+   * Country
+   *
+   * Country code or name for coarse location.
+   */
+  country?: string | null;
+  /**
+   * Timezone
+   *
+   * IANA timezone identifier if relevant to the query.
+   */
+  timezone?: string | null;
 };
 
 /**
@@ -825,6 +1103,16 @@ export type PlatformStatusResponse = {
    * Uptime Metrics
    */
   uptime_metrics: Array<UptimeMetricSchema>;
+};
+
+/**
+ * PlaywrightFixtureSpec
+ */
+export type PlaywrightFixtureSpec = {
+  /**
+   * Tenants
+   */
+  tenants?: Array<FixtureTenant>;
 };
 
 /**
@@ -4315,3 +4603,60 @@ export type BillingEventStreamApiV1BillingStreamGetResponses = {
    */
   200: unknown;
 };
+
+export type ApplyTestFixturesApiV1TestFixturesApplyPostData = {
+  body: PlaywrightFixtureSpec;
+  path?: never;
+  query?: never;
+  url: "/api/v1/test-fixtures/apply";
+};
+
+export type ApplyTestFixturesApiV1TestFixturesApplyPostErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type ApplyTestFixturesApiV1TestFixturesApplyPostError =
+  ApplyTestFixturesApiV1TestFixturesApplyPostErrors[keyof ApplyTestFixturesApiV1TestFixturesApplyPostErrors];
+
+export type ApplyTestFixturesApiV1TestFixturesApplyPostResponses = {
+  /**
+   * Successful Response
+   */
+  201: FixtureApplyResult;
+};
+
+export type ApplyTestFixturesApiV1TestFixturesApplyPostResponse =
+  ApplyTestFixturesApiV1TestFixturesApplyPostResponses[keyof ApplyTestFixturesApiV1TestFixturesApplyPostResponses];
+
+export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData =
+  {
+    body: EmailVerificationTokenRequest;
+    path?: never;
+    query?: never;
+    url: "/api/v1/test-fixtures/email-verification-token";
+  };
+
+export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors =
+  {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+  };
+
+export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostError =
+  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors[keyof IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors];
+
+export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    201: EmailVerificationTokenResponse;
+  };
+
+export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponse =
+  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses[keyof IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses];

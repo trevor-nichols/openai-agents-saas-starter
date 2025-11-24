@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any
 
+from agents import WebSearchTool
+
 from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -275,31 +277,27 @@ def initialize_tools() -> ToolRegistry:
         ToolRegistry: Populated tool registry
     """
     registry = get_tool_registry()
+
+    # Hosted web search (OpenAI)
     settings = get_settings()
-
-    # Import and register tools
-    try:
-        from .web_search import tavily_search_tool
-
-        if settings.tavily_api_key and settings.tavily_api_key.strip():
-            registry.register_tool(
-                tavily_search_tool,
-                category="web_search",
-                metadata={
-                    "description": "Search the web for current information using Tavily API",
-                    "requires_api_key": True,
-                    "api_service": "tavily",
-                    "core": False,
-                    "agents": ["triage", "data_analyst"],
-                    "capabilities": ["web_search"],
-                },
-            )
-        else:
-            logger.info(
-                "TAVILY_API_KEY is not configured; Tavily search tool will be disabled.",
-                extra={"provider": "tavily"},
-            )
-    except ImportError as e:
-        print(f"Warning: Could not import web search tools: {e}")
+    if settings.openai_api_key and settings.openai_api_key.strip():
+        registry.register_tool(
+            WebSearchTool(),
+            category="web_search",
+            metadata={
+                "description": (
+                    "Search the web for current information using OpenAI hosted web search"
+                ),
+                "api_service": "openai",
+                "core": False,
+                "agents": ["triage", "data_analyst"],
+                "capabilities": ["web_search"],
+            },
+        )
+    else:
+        logger.info(
+            "OPENAI_API_KEY is not configured; hosted web search tool will be disabled.",
+            extra={"provider": "openai"},
+        )
 
     return registry

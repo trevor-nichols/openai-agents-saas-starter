@@ -35,7 +35,7 @@ class ProviderSettingsProtocol(Protocol):
     enable_resend_email_delivery: bool
     resend_api_key: str | None
     resend_default_from: str | None
-    tavily_api_key: str | None
+    openai_api_key: str | None
 
     def should_enforce_secret_overrides(self) -> bool: ...
 
@@ -52,9 +52,10 @@ def validate_providers(
     strict_mode = settings.should_enforce_secret_overrides() if strict is None else strict
     violations: list[ProviderViolation] = []
 
+    violations.extend(_validate_openai_core(settings, strict_mode))
     violations.extend(_validate_stripe(settings, strict_mode))
     violations.extend(_validate_resend(settings, strict_mode))
-    violations.extend(_validate_tavily(settings, strict_mode))
+    violations.extend(_validate_web_search(settings))
 
     # When any fatal issues exist (e.g., billing enabled without Stripe keys),
     # surface those first and suppress optional warnings to keep the signal
@@ -133,27 +134,38 @@ def _validate_resend(
     return violations
 
 
-def _validate_tavily(
+def _validate_openai_core(
     settings: ProviderSettingsProtocol,
     strict: bool,
 ) -> Iterable[ProviderViolation]:
-    """Warn when Tavily search is unavailable.
+    """Fatal when the primary OpenAI credential is missing."""
 
-    Tavily is an optional enhancement for agent web-search. Missing credentials
-    should never block startup, even when strict parity checks are enabled, so
-    this violation is always non-fatal.
-    """
-
-    if settings.tavily_api_key and settings.tavily_api_key.strip():
+    if settings.openai_api_key and settings.openai_api_key.strip():
         return []
 
     return [
         ProviderViolation(
-            provider="tavily",
-            code="missing_tavily_api_key",
+            provider="openai",
+            code="missing_openai_api_key",
+            message="OPENAI_API_KEY is required for the agent runtime.",
+            fatal=strict,
+        )
+    ]
+
+
+def _validate_web_search(settings: ProviderSettingsProtocol) -> Iterable[ProviderViolation]:
+    """Warn when hosted web search is unavailable (non-fatal)."""
+
+    if settings.openai_api_key and settings.openai_api_key.strip():
+        return []
+
+    return [
+        ProviderViolation(
+            provider="web_search",
+            code="missing_openai_api_key",
             message=(
-                "Web search tools require TAVILY_API_KEY; Tavily tools will be disabled "
-                "until it is configured."
+                "Hosted web search tools require OPENAI_API_KEY; "
+                "web search will be disabled until configured."
             ),
             fatal=False,
         )

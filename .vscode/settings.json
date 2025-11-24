@@ -1,6 +1,7 @@
 {
     "files.associations": {
-        "*.cursorrules": "markdown"
+        "*.cursorrules": "markdown",
+        "*.md.j2": "jinja"
     },
     "workbench.activityBar.orientation": "horizontal",
     "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",

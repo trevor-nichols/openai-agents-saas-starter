@@ -81,6 +81,9 @@ class AgentStreamEvent:
     # Arbitrary structured payload for consumers that need full fidelity
     payload: Mapping[str, Any] | None = None
 
+    # Optional metadata for parity with non-stream responses
+    metadata: Mapping[str, Any] | None = None
+
     @staticmethod
     def _to_mapping(obj: Any) -> Mapping[str, Any] | None:
         """Best-effort conversion to a JSON-friendly mapping for SSE payloads."""

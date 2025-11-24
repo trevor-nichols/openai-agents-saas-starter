@@ -7,6 +7,7 @@ import { useSendChatMutation } from '@/lib/queries/chat';
 import { queryKeys } from '@/lib/queries/keys';
 import type { ConversationHistory, ConversationListItem, ConversationMessage } from '@/types/conversations';
 import type { ChatMessage, ConversationLifecycleStatus, ToolState } from './types';
+import type { LocationHint } from '@/lib/api/client/types.gen';
 
 import { createLogger } from '@/lib/logging';
 
@@ -34,11 +35,16 @@ export interface UseChatControllerReturn {
   toolEvents: ToolState[];
   reasoningText: string;
   lifecycleStatus: ConversationLifecycleStatus;
-  sendMessage: (messageText: string) => Promise<void>;
+  sendMessage: (messageText: string, options?: SendMessageOptions) => Promise<void>;
   selectConversation: (conversationId: string) => Promise<void>;
   startNewConversation: () => void;
   deleteConversation: (conversationId: string) => Promise<void>;
   clearError: () => void;
+}
+
+export interface SendMessageOptions {
+  shareLocation?: boolean;
+  location?: Partial<LocationHint> | null;
 }
 
 export function useChatController(options: UseChatControllerOptions = {}): UseChatControllerReturn {
@@ -140,21 +146,32 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
   }, [selectedAgent]);
 
   const sendMessage = useCallback(
-    async (messageText: string) => {
-    if (!messageText.trim() || isSending || isLoadingHistory) {
-      return;
-    }
+    async (messageText: string, options?: SendMessageOptions) => {
+      if (!messageText.trim() || isSending || isLoadingHistory) {
+        return;
+      }
 
-    // Reset per-turn streaming state
-    setReasoningText('');
-    setToolEvents([]);
-    setLifecycleStatus('idle');
+      const shareLocation = options?.shareLocation ?? false;
+      const locationPayload =
+        shareLocation && options?.location
+          ? {
+              city: options.location.city?.trim() || undefined,
+              region: options.location.region?.trim() || undefined,
+              country: options.location.country?.trim() || undefined,
+              timezone: options.location.timezone?.trim() || undefined,
+            }
+          : undefined;
 
-    setIsSending(true);
-    setErrorMessage(null);
-    log.debug('Sending message', {
-      currentConversationId,
-      length: messageText.length,
+      // Reset per-turn streaming state
+      setReasoningText('');
+      setToolEvents([]);
+      setLifecycleStatus('idle');
+
+      setIsSending(true);
+      setErrorMessage(null);
+      log.debug('Sending message', {
+        currentConversationId,
+        length: messageText.length,
       });
 
       const userMessage: ChatMessage = {
@@ -179,11 +196,13 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       let finalConversationId: string | null = null;
 
       try {
-    const stream = streamChat({
-      message: messageText,
-      conversationId: previousConversationId,
-      agentType: selectedAgent,
-    });
+        const stream = streamChat({
+          message: messageText,
+          conversationId: previousConversationId,
+          agentType: selectedAgent,
+          shareLocation,
+          location: locationPayload,
+        });
 
         let accumulatedContent = '';
         const toolMap = new Map<string, ToolState>();
@@ -370,6 +389,8 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
             conversation_id: previousConversationId ?? undefined,
             agent_type: selectedAgent,
             context: null,
+            share_location: shareLocation,
+            location: locationPayload,
           });
 
           setMessages((prevMessages) =>

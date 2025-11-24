@@ -4,46 +4,91 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from datetime import datetime
-from typing import Any, ClassVar
+from typing import Any, cast
 
-from agents import Agent, function_tool, handoff
+from agents import Agent, WebSearchTool, function_tool, handoff
 from agents.extensions.handoff_prompt import prompt_with_handoff_instructions
 
+from app.agents._shared.loaders import (
+    default_agent_key,
+    resolve_prompt,
+    topological_agent_order,
+)
+from app.agents._shared.prompt_context import (
+    PromptRuntimeContext,
+    build_prompt_context,
+)
+from app.agents._shared.prompt_template import render_prompt
+from app.agents._shared.registry_loader import load_agent_specs
+from app.agents._shared.specs import AgentSpec
 from app.core.settings import Settings
 from app.domain.ai import AgentDescriptor
-from app.services.agents.context import get_current_actor
+from app.services.agents.context import ConversationActorContext, get_current_actor
 from app.utils.tools import ToolRegistry, initialize_tools
 
 
 class OpenAIAgentRegistry:
     """Maintains concrete Agent instances and metadata."""
 
-    _AGENT_CAPABILITIES: ClassVar[dict[str, tuple[str, ...]]] = {
-        "triage": ("general", "search", "handoff"),
-        "code_assistant": ("code", "search"),
-        "data_analyst": ("analysis", "search"),
-    }
-
     def __init__(
         self,
         *,
         settings_factory: Callable[[], Settings],
         conversation_searcher,
+        specs: Sequence[AgentSpec] | None = None,
     ) -> None:
         self._settings_factory = settings_factory
         self._conversation_searcher = conversation_searcher
         self._tool_registry: ToolRegistry = initialize_tools()
         self._agents: dict[str, Agent] = {}
         self._descriptors: dict[str, AgentDescriptor] = {}
+        self._validated_static_agents: dict[str, Agent] | None = None
+        self._specs: list[AgentSpec] = list(specs) if specs is not None else load_agent_specs()
+        self._default_agent_key = default_agent_key(self._specs)
+        self._static_ctx = PromptRuntimeContext(
+            actor=ConversationActorContext(
+                tenant_id="bootstrap-tenant",
+                user_id="bootstrap-user",
+            ),
+            conversation_id="bootstrap",
+            request_message="",
+            settings=self._settings_factory(),
+        )
+
         self._register_builtin_tools()
-        self._build_default_agents()
+        # Build cached agents without strict validation; per-request rendering
+        # runs with StrictUndefined using runtime context.
+        self._build_agents_from_specs(
+            runtime_ctx=self._static_ctx,
+            validate_prompts=False,
+            register_static=True,
+        )
 
     @property
     def default_agent_key(self) -> str:
-        return "triage"
+        return self._default_agent_key
 
-    def get_agent_handle(self, agent_key: str) -> Agent | None:
-        return self._agents.get(agent_key)
+    def get_agent_handle(
+        self,
+        agent_key: str,
+        *,
+        runtime_ctx: PromptRuntimeContext | None = None,
+        validate_prompts: bool = True,
+    ) -> Agent | None:
+        if runtime_ctx is None:
+            if validate_prompts:
+                if self._validated_static_agents is None:
+                    self._validated_static_agents = self._build_agents_from_specs(
+                        runtime_ctx=self._static_ctx,
+                        validate_prompts=True,
+                        register_static=False,
+                    )
+                return self._validated_static_agents.get(agent_key)
+            return self._agents.get(agent_key)
+        contextual_agents = self._build_agents_from_specs(
+            runtime_ctx=runtime_ctx, validate_prompts=validate_prompts, register_static=False
+        )
+        return contextual_agents.get(agent_key)
 
     def get_descriptor(self, agent_key: str) -> AgentDescriptor | None:
         return self._descriptors.get(agent_key)
@@ -105,7 +150,6 @@ class OpenAIAgentRegistry:
                 return "Conversation search is unavailable until tenant context is established."
             results = await conversation_searcher(tenant_id=actor.tenant_id, query=query)
             if hasattr(results, "items"):
-                # ConversationService.search returns a SearchPage
                 results = results.items
             if not results:
                 return "No conversations contained the requested text."
@@ -116,91 +160,122 @@ class OpenAIAgentRegistry:
 
         return search_conversations
 
-    def _build_default_agents(self) -> None:
+    def _build_agents_from_specs(
+        self,
+        *,
+        runtime_ctx: PromptRuntimeContext | None,
+        validate_prompts: bool,
+        register_static: bool,
+    ) -> dict[str, Agent]:
         settings = self._settings_factory()
-        triage_tools = self._select_tools("triage")
-        code_tools = self._select_tools("code_assistant")
-        data_tools = self._select_tools("data_analyst")
+        spec_map = {spec.key: spec for spec in self._specs}
+        order = topological_agent_order(self._specs)
 
-        code_assistant = Agent(
-            name="Code Assistant",
-            instructions="""
-            You specialise in software engineering guidance. Focus on code
-            quality, architecture, and modern best practices. Provide
-            step-by-step reasoning when helpful.
-            """,
-            handoff_description="Handles software engineering questions and code reviews.",
-            model=self._resolve_agent_model(settings, "code_assistant"),
-            tools=code_tools,
+        agents: dict[str, Agent] = {}
+        for key in order:
+            spec = spec_map[key]
+            agent = self._build_agent(
+                spec=spec,
+                settings=settings,
+                runtime_ctx=runtime_ctx,
+                agents=agents,
+                validate_prompts=validate_prompts,
+            )
+            if register_static:
+                self._register_agent(spec, agent)
+            agents[key] = agent
+
+        return agents
+
+    def _build_agent(
+        self,
+        *,
+        spec: AgentSpec,
+        settings: Settings,
+        runtime_ctx: PromptRuntimeContext | None,
+        agents: dict[str, Agent],
+        validate_prompts: bool,
+    ) -> Agent:
+        tools = self._select_tools(spec, runtime_ctx=runtime_ctx)
+        raw_prompt = resolve_prompt(spec)
+        prompt_ctx = (
+            {}
+            if runtime_ctx is None
+            else self._build_prompt_context(spec, runtime_ctx=runtime_ctx)
         )
-        data_analyst = Agent(
-            name="Data Analyst",
-            instructions="""
-            You specialise in data interpretation, statistical analysis, and
-            communicating insights clearly. When applicable, propose visual
-            summaries or sanity checks.
-            """,
-            handoff_description="Supports analytical and quantitative queries.",
-            model=self._resolve_agent_model(settings, "data_analyst"),
-            tools=data_tools,
+        instructions = render_prompt(
+            raw_prompt,
+            context=prompt_ctx,
+            validate=validate_prompts,
         )
-        triage_instructions = prompt_with_handoff_instructions(
-            """
-            You are the primary triage assistant. Handle general inquiries
-            with a helpful, professional tone and decide when to leverage
-            specialised teammates. Provide concise, actionable answers, and
-            hand off to the code or data analyst agents when they are better
-            suited to respond.
-            """
-        )
-        triage_agent = Agent(
-            name="Triage Assistant",
-            instructions=triage_instructions,
-            model=self._resolve_agent_model(settings, "triage"),
-            tools=triage_tools,
-            handoffs=[handoff(code_assistant), handoff(data_analyst)],
+        if spec.wrap_with_handoff_prompt and spec.handoff_keys:
+            instructions = prompt_with_handoff_instructions(instructions)
+
+        handoff_targets = []
+        for target in spec.handoff_keys:
+            target_agent = agents.get(target) or self._agents.get(target)
+            if target_agent is None:
+                raise ValueError(
+                    f"Agent '{spec.key}' declares handoff to '{target}' which is not loaded"
+                )
+            handoff_targets.append(handoff(target_agent))
+
+        return Agent(
+            name=spec.display_name,
+            instructions=instructions,
+            model=self._resolve_agent_model(settings, spec),
+            tools=tools,
+            handoffs=cast(list[Any], handoff_targets),
+            handoff_description=spec.description if handoff_targets else None,
         )
 
-        self._register_agent(
-            "code_assistant",
-            code_assistant,
-            "Handles software engineering questions and code reviews.",
-        )
-        self._register_agent(
-            "data_analyst",
-            data_analyst,
-            "Supports analytical and quantitative queries.",
-        )
-        self._register_agent(
-            "triage",
-            triage_agent,
-            "Primary triage assistant orchestrating handoffs.",
-        )
-
-    def _register_agent(self, key: str, agent: Agent, description: str) -> None:
-        capabilities = self._AGENT_CAPABILITIES.get(key, ())
-        self._agents[key] = agent
-        self._descriptors[key] = AgentDescriptor(
-            key=key,
-            display_name=agent.name,
-            description=description.strip(),
+    def _register_agent(self, spec: AgentSpec, agent: Agent) -> None:
+        self._agents[spec.key] = agent
+        self._descriptors[spec.key] = AgentDescriptor(
+            key=spec.key,
+            display_name=spec.display_name,
+            description=spec.description.strip(),
             model=str(agent.model),
-            capabilities=capabilities,
+            capabilities=spec.capabilities,
         )
 
-    def _select_tools(self, agent_key: str) -> list[Any]:
-        capabilities = self._AGENT_CAPABILITIES.get(agent_key, ())
-        return self._tool_registry.get_tools_for_agent(
-            agent_key, capabilities=capabilities
+    def _select_tools(
+        self, spec: AgentSpec, *, runtime_ctx: PromptRuntimeContext | None
+    ) -> list[Any]:
+        tools = self._tool_registry.get_tools_for_agent(
+            spec.key, capabilities=spec.capabilities
         )
 
-    def _resolve_agent_model(self, settings: Settings, agent_key: str) -> str:
-        overrides = {
-            "triage": settings.agent_triage_model,
-            "code_assistant": settings.agent_code_model,
-            "data_analyst": settings.agent_data_model,
-        }
-        return overrides.get(agent_key) or settings.agent_default_model
+        # Clone hosted web search tool with request-scoped location, if provided.
+        if runtime_ctx and runtime_ctx.user_location:
+            customized: list[Any] = []
+            for tool in tools:
+                if isinstance(tool, WebSearchTool):
+                    customized.append(
+                        WebSearchTool(
+                            user_location=runtime_ctx.user_location,
+                            filters=tool.filters,
+                            search_context_size=tool.search_context_size,
+                        )
+                    )
+                else:
+                    customized.append(tool)
+            return customized
+
+        return tools
+
+    def _build_prompt_context(
+        self, spec: AgentSpec, *, runtime_ctx: PromptRuntimeContext
+    ) -> dict[str, Any]:
+        return build_prompt_context(spec=spec, runtime_ctx=runtime_ctx, base=None)
+
+    def _resolve_agent_model(self, settings: Settings, spec: AgentSpec) -> str:
+        if spec.model_key:
+            attr = f"agent_{spec.model_key}_model"
+            override = getattr(settings, attr, None)
+            if override:
+                return override
+        return settings.agent_default_model
 
 
 __all__ = ["OpenAIAgentRegistry"]

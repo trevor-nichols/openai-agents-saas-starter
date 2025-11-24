@@ -114,7 +114,7 @@ export async function sendChatMessage(payload: AgentChatRequest): Promise<AgentC
 export async function* streamChat(
   params: StreamChatParams,
 ): AsyncGenerator<StreamChunk, void, unknown> {
-  const { message, conversationId, agentType = 'triage' } = params;
+  const { message, conversationId, agentType = 'triage', shareLocation, location } = params;
 
   log.debug('Starting chat stream', {
     agentType,
@@ -131,6 +131,8 @@ export async function* streamChat(
       message,
       conversation_id: conversationId,
       agent_type: agentType,
+      share_location: shareLocation,
+      location,
     }),
   });
 

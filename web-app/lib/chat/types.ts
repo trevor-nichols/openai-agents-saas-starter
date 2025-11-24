@@ -4,6 +4,13 @@ export interface StreamChatParams {
   message: string;
   conversationId?: string | null;
   agentType?: string | null;
+  shareLocation?: boolean;
+  location?: {
+    city?: string | null;
+    region?: string | null;
+    country?: string | null;
+    timezone?: string | null;
+  } | null;
 }
 
 export type StreamChunk =

@@ -20,7 +20,7 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
 
     validate_parser = providers_subparsers.add_parser(
         "validate",
-        help="Validate Stripe/Resend/Tavily configuration.",
+        help="Validate Stripe/Resend configuration.",
     )
     validate_parser.add_argument(
         "--strict",

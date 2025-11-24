@@ -61,6 +61,10 @@ export function ChatWorkspace() {
     handleExportTranscript,
     handleWorkspaceError,
     sendMessage,
+    shareLocation,
+    setShareLocation,
+    locationHint,
+    updateLocationField,
     setSelectedAgent,
   } = useChatWorkspace();
 
@@ -140,6 +144,10 @@ export function ChatWorkspace() {
             reasoningText={reasoningText}
             activeAgent={activeAgent}
             lifecycleStatus={lifecycleStatus}
+            shareLocation={shareLocation}
+            onShareLocationChange={setShareLocation}
+            locationHint={locationHint}
+            onLocationHintChange={updateLocationField}
             className="h-[78vh]"
           />
         </div>

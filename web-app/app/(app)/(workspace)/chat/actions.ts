@@ -19,12 +19,21 @@ export async function* streamChatAgent(params: {
   message: string;
   conversationId?: string | null;
   agentType?: string | null;
+  shareLocation?: boolean;
+  location?: {
+    city?: string | null;
+    region?: string | null;
+    country?: string | null;
+    timezone?: string | null;
+  } | null;
 }): AsyncGenerator<StreamChunk, void, undefined> {
   try {
     const stream = streamChatServer({
       message: params.message,
       conversationId: params.conversationId,
       agentType: params.agentType ?? 'triage',
+      shareLocation: params.shareLocation,
+      location: params.location,
     });
 
     for await (const chunk of stream) {

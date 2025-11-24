@@ -206,13 +206,11 @@ Manages the `/api/v1/status` surface:
 
 ### 8. `providers validate`
 
-Validates Stripe, Resend, and Tavily configuration before you boot FastAPI or deploy:
+Validates Stripe and Resend configuration before you boot FastAPI or deploy:
 
 - Loads the same env files as other commands, reuses the backend validator, and prints one line per
   violation with provider/code context.
 - Returns non-zero when fatal issues exist (any hardened environment or when you pass `--strict`).
-- Tavily is always non-fatal; if `TAVILY_API_KEY` is missing the tool is skipped and the validator
-  only warns.
 - Use `just validate-providers` or `python -m starter_cli.app providers validate --strict` in CI to
   fail the pipeline before Docker builds or migrations.
 

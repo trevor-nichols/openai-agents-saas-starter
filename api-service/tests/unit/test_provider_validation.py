@@ -51,18 +51,6 @@ def test_validate_providers_handles_resend_in_non_strict_environment():
     assert all(not v.fatal for v in violations)
 
 
-def test_validate_providers_flags_tavily_when_missing_key():
-    settings = Settings()
-    settings.tavily_api_key = None
-
-    violations = validate_providers(settings, strict=True)
-
-    assert len(violations) == 1
-    violation = violations[0]
-    assert violation.provider == "tavily"
-    assert violation.fatal is False
-
-
 def test_ensure_provider_parity_raises_when_fatal_violations_present():
     settings = Settings()
     settings.enable_billing = True
@@ -73,6 +61,43 @@ def test_ensure_provider_parity_raises_when_fatal_violations_present():
 
     with pytest.raises(RuntimeError):
         ensure_provider_parity(settings, violations=violations)
+
+
+def test_validate_providers_warns_when_web_search_disabled_non_strict():
+    settings = Settings()
+    settings.openai_api_key = None
+
+    violations = validate_providers(settings, strict=False)
+
+    web = [
+        v for v in violations if v.provider == "web_search" and v.code == "missing_openai_api_key"
+    ]
+    assert len(web) == 1
+    assert web[0].fatal is False
+
+
+def test_validate_providers_flags_openai_core_missing_key_when_strict():
+    settings = Settings()
+    settings.openai_api_key = None
+
+    violations = validate_providers(settings, strict=True)
+
+    core = [v for v in violations if v.provider == "openai" and v.code == "missing_openai_api_key"]
+    assert len(core) == 1
+    assert core[0].fatal is True
+
+
+def test_validate_providers_non_strict_openai_core_is_nonfatal():
+    settings = Settings()
+    settings.openai_api_key = None
+
+    violations = validate_providers(settings, strict=False)
+
+    core = [v for v in violations if v.provider == "openai" and v.code == "missing_openai_api_key"]
+    assert len(core) == 1
+    assert core[0].fatal is False
+
+
 @pytest.fixture(autouse=True)
 def _clear_provider_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Remove provider-related env vars so tests control state explicitly."""
@@ -85,6 +110,6 @@ def _clear_provider_env(monkeypatch: pytest.MonkeyPatch) -> None:
         "STRIPE_PRODUCT_PRICE_MAP",
         "RESEND_API_KEY",
         "RESEND_DEFAULT_FROM",
-        "TAVILY_API_KEY",
+        "OPENAI_API_KEY",
     ):
         monkeypatch.delenv(key, raising=False)

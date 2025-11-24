@@ -45,7 +45,7 @@ so each agent only sees the subset of tools it is cleared for. Example:
 
 ```python
 registry.register_tool(
-    tavily_search_tool,
+    WebSearchTool(),
     category="web_search",
     metadata={
         "description": "Search the web for current information",

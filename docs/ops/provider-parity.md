@@ -1,10 +1,10 @@
 # Third-Party Provider Parity (OPS-003)
 
-Stripe, Resend, and Tavily back core SaaS features (billing, transactional email, and
-web search). Historically the backend only logged warnings when their environment variables were
-missing, which meant staging/production could boot with partially configured providers. OPS-003
-introduces explicit validation so every environment that advertises a provider either supplies the
-required secrets or keeps the feature disabled.
+Stripe and Resend back core SaaS features (billing and transactional email). Historically the
+backend only logged warnings when their environment variables were missing, which meant
+staging/production could boot with partially configured providers. OPS-003 introduces explicit
+validation so every environment that advertises a provider either supplies the required secrets or
+keeps the feature disabled.
 
 ## Enforcement matrix
 
@@ -12,7 +12,6 @@ required secrets or keeps the feature disabled.
 | --- | --- | --- | --- | --- |
 | Stripe | `ENABLE_BILLING=true` | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRODUCT_PRICE_MAP` | CLI still exits non-zero (see below), FastAPI logs warnings only when billing is disabled | Startup fails with `RuntimeError` until every variable is present |
 | Resend | `RESEND_EMAIL_ENABLED=true` | `RESEND_API_KEY`, `RESEND_DEFAULT_FROM` | Warning only | Startup fails with actionable `RuntimeError` |
-| Tavily | implicit (agents advertise `web_search` capability) | `TAVILY_API_KEY` | Tool is skipped and agents continue without web search | Warning only; tool is skipped, never fatal |
 
 The FastAPI lifespan now runs these checks before configuring Redis, billing, or agents. Any fatal
 violations halt the process immediately so health probes never turn green with a misconfigured stack.
@@ -25,7 +24,7 @@ violations halt the process immediately so health probes never turn green with a
    `just validate-providers`). The command loads `.env.compose`, `.env`, and `.env.local`,
    reuses the backend validator, and exits non-zero whenever billing is enabled but Stripe vars are
    missing—even in local/dev mode—to stay consistent with FastAPI startup. Pass `--strict` to treat
-   Resend/Tavily warnings as fatal as well.
+   Resend warnings as fatal as well.
 3. **CI Jobs:** call the CLI with `--strict` prior to building containers to ensure the pipeline
    fails before Docker images, migrations, or deployment steps run.
 
@@ -51,9 +50,6 @@ The validator surfaces structured log output similar to:
 - **Resend:** Configure the API key and default From address in `.env.local`. Template IDs remain
   optional, but start populating them once you move beyond local testing so transactional email
   matches production copy.
-- **Tavily:** All environments can run without the API key; the tool registry simply omits
-  `tavily_search_tool` when `TAVILY_API_KEY` is absent. When additional web search providers are
-  introduced, extend `app/core/provider_validation.py` rather than adding ad-hoc checks.
 
 ## Tracking & reporting
 

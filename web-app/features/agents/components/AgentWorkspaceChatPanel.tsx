@@ -29,6 +29,18 @@ interface AgentWorkspaceChatPanelProps {
   reasoningText: string;
   activeAgent: string;
   lifecycleStatus: ConversationLifecycleStatus;
+  shareLocation?: boolean;
+  locationHint?: {
+    city?: string | null;
+    region?: string | null;
+    country?: string | null;
+    timezone?: string | null;
+  };
+  onShareLocationChange?: (value: boolean) => void;
+  onLocationHintChange?: (
+    field: 'city' | 'region' | 'country' | 'timezone',
+    value: string,
+  ) => void;
 }
 
 export function AgentWorkspaceChatPanel({
@@ -51,6 +63,10 @@ export function AgentWorkspaceChatPanel({
   reasoningText,
   activeAgent,
   lifecycleStatus,
+  shareLocation = false,
+  locationHint = {},
+  onShareLocationChange,
+  onLocationHintChange,
 }: AgentWorkspaceChatPanelProps) {
   return (
     <div className="space-y-4">
@@ -98,6 +114,10 @@ export function AgentWorkspaceChatPanel({
         reasoningText={reasoningText}
         activeAgent={activeAgent}
         lifecycleStatus={lifecycleStatus}
+        shareLocation={shareLocation}
+        onShareLocationChange={onShareLocationChange ?? (() => {})}
+        locationHint={locationHint}
+        onLocationHintChange={onLocationHintChange ?? (() => {})}
         className="min-h-[520px]"
       />
     </div>

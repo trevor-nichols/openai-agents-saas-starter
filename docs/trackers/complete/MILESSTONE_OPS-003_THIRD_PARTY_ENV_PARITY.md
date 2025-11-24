@@ -4,7 +4,7 @@
 | --- | --- |
 | Owner | *@codex* |
 | Status | Completed (Nov 16 2025) |
-| Scope | Enforce Stripe/Resend/Tavily configuration parity across FastAPI runtime, CLI flows, and CI. |
+| Scope | Enforce Stripe/Resend configuration parity across FastAPI runtime, CLI flows, and CI. |
 
 ## Deliverables
 
@@ -13,8 +13,8 @@
    before wiring Redis, billing, or agents.
 2. **Runtime enforcement** — Lifespan logs every violation and raises on fatal issues (any hardened
    environment). Local development still emits warnings but keeps running for prototyping.
-3. **Tool registry parity** — `initialize_tools()` only registers `tavily_search_tool` when the key
-   exists, making agent capabilities reflect actual provider coverage.
+3. **Tool registry parity** — core services respect enabled providers so agent capabilities reflect
+   actual provider coverage.
 4. **Operator tooling** — `python -m starter_cli.app providers validate` (and
    `just validate-providers`) fail fast when required env vars are missing. CI can pass `--strict`
    to block merges before Docker builds/deployments.

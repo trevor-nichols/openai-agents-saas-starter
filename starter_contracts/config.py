@@ -61,9 +61,9 @@ class StarterSettingsProtocol(Protocol):
     enable_resend_email_delivery: bool
     resend_api_key: str | None
     resend_default_from: str | None
-    tavily_api_key: str | None
     enable_billing: bool
     enable_billing_retry_worker: bool
+    openai_api_key: str | None
     signup_access_policy: Literal["public", "invite_only", "approval"]
     allow_public_signup: bool
     signup_rate_limit_per_hour: int

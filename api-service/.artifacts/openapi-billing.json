@@ -3616,6 +3616,23 @@
             ],
             "title": "Context",
             "description": "Optional, structured context to pass through."
+          },
+          "share_location": {
+            "type": "boolean",
+            "title": "Share Location",
+            "description": "When true, allows the assistant to use provided coarse location for web search.",
+            "default": false
+          },
+          "location": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LocationHint"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional coarse location (city/region/country/timezone) for location-biased search."
           }
         },
         "type": "object",
@@ -4612,6 +4629,61 @@
           "state"
         ],
         "title": "IncidentSchema"
+      },
+      "LocationHint": {
+        "properties": {
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City",
+            "description": "City name (coarse, e.g., 'Austin')."
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region",
+            "description": "Region/subdivision (e.g., state/province) for coarse location."
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country",
+            "description": "Country code or name for coarse location."
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone",
+            "description": "IANA timezone identifier if relevant to the query."
+          }
+        },
+        "type": "object",
+        "title": "LocationHint",
+        "description": "Optional coarse location provided by the user/tenant for web search biasing."
       },
       "PasswordChangeRequest": {
         "properties": {

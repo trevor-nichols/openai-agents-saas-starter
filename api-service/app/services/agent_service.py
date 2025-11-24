@@ -11,9 +11,11 @@ from typing import Any
 
 from agents import trace
 
+from app.agents._shared.prompt_context import PromptRuntimeContext
 from app.api.v1.agents.schemas import AgentStatus, AgentSummary
 from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse
 from app.api.v1.conversations.schemas import ChatMessage, ConversationHistory, ConversationSummary
+from app.core.config import get_settings
 from app.domain.ai import AgentRunUsage
 from app.domain.ai.models import AgentStreamEvent
 from app.domain.conversations import (
@@ -37,6 +39,7 @@ from app.services.conversation_service import (
     get_conversation_service,
 )
 from app.services.usage_recorder import UsageEntry, UsageRecorder
+from app.utils.tools.location import build_web_search_location
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +68,15 @@ class AgentService:
         provider = self._get_provider()
         descriptor = provider.resolve_agent(request.agent_type)
         conversation_id = request.conversation_id or str(uuid.uuid4())
+        runtime_ctx = PromptRuntimeContext(
+            actor=actor,
+            conversation_id=conversation_id,
+            request_message=request.message,
+            settings=get_settings(),
+            user_location=build_web_search_location(
+                request.location, share_location=request.share_location
+            ),
+        )
         state = await self._conversation_service.get_session_state(
             conversation_id, tenant_id=actor.tenant_id
         )
@@ -120,6 +132,7 @@ class AgentService:
                     request.message,
                     session=session_handle,
                     conversation_id=runtime_conversation_id,
+                    metadata={"prompt_runtime_ctx": runtime_ctx},
                 )
         finally:
             reset_current_actor(token)
@@ -187,6 +200,15 @@ class AgentService:
         provider = self._get_provider()
         descriptor = provider.resolve_agent(request.agent_type)
         conversation_id = request.conversation_id or str(uuid.uuid4())
+        runtime_ctx = PromptRuntimeContext(
+            actor=actor,
+            conversation_id=conversation_id,
+            request_message=request.message,
+            settings=get_settings(),
+            user_location=build_web_search_location(
+                request.location, share_location=request.share_location
+            ),
+        )
         state = await self._conversation_service.get_session_state(
             conversation_id, tenant_id=actor.tenant_id
         )
@@ -243,6 +265,7 @@ class AgentService:
                     request.message,
                     session=session_handle,
                     conversation_id=runtime_conversation_id,
+                    metadata={"prompt_runtime_ctx": runtime_ctx},
                 )
                 async for event in stream_handle.events():
                     event.conversation_id = conversation_id
