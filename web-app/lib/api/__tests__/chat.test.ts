@@ -75,18 +75,18 @@ describe('chat API helpers', () => {
     });
   });
 
-  it('streamChat yields content chunks from SSE stream', async () => {
+  it('streamChat yields events from SSE stream', async () => {
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       start(controller) {
         controller.enqueue(
           encoder.encode(
-            'data: {"chunk":"Hello","conversation_id":"conv-1","is_complete":false}\n\n',
+            'data: {"kind":"raw_response","conversation_id":"conv-1","raw_type":"response.output_text.delta","text_delta":"Hello","is_terminal":false}\n\n',
           ),
         );
         controller.enqueue(
           encoder.encode(
-            'data: {"chunk":"","conversation_id":"conv-1","is_complete":true}\n\n',
+            'data: {"kind":"raw_response","conversation_id":"conv-1","raw_type":"response.completed","text_delta":"","is_terminal":true}\n\n',
           ),
         );
         controller.close();
@@ -113,16 +113,22 @@ describe('chat API helpers', () => {
     }
 
     expect(collected).toHaveLength(2);
-    expect(collected[0]).toEqual({
-      type: 'content',
-      payload: 'Hello',
-      conversationId: 'conv-1',
-    });
-    expect(collected[1]).toEqual({
-      type: 'content',
-      payload: '',
-      conversationId: 'conv-1',
-    });
+    const first = collected[0];
+    const second = collected[1];
+
+    expect(first?.type).toBe('event');
+    if (first?.type === 'event') {
+      expect(first.event).toMatchObject({
+        kind: 'raw_response',
+        conversation_id: 'conv-1',
+        text_delta: 'Hello',
+      });
+    }
+
+    expect(second?.type).toBe('event');
+    if (second?.type === 'event') {
+      expect(second.event.is_terminal).toBe(true);
+    }
   });
 
   it('streamChat yields error chunk when HTTP request fails', async () => {
@@ -177,4 +183,3 @@ describe('chat API helpers', () => {
     ]);
   });
 });
-

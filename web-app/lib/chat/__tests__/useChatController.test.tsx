@@ -90,9 +90,25 @@ describe('useChatController', () => {
 
     streamChat.mockImplementation(() => (async function* () {
       yield {
-        type: 'content' as const,
-        payload: 'Streaming response',
-        conversationId: 'conv-99',
+        type: 'event' as const,
+        event: {
+          kind: 'raw_response',
+          conversation_id: 'conv-99',
+          agent_used: 'triage',
+          response_id: 'resp-1',
+          sequence_number: 1,
+          raw_type: 'response.output_text.delta',
+          run_item_name: null,
+          run_item_type: null,
+          tool_call_id: null,
+          tool_name: null,
+          agent: 'triage',
+          new_agent: null,
+          text_delta: 'Streaming response',
+          reasoning_delta: null,
+          is_terminal: true,
+          payload: {},
+        },
       };
     })());
 
@@ -201,5 +217,208 @@ describe('useChatController', () => {
     expect(reloadConversations).toHaveBeenCalled();
     expect(result.current.currentConversationId).toBeNull();
     expect(result.current.messages).toHaveLength(0);
+  });
+
+  it('resets activeAgent to selectedAgent on new conversation after handoff', async () => {
+    const mutateAsync = vi.fn();
+    useSendChatMutation.mockReturnValue(createMutationMock({ mutateAsync }));
+
+    streamChat.mockImplementation(() => (async function* () {
+      yield {
+        type: 'event' as const,
+        event: {
+          kind: 'agent_update',
+          conversation_id: 'conv-handoff',
+          new_agent: 'other-agent',
+          agent_used: 'other-agent',
+          response_id: 'resp-2',
+          sequence_number: 5,
+          raw_type: null,
+          run_item_name: null,
+          run_item_type: null,
+          tool_call_id: null,
+          tool_name: null,
+          agent: 'other-agent',
+          text_delta: null,
+          reasoning_delta: null,
+          is_terminal: true,
+          payload: {},
+        },
+      };
+    })());
+
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useChatController(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.sendMessage('trigger handoff');
+    });
+
+    expect(result.current.activeAgent).toBe('other-agent');
+
+    await act(async () => {
+      result.current.startNewConversation();
+    });
+
+    expect(result.current.activeAgent).toBe('triage');
+  });
+
+  it('clears reasoning text between sends', async () => {
+    const mutateAsync = vi.fn();
+    useSendChatMutation.mockReturnValue(createMutationMock({ mutateAsync }));
+
+    // First stream provides reasoning delta
+    streamChat.mockImplementationOnce(() => (async function* () {
+      yield {
+        type: 'event' as const,
+        event: {
+          kind: 'raw_response',
+          conversation_id: 'conv-1',
+          agent_used: 'triage',
+          response_id: 'resp-1',
+          sequence_number: 1,
+          raw_type: 'response.reasoning_text.delta',
+          run_item_name: null,
+          run_item_type: null,
+          tool_call_id: null,
+          tool_name: null,
+          agent: 'triage',
+          new_agent: null,
+          text_delta: null,
+          reasoning_delta: 'thoughts',
+          is_terminal: true,
+          payload: {},
+        },
+      };
+    })());
+
+    // Second stream has no reasoning
+    streamChat.mockImplementationOnce(() => (async function* () {
+      yield {
+        type: 'event' as const,
+        event: {
+          kind: 'raw_response',
+          conversation_id: 'conv-1',
+          agent_used: 'triage',
+          response_id: 'resp-2',
+          sequence_number: 1,
+          raw_type: 'response.output_text.delta',
+          run_item_name: null,
+          run_item_type: null,
+          tool_call_id: null,
+          tool_name: null,
+          agent: 'triage',
+          new_agent: null,
+          text_delta: 'hi',
+          reasoning_delta: null,
+          is_terminal: true,
+          payload: {},
+        },
+      };
+    })());
+
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useChatController(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.sendMessage('first');
+    });
+    expect(result.current.reasoningText).toBe('thoughts');
+
+    await act(async () => {
+      await result.current.sendMessage('second');
+    });
+
+    expect(result.current.reasoningText).toBe('');
+  });
+
+  it('clears tool events between sends', async () => {
+    const mutateAsync = vi.fn();
+    useSendChatMutation.mockReturnValue(createMutationMock({ mutateAsync }));
+
+    // First stream emits a tool call/output
+    streamChat.mockImplementationOnce(() => (async function* () {
+      yield {
+        type: 'event' as const,
+        event: {
+          kind: 'run_item',
+          conversation_id: 'conv-1',
+          agent_used: 'triage',
+          response_id: 'resp-1',
+          sequence_number: 1,
+          raw_type: null,
+          run_item_name: 'tool_called',
+          run_item_type: 'tool_call_item',
+          tool_call_id: 'call-1',
+          tool_name: 'search',
+          agent: 'triage',
+          new_agent: null,
+          text_delta: null,
+          reasoning_delta: null,
+          is_terminal: false,
+          payload: { args: 'x' },
+        },
+      };
+      yield {
+        type: 'event' as const,
+        event: {
+          kind: 'run_item',
+          conversation_id: 'conv-1',
+          agent_used: 'triage',
+          response_id: 'resp-1',
+          sequence_number: 2,
+          raw_type: null,
+          run_item_name: 'tool_output',
+          run_item_type: 'tool_call_output_item',
+          tool_call_id: 'call-1',
+          tool_name: 'search',
+          agent: 'triage',
+          new_agent: null,
+          text_delta: null,
+          reasoning_delta: null,
+          is_terminal: true,
+          payload: { output: 'result' },
+        },
+      };
+    })());
+
+    // Second stream has no tools
+    streamChat.mockImplementationOnce(() => (async function* () {
+      yield {
+        type: 'event' as const,
+        event: {
+          kind: 'raw_response',
+          conversation_id: 'conv-1',
+          agent_used: 'triage',
+          response_id: 'resp-2',
+          sequence_number: 1,
+          raw_type: 'response.output_text.delta',
+          run_item_name: null,
+          run_item_type: null,
+          tool_call_id: null,
+          tool_name: null,
+          agent: 'triage',
+          new_agent: null,
+          text_delta: 'hello',
+          reasoning_delta: null,
+          is_terminal: true,
+          payload: {},
+        },
+      };
+    })());
+
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useChatController(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.sendMessage('first tool');
+    });
+    expect(result.current.toolEvents.length).toBeGreaterThan(0);
+
+    await act(async () => {
+      await result.current.sendMessage('second no tool');
+    });
+
+    expect(result.current.toolEvents.length).toBe(0);
   });
 });

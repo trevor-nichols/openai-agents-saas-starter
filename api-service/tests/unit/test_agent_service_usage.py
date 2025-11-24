@@ -47,8 +47,16 @@ class FakeSessionStore:
 class FakeStreamingHandle(AgentStreamingHandle):
     def __init__(self):
         self._events = [
-            AgentStreamEvent(content_delta="chunk"),
-            AgentStreamEvent(content_delta="", is_terminal=True),
+            AgentStreamEvent(
+                kind="raw_response",
+                raw_type="response.output_text.delta",
+                text_delta="chunk",
+            ),
+            AgentStreamEvent(
+                kind="raw_response",
+                raw_type="response.completed",
+                is_terminal=True,
+            ),
         ]
         self._usage = AgentRunUsage(input_tokens=10, output_tokens=5)
         self._last_response_id = "resp-stream"

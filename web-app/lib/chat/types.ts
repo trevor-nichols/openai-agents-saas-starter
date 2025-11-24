@@ -1,21 +1,31 @@
+import type { StreamingChatEvent } from '@/lib/api/client/types.gen';
+
 export interface StreamChatParams {
   message: string;
   conversationId?: string | null;
   agentType?: string | null;
 }
 
-export interface StreamChunk {
-  type: 'content' | 'error';
-  payload: string;
-  conversationId?: string;
-}
+export type StreamChunk =
+  | { type: 'event'; event: StreamingChatEvent }
+  | { type: 'error'; payload: string; conversationId?: string };
 
-export interface BackendStreamData {
-  chunk: string;
-  conversation_id: string;
-  is_complete: boolean;
-  error?: string;
-}
+export type ToolState = {
+  id: string;
+  name?: string | null;
+  status: 'input-streaming' | 'input-available' | 'output-available' | 'output-error';
+  input?: unknown;
+  output?: unknown;
+  errorText?: string | null;
+};
+
+export type ConversationLifecycleStatus =
+  | 'idle'
+  | 'created'
+  | 'in_progress'
+  | 'completed'
+  | 'incomplete'
+  | 'failed';
 
 export interface ChatMessage {
   id: string;

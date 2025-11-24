@@ -50,12 +50,12 @@ describe('useChatController (integration)', () => {
       start(controller) {
         controller.enqueue(
           encoder.encode(
-            'data: {"chunk":"Integrated response","conversation_id":"conv-integration","is_complete":false}\n\n',
+            'data: {"kind":"raw_response","conversation_id":"conv-integration","raw_type":"response.output_text.delta","text_delta":"Integrated response","is_terminal":false}\n\n',
           ),
         );
         controller.enqueue(
           encoder.encode(
-            'data: {"chunk":"","conversation_id":"conv-integration","is_complete":true}\n\n',
+            'data: {"kind":"raw_response","conversation_id":"conv-integration","raw_type":"response.completed","text_delta":"","is_terminal":true}\n\n',
           ),
         );
         controller.close();
@@ -108,4 +108,3 @@ describe('useChatController (integration)', () => {
     expect(assistantMessages.at(-1)?.content).toBe('Integrated response');
   });
 });
-

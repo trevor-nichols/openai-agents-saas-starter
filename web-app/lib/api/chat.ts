@@ -11,11 +11,11 @@ import type {
   AgentChatResponse,
 } from '@/lib/api/client/types.gen';
 import type {
-  BackendStreamData,
-  StreamChatParams,
   StreamChunk,
+  StreamChatParams,
 } from '@/lib/chat/types';
 import { createLogger } from '@/lib/logging';
+import type { StreamingChatEvent } from '@/lib/api/client/types.gen';
 
 const CHAT_ROUTE = '/api/chat';
 const CHAT_STREAM_ROUTE = '/api/chat/stream';
@@ -175,48 +175,16 @@ export async function* streamChat(
       for (const segment of segments) {
         if (!segment.trim() || !segment.startsWith('data: ')) continue;
 
-        try {
-          const data: BackendStreamData = JSON.parse(segment.slice(6));
+        const parsed = parseStreamSegment(segment);
 
-          if (data.error) {
-            log.debug('Chat stream reported tool error', {
-              conversationId: data.conversation_id,
-              error: data.error,
-            });
-            yield {
-              type: 'error',
-              payload: data.error,
-              conversationId: data.conversation_id,
-            };
-            return;
-          }
+        if (parsed.chunk.type === 'error') {
+          yield parsed.chunk;
+          return;
+        }
 
-          log.debug('Chat stream chunk received', {
-            conversationId: data.conversation_id,
-            isComplete: data.is_complete,
-            chunkLength: data.chunk.length,
-          });
+        yield parsed.chunk;
 
-          yield {
-            type: 'content',
-            payload: data.chunk,
-            conversationId: data.conversation_id,
-          };
-
-          if (data.is_complete) {
-            return;
-          }
-        } catch (error) {
-          const message =
-            error instanceof Error ? error.message : 'Unknown streaming parse error';
-          log.debug('Chat stream failed to parse payload', {
-            segment,
-            errorMessage: message,
-          });
-          yield {
-            type: 'error',
-            payload: `Failed to parse stream payload: ${message}`,
-          };
+        if (parsed.done) {
           return;
         }
       }
@@ -225,5 +193,88 @@ export async function* streamChat(
     log.debug('Chat stream reader threw error', { error });
   } finally {
     reader.releaseLock();
+  }
+}
+
+type ParsedSegment = { chunk: StreamChunk; done: boolean };
+
+function parseStreamSegment(segment: string): ParsedSegment {
+  try {
+    const data = JSON.parse(segment.slice(6)) as unknown;
+
+    // Preferred: new StreamingChatEvent shape
+    if (typeof data === 'object' && data !== null && 'kind' in data) {
+      const event = data as StreamingChatEvent;
+      return {
+        chunk: { type: 'event', event },
+        done: Boolean(event.is_terminal),
+      };
+    }
+
+    // Legacy error blob
+    if (
+      typeof data === 'object' &&
+      data !== null &&
+      'error' in data &&
+      typeof (data as { error: unknown }).error === 'string'
+    ) {
+      const err = data as { error: string; conversation_id?: string };
+      return {
+        chunk: {
+          type: 'error',
+          payload: err.error,
+          conversationId: err.conversation_id,
+        },
+        done: true,
+      };
+    }
+
+    // Legacy chunk-only shape: coerce into a synthetic event
+    if (typeof data === 'object' && data !== null && 'chunk' in data) {
+      const legacy = data as { chunk?: string; conversation_id?: string; is_complete?: boolean };
+      const event: StreamingChatEvent = {
+        kind: 'raw_response',
+        conversation_id: legacy.conversation_id ?? '',
+        agent_used: null,
+        response_id: null,
+        sequence_number: null,
+        raw_type: 'response.output_text.delta',
+        run_item_name: null,
+        run_item_type: null,
+        tool_call_id: null,
+        tool_name: null,
+        agent: null,
+        new_agent: null,
+        text_delta: legacy.chunk ?? '',
+        reasoning_delta: null,
+        is_terminal: Boolean(legacy.is_complete),
+        payload: legacy,
+      };
+      return {
+        chunk: { type: 'event', event },
+        done: Boolean(event.is_terminal),
+      };
+    }
+
+    return {
+      chunk: {
+        type: 'error',
+        payload: 'Unknown stream payload shape',
+      },
+      done: true,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown streaming parse error';
+    log.debug('Chat stream failed to parse payload', {
+      segment,
+      errorMessage: message,
+    });
+    return {
+      chunk: {
+        type: 'error',
+        payload: `Failed to parse stream payload: ${message}`,
+      },
+      done: true,
+    };
   }
 }

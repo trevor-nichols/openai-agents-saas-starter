@@ -1655,6 +1655,110 @@ export type StatusSubscriptionVerifyRequest = {
 };
 
 /**
+ * StreamingChatEvent
+ *
+ * Rich streaming envelope forwarded over SSE to the frontend.
+ */
+export type StreamingChatEvent = {
+  /**
+   * Kind
+   */
+  kind: "raw_response" | "run_item" | "agent_update" | "usage" | "error";
+  /**
+   * Conversation Id
+   *
+   * Conversation identifier.
+   */
+  conversation_id: string;
+  /**
+   * Agent Used
+   *
+   * Agent that produced the event.
+   */
+  agent_used?: string | null;
+  /**
+   * Response Id
+   *
+   * Upstream response id when available.
+   */
+  response_id?: string | null;
+  /**
+   * Sequence Number
+   *
+   * Sequence number from Responses API.
+   */
+  sequence_number?: number | null;
+  /**
+   * Raw Type
+   *
+   * Underlying Responses API event type.
+   */
+  raw_type?: string | null;
+  /**
+   * Run Item Name
+   *
+   * RunItemStreamEvent name.
+   */
+  run_item_name?: string | null;
+  /**
+   * Run Item Type
+   *
+   * RunItem item.type.
+   */
+  run_item_type?: string | null;
+  /**
+   * Tool Call Id
+   *
+   * Tool call identifier if present.
+   */
+  tool_call_id?: string | null;
+  /**
+   * Tool Name
+   *
+   * Tool name if present.
+   */
+  tool_name?: string | null;
+  /**
+   * Agent
+   *
+   * Agent associated with the event.
+   */
+  agent?: string | null;
+  /**
+   * New Agent
+   *
+   * New agent after a handoff.
+   */
+  new_agent?: string | null;
+  /**
+   * Text Delta
+   *
+   * Streamed text chunk, if any.
+   */
+  text_delta?: string | null;
+  /**
+   * Reasoning Delta
+   *
+   * Streamed reasoning chunk, if any.
+   */
+  reasoning_delta?: string | null;
+  /**
+   * Is Terminal
+   *
+   * Marks terminal event for the stream.
+   */
+  is_terminal?: boolean;
+  /**
+   * Payload
+   *
+   * Full event body for consumers that need raw fidelity.
+   */
+  payload?: {
+    [key: string]: unknown;
+  } | null;
+};
+
+/**
  * StripeEventStatus
  */
 export type StripeEventStatus = "received" | "processed" | "failed";
@@ -3265,10 +3369,13 @@ export type StreamChatWithAgentApiV1ChatStreamPostError =
 
 export type StreamChatWithAgentApiV1ChatStreamPostResponses = {
   /**
-   * Successful Response
+   * Server-sent events stream of agent outputs.
    */
-  200: unknown;
+  200: StreamingChatEvent;
 };
+
+export type StreamChatWithAgentApiV1ChatStreamPostResponse =
+  StreamChatWithAgentApiV1ChatStreamPostResponses[keyof StreamChatWithAgentApiV1ChatStreamPostResponses];
 
 export type ListAvailableAgentsApiV1AgentsGetData = {
   body?: never;

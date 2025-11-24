@@ -50,7 +50,7 @@ export async function openChatStream(
     throwOnError: true,
   });
 
-  const stream = upstream.data;
+  const stream = upstream.response?.body;
   if (!stream || !upstream.response) {
     throw new Error('Chat stream returned no data.');
   }
@@ -61,7 +61,7 @@ export async function openChatStream(
     headers.set('Content-Type', contentType);
   }
 
-  return new Response(stream as BodyInit, {
+  return new Response(stream, {
     status: upstream.response.status,
     statusText: upstream.response.statusText,
     headers,
@@ -95,17 +95,35 @@ function createMockChatStream(): Response {
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      const chunk = {
-        chunk: 'Hello from mock agent! ',
+      const event = {
+        kind: 'raw_response' as const,
         conversation_id: 'mock-conversation',
-        is_complete: false,
+        agent_used: 'mock-agent',
+        response_id: 'resp-mock',
+        sequence_number: 1,
+        raw_type: 'response.output_text.delta',
+        run_item_name: null,
+        run_item_type: null,
+        tool_call_id: null,
+        tool_name: null,
+        agent: 'mock-agent',
+        new_agent: null,
+        text_delta: 'Hello from mock agent! ',
+        reasoning_delta: null,
+        is_terminal: false,
+        payload: {},
       };
-      controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
-      controller.enqueue(
-        encoder.encode(
-          `data: ${JSON.stringify({ ...chunk, chunk: 'Done.', is_complete: true })}\n\n`,
-        ),
-      );
+
+      const terminal = {
+        ...event,
+        text_delta: '',
+        raw_type: 'response.completed',
+        is_terminal: true,
+        sequence_number: 2,
+      };
+
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify(terminal)}\n\n`));
       controller.close();
     },
   });

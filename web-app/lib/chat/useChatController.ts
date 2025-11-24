@@ -6,7 +6,7 @@ import { streamChat } from '@/lib/api/chat';
 import { useSendChatMutation } from '@/lib/queries/chat';
 import { queryKeys } from '@/lib/queries/keys';
 import type { ConversationHistory, ConversationListItem, ConversationMessage } from '@/types/conversations';
-import type { ChatMessage } from './types';
+import type { ChatMessage, ConversationLifecycleStatus, ToolState } from './types';
 
 import { createLogger } from '@/lib/logging';
 
@@ -30,6 +30,10 @@ export interface UseChatControllerReturn {
   currentConversationId: string | null;
   selectedAgent: string;
   setSelectedAgent: (agentName: string) => void;
+  activeAgent: string;
+  toolEvents: ToolState[];
+  reasoningText: string;
+  lifecycleStatus: ConversationLifecycleStatus;
   sendMessage: (messageText: string) => Promise<void>;
   selectConversation: (conversationId: string) => Promise<void>;
   startNewConversation: () => void;
@@ -54,7 +58,11 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
   const [isClearingConversation, setIsClearingConversation] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
-  const [selectedAgent, setSelectedAgent] = useState<string>('triage');
+  const [selectedAgent, setSelectedAgentState] = useState<string>('triage');
+  const [activeAgent, setActiveAgent] = useState<string>('triage');
+  const [toolEvents, setToolEvents] = useState<ToolState[]>([]);
+  const [reasoningText, setReasoningText] = useState('');
+  const [lifecycleStatus, setLifecycleStatus] = useState<ConversationLifecycleStatus>('idle');
 
   const mapHistoryToChatMessages = useCallback((history: ConversationHistory): ChatMessage[] => {
     return history.messages
@@ -82,6 +90,10 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       setIsLoadingHistory(true);
       setMessages([]);
       setErrorMessage(null);
+      setToolEvents([]);
+      setReasoningText('');
+      setLifecycleStatus('idle');
+      setActiveAgent(selectedAgent);
 
       try {
         const history = await queryClient.fetchQuery({
@@ -107,8 +119,13 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
         setIsLoadingHistory(false);
       }
     },
-    [currentConversationId, mapHistoryToChatMessages, queryClient],
+    [currentConversationId, mapHistoryToChatMessages, queryClient, selectedAgent],
   );
+
+  const setSelectedAgent = useCallback((agentName: string) => {
+    setSelectedAgentState(agentName);
+    setActiveAgent(agentName);
+  }, []);
 
   const startNewConversation = useCallback(() => {
     log.debug('Starting new conversation context');
@@ -116,19 +133,28 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
     setMessages([]);
     setIsLoadingHistory(false);
     setErrorMessage(null);
-  }, []);
+    setToolEvents([]);
+    setReasoningText('');
+    setLifecycleStatus('idle');
+    setActiveAgent(selectedAgent);
+  }, [selectedAgent]);
 
   const sendMessage = useCallback(
     async (messageText: string) => {
-      if (!messageText.trim() || isSending || isLoadingHistory) {
-        return;
-      }
+    if (!messageText.trim() || isSending || isLoadingHistory) {
+      return;
+    }
 
-      setIsSending(true);
-      setErrorMessage(null);
-      log.debug('Sending message', {
-        currentConversationId,
-        length: messageText.length,
+    // Reset per-turn streaming state
+    setReasoningText('');
+    setToolEvents([]);
+    setLifecycleStatus('idle');
+
+    setIsSending(true);
+    setErrorMessage(null);
+    log.debug('Sending message', {
+      currentConversationId,
+      length: messageText.length,
       });
 
       const userMessage: ChatMessage = {
@@ -153,33 +179,19 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       let finalConversationId: string | null = null;
 
       try {
-        const stream = streamChat({
-          message: messageText,
-          conversationId: previousConversationId,
-          agentType: selectedAgent,
-        });
+    const stream = streamChat({
+      message: messageText,
+      conversationId: previousConversationId,
+      agentType: selectedAgent,
+    });
 
         let accumulatedContent = '';
+        const toolMap = new Map<string, ToolState>();
+        let terminalSeen = false;
+        let streamErrored = false;
 
         for await (const chunk of stream) {
-          if (chunk.type === 'content') {
-            accumulatedContent += chunk.payload;
-            setMessages((prevMessages) =>
-              prevMessages.map((msg) =>
-                msg.id === assistantMessageId
-                  ? { ...msg, content: `${accumulatedContent}▋`, isStreaming: true }
-                  : msg,
-              ),
-            );
-
-            if (chunk.conversationId) {
-              finalConversationId = chunk.conversationId;
-            }
-            log.debug('Processed stream chunk', {
-              conversationId: chunk.conversationId,
-              accumulatedLength: accumulatedContent.length,
-            });
-          } else if (chunk.type === 'error') {
+          if (chunk.type === 'error') {
             console.error('[useChatController] Stream error:', chunk.payload);
             setErrorMessage(chunk.payload);
             setMessages((prevMessages) =>
@@ -189,8 +201,110 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
                   : msg,
               ),
             );
+            streamErrored = true;
             break;
           }
+
+          const event = chunk.event;
+
+          if (event.kind === 'agent_update' && event.new_agent) {
+            setActiveAgent(event.new_agent);
+          }
+
+          if (event.kind === 'raw_response') {
+            if (event.raw_type === 'response.output_text.delta' && event.text_delta) {
+              accumulatedContent += event.text_delta;
+              setMessages((prevMessages) =>
+                prevMessages.map((msg) =>
+                  msg.id === assistantMessageId
+                    ? { ...msg, content: `${accumulatedContent}▋`, isStreaming: true }
+                    : msg,
+                ),
+              );
+            }
+
+            if (
+              (event.raw_type === 'response.reasoning_text.delta' ||
+                event.raw_type === 'response.reasoning_summary_text.delta') &&
+              event.reasoning_delta
+            ) {
+              setReasoningText((prev) => `${prev}${event.reasoning_delta}`);
+            }
+
+            if (event.raw_type) {
+              const lifecycleMap: Record<string, ConversationLifecycleStatus> = {
+                'response.created': 'created',
+                'response.in_progress': 'in_progress',
+                'response.completed': 'completed',
+                'response.incomplete': 'incomplete',
+                'response.failed': 'failed',
+              };
+              const nextStatus = lifecycleMap[event.raw_type];
+              if (nextStatus) {
+                setLifecycleStatus(nextStatus);
+              }
+            }
+          }
+
+          if (event.kind === 'run_item' && event.run_item_name) {
+            const toolId = event.tool_call_id || event.run_item_name;
+            const existing = toolMap.get(toolId) || {
+              id: toolId,
+              name: event.tool_name || event.run_item_name,
+              status: 'input-streaming' as const,
+            };
+
+            if (event.run_item_name === 'tool_called') {
+              existing.status = 'input-available';
+              existing.input = event.payload;
+            } else if (event.run_item_name === 'tool_output') {
+              existing.status = 'output-available';
+              existing.output = event.payload;
+            }
+
+            toolMap.set(toolId, existing);
+            setToolEvents(Array.from(toolMap.values()));
+          }
+
+          if (event.kind === 'error') {
+            const errorText =
+              typeof event.payload === 'object' && event.payload && 'error' in event.payload
+                ? String(event.payload.error)
+                : 'Stream error';
+            setErrorMessage(errorText);
+            setMessages((prevMessages) =>
+              prevMessages.map((msg) =>
+                msg.id === assistantMessageId
+                  ? { ...msg, content: `Error: ${errorText}`, isStreaming: false }
+                  : msg,
+              ),
+            );
+            streamErrored = true;
+            break;
+          }
+
+          if (event.conversation_id) {
+            finalConversationId = event.conversation_id;
+          }
+
+          if (event.is_terminal) {
+            terminalSeen = true;
+          }
+
+          log.debug('Processed stream event', {
+            conversationId: event.conversation_id,
+            accumulatedLength: accumulatedContent.length,
+            kind: event.kind,
+            rawType: event.raw_type,
+          });
+
+          if (event.is_terminal) {
+            break;
+          }
+        }
+
+        if (streamErrored) {
+          return;
         }
 
         setMessages((prevMessages) =>
@@ -200,6 +314,12 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
               : msg,
           ),
         );
+
+        if (terminalSeen) {
+          setLifecycleStatus((prev) =>
+            ['completed', 'failed', 'incomplete'].includes(prev) ? prev : 'completed'
+          );
+        }
 
         if (finalConversationId) {
           const resolvedConversationId = finalConversationId;
@@ -387,6 +507,10 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       currentConversationId,
       selectedAgent,
       setSelectedAgent,
+      activeAgent,
+      toolEvents,
+      reasoningText,
+      lifecycleStatus,
       sendMessage,
       selectConversation,
       startNewConversation,
@@ -401,11 +525,16 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       errorMessage,
       currentConversationId,
       selectedAgent,
+      setSelectedAgent,
       sendMessage,
       selectConversation,
       startNewConversation,
       deleteConversation,
       clearError,
+      activeAgent,
+      toolEvents,
+      reasoningText,
+      lifecycleStatus,
     ],
   );
 }

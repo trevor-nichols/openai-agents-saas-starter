@@ -42,6 +42,10 @@ export function ChatWorkspace() {
     currentConversationId,
     selectedAgent,
     selectedAgentLabel,
+    activeAgent,
+    toolEvents,
+    reasoningText,
+    lifecycleStatus,
     toolDrawerOpen,
     setToolDrawerOpen,
     detailDrawerOpen,
@@ -132,6 +136,10 @@ export function ChatWorkspace() {
             }
             isClearingConversation={isClearingConversation}
             isLoadingHistory={isLoadingHistory}
+            tools={toolEvents}
+            reasoningText={reasoningText}
+            activeAgent={activeAgent}
+            lifecycleStatus={lifecycleStatus}
             className="h-[78vh]"
           />
         </div>

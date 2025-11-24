@@ -6,7 +6,7 @@
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/states';
 import type { AgentSummary } from '@/types/agents';
-import type { ChatMessage } from '@/lib/chat/types';
+import type { ChatMessage, ConversationLifecycleStatus, ToolState } from '@/lib/chat/types';
 import { AgentSwitcher, ChatInterface } from '@/features/chat';
 
 interface AgentWorkspaceChatPanelProps {
@@ -25,6 +25,10 @@ interface AgentWorkspaceChatPanelProps {
   onSendMessage: (message: string) => Promise<void>;
   onStartNewConversation: () => void;
   onShowConversationDetail: () => void;
+  tools: ToolState[];
+  reasoningText: string;
+  activeAgent: string;
+  lifecycleStatus: ConversationLifecycleStatus;
 }
 
 export function AgentWorkspaceChatPanel({
@@ -43,6 +47,10 @@ export function AgentWorkspaceChatPanel({
   onSendMessage,
   onStartNewConversation,
   onShowConversationDetail,
+  tools,
+  reasoningText,
+  activeAgent,
+  lifecycleStatus,
 }: AgentWorkspaceChatPanelProps) {
   return (
     <div className="space-y-4">
@@ -86,6 +94,10 @@ export function AgentWorkspaceChatPanel({
         onClearConversation={onStartNewConversation}
         isClearingConversation={isClearingConversation}
         isLoadingHistory={isLoadingHistory}
+        tools={tools}
+        reasoningText={reasoningText}
+        activeAgent={activeAgent}
+        lifecycleStatus={lifecycleStatus}
         className="min-h-[520px]"
       />
     </div>

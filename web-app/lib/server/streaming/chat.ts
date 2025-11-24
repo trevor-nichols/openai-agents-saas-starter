@@ -1,8 +1,8 @@
 'use server';
 
-import type { AgentChatRequest } from '@/lib/api/client/types.gen';
+import type { AgentChatRequest, StreamingChatEvent } from '@/lib/api/client/types.gen';
 import { openChatStream } from '@/lib/server/services/chat';
-import type { BackendStreamData, StreamChatParams, StreamChunk } from '@/lib/chat/types';
+import type { StreamChatParams, StreamChunk } from '@/lib/chat/types';
 
 /**
  * Server-side helper to stream chat chunks directly from the backend agent service.
@@ -58,26 +58,60 @@ function parseBackendStream(
   segment: string,
 ): { chunk: StreamChunk; done: boolean } {
   try {
-    const data: BackendStreamData = JSON.parse(segment.slice(6));
+    const data = JSON.parse(segment.slice(6)) as unknown;
 
-    if (data.error) {
+    if (typeof data === 'object' && data !== null && 'kind' in data) {
+      const event = data as StreamingChatEvent;
+      return {
+        chunk: { type: 'event', event },
+        done: Boolean(event.is_terminal),
+      };
+    }
+
+    if (typeof data === 'object' && data !== null && 'error' in data) {
+      const err = data as { error: string; conversation_id?: string };
       return {
         chunk: {
           type: 'error',
-          payload: data.error,
-          conversationId: data.conversation_id,
+          payload: err.error,
+          conversationId: err.conversation_id,
         },
         done: true,
       };
     }
 
+    if (typeof data === 'object' && data !== null && 'chunk' in data) {
+      const legacy = data as { chunk?: string; conversation_id?: string; is_complete?: boolean };
+      const event: StreamingChatEvent = {
+        kind: 'raw_response',
+        conversation_id: legacy.conversation_id ?? '',
+        agent_used: null,
+        response_id: null,
+        sequence_number: null,
+        raw_type: 'response.output_text.delta',
+        run_item_name: null,
+        run_item_type: null,
+        tool_call_id: null,
+        tool_name: null,
+        agent: null,
+        new_agent: null,
+        text_delta: legacy.chunk ?? '',
+        reasoning_delta: null,
+        is_terminal: Boolean(legacy.is_complete),
+        payload: legacy,
+      };
+      return {
+        chunk: { type: 'event', event },
+        done: Boolean(event.is_terminal),
+      };
+    }
+
     return {
       chunk: {
-        type: 'content',
-        payload: data.chunk,
-        conversationId: data.conversation_id,
+        type: 'error',
+        payload: 'Unknown stream payload shape',
       },
-      done: Boolean(data.is_complete),
+      done: true,
     };
   } catch (error) {
     return {

@@ -1,6 +1,6 @@
 """Schemas describing chat interactions with agents."""
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -39,16 +39,30 @@ class AgentChatResponse(BaseModel):
     )
 
 
-class StreamingChatResponse(BaseModel):
-    """Envelope emitted for each streamed chunk in SSE responses."""
+class StreamingChatEvent(BaseModel):
+    """Rich streaming envelope forwarded over SSE to the frontend."""
 
-    chunk: str = Field(description="Partial content from the agent.")
+    kind: Literal["raw_response", "run_item", "agent_update", "usage", "error"]
+
     conversation_id: str = Field(description="Conversation identifier.")
-    is_complete: bool = Field(
-        default=False,
-        description="Signals completion when True.",
-    )
-    agent_used: str | None = Field(
+    agent_used: str | None = Field(default=None, description="Agent that produced the event.")
+
+    response_id: str | None = Field(default=None, description="Upstream response id when available.")
+    sequence_number: int | None = Field(default=None, description="Sequence number from Responses API.")
+
+    raw_type: str | None = Field(default=None, description="Underlying Responses API event type.")
+    run_item_name: str | None = Field(default=None, description="RunItemStreamEvent name.")
+    run_item_type: str | None = Field(default=None, description="RunItem item.type.")
+    tool_call_id: str | None = Field(default=None, description="Tool call identifier if present.")
+    tool_name: str | None = Field(default=None, description="Tool name if present.")
+    agent: str | None = Field(default=None, description="Agent associated with the event.")
+    new_agent: str | None = Field(default=None, description="New agent after a handoff.")
+
+    text_delta: str | None = Field(default=None, description="Streamed text chunk, if any.")
+    reasoning_delta: str | None = Field(default=None, description="Streamed reasoning chunk, if any.")
+    is_terminal: bool = Field(default=False, description="Marks terminal event for the stream.")
+
+    payload: dict[str, Any] | None = Field(
         default=None,
-        description="Agent instance that produced the chunk.",
+        description="Full event body for consumers that need raw fidelity.",
     )

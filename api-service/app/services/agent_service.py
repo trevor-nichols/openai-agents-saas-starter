@@ -12,9 +12,10 @@ from typing import Any
 from agents import trace
 
 from app.api.v1.agents.schemas import AgentStatus, AgentSummary
-from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse, StreamingChatResponse
+from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse
 from app.api.v1.conversations.schemas import ChatMessage, ConversationHistory, ConversationSummary
 from app.domain.ai import AgentRunUsage
+from app.domain.ai.models import AgentStreamEvent
 from app.domain.conversations import (
     ConversationMessage,
     ConversationMetadata,
@@ -182,7 +183,7 @@ class AgentService:
         request: AgentChatRequest,
         *,
         actor: ConversationActorContext,
-    ) -> AsyncGenerator[StreamingChatResponse, None]:
+    ) -> AsyncGenerator[AgentStreamEvent, None]:
         provider = self._get_provider()
         descriptor = provider.resolve_agent(request.agent_type)
         conversation_id = request.conversation_id or str(uuid.uuid4())
@@ -244,21 +245,17 @@ class AgentService:
                     conversation_id=runtime_conversation_id,
                 )
                 async for event in stream_handle.events():
-                    if event.content_delta:
-                        complete_response += event.content_delta
-                        yield StreamingChatResponse(
-                            chunk=event.content_delta,
-                            conversation_id=conversation_id,
-                            is_complete=False,
-                            agent_used=descriptor.key,
-                        )
+                    event.conversation_id = conversation_id
+                    if event.agent is None:
+                        event.agent = descriptor.key
+
+                    if event.text_delta:
+                        complete_response += event.text_delta
+
+                    yield event
+
                     if event.is_terminal:
-                        yield StreamingChatResponse(
-                            chunk="",
-                            conversation_id=conversation_id,
-                            is_complete=True,
-                            agent_used=descriptor.key,
-                        )
+                        break
         finally:
             reset_current_actor(token)
 

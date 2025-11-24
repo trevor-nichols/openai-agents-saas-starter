@@ -418,3 +418,28 @@ RUN_ITEM_EVENT_TO_ITEM_TYPE = {
 #
 # This file can be treated as the canonical “event taxonomy” for your platform.
 
+
+# =============================================================================
+# 5. Backend SSE envelope (api-service /api/v1/chat/stream)
+# =============================================================================
+# The FastAPI layer now forwards every Agents SDK streaming event to the frontend.
+# Each SSE `data:` line JSON-encodes a schema with these fields:
+#
+#   kind             : "raw_response" | "run_item" | "agent_update" | "usage" | "error"
+#   conversation_id  : conversation identifier resolved by the backend
+#   agent_used       : agent that produced the event (after handoffs this updates)
+#   response_id      : upstream response id when available
+#   sequence_number  : Responses API sequence number (raw events only)
+#   raw_type         : Responses API event type (e.g., response.output_text.delta)
+#   run_item_name    : RunItemStreamEvent.name (tool_called, tool_output, etc.)
+#   run_item_type    : item.type (message_output_item, tool_call_item, ...)
+#   tool_call_id     : tool call identifier if present
+#   tool_name        : tool name if present
+#   text_delta       : streamed text delta when applicable
+#   reasoning_delta  : streamed reasoning delta when applicable
+#   new_agent        : set for agent_update events
+#   is_terminal      : True when the stream is complete (response.completed/incomplete/failed)
+#   payload          : JSON-friendly dump of the underlying SDK event for full fidelity
+#
+# UI consumers can drive typing, tool lifecycle, reasoning traces, and handoff banners
+# directly from these fields without re-parsing the SDK objects.

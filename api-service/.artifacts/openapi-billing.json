@@ -1818,10 +1818,17 @@
         },
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Server-sent events stream of agent outputs.",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/StreamingChatEvent"
+                }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamingChatEvent"
+                }
               }
             }
           },
@@ -6091,6 +6098,196 @@
           "token"
         ],
         "title": "StatusSubscriptionVerifyRequest"
+      },
+      "StreamingChatEvent": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "raw_response",
+              "run_item",
+              "agent_update",
+              "usage",
+              "error"
+            ],
+            "title": "Kind"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id",
+            "description": "Conversation identifier."
+          },
+          "agent_used": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Used",
+            "description": "Agent that produced the event."
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id",
+            "description": "Upstream response id when available."
+          },
+          "sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sequence Number",
+            "description": "Sequence number from Responses API."
+          },
+          "raw_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Type",
+            "description": "Underlying Responses API event type."
+          },
+          "run_item_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Item Name",
+            "description": "RunItemStreamEvent name."
+          },
+          "run_item_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Item Type",
+            "description": "RunItem item.type."
+          },
+          "tool_call_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Call Id",
+            "description": "Tool call identifier if present."
+          },
+          "tool_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Name",
+            "description": "Tool name if present."
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent",
+            "description": "Agent associated with the event."
+          },
+          "new_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Agent",
+            "description": "New agent after a handoff."
+          },
+          "text_delta": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text Delta",
+            "description": "Streamed text chunk, if any."
+          },
+          "reasoning_delta": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Delta",
+            "description": "Streamed reasoning chunk, if any."
+          },
+          "is_terminal": {
+            "type": "boolean",
+            "title": "Is Terminal",
+            "description": "Marks terminal event for the stream.",
+            "default": false
+          },
+          "payload": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payload",
+            "description": "Full event body for consumers that need raw fidelity."
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "conversation_id"
+        ],
+        "title": "StreamingChatEvent",
+        "description": "Rich streaming envelope forwarded over SSE to the frontend."
       },
       "StripeEventStatus": {
         "type": "string",

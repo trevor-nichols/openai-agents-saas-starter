@@ -47,6 +47,10 @@ export function AgentWorkspace() {
     currentConversationId,
     selectedAgent,
     setSelectedAgent,
+    activeAgent,
+    toolEvents,
+    reasoningText,
+    lifecycleStatus,
     sendMessage,
     selectConversation,
     startNewConversation,
@@ -141,17 +145,21 @@ export function AgentWorkspace() {
           selectedAgent={selectedAgent}
           onSelectAgent={handleSelectAgent}
           messages={messages}
-          isSending={isSending}
-          isLoadingHistory={isLoadingHistory}
-          isClearingConversation={isClearingConversation}
-          currentConversationId={currentConversationId}
-          errorMessage={errorMessage}
-          onClearError={clearError}
-          onSendMessage={sendMessage}
-          onStartNewConversation={startNewConversation}
-          onShowConversationDetail={handleShowCurrentConversation}
-        />
-      </div>
+        isSending={isSending}
+        isLoadingHistory={isLoadingHistory}
+        isClearingConversation={isClearingConversation}
+        currentConversationId={currentConversationId}
+        errorMessage={errorMessage}
+        onClearError={clearError}
+        onSendMessage={sendMessage}
+        onStartNewConversation={startNewConversation}
+        onShowConversationDetail={handleShowCurrentConversation}
+        activeAgent={activeAgent}
+        tools={toolEvents}
+        reasoningText={reasoningText}
+        lifecycleStatus={lifecycleStatus}
+      />
+    </div>
 
       <div className="flex justify-start">
         <div className="flex flex-wrap gap-2">
