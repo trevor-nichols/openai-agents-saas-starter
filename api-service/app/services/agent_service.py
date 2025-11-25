@@ -16,7 +16,7 @@ from app.api.v1.agents.schemas import AgentStatus, AgentSummary
 from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse
 from app.api.v1.conversations.schemas import ChatMessage, ConversationHistory, ConversationSummary
 from app.core.config import get_settings
-from app.domain.ai import AgentRunUsage
+from app.domain.ai import AgentRunUsage, RunOptions
 from app.domain.ai.models import AgentStreamEvent
 from app.domain.conversations import (
     ConversationMessage,
@@ -24,6 +24,7 @@ from app.domain.conversations import (
     ConversationRepository,
     ConversationSessionState,
 )
+from app.infrastructure.providers.openai.runtime import LifecycleEventBus
 from app.services.agents.context import (
     ConversationActorContext,
     reset_current_actor,
@@ -126,6 +127,7 @@ class AgentService:
                     runtime_conversation_id = conversation_id
                 elif allow_openai_uuid_fallback:
                     runtime_conversation_id = conversation_id
+            run_options = self._build_run_options(request.run_options)
             with trace(workflow_name="Agent Chat", group_id=conversation_id):
                 result = await provider.runtime.run(
                     descriptor.key,
@@ -133,6 +135,7 @@ class AgentService:
                     session=session_handle,
                     conversation_id=runtime_conversation_id,
                     metadata={"prompt_runtime_ctx": runtime_ctx},
+                    options=run_options,
                 )
         finally:
             reset_current_actor(token)
@@ -259,6 +262,8 @@ class AgentService:
                     runtime_conversation_id = conversation_id
                 elif allow_openai_uuid_fallback:
                     runtime_conversation_id = conversation_id
+            lifecycle_bus = LifecycleEventBus()
+            run_options = self._build_run_options(request.run_options, hook_sink=lifecycle_bus)
             with trace(workflow_name="Agent Chat Stream", group_id=conversation_id):
                 stream_handle = provider.runtime.run_stream(
                     descriptor.key,
@@ -266,6 +271,7 @@ class AgentService:
                     session=session_handle,
                     conversation_id=runtime_conversation_id,
                     metadata={"prompt_runtime_ctx": runtime_ctx},
+                    options=run_options,
                 )
                 async for event in stream_handle.events():
                     event.conversation_id = conversation_id
@@ -279,6 +285,10 @@ class AgentService:
 
                     if event.is_terminal:
                         break
+                # Drain any remaining lifecycle events
+                async for leftover in lifecycle_bus.drain():
+                    leftover.conversation_id = conversation_id
+                    yield leftover
         finally:
             reset_current_actor(token)
 
@@ -456,9 +466,11 @@ class AgentService:
         state = await self._conversation_service.get_session_state(
             conversation_id, tenant_id=tenant_id
         )
-        rebind_to_provider = os.getenv(
-            "FORCE_PROVIDER_SESSION_REBIND", ""
-        ).lower() in ("1", "true", "yes")
+        rebind_to_provider = os.getenv("FORCE_PROVIDER_SESSION_REBIND", "").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
         if provider_conversation_id and (
             rebind_to_provider or not (state and state.sdk_session_id)
         ):
@@ -535,6 +547,18 @@ class AgentService:
                 )
 
         await self._usage_recorder.record_batch(tenant_id, entries)
+
+    @staticmethod
+    def _build_run_options(payload: Any, hook_sink: Any | None = None) -> RunOptions | None:
+        if not payload:
+            return RunOptions(hook_sink=hook_sink) if hook_sink else None
+        return RunOptions(
+            max_turns=getattr(payload, "max_turns", None),
+            previous_response_id=getattr(payload, "previous_response_id", None),
+            handoff_input_filter=getattr(payload, "handoff_input_filter", None),
+            run_config=getattr(payload, "run_config", None),
+            hook_sink=hook_sink,
+        )
 
     @staticmethod
     def _to_chat_message(message: ConversationMessage) -> ChatMessage:

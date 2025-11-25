@@ -1,6 +1,6 @@
 """Domain models and ports for provider-agnostic AI orchestration."""
 
-from .models import AgentDescriptor, AgentRunResult, AgentRunUsage, AgentStreamEvent
+from .models import AgentDescriptor, AgentRunResult, AgentRunUsage, AgentStreamEvent, RunOptions
 from .ports import (
     AgentProvider,
     AgentRuntime,
@@ -14,6 +14,7 @@ __all__ = [
     "AgentRunResult",
     "AgentRunUsage",
     "AgentStreamEvent",
+    "RunOptions",
     "AgentProvider",
     "AgentRuntime",
     "AgentSessionHandle",

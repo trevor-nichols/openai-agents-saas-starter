@@ -50,7 +50,9 @@ class CapturingRuntime:
     def __init__(self):
         self.calls: list[str | None] = []
 
-    async def run(self, agent_key, message, *, session=None, conversation_id=None, metadata=None):
+    async def run(
+        self, agent_key, message, *, session=None, conversation_id=None, metadata=None, options=None
+    ):
         self.calls.append(conversation_id)
         return AgentRunResult(final_output="ok", response_id="resp", usage=None, metadata={})
 

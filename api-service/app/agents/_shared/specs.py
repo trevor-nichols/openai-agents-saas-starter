@@ -36,6 +36,7 @@ class AgentSpec:
       specific handoff target ("full" = default, "fresh" = no history, "last_turn"
       = trim to most recent turn or two). This mirrors the SDK handoff
       `input_filter` without forcing every agent to re-implement it.
+    - `handoff_overrides` allows per-target tool metadata and filters (see HandoffConfig).
     """
 
     key: str
@@ -60,6 +61,8 @@ class AgentSpec:
     handoff_context: dict[str, Literal["full", "fresh", "last_turn"]] = field(
         default_factory=dict
     )
+    # Fine-grained per-target handoff metadata.
+    handoff_overrides: dict[str, HandoffConfig] = field(default_factory=dict)
 
     def prompt_source(self) -> str:
         if self.instructions:
@@ -73,4 +76,13 @@ class AgentSpec:
             raise ValueError(f"Agent '{self.key}' must supply instructions or prompt_path")
 
 
-__all__ = ["AgentSpec"]
+__all__ = ["AgentSpec", "HandoffConfig"]
+@dataclass(frozen=True, slots=True)
+class HandoffConfig:
+    """Optional per-target handoff customization."""
+
+    tool_name: str | None = None
+    tool_description: str | None = None
+    input_filter: str | None = None  # maps to registry-defined filter
+    input_type: str | None = None  # dotted path to a pydantic/BaseModel type
+    is_enabled: bool | None = None

@@ -38,6 +38,20 @@ class AgentRunResult:
 
 
 @dataclass(slots=True)
+class RunOptions:
+    """Provider-agnostic knobs forwarded into SDK runs."""
+
+    max_turns: int | None = None
+    previous_response_id: str | None = None
+    # Raw RunConfig kwargs; providers decide which keys they support.
+    run_config: Mapping[str, Any] | None = None
+    # Global handoff input filter name (provider-resolved).
+    handoff_input_filter: str | None = None
+    # Hook sink used to surface lifecycle events (e.g., to SSE).
+    hook_sink: Any | None = None
+
+
+@dataclass(slots=True)
 class AgentStreamEvent:
     """Normalized streaming envelope the service can forward to clients.
 
@@ -52,7 +66,14 @@ class AgentStreamEvent:
     when present so the UI can render without re-inspecting the raw payload.
     """
 
-    kind: Literal["raw_response", "run_item", "agent_update", "usage", "error"]
+    kind: Literal[
+        "raw_response",
+        "run_item",
+        "agent_update",
+        "usage",
+        "error",
+        "lifecycle",
+    ]
 
     conversation_id: str | None = None
     response_id: str | None = None
@@ -74,6 +95,9 @@ class AgentStreamEvent:
     # Streaming content helpers
     text_delta: str | None = None
     reasoning_delta: str | None = None
+
+    # Lifecycle event descriptor (for hooks)
+    event: str | None = None
 
     # Terminal marker for the stream consumer
     is_terminal: bool = False
@@ -120,4 +144,5 @@ __all__ = [
     "AgentRunResult",
     "AgentRunUsage",
     "AgentStreamEvent",
+    "RunOptions",
 ]

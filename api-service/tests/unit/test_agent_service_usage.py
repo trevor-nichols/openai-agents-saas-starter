@@ -47,6 +47,7 @@ class FakeSessionStore:
 class FakeStreamingHandle(AgentStreamingHandle):
     def __init__(self):
         self._events = [
+            AgentStreamEvent(kind="lifecycle", event="agent_start", agent="triage"),
             AgentStreamEvent(
                 kind="raw_response",
                 raw_type="response.output_text.delta",
@@ -190,9 +191,14 @@ async def test_chat_stream_records_usage():
     actor = ConversationActorContext(tenant_id="tenant-stream", user_id="user")
     request = AgentChatRequest(message="hello stream")
 
-    async for _ in service.chat_stream(request, actor=actor):
-        pass
+    yielded = []
+
+    async for evt in service.chat_stream(request, actor=actor):
+        yielded.append(evt)
 
     assert len(sync_calls) == 1
     assert len(calls) == 1
     assert calls[0]["tenant_id"] == "tenant-stream"
+    # lifecycle + two raw_response events
+    kinds = [e.kind for e in yielded]
+    assert "lifecycle" in kinds

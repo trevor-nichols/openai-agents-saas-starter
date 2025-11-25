@@ -2,7 +2,7 @@
 # Purpose: Validate tool registry wiring and hosted web search integration
 
 from types import SimpleNamespace
-from typing import cast
+from typing import Any, cast
 
 import pytest
 from agents import Agent, WebSearchTool
@@ -164,9 +164,9 @@ def test_handoff_fresh_policy_preserves_payload(monkeypatch):
     assert input_filter is not None
 
     data = HandoffInputData(
-        input_history=("old_turn",),
-        pre_handoff_items=("pre",),
-        new_items=("payload",),
+        input_history="old_turn",
+        pre_handoff_items=cast(tuple[Any, ...], ()),
+        new_items=cast(tuple[Any, ...], ()),
     )
 
     filtered = input_filter(data)

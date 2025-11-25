@@ -5,7 +5,13 @@ from __future__ import annotations
 from collections.abc import AsyncIterator, Mapping, Sequence
 from typing import Any, Protocol, runtime_checkable
 
-from .models import AgentDescriptor, AgentRunResult, AgentRunUsage, AgentStreamEvent
+from .models import (
+    AgentDescriptor,
+    AgentRunResult,
+    AgentRunUsage,
+    AgentStreamEvent,
+    RunOptions,
+)
 
 AgentSessionHandle = Any
 
@@ -46,6 +52,7 @@ class AgentRuntime(Protocol):
         session: AgentSessionHandle | None = None,
         conversation_id: str | None = None,
         metadata: Mapping[str, Any] | None = None,
+        options: RunOptions | None = None,
     ) -> AgentRunResult:
         ...
 
@@ -57,6 +64,7 @@ class AgentRuntime(Protocol):
         session: AgentSessionHandle | None = None,
         conversation_id: str | None = None,
         metadata: Mapping[str, Any] | None = None,
+        options: RunOptions | None = None,
     ) -> AgentStreamingHandle:
         ...
 

@@ -49,6 +49,12 @@ registration; the OpenAI Agents SDK runtime is unchanged.
   missing targets.
 - `wrap_with_handoff_prompt=True` will prepend the SDK handoff guidance to the
   prompt (useful for orchestrators like `triage`).
+- `handoff_context` controls how much history is forwarded (`full`, `fresh`, `last_turn`).
+- `handoff_overrides` let you fine-tune each transfer:
+  - `tool_name` / `tool_description`
+  - `input_filter` (keyed to `app/agents/_shared/handoff_filters.py`)
+  - `input_type` (dotted path to a Pydantic model for validation)
+  - `is_enabled` (bool toggle)
 
 ## Models
 - `model_key` selects the override in settings: `agent_<model_key>_model`.
@@ -83,6 +89,11 @@ registration; the OpenAI Agents SDK runtime is unchanged.
 ### Rendering flow
 - AgentService builds a `PromptRuntimeContext` (actor, conversation_id, request_message, settings) and passes it through to the provider runtime.
 - The OpenAI registry renders the prompt at request time with that context; handoff wrapping is applied after rendering.
+- Chat API accepts `run_options` to pass through SDK controls:
+  - `previous_response_id`, `max_turns`
+  - `handoff_input_filter` (global)
+  - `run_config` (SDK `RunConfig` fields: guardrails, tracing, model overrides)
+- Lifecycle hooks are bridged to SSE via `kind="lifecycle"` stream events (agent/tool/LLM start/end, handoff).
 
 ## Testing checklist
 - `hatch run lint`

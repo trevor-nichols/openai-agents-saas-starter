@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
-from collections.abc import AsyncIterator, Mapping
-from typing import Any
+from collections.abc import AsyncIterable, AsyncIterator, Mapping
+from typing import Any, Protocol, cast, runtime_checkable
 
-from agents import Runner
+from agents import Agent, Runner
+from agents.lifecycle import RunHooksBase
+from agents.run import RunConfig
 from agents.usage import Usage
 
+from app.agents._shared.handoff_filters import get_filter as get_handoff_filter
 from app.agents._shared.prompt_context import PromptRuntimeContext
 from app.core.config import get_settings
-from app.domain.ai import AgentRunResult, AgentRunUsage, AgentStreamEvent
+from app.domain.ai import AgentRunResult, AgentRunUsage, AgentStreamEvent, RunOptions
 from app.domain.ai.ports import (
     AgentRuntime,
     AgentSessionHandle,
@@ -74,15 +78,113 @@ def _extract_tool_info(item: Any) -> tuple[str | None, str | None]:
     return tool_call_id, tool_name
 
 
+@runtime_checkable
+class LifecycleEventSink(Protocol):
+    async def emit(self, event: AgentStreamEvent) -> None: ...
+
+    def drain(self) -> AsyncIterable[AgentStreamEvent]: ...
+
+
+class LifecycleEventBus:
+    """Lightweight async queue for lifecycle events emitted by hooks."""
+
+    def __init__(self) -> None:
+        self._queue: asyncio.Queue[AgentStreamEvent] = asyncio.Queue()
+
+    async def emit(self, event: AgentStreamEvent) -> None:
+        await self._queue.put(event)
+
+    def drain(self) -> AsyncIterable[AgentStreamEvent]:
+        """Async generator to drain queued events without blocking."""
+
+        async def _gen():
+            while not self._queue.empty():
+                yield await self._queue.get()
+
+        return _gen()
+
+
+class _HookRelay(RunHooksBase[Any, Agent[Any]]):
+    """Bridges SDK RunHooks events into AgentStreamEvent lifecycle messages."""
+
+    def __init__(self, bus: LifecycleEventSink) -> None:
+        self._bus = bus
+
+    async def on_agent_start(self, context, agent):
+        await self._bus.emit(
+            AgentStreamEvent(
+                kind="lifecycle",
+                event="agent_start",
+                agent=_extract_agent_name(agent),
+            )
+        )
+
+    async def on_agent_end(self, context, agent, output):
+        await self._bus.emit(
+            AgentStreamEvent(kind="lifecycle", event="agent_end", agent=_extract_agent_name(agent))
+        )
+
+    async def on_handoff(self, context, from_agent, to_agent):
+        await self._bus.emit(
+            AgentStreamEvent(
+                kind="lifecycle",
+                event="handoff",
+                agent=_extract_agent_name(from_agent),
+                new_agent=_extract_agent_name(to_agent),
+            )
+        )
+
+    async def on_tool_start(self, context, agent, tool):
+        await self._bus.emit(
+            AgentStreamEvent(
+                kind="lifecycle",
+                event="tool_start",
+                agent=_extract_agent_name(agent),
+                tool_name=getattr(tool, "name", None),
+            )
+        )
+
+    async def on_tool_end(self, context, agent, tool, result):
+        await self._bus.emit(
+            AgentStreamEvent(
+                kind="lifecycle",
+                event="tool_end",
+                agent=_extract_agent_name(agent),
+                tool_name=getattr(tool, "name", None),
+            )
+        )
+
+    async def on_llm_start(self, context, agent, system_prompt, input_items):
+        await self._bus.emit(
+            AgentStreamEvent(kind="lifecycle", event="llm_start", agent=_extract_agent_name(agent))
+        )
+
+    async def on_llm_end(self, context, agent, response):
+        await self._bus.emit(
+            AgentStreamEvent(kind="lifecycle", event="llm_end", agent=_extract_agent_name(agent))
+        )
+
+
 class OpenAIStreamingHandle(AgentStreamingHandle):
     """Wraps the SDK streaming iterator to emit normalized events."""
 
-    def __init__(self, *, stream, agent_key: str, metadata: Mapping[str, Any]) -> None:
+    def __init__(
+        self,
+        *,
+        stream,
+        agent_key: str,
+        metadata: Mapping[str, Any],
+        lifecycle_bus: LifecycleEventSink | None = None,
+    ) -> None:
         self._stream = stream
         self._agent_key = agent_key
         self.metadata = metadata
+        self._lifecycle_bus = lifecycle_bus
 
     async def events(self) -> AsyncIterator[AgentStreamEvent]:
+        if self._lifecycle_bus:
+            async for ev in self._lifecycle_bus.drain():
+                yield ev
         async for event in self._stream.stream_events():
             if event.type == "raw_response_event":
                 raw = event.data
@@ -145,6 +247,9 @@ class OpenAIStreamingHandle(AgentStreamingHandle):
                     payload=AgentStreamEvent._to_mapping(new_agent),
                     metadata=self.metadata,
                 )
+            if self._lifecycle_bus:
+                async for ev in self._lifecycle_bus.drain():
+                    yield ev
 
     @property
     def last_response_id(self) -> str | None:  # pragma: no cover - passthrough
@@ -181,6 +286,7 @@ class OpenAIAgentRuntime(AgentRuntime):
         session: AgentSessionHandle | None = None,
         conversation_id: str | None = None,
         metadata: Mapping[str, Any] | None = None,
+        options: RunOptions | None = None,
     ) -> AgentRunResult:
         runtime_ctx = None
         safe_metadata: dict[str, Any] = {}
@@ -198,11 +304,33 @@ class OpenAIAgentRuntime(AgentRuntime):
         )
         if agent is None:
             raise ValueError(f"Agent '{agent_key}' is not registered for OpenAI provider")
+        bus: LifecycleEventSink | None = None
+        if options and options.hook_sink:
+            candidate = options.hook_sink
+            if isinstance(candidate, LifecycleEventSink):
+                bus = candidate
+            elif hasattr(candidate, "emit") and hasattr(candidate, "drain"):
+                bus = candidate  # best-effort duck typing
+            else:
+                bus = LifecycleEventBus()
+        hooks = _HookRelay(bus) if bus else None
+        run_kwargs: dict[str, Any] = {}
+        if options:
+            if options.max_turns is not None:
+                run_kwargs["max_turns"] = options.max_turns
+            if options.previous_response_id:
+                run_kwargs["previous_response_id"] = options.previous_response_id
+            run_config = self._build_run_config(options)
+            if run_config is not None:
+                run_kwargs["run_config"] = run_config
+
         result = await Runner.run(
             agent,
             message,
             session=session,
             conversation_id=conversation_id,
+            hooks=cast(RunHooksBase[Any, Agent[Any]] | None, hooks),
+            **run_kwargs,
         )
         # Tests often mock Runner.run to return our domain AgentRunResult directly;
         # support both the SDK response shape and the domain model to keep the
@@ -237,6 +365,7 @@ class OpenAIAgentRuntime(AgentRuntime):
         session: AgentSessionHandle | None = None,
         conversation_id: str | None = None,
         metadata: Mapping[str, Any] | None = None,
+        options: RunOptions | None = None,
     ) -> AgentStreamingHandle:
         runtime_ctx = None
         safe_metadata: dict[str, Any] = {}
@@ -259,11 +388,34 @@ class OpenAIAgentRuntime(AgentRuntime):
         )
         if agent is None:
             raise ValueError(f"Agent '{agent_key}' is not registered for OpenAI provider")
+        bus: LifecycleEventSink | None = None
+        if options and options.hook_sink:
+            candidate = options.hook_sink
+            if isinstance(candidate, LifecycleEventSink):
+                bus = candidate
+            elif hasattr(candidate, "emit") and hasattr(candidate, "drain"):
+                bus = candidate  # best-effort duck typing
+            else:
+                bus = LifecycleEventBus()
+        hooks = _HookRelay(bus) if bus else None
+
+        run_kwargs: dict[str, Any] = {}
+        if options:
+            if options.max_turns is not None:
+                run_kwargs["max_turns"] = options.max_turns
+            if options.previous_response_id:
+                run_kwargs["previous_response_id"] = options.previous_response_id
+            run_config = self._build_run_config(options)
+            if run_config is not None:
+                run_kwargs["run_config"] = run_config
+
         stream = Runner.run_streamed(
             agent,
             message,
             session=session,
             conversation_id=conversation_id,
+            hooks=cast(RunHooksBase[Any, Agent[Any]] | None, hooks),
+            **run_kwargs,
         )
         base_metadata: dict[str, Any] = {"agent_key": agent_key, "model": str(agent.model)}
         metadata_payload = {**base_metadata, **safe_metadata}
@@ -271,7 +423,31 @@ class OpenAIAgentRuntime(AgentRuntime):
             stream=stream,
             agent_key=agent_key,
             metadata=metadata_payload,
+            lifecycle_bus=bus,
         )
+
+    def _build_run_config(self, options: RunOptions | None) -> RunConfig | None:
+        if not options:
+            return None
+        kwargs: dict[str, Any] = {}
+        if options.handoff_input_filter:
+            kwargs["handoff_input_filter"] = get_handoff_filter(options.handoff_input_filter)
+        allowed = {
+            "input_guardrails",
+            "output_guardrails",
+            "model",
+            "model_settings",
+            "tracing_disabled",
+            "trace_include_sensitive_data",
+            "workflow_name",
+        }
+        if options.run_config:
+            for key, value in options.run_config.items():
+                if key in allowed:
+                    kwargs[key] = value
+        if not kwargs:
+            return None
+        return RunConfig(**kwargs)
 
 
 __all__ = ["OpenAIAgentRuntime", "OpenAIStreamingHandle"]

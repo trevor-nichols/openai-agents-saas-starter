@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import logging
 from collections.abc import Callable, Sequence
 from datetime import datetime
@@ -9,8 +10,8 @@ from typing import Any, cast
 
 from agents import Agent, WebSearchTool, function_tool, handoff
 from agents.extensions.handoff_prompt import prompt_with_handoff_instructions
-from agents.handoffs import HandoffInputData
 
+from app.agents._shared.handoff_filters import get_filter as get_handoff_filter
 from app.agents._shared.loaders import (
     default_agent_key,
     resolve_prompt,
@@ -22,7 +23,7 @@ from app.agents._shared.prompt_context import (
 )
 from app.agents._shared.prompt_template import render_prompt
 from app.agents._shared.registry_loader import load_agent_specs
-from app.agents._shared.specs import AgentSpec
+from app.agents._shared.specs import AgentSpec, HandoffConfig
 from app.core.settings import Settings
 from app.domain.ai import AgentDescriptor
 from app.services.agents.context import ConversationActorContext, get_current_actor
@@ -174,11 +175,26 @@ class OpenAIAgentRegistry:
                     f"Agent '{spec.key}' declares handoff to '{target}' which is not loaded"
                 )
             policy = getattr(spec, "handoff_context", {}).get(target, "full")
-            input_filter = self._make_handoff_input_filter(policy)
-            if input_filter:
-                handoff_targets.append(handoff(target_agent, input_filter=input_filter))
-            else:
-                handoff_targets.append(handoff(target_agent))
+            override = getattr(spec, "handoff_overrides", {}).get(target, None)
+            input_filter = self._resolve_handoff_filter(policy=policy, override=override)
+            input_type = self._resolve_input_type(override)
+            tool_name = override.tool_name if isinstance(override, HandoffConfig) else None
+            tool_desc = override.tool_description if isinstance(override, HandoffConfig) else None
+            is_enabled = (
+                override.is_enabled
+                if isinstance(override, HandoffConfig) and override.is_enabled is not None
+                else True
+            )
+
+            kwargs: dict[str, Any] = {
+                "input_filter": input_filter,
+                "tool_name_override": tool_name,
+                "tool_description_override": tool_desc,
+                "is_enabled": is_enabled,
+            }
+            if input_type is not None:
+                kwargs["input_type"] = input_type
+            handoff_targets.append(handoff(target_agent, **kwargs))
 
         return Agent(
             name=spec.display_name,
@@ -298,38 +314,38 @@ class OpenAIAgentRegistry:
                 return override
         return settings.agent_default_model
 
+    def _resolve_handoff_filter(
+        self, *, policy: str, override: HandoffConfig | None
+    ):
+        """Return an SDK handoff input_filter based on policy or override name."""
+
+        # Override takes precedence
+        if override and override.input_filter:
+            return get_handoff_filter(override.input_filter)
+
+        return get_handoff_filter(policy)
+
+    def _resolve_input_type(self, override: HandoffConfig | None):
+        """Resolve dotted-path input type to a Python class if provided."""
+
+        if not override or not override.input_type:
+            return None
+        dotted = override.input_type
+        if ":" in dotted:
+            module_path, attr = dotted.split(":", 1)
+        elif "." in dotted:
+            module_path, attr = dotted.rsplit(".", 1)
+        else:
+            raise ValueError(f"Invalid input_type path '{dotted}'")
+        module = importlib.import_module(module_path)
+        type_obj = getattr(module, attr, None)
+        if type_obj is None:
+            raise ValueError(f"input_type '{dotted}' could not be resolved")
+        return type_obj
+
+    # Backwards-compatible helper used in tests.
     def _make_handoff_input_filter(self, policy: str):
-        """Return an SDK handoff input_filter based on policy string.
-
-        Supported policies:
-        - "full": leave history intact (default)
-        - "fresh": drop all prior history so the target agent starts clean
-        - "last_turn": keep only the most recent turn(s)
-        """
-
-        if policy == "fresh":
-
-            def _fresh(data: HandoffInputData) -> HandoffInputData:
-                # Start the target agent with an empty history but keep the payload
-                # that triggered the handoff so it can respond.
-                return data.clone(input_history=())
-
-            return _fresh
-
-        if policy == "last_turn":
-
-            def _last_turn(data: HandoffInputData) -> HandoffInputData:
-                history = data.input_history
-                trimmed: str | tuple[Any, ...]
-                if isinstance(history, tuple):
-                    trimmed = history[-2:] if len(history) > 2 else history
-                else:
-                    trimmed = history
-                return data.clone(input_history=trimmed)
-
-            return _last_turn
-
-        return None
+        return self._resolve_handoff_filter(policy=policy, override=None)
 
 
 __all__ = ["OpenAIAgentRegistry"]

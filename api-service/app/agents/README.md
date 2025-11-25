@@ -9,6 +9,11 @@ Quick guide for working with agents in this service. For the full runbook see
 - Add `prompt.md.j2` for the system prompt (preferred over inline instructions).
 - Set `capabilities`, optional `model_key`, `handoff_keys`, `default`, and
   `wrap_with_handoff_prompt` as needed.
+- Use `handoff_overrides` when you need per-target customization:
+  - `tool_name` / `tool_description` to rename the transfer tool.
+  - `input_filter` referencing `app/agents/_shared/handoff_filters.py` to trim/redact history.
+  - `input_type` as a dotted path to a Pydantic model to validate handoff payloads.
+  - `is_enabled` to toggle a handoff at runtime (bool or callable via registry logic).
 - (Optional) Control handoff state per target with `handoff_context` mapping
   (`full` | `fresh` | `last_turn`); defaults to `full` when unset.
 - For dynamic prompts, use Jinja-style placeholders (e.g., `{{ user.id }}`) and
