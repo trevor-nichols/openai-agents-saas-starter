@@ -20,7 +20,7 @@ registration; the OpenAI Agents SDK runtime is unchanged.
   `tool_keys`.
 
 ## Adding a new agent
-1) Create a folder `api-service/app/agents/<agent_key>/`.
+1) Create a folder `api-service/src/app/agents/<agent_key>/`.
 2) Add `spec.py` with `get_agent_spec()` returning `AgentSpec`. Required:
    - `key`, `display_name`, `description`
    - prompt: `prompt_path=base_dir/"prompt.md.j2"` (preferred) or `instructions`

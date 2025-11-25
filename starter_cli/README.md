@@ -53,7 +53,7 @@ Most subcommands support headless execution. Provide answers via one or more JSO
 
 - `home` — interactive hub (Rich layout) or summary (`--no-tui`) that surfaces probe status for env, ports, DB, Redis, API, frontend, Stripe/Vault config.
 - `doctor` — runs the same probes headlessly; writes `var/reports/operator-dashboard.{json,md}` by default; `--json PATH` / `--markdown PATH` override; `--strict` promotes warnings to errors; `--profile` overrides `ENVIRONMENT`. Suggested CI gate: `python -m starter_cli.app doctor --strict --profile staging`.
-- `start` — convenience launcher for `dev|backend|frontend`; boots services (`just dev-up`, `hatch run serve`, `pnpm dev --filter web-app`), waits for health up to `--timeout` (default 120s), optional `--open-browser`, and `--skip-infra` to avoid compose. Use `--detached` to leave the stack running in the background (PIDs + logs recorded under `var/run/stack.json` / `var/log`) and `--force` to replace a previously tracked stack.
+- `start` — convenience launcher for `dev|backend|frontend`; boots services (`just dev-up`, `cd api-service && hatch run serve`, `pnpm dev --filter web-app`), waits for health up to `--timeout` (default 120s), optional `--open-browser`, and `--skip-infra` to avoid compose. Use `--detached` to leave the stack running in the background (PIDs + logs recorded under `var/run/stack.json` / `var/log`) and `--force` to replace a previously tracked stack.
 - `stop` — stops the CLI-managed stack started with `start --detached`, sends SIGTERM/SIGKILL to tracked PIDs, runs `docker compose down` when infra was started, and clears `var/run/stack.json`.
 - `setup menu` — setup hub (alias `setup dashboard`) that lists wizard/secrets/stripe/db-release/usage/dev-user/geoip status with progress; interactive by default, `--no-tui` for a table, `--json` for machine output. Also reachable from the Home shortcut `S`.
 - Quick starts: `just start-dev` (compose + backend + frontend), `just start-backend`, `just start-frontend`, and `just doctor` (strict, JSON+MD reports).
@@ -129,7 +129,7 @@ This workflow keeps a single schema-driven wizard while avoiding ad-hoc copying 
 - The wizard now streams a Rich dashboard (milestones, automation phases, rolling activity log). Disable with `--no-tui` if you need minimal output.
 - Prompts are driven by `starter_cli/workflows/setup/schema.yaml`, so Vault/Slack/GeoIP/billing worker questions only appear when prerequisites are satisfied—even in headless runs.
 - Automation phases emit progress to the dashboard and audit summaries. Docker/Vault/Stripe automation existed before; migrations, Redis warm-up, and GeoIP downloads now ride the same rails with automatic retries + remediation notes.
-- The exit checklist leaves only two manual steps: `hatch run serve` (backend) and `pnpm dev` (frontend). You can opt to keep Docker Compose running so those commands work immediately; otherwise the wizard tears down infra during cleanup.
+- The exit checklist leaves only two manual steps: `cd api-service && hatch run serve` (backend) and `pnpm dev` (frontend). You can opt to keep Docker Compose running so those commands work immediately; otherwise the wizard tears down infra during cleanup.
 
 ### Tenant IDs & Conversation APIs
 
@@ -292,7 +292,7 @@ Use this before regenerating the HeyAPI SDK so billing/test-fixture endpoints st
 Utility to merge env files and exec another command (replacement for `scripts/run_with_env.py`):
 
 ```bash
-python -m starter_cli.app --skip-env util run-with-env .env.compose .env.local -- hatch run serve
+python -m starter_cli.app --skip-env util run-with-env .env.compose .env.local -- bash -lc "cd api-service && hatch run serve"
 ```
 
 Later env files win on conflicts; the current shell env is preserved.

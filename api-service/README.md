@@ -177,7 +177,7 @@ After the wizard, use the new `infra` command group instead of raw Just recipes:
 ### 4. Run the Application
 
 ```bash
-hatch run serve
+cd api-service && hatch run serve
 ```
 
 The API will be available at `http://localhost:8000`
@@ -218,7 +218,8 @@ You will be prompted for the password unless you pass `--password`. The command 
 Run the standard backend quality gates before opening a PR:
 
 ```bash
-python scripts/check_secrets.py
+cd api-service
+python ../scripts/check_secrets.py
 hatch run lint
 hatch run typecheck
 hatch run pyright
@@ -230,8 +231,9 @@ hatch run test
 Provision a Postgres instance (see step 5), then run:
 
 ```bash
+cd api-service
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/saas_strarter_db \
-hatch run pytest api-service/tests/integration -m postgres
+hatch run pytest tests/integration -m postgres
 ```
 
 The test suite creates a throwaway database, applies Alembic migrations, and verifies the Postgres conversation and billing repositories.
@@ -489,11 +491,14 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install runtime dependencies and the service package
-COPY pyproject.toml .
-COPY LICENSE .
-COPY run.py .
-COPY api-service ./api-service
-RUN pip install --upgrade pip && pip install --no-cache-dir .
+COPY api-service/pyproject.toml ./pyproject.toml
+COPY api-service/src ./src
+COPY api-service/alembic ./alembic
+COPY starter_contracts ./starter_contracts
+COPY LICENSE ./LICENSE
+RUN pip install --upgrade pip \
+ && pip install --no-cache-dir ./starter_contracts \
+ && pip install --no-cache-dir .
 
 # Provide application defaults (optional)
 ENV HOST=0.0.0.0 \

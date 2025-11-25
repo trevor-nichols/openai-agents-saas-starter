@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-ALLOWED_TOP_LEVEL = {"api-service", "starter_cli", "starter_contracts", "scripts"}
+ALLOWED_TOP_LEVEL = {"api-service", "starter_cli", "starter_contracts", "scripts", "conftest.py"}
 
 
 def test_imports_do_not_pull_app_or_cli_modules(monkeypatch) -> None:

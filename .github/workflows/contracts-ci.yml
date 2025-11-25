@@ -1,0 +1,40 @@
+name: Contracts CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Hatch
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch
+
+      - name: Create Hatch environment
+        working-directory: starter_contracts
+        run: hatch env create
+
+      - name: Lint
+        working-directory: starter_contracts
+        run: hatch run lint
+
+      - name: Type check
+        working-directory: starter_contracts
+        run: hatch run typecheck
+
+      - name: Tests
+        working-directory: starter_contracts
+        run: hatch run test

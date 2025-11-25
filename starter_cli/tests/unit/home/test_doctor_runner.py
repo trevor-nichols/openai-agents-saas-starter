@@ -61,9 +61,9 @@ def test_doctor_json_matches_schema(monkeypatch, tmp_path: Path):
     md_path = tmp_path / "report.md"
     code = runner.run(json_path=json_path, markdown_path=md_path)
     assert code == 0
-    from starter_cli.core.constants import PROJECT_ROOT
+    import starter_contracts
 
-    schema_path = PROJECT_ROOT / "starter_contracts" / "doctor_v1.json"
+    schema_path = Path(starter_contracts.__file__).resolve().parent / "doctor_v1.json"
     schema = json.loads(schema_path.read_text())
     payload = json.loads(json_path.read_text())
     jsonschema.validate(instance=payload, schema=schema)

@@ -28,7 +28,7 @@ async def test_runtime_strips_prompt_ctx_from_metadata(monkeypatch):
     registry = _DummyRegistry(agent)
     runtime = OpenAIAgentRuntime(registry)
 
-    async def fake_run(agent_obj, message, session=None, conversation_id=None):
+    async def fake_run(agent_obj, message, session=None, conversation_id=None, **kwargs):
         class _Result:
             usage = None
             response_id = "resp-1"
@@ -64,7 +64,7 @@ async def test_runtime_bootstraps_prompt_ctx_when_missing(monkeypatch):
     registry = _DummyRegistry(agent)
     runtime = OpenAIAgentRuntime(registry)
 
-    async def fake_run(agent_obj, message, session=None, conversation_id=None):
+    async def fake_run(agent_obj, message, session=None, conversation_id=None, **kwargs):
         class _Result:
             usage = None
             response_id = "resp-1"
@@ -95,7 +95,7 @@ async def test_run_stream_strips_prompt_ctx(monkeypatch):
             if False:
                 yield None
 
-    def fake_run_streamed(agent_obj, message, session=None, conversation_id=None):
+    def fake_run_streamed(agent_obj, message, session=None, conversation_id=None, **kwargs):
         return _Stream()
 
     monkeypatch.setattr(

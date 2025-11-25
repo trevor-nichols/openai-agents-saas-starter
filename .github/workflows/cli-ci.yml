@@ -32,16 +32,21 @@ jobs:
           pip install hatch
 
       - name: Create Hatch environment
+        working-directory: starter_cli
         run: hatch env create
 
       - name: CLI smoke test
+        working-directory: starter_cli
         run: hatch run python -m starter_cli.app --help
 
-      - name: CLI setup dry-run
-        run: hatch run python -m starter_cli.app setup --non-interactive --dry-run
-
       - name: Run CLI unit tests
-        run: hatch run pytest starter_cli/tests
+        working-directory: starter_cli
+        run: hatch run pytest
 
-      - name: Verify CLI environment inventory
-        run: hatch run python -m scripts.cli.verify_env_inventory
+      - name: Lint
+        working-directory: starter_cli
+        run: hatch run lint
+
+      - name: Typecheck
+        working-directory: starter_cli
+        run: hatch run typecheck

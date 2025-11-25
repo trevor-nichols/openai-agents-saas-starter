@@ -15,18 +15,18 @@
 ## 2. System Context
 
 ### 2.1 Current Token Producers
-- `api-service/app/api/v1/auth/router.py` issues access tokens from `/auth/token` and `/auth/refresh` using `create_access_token`; both rely on static HS256 secrets today and will migrate to AuthService once EdDSA lands.  
-- `api-service/app/core/security.py` holds token creation logic (`create_access_token`) and shared secret configuration via `get_settings()`.  
+- `api-service/src/app/api/v1/auth/router.py` issues access tokens from `/auth/token` and `/auth/refresh` using `create_access_token`; both rely on static HS256 secrets today and will migrate to AuthService once EdDSA lands.  
+- `api-service/src/app/core/security.py` holds token creation logic (`create_access_token`) and shared secret configuration via `get_settings()`.  
 - No additional services mint tokens; CLI utilities or background jobs are not yet present.
 
 ### 2.2 Current Token Consumers
-- `api-service/app/core/security.py:get_current_user` verifies incoming bearer tokens and extracts claims for request-scoped context.  
-- `api-service/app/api/dependencies/auth.py:require_current_user` exposes `get_current_user` as a FastAPI dependency for routers.  
-- `api-service/app/api/v1/auth/router.py` uses `require_current_user` to protect `/auth/refresh` and `/auth/me`.  
-- `api-service/app/api/dependencies/tenant.py` imports `require_current_user` to attach tenant context, preparing multi-tenant routing once auth hardening is complete.
+- `api-service/src/app/core/security.py:get_current_user` verifies incoming bearer tokens and extracts claims for request-scoped context.  
+- `api-service/src/app/api/dependencies/auth.py:require_current_user` exposes `get_current_user` as a FastAPI dependency for routers.  
+- `api-service/src/app/api/v1/auth/router.py` uses `require_current_user` to protect `/auth/refresh` and `/auth/me`.  
+- `api-service/src/app/api/dependencies/tenant.py` imports `require_current_user` to attach tenant context, preparing multi-tenant routing once auth hardening is complete.
 
 ### 2.3 Near-Term & External Consumers (Planned)
-- FastAPI routers under `api-service/app/api/v1/` (agents, chat, billing, conversations) are expected to depend on `require_current_user` after AUTH-003, enforcing per-tenant authorization.  
+- FastAPI routers under `api-service/src/app/api/v1/` (agents, chat, billing, conversations) are expected to depend on `require_current_user` after AUTH-003, enforcing per-tenant authorization.  
 - The Next.js frontend (`web-app`) will consume the access token for API calls and fetch JWKS (`/.well-known/jwks.json`) for client-side introspection as needed.  
 - Internal services (analytics, billing pipelines) will verify tokens against the published JWKS; requirements captured in `docs/architecture/authentication-ed25519.md`.  
 - Operational tooling (key-generation CLI, observability jobs) will call into the forthcoming KeySet and revocation stores to manage key lifecycle.

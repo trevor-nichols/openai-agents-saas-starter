@@ -8,10 +8,10 @@ Encapsulate all model-provider specifics behind a narrow set of domain ports so 
 
 ## Key locations
 
-- **Domain ports:** `api-service/app/domain/ai/ports.py` define `AgentRuntime`, `AgentSessionStore`, `AgentStreamingHandle`, and `AgentProvider`.
-- **Domain models:** `api-service/app/domain/ai/models.py` normalize agent descriptors, run results, usage, and stream events.
-- **Provider registry:** `api-service/app/services/agents/provider_registry.py` holds registered providers and exposes `get_default()`.
-- **OpenAI provider:** `api-service/app/infrastructure/providers/openai/` contains:
+- **Domain ports:** `api-service/src/app/domain/ai/ports.py` define `AgentRuntime`, `AgentSessionStore`, `AgentStreamingHandle`, and `AgentProvider`.
+- **Domain models:** `api-service/src/app/domain/ai/models.py` normalize agent descriptors, run results, usage, and stream events.
+- **Provider registry:** `api-service/src/app/services/agents/provider_registry.py` holds registered providers and exposes `get_default()`.
+- **OpenAI provider:** `api-service/src/app/infrastructure/providers/openai/` contains:
   - `provider.py` — assembles the provider, wiring registry + runtime + session store.
   - `registry.py` — builds agent catalog, handoffs, and tool wiring using `ToolRegistry`.
   - `runtime.py` — wraps `agents.Runner` for sync/streaming runs, normalizes usage/events.
@@ -20,7 +20,7 @@ Encapsulate all model-provider specifics behind a narrow set of domain ports so 
 
 ## Bootstrap flow
 
-FastAPI startup (`api-service/main.py`) now:
+FastAPI startup (`api-service/src/main.py`) now:
 1) Initializes the async engine and repositories.
 2) Builds the OpenAI provider with the shared engine and conversation search callback.
 3) Registers the provider in the registry and sets it as default.

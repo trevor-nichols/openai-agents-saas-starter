@@ -3,8 +3,8 @@ set shell := ["bash", "-uc"]
 # Select the application env file: prefer .env.local, fall back to .env
 env_file := `python -c "import os; print(next((f for f in ['.env.local', '.env'] if os.path.exists(f)), ''))"`
 
-# Environment runner wrapper (merges env files then execs the command)
-env_runner := "python -m starter_cli.app --skip-env util run-with-env"
+# Environment runner wrapper (merges env files then execs the command via starter_cli hatch env)
+env_runner := "cd starter_cli && hatch run python -m starter_cli.app --skip-env util run-with-env"
 vault_dev_compose := "docker compose -f docker-compose.vault-dev.yml"
 
 # Defaults
@@ -73,27 +73,27 @@ help:
 # Provision the Hatch environment with project dependencies
 bootstrap:
     @echo "Creating/refreshing the Hatch environment"
-    hatch env create
+    cd api-service && hatch env create
 
 # Start FastAPI via hatch run serve
 api: _check_env
     @echo "Starting FastAPI via hatch run serve"
-    {{env_runner}} .env.compose {{env_file}} -- hatch run serve
+    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -lc 'cd api-service && hatch run serve'
 
 # Run Alembic migrations with current env
 migrate: _check_env
     @echo "Using .env.compose + {{env_file}}"
-    {{env_runner}} .env.compose {{env_file}} -- hatch run migrate
+    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -lc 'cd api-service && hatch run migrate'
 
 # Create a new Alembic revision (usage: just migration-revision "message")
 migration-revision message: _check_env
     @echo "Using .env.compose + {{env_file}}"
-    {{env_runner}} .env.compose {{env_file}} -- hatch run migration-revision "{{message}}"
+    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -lc 'cd api-service && hatch run migration-revision "{{message}}"'
 
 # Start Postgres + Redis using .env.compose and env file
 dev-up: _check_env
-    {{env_runner}} .env.compose {{env_file}} -- python ops/observability/render_collector_config.py
-    {{env_runner}} .env.compose {{env_file}} -- bash -c '\
+    {{env_runner}} ../.env.compose ../{{env_file}} -- python ops/observability/render_collector_config.py
+    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -c '\
         set -euo pipefail; \
         services="postgres redis"; \
         collector_msg=""; \
@@ -107,11 +107,11 @@ dev-up: _check_env
 
 # Stop the infrastructure stack
 dev-down: _check_env
-    {{env_runner}} .env.compose {{env_file}} -- docker compose down
+    {{env_runner}} ../.env.compose ../{{env_file}} -- docker compose down
 
 # Tail Postgres/Redis logs
 dev-logs: _check_env
-    {{env_runner}} .env.compose {{env_file}} -- bash -c '\
+    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -c '\
         services="postgres redis"; \
         if [ "${ENABLE_OTEL_COLLECTOR:-false}" = "true" ]; then \
             services="${services} otel-collector"; \
@@ -121,7 +121,7 @@ dev-logs: _check_env
 
 # Show running containers
 dev-ps: _check_env
-    {{env_runner}} .env.compose {{env_file}} -- docker compose ps
+    {{env_runner}} ../.env.compose ../{{env_file}} -- docker compose ps
 
 # Start the local Vault dev signer
 vault-up:
@@ -145,23 +145,23 @@ verify-vault: vault-up _check_env
     VAULT_TOKEN={{vault_dev_root_token_id}} \
     VAULT_TRANSIT_KEY={{vault_transit_key}} \
     VAULT_VERIFY_ENABLED=true \
-    {{env_runner}} .env.compose {{env_file}} -- python -m starter_cli.app auth tokens issue-service-account --account dev-automation --scopes conversations:read --output text
+    {{env_runner}} ../.env.compose ../{{env_file}} -- python -m starter_cli.app auth tokens issue-service-account --account dev-automation --scopes conversations:read --output text
 
 # Run fixture-driven Stripe replay tests
 test-stripe: _check_env
-    {{env_runner}} .env.compose {{env_file}} -- hatch run pytest -m stripe_replay
+    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -lc 'cd api-service && hatch run pytest -m stripe_replay'
 
 # Invoke the Stripe replay CLI (usage: just stripe-replay "list --status failed")
 stripe-replay args: _check_env
-    {{env_runner}} .env.compose {{env_file}} -- python -m starter_cli.app stripe dispatches {{args}}
+    {{env_runner}} ../.env.compose ../{{env_file}} -- python -m starter_cli.app stripe dispatches {{args}}
 
 # Capture a webhook signing secret via Stripe CLI and write .env.local
 stripe-listen:
-    python -m starter_cli.app stripe webhook-secret
+    cd starter_cli && hatch run python -m starter_cli.app stripe webhook-secret
 
 # Validate Stripe fixture JSON files
 lint-stripe-fixtures:
-    python -m starter_cli.app stripe dispatches validate-fixtures
+    cd starter_cli && hatch run python -m starter_cli.app stripe dispatches validate-fixtures
 
 # Check docs/trackers/CLI_ENV_INVENTORY.md vs runtime settings
 cli-verify-env:
@@ -169,30 +169,30 @@ cli-verify-env:
 
 # Validate Stripe/Resend env configuration
 validate-providers:
-    python -m starter_cli.app providers validate
+    cd starter_cli && hatch run python -m starter_cli.app providers validate
 
 # Run the consolidated operator CLI (usage: just cli "providers validate")
 cli cmd:
-    python -m starter_cli.app {{cmd}}
+    cd starter_cli && hatch run python -m starter_cli.app {{cmd}}
 
 # Doctor reports
 doctor: _check_env
-    {{env_runner}} .env.compose {{env_file}} -- python -m starter_cli.app doctor --strict --json var/reports/operator-dashboard.json --markdown var/reports/operator-dashboard.md
+    {{env_runner}} ../.env.compose ../{{env_file}} -- python -m starter_cli.app doctor --strict --json var/reports/operator-dashboard.json --markdown var/reports/operator-dashboard.md
 
 # Start stacks via CLI
 start-dev: _check_env
-    {{env_runner}} .env.compose {{env_file}} -- python -m starter_cli.app start dev --timeout 180
+    {{env_runner}} ../.env.compose ../{{env_file}} -- python -m starter_cli.app start dev --timeout 180
 
 start-backend: _check_env
-    {{env_runner}} .env.compose {{env_file}} -- python -m starter_cli.app start backend --timeout 120
+    {{env_runner}} ../.env.compose ../{{env_file}} -- python -m starter_cli.app start backend --timeout 120
 
 start-frontend: _check_env
-    {{env_runner}} .env.compose {{env_file}} -- python -m starter_cli.app start frontend --timeout 120
+    {{env_runner}} ../.env.compose ../{{env_file}} -- python -m starter_cli.app start frontend --timeout 120
 
 # Run Starter CLI wizard with Local-Lite defaults + seed a dev user
 setup-local-lite:
-    python -m starter_cli.app infra deps
-    python -m starter_cli.app setup wizard \
+    cd starter_cli && hatch run python -m starter_cli.app infra deps
+    cd starter_cli && hatch run python -m starter_cli.app setup wizard \
         --profile local \
         --auto-infra \
         --auto-secrets \
@@ -200,7 +200,7 @@ setup-local-lite:
         --auto-redis \
         --no-auto-geoip \
         --auto-dev-user
-    python -m starter_cli.app users ensure-dev
+    cd starter_cli && hatch run python -m starter_cli.app users ensure-dev
     @echo ""
     @echo "Next steps:"
     @echo "  1. Run 'just api' in a new terminal to start FastAPI."
@@ -208,8 +208,8 @@ setup-local-lite:
 
 # Run Starter CLI wizard with Local-Full automation toggles
 setup-local-full:
-    python -m starter_cli.app infra deps
-    python -m starter_cli.app setup wizard \
+    cd starter_cli && hatch run python -m starter_cli.app infra deps
+    cd starter_cli && hatch run python -m starter_cli.app setup wizard \
         --profile local \
         --auto-infra \
         --auto-secrets \
@@ -223,8 +223,8 @@ setup-local-full:
 
 # Run Starter CLI wizard with staging-safe automation
 setup-staging:
-    python -m starter_cli.app infra deps
-    python -m starter_cli.app setup wizard \
+    cd starter_cli && hatch run python -m starter_cli.app infra deps
+    cd starter_cli && hatch run python -m starter_cli.app setup wizard \
         --profile staging \
         --no-auto-infra \
         --no-auto-secrets \
@@ -239,8 +239,8 @@ setup-production:
         echo "Error: set setup_production_answers=/absolute/path/to/answers.json"; \
         exit 1; \
     fi
-    python -m starter_cli.app infra deps
-    python -m starter_cli.app setup wizard \
+    cd starter_cli && hatch run python -m starter_cli.app infra deps
+    cd starter_cli && hatch run python -m starter_cli.app setup wizard \
         --profile production \
         --strict \
         --answers-file {{setup_production_answers}} \
@@ -252,7 +252,7 @@ setup-production:
 
 # Ensure Compose is up and seed a developer account
 seed-dev-user: dev-up _check_env
-    {{env_runner}} .env.compose {{env_file}} -- bash -c ' \
+    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -c ' \
         set -euo pipefail; \
         cmd=(python -m starter_cli.app users seed \
             --email "{{setup_user_email}}" \
@@ -270,7 +270,7 @@ seed-dev-user: dev-up _check_env
 # Issue a service-account refresh token (requires API running)
 issue-demo-token:
     @echo "Ensure FastAPI is running (e.g., 'just api') before issuing a token."
-    python -m starter_cli.app auth tokens issue-service-account \
+    cd starter_cli && hatch run python -m starter_cli.app auth tokens issue-service-account \
         --account "{{setup_service_account}}" \
         --scopes "{{setup_service_scopes}}" \
         {{service_tenant_flag}} \

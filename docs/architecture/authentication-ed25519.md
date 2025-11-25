@@ -19,7 +19,7 @@
 
 ## 2. Current Context
 
-- `api-service/app/core/security.py` currently issues HS256 tokens with static `secret_key` and bcrypt password helpers.
+- `api-service/src/app/core/security.py` currently issues HS256 tokens with static `secret_key` and bcrypt password helpers.
 - No dedicated key lifecycle, no JWKS publication, and no revocation/rotation support.
 - Tests live under `api-service/tests` with mixed unit/integration coverage, minimal fixtures for auth.
 - Milestone tracker `MILESTONE_AUTH_EDDSA_TRACKER.md` defines high-level work items AUTH-001…AUTH-006 that this document elaborates.

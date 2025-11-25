@@ -48,7 +48,7 @@ Production-ready starter kit for building AI Agent SaaS products. The repo bundl
   ```bash
   just api
   ```  
-  Wraps `hatch run serve` with `.env.compose` + `.env.local`. Use `just migrate` / `just migration-revision message="add_users"` for Alembic workflows.
+  Wraps `cd api-service && hatch run serve` with `.env.compose` + `.env.local`. Use `just migrate` / `just migration-revision message="add_users"` for Alembic workflows.
 
 - **Frontend App**  
   ```bash
@@ -83,7 +83,7 @@ Refer to `starter_cli/README.md` for detailed flags, answers-file formats, and c
 - Redis is dual-use: refresh-token cache and billing event transport. Coordinate settings through the wizard or `.env.local`.
 - Secrets live in `var/keys/`; Vault workflows (`just vault-up`, `just verify-vault`) help issue signed tokens locally.
 - Tests are SQLite + fakeredis by default (`conftest.py`); avoid leaking env mutations between tests.
-- Backend edits → `hatch run lint` & `hatch run pyright`; frontend edits → `pnpm lint` & `pnpm type-check`.
+- Backend edits → `cd api-service && hatch run lint` & `hatch run pyright`; frontend edits → `pnpm lint` & `pnpm type-check`.
 
 ## Key References
 - `starter_cli/README.md` – CLI deep dive, command catalog.

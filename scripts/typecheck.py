@@ -14,18 +14,12 @@ def _run_command(label: str, command: Sequence[str]) -> int:
 def main() -> None:
     python = sys.executable
     commands = [
-        ("pyright", [python, "-m", "pyright"]),
-        (
-            "mypy",
-            [
-                python,
-                "-m",
-                "mypy",
-                "api-service",
-                "starter_cli",
-                "starter_contracts",
-            ],
-        ),
+        ("pyright:api-service", [python, "-m", "pyright", "--project", "api-service/pyrightconfig.json"]),
+        ("pyright:starter-cli", [python, "-m", "pyright", "--project", "starter_cli/pyrightconfig.json"]),
+        ("pyright:starter-contracts", [python, "-m", "pyright", "--project", "starter_contracts/pyrightconfig.json"]),
+        ("mypy:api-service", [python, "-m", "mypy", "--config-file", "api-service/pyproject.toml", "api-service/src", "api-service/tests"]),
+        ("mypy:starter-cli", [python, "-m", "mypy", "--config-file", "starter_cli/pyproject.toml", "starter_cli/src", "starter_cli/tests"]),
+        ("mypy:starter-contracts", [python, "-m", "mypy", "--config-file", "starter_contracts/pyproject.toml", "starter_contracts/src", "starter_contracts/tests"]),
     ]
 
     failures: list[str] = []

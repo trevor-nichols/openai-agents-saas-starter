@@ -59,7 +59,7 @@ Use the masked prefixes/suffixes to confirm you copied the right keys without ex
 
 1. Populate the variables above in `.env.local`.
 2. Ensure Postgres is running (`just dev-up`) and run migrations (`just migrate`).
-3. Flip `ENABLE_BILLING=true` and restart the FastAPI server (`hatch run serve` or your preferred process manager).
+3. Flip `ENABLE_BILLING=true` and restart the FastAPI server (`cd api-service && hatch run serve` or your preferred process manager).
 4. On startup the app verifies that Stripe settings are present before wiring the billing repository. Misconfigurations surface immediately with an error that lists the missing env vars.
 
 ## Automation helper

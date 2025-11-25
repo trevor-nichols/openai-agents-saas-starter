@@ -10,6 +10,7 @@ from app.core.provider_validation import ensure_provider_parity, validate_provid
 
 def test_validate_providers_returns_empty_when_features_disabled():
     settings = Settings()
+    settings.openai_api_key = "test-key"
 
     violations = validate_providers(settings, strict=True)
 
@@ -18,6 +19,7 @@ def test_validate_providers_returns_empty_when_features_disabled():
 
 def test_validate_providers_flags_stripe_when_billing_enabled():
     settings = Settings()
+    settings.openai_api_key = "test-key"
     settings.enable_billing = True
     settings.stripe_secret_key = None
     settings.stripe_webhook_secret = None
@@ -37,6 +39,7 @@ def test_validate_providers_flags_stripe_when_billing_enabled():
 def test_validate_providers_handles_resend_in_non_strict_environment():
     settings = Settings()
     settings.environment = "development"
+    settings.openai_api_key = "test-key"
     settings.enable_resend_email_delivery = True
     settings.resend_api_key = None
     settings.resend_default_from = None

@@ -25,7 +25,7 @@ from app.services.billing.billing_service import (
 from app.services.billing.stripe.dispatcher import EventHandler, StripeEventDispatcher
 from tests.utils.sqlalchemy import create_tables
 
-FIXTURES = Path("api-service/tests/fixtures/stripe")
+FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "stripe"
 
 
 class FakeBillingService:

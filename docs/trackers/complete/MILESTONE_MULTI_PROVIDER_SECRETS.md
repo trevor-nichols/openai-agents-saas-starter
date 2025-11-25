@@ -71,7 +71,7 @@ Our SaaS starter currently hardcodes Vault as the only secrets/signing backend. 
 - **Shared:** `starter_contracts/config.py` exposes only the Vault-centric settings to the CLI; `starter_contracts/vault_kv.py` registers the KV client when `auth_key_storage_backend=secret-manager`.
 
 ### 6.2 SecretProvider Protocol (backend + CLI)
-Located in new module `api-service/app/domain/secrets.py` (mirrored under `starter_contracts/secrets/models.py`):
+Located in new module `api-service/src/app/domain/secrets.py` (mirrored under `starter_contracts/secrets/models.py`):
 ```python
 class SecretProviderProtocol(Protocol):
     async def get_secret(self, key: str, *, scope: SecretScope | None = None) -> str: ...

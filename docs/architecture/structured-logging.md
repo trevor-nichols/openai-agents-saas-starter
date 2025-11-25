@@ -51,7 +51,7 @@ Context + event-specific keys are flattened at the top level except for `fields`
 
 ## 4. Sink Configuration Strategy
 
-- `configure_logging(settings)` centralizes `logging.config.dictConfig` so both FastAPI (`api-service/main.py`) and worker entry points can initialize logging consistently.
+- `configure_logging(settings)` centralizes `logging.config.dictConfig` so both FastAPI (`api-service/src/main.py`) and worker entry points can initialize logging consistently.
 - Supported sinks for OBS-006:
   - `stdout` (default): single `StreamHandler` → JSON formatter.
   - `datadog`: custom HTTP handler posts batches to `https://http-intake.logs.<site>/api/v2/logs` using `LOGGING_DATADOG_API_KEY`.
@@ -68,7 +68,7 @@ Context + event-specific keys are flattened at the top level except for `fields`
 ## 6. Implementation Checklist
 
 1. Add context helpers + JSON formatter + sink factory in `app/observability/logging.py`.
-2. Wire `configure_logging(settings)` inside `api-service/main.py` before the FastAPI app instantiates middleware; expose the same helper for worker entry points.
+2. Wire `configure_logging(settings)` inside `api-service/src/main.py` before the FastAPI app instantiates middleware; expose the same helper for worker entry points.
 3. Update `app/middleware/logging.py` to rely on `log_event` and scoped log context rather than string formatting.
 4. Expand rate-limit + Stripe worker instrumentation to include `correlation_id`, `tenant_id`, and worker metadata (covered by follow-up tests once sinks are live).
 5. Document operational guidance here and reference it from `docs/trackers/ISSUE_TRACKER.md`.

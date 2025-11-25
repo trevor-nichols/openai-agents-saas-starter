@@ -48,7 +48,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--root",
         type=str,
-        help="Path to the services directory (defaults to api-service/app/services)",
+        help="Path to the services directory (defaults to api-service/src/app/services)",
     )
     parser.add_argument(
         "--prefix",

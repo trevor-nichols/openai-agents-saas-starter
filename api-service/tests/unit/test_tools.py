@@ -165,8 +165,8 @@ def test_handoff_fresh_policy_preserves_payload(monkeypatch):
 
     data = HandoffInputData(
         input_history="old_turn",
-        pre_handoff_items=cast(tuple[Any, ...], ()),
-        new_items=cast(tuple[Any, ...], ()),
+        pre_handoff_items=cast(tuple[Any, ...], ("pre",)),
+        new_items=cast(tuple[Any, ...], ("payload",)),
     )
 
     filtered = input_filter(data)

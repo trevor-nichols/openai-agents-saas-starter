@@ -18,7 +18,7 @@ violations halt the process immediately so health probes never turn green with a
 
 ## Validation entrypoints
 
-1. **Runtime:** importing `app.main` triggers the same validation, so `hatch run serve`,
+1. **Runtime:** importing `app.main` triggers the same validation, so `cd api-service && hatch run serve`,
    `pytest`, and CI Gunicorn boots all share the guard.
 2. **Operator CLI:** run `python -m starter_cli.app providers validate` (or
    `just validate-providers`). The command loads `.env.compose`, `.env`, and `.env.local`,

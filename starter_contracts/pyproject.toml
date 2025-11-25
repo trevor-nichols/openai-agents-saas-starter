@@ -1,0 +1,91 @@
+[build-system]
+requires = ["hatchling>=1.25.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "starter-contracts"
+version = "0.1.1"
+description = "Shared contracts and validation helpers for the OpenAI Agents starter."
+readme = "../README.md"
+requires-python = ">=3.11"
+license = { file = "../LICENSE" }
+authors = [ { name = "OpenAI Agents Starter Team" } ]
+keywords = ["contracts", "agents", "starter"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+]
+
+dependencies = [
+  "httpx>=0.28.1,<0.29.0",
+  "cryptography>=43.0.0,<44.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.4.3,<9.0.0",
+  "pytest-asyncio>=0.21.1,<0.25.0",
+  "mypy>=1.11.0,<1.13.0",
+  "pyright>=1.1.375,<1.2.0",
+  "ruff>=0.7.0,<0.8.0",
+]
+
+[tool.hatch.build.sources]
+src = "src"
+
+[tool.hatch.build.targets.wheel]
+packages = ["starter_contracts"]
+exclude = ["**/__pycache__", "**/*.pyc"]
+include = ["starter_contracts/py.typed"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/**",
+  "README.md",
+  "../LICENSE",
+  "../README.md",
+]
+exclude = ["**/__pycache__", "**/*.pyc"]
+
+[tool.hatch.envs.default]
+features = ["dev"]
+python = "3.11"
+path = ".venv"
+
+[tool.hatch.envs.default.scripts]
+lint = "ruff check src"
+format = "ruff format src"
+typecheck = "python -m pyright --project pyrightconfig.json && python -m mypy --config-file pyproject.toml src tests"
+test = "pytest"
+pyright = "python -m pyright --project pyrightconfig.json"
+
+[tool.pytest.ini_options]
+pythonpath = ["src", ".."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+src = ["src"]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "C4", "UP", "RUF"]
+ignore = ["B008"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_configs = true
+warn_unused_ignores = true
+strict_equality = true
+namespace_packages = true
+mypy_path = ["src"]
+disallow_any_generics = true
+disallow_subclassing_any = true
+ignore_missing_imports = false

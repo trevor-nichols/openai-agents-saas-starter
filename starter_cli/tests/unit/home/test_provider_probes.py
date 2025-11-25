@@ -20,6 +20,7 @@ def test_probe_registry_order_and_names():
     expected = [
         "environment",
         "ports",
+        "stack",
         "database",
         "redis",
         "api",

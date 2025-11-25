@@ -97,7 +97,8 @@ You should see structured JSON logs coming from FastAPI and mirrored by the coll
 Run the integration test whenever you need proof that FastAPI → OTLP → collector debug exporter still works:
 
 ```bash
-$ hatch run pytest api-service/tests/integration/test_observability_collector.py \
+$ cd api-service
+$ hatch run pytest tests/integration/test_observability_collector.py \
     -m integration -k collector
 ```
 
