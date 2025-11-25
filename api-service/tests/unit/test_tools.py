@@ -6,6 +6,7 @@ from typing import cast
 
 import pytest
 from agents import Agent, WebSearchTool
+from agents.handoffs import HandoffInputData
 from openai.types.responses.web_search_tool_param import UserLocation
 
 from app.agents._shared.loaders import topological_agent_order
@@ -46,8 +47,7 @@ def test_tool_registry_initialization():
 
     assert registry is not None
     assert hasattr(registry, "register_tool")
-    assert hasattr(registry, "get_all_tools")
-    assert hasattr(registry, "get_core_tools")
+    assert hasattr(registry, "list_tool_names")
 
 
 def test_initialize_tools_registers_web_search():
@@ -58,26 +58,6 @@ def test_initialize_tools_registers_web_search():
 
     categories = registry.list_categories()
     assert "web_search" in categories
-
-
-def test_tool_registry_get_core_tools():
-    registry = ToolRegistry()
-
-    def core_tool():
-        return "core"
-
-    def scoped_tool():
-        return "scoped"
-
-    registry.register_tool(core_tool, metadata={"core": True})
-    registry.register_tool(scoped_tool, metadata={"core": False, "agents": ["triage"]})
-
-    core_tools = registry.get_core_tools()
-
-    tool_names = {
-        getattr(tool, "name", getattr(tool, "__name__", str(tool))) for tool in core_tools
-    }
-    assert tool_names == {"core_tool"}
 
 
 # =============================================================================
@@ -99,16 +79,12 @@ def test_tool_registry_integration():
     search_tool = registry.get_tool("web_search")
     assert isinstance(search_tool, WebSearchTool)
 
-    web_tools = registry.get_tools_by_category("web_search")
-    tool_names = [getattr(tool, "name", getattr(tool, "__name__", str(tool))) for tool in web_tools]
-    assert "web_search" in tool_names
-
     tool_info = registry.get_tool_info("web_search")
     assert tool_info is not None
     assert tool_info["name"] == "web_search"
     assert tool_info["category"] == "web_search"
     assert "metadata" in tool_info
-    assert tool_info["metadata"]["agents"] == ["data_analyst", "triage"]
+    assert "provider" in tool_info["metadata"]
 
 
 def test_tool_can_be_used_by_agent():
@@ -150,55 +126,86 @@ def _build_openai_registry(monkeypatch, registry: ToolRegistry):
 
 def test_tool_registry_provides_tools_for_agents(monkeypatch):
     registry = initialize_tools()
-    _build_openai_registry(monkeypatch, registry)
+    openai_registry = _build_openai_registry(monkeypatch, registry)
 
-    triage_tools = registry.get_tools_for_agent("triage")
-
-    agent = Agent(
-        name="Test Agent",
-        instructions="You are a test agent.",
-        tools=triage_tools,
-    )
+    agent = openai_registry.get_agent_handle("triage", validate_prompts=False)
+    assert agent is not None
 
     tool_names = [tool.name for tool in agent.tools]
-    assert "web_search" in tool_names
-    assert "get_current_time" in tool_names
+    assert tool_names == ["web_search", "get_current_time", "search_conversations"]
 
 
-def test_get_tools_for_agent_filters_by_metadata():
+def test_resolve_tools_order_and_missing():
     registry = ToolRegistry()
 
-    def core_tool():
-        return "core"
+    def a_tool():
+        return "a"
 
-    def code_tool():
-        return "code"
+    def b_tool():
+        return "b"
 
-    def data_tool():
-        return "data"
+    registry.register_tool(a_tool)
+    registry.register_tool(b_tool)
 
-    registry.register_tool(core_tool, metadata={"core": True})
-    registry.register_tool(code_tool, metadata={"core": False, "agents": ["code_assistant"]})
-    registry.register_tool(
-        data_tool,
-        metadata={
-            "core": False,
-            "capabilities": ["analysis"],
-        },
+    resolved = registry.resolve_tools(["a_tool", "b_tool"])
+    assert [t.__name__ for t in resolved] == ["a_tool", "b_tool"]
+
+    with pytest.raises(ValueError):
+        registry.resolve_tools(["a_tool", "missing"], ignore_missing=False)
+
+    resolved_missing_ok = registry.resolve_tools(["a_tool", "missing"], ignore_missing=True)
+    assert [t.__name__ for t in resolved_missing_ok] == ["a_tool"]
+
+
+def test_handoff_fresh_policy_preserves_payload(monkeypatch):
+    registry = ToolRegistry()
+    openai_registry = _build_openai_registry(monkeypatch, registry)
+    input_filter = openai_registry._make_handoff_input_filter("fresh")
+    assert input_filter is not None
+
+    data = HandoffInputData(
+        input_history=("old_turn",),
+        pre_handoff_items=("pre",),
+        new_items=("payload",),
     )
 
-    code_tools = registry.get_tools_for_agent("code_assistant")
-    data_tools = registry.get_tools_for_agent("data_analyst", capabilities=["analysis"])
+    filtered = input_filter(data)
+    assert filtered.input_history == ()
+    assert filtered.new_items == ("payload",)
+    assert filtered.pre_handoff_items == ("pre",)
 
-    code_names = {
-        getattr(tool, "name", getattr(tool, "__name__", str(tool))) for tool in code_tools
-    }
-    data_names = {
-        getattr(tool, "name", getattr(tool, "__name__", str(tool))) for tool in data_tools
-    }
 
-    assert code_names == {"core_tool", "code_tool"}
-    assert data_names == {"core_tool", "data_tool"}
+def test_select_tools_missing_required_raises(monkeypatch):
+    registry = ToolRegistry()  # intentionally empty (no required tools)
+
+    monkeypatch.setattr(
+        "app.infrastructure.providers.openai.registry.initialize_tools", lambda: registry
+    )
+    # Skip registering built-in tools so required tool_keys stay missing.
+    monkeypatch.setattr(
+        "app.infrastructure.providers.openai.registry.OpenAIAgentRegistry._register_builtin_tools",
+        lambda self: None,
+    )
+
+    with pytest.raises(ValueError):
+        _build_openai_registry(monkeypatch, registry)
+
+
+def test_select_tools_missing_optional_web_search(monkeypatch):
+    registry = ToolRegistry()
+
+    # Only register built-ins (added by _register_builtin_tools), skip web_search
+    monkeypatch.setattr(
+        "app.infrastructure.providers.openai.registry.initialize_tools", lambda: registry
+    )
+
+    openai_registry = _build_openai_registry(monkeypatch, registry)
+    agent = openai_registry.get_agent_handle("triage", validate_prompts=False)
+    assert agent is not None
+
+    tool_names = [tool.name for tool in agent.tools]
+    assert "web_search" not in tool_names
+    assert set(tool_names) == {"get_current_time", "search_conversations"}
 
 
 def test_web_search_tool_applies_request_location(monkeypatch):

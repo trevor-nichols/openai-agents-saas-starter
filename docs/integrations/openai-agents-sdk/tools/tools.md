@@ -28,36 +28,19 @@ Tool = Union[
 ]
 A tool that can be used in an agent.
 
-## Acme tool scoping
+## Tool assignment in this starter
 
-In this starter project every tool is registered with `ToolRegistry`, which adds
-metadata describing how the triage platform can use it. When calling
-`registry.register_tool(...)` you can include:
+We mirror the OpenAI Agents SDK pattern directly: each `AgentSpec` declares an
+explicit, ordered `tool_keys` tuple, and `OpenAIAgentRegistry` resolves those
+keys from the `ToolRegistry` at startup. There is **no** core/automatic inclusion
+or capability-based filtering anymore; missing required tools fail fast during
+agent build. Optional tools (e.g., `web_search` when `OPENAI_API_KEY` is absent)
+log a warning and are skipped.
 
-- `core`: `True` if the tool should be shared across every agent (defaults to `True`).
-- `agents`: A list of agent identifiers (`"triage"`, `"code_assistant"`, etc.)
-  that are allowed to call the tool even if it is not core.
-- `capabilities`: Arbitrary capability tags (`"web_search"`, `"billing"`, …)
-  that the registry can match against each agent’s declared skills.
-
-`OpenAIAgentRegistry` requests tools via `registry.get_tools_for_agent(name, capabilities=...)`
-so each agent only sees the subset of tools it is cleared for. Example:
-
-```python
-registry.register_tool(
-    WebSearchTool(),
-    category="web_search",
-    metadata={
-        "description": "Search the web for current information",
-        "core": False,
-        "agents": ["triage", "data_analyst"],
-        "capabilities": ["web_search"],
-    },
-)
-```
-
-Adding a new agent now only requires tagging tools appropriately—no need to edit
-every agent definition.
+Adding a tool means:
+1. Register it once in `initialize_tools()` with a stable name.
+2. Add that name to the desired agent’s `tool_keys`.
+3. (Optional) pass runtime customizations (like `user_location`) in `_select_tools`.
 
 FunctionToolResult dataclass
 Source code in src/agents/tool.py

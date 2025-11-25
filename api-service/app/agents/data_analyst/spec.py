@@ -13,6 +13,7 @@ def get_agent_spec() -> AgentSpec:
         description="Supports analytical and quantitative queries.",
         model_key="data",
         capabilities=("analysis", "search"),
+        tool_keys=("web_search", "get_current_time", "search_conversations"),
         prompt_path=base_dir / "prompt.md.j2",
         prompt_context_keys=("user", "tenant", "agent", "run", "env"),
     )

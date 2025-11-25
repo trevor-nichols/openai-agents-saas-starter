@@ -13,6 +13,7 @@ def get_agent_spec() -> AgentSpec:
         description="Primary triage assistant orchestrating handoffs.",
         model_key="triage",
         capabilities=("general", "search", "handoff"),
+        tool_keys=("web_search", "get_current_time", "search_conversations"),
         prompt_path=base_dir / "prompt.md.j2",
         handoff_keys=("code_assistant", "data_analyst"),
         default=True,

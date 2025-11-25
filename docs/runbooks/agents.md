@@ -7,38 +7,41 @@ registration; the OpenAI Agents SDK runtime is unchanged.
 ## Concepts
 - **AgentSpec** (`app/agents/_shared/specs.py`): declarative metadata for one
   agent (key, display_name, description, model_key, capabilities, prompt
-  source, handoff targets, default flag).
+  source, handoff targets, default flag, tool_keys, optional handoff_context).
 - **Prompt source**: either inline `instructions` or an external `prompt.md.j2`
   (`prompt_path`). Use `prompt.md.j2` for any non-trivial prompt.
-- **Capabilities**: tuples of strings used to match tools; replace the old
-  `_AGENT_CAPABILITIES` map.
+- **Capabilities**: tuples of strings used for catalog/display only; tool
+  selection is explicit via `tool_keys`.
 - **Handoffs**: `handoff_keys` names of other agents this agent can delegate to.
-- **ToolRegistry**: single place tools are registered and targeted via
-  metadata (`core`, `agents`, `capabilities`, `category`).
+  Per-handoff state control: set `handoff_context={"target_key": "full"|"fresh"|"last_turn"}`
+  to choose how much history the target sees (default `full`).
+- **ToolRegistry**: single place tools are registered by name. No automatic
+  inclusion or capability filtering—agents list the tools they need via
+  `tool_keys`.
 
 ## Adding a new agent
 1) Create a folder `api-service/app/agents/<agent_key>/`.
 2) Add `spec.py` with `get_agent_spec()` returning `AgentSpec`. Required:
    - `key`, `display_name`, `description`
    - prompt: `prompt_path=base_dir/"prompt.md.j2"` (preferred) or `instructions`
-   - `capabilities`: tuple of strings (used for tool selection)
+   - `capabilities`: tuple of strings (informational/catalog)
+   - `tool_keys`: ordered tuple of tool names to attach (must be registered)
    - optional: `model_key` (maps to `settings.agent_<model_key>_model`),
      `handoff_keys`, `default`, `wrap_with_handoff_prompt`
 3) Add `prompt.md.j2` with the system prompt (templated Markdown/Jinja).
-4) (Optional) Update tools targeting if needed (see below). Discovery is
-   automatic—no central switchboard edits.
+4) (Optional) Register any new tools and add their names to `tool_keys`. Agent
+   discovery is automatic—no central switchboard edits.
 
-## Tool registration & targeting
-- Tools are registered in `app/utils/tools/registry.py::initialize_tools()`.
-- Provide metadata:
-  - `core=True` -> all agents get it.
-  - `agents=["agent_key", ...]` -> explicit targeting.
-  - `capabilities=["foo", ...]` -> any agent with that capability gets it.
-  - `category` and `description` are for cataloging/observability.
-- OpenAI SDK built-ins (e.g., `CodeInterpreterTool`) and custom `@function_tool`
-  are treated the same: instantiate, register with metadata.
-- Env gating: if a tool needs an API key/flag, guard its registration in
-  `initialize_tools()` (see Tavily example).
+## Tool registration & assignment
+- Register tools once in `app/utils/tools/registry.py::initialize_tools()` with
+  a stable name (taken from SDK `.name` or the function `__name__`). Category/
+  metadata are informational only.
+- Attach tools explicitly per agent via `AgentSpec.tool_keys`. Order is
+  preserved.
+- Missing required tools fail fast during agent build. Optional tools (currently
+  only `web_search`, gated by `OPENAI_API_KEY`) log a warning and are skipped.
+- Env gating: guard registration in `initialize_tools()` when a provider key is
+  absent; agents keep running but will lack that optional tool.
 
 ## Handoffs
 - Declare handoffs in the orchestrating agent’s `AgentSpec.handoff_keys`.
@@ -91,7 +94,8 @@ registration; the OpenAI Agents SDK runtime is unchanged.
 ## Troubleshooting
 - **Cycle detected in agent handoffs**: check `handoff_keys` for loops.
 - **Missing handoff target**: ensure the target agent directory/key exists.
-- **Tool not attached**: confirm metadata (`agents`/`capabilities`) and that the
-  tool isn’t gated by missing env vars.
+- **Tool not attached**: ensure the tool is registered in `initialize_tools()`
+  and its name appears in the agent’s `tool_keys`; if optional (e.g.,
+  `web_search`), verify the required env vars are set.
 - **Wrong model**: set the appropriate `AGENT_MODEL_<KEY>` env var (e.g.,
   `AGENT_MODEL_CODE`).

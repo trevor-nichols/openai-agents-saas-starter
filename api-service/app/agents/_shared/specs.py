@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,14 +22,20 @@ class AgentSpec:
     - `model_key` controls which settings override is applied (e.g., "triage"
       resolves to `settings.agent_triage_model`). If unset, `agent_default_model`
       is used.
-    - `capabilities` are used for tool selection; they map to tool metadata
-      and replace the old global capability map.
+    - `capabilities` describe the agent for catalog/filtering; tool selection
+      is now explicit via `tool_keys`.
     - `instructions` or `prompt_path` provide the system prompt. Only one is
       required; `prompt_path` is preferred for long prompts.
     - `handoff_keys` lists other agent keys this agent can delegate to.
     - `default` marks the default agent for the provider.
     - `wrap_with_handoff_prompt` optionally passes the prompt through the SDK
       handoff helper to prepend handoff instructions (useful for orchestrators).
+    - `tool_keys` is the ordered set of tool identifiers that will be attached
+      to the concrete Agent instance (no implicit/default/core tools).
+    - `handoff_context` optionally overrides how much history is forwarded to a
+      specific handoff target ("full" = default, "fresh" = no history, "last_turn"
+      = trim to most recent turn or two). This mirrors the SDK handoff
+      `input_filter` without forcing every agent to re-implement it.
     """
 
     key: str
@@ -45,6 +51,15 @@ class AgentSpec:
     prompt_context_keys: tuple[str, ...] = ()
     prompt_defaults: dict[str, Any] = field(default_factory=dict)
     extra_context_providers: tuple[str, ...] = ()
+    # Explicit tool assignment (mirrors Agents SDK: Agent(..., tools=[...])).
+    tool_keys: tuple[str, ...] = ()
+    # Optional per-handoff context policy keyed by target agent key. Values:
+    # - "full" (default): pass entire history
+    # - "fresh": start with an empty history for the target agent
+    # - "last_turn": keep only the most recent turn(s)
+    handoff_context: dict[str, Literal["full", "fresh", "last_turn"]] = field(
+        default_factory=dict
+    )
 
     def prompt_source(self) -> str:
         if self.instructions:

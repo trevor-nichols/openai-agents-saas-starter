@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable, Sequence
 from datetime import datetime
 from typing import Any, cast
 
 from agents import Agent, WebSearchTool, function_tool, handoff
 from agents.extensions.handoff_prompt import prompt_with_handoff_instructions
+from agents.handoffs import HandoffInputData
 
 from app.agents._shared.loaders import (
     default_agent_key,
@@ -25,6 +27,9 @@ from app.core.settings import Settings
 from app.domain.ai import AgentDescriptor
 from app.services.agents.context import ConversationActorContext, get_current_actor
 from app.utils.tools import ToolRegistry, initialize_tools
+
+logger = logging.getLogger(__name__)
+OPTIONAL_TOOL_KEYS: frozenset[str] = frozenset({"web_search"})
 
 
 class OpenAIAgentRegistry:
@@ -54,7 +59,6 @@ class OpenAIAgentRegistry:
             request_message="",
             settings=self._settings_factory(),
         )
-
         self._register_builtin_tools()
         # Build cached agents without strict validation; per-request rendering
         # runs with StrictUndefined using runtime context.
@@ -113,53 +117,6 @@ class OpenAIAgentRegistry:
             raise RuntimeError("No default agent configured for OpenAI provider.")
         return fallback
 
-    def _register_builtin_tools(self) -> None:
-        self._tool_registry.register_tool(
-            self._build_current_time_tool(),
-            category="utility",
-            metadata={
-                "description": "Return the current UTC timestamp.",
-                "core": True,
-                "capabilities": ["general"],
-            },
-        )
-        self._tool_registry.register_tool(
-            self._build_conversation_search_tool(),
-            category="conversation",
-            metadata={
-                "description": "Search cached conversation history.",
-                "core": True,
-                "capabilities": ["conversation", "search"],
-            },
-        )
-
-    def _build_current_time_tool(self):
-        @function_tool
-        async def get_current_time() -> str:
-            return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-
-        return get_current_time
-
-    def _build_conversation_search_tool(self):
-        conversation_searcher = self._conversation_searcher
-
-        @function_tool
-        async def search_conversations(query: str) -> str:
-            actor = get_current_actor()
-            if actor is None:
-                return "Conversation search is unavailable until tenant context is established."
-            results = await conversation_searcher(tenant_id=actor.tenant_id, query=query)
-            if hasattr(results, "items"):
-                results = results.items
-            if not results:
-                return "No conversations contained the requested text."
-            top_matches = "\n".join(
-                f"{result.conversation_id}: {result.preview}" for result in results[:5]
-            )
-            return f"Found {len(results)} matching conversations:\n{top_matches}"
-
-        return search_conversations
-
     def _build_agents_from_specs(
         self,
         *,
@@ -199,9 +156,7 @@ class OpenAIAgentRegistry:
         tools = self._select_tools(spec, runtime_ctx=runtime_ctx)
         raw_prompt = resolve_prompt(spec)
         prompt_ctx = (
-            {}
-            if runtime_ctx is None
-            else self._build_prompt_context(spec, runtime_ctx=runtime_ctx)
+            {} if runtime_ctx is None else self._build_prompt_context(spec, runtime_ctx=runtime_ctx)
         )
         instructions = render_prompt(
             raw_prompt,
@@ -218,7 +173,12 @@ class OpenAIAgentRegistry:
                 raise ValueError(
                     f"Agent '{spec.key}' declares handoff to '{target}' which is not loaded"
                 )
-            handoff_targets.append(handoff(target_agent))
+            policy = getattr(spec, "handoff_context", {}).get(target, "full")
+            input_filter = self._make_handoff_input_filter(policy)
+            if input_filter:
+                handoff_targets.append(handoff(target_agent, input_filter=input_filter))
+            else:
+                handoff_targets.append(handoff(target_agent))
 
         return Agent(
             name=spec.display_name,
@@ -242,9 +202,29 @@ class OpenAIAgentRegistry:
     def _select_tools(
         self, spec: AgentSpec, *, runtime_ctx: PromptRuntimeContext | None
     ) -> list[Any]:
-        tools = self._tool_registry.get_tools_for_agent(
-            spec.key, capabilities=spec.capabilities
-        )
+        tool_keys = getattr(spec, "tool_keys", ()) or ()
+        tools: list[Any] = []
+        missing_required: list[str] = []
+        missing_optional: list[str] = []
+        for name in tool_keys:
+            tool = self._tool_registry.get_tool(name)
+            if tool is None:
+                if name in OPTIONAL_TOOL_KEYS:
+                    missing_optional.append(name)
+                else:
+                    missing_required.append(name)
+                continue
+            tools.append(tool)
+        if missing_required:
+            raise ValueError(
+                f"Agent '{spec.key}' declares tool_keys {tool_keys} but these tools are "
+                f"not registered: {', '.join(missing_required)}"
+            )
+        if missing_optional:
+            logger.warning(
+                "tools.missing_optional_for_agent",
+                extra={"agent": spec.key, "missing_tools": missing_optional},
+            )
 
         # Clone hosted web search tool with request-scoped location, if provided.
         if runtime_ctx and runtime_ctx.user_location:
@@ -264,6 +244,47 @@ class OpenAIAgentRegistry:
 
         return tools
 
+    def _register_builtin_tools(self) -> None:
+        """Register internal utility tools; agents opt in via tool_keys."""
+
+        self._tool_registry.register_tool(
+            self._build_current_time_tool(),
+            category="utility",
+            metadata={"description": "Return the current UTC timestamp."},
+        )
+        self._tool_registry.register_tool(
+            self._build_conversation_search_tool(),
+            category="conversation",
+            metadata={"description": "Search cached conversation history."},
+        )
+
+    def _build_current_time_tool(self):
+        @function_tool
+        async def get_current_time() -> str:
+            return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+
+        return get_current_time
+
+    def _build_conversation_search_tool(self):
+        conversation_searcher = self._conversation_searcher
+
+        @function_tool
+        async def search_conversations(query: str) -> str:
+            actor = get_current_actor()
+            if actor is None:
+                return "Conversation search is unavailable until tenant context is established."
+            results = await conversation_searcher(tenant_id=actor.tenant_id, query=query)
+            if hasattr(results, "items"):
+                results = results.items
+            if not results:
+                return "No conversations contained the requested text."
+            top_matches = "\n".join(
+                f"{result.conversation_id}: {result.preview}" for result in results[:5]
+            )
+            return f"Found {len(results)} matching conversations:\n{top_matches}"
+
+        return search_conversations
+
     def _build_prompt_context(
         self, spec: AgentSpec, *, runtime_ctx: PromptRuntimeContext
     ) -> dict[str, Any]:
@@ -276,6 +297,39 @@ class OpenAIAgentRegistry:
             if override:
                 return override
         return settings.agent_default_model
+
+    def _make_handoff_input_filter(self, policy: str):
+        """Return an SDK handoff input_filter based on policy string.
+
+        Supported policies:
+        - "full": leave history intact (default)
+        - "fresh": drop all prior history so the target agent starts clean
+        - "last_turn": keep only the most recent turn(s)
+        """
+
+        if policy == "fresh":
+
+            def _fresh(data: HandoffInputData) -> HandoffInputData:
+                # Start the target agent with an empty history but keep the payload
+                # that triggered the handoff so it can respond.
+                return data.clone(input_history=())
+
+            return _fresh
+
+        if policy == "last_turn":
+
+            def _last_turn(data: HandoffInputData) -> HandoffInputData:
+                history = data.input_history
+                trimmed: str | tuple[Any, ...]
+                if isinstance(history, tuple):
+                    trimmed = history[-2:] if len(history) > 2 else history
+                else:
+                    trimmed = history
+                return data.clone(input_history=trimmed)
+
+            return _last_turn
+
+        return None
 
 
 __all__ = ["OpenAIAgentRegistry"]
