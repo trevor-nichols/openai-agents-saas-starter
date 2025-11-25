@@ -8,6 +8,12 @@
     "python.pythonPath": "${workspaceFolder}/.venv/bin/python",
     "python.terminal.activateEnvironment": true,
     "basedpyright.analysis.configFilePath": "${workspaceFolder}",
+    "basedpyright.analysis.exclude": [
+        "docs/**"
+    ],
+    "python.analysis.exclude": [
+        "docs/**"
+    ],
     "evenBetterToml.schema.associations": {
         "pyproject.toml": false
     }
