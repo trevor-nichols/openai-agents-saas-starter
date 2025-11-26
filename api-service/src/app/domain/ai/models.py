@@ -31,10 +31,14 @@ class AgentRunUsage:
 class AgentRunResult:
     """Normalized payload returned by provider runtimes."""
 
-    final_output: str
+    final_output: Any
     response_id: str | None = None
     usage: AgentRunUsage | None = None
     metadata: Mapping[str, Any] | None = None
+    # When the provider returns structured (non-string) output, retain it separately.
+    structured_output: Any | None = None
+    # Best-effort string form for downstream consumers that expect text.
+    response_text: str | None = None
 
 
 @dataclass(slots=True)
@@ -107,6 +111,10 @@ class AgentStreamEvent:
 
     # Optional metadata for parity with non-stream responses
     metadata: Mapping[str, Any] | None = None
+
+    # Structured output / text equivalents for final outputs when present
+    structured_output: Any | None = None
+    response_text: str | None = None
 
     @staticmethod
     def _to_mapping(obj: Any) -> Mapping[str, Any] | None:

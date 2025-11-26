@@ -65,6 +65,8 @@ class AgentSpec:
     )
     # Fine-grained per-target handoff metadata.
     handoff_overrides: dict[str, HandoffConfig] = field(default_factory=dict)
+    # Optional structured output configuration (maps to Agents SDK output_type).
+    output: OutputSpec | None = None
 
     def prompt_source(self) -> str:
         if self.instructions:
@@ -78,7 +80,24 @@ class AgentSpec:
             raise ValueError(f"Agent '{self.key}' must supply instructions or prompt_path")
 
 
-__all__ = ["AgentSpec", "HandoffConfig"]
+__all__ = ["AgentSpec", "HandoffConfig", "OutputSpec"]
+
+
+@dataclass(frozen=True, slots=True)
+class OutputSpec:
+    """Declarative structured-output configuration for an agent.
+
+    - mode: "text" leaves output as free-form text.
+    - type_path: dotted import path to a Pydantic model / dataclass to use with AgentOutputSchema.
+    - strict: whether to request strict JSON schema adherence (Structured Outputs). Defaults True.
+    - custom_schema_path: dotted path to a subclass of AgentOutputSchemaBase when a bespoke schema
+      or validation flow is needed (takes precedence over type_path).
+    """
+
+    mode: Literal["text", "json_schema"] = "text"
+    type_path: str | None = None
+    strict: bool = True
+    custom_schema_path: str | None = None
 @dataclass(frozen=True, slots=True)
 class HandoffConfig:
     """Optional per-target handoff customization."""

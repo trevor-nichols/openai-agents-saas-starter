@@ -61,6 +61,10 @@ class AgentChatResponse(BaseModel):
     """Response body returned after the agent processes a message."""
 
     response: str = Field(description="Natural language reply from the agent.")
+    structured_output: Any | None = Field(
+        default=None,
+        description="If the agent used structured outputs, this carries the parsed object.",
+    )
     conversation_id: str = Field(description="Conversation identifier.")
     agent_used: str = Field(description="Agent instance that handled the request.")
     handoff_occurred: bool = Field(
@@ -114,6 +118,17 @@ class StreamingChatEvent(BaseModel):
     reasoning_delta: str | None = Field(
         default=None,
         description="Streamed reasoning chunk, if any.",
+    )
+    response_text: Any | None = Field(
+        default=None,
+        description=(
+            "Final rendered response text when no deltas are sent "
+            "(e.g., structured outputs)."
+        ),
+    )
+    structured_output: Any | None = Field(
+        default=None,
+        description="Parsed structured output when provided by the agent.",
     )
     is_terminal: bool = Field(default=False, description="Marks terminal event for the stream.")
 

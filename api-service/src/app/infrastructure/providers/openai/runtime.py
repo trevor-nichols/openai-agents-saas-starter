@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from collections.abc import AsyncIterable, AsyncIterator, Mapping
 from typing import Any, Protocol, cast, runtime_checkable
@@ -202,12 +203,6 @@ class OpenAIStreamingHandle(AgentStreamingHandle):
                 }:
                     reasoning_delta = _coerce_delta(getattr(raw, "delta", None))
 
-                is_terminal = raw_type in {
-                    "response.completed",
-                    "response.incomplete",
-                    "response.failed",
-                }
-
                 yield AgentStreamEvent(
                     kind="raw_response",
                     response_id=getattr(self._stream, "last_response_id", None),
@@ -215,7 +210,7 @@ class OpenAIStreamingHandle(AgentStreamingHandle):
                     raw_type=raw_type,
                     text_delta=text_delta,
                     reasoning_delta=reasoning_delta,
-                    is_terminal=is_terminal,
+                    is_terminal=False,  # defer terminal until structured-output flush
                     payload=AgentStreamEvent._to_mapping(raw),
                     metadata=self.metadata,
                 )
@@ -250,6 +245,31 @@ class OpenAIStreamingHandle(AgentStreamingHandle):
             if self._lifecycle_bus:
                 async for ev in self._lifecycle_bus.drain():
                     yield ev
+
+        # Emit a final structured-output event once the stream is complete.
+        final_output = getattr(self._stream, "final_output", None)
+        response_id = getattr(self._stream, "last_response_id", None)
+        structured_output = None
+        response_text = None
+        if final_output is not None:
+            if isinstance(final_output, str):
+                response_text = final_output
+            else:
+                structured_output = final_output
+                try:
+                    response_text = json.dumps(final_output, ensure_ascii=False)
+                except Exception:  # pragma: no cover
+                    response_text = str(final_output)
+            yield AgentStreamEvent(
+                kind="run_item",
+                response_id=response_id,
+                is_terminal=True,
+                payload={"structured_output": structured_output, "response_text": response_text},
+                structured_output=structured_output,
+                response_text=response_text,
+                metadata=self.metadata,
+                agent=self._agent_key,
+            )
 
     @property
     def last_response_id(self) -> str | None:  # pragma: no cover - passthrough
@@ -337,11 +357,23 @@ class OpenAIAgentRuntime(AgentRuntime):
             usage = result.usage
             response_id = result.response_id
             final_output = result.final_output
+            structured_output = result.structured_output
+            response_text = result.response_text
         else:
             context = getattr(result, "context_wrapper", None)
             usage = _convert_usage(getattr(context, "usage", None) if context else None)
             response_id = getattr(result, "last_response_id", None)
             final_output = getattr(result, "final_output", "")
+            structured_output = None
+            response_text = None
+            if isinstance(final_output, str):
+                response_text = final_output
+            else:
+                structured_output = final_output
+                try:
+                    response_text = json.dumps(final_output, ensure_ascii=False)
+                except Exception:  # pragma: no cover - fallback serialization
+                    response_text = str(final_output)
         base_metadata: dict[str, Any] = {"agent_key": agent_key, "model": str(agent.model)}
         metadata_payload: Mapping[str, Any]
         if safe_metadata:
@@ -349,10 +381,12 @@ class OpenAIAgentRuntime(AgentRuntime):
         else:
             metadata_payload = base_metadata
         return AgentRunResult(
-            final_output=str(final_output),
+            final_output=final_output,
             response_id=response_id,
             usage=usage,
             metadata=metadata_payload,
+            structured_output=structured_output,
+            response_text=response_text if response_text is not None else str(final_output),
         )
 
     def run_stream(

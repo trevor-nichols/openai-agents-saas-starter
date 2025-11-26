@@ -19,6 +19,36 @@ registration; the OpenAI Agents SDK runtime is unchanged.
   inclusion or capability filtering—agents list the tools they need via
   `tool_keys`.
 
+## Structured outputs (JSON schema)
+- Configure per-agent via `AgentSpec.output: OutputSpec`.
+- Fields:
+  - `mode`: `"text"` (default) or `"json_schema"`.
+  - `type_path`: dotted import path to a Pydantic model or dataclass for the schema.
+  - `strict`: `True` (default) requests Structured Outputs (schema-enforced JSON). `False` requests non-strict schema (best-effort JSON).
+  - `custom_schema_path`: dotted path to an `AgentOutputSchemaBase` subclass for bespoke validation; takes precedence over `type_path`.
+- Example:
+  ```python
+  from app.agents._shared.specs import AgentSpec, OutputSpec
+
+  AgentSpec(
+      key="code_assistant",
+      display_name="Code Assistant",
+      description="Handles software engineering questions and code reviews.",
+      prompt_path=base_dir / "prompt.md.j2",
+      tool_keys=("web_search",),
+      output=OutputSpec(
+          mode="json_schema",
+          type_path="app.agents.schemas.code_assistant:AssistantResponse",
+          strict=True,   # set False for non-strict JSON
+      ),
+  )
+  ```
+- Runtime behavior:
+  - The OpenAI registry injects `Agent.output_type` as an `AgentOutputSchema` (or your custom schema).
+  - Responses include `structured_output` (parsed object) plus `response` (stringified JSON or text).
+  - Conversation history stores the string form; structured payload is preserved on the API response and can be echoed in metadata if needed.
+  - Streaming: a terminal SSE event carries `structured_output` and `response_text`; interim deltas stay unchanged.
+
 ## Adding a new agent
 1) Create a folder `api-service/src/app/agents/<agent_key>/`.
 2) Add `spec.py` with `get_agent_spec()` returning `AgentSpec`. Required:

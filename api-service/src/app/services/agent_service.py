@@ -141,9 +141,10 @@ class AgentService:
         finally:
             reset_current_actor(token)
 
+        response_text = result.response_text or str(result.final_output)
         assistant_message = ConversationMessage(
             role="assistant",
-            content=str(result.final_output),
+            content=response_text,
         )
         await self._conversation_service.append_message(
             conversation_id,
@@ -185,7 +186,8 @@ class AgentService:
 
         tool_overview = provider.tool_overview()
         return AgentChatResponse(
-            response=str(result.final_output),
+            response=response_text,
+            structured_output=result.structured_output,
             conversation_id=conversation_id,
             agent_used=descriptor.key,
             handoff_occurred=False,
@@ -285,6 +287,9 @@ class AgentService:
 
                     if event.text_delta:
                         complete_response += event.text_delta
+                    elif event.response_text and not complete_response:
+                        # For structured outputs with no deltas, use the final rendered text.
+                        complete_response = event.response_text
 
                     yield event
 

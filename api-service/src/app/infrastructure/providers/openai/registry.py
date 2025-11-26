@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import Any, cast
 
 from agents import Agent, CodeInterpreterTool, WebSearchTool, function_tool, handoff
+from agents.agent_output import AgentOutputSchema, AgentOutputSchemaBase
 from agents.extensions.handoff_prompt import prompt_with_handoff_instructions
 
 from app.agents._shared.handoff_filters import get_filter as get_handoff_filter
@@ -23,7 +24,7 @@ from app.agents._shared.prompt_context import (
 )
 from app.agents._shared.prompt_template import render_prompt
 from app.agents._shared.registry_loader import load_agent_specs
-from app.agents._shared.specs import AgentSpec, HandoffConfig
+from app.agents._shared.specs import AgentSpec, HandoffConfig, OutputSpec
 from app.core.settings import Settings
 from app.domain.ai import AgentDescriptor
 from app.services.agents.context import ConversationActorContext, get_current_actor
@@ -207,6 +208,7 @@ class OpenAIAgentRegistry:
             tools=tools,
             handoffs=cast(list[Any], handoff_targets),
             handoff_description=spec.description if handoff_targets else None,
+            output_type=self._resolve_output_type(spec),
         )
 
     def _register_agent(self, spec: AgentSpec, agent: Agent) -> None:
@@ -376,22 +378,62 @@ class OpenAIAgentRegistry:
 
         if not override or not override.input_type:
             return None
-        dotted = override.input_type
+        return self._import_object(override.input_type, expected=None)
+
+    def _resolve_output_type(self, spec: AgentSpec) -> AgentOutputSchemaBase | type[Any] | None:
+        cfg: OutputSpec | None = getattr(spec, "output", None)
+        if cfg is None or cfg.mode == "text":
+            return None
+
+        # Custom schema overrides all.
+        if cfg.custom_schema_path:
+            schema_obj = self._import_object(
+                cfg.custom_schema_path, expected=AgentOutputSchemaBase, label="custom_schema_path"
+            )
+            if isinstance(schema_obj, type) and issubclass(schema_obj, AgentOutputSchemaBase):
+                return schema_obj()
+            if isinstance(schema_obj, AgentOutputSchemaBase):
+                return schema_obj
+            raise ValueError(
+                f"custom_schema_path '{cfg.custom_schema_path}' must resolve to "
+                "AgentOutputSchemaBase or subclass"
+            )
+
+        if not cfg.type_path:
+            raise ValueError(
+                f"Agent '{spec.key}' output.mode=json_schema requires 'type_path' to be set"
+            )
+
+        type_obj = self._import_object(cfg.type_path, expected=None, label="type_path")
+        return AgentOutputSchema(type_obj, strict_json_schema=cfg.strict)
+
+    # Backwards-compatible helper used in tests.
+    def _make_handoff_input_filter(self, policy: str):
+        return self._resolve_handoff_filter(policy=policy, override=None)
+
+    @staticmethod
+    def _import_object(path: str, expected: type[Any] | None = None, label: str | None = None):
+        """Import an object from dotted path with optional type check."""
+
+        dotted = path
         if ":" in dotted:
             module_path, attr = dotted.split(":", 1)
         elif "." in dotted:
             module_path, attr = dotted.rsplit(".", 1)
         else:
-            raise ValueError(f"Invalid input_type path '{dotted}'")
-        module = importlib.import_module(module_path)
-        type_obj = getattr(module, attr, None)
-        if type_obj is None:
-            raise ValueError(f"input_type '{dotted}' could not be resolved")
-        return type_obj
+            raise ValueError(f"Invalid dotted path '{dotted}'")
 
-    # Backwards-compatible helper used in tests.
-    def _make_handoff_input_filter(self, policy: str):
-        return self._resolve_handoff_filter(policy=policy, override=None)
+        module = importlib.import_module(module_path)
+        obj = getattr(module, attr, None)
+        if obj is None:
+            raise ValueError(f"{label or 'object'} '{dotted}' could not be resolved")
+        if expected and not isinstance(obj, expected):
+            # Allow passing classes when expected is a baseclass type
+            if not (isinstance(expected, type) and issubclass(obj, expected)):
+                raise ValueError(
+                    f"{label or 'object'} '{dotted}' must be an instance of {expected.__name__}"
+                )
+        return obj
 
 
 __all__ = ["OpenAIAgentRegistry"]

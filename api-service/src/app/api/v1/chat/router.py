@@ -121,6 +121,8 @@ async def stream_chat_with_agent(
                         new_agent=event.new_agent,
                         text_delta=event.text_delta,
                         reasoning_delta=event.reasoning_delta,
+                        response_text=event.response_text,
+                        structured_output=event.structured_output,
                         is_terminal=event.is_terminal,
                         payload=event.payload if isinstance(event.payload, dict) else None,
                     )
