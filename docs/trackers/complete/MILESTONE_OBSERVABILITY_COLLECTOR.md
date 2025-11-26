@@ -31,7 +31,7 @@ Bundle a turnkey OpenTelemetry Collector into the starter stack so every tenant 
 | # | Task | Owner | Status | Target |
 | - | ---- | ----- | ------ | ------ |
 | 1 | Finalize collector version pin + changelog watcher (start with 0.139.0). | Platform Foundations | ✅ Completed | Nov 18 |
-| 2 | Add `otel-collector` service to `docker-compose.yml`, mount generated config, expose 4318/4317, and update Just recipes. | Platform Foundations | ✅ Completed | Nov 18 |
+| 2 | Add `otel-collector` service to `ops/compose/docker-compose.yml`, mount generated config, expose 4318/4317, and update Just recipes. | Platform Foundations | ✅ Completed | Nov 18 |
 | 3 | Author config renderer (`ops/observability/render_collector_config.py`) with env-driven Sentry/Datadog exporters. | Platform Foundations | ✅ Completed | Nov 18 |
 | 4 | Extend Starter CLI setup wizard to include "Observability" step (sink selection, OTLP endpoint/header prompts, toggle for bundled collector). | Platform Foundations | ✅ Completed | Nov 18 |
 | 5 | Update docs (`docs/trackers/ISSUE_TRACKER.md`, `docs/observability/README.md`) with quick-start + production guidance. | Platform Foundations | ✅ Completed | Nov 18 |

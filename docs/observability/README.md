@@ -46,7 +46,7 @@ The wizard stores secrets in `.env.local` only. The generated collector config l
 
 - `ops/observability/render_collector_config.py` reads the env vars above and emits `var/observability/collector.generated.yaml` whenever `ENABLE_OTEL_COLLECTOR=true`.
 - `just dev-up` (and the CLI’s `starter_cli infra compose up`) call the renderer before running `docker compose up ... otel-collector` so the container always mounts a fresh config.
-- `docker-compose.yml` defines the `otel-collector` service with the generated config volume and exposes the OTLP/diagnostic ports for local use.
+- `ops/compose/docker-compose.yml` defines the `otel-collector` service with the generated config volume and exposes the OTLP/diagnostic ports for local use.
 
 ## Exporter Presets
 

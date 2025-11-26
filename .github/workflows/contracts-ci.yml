@@ -23,18 +23,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install hatch
 
-      - name: Create Hatch environment
-        working-directory: starter_contracts
-        run: hatch env create
+      - name: Install just
+        uses: taiki-e/install-action@v2
+        with:
+          tool: just
+
+      - name: Bootstrap contracts env
+        run: just -f starter_contracts/justfile bootstrap
 
       - name: Lint
-        working-directory: starter_contracts
-        run: hatch run lint
+        run: just contracts-lint
 
       - name: Type check
-        working-directory: starter_contracts
-        run: hatch run typecheck
+        run: just contracts-typecheck
 
       - name: Tests
-        working-directory: starter_contracts
-        run: hatch run test
+        run: just contracts-test

@@ -174,6 +174,22 @@ RATE_LIMIT_HITS_TOTAL = Counter(
     registry=REGISTRY,
 )
 
+# Vector store operations
+VECTOR_STORE_OPERATIONS_TOTAL = Counter(
+    "vector_store_operations_total",
+    "Count of vector store operations segmented by operation and result.",
+    ("operation", "result"),
+    registry=REGISTRY,
+)
+
+VECTOR_STORE_OPERATION_DURATION_SECONDS = Histogram(
+    "vector_store_operation_duration_seconds",
+    "Latency histogram for vector store operations segmented by operation and result.",
+    ("operation", "result"),
+    buckets=_LATENCY_BUCKETS,
+    registry=REGISTRY,
+)
+
 USAGE_GUARDRAIL_DECISIONS_TOTAL = Counter(
     "usage_guardrail_decisions_total",
     "Count of usage guardrail evaluations segmented by decision and plan.",

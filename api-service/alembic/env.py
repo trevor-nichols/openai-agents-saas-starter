@@ -28,6 +28,7 @@ from app.infrastructure.persistence.models.base import Base  # noqa: E402
 importlib.import_module("app.infrastructure.persistence.auth.models")
 importlib.import_module("app.infrastructure.persistence.conversations.models")
 importlib.import_module("app.infrastructure.persistence.billing.models")
+importlib.import_module("app.infrastructure.persistence.vector_stores.models")
 
 config = context.config
 

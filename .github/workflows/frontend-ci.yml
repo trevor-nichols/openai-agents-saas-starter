@@ -62,9 +62,7 @@ jobs:
           git diff --exit-code -- lib/api/client
 
       - name: Lint
-        working-directory: web-app
-        run: pnpm lint
+        run: just web-lint
 
       - name: Type check
-        working-directory: web-app
-        run: pnpm type-check
+        run: just web-typecheck

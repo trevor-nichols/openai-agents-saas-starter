@@ -81,21 +81,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install hatch
 
-      - name: Backend env
-        working-directory: api-service
-        run: hatch env create
+      - name: Bootstrap backend env
+        run: just bootstrap
 
       - name: Lint (ruff)
-        working-directory: api-service
-        run: hatch run lint
+        run: just backend-lint
 
       - name: Static typing (Pyright + Mypy)
-        working-directory: api-service
-        run: hatch run typecheck
+        run: just backend-typecheck
 
       - name: Run backend tests
-        working-directory: api-service
-        run: hatch run test
+        run: just backend-test
 
       - name: Postgres integration smoke tests
         env:

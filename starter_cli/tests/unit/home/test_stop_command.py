@@ -52,6 +52,9 @@ def test_stop_runs_compose_down_with_env(tmp_path, monkeypatch):
 
     tmp_project = tmp_path / "proj"
     tmp_project.mkdir()
+    compose_file = tmp_project / "ops" / "compose" / "docker-compose.yml"
+    compose_file.parent.mkdir(parents=True)
+    compose_file.write_text("version: \"3.11\"\nservices: {}", encoding="utf-8")
     compose_env_path = tmp_project / ".env.compose"
     compose_env_path.write_text("COMPOSE_PROJECT_NAME=myproj\nFOO=bar\n", encoding="utf-8")
 
@@ -74,5 +77,6 @@ def test_stop_runs_compose_down_with_env(tmp_path, monkeypatch):
     args = argparse.Namespace(pidfile=pidfile)
     _handle_stop(args, ctx)
 
-    assert calls["cmd"] == ["docker", "compose", "down"]
+    assert calls["cmd"] == ["docker", "compose", "-f", str(compose_file), "down"]
     assert calls["env"]["COMPOSE_PROJECT_NAME"] == "env-proj"  # env overrides file
+    assert calls["env"]["COMPOSE_FILE"] == str(compose_file)

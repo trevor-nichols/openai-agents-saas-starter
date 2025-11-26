@@ -40,11 +40,14 @@ Tooling rules: each Python package self-owns `ruff`, `mypy/pyright`, coverage co
 - Slim root `pyproject.toml` to tooling-only or drop if unused.
 - Keep root `justfile` as an orchestrator delegating to subproject justfiles (or call `hatch`/`uv` with working directories).
 - Verify docker-compose scripts and env runners still function (update paths they mount/copy).
+- ✅ Completed: root `justfile` now delegates to per-surface Justfiles; compose assets moved to `ops/compose/`; per-package Justfiles added for `api-service`, `starter_cli`, `starter_contracts`, and `web-app`.
 
 ### Phase 4 – CI and developer workflow
 - Update CI jobs to run per-package lint/typecheck/test (`api-service`, `starter_cli`, `starter_contracts`, `web-app`).
 - Cache Python/Node deps per package; ensure artifact paths match the `src` layout.
-- Add a short onboarding doc section describing the new commands.
+ - Add a short onboarding doc section describing the new commands.
+ - ✅ Added a “Quick Command Map” to README covering the new Just delegations.
+- ✅ CI workflows now call per-package Justfiles (backend/cli/contracts/frontend) instead of inlining hatch/pnpm commands.
 
 ### Phase 5 – Docs and snapshots
 - Refresh `README.md`, `AGENTS.md`, relevant `SNAPSHOT.md` files.
@@ -62,7 +65,7 @@ Tooling rules: each Python package self-owns `ruff`, `mypy/pyright`, coverage co
 - Onboarding doc shows one-liners per surface that work on a clean clone.
 
 Current blockers to acceptance:
-- Root cleanup + CI split still pending (Phases 3–4).
+- CI split + onboarding doc updates still pending (Phase 4).
 
 ## Risks and mitigations
 - Path drift in Alembic or env loaders: cover with a smoke test that runs `alembic upgrade head` in CI against SQLite.

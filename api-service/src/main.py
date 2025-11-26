@@ -77,6 +77,11 @@ from app.services.status.status_alert_dispatcher import build_status_alert_dispa
 from app.services.status.status_subscription_service import build_status_subscription_service
 from app.services.usage_policy_service import build_usage_policy_service
 from app.services.users.user_service import build_user_service
+from app.services.vector_stores import (
+    VectorLimitResolver,
+    VectorStoreService,
+    build_vector_store_sync_worker,
+)
 
 # =============================================================================
 # MODULE CONSTANTS
@@ -366,8 +371,32 @@ async def lifespan(app: FastAPI):
                 await service.startup()
             else:
                 logger.info("Billing stream replay/startup disabled by configuration")
+        # Vector limits resolver (plan-aware)
+        container.vector_limit_resolver = VectorLimitResolver(
+            billing_service=billing_service,
+            settings_factory=lambda: settings,
+        )
     else:
         container.usage_policy_service = None
+        container.vector_limit_resolver = None
+
+    # Vector store service (OpenAI vector stores + file search)
+    container.vector_store_service = VectorStoreService(
+        session_factory,
+        get_settings,
+        limit_resolver=container.vector_limit_resolver,
+    )
+
+    # Optional background sync worker
+    if settings.enable_vector_store_sync_worker:
+        if container.vector_store_service is None:
+            raise RuntimeError("Vector store service failed to initialize")
+        container.vector_store_sync_worker = build_vector_store_sync_worker(
+            session_factory=session_factory,
+            settings_factory=lambda: settings,
+            client_factory=container.vector_store_service._openai_client,
+        )
+        await container.vector_store_sync_worker.start()
     try:
         yield
     finally:

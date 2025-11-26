@@ -31,22 +31,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install hatch
 
-      - name: Create Hatch environment
-        working-directory: starter_cli
-        run: hatch env create
+      - name: Bootstrap CLI env
+        run: just -f starter_cli/justfile bootstrap
 
       - name: CLI smoke test
-        working-directory: starter_cli
-        run: hatch run python -m starter_cli.app --help
+        run: cd starter_cli && hatch run python -m starter_cli.app --help
 
       - name: Run CLI unit tests
-        working-directory: starter_cli
-        run: hatch run pytest
+        run: just cli-test
 
       - name: Lint
-        working-directory: starter_cli
-        run: hatch run lint
+        run: just cli-lint
 
       - name: Typecheck
-        working-directory: starter_cli
-        run: hatch run typecheck
+        run: just cli-typecheck

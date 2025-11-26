@@ -9,6 +9,7 @@ from dotenv import dotenv_values
 
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext
+from starter_cli.core.constants import PROJECT_ROOT
 from starter_cli.workflows.home import stack_state
 
 
@@ -61,14 +62,20 @@ def _handle_stop(args: argparse.Namespace, ctx: CLIContext) -> int:
 
 
 def _docker_compose_down() -> None:
+    project_root = ctx_project_root()
+    compose_file = project_root / "ops" / "compose" / "docker-compose.yml"
+    if not compose_file.exists():
+        console.warn(f"Compose file not found at {compose_file}; skipping docker compose down.")
+        return
     try:
         console.info("Running docker compose down for project services…")
-        compose_env = dotenv_values(ctx_project_root() / ".env.compose")
+        compose_env = dotenv_values(project_root / ".env.compose")
         env = {k: v for k, v in compose_env.items() if v is not None}
         env.update(os.environ)  # allow runtime env to override compose defaults
+        env.setdefault("COMPOSE_FILE", str(compose_file))
         subprocess.run(
-            ["docker", "compose", "down"],
-            cwd=ctx_project_root(),
+            ["docker", "compose", "-f", str(compose_file), "down"],
+            cwd=project_root,
             env=env,
             check=True,
             stdout=subprocess.DEVNULL,
@@ -81,10 +88,9 @@ def _docker_compose_down() -> None:
 
 
 def ctx_project_root() -> Path:
-    # Local import to avoid circular dependencies in command registration time.
-    from starter_cli.core.constants import PROJECT_ROOT
+    """Return the project root (kept for test monkeypatching)."""
 
     return PROJECT_ROOT
 
 
-__all__ = ["register"]
+__all__ = ["register", "ctx_project_root"]

@@ -6,6 +6,7 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from app.core.config import get_settings
 from app.infrastructure.redis.factory import reset_redis_factory, shutdown_redis_factory
 from app.services.auth.service_account_service import ServiceAccountTokenService
 from app.services.auth.session_service import UserSessionService
@@ -25,6 +26,11 @@ from app.services.tenant.tenant_settings_service import TenantSettingsService
 from app.services.usage_policy_service import UsagePolicyService
 from app.services.usage_recorder import UsageRecorder
 from app.services.users.user_service import UserService
+from app.services.vector_stores import (
+    VectorLimitResolver,
+    VectorStoreService,
+    VectorStoreSyncWorker,
+)
 
 if TYPE_CHECKING:  # pragma: no cover - type hints only
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -70,6 +76,9 @@ class ApplicationContainer:
     tenant_settings_service: TenantSettingsService = field(
         default_factory=TenantSettingsService
     )
+    vector_limit_resolver: VectorLimitResolver | None = None
+    vector_store_service: VectorStoreService | None = None
+    vector_store_sync_worker: VectorStoreSyncWorker | None = None
     usage_recorder: UsageRecorder = field(default_factory=UsageRecorder)
     usage_policy_service: UsagePolicyService | None = None
 
@@ -79,6 +88,9 @@ class ApplicationContainer:
         await asyncio.gather(
             self.billing_events_service.shutdown(),
             self.stripe_dispatch_retry_worker.shutdown(),
+            *(
+                [self.vector_store_sync_worker.shutdown()] if self.vector_store_sync_worker else []
+            ),
             self.rate_limiter.shutdown(),
             return_exceptions=False,
         )
@@ -102,6 +114,7 @@ class ApplicationContainer:
         self.status_alert_dispatcher = None
         self.geoip_service = NullGeoIPService()
         self.usage_policy_service = None
+        self.vector_store_sync_worker = None
 
 
 _CONTAINER: ApplicationContainer | None = None
@@ -143,10 +156,27 @@ def reset_container() -> ApplicationContainer:
     return container
 
 
+def wire_vector_store_service(container: ApplicationContainer) -> None:
+    """Initialize the vector store service using the shared session factory."""
+
+    if container.vector_store_service is None:
+        if container.session_factory is None:
+            raise RuntimeError("Session factory must be configured before vector store service")
+        settings = get_settings()
+        container.vector_store_service = VectorStoreService(
+            container.session_factory,
+            lambda: settings,
+            limit_resolver=container.vector_limit_resolver,
+        )
+
+
 __all__ = [
     "ApplicationContainer",
     "get_container",
     "reset_container",
     "set_container",
     "shutdown_container",
+    "wire_vector_store_service",
+    "VectorLimitResolver",
+    "VectorStoreSyncWorker",
 ]

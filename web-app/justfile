@@ -1,0 +1,19 @@
+set shell := ["bash", "-uc"]
+
+project_dir := justfile_directory()
+
+default:
+    @just --list
+
+dev:
+    cd {{project_dir}} && pnpm dev
+
+lint:
+    cd {{project_dir}} && pnpm lint
+
+typecheck:
+    cd {{project_dir}} && pnpm type-check
+
+test:
+    cd {{project_dir}} && pnpm test
+

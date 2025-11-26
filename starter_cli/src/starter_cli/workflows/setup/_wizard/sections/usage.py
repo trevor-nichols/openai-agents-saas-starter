@@ -122,6 +122,8 @@ def run(context: WizardContext, provider: InputProvider) -> None:
 
     plan_codes = _prompt_plan_codes(context, provider, existing)
     entitlements = _collect_plan_entitlements(context, provider, plan_codes, existing)
+    if _prompt_vector_limits(context, provider):
+        entitlements = _inject_vector_limits(context, entitlements)
     _write_entitlements_report(context, enabled=True, plans=entitlements)
     console.success(
         "Usage guardrails configured. Remember to seed plan features in Postgres before launch.",
@@ -309,6 +311,67 @@ def _collect_plan_entitlements(
             )
         entitlements.append(PlanEntitlement(plan_code=code, features=features))
     return entitlements
+
+
+def _prompt_vector_limits(context: WizardContext, provider: InputProvider) -> bool:
+    default = context.current_bool("ENABLE_VECTOR_LIMIT_ENTITLEMENTS", True)
+    choice = provider.prompt_bool(
+        key="ENABLE_VECTOR_LIMIT_ENTITLEMENTS",
+        prompt="Add vector storage limits to plan entitlements?",
+        default=default,
+    )
+    context.set_backend_bool("ENABLE_VECTOR_LIMIT_ENTITLEMENTS", choice)
+    return choice
+
+
+def _inject_vector_limits(
+    context: WizardContext, entitlements: list[PlanEntitlement]
+) -> list[PlanEntitlement]:
+    # Align with backend defaults; operators can edit the artifact manually if needed.
+    max_file_mb = int(context.current("VECTOR_MAX_FILE_MB") or 512)
+    max_files_per_store = int(context.current("VECTOR_MAX_FILES_PER_STORE") or 5000)
+    max_stores_per_tenant = int(context.current("VECTOR_MAX_STORES_PER_TENANT") or 10)
+    max_total_bytes = _parse_total_bytes(context.current("VECTOR_MAX_TOTAL_BYTES"))
+
+    vector_features = {
+        "vector.max_file_bytes": max_file_mb * 1024 * 1024,
+        "vector.files_per_store": max_files_per_store,
+        "vector.stores_per_tenant": max_stores_per_tenant,
+    }
+    if max_total_bytes is not None:
+        vector_features["vector.total_bytes_per_tenant"] = max_total_bytes
+
+    updated: list[PlanEntitlement] = []
+    for plan in entitlements:
+        features_map = {f.feature_key: f for f in plan.features}
+        for key, limit in vector_features.items():
+            features_map[key] = PlanFeature(
+                feature_key=key,
+                display_name=key,
+                unit="bytes" if "bytes" in key else "count",
+                is_metered=False,
+                soft_limit=None,
+                hard_limit=limit,
+            )
+        updated.append(
+            PlanEntitlement(
+                plan_code=plan.plan_code,
+                features=list(features_map.values()),
+            )
+        )
+    return updated
+
+
+def _parse_total_bytes(raw: str | None) -> int | None:
+    """Return an int when raw is a number-like string; otherwise None."""
+    if raw is None:
+        return None
+    if raw in {"", "null"}:
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
 
 
 def _prompt_limit(

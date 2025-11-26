@@ -8,6 +8,16 @@ Production-ready starter kit for building AI Agent SaaS products. The repo bundl
 - **Starter CLI** (`starter_cli/`): Operator workflows (setup wizard, secrets onboarding, Stripe provisioning, auth tooling, infra helpers) with side-effect-free imports so CI/CD can run `python -m starter_cli.app`.
 - **Docs & Trackers** (`docs/`): SDK references, frontend UI/data-access guides, CLI milestones, and project trackers.
 
+## Quick Command Map (Just)
+- `just api` / `just migrate` / `just migration-revision "msg"` – backend serve + migrations (delegates to `api-service/justfile`).
+- `just backend-lint | backend-typecheck | backend-test` – backend quality gates.
+- `just cli-lint | cli-typecheck | cli-test` – Starter CLI quality gates.
+- `just contracts-lint | contracts-typecheck | contracts-test` – contracts package gates.
+- `just web-lint | web-typecheck | web-test` – frontend gates (run `pnpm install` first).
+- `just dev-up | dev-down | dev-logs | dev-ps` – Postgres/Redis(+otel) via `ops/compose/docker-compose.yml`.
+- `just vault-up | vault-down | verify-vault` – local Vault dev signer flows.
+- `just cli cmd="..."` – run any CLI command; `just stripe-replay args="list --status failed"` for Stripe tooling.
+
 ## Prerequisites
 | Tool | Version | Notes |
 | --- | --- | --- |

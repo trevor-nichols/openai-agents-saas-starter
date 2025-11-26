@@ -11,6 +11,7 @@ DEFAULT_ENV_FILES: tuple[Path, ...] = (
     PROJECT_ROOT / ".env",
     PROJECT_ROOT / ".env.local",
 )
+DEFAULT_COMPOSE_FILE = PROJECT_ROOT / "ops" / "compose" / "docker-compose.yml"
 TELEMETRY_ENV_FLAG = "STARTER_CLI_TELEMETRY_OPT_IN"
 SKIP_ENV_FLAG = "STARTER_CLI_SKIP_ENV"
 TRUE_LITERALS = {"1", "true", "yes"}

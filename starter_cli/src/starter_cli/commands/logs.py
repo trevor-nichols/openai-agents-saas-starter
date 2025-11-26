@@ -12,6 +12,7 @@ from pathlib import Path
 
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext
+from starter_cli.core.constants import DEFAULT_COMPOSE_FILE
 
 DEFAULT_LINES = 200
 SERVICE_CHOICES = ("all", "api", "frontend", "collector", "postgres", "redis")
@@ -128,6 +129,12 @@ def _plan_targets(
     normalized = _normalize_services(requested, enable_collector=env_bool("ENABLE_OTEL_COLLECTOR"))
 
     compose_cmd = _detect_compose_command()
+    compose_file = DEFAULT_COMPOSE_FILE
+    if compose_cmd and not compose_file.exists():
+        notes.append(
+            ("warn", f"Compose file not found at {compose_file}; skipping compose services.")
+        )
+        compose_cmd = None
     compose_services = {"postgres": "postgres", "redis": "redis", "collector": "otel-collector"}
 
     # Postgres / Redis / Collector via compose
@@ -138,7 +145,7 @@ def _plan_targets(
         if not compose_cmd:
             notes.append(("warn", "docker compose not found; skipping compose-managed services."))
             break
-        cmd = [*compose_cmd, "logs", "--tail", str(lines)]
+        cmd = [*compose_cmd, "-f", str(compose_file), "logs", "--tail", str(lines)]
         if follow:
             cmd.append("-f")
         cmd.append(compose_service)

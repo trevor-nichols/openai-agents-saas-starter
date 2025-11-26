@@ -1,18 +1,20 @@
 set shell := ["bash", "-uc"]
 
-# Select the application env file: prefer .env.local, fall back to .env
+# Root orchestrator: delegates to per-package Justfiles and shared infra.
+
+# Env + helpers
 env_file := `python -c "import os; print(next((f for f in ['.env.local', '.env'] if os.path.exists(f)), ''))"`
-
-# Environment runner wrapper (merges env files then execs the command via starter_cli hatch env)
 env_runner := "cd starter_cli && hatch run python -m starter_cli.app --skip-env util run-with-env"
-vault_dev_compose := "docker compose -f docker-compose.vault-dev.yml"
-
-# Defaults
+api_just := "just -f api-service/justfile"
+cli_just := "just -f starter_cli/justfile"
+contracts_just := "just -f starter_contracts/justfile"
+web_just := "just -f web-app/justfile"
+compose_file := "ops/compose/docker-compose.yml"
+vault_compose_file := "ops/compose/docker-compose.vault-dev.yml"
 vault_dev_port := "18200"
 vault_dev_root_token_id := "vault-dev-root"
 vault_dev_host_addr := "http://127.0.0.1:" + vault_dev_port
 vault_transit_key := "auth-service"
-
 setup_user_email := "dev@example.com"
 setup_user_name := "Dev Admin"
 setup_user_password := ""
@@ -24,77 +26,108 @@ setup_service_scopes := "chat:write,conversations:read"
 setup_service_tenant := ""
 setup_staging_answers := ""
 setup_production_answers := ""
-
-# Computed variables
 staging_answer_flags := if setup_staging_answers != "" { "--non-interactive --answers-file " + setup_staging_answers } else { "" }
 service_tenant_flag := if setup_service_tenant != "" { "--tenant " + setup_service_tenant } else { "" }
 
-# Helper to ensure env file exists
 _check_env:
     @if [ -z "{{env_file}}" ]; then \
         echo "Error: No .env.local or .env file found. Create one before running tasks."; \
         exit 1; \
     fi
 
-# List available commands
 default:
     @just --list
 
 help:
-    @echo "Available commands:" && \
-    echo "  just dev-up                 # Start Postgres + Redis using .env.compose and {{env_file}}" && \
-    echo "  just dev-down               # Stop the infrastructure stack" && \
-    echo "  just dev-logs               # Tail Postgres/Redis logs" && \
-    echo "  just dev-ps                 # Show running containers" && \
-    echo "  just start-dev              # Run CLI start dev (compose + backend + frontend + health)" && \
-    echo "  just start-backend          # Run CLI start backend only" && \
-    echo "  just start-frontend         # Run CLI start frontend only" && \
-    echo "  just vault-up               # Start the local Vault dev signer" && \
-    echo "  just vault-down             # Stop the local Vault dev signer" && \
-    echo "  just vault-logs             # Tail logs for the dev Vault container" && \
-    echo "  just verify-vault           # Spin up Vault dev + run CLI issuance smoke test" && \
-    echo "  just migrate                # Run Alembic migrations with current env" && \
-    echo "  just migration-revision     # Create a new Alembic revision" && \
-    echo "  just bootstrap              # Provision the Hatch environment" && \
-    echo "  just api                    # Run the FastAPI server via hatch" && \
-    echo "  just test-stripe            # Run fixture-driven Stripe replay tests" && \
-    echo "  just stripe-replay args     # Invoke the Stripe dispatch replay via starter-cli" && \
-    echo "  just stripe-listen          # Capture a Stripe webhook secret via Stripe CLI" && \
-    echo "  just lint-stripe-fixtures   # Validate Stripe fixture JSON files" && \
-    echo "  just cli cmd                # Run the consolidated operator CLI" && \
-    echo "  just doctor                 # Run CLI doctor (strict, JSON+MD reports)" && \
-    echo "  just setup-local-lite       # Run Starter CLI wizard with Local-Lite defaults" && \
-    echo "  just setup-local-full       # Run Starter CLI wizard with Local-Full automation" && \
-    echo "  just setup-staging          # Run Starter CLI wizard with staging-safe automation" && \
-    echo "  just setup-production       # Headless production-ready wizard run" && \
-    echo "  just seed-dev-user          # Ensure Compose is up and seed a developer account" && \
-    echo "  just issue-demo-token       # Issue a service-account refresh token"
+    @echo "Core commands:" && \
+    echo "  just dev-up                 # Start Postgres/Redis (and otel if enabled)" && \
+    echo "  just dev-down               # Stop infra stack" && \
+    echo "  just dev-logs               # Tail infra logs" && \
+    echo "  just dev-ps                 # Show infra containers" && \
+    echo "  just api                    # Start FastAPI (delegates to api-service/justfile)" && \
+    echo "  just migrate                # Run Alembic migrations" && \
+    echo "  just migration-revision \"msg\" # Create Alembic revision" && \
+    echo "  just bootstrap              # Create api-service hatch env" && \
+    echo "  just start-dev              # CLI start: compose + backend + frontend" && \
+    echo "  just start-backend          # CLI start backend only" && \
+    echo "  just start-frontend         # CLI start frontend only" && \
+    echo "  just vault-up|vault-down    # Start/stop local Vault dev" && \
+    echo "  just stripe-replay args     # Stripe dispatch replay via CLI" && \
+    echo "  just stripe-listen          # Capture Stripe webhook secret" && \
+    echo "  just lint-stripe-fixtures   # Validate Stripe fixtures" && \
+    echo "  just doctor                 # CLI doctor report" && \
+    echo "  just seed-dev-user          # Seed a developer account" && \
+    echo "  just issue-demo-token       # Issue service-account token" && \
+    echo "Package helpers:" && \
+    echo "  just backend-lint|typecheck|test    # Delegates to api-service" && \
+    echo "  just cli-lint|typecheck|test        # Delegates to starter_cli" && \
+    echo "  just contracts-lint|typecheck|test  # Delegates to starter_contracts" && \
+    echo "  just web-lint|typecheck|dev|test    # Delegates to web-app"
 
-# Provision the Hatch environment with project dependencies
+# -------------------------
+# Package delegation
+# -------------------------
+
 bootstrap:
-    @echo "Creating/refreshing the Hatch environment"
-    cd api-service && hatch env create
+    {{api_just}} bootstrap
 
-# Start FastAPI via hatch run serve
 api: _check_env
-    @echo "Starting FastAPI via hatch run serve"
-    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -lc 'cd api-service && hatch run serve'
+    {{api_just}} serve
 
-# Run Alembic migrations with current env
 migrate: _check_env
-    @echo "Using .env.compose + {{env_file}}"
-    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -lc 'cd api-service && hatch run migrate'
+    {{api_just}} migrate
 
-# Create a new Alembic revision (usage: just migration-revision "message")
 migration-revision message: _check_env
-    @echo "Using .env.compose + {{env_file}}"
-    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -lc 'cd api-service && hatch run migration-revision "{{message}}"'
+    {{api_just}} migration-revision "{{message}}"
 
-# Start Postgres + Redis using .env.compose and env file
+backend-lint:
+    {{api_just}} lint
+
+backend-typecheck:
+    {{api_just}} typecheck
+
+backend-test:
+    {{api_just}} test
+
+cli-lint:
+    {{cli_just}} lint
+
+cli-typecheck:
+    {{cli_just}} typecheck
+
+cli-test:
+    {{cli_just}} test
+
+contracts-lint:
+    {{contracts_just}} lint
+
+contracts-typecheck:
+    {{contracts_just}} typecheck
+
+contracts-test:
+    {{contracts_just}} test
+
+web-lint:
+    {{web_just}} lint
+
+web-typecheck:
+    {{web_just}} typecheck
+
+web-dev:
+    {{web_just}} dev
+
+web-test:
+    {{web_just}} test
+
+# -------------------------
+# Infra (compose)
+# -------------------------
+
 dev-up: _check_env
-    {{env_runner}} ../.env.compose ../{{env_file}} -- python ops/observability/render_collector_config.py
     {{env_runner}} ../.env.compose ../{{env_file}} -- bash -c '\
         set -euo pipefail; \
+        cd ..; \
+        python ops/observability/render_collector_config.py; \
         services="postgres redis"; \
         collector_msg=""; \
         if [ "${ENABLE_OTEL_COLLECTOR:-false}" = "true" ]; then \
@@ -102,43 +135,42 @@ dev-up: _check_env
             collector_msg=" + otel-collector (ports ${OTEL_COLLECTOR_HTTP_PORT:-4318}/${OTEL_COLLECTOR_GRPC_PORT:-4317})"; \
         fi; \
         echo "Starting ${services}${collector_msg}"; \
-        docker compose up -d ${services}; \
+        docker compose -f {{compose_file}} up -d ${services}; \
     '
 
-# Stop the infrastructure stack
 dev-down: _check_env
-    {{env_runner}} ../.env.compose ../{{env_file}} -- docker compose down
+    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -c 'cd .. && docker compose -f {{compose_file}} down'
 
-# Tail Postgres/Redis logs
 dev-logs: _check_env
     {{env_runner}} ../.env.compose ../{{env_file}} -- bash -c '\
+        set -euo pipefail; \
+        cd ..; \
         services="postgres redis"; \
         if [ "${ENABLE_OTEL_COLLECTOR:-false}" = "true" ]; then \
             services="${services} otel-collector"; \
         fi; \
-        docker compose logs -f --tail=100 ${services}; \
+        docker compose -f {{compose_file}} logs -f --tail=100 ${services}; \
     '
 
-# Show running containers
 dev-ps: _check_env
-    {{env_runner}} ../.env.compose ../{{env_file}} -- docker compose ps
+    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -c 'cd .. && docker compose -f {{compose_file}} ps'
 
-# Start the local Vault dev signer
+# -------------------------
+# Vault dev signer
+# -------------------------
+
 vault-up:
     @echo "Starting Vault dev signer on {{vault_dev_host_addr}}"
-    VAULT_DEV_PORT={{vault_dev_port}} VAULT_DEV_ROOT_TOKEN_ID={{vault_dev_root_token_id}} {{vault_dev_compose}} up -d
+    VAULT_DEV_PORT={{vault_dev_port}} VAULT_DEV_ROOT_TOKEN_ID={{vault_dev_root_token_id}} docker compose -f {{vault_compose_file}} up -d
     VAULT_ADDR={{vault_dev_host_addr}} scripts/vault/wait-for-dev.sh
-    HOST_VAULT_ADDR={{vault_dev_host_addr}} VAULT_DEV_ROOT_TOKEN_ID={{vault_dev_root_token_id}} VAULT_TRANSIT_KEY={{vault_transit_key}} {{vault_dev_compose}} exec vault-dev /vault/dev-init.sh
+    HOST_VAULT_ADDR={{vault_dev_host_addr}} VAULT_DEV_ROOT_TOKEN_ID={{vault_dev_root_token_id}} VAULT_TRANSIT_KEY={{vault_transit_key}} docker compose -f {{vault_compose_file}} exec vault-dev /vault/dev-init.sh
 
-# Stop the local Vault dev signer
 vault-down:
-    {{vault_dev_compose}} down
+    docker compose -f {{vault_compose_file}} down
 
-# Tail logs for the dev Vault container
 vault-logs:
-    {{vault_dev_compose}} logs -f --tail=200
+    docker compose -f {{vault_compose_file}} logs -f --tail=200
 
-# Spin up Vault dev + run CLI issuance smoke test
 verify-vault: vault-up _check_env
     @echo "Running service-account issuance via starter CLI (ensure FastAPI is reachable)."
     VAULT_ADDR={{vault_dev_host_addr}} \
@@ -147,39 +179,28 @@ verify-vault: vault-up _check_env
     VAULT_VERIFY_ENABLED=true \
     {{env_runner}} ../.env.compose ../{{env_file}} -- python -m starter_cli.app auth tokens issue-service-account --account dev-automation --scopes conversations:read --output text
 
-# Run fixture-driven Stripe replay tests
-test-stripe: _check_env
-    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -lc 'cd api-service && hatch run pytest -m stripe_replay'
+# -------------------------
+# CLI helpers
+# -------------------------
 
-# Invoke the Stripe replay CLI (usage: just stripe-replay "list --status failed")
 stripe-replay args: _check_env
     {{env_runner}} ../.env.compose ../{{env_file}} -- python -m starter_cli.app stripe dispatches {{args}}
 
-# Capture a webhook signing secret via Stripe CLI and write .env.local
 stripe-listen:
     cd starter_cli && hatch run python -m starter_cli.app stripe webhook-secret
 
-# Validate Stripe fixture JSON files
 lint-stripe-fixtures:
     cd starter_cli && hatch run python -m starter_cli.app stripe dispatches validate-fixtures
 
-# Check docs/trackers/CLI_ENV_INVENTORY.md vs runtime settings
-cli-verify-env:
-    python -m scripts.cli.verify_env_inventory
+test-stripe: _check_env
+    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -lc 'cd api-service && hatch run pytest -m stripe_replay'
 
-# Validate Stripe/Resend env configuration
-validate-providers:
-    cd starter_cli && hatch run python -m starter_cli.app providers validate
-
-# Run the consolidated operator CLI (usage: just cli "providers validate")
 cli cmd:
     cd starter_cli && hatch run python -m starter_cli.app {{cmd}}
 
-# Doctor reports
 doctor: _check_env
     {{env_runner}} ../.env.compose ../{{env_file}} -- python -m starter_cli.app doctor --strict --json var/reports/operator-dashboard.json --markdown var/reports/operator-dashboard.md
 
-# Start stacks via CLI
 start-dev: _check_env
     {{env_runner}} ../.env.compose ../{{env_file}} -- python -m starter_cli.app start dev --timeout 180
 
@@ -189,7 +210,8 @@ start-backend: _check_env
 start-frontend: _check_env
     {{env_runner}} ../.env.compose ../{{env_file}} -- python -m starter_cli.app start frontend --timeout 120
 
-# Run Starter CLI wizard with Local-Lite defaults + seed a dev user
+# Wizards & seeding
+
 setup-local-lite:
     cd starter_cli && hatch run python -m starter_cli.app infra deps
     cd starter_cli && hatch run python -m starter_cli.app setup wizard \
@@ -201,12 +223,8 @@ setup-local-lite:
         --no-auto-geoip \
         --auto-dev-user
     cd starter_cli && hatch run python -m starter_cli.app users ensure-dev
-    @echo ""
-    @echo "Next steps:"
-    @echo "  1. Run 'just api' in a new terminal to start FastAPI."
-    @echo "  2. (Optional) If demo-token automation was disabled, run 'just issue-demo-token' after the API is up."
+    @echo "" && echo "Next: run 'just api' in a new terminal; optionally 'just issue-demo-token' after API is up."
 
-# Run Starter CLI wizard with Local-Full automation toggles
 setup-local-full:
     cd starter_cli && hatch run python -m starter_cli.app infra deps
     cd starter_cli && hatch run python -m starter_cli.app setup wizard \
@@ -218,10 +236,7 @@ setup-local-full:
         --auto-geoip \
         --auto-stripe \
         --auto-dev-user
-    @echo ""
-    @echo "Local-Full ready. Start FastAPI with 'just api' and run 'just issue-demo-token' if needed."
 
-# Run Starter CLI wizard with staging-safe automation
 setup-staging:
     cd starter_cli && hatch run python -m starter_cli.app infra deps
     cd starter_cli && hatch run python -m starter_cli.app setup wizard \
@@ -233,7 +248,6 @@ setup-staging:
         --auto-geoip \
         {{staging_answer_flags}}
 
-# Headless production-ready wizard run
 setup-production:
     @if [ -z "{{setup_production_answers}}" ]; then \
         echo "Error: set setup_production_answers=/absolute/path/to/answers.json"; \
@@ -250,10 +264,10 @@ setup-production:
         --auto-redis \
         --auto-geoip
 
-# Ensure Compose is up and seed a developer account
 seed-dev-user: dev-up _check_env
     {{env_runner}} ../.env.compose ../{{env_file}} -- bash -c ' \
         set -euo pipefail; \
+        cd ..; \
         cmd=(python -m starter_cli.app users seed \
             --email "{{setup_user_email}}" \
             --tenant-slug "{{setup_user_tenant}}" \
@@ -267,7 +281,6 @@ seed-dev-user: dev-up _check_env
         "${cmd[@]}"; \
     '
 
-# Issue a service-account refresh token (requires API running)
 issue-demo-token:
     @echo "Ensure FastAPI is running (e.g., 'just api') before issuing a token."
     cd starter_cli && hatch run python -m starter_cli.app auth tokens issue-service-account \
@@ -275,3 +288,4 @@ issue-demo-token:
         --scopes "{{setup_service_scopes}}" \
         {{service_tenant_flag}} \
         --output json
+

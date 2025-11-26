@@ -32,30 +32,20 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
 
 
 def handle_run_with_env(args: argparse.Namespace, _ctx: CLIContext) -> int:
+    raw = list(args.env_files)
     command = list(args.exec_command)
-    env_files = list(args.env_files)
 
-    # argparse will happily consume everything into env_files (+) if users forget/remix the
-    # separator. Recover by splitting on the first literal "--" when command is empty.
-    if not command and "--" in env_files:
-        dash_index = env_files.index("--")
-        command = env_files[dash_index + 1 :]
-        env_files = env_files[:dash_index]
-
-    # Fallback: argparse drops the literal "--" for REMAINDER under subparsers.
-    # When command is still empty, assume env files are the leading existing files
-    # and the first non-file token starts the command.
     if not command:
-        for idx, token in enumerate(env_files):
-            if not Path(token).is_file() and "=" not in token:
-                command = env_files[idx:]
-                env_files = env_files[:idx]
-                break
+        env_files, command = _split_env_and_command(raw)
+    else:
+        env_files = raw
 
     if command and command[0] == "--":
         command = command[1:]
     if not command:
         raise CLIError("Command is required after env files (use -- to separate).")
+    if command[0].startswith("-"):
+        command = ["/bin/bash", *command]
 
     merged_env = os.environ.copy()
     merged_env.update(_merge_env(env_files))
@@ -65,9 +55,48 @@ def handle_run_with_env(args: argparse.Namespace, _ctx: CLIContext) -> int:
 
 def _merge_env(files: Iterable[str]) -> dict[str, str]:
     merged: dict[str, str] = {}
-    for path in files:
-        merged.update(_load_env(path))
+    for token in files:
+        if "=" in token and not token.startswith("-"):
+            key, _, value = token.partition("=")
+            if key:
+                merged[key] = value
+            continue
+        merged.update(_load_env(token))
     return merged
+
+
+def _split_env_and_command(tokens: list[str]) -> tuple[list[str], list[str]]:
+    """Split env file tokens from command tokens.
+
+    Rules:
+    - If a literal '--' is present, everything after it is command.
+    - Env files are tokens that look like .env files or KEY=VAL pairs.
+    - Absolute paths that are executables (e.g., /bin/bash) are treated as commands.
+    """
+    if "--" in tokens:
+        dash = tokens.index("--")
+        return tokens[:dash], tokens[dash + 1 :]
+
+    env_files: list[str] = []
+    command: list[str] = []
+    for idx, token in enumerate(tokens):
+        if _is_env_token(token):
+            env_files.append(token)
+            continue
+        command = tokens[idx:]
+        break
+    return env_files, command
+
+
+def _is_env_token(token: str) -> bool:
+    path = Path(token)
+    looks_like_env_file = path.is_file() and (
+        path.name.startswith(".env")
+        or path.suffix in {".env", ".compose"}
+        or path.name.endswith(".env.local")
+    )
+    inline_kv = "=" in token and not token.startswith("-")
+    return looks_like_env_file or inline_kv
 
 
 def _load_env(path: str) -> dict[str, str]:

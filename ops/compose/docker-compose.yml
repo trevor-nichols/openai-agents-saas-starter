@@ -34,7 +34,7 @@ services:
     restart: unless-stopped
     command: ["--config=/etc/otelcol-contrib/config.yaml"]
     volumes:
-      - ./var/observability/collector.generated.yaml:/etc/otelcol-contrib/config.yaml:ro
+      - ../../var/observability/collector.generated.yaml:/etc/otelcol-contrib/config.yaml:ro
     ports:
       - "${OTEL_COLLECTOR_HTTP_PORT:-4318}:4318"
       - "${OTEL_COLLECTOR_GRPC_PORT:-4317}:4317"

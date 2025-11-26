@@ -201,25 +201,15 @@ def _create_all_tables(connection) -> None:
 def _import_all_models() -> None:
     """Import all ORM models so they register with the Base metadata."""
 
-    # Auth + identities
+    # ruff: noqa: I001 - keep grouped first-party imports together inside function
+    # Register ORM models so Base.metadata is populated (SQLite auto-migrate path).
     from app.infrastructure.persistence.auth import models as _auth_models  # noqa: F401
-
-    # Billing and subscriptions
     from app.infrastructure.persistence.billing import models as _billing_models  # noqa: F401
-
-    # Conversations and tenant accounts
-    from app.infrastructure.persistence.conversations import (
-        models as _conversation_models,  # noqa: F401
-    )
-
-    # Status telemetry
+    from app.infrastructure.persistence.conversations import models as _conversation_models  # noqa: F401
     from app.infrastructure.persistence.status import models as _status_models  # noqa: F401
-
-    # Stripe events/dispatch
     from app.infrastructure.persistence.stripe import models as _stripe_models  # noqa: F401
-
-    # Tenant settings
     from app.infrastructure.persistence.tenants import models as _tenant_models  # noqa: F401
+    from app.infrastructure.persistence.vector_stores import models as _vector_store_models  # noqa: F401
 
 
 @asynccontextmanager

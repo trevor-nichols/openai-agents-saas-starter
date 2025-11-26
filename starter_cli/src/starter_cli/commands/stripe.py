@@ -786,11 +786,21 @@ def handle_dispatch_validate_fixtures(args: argparse.Namespace, ctx: CLIContext)
 
 
 def _dispatch_status_choices() -> tuple[str, ...]:
+    """Return dispatch status values without hard-importing the backend package at startup.
+
+    The CLI is packaged independently from the FastAPI app (see MILESTONE_PACKAGES);
+    importing `app.*` during parser construction breaks commands like `util run-with-env`
+    that don't need the backend. We attempt the import lazily and fall back to the
+    known status literals if the backend isn't on `sys.path`.
+    """
     from importlib import import_module
 
-    models = import_module("app.infrastructure.persistence.stripe.models")
-    StripeDispatchStatus = models.StripeDispatchStatus
+    try:
+        models = import_module("app.infrastructure.persistence.stripe.models")
+    except ModuleNotFoundError:
+        return ("pending", "in_progress", "failed", "completed")
 
+    StripeDispatchStatus = models.StripeDispatchStatus
     return tuple(status.value for status in StripeDispatchStatus)
 
 
