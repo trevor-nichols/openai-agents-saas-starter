@@ -8,7 +8,7 @@ from collections.abc import Callable, Sequence
 from datetime import datetime
 from typing import Any, cast
 
-from agents import Agent, WebSearchTool, function_tool, handoff
+from agents import Agent, CodeInterpreterTool, WebSearchTool, function_tool, handoff
 from agents.extensions.handoff_prompt import prompt_with_handoff_instructions
 
 from app.agents._shared.handoff_filters import get_filter as get_handoff_filter
@@ -28,6 +28,10 @@ from app.core.settings import Settings
 from app.domain.ai import AgentDescriptor
 from app.services.agents.context import ConversationActorContext, get_current_actor
 from app.utils.tools import ToolRegistry, initialize_tools
+from openai.types.responses.tool_param import (
+    CodeInterpreter,
+    CodeInterpreterContainerCodeInterpreterToolAuto,
+)
 
 logger = logging.getLogger(__name__)
 OPTIONAL_TOOL_KEYS: frozenset[str] = frozenset({"web_search"})
@@ -218,10 +222,12 @@ class OpenAIAgentRegistry:
     def _select_tools(
         self, spec: AgentSpec, *, runtime_ctx: PromptRuntimeContext | None
     ) -> list[Any]:
+        settings = self._settings_factory()
         tool_keys = getattr(spec, "tool_keys", ()) or ()
         tools: list[Any] = []
         missing_required: list[str] = []
         missing_optional: list[str] = []
+        tool_configs = getattr(spec, "tool_configs", {}) or {}
         for name in tool_keys:
             tool = self._tool_registry.get_tool(name)
             if tool is None:
@@ -230,7 +236,47 @@ class OpenAIAgentRegistry:
                 else:
                     missing_required.append(name)
                 continue
-            tools.append(tool)
+            # Code Interpreter special handling (auto vs explicit)
+            if isinstance(tool, CodeInterpreterTool):
+                config = tool_configs.get("code_interpreter", {})
+                mode = config.get("mode", "auto")
+                memory_limit = config.get("memory_limit") or settings.container_default_auto_memory
+                file_ids = config.get("file_ids")
+                container_id: str | None = None
+                if runtime_ctx and runtime_ctx.container_bindings:
+                    container_id = runtime_ctx.container_bindings.get(spec.key)
+                if config.get("container_id"):
+                    container_id = config.get("container_id")
+
+                if mode == "explicit" and not container_id:
+                    if not settings.container_fallback_to_auto_on_missing_binding:
+                        raise ValueError(
+                            f"Agent '{spec.key}' requires explicit code interpreter container "
+                            "but none is bound"
+                        )
+                if container_id:
+                    tool_config: CodeInterpreter = cast(
+                        CodeInterpreter,
+                        {"type": "code_interpreter", "container": container_id},
+                    )
+                    tools.append(CodeInterpreterTool(tool_config=tool_config))
+                else:
+                    auto_container = cast(
+                        CodeInterpreterContainerCodeInterpreterToolAuto,
+                        {"type": "auto", "memory_limit": memory_limit},
+                    )
+                    if file_ids:
+                        auto_container = cast(
+                            CodeInterpreterContainerCodeInterpreterToolAuto,
+                            {"type": "auto", "memory_limit": memory_limit, "file_ids": file_ids},
+                        )
+                    tool_config = cast(
+                        CodeInterpreter,
+                        {"type": "code_interpreter", "container": auto_container},
+                    )
+                    tools.append(CodeInterpreterTool(tool_config=tool_config))
+            else:
+                tools.append(tool)
         if missing_required:
             raise ValueError(
                 f"Agent '{spec.key}' declares tool_keys {tool_keys} but these tools are "

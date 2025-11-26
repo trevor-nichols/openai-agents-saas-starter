@@ -54,6 +54,8 @@ class AgentSpec:
     extra_context_providers: tuple[str, ...] = ()
     # Explicit tool assignment (mirrors Agents SDK: Agent(..., tools=[...])).
     tool_keys: tuple[str, ...] = ()
+    # Optional per-tool configuration (e.g., {"code_interpreter": {"mode": "explicit"}}).
+    tool_configs: dict[str, Any] = field(default_factory=dict)
     # Optional per-handoff context policy keyed by target agent key. Values:
     # - "full" (default): pass entire history
     # - "fresh": start with an empty history for the target agent

@@ -34,6 +34,7 @@ from app.services.agents.provider_registry import (
     AgentProviderRegistry,
     get_provider_registry,
 )
+from app.services.containers import ContainerService, get_container_service
 from app.services.conversation_service import (
     ConversationService,
     SearchResult,
@@ -55,6 +56,7 @@ class AgentService:
         conversation_service: ConversationService | None = None,
         usage_recorder: UsageRecorder | None = None,
         provider_registry: AgentProviderRegistry | None = None,
+        container_service: ContainerService | None = None,
     ) -> None:
         self._conversation_service = conversation_service or get_conversation_service()
         if conversation_repo is not None:
@@ -62,6 +64,7 @@ class AgentService:
 
         self._usage_recorder = usage_recorder
         self._provider_registry = provider_registry or get_provider_registry()
+        self._container_service = container_service or get_container_service()
 
     async def chat(
         self, request: AgentChatRequest, *, actor: ConversationActorContext
@@ -69,6 +72,9 @@ class AgentService:
         provider = self._get_provider()
         descriptor = provider.resolve_agent(request.agent_type)
         conversation_id = request.conversation_id or str(uuid.uuid4())
+        container_bindings = await self._resolve_container_bindings_for_tenant(
+            tenant_id=actor.tenant_id
+        )
         runtime_ctx = PromptRuntimeContext(
             actor=actor,
             conversation_id=conversation_id,
@@ -77,6 +83,7 @@ class AgentService:
             user_location=build_web_search_location(
                 request.location, share_location=request.share_location
             ),
+            container_bindings=container_bindings,
         )
         state = await self._conversation_service.get_session_state(
             conversation_id, tenant_id=actor.tenant_id
@@ -197,6 +204,9 @@ class AgentService:
         provider = self._get_provider()
         descriptor = provider.resolve_agent(request.agent_type)
         conversation_id = request.conversation_id or str(uuid.uuid4())
+        container_bindings = await self._resolve_container_bindings_for_tenant(
+            tenant_id=actor.tenant_id
+        )
         runtime_ctx = PromptRuntimeContext(
             actor=actor,
             conversation_id=conversation_id,
@@ -205,6 +215,7 @@ class AgentService:
             user_location=build_web_search_location(
                 request.location, share_location=request.share_location
             ),
+            container_bindings=container_bindings,
         )
         state = await self._conversation_service.get_session_state(
             conversation_id, tenant_id=actor.tenant_id
@@ -439,6 +450,19 @@ class AgentService:
     def get_tool_information(self) -> dict[str, Any]:
         provider = self._get_provider()
         return dict(provider.tool_overview())
+
+    async def _resolve_container_bindings_for_tenant(
+        self, *, tenant_id: str
+    ) -> dict[str, str] | None:
+        if not self._container_service:
+            return None
+        try:
+            bindings = await self._container_service.list_agent_bindings(
+                tenant_id=uuid.UUID(tenant_id)
+            )
+        except Exception:
+            return None
+        return bindings or None
 
     def _get_provider(self):
         try:

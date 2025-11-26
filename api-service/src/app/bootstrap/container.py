@@ -14,6 +14,7 @@ from app.services.billing.billing_events import BillingEventsService
 from app.services.billing.billing_service import BillingService
 from app.services.billing.stripe.dispatcher import StripeEventDispatcher
 from app.services.billing.stripe.retry_worker import StripeDispatchRetryWorker
+from app.services.containers import ContainerService
 from app.services.conversation_service import ConversationService
 from app.services.geoip_service import GeoIPService, NullGeoIPService, shutdown_geoip_service
 from app.services.integrations.slack_notifier import SlackNotifier
@@ -79,6 +80,7 @@ class ApplicationContainer:
     vector_limit_resolver: VectorLimitResolver | None = None
     vector_store_service: VectorStoreService | None = None
     vector_store_sync_worker: VectorStoreSyncWorker | None = None
+    container_service: ContainerService | None = None
     usage_recorder: UsageRecorder = field(default_factory=UsageRecorder)
     usage_policy_service: UsagePolicyService | None = None
 
@@ -115,6 +117,7 @@ class ApplicationContainer:
         self.geoip_service = NullGeoIPService()
         self.usage_policy_service = None
         self.vector_store_sync_worker = None
+        self.container_service = None
 
 
 _CONTAINER: ApplicationContainer | None = None
@@ -170,6 +173,19 @@ def wire_vector_store_service(container: ApplicationContainer) -> None:
         )
 
 
+def wire_container_service(container: ApplicationContainer) -> None:
+    """Initialize the container service using the shared session factory."""
+
+    if container.container_service is None:
+        if container.session_factory is None:
+            raise RuntimeError("Session factory must be configured before container service")
+        settings = get_settings()
+        container.container_service = ContainerService(
+            container.session_factory,
+            lambda: settings,
+        )
+
+
 __all__ = [
     "ApplicationContainer",
     "get_container",
@@ -177,6 +193,7 @@ __all__ = [
     "set_container",
     "shutdown_container",
     "wire_vector_store_service",
+    "wire_container_service",
     "VectorLimitResolver",
     "VectorStoreSyncWorker",
 ]

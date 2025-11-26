@@ -104,3 +104,25 @@ class AIProviderSettingsMixin(BaseModel):
             "When true, expired vector stores are deleted remotely and soft-deleted locally."
         ),
     )
+
+    # Containers / Code Interpreter defaults
+    container_default_auto_memory: str = Field(
+        default="1g",
+        description="Default memory tier for auto containers when not specified (1g,4g,16g,64g).",
+    )
+    container_allowed_memory_tiers: list[str] = Field(
+        default_factory=lambda: ["1g", "4g", "16g", "64g"],
+        description="Allowed memory tiers for explicit containers.",
+    )
+    container_max_containers_per_tenant: int = Field(
+        default=10,
+        ge=1,
+        description="Maximum explicit containers a tenant may create.",
+    )
+    container_fallback_to_auto_on_missing_binding: bool = Field(
+        default=True,
+        description=(
+            "When True, agent runs fall back to auto container if an explicit binding is missing "
+            "or expired; when False, runs will error."
+        ),
+    )

@@ -29,6 +29,7 @@ class PromptRuntimeContext:
     request_message: str | None
     settings: Any
     user_location: UserLocation | None = None
+    container_bindings: dict[str, str] | None = None
 
 
 _PROVIDER_REGISTRY: dict[str, ContextProvider] = {}

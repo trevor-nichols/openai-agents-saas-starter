@@ -8,9 +8,13 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable, Iterable
 from functools import lru_cache
-from typing import Any
+from typing import Any, cast
 
-from agents import WebSearchTool
+from agents import CodeInterpreterTool, WebSearchTool
+from openai.types.responses.tool_param import (
+    CodeInterpreter,
+    CodeInterpreterContainerCodeInterpreterToolAuto,
+)
 
 from app.core.config import get_settings
 
@@ -142,6 +146,25 @@ def initialize_tools() -> ToolRegistry:
                     "Search the web for current information using OpenAI hosted web search."
                 ),
                 "provider": "openai",
+            },
+        )
+        default_memory = settings.container_default_auto_memory or "1g"
+        auto_container = cast(
+            CodeInterpreterContainerCodeInterpreterToolAuto,
+            {"type": "auto", "memory_limit": default_memory},
+        )
+        registry.register_tool(
+            CodeInterpreterTool(
+                tool_config=cast(
+                    CodeInterpreter,
+                    {"type": "code_interpreter", "container": auto_container},
+                )
+            ),
+            category="code",
+            metadata={
+                "description": "Run Python in a sandboxed OpenAI container (auto-managed).",
+                "mode": "auto",
+                "default_memory": default_memory,
             },
         )
     else:

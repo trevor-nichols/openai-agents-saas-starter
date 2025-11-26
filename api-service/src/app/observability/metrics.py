@@ -190,6 +190,22 @@ VECTOR_STORE_OPERATION_DURATION_SECONDS = Histogram(
     registry=REGISTRY,
 )
 
+# Container operations (code interpreter)
+CONTAINER_OPERATIONS_TOTAL = Counter(
+    "container_operations_total",
+    "Count of container operations segmented by operation and result.",
+    ("operation", "result"),
+    registry=REGISTRY,
+)
+
+CONTAINER_OPERATION_DURATION_SECONDS = Histogram(
+    "container_operation_duration_seconds",
+    "Latency histogram for container operations segmented by operation and result.",
+    ("operation", "result"),
+    buckets=_LATENCY_BUCKETS,
+    registry=REGISTRY,
+)
+
 USAGE_GUARDRAIL_DECISIONS_TOTAL = Counter(
     "usage_guardrail_decisions_total",
     "Count of usage guardrail evaluations segmented by decision and plan.",
