@@ -50,5 +50,5 @@ Add first-class OpenAI vector store + file_search support across the SaaS starte
 
 ## Sign-off
 - **Owner**: @codex
-- **Date**: _TBD_
-- **Summary**: _TBD — to be filled on completion before moving to `docs/trackers/complete/`._
+- **Date**: November 26, 2025
+- **Summary**: Vector stores + file search shipped: schema/migrations, service + quota guardrails, tenant CRUD/files/search APIs, sync worker with expiry/purge, docs/runbook. Agent integration intentionally deferred to next milestone.
