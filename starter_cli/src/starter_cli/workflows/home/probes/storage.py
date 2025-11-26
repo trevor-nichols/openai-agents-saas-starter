@@ -3,8 +3,8 @@ from __future__ import annotations
 from starter_contracts.storage.models import StorageProviderLiteral
 
 from starter_cli.core.status_models import ProbeResult, ProbeState
-from starter_cli.workflows.home.probes.util import simple_result
 from starter_cli.workflows.home.probes.registry import ProbeContext
+from starter_cli.workflows.home.probes.util import simple_result
 
 
 def storage_probe(ctx: ProbeContext) -> ProbeResult:

@@ -10,7 +10,7 @@ from collections.abc import Callable, Iterable
 from functools import lru_cache
 from typing import Any, cast
 
-from agents import CodeInterpreterTool, WebSearchTool
+from agents import CodeInterpreterTool, ImageGenerationTool, WebSearchTool
 from openai.types.responses.tool_param import (
     CodeInterpreter,
     CodeInterpreterContainerCodeInterpreterToolAuto,
@@ -165,6 +165,28 @@ def initialize_tools() -> ToolRegistry:
                 "description": "Run Python in a sandboxed OpenAI container (auto-managed).",
                 "mode": "auto",
                 "default_memory": default_memory,
+            },
+        )
+
+        image_config: dict[str, object] = {
+            "type": "image_generation",
+            "size": settings.image_default_size,
+            "quality": settings.image_default_quality,
+            "format": settings.image_default_format,
+            "background": settings.image_default_background,
+        }
+        if settings.image_default_compression is not None:
+            image_config["compression"] = settings.image_default_compression
+        if settings.image_max_partial_images:
+            image_config["partial_images"] = settings.image_max_partial_images
+
+        registry.register_tool(
+            ImageGenerationTool(tool_config=cast(Any, image_config)),
+            category="image",
+            metadata={
+                "description": "Generate or edit images using OpenAI hosted image generation.",
+                "provider": "openai",
+                "defaults": image_config,
             },
         )
     else:

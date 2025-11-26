@@ -71,6 +71,10 @@ class AgentChatResponse(BaseModel):
         default=False,
         description="Indicates whether a handoff happened mid-conversation.",
     )
+    attachments: list["MessageAttachment"] = Field(
+        default_factory=list,
+        description="Attachments created during the response (e.g., generated images).",
+    )
     metadata: dict[str, Any] | None = Field(
         default=None,
         description="Arbitrary metadata returned by the agent pipeline.",
@@ -141,6 +145,10 @@ class StreamingChatEvent(BaseModel):
         default=None,
         description="Full event body for consumers that need raw fidelity.",
     )
+    attachments: list["MessageAttachment"] | None = Field(
+        default=None,
+        description="Attachments generated during this event (e.g., stored images).",
+    )
 
 
 class RunOptionsRequest(BaseModel):
@@ -163,4 +171,15 @@ class RunOptionsRequest(BaseModel):
     )
 
 
+class MessageAttachment(BaseModel):
+    object_id: str = Field(description="Storage object identifier")
+    filename: str = Field(description="Object filename")
+    mime_type: str | None = Field(default=None, description="Mime type of the attachment")
+    size_bytes: int | None = Field(default=None, description="Size in bytes")
+    url: str | None = Field(default=None, description="Presigned download URL")
+    tool_call_id: str | None = Field(default=None, description="Originating tool call id")
+
+
 AgentChatRequest.model_rebuild()
+AgentChatResponse.model_rebuild()
+StreamingChatEvent.model_rebuild()

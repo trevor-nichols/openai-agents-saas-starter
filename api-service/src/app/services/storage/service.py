@@ -212,6 +212,95 @@ class StorageService:
             duration_seconds=0.0,
         )
 
+    async def put_object(
+        self,
+        *,
+        tenant_id: uuid.UUID,
+        user_id: uuid.UUID | None,
+        data: bytes,
+        filename: str,
+        mime_type: str | None,
+        agent_key: str | None = None,
+        conversation_id: uuid.UUID | None = None,
+        metadata: dict[str, object] | None = None,
+    ) -> StorageObjectRef:
+        """Store a small object directly and persist metadata.
+
+        Intended for generated assets (e.g., images) where we already have bytes
+        server-side and want to avoid presign/roundtrip.
+        """
+
+        size_bytes = len(data)
+        settings = self._settings_provider()
+        self._enforce_size(size_bytes, settings)
+        self._enforce_mime(mime_type, settings)
+
+        provider = self._provider_resolver(settings)
+        bucket_name = self._bucket_name(settings, tenant_id)
+        await provider.ensure_bucket(
+            bucket_name,
+            region=settings.minio_region,
+            create_if_missing=settings.storage_provider != StorageProviderLiteral.GCS,
+        )
+        bucket = await self._repository.get_or_create_bucket(
+            tenant_id=tenant_id,
+            provider=settings.storage_provider.value,
+            bucket_name=bucket_name,
+            region=settings.minio_region,
+            prefix=settings.storage_bucket_prefix,
+        )
+
+        object_id = uuid.uuid4()
+        safe_name = self._safe_filename(filename)
+        object_key = f"{tenant_id}/{object_id}/{safe_name}"
+
+        obj_ref = await provider.put_object(
+            bucket=bucket_name,
+            key=object_key,
+            data=data,
+            content_type=mime_type,
+        )
+
+        await self._repository.create_object(
+            tenant_id=tenant_id,
+            bucket=bucket,
+            object_id=object_id,
+            object_key=object_key,
+            filename=filename,
+            mime_type=mime_type,
+            size_bytes=size_bytes,
+            checksum_sha256=
+            obj_ref.checksum_sha256 if hasattr(obj_ref, "checksum_sha256") else None,
+            status="ready",
+            created_by_user_id=user_id,
+            agent_key=agent_key,
+            conversation_id=conversation_id,
+            metadata_json=metadata or {},
+            expires_at=None,
+        )
+
+        metrics.observe_storage_operation(
+            operation="put_object",
+            provider=settings.storage_provider.value,
+            result="success",
+            duration_seconds=0.0,
+        )
+
+        return StorageObjectRef(
+            id=object_id,
+            bucket=bucket_name,
+            key=object_key,
+            size_bytes=size_bytes,
+            mime_type=mime_type,
+            filename=filename,
+            status="ready",
+            created_at=obj_ref.created_at if hasattr(obj_ref, "created_at") else None,
+            conversation_id=conversation_id,
+            agent_key=agent_key,
+            checksum_sha256=
+            obj_ref.checksum_sha256 if hasattr(obj_ref, "checksum_sha256") else None,
+        )
+
     def _enforce_size(self, size_bytes: int | None, settings: Settings) -> None:
         if size_bytes is None:
             raise ValueError("File size is required")

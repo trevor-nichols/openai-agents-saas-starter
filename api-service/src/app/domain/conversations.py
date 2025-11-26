@@ -14,6 +14,19 @@ class ConversationMessage:
     role: Literal["user", "assistant", "system"]
     content: str
     timestamp: datetime = field(default_factory=datetime.utcnow)
+    attachments: list[ConversationAttachment] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class ConversationAttachment:
+    """Attachment metadata linked to a message (e.g., generated image)."""
+
+    object_id: str
+    filename: str
+    mime_type: str | None = None
+    size_bytes: int | None = None
+    presigned_url: str | None = None
+    tool_call_id: str | None = None
 
 
 @dataclass(slots=True)

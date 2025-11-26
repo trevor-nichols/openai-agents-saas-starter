@@ -4,6 +4,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from app.api.v1.chat.schemas import MessageAttachment
+
 
 class ChatMessage(BaseModel):
     """Single conversational message."""
@@ -15,6 +17,10 @@ class ChatMessage(BaseModel):
     timestamp: str | None = Field(
         default=None,
         description="ISO-8601 timestamp if available.",
+    )
+    attachments: list[MessageAttachment] = Field(
+        default_factory=list,
+        description="Attachments associated with this message (if any).",
     )
 
 

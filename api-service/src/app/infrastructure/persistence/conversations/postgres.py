@@ -14,6 +14,7 @@ from sqlalchemy import String, and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.domain.conversations import (
+    ConversationAttachment,
     ConversationMessage,
     ConversationMetadata,
     ConversationPage,
@@ -161,6 +162,7 @@ class PostgresConversationRepository(ConversationRepository):
                 role=message.role,
                 agent_type=metadata.active_agent if message.role == "assistant" else None,
                 content={"text": message.content},
+                attachments=_serialize_attachments(message.attachments),
                 token_count_prompt=metadata.total_tokens_prompt
                 if message.role == "assistant"
                 else None,
@@ -203,6 +205,7 @@ class PostgresConversationRepository(ConversationRepository):
                 ConversationMessage(
                     role=_coerce_role(row.role),
                     content=_extract_message_content(row.content),
+                    attachments=_extract_attachments(row.attachments),
                     timestamp=row.created_at,
                 )
                 for row in rows
@@ -249,6 +252,7 @@ class PostgresConversationRepository(ConversationRepository):
                     ConversationMessage(
                         role=_coerce_role(item.role),
                         content=_extract_message_content(item.content),
+                        attachments=_extract_attachments(item.attachments),
                         timestamp=item.created_at,
                     )
                     for item in entries
@@ -331,6 +335,7 @@ class PostgresConversationRepository(ConversationRepository):
                     ConversationMessage(
                         role=_coerce_role(item.role),
                         content=_extract_message_content(item.content),
+                        attachments=_extract_attachments(item.attachments),
                         timestamp=item.created_at,
                     )
                     for item in entries
@@ -452,6 +457,7 @@ class PostgresConversationRepository(ConversationRepository):
                     ConversationMessage(
                         role=_coerce_role(item.role),
                         content=_extract_message_content(item.content),
+                        attachments=_extract_attachments(item.attachments),
                         timestamp=item.created_at,
                     )
                     for item in entries
@@ -638,6 +644,32 @@ def _extract_message_content(payload: dict[str, object] | str | None) -> str:
     return ""
 
 
+def _extract_attachments(payload: list[dict[str, object]] | None) -> list[ConversationAttachment]:
+    if not payload:
+        return []
+    attachments: list[ConversationAttachment] = []
+    for item in payload:
+        if not isinstance(item, dict):
+            continue
+        mime = item.get("mime_type")
+        mime_str = str(mime) if isinstance(mime, str) else None
+        size_val = item.get("size_bytes")
+        size_int = int(size_val) if isinstance(size_val, int) else None
+        tool_call = item.get("tool_call_id")
+        tool_call_str = str(tool_call) if isinstance(tool_call, str) else None
+        attachments.append(
+            ConversationAttachment(
+                object_id=str(item.get("object_id", "")),
+                filename=str(item.get("filename", "")),
+                mime_type=mime_str,
+                size_bytes=size_int,
+                presigned_url=None,
+                tool_call_id=tool_call_str,
+            )
+        )
+    return attachments
+
+
 def _to_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=UTC)
@@ -646,3 +678,18 @@ def _coerce_role(value: str) -> MessageRole:
     if value not in _MESSAGE_ROLES:
         raise ValueError(f"Unsupported conversation role '{value}'")
     return cast(MessageRole, value)
+
+
+def _serialize_attachments(attachments: list[ConversationAttachment]) -> list[dict[str, object]]:
+    serialized: list[dict[str, object]] = []
+    for item in attachments:
+        serialized.append(
+            {
+                "object_id": item.object_id,
+                "filename": item.filename,
+                "mime_type": item.mime_type,
+                "size_bytes": item.size_bytes,
+                "tool_call_id": item.tool_call_id,
+            }
+        )
+    return serialized

@@ -5,8 +5,8 @@ from starter_contracts.storage.models import StorageProviderLiteral
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIError
 
-from ...inputs import InputProvider
 from ...context import WizardContext
+from ...inputs import InputProvider
 
 
 def run(context: WizardContext, provider: InputProvider) -> None:
@@ -16,7 +16,9 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     )
 
     current = context.current("STORAGE_PROVIDER") or (
-        StorageProviderLiteral.MINIO.value if context.profile == "local" else StorageProviderLiteral.GCS.value
+        StorageProviderLiteral.MINIO.value
+        if context.profile == "local"
+        else StorageProviderLiteral.GCS.value
     )
     choice = provider.prompt_choice(
         key="STORAGE_PROVIDER",
@@ -46,6 +48,8 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     elif provider_literal == StorageProviderLiteral.GCS:
         _configure_gcs(context, provider)
 
+    _configure_image_defaults(context, provider)
+
 
 def _configure_minio(context: WizardContext, provider: InputProvider) -> None:
     default_endpoint = context.current("MINIO_ENDPOINT") or (
@@ -60,7 +64,8 @@ def _configure_minio(context: WizardContext, provider: InputProvider) -> None:
     access_key = provider.prompt_string(
         key="MINIO_ACCESS_KEY",
         prompt="MinIO access key",
-        default=context.current("MINIO_ACCESS_KEY") or ("minioadmin" if context.profile == "local" else ""),
+        default=context.current("MINIO_ACCESS_KEY")
+        or ("minioadmin" if context.profile == "local" else ""),
         required=True,
     )
     secret_key = provider.prompt_secret(
@@ -132,6 +137,66 @@ def _configure_gcs(context: WizardContext, provider: InputProvider) -> None:
     context.set_backend("GCS_CREDENTIALS_JSON", creds_json, mask=True)
     context.set_backend("GCS_SIGNING_EMAIL", signing_email)
     context.set_backend_bool("GCS_UNIFORM_ACCESS", uniform_access)
+
+
+def _configure_image_defaults(context: WizardContext, provider: InputProvider) -> None:
+    console.note(
+        "Generated images will be stored in the configured provider; defaults below can be"
+        " overridden per-agent via tool_configs.",
+        topic="image-generation",
+    )
+
+    size = provider.prompt_string(
+        key="IMAGE_DEFAULT_SIZE",
+        prompt="Default image size (auto, 1024x1024, 1024x1536, 1536x1024)",
+        default=context.current("IMAGE_DEFAULT_SIZE") or "1024x1024",
+        required=True,
+    )
+    quality = provider.prompt_string(
+        key="IMAGE_DEFAULT_QUALITY",
+        prompt="Default image quality (auto, low, medium, high)",
+        default=context.current("IMAGE_DEFAULT_QUALITY") or "high",
+        required=True,
+    )
+    fmt = provider.prompt_string(
+        key="IMAGE_DEFAULT_FORMAT",
+        prompt="Default image format (png, jpeg, webp)",
+        default=context.current("IMAGE_DEFAULT_FORMAT") or "png",
+        required=True,
+    )
+    background = provider.prompt_string(
+        key="IMAGE_DEFAULT_BACKGROUND",
+        prompt="Default background (auto, opaque, transparent)",
+        default=context.current("IMAGE_DEFAULT_BACKGROUND") or "auto",
+        required=True,
+    )
+    compression = provider.prompt_string(
+        key="IMAGE_DEFAULT_COMPRESSION",
+        prompt="Default compression 0-100 (blank = provider chooses)",
+        default=context.current("IMAGE_DEFAULT_COMPRESSION") or "",
+        required=False,
+    )
+    max_mb = provider.prompt_string(
+        key="IMAGE_OUTPUT_MAX_MB",
+        prompt="Max decoded image size (MB)",
+        default=context.current("IMAGE_OUTPUT_MAX_MB") or "6",
+        required=True,
+    )
+    partial = provider.prompt_string(
+        key="IMAGE_MAX_PARTIAL_IMAGES",
+        prompt="Max partial images to stream (0-3)",
+        default=context.current("IMAGE_MAX_PARTIAL_IMAGES") or "2",
+        required=True,
+    )
+
+    context.set_backend("IMAGE_DEFAULT_SIZE", size)
+    context.set_backend("IMAGE_DEFAULT_QUALITY", quality)
+    context.set_backend("IMAGE_DEFAULT_FORMAT", fmt)
+    context.set_backend("IMAGE_DEFAULT_BACKGROUND", background)
+    if compression:
+        context.set_backend("IMAGE_DEFAULT_COMPRESSION", compression)
+    context.set_backend("IMAGE_OUTPUT_MAX_MB", max_mb)
+    context.set_backend("IMAGE_MAX_PARTIAL_IMAGES", partial)
 
 
 __all__ = ["run"]

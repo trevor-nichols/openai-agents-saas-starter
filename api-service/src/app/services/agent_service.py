@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import uuid
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Mapping
 from datetime import UTC, datetime
 from typing import Any
 
@@ -13,12 +13,14 @@ from agents import trace
 
 from app.agents._shared.prompt_context import PromptRuntimeContext
 from app.api.v1.agents.schemas import AgentStatus, AgentSummary
-from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse
+from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse, MessageAttachment
 from app.api.v1.conversations.schemas import ChatMessage, ConversationHistory, ConversationSummary
+from app.bootstrap.container import get_container, wire_storage_service
 from app.core.config import get_settings
 from app.domain.ai import AgentRunUsage, RunOptions
 from app.domain.ai.models import AgentStreamEvent
 from app.domain.conversations import (
+    ConversationAttachment,
     ConversationMessage,
     ConversationMetadata,
     ConversationRepository,
@@ -30,6 +32,7 @@ from app.services.agents.context import (
     reset_current_actor,
     set_current_actor,
 )
+from app.services.agents.image_ingestor import ingest_image_output
 from app.services.agents.provider_registry import (
     AgentProviderRegistry,
     get_provider_registry,
@@ -40,6 +43,7 @@ from app.services.conversation_service import (
     SearchResult,
     get_conversation_service,
 )
+from app.services.storage.service import StorageService
 from app.services.usage_recorder import UsageEntry, UsageRecorder
 from app.utils.tools.location import build_web_search_location
 
@@ -57,6 +61,7 @@ class AgentService:
         usage_recorder: UsageRecorder | None = None,
         provider_registry: AgentProviderRegistry | None = None,
         container_service: ContainerService | None = None,
+        storage_service: StorageService | None = None,
     ) -> None:
         self._conversation_service = conversation_service or get_conversation_service()
         if conversation_repo is not None:
@@ -65,6 +70,7 @@ class AgentService:
         self._usage_recorder = usage_recorder
         self._provider_registry = provider_registry or get_provider_registry()
         self._container_service = container_service or get_container_service()
+        self._storage_service = storage_service
 
     async def chat(
         self, request: AgentChatRequest, *, actor: ConversationActorContext
@@ -142,9 +148,17 @@ class AgentService:
             reset_current_actor(token)
 
         response_text = result.response_text or str(result.final_output)
+        attachments = await self._ingest_image_outputs(
+            result.tool_outputs,
+            actor=actor,
+            conversation_id=conversation_id,
+            agent_key=descriptor.key,
+            response_id=result.response_id,
+        )
         assistant_message = ConversationMessage(
             role="assistant",
             content=response_text,
+            attachments=attachments,
         )
         await self._conversation_service.append_message(
             conversation_id,
@@ -191,9 +205,14 @@ class AgentService:
             conversation_id=conversation_id,
             agent_used=descriptor.key,
             handoff_occurred=False,
+            attachments=[
+                MessageAttachment(**self._to_attachment_schema(att))
+                for att in attachments
+            ],
             metadata={
                 "model_used": descriptor.model,
                 "tools_available": tool_overview.get("tool_names", []),
+                **self._attachment_metadata_note(attachments),
             },
         )
 
@@ -249,6 +268,8 @@ class AgentService:
         )
 
         complete_response = ""
+        attachments: list[ConversationAttachment] = []
+        seen_tool_calls: set[str] = set()
         token = set_current_actor(actor)
         try:
             logger.info(
@@ -291,6 +312,25 @@ class AgentService:
                         # For structured outputs with no deltas, use the final rendered text.
                         complete_response = event.response_text
 
+                    new_attachments = await self._ingest_image_outputs(
+                        [event.payload] if event.payload else None,
+                        actor=actor,
+                        conversation_id=conversation_id,
+                        agent_key=descriptor.key,
+                        response_id=event.response_id,
+                        seen_tool_calls=seen_tool_calls,
+                    )
+                    if new_attachments:
+                        attachments.extend(new_attachments)
+                        event.attachments = [
+                            self._to_attachment_payload(att)
+                            for att in new_attachments
+                        ]
+                        if event.payload is None:
+                            event.payload = {}
+                        if isinstance(event.payload, dict):
+                            event.payload.setdefault("_attachment_note", "stored")
+
                     yield event
 
                     if event.is_terminal:
@@ -305,6 +345,7 @@ class AgentService:
         assistant_message = ConversationMessage(
             role="assistant",
             content=complete_response,
+            attachments=attachments,
         )
         await self._conversation_service.append_message(
             conversation_id,
@@ -352,6 +393,8 @@ class AgentService:
         )
         if not messages:
             raise ValueError(f"Conversation {conversation_id} not found")
+
+        await self._presign_message_attachments(messages, tenant_id=actor.tenant_id)
 
         api_messages = [self._to_chat_message(msg) for msg in messages]
         return ConversationHistory(
@@ -479,6 +522,16 @@ class AgentService:
                 " AgentProviderRegistry."
             ) from exc
 
+    def _get_storage_service(self) -> StorageService:
+        if self._storage_service is None:
+            container = get_container()
+            if container.storage_service is None:
+                wire_storage_service(container)
+            self._storage_service = container.storage_service
+        if self._storage_service is None:
+            raise RuntimeError("Storage service is not configured")
+        return self._storage_service
+
     async def _acquire_session(
         self,
         provider,
@@ -589,6 +642,17 @@ class AgentService:
             role=message.role,
             content=message.content,
             timestamp=message.timestamp.isoformat(),
+            attachments=[
+                MessageAttachment(
+                    object_id=att.object_id,
+                    filename=att.filename,
+                    mime_type=att.mime_type,
+                    size_bytes=att.size_bytes,
+                    url=att.presigned_url,
+                    tool_call_id=att.tool_call_id,
+                )
+                for att in message.attachments
+            ],
         )
 
     @staticmethod
@@ -655,6 +719,125 @@ class AgentService:
         except Exception:  # pragma: no cover - defensive fallback
             logger.exception("Failed to create provider conversation; proceeding without conv id.")
             return None
+
+    async def _ingest_image_outputs(
+        self,
+        tool_outputs: list[Mapping[str, Any]] | None,
+        *,
+        actor: ConversationActorContext,
+        conversation_id: str,
+        agent_key: str,
+        response_id: str | None,
+        seen_tool_calls: set[str] | None = None,
+    ) -> list[ConversationAttachment]:
+        if not tool_outputs:
+            return []
+
+        storage = self._get_storage_service()
+        attachments: list[ConversationAttachment] = []
+
+        for output in tool_outputs:
+            if not isinstance(output, Mapping):
+                continue
+
+            candidate = output
+            if candidate.get("type") != "image_generation_call":
+                raw = candidate.get("raw_item")
+                if isinstance(raw, Mapping) and raw.get("type") == "image_generation_call":
+                    candidate = raw
+                else:
+                    continue
+
+            tool_call_id = candidate.get("id") or candidate.get("tool_call_id")
+            if seen_tool_calls is not None and tool_call_id and tool_call_id in seen_tool_calls:
+                continue
+            image_b64 = candidate.get("result") or candidate.get("b64_json")
+            if not image_b64:
+                continue
+            quality = candidate.get("quality")
+            background = candidate.get("background")
+            image_format = candidate.get("format") or candidate.get("output_format")
+
+            try:
+                ingested = await ingest_image_output(
+                    image_b64=image_b64,
+                    tenant_id=actor.tenant_id,
+                    user_id=actor.user_id,
+                    conversation_id=conversation_id,
+                    agent_key=agent_key,
+                    tool_call_id=tool_call_id,
+                    response_id=response_id,
+                    image_format=image_format,
+                    quality=quality,
+                    background=background,
+                    storage_service=storage,
+                )
+
+                presigned, _ = await storage.get_presigned_download(
+                    tenant_id=uuid.UUID(actor.tenant_id),
+                    object_id=ingested.storage_object_id,
+                )
+                ingested.attachment.presigned_url = presigned.url
+                if seen_tool_calls is not None and tool_call_id:
+                    seen_tool_calls.add(tool_call_id)
+                attachments.append(ingested.attachment)
+            except Exception as exc:  # pragma: no cover
+                logger.warning(
+                    "image.ingest_failed",
+                    extra={
+                        "tenant_id": actor.tenant_id,
+                        "conversation_id": conversation_id,
+                        "agent_key": agent_key,
+                        "tool_call_id": tool_call_id,
+                    },
+                    exc_info=exc,
+                )
+                continue
+
+        return attachments
+
+    async def _presign_message_attachments(
+        self, messages: list[ConversationMessage], *, tenant_id: str
+    ) -> None:
+        has_attachments = any(msg.attachments for msg in messages)
+        if not has_attachments:
+            return
+
+        storage = self._get_storage_service()
+        for message in messages:
+            for attachment in message.attachments:
+                if attachment.presigned_url:
+                    continue
+                try:
+                    presigned, _ = await storage.get_presigned_download(
+                        tenant_id=uuid.UUID(tenant_id), object_id=uuid.UUID(attachment.object_id)
+                    )
+                    attachment.presigned_url = presigned.url
+                except Exception:
+                    logger.warning(
+                        "attachment.presign_failed",
+                        extra={"object_id": attachment.object_id, "tenant_id": tenant_id},
+                    )
+
+    @staticmethod
+    def _to_attachment_schema(attachment: ConversationAttachment):
+        return {
+            "object_id": attachment.object_id,
+            "filename": attachment.filename,
+            "mime_type": attachment.mime_type,
+            "size_bytes": attachment.size_bytes,
+            "url": attachment.presigned_url,
+            "tool_call_id": attachment.tool_call_id,
+        }
+
+    def _to_attachment_payload(self, attachment: ConversationAttachment) -> dict[str, Any]:
+        return self._to_attachment_schema(attachment)
+
+    @staticmethod
+    def _attachment_metadata_note(attachments: list[ConversationAttachment]) -> dict[str, Any]:
+        if not attachments:
+            return {}
+        return {"attachments": {"status": "stored", "count": len(attachments)}}
 
 
 def build_agent_service(

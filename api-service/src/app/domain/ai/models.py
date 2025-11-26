@@ -39,6 +39,8 @@ class AgentRunResult:
     structured_output: Any | None = None
     # Best-effort string form for downstream consumers that expect text.
     response_text: str | None = None
+    # Raw tool outputs (e.g., image_generation_call) when available.
+    tool_outputs: list[Mapping[str, Any]] | None = None
 
 
 @dataclass(slots=True)
@@ -108,6 +110,9 @@ class AgentStreamEvent:
 
     # Arbitrary structured payload for consumers that need full fidelity
     payload: Mapping[str, Any] | None = None
+
+    # Optional attachment references created while streaming (e.g., stored image ids)
+    attachments: list[Mapping[str, Any]] | None = None
 
     # Optional metadata for parity with non-stream responses
     metadata: Mapping[str, Any] | None = None

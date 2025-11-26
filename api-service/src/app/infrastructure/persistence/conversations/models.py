@@ -154,6 +154,9 @@ class AgentMessage(Base):
     role: Mapped[str] = mapped_column(String(16), nullable=False)
     agent_type: Mapped[str | None] = mapped_column(String(64))
     content: Mapped[Any] = mapped_column(JSONBCompat, nullable=False)
+    attachments: Mapped[list[dict[str, object]] | None] = mapped_column(
+        JSONBCompat, nullable=True, default=list
+    )
     tool_name: Mapped[str | None] = mapped_column(String(128))
     tool_call_id: Mapped[str | None] = mapped_column(String(64))
     token_count_prompt: Mapped[int | None] = mapped_column(Integer)

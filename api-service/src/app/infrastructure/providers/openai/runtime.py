@@ -359,6 +359,7 @@ class OpenAIAgentRuntime(AgentRuntime):
             final_output = result.final_output
             structured_output = result.structured_output
             response_text = result.response_text
+            tool_outputs = result.tool_outputs
         else:
             context = getattr(result, "context_wrapper", None)
             usage = _convert_usage(getattr(context, "usage", None) if context else None)
@@ -366,6 +367,7 @@ class OpenAIAgentRuntime(AgentRuntime):
             final_output = getattr(result, "final_output", "")
             structured_output = None
             response_text = None
+            tool_outputs = None
             if isinstance(final_output, str):
                 response_text = final_output
             else:
@@ -374,6 +376,14 @@ class OpenAIAgentRuntime(AgentRuntime):
                     response_text = json.dumps(final_output, ensure_ascii=False)
                 except Exception:  # pragma: no cover - fallback serialization
                     response_text = str(final_output)
+            raw_items = getattr(result, "new_items", None)
+            if raw_items:
+                mapped: list[Mapping[str, Any]] = []
+                for item in raw_items:
+                    mapping = AgentStreamEvent._to_mapping(item)
+                    if mapping is not None:
+                        mapped.append(mapping)
+                tool_outputs = mapped or None
         base_metadata: dict[str, Any] = {"agent_key": agent_key, "model": str(agent.model)}
         metadata_payload: Mapping[str, Any]
         if safe_metadata:
@@ -387,6 +397,7 @@ class OpenAIAgentRuntime(AgentRuntime):
             metadata=metadata_payload,
             structured_output=structured_output,
             response_text=response_text if response_text is not None else str(final_output),
+            tool_outputs=tool_outputs,
         )
 
     def run_stream(

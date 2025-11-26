@@ -8,7 +8,14 @@ from collections.abc import Callable, Sequence
 from datetime import datetime
 from typing import Any, cast
 
-from agents import Agent, CodeInterpreterTool, WebSearchTool, function_tool, handoff
+from agents import (
+    Agent,
+    CodeInterpreterTool,
+    ImageGenerationTool,
+    WebSearchTool,
+    function_tool,
+    handoff,
+)
 from agents.agent_output import AgentOutputSchema, AgentOutputSchemaBase
 from agents.extensions.handoff_prompt import prompt_with_handoff_instructions
 
@@ -277,6 +284,12 @@ class OpenAIAgentRegistry:
                         {"type": "code_interpreter", "container": auto_container},
                     )
                     tools.append(CodeInterpreterTool(tool_config=tool_config))
+            elif isinstance(tool, ImageGenerationTool):
+                base_cfg = dict(getattr(tool, "tool_config", {}) or {})
+                override = tool_configs.get("image_generation", {})
+                merged = {**base_cfg, **override}
+                validated = self._validate_image_config(merged, settings)
+                tools.append(ImageGenerationTool(tool_config=cast(Any, validated)))
             else:
                 tools.append(tool)
         if missing_required:
@@ -307,6 +320,42 @@ class OpenAIAgentRegistry:
             return customized
 
         return tools
+
+    @staticmethod
+    def _validate_image_config(config: dict[str, Any], settings: Settings) -> dict[str, Any]:
+        allowed_sizes = {"auto", "1024x1024", "1024x1536", "1536x1024"}
+        allowed_quality = {"auto", "low", "medium", "high"}
+        allowed_background = {"auto", "opaque", "transparent"}
+        allowed_formats = set(settings.image_allowed_formats)
+
+        cfg = dict(config or {})
+        cfg.setdefault("type", "image_generation")
+        cfg.setdefault("size", settings.image_default_size)
+        cfg.setdefault("quality", settings.image_default_quality)
+        cfg.setdefault("format", settings.image_default_format)
+        cfg.setdefault("background", settings.image_default_background)
+
+        if cfg.get("size") not in allowed_sizes:
+            raise ValueError(f"Unsupported image size '{cfg.get('size')}'")
+        if cfg.get("quality") not in allowed_quality:
+            raise ValueError(f"Unsupported image quality '{cfg.get('quality')}'")
+        if cfg.get("background") not in allowed_background:
+            raise ValueError(f"Unsupported image background '{cfg.get('background')}'")
+        if cfg.get("format") not in allowed_formats:
+            raise ValueError(f"Unsupported image format '{cfg.get('format')}'")
+        compression = cfg.get("compression")
+        if compression is not None:
+            if not isinstance(compression, int) or compression < 0 or compression > 100:
+                raise ValueError("image_generation compression must be 0-100 or omitted")
+        partial_images = cfg.get("partial_images")
+        if partial_images is not None:
+            if not isinstance(partial_images, int) or partial_images < 0:
+                raise ValueError("partial_images must be a non-negative integer")
+            if partial_images > settings.image_max_partial_images:
+                raise ValueError(
+                    f"partial_images must be between 0 and {settings.image_max_partial_images}"
+                )
+        return cfg
 
     def _register_builtin_tools(self) -> None:
         """Register internal utility tools; agents opt in via tool_keys."""

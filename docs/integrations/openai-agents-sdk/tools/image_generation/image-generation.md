@@ -224,3 +224,56 @@ for event in stream:
 ```
 
 The model used for the image generation process is always `gpt-image-1`, but these models can be used as the mainline model in the Responses API as they can reliably call the image generation tool when needed.
+
+Starter repo cookbook (OpenAI Agents SaaS Starter)
+-------------------------------------------------
+
+Enable the tool for an agent
+
+```python
+# app/agents/my_agent/spec.py
+from app.agents._shared.specs import AgentSpec
+
+
+def get_agent_spec() -> AgentSpec:
+    return AgentSpec(
+        key="designer",
+        display_name="Image Designer",
+        description="Creates and edits marketing visuals.",
+        model_key="code",  # uses settings.agent_code_model or agent_default_model
+        tool_keys=("image_generation",),
+        tool_configs={
+            "image_generation": {
+                "size": "1024x1024",
+                "quality": "high",
+                "format": "png",
+                "background": "auto",
+                # optional: "compression": 80, "partial_images": 2
+            }
+        },
+        prompt_path=...,  # your prompt file
+    )
+```
+
+Config defaults (can override via env / settings)
+
+- `IMAGE_DEFAULT_SIZE` (default `1024x1024`)
+- `IMAGE_DEFAULT_QUALITY` (default `high`)
+- `IMAGE_DEFAULT_FORMAT` (default `png`)
+- `IMAGE_DEFAULT_BACKGROUND` (default `auto`)
+- `IMAGE_DEFAULT_COMPRESSION` (optional 0–100)
+- `IMAGE_OUTPUT_MAX_MB` (default 6 MB guard)
+- `IMAGE_MAX_PARTIAL_IMAGES` (default 2)
+
+Storage + attachments
+
+- Generated images are decoded and stored via the built-in storage service (MinIO/GCS/memory) and linked to the conversation/user/agent.
+- Conversation messages carry `attachments` with `object_id`, filename, mime, size, presigned URL, and `tool_call_id`. Streaming events include attachments as they are stored.
+- Images are **not** stored as base64 in Postgres; only metadata and storage references are persisted.
+- Fallbacks: if storage fails, chat still returns text; we log `image.ingest_failed` with tool_call_id/tenant for debugging.
+
+DX checklist
+
+- Ensure `OPENAI_API_KEY` and storage provider env vars are set (`STORAGE_PROVIDER`, `MINIO_*` or `GCS_*`).
+- Run migrations to add the `attachments` column: `just migrate` (or `hatch run migrate` with `DATABASE_URL` set).
+- Add `image_generation` to agent `tool_keys`; use `tool_configs.image_generation` for per-agent overrides.

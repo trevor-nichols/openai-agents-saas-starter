@@ -126,3 +126,48 @@ class AIProviderSettingsMixin(BaseModel):
             "or expired; when False, runs will error."
         ),
     )
+
+    # Image generation defaults / guardrails
+    image_default_size: str = Field(
+        default="1024x1024",
+        description=(
+            "Default output size for image generation tool (supports auto, 1024x1024,"
+            " 1024x1536, 1536x1024)."
+        ),
+    )
+    image_default_quality: str = Field(
+        default="high",
+        description="Default quality for image generation (auto, low, medium, high).",
+    )
+    image_default_format: str = Field(
+        default="png",
+        description="Default image format (png, jpeg, webp).",
+    )
+    image_default_background: str = Field(
+        default="auto",
+        description="Default background mode (auto, opaque, transparent).",
+    )
+    image_default_compression: int | None = Field(
+        default=None,
+        ge=0,
+        le=100,
+        description=(
+            "Optional default compression level (0-100) for jpeg/webp; None lets"
+            " provider choose."
+        ),
+    )
+    image_output_max_mb: int = Field(
+        default=6,
+        ge=1,
+        description="Hard cap on decoded image size in megabytes to avoid large inline payloads.",
+    )
+    image_allowed_formats: list[str] = Field(
+        default_factory=lambda: ["png", "jpeg", "webp"],
+        description="Whitelisted output formats accepted from the image tool.",
+    )
+    image_max_partial_images: int = Field(
+        default=2,
+        ge=0,
+        le=3,
+        description="Maximum partial images to stream when enabled (0-3).",
+    )

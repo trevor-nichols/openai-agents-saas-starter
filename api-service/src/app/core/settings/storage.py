@@ -45,6 +45,9 @@ class StorageSettingsMixin(BaseModel):
             "text/x-javascript",
             "text/javascript",
             "text/html",
+            "image/png",
+            "image/jpeg",
+            "image/webp",
         ],
         description="Allowed MIME types for uploaded objects.",
     )

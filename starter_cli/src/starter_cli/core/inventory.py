@@ -163,6 +163,14 @@ WIZARD_PROMPTED_ENV_VARS: Final[frozenset[str]] = frozenset(
         "SECRETS_PROVIDER",
         "ENABLE_SECRETS_PROVIDER_TELEMETRY",
         "DATABASE_URL",
+        # Image generation defaults
+        "IMAGE_DEFAULT_SIZE",
+        "IMAGE_DEFAULT_QUALITY",
+        "IMAGE_DEFAULT_FORMAT",
+        "IMAGE_DEFAULT_BACKGROUND",
+        "IMAGE_DEFAULT_COMPRESSION",
+        "IMAGE_OUTPUT_MAX_MB",
+        "IMAGE_MAX_PARTIAL_IMAGES",
     }
 )
 

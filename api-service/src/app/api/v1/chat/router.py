@@ -125,6 +125,7 @@ async def stream_chat_with_agent(
                         structured_output=event.structured_output,
                         is_terminal=event.is_terminal,
                         payload=event.payload if isinstance(event.payload, dict) else None,
+                        attachments=event.attachments,
                     )
 
                     yield f"data: {payload.model_dump_json()}\n\n"
