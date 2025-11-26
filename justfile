@@ -11,6 +11,7 @@ contracts_just := "just -f starter_contracts/justfile"
 web_just := "just -f web-app/justfile"
 compose_file := "ops/compose/docker-compose.yml"
 vault_compose_file := "ops/compose/docker-compose.vault-dev.yml"
+minio_compose_file := "ops/compose/docker-compose.minio.yml"
 vault_dev_port := "18200"
 vault_dev_root_token_id := "vault-dev-root"
 vault_dev_host_addr := "http://127.0.0.1:" + vault_dev_port
@@ -156,6 +157,19 @@ dev-ps: _check_env
     {{env_runner}} ../.env.compose ../{{env_file}} -- bash -c 'cd .. && docker compose -f {{compose_file}} ps'
 
 # -------------------------
+# MinIO (storage)
+# -------------------------
+
+storage-up: _check_env
+    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -c 'cd .. && docker compose -f {{minio_compose_file}} up -d minio'
+
+storage-down: _check_env
+    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -c 'cd .. && docker compose -f {{minio_compose_file}} down'
+
+storage-logs: _check_env
+    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -c 'cd .. && docker compose -f {{minio_compose_file}} logs -f --tail=200 minio'
+
+# -------------------------
 # Vault dev signer
 # -------------------------
 
@@ -288,4 +302,3 @@ issue-demo-token:
         --scopes "{{setup_service_scopes}}" \
         {{service_tenant_flag}} \
         --output json
-

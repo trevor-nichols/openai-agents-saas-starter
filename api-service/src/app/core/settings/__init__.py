@@ -14,6 +14,7 @@ from .rate_limits import RateLimitSettingsMixin
 from .redis import RedisSettingsMixin
 from .security import SecuritySettingsMixin
 from .signup import SignupSettingsMixin
+from .storage import StorageSettingsMixin
 from .usage import UsageGuardrailSettingsMixin
 
 
@@ -30,6 +31,7 @@ class Settings(
     DatabaseAndBillingSettingsMixin,
     ObservabilitySettingsMixin,
     UsageGuardrailSettingsMixin,
+    StorageSettingsMixin,
 ):
     """Concrete application settings composed from mixins."""
 

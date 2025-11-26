@@ -23,6 +23,7 @@ from app.services.signup.email_verification_service import EmailVerificationServ
 from app.services.signup.password_recovery_service import PasswordRecoveryService
 from app.services.status.status_alert_dispatcher import StatusAlertDispatcher
 from app.services.status.status_subscription_service import StatusSubscriptionService
+from app.services.storage.service import StorageService
 from app.services.tenant.tenant_settings_service import TenantSettingsService
 from app.services.usage_policy_service import UsagePolicyService
 from app.services.usage_recorder import UsageRecorder
@@ -83,6 +84,7 @@ class ApplicationContainer:
     container_service: ContainerService | None = None
     usage_recorder: UsageRecorder = field(default_factory=UsageRecorder)
     usage_policy_service: UsagePolicyService | None = None
+    storage_service: StorageService | None = None
 
     async def shutdown(self) -> None:
         """Gracefully tear down managed services."""
@@ -186,6 +188,19 @@ def wire_container_service(container: ApplicationContainer) -> None:
         )
 
 
+def wire_storage_service(container: ApplicationContainer) -> None:
+    """Initialize the storage service using the shared session factory."""
+
+    if container.storage_service is None:
+        if container.session_factory is None:
+            raise RuntimeError("Session factory must be configured before storage service")
+        settings = get_settings()
+        container.storage_service = StorageService(
+            container.session_factory,
+            lambda: settings,
+        )
+
+
 __all__ = [
     "ApplicationContainer",
     "get_container",
@@ -194,6 +209,7 @@ __all__ = [
     "shutdown_container",
     "wire_vector_store_service",
     "wire_container_service",
+    "wire_storage_service",
     "VectorLimitResolver",
     "VectorStoreSyncWorker",
 ]

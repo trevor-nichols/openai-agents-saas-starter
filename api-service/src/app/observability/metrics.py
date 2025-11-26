@@ -206,6 +206,22 @@ CONTAINER_OPERATION_DURATION_SECONDS = Histogram(
     registry=REGISTRY,
 )
 
+# Storage operations (object storage)
+STORAGE_OPERATIONS_TOTAL = Counter(
+    "storage_operations_total",
+    "Count of storage operations segmented by operation, provider, and result.",
+    ("operation", "provider", "result"),
+    registry=REGISTRY,
+)
+
+STORAGE_OPERATION_DURATION_SECONDS = Histogram(
+    "storage_operation_duration_seconds",
+    "Latency histogram for storage operations segmented by operation, provider, and result.",
+    ("operation", "provider", "result"),
+    buckets=_LATENCY_BUCKETS,
+    registry=REGISTRY,
+)
+
 USAGE_GUARDRAIL_DECISIONS_TOTAL = Counter(
     "usage_guardrail_decisions_total",
     "Count of usage guardrail evaluations segmented by decision and plan.",
@@ -408,3 +424,19 @@ def record_billing_stream_event(*, source: str, result: str) -> None:
 
 def record_billing_stream_backlog(seconds: float) -> None:
     STRIPE_BILLING_STREAM_BACKLOG_SECONDS.set(max(seconds, 0.0))
+
+
+def observe_storage_operation(
+    *,
+    operation: str,
+    provider: str | None,
+    result: str,
+    duration_seconds: float,
+) -> None:
+    provider_label = (provider or "unknown").lower()
+    STORAGE_OPERATIONS_TOTAL.labels(
+        operation=operation, provider=provider_label, result=result
+    ).inc()
+    STORAGE_OPERATION_DURATION_SECONDS.labels(
+        operation=operation, provider=provider_label, result=result
+    ).observe(max(duration_seconds, 0.0))

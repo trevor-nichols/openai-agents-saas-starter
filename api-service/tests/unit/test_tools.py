@@ -32,7 +32,10 @@ def _reset_tool_registry():
 def _web_search_settings(monkeypatch):
     """Ensure initialize_tools sees an OpenAI API key so web search registers."""
 
-    settings = SimpleNamespace(openai_api_key="test-key")
+    settings = SimpleNamespace(
+        openai_api_key="test-key",
+        container_default_auto_memory="1g",
+    )
     monkeypatch.setattr("app.utils.tools.registry.get_settings", lambda: settings)
     yield
 
@@ -112,6 +115,7 @@ def _build_openai_registry(monkeypatch, registry: ToolRegistry):
         agent_triage_model: str | None = None
         agent_code_model: str | None = None
         agent_data_model: str | None = None
+        container_default_auto_memory: str | None = "1g"
 
     settings = _StubSettings()
     monkeypatch.setattr(

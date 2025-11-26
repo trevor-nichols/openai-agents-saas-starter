@@ -19,6 +19,11 @@ from starter_contracts.secrets.models import (
     SecretsProviderLiteral,
     VaultProviderConfig,
 )
+from starter_contracts.storage.models import (
+    GCSProviderConfig,
+    MinioProviderConfig,
+    StorageProviderLiteral,
+)
 
 
 @runtime_checkable
@@ -67,6 +72,22 @@ class StarterSettingsProtocol(Protocol):
     signup_access_policy: Literal["public", "invite_only", "approval"]
     allow_public_signup: bool
     signup_rate_limit_per_hour: int
+    storage_provider: StorageProviderLiteral
+    storage_bucket_prefix: str | None
+    storage_signed_url_ttl_seconds: int
+    storage_max_file_mb: int
+    storage_allowed_mime_types: list[str]
+    minio_endpoint: str | None
+    minio_access_key: str | None
+    minio_secret_key: str | None
+    minio_region: str | None
+    minio_secure: bool
+    gcs_project_id: str | None
+    gcs_bucket: str | None
+    gcs_credentials_json: str | None
+    gcs_credentials_path: str | None
+    gcs_signing_email: str | None
+    gcs_uniform_access: bool
 
     @property
     def vault_settings(self) -> VaultProviderConfig: ...
@@ -79,6 +100,12 @@ class StarterSettingsProtocol(Protocol):
 
     @property
     def azure_settings(self) -> AzureKeyVaultConfig: ...
+
+    @property
+    def minio_settings(self) -> MinioProviderConfig: ...
+
+    @property
+    def gcs_settings(self) -> GCSProviderConfig: ...
 
     def secret_warnings(self) -> list[str]: ...
 

@@ -6,6 +6,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, status
 
 from app.api.models.common import HealthResponse
+from app.bootstrap.container import get_container, wire_storage_service
 from app.core.config import get_settings
 from app.infrastructure.db import verify_database_connection
 
@@ -41,6 +42,39 @@ async def readiness_check() -> HealthResponse:
 
     return HealthResponse(
         status="ready",
+        timestamp=datetime.utcnow().isoformat(),
+        version=settings.app_version,
+        uptime=round(time.time() - _start_time, 2),
+    )
+
+
+@router.get("/health/storage", response_model=HealthResponse)
+async def storage_health() -> HealthResponse:
+    """Storage provider health (informational; does not gate readiness)."""
+
+    settings = get_settings()
+    container = get_container()
+    if container.storage_service is None:
+        try:
+            wire_storage_service(container)
+        except Exception:
+            return HealthResponse(
+                status="unconfigured",
+                timestamp=datetime.utcnow().isoformat(),
+                version=settings.app_version,
+                uptime=round(time.time() - _start_time, 2),
+            )
+    if container.storage_service is None:
+        return HealthResponse(
+            status="unconfigured",
+            timestamp=datetime.utcnow().isoformat(),
+            version=settings.app_version,
+            uptime=round(time.time() - _start_time, 2),
+        )
+
+    status_detail = await container.storage_service.health_check()
+    return HealthResponse(
+        status=status_detail.get("status", "unknown"),
         timestamp=datetime.utcnow().isoformat(),
         version=settings.app_version,
         uptime=round(time.time() - _start_time, 2),

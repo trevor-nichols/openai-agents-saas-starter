@@ -32,6 +32,11 @@ SECTION_SPECS: list[SectionSpec] = [
         summary="Wire databases, AI providers, Redis pools, Stripe, and email transports.",
     ),
     SectionSpec(
+        key="storage",
+        label="Storage",
+        summary="Select MinIO or GCS for object storage and configure credentials.",
+    ),
+    SectionSpec(
         key="usage",
         label="Usage & Entitlements",
         summary="Enable usage guardrails and capture per-plan limits for billing.",
