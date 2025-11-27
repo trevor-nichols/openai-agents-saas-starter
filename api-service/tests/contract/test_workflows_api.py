@@ -64,34 +64,34 @@ def test_list_workflows(client: TestClient) -> None:
     response = client.get("/api/v1/workflows")
     assert response.status_code == 200
     payload = response.json()
-    assert any(wf["key"] == "triage_pipeline" for wf in payload)
+    assert any(wf["key"] == "analysis_code" for wf in payload)
 
 
 @patch("app.services.workflows.service.WorkflowService.run_workflow", new_callable=AsyncMock)
 def test_run_workflow_sync(mock_run_workflow: AsyncMock, client: TestClient) -> None:
     mock_run_workflow.return_value = WorkflowRunResult(
-        workflow_key="triage_pipeline",
+        workflow_key="analysis_code",
         workflow_run_id="run-1",
         conversation_id="conv-1",
         steps=[
             WorkflowStepResult(
-                name="triage",
-                agent_key="triage",
+                name="analysis",
+                agent_key="data_analyst",
                 response=AgentRunResult(final_output="hi", response_text="hi"),
             )
         ],
     )
 
     response = client.post(
-        "/api/v1/workflows/triage_pipeline/run",
+        "/api/v1/workflows/analysis_code/run",
         json={"message": "hello"},
     )
 
     assert response.status_code == 200
     data = response.json()
-    assert data["workflow_key"] == "triage_pipeline"
+    assert data["workflow_key"] == "analysis_code"
     assert data["workflow_run_id"] == "run-1"
-    assert data["steps"][0]["agent_key"] == "triage"
+    assert data["steps"][0]["agent_key"] == "data_analyst"
 
 
 @patch("app.services.workflows.service.WorkflowService.run_workflow_stream", new_callable=AsyncMock)
@@ -102,10 +102,10 @@ def test_run_workflow_stream(mock_run_stream: AsyncMock, client: TestClient) -> 
             response_id="r1",
             text_delta="hello",
             metadata={
-                "workflow_key": "triage_pipeline",
+                "workflow_key": "analysis_code",
                 "workflow_run_id": "run-1",
-                "step_name": "triage",
-                "step_agent": "triage",
+                "step_name": "analysis",
+                "step_agent": "data_analyst",
             },
             is_terminal=False,
         )
@@ -114,10 +114,10 @@ def test_run_workflow_stream(mock_run_stream: AsyncMock, client: TestClient) -> 
             response_id="r1",
             response_text="done",
             metadata={
-                "workflow_key": "triage_pipeline",
+                "workflow_key": "analysis_code",
                 "workflow_run_id": "run-1",
-                "step_name": "triage",
-                "step_agent": "triage",
+                "step_name": "analysis",
+                "step_agent": "data_analyst",
             },
             is_terminal=True,
         )
@@ -126,7 +126,7 @@ def test_run_workflow_stream(mock_run_stream: AsyncMock, client: TestClient) -> 
 
     events: list[StreamingWorkflowEvent] = []
     with client.stream(
-        "POST", "/api/v1/workflows/triage_pipeline/run-stream", json={"message": "hello"}
+        "POST", "/api/v1/workflows/analysis_code/run-stream", json={"message": "hello"}
     ) as response:
         assert response.status_code == 200
         for line in response.iter_lines():
@@ -140,7 +140,7 @@ def test_run_workflow_stream(mock_run_stream: AsyncMock, client: TestClient) -> 
                     break
 
     assert events
-    assert events[-1].workflow_key == "triage_pipeline"
+    assert events[-1].workflow_key == "analysis_code"
     assert events[-1].workflow_run_id == "run-1"
 
 
@@ -151,7 +151,7 @@ def test_get_workflow_run(client: TestClient) -> None:
 
     run = WorkflowRun(
         id="run-abc",
-        workflow_key="triage_pipeline",
+        workflow_key="analysis_code",
         tenant_id=TEST_TENANT_ID,
         user_id="test-user",
         status="succeeded",
@@ -168,8 +168,8 @@ def test_get_workflow_run(client: TestClient) -> None:
         id="step-1",
         workflow_run_id="run-abc",
         sequence_no=0,
-        step_name="triage",
-        step_agent="triage",
+        step_name="analysis",
+        step_agent="data_analyst",
         status="succeeded",
         started_at=datetime.now(tz=UTC),
         ended_at=datetime.now(tz=UTC),
@@ -190,7 +190,7 @@ def test_get_workflow_run(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["workflow_run_id"] == run.id
-    assert body["steps"][0]["agent_key"] == "triage"
+    assert body["steps"][0]["agent_key"] == "data_analyst"
 
 
 @pytest.mark.auto_migrations(enabled=True)
@@ -205,7 +205,7 @@ def test_get_workflow_run_via_db(client: TestClient, _provider_engine) -> None:
     run_id = "run-db"
     run = WorkflowRun(
         id=run_id,
-        workflow_key="triage_pipeline",
+        workflow_key="analysis_code",
         tenant_id=TEST_TENANT_ID,
         user_id="test-user",
         status="succeeded",
@@ -222,8 +222,8 @@ def test_get_workflow_run_via_db(client: TestClient, _provider_engine) -> None:
         id="step-db",
         workflow_run_id=run_id,
         sequence_no=0,
-        step_name="triage",
-        step_agent="triage",
+        step_name="analysis",
+        step_agent="data_analyst",
         status="succeeded",
         started_at=datetime.now(tz=UTC),
         ended_at=datetime.now(tz=UTC),
@@ -244,4 +244,4 @@ def test_get_workflow_run_via_db(client: TestClient, _provider_engine) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["workflow_run_id"] == run_id
-    assert body["steps"][0]["agent_key"] == "triage"
+    assert body["steps"][0]["agent_key"] == "data_analyst"

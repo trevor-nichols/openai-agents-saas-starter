@@ -1,6 +1,6 @@
 # Workflows (deterministic agent chains)
 
-This layer orchestrates multiple Agents SDK instances in a deterministic sequence. Use it when you want a fixed pipeline with guards (e.g., triage ➜ specialist), not dynamic handoffs.
+This layer orchestrates multiple Agents SDK instances in a deterministic sequence. Use it when you want a fixed pipeline with guards (e.g., analysis ➜ code), not dynamic handoffs.
 
 ## Concepts
 - **WorkflowSpec** (code-defined): lives under `api-service/src/app/workflows/<key>/spec.py`.
@@ -12,30 +12,27 @@ This layer orchestrates multiple Agents SDK instances in a deterministic sequenc
 ```python
 from app.workflows.specs import WorkflowSpec, WorkflowStep
 
-def guard_requires_analysis(current_input, prior_steps):
-    return "analysis" in (prior_steps[-1].response.response_text or "").lower()
-
-def map_use_last_output(current_input, prior_steps):
-    return prior_steps[-1].response.response_text or current_input
+def passthrough(current_input, prior_steps):
+    return (prior_steps[-1].response.response_text or current_input) if prior_steps else current_input
 
 def get_workflow_spec() -> WorkflowSpec:
     return WorkflowSpec(
-        key="triage_pipeline",
-        display_name="Triage Pipeline",
-        description="Route via triage, then specialists based on guards.",
+        key="analysis_code",
+        display_name="Analysis then Code",
+        description="Run data analyst, then feed its output into the code assistant.",
         steps=(
-            WorkflowStep(agent_key="triage", name="triage"),
+            WorkflowStep(agent_key="data_analyst", name="analysis"),
             WorkflowStep(
-                agent_key="data_analyst",
-                guard="my.module:guard_requires_analysis",
-                input_mapper="my.module:map_use_last_output",
+                agent_key="code_assistant",
+                name="code",
+                input_mapper="app.workflows.analysis_code.spec:passthrough",
             ),
         ),
-        allow_handoff_agents=True,
+        allow_handoff_agents=False,
     )
 ```
 
-Place the file at `app/workflows/triage_pipeline/spec.py`; the registry auto-discovers it.
+Place the file at `app/workflows/analysis_code/spec.py`; the registry auto-discovers it.
 
 ## API surface
 - `GET /api/v1/workflows` — list catalog entries.

@@ -13,7 +13,7 @@ Goal: Add a first-class Workflow layer that sequences existing Agents SDK primit
 - Update docs: `docs/integrations/openai-agents-sdk` add "Workflows" page with examples (triage+specialist chain, gated chain like `agent_chain.py`).
 
 ### Phase 2 — Backend implementation
-- DONE: `app/workflows/` package with registry (spec discovery/validation), runner/service, sample `triage_pipeline` workflow.
+- DONE: `app/workflows/` package with registry (spec discovery/validation), runner/service, sample `analysis_code` workflow.
 - DONE: Streaming & sync APIs: `/api/v1/workflows` list, `/api/v1/workflows/{key}/run`, `/api/v1/workflows/{key}/run-stream` (SSE).
 - DONE: Unit/contract tests for registry validation, runner guards/mappers, and API happy/error paths.
 - DONE: Persist workflow runs/steps for auditability (tables, repo, recorder hook; responses carry `workflow_run_id`).
@@ -32,5 +32,5 @@ Goal: Add a first-class Workflow layer that sequences existing Agents SDK primit
 
 ## Acceptance criteria
 - New Workflow layer coexists with existing agents; no breaking changes to current `/agents` or chat APIs.
-- A sample workflow (e.g., triage → data_analyst → code_assistant with guard) runs end-to-end via API and emits per-step traces.
+- A sample workflow (e.g., data_analyst → code_assistant with mapped input) runs end-to-end via API and emits per-step traces.
 - Clear docs and examples show when to choose handoffs vs workflows.
