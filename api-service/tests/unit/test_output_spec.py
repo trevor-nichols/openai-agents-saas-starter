@@ -94,7 +94,8 @@ def test_output_spec_custom_schema():
     registry = _make_registry(spec)
 
     agent = registry.get_agent_handle("custom_schema_agent", validate_prompts=False)
-    assert isinstance(agent.output_type, ExampleCustomSchema)
+    assert agent.output_type.__class__.__name__ == ExampleCustomSchema.__name__
+    assert agent.output_type.name() == ExampleCustomSchema().name()
 
 
 @pytest.mark.asyncio

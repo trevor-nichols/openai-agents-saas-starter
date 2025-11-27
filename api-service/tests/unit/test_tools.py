@@ -35,6 +35,12 @@ def _web_search_settings(monkeypatch):
     settings = SimpleNamespace(
         openai_api_key="test-key",
         container_default_auto_memory="1g",
+        image_default_size="1024x1024",
+        image_default_quality="high",
+        image_default_format="png",
+        image_default_background="auto",
+        image_default_compression=None,
+        image_max_partial_images=0,
     )
     monkeypatch.setattr("app.utils.tools.registry.get_settings", lambda: settings)
     yield

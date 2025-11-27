@@ -82,6 +82,13 @@ def test_bundled_collector_receives_backend_logs(tmp_path):
     container_name = f"collector-smoke-{uuid.uuid4().hex[:8]}"
     host_http_port = _find_free_port()
     host_diag_port = _find_free_port()
+
+    # Skip cleanly when Docker is installed but the daemon is not running
+    try:
+        subprocess.run(["docker", "info"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except subprocess.CalledProcessError:
+        pytest.skip("Docker daemon is not running; skipping collector smoke test.")
+
     run_cmd = [
         "docker",
         "run",
