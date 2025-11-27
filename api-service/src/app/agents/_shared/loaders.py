@@ -32,7 +32,8 @@ def topological_agent_order(specs: Sequence[AgentSpec]) -> list[str]:
     outgoing: dict[str, set[str]] = defaultdict(set)
 
     for spec in specs:
-        for dep in spec.handoff_keys:
+        deps = tuple(spec.handoff_keys) + tuple(getattr(spec, "agent_tool_keys", ()))
+        for dep in deps:
             outgoing[dep].add(spec.key)
             incoming[spec.key].add(dep)
         incoming.setdefault(spec.key, set())

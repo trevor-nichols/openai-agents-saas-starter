@@ -12,6 +12,7 @@ from agents import (
     Agent,
     CodeInterpreterTool,
     ImageGenerationTool,
+    RunConfig,
     WebSearchTool,
     function_tool,
     handoff,
@@ -31,7 +32,7 @@ from app.agents._shared.prompt_context import (
 )
 from app.agents._shared.prompt_template import render_prompt
 from app.agents._shared.registry_loader import load_agent_specs
-from app.agents._shared.specs import AgentSpec, HandoffConfig, OutputSpec
+from app.agents._shared.specs import AgentSpec, AgentToolConfig, HandoffConfig, OutputSpec
 from app.core.settings import Settings
 from app.domain.ai import AgentDescriptor
 from app.services.agents.context import ConversationActorContext, get_current_actor
@@ -149,6 +150,7 @@ class OpenAIAgentRegistry:
                 settings=settings,
                 runtime_ctx=runtime_ctx,
                 agents=agents,
+                spec_map=spec_map,
                 validate_prompts=validate_prompts,
             )
             if register_static:
@@ -164,6 +166,7 @@ class OpenAIAgentRegistry:
         settings: Settings,
         runtime_ctx: PromptRuntimeContext | None,
         agents: dict[str, Agent],
+        spec_map: dict[str, AgentSpec],
         validate_prompts: bool,
     ) -> Agent:
         tools = self._select_tools(spec, runtime_ctx=runtime_ctx)
@@ -208,15 +211,127 @@ class OpenAIAgentRegistry:
                 kwargs["input_type"] = input_type
             handoff_targets.append(handoff(target_agent, **kwargs))
 
+        agent_tools = self._build_agent_tools(
+            spec=spec,
+            spec_map=spec_map,
+            agents=agents,
+            tools=tools,
+        )
+
+        tools_with_agents = tools + agent_tools
+
         return Agent(
             name=spec.display_name,
             instructions=instructions,
             model=self._resolve_agent_model(settings, spec),
-            tools=tools,
+            tools=tools_with_agents,
             handoffs=cast(list[Any], handoff_targets),
             handoff_description=spec.description if handoff_targets else None,
             output_type=self._resolve_output_type(spec),
         )
+
+    def _build_agent_tools(
+        self,
+        *,
+        spec: AgentSpec,
+        spec_map: dict[str, AgentSpec],
+        agents: dict[str, Agent],
+        tools: list[Any],
+    ) -> list[Any]:
+        """Wrap referenced agents as tools and apply overrides.
+
+        This keeps the calling agent in control (unlike handoffs). We also guard
+        against tool-name collisions across built-in tools and agent-tools.
+        """
+
+        if not getattr(spec, "agent_tool_keys", None):
+            return []
+
+        existing_names = {getattr(t, "name", None) for t in tools if hasattr(t, "name")}
+        results: list[Any] = []
+
+        for agent_key in spec.agent_tool_keys:
+            target_agent = agents.get(agent_key) or self._agents.get(agent_key)
+            if target_agent is None:
+                raise ValueError(
+                    f"Agent '{spec.key}' declares agent_tool '{agent_key}' which is not loaded"
+                )
+
+            override: AgentToolConfig | None = getattr(spec, "agent_tool_overrides", {}).get(
+                agent_key
+            )
+
+            tool_name = override.tool_name if isinstance(override, AgentToolConfig) else None
+            tool_description = (
+                override.tool_description if isinstance(override, AgentToolConfig) else None
+            )
+            custom_output_extractor = None
+            is_enabled: bool | None = None
+            run_config: RunConfig | None = None
+            max_turns: int | None = None
+
+            if isinstance(override, AgentToolConfig):
+                if override.custom_output_extractor:
+                    custom_output_extractor = self._import_object(
+                        override.custom_output_extractor,
+                        expected=None,
+                        label="custom_output_extractor",
+                    )
+                if override.is_enabled is not None:
+                    if isinstance(override.is_enabled, bool):
+                        is_enabled = override.is_enabled
+                    elif isinstance(override.is_enabled, str):
+                        is_enabled = self._import_object(
+                            override.is_enabled,
+                            expected=None,
+                            label="agent_tool_is_enabled",
+                        )
+                    else:
+                        raise ValueError(
+                            "agent_tool_overrides.is_enabled must be bool or dotted path"
+                        )
+                if override.run_config is not None:
+                    if isinstance(override.run_config, RunConfig):
+                        run_config = override.run_config
+                    elif isinstance(override.run_config, dict):
+                        run_config = RunConfig(**override.run_config)
+                    else:
+                        raise ValueError(
+                            "agent_tool_overrides.run_config for "
+                            f"'{agent_key}' must be dict or RunConfig"
+                        )
+                if override.max_turns is not None:
+                    max_turns = override.max_turns
+
+            spec_entry = spec_map.get(agent_key)
+            spec_desc = spec_entry.description if spec_entry else None
+            desc_fallback = (
+                tool_description
+                or target_agent.handoff_description
+                or spec_desc
+                or f"Wrapped agent '{agent_key}'"
+            )
+
+            final_name = tool_name or target_agent.name
+            if final_name in existing_names:
+                raise ValueError(
+                    f"Agent '{spec.key}' tried to register agent-tool "
+                    f"'{final_name}' but that name already exists"
+                )
+            existing_names.add(final_name)
+
+            results.append(
+                target_agent.as_tool(
+                    tool_name=final_name,
+                    tool_description=desc_fallback,
+                    custom_output_extractor=custom_output_extractor,
+                    is_enabled=is_enabled if is_enabled is not None else True,
+                    run_config=run_config,
+                    max_turns=max_turns,
+                )
+            )
+
+        return results
 
     def _register_agent(self, spec: AgentSpec, agent: Agent) -> None:
         self._agents[spec.key] = agent

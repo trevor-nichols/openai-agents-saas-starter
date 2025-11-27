@@ -15,6 +15,8 @@ Operational guide for declaring and running agents with the OpenAI Agents SDK in
 - `tool_keys` (ordered) + `tool_configs` (per-tool tweaks)
 - `handoff_keys` + `handoff_context` (`full`|`fresh`|`last_turn`)
 - `handoff_overrides` (tool_name/description, input_filter, input_type, is_enabled)
+- `agent_tool_keys` to expose other agents as tools (caller stays in control)
+- `agent_tool_overrides` (tool_name/description, custom_output_extractor, is_enabled, run_config, max_turns)
 - `wrap_with_handoff_prompt` (adds SDK handoff prelude)
 - `prompt_context_keys`, `prompt_defaults`, `extra_context_providers`
 - `output` (text | json_schema, strict flag, custom schema path)
@@ -64,6 +66,21 @@ def get_agent_spec() -> AgentSpec:
 - Use `agent.as_tool(...)` when you want the parent agent to remain in control and treat the sub-agent as a function call (parent continues the conversation).
 - Use handoffs when you want the sub-agent to take over the conversation flow and inherit (filtered) history.
 - In specs we favor **handoffs for ownership transfer**, **tools for short, encapsulated sub-tasks**.
+
+Example spec snippet:
+
+```
+from app.agents._shared.specs import AgentSpec, AgentToolConfig
+
+return AgentSpec(
+    key="translator",
+    ...,
+    agent_tool_keys=("spanish_agent", "french_agent"),
+    agent_tool_overrides={
+        "spanish_agent": AgentToolConfig(tool_name="translate_to_spanish"),
+    },
+)
+```
 
 ### 4) Structured outputs
 ```
@@ -139,4 +156,3 @@ return AgentSpec(
 - Provider layer: `app/infrastructure/providers/openai/`
 - Runtime adapters: `app/infrastructure/providers/openai/runtime.py`
 - Spec primitives: `app/agents/_shared/specs.py`
-

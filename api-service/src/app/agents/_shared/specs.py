@@ -37,6 +37,9 @@ class AgentSpec:
       = trim to most recent turn or two). This mirrors the SDK handoff
       `input_filter` without forcing every agent to re-implement it.
     - `handoff_overrides` allows per-target tool metadata and filters (see HandoffConfig).
+    - `agent_tool_keys` lists agent keys that should be exposed as tools on this
+      agent (caller retains control; different from handoffs which transfer control).
+    - `agent_tool_overrides` allows per-agent-tool metadata (see AgentToolConfig).
     """
 
     key: str
@@ -65,6 +68,9 @@ class AgentSpec:
     )
     # Fine-grained per-target handoff metadata.
     handoff_overrides: dict[str, HandoffConfig] = field(default_factory=dict)
+    # Optional agent-as-tool configuration.
+    agent_tool_keys: tuple[str, ...] = ()
+    agent_tool_overrides: dict[str, AgentToolConfig] = field(default_factory=dict)
     # Optional structured output configuration (maps to Agents SDK output_type).
     output: OutputSpec | None = None
 
@@ -80,7 +86,26 @@ class AgentSpec:
             raise ValueError(f"Agent '{self.key}' must supply instructions or prompt_path")
 
 
-__all__ = ["AgentSpec", "HandoffConfig", "OutputSpec"]
+@dataclass(frozen=True, slots=True)
+class AgentToolConfig:
+    """Optional per-agent-as-tool customization.
+
+    - tool_name/tool_description: overrides for the wrapped tool surface.
+    - custom_output_extractor: dotted path to async callable (RunResult -> str).
+    - is_enabled: optionally hide/show tool at runtime (bool or dotted callable path).
+    - run_config: dict of RunConfig kwargs to pass through to as_tool.
+    - max_turns: override the child agent's max turns when run as a tool.
+    """
+
+    tool_name: str | None = None
+    tool_description: str | None = None
+    custom_output_extractor: str | None = None
+    is_enabled: bool | str | None = None
+    run_config: dict[str, Any] | None = None
+    max_turns: int | None = None
+
+
+__all__ = ["AgentSpec", "HandoffConfig", "OutputSpec", "AgentToolConfig"]
 
 
 @dataclass(frozen=True, slots=True)
