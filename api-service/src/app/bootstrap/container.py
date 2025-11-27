@@ -7,7 +7,11 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from app.core.config import get_settings
+from app.infrastructure.persistence.workflows.repository import (
+    SqlAlchemyWorkflowRunRepository,
+)
 from app.infrastructure.redis.factory import reset_redis_factory, shutdown_redis_factory
+from app.services.agents.interaction_context import InteractionContextBuilder
 from app.services.auth.service_account_service import ServiceAccountTokenService
 from app.services.auth.session_service import UserSessionService
 from app.services.billing.billing_events import BillingEventsService
@@ -33,6 +37,7 @@ from app.services.vector_stores import (
     VectorStoreService,
     VectorStoreSyncWorker,
 )
+from app.services.workflows.service import WorkflowService
 
 if TYPE_CHECKING:  # pragma: no cover - type hints only
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -85,6 +90,8 @@ class ApplicationContainer:
     usage_recorder: UsageRecorder = field(default_factory=UsageRecorder)
     usage_policy_service: UsagePolicyService | None = None
     storage_service: StorageService | None = None
+    workflow_run_repository: SqlAlchemyWorkflowRunRepository | None = None
+    workflow_service: WorkflowService | None = None
 
     async def shutdown(self) -> None:
         """Gracefully tear down managed services."""
@@ -201,6 +208,26 @@ def wire_storage_service(container: ApplicationContainer) -> None:
         )
 
 
+def wire_workflow_services(container: ApplicationContainer) -> None:
+    if container.session_factory is None:
+        raise RuntimeError("Session factory must be configured before workflow services")
+
+    if container.workflow_run_repository is None:
+        container.workflow_run_repository = SqlAlchemyWorkflowRunRepository(
+            container.session_factory
+        )
+
+    if container.workflow_service is None:
+        container.workflow_service = WorkflowService(
+            registry=None,
+            provider_registry=None,
+            interaction_builder=InteractionContextBuilder(
+                container_service=container.container_service
+            ),
+            run_repository=container.workflow_run_repository,
+        )
+
+
 __all__ = [
     "ApplicationContainer",
     "get_container",
@@ -210,6 +237,7 @@ __all__ = [
     "wire_vector_store_service",
     "wire_container_service",
     "wire_storage_service",
+    "wire_workflow_services",
     "VectorLimitResolver",
     "VectorStoreSyncWorker",
 ]

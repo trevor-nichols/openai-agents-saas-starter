@@ -5,7 +5,7 @@ from starter_contracts.storage.models import StorageProviderLiteral
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIError
 
-from ...context import WizardContext
+from ..context import WizardContext
 from ...inputs import InputProvider
 
 

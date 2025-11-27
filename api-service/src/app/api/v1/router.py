@@ -16,12 +16,14 @@ from app.api.v1.tenants.router import router as tenants_router
 from app.api.v1.test_fixtures.router import router as test_fixtures_router
 from app.api.v1.tools.router import router as tools_router
 from app.api.v1.vector_stores.router import router as vector_stores_router
+from app.api.v1.workflows.router import router as workflows_router
 from app.core.config import get_settings
 
 router = APIRouter()
 router.include_router(auth_router)
 router.include_router(chat_router)
 router.include_router(agents_router)
+router.include_router(workflows_router)
 router.include_router(conversations_router)
 router.include_router(tools_router)
 router.include_router(containers_router)
