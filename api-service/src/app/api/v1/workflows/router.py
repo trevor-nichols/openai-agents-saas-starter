@@ -26,6 +26,7 @@ from app.api.v1.workflows.schemas import (
 from app.domain.workflows import WorkflowStatus
 from app.services.agents.context import ConversationActorContext
 from app.services.workflows.service import WorkflowRunRequest, get_workflow_service
+from app.workflows.schema_utils import schema_to_json_schema
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
 _ALLOWED_ROLES: tuple[TenantRole, ...] = (
@@ -78,9 +79,10 @@ async def run_workflow(
             actor=actor,
         )
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+        message = str(exc)
+        if "not found" in message.lower():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message) from exc
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=message) from exc
     except Exception as exc:  # pragma: no cover - defensive
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
@@ -100,10 +102,12 @@ async def run_workflow(
                 stage_name=step.stage_name,
                 parallel_group=step.parallel_group,
                 branch_index=step.branch_index,
+                output_schema=step.output_schema,
             )
             for step in result.steps
         ],
         final_output=result.final_output,
+        output_schema=result.output_schema,
     )
 
 
@@ -170,6 +174,14 @@ async def get_workflow_run(
     if run.tenant_id != tenant_context.tenant_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow run not found")
 
+    spec = None
+    try:
+        spec = service.get_workflow_spec(run.workflow_key)
+    except ValueError:
+        spec = None
+    step_schemas = _align_step_schemas(spec, steps) if spec else [None] * len(steps)
+    workflow_schema = schema_to_json_schema(spec.output_schema) if spec else None
+
     return WorkflowRunDetail(
         workflow_key=run.workflow_key,
         workflow_run_id=run.id,
@@ -182,6 +194,7 @@ async def get_workflow_run(
         final_output_structured=run.final_output_structured,
         request_message=run.request_message,
         conversation_id=run.conversation_id,
+        output_schema=workflow_schema,
         steps=[
             WorkflowStepResultSchema(
                 name=step.step_name,
@@ -192,8 +205,9 @@ async def get_workflow_run(
                 stage_name=step.stage_name,
                 parallel_group=step.parallel_group,
                 branch_index=step.branch_index,
+                output_schema=step_schemas[idx] if idx < len(step_schemas) else None,
             )
-            for step in steps
+            for idx, step in enumerate(steps)
         ],
     )
 
@@ -251,9 +265,10 @@ async def run_workflow_stream(
             actor=actor,
         )
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+        message = str(exc)
+        if "not found" in message.lower():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message) from exc
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=message) from exc
     except Exception as exc:  # pragma: no cover
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
@@ -361,6 +376,7 @@ async def get_workflow_descriptor(
                 input_mapper=step.input_mapper,
                 input_mapper_type=step.input_mapper_type,
                 max_turns=step.max_turns,
+                output_schema=schema_to_json_schema(step.output_schema),
             )
             for step in stage.steps
         ]
@@ -381,6 +397,7 @@ async def get_workflow_descriptor(
         allow_handoff_agents=spec.allow_handoff_agents,
         step_count=spec.step_count,
         stages=stages,
+        output_schema=schema_to_json_schema(spec.output_schema),
     )
 
 
@@ -404,3 +421,25 @@ def _parse_status(value: str | None) -> WorkflowStatus | None:
     if value not in allowed:
         raise ValueError("Invalid status filter.")
     return cast(WorkflowStatus, value)
+
+
+def _align_step_schemas(spec, steps) -> list[dict | None]:
+    # Build a cursor over the declared steps to align schemas with executed steps,
+    # preserving execution order and handling duplicate names/guards.
+    declared: list[tuple[str, dict | None]] = []
+    for stage in spec.resolved_stages():
+        for step in stage.steps:
+            declared.append((step.display_name(), schema_to_json_schema(step.output_schema)))
+
+    aligned: list[dict | None] = []
+    cursor = 0
+    for step in steps:
+        schema = None
+        while cursor < len(declared):
+            name, maybe_schema = declared[cursor]
+            cursor += 1
+            if name == step.step_name:
+                schema = maybe_schema
+                break
+        aligned.append(schema)
+    return aligned

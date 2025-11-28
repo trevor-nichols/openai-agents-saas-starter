@@ -38,6 +38,7 @@ class WorkflowStepResultSchema(BaseModel):
     stage_name: str | None = None
     parallel_group: str | None = None
     branch_index: int | None = None
+    output_schema: dict[str, Any] | None = None
 
 
 class WorkflowRunResponse(BaseModel):
@@ -46,6 +47,7 @@ class WorkflowRunResponse(BaseModel):
     conversation_id: str
     steps: list[WorkflowStepResultSchema]
     final_output: Any | None
+    output_schema: dict[str, Any] | None = None
 
 
 class StreamingWorkflowEvent(BaseModel):
@@ -97,6 +99,7 @@ class WorkflowRunDetail(BaseModel):
     final_output_structured: Any | None
     request_message: str | None
     conversation_id: str | None
+    output_schema: dict[str, Any] | None = None
     steps: list[WorkflowStepResultSchema]
 
 
@@ -126,6 +129,7 @@ class WorkflowStepDescriptor(BaseModel):
     input_mapper: str | None = None
     input_mapper_type: str | None = None
     max_turns: int | None = None
+    output_schema: dict[str, Any] | None = None
 
 
 class WorkflowStageDescriptor(BaseModel):
@@ -143,3 +147,4 @@ class WorkflowDescriptorResponse(BaseModel):
     allow_handoff_agents: bool
     step_count: int
     stages: list[WorkflowStageDescriptor]
+    output_schema: dict[str, Any] | None = None

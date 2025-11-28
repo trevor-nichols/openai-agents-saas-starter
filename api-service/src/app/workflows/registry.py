@@ -8,6 +8,7 @@ from collections.abc import Sequence
 from app.agents._shared.registry_loader import load_agent_specs
 from app.agents._shared.specs import AgentSpec
 from app.workflows.registry_loader import load_workflow_specs
+from app.workflows.schema_utils import schema_to_json_schema
 from app.workflows.specs import WorkflowDescriptor, WorkflowSpec
 
 
@@ -61,6 +62,8 @@ class WorkflowRegistry:
                 raise ValueError(f"Duplicate workflow key '{spec.key}'")
             seen_keys.add(spec.key)
             self._validate_steps(spec)
+            # Fail fast if schema is malformed
+            schema_to_json_schema(spec.output_schema)
             self._descriptors[spec.key] = WorkflowDescriptor(
                 key=spec.key,
                 display_name=spec.display_name,
@@ -94,6 +97,7 @@ class WorkflowRegistry:
                     _import_callable(step.guard, "guard")
                 if step.input_mapper:
                     _import_callable(step.input_mapper, "input_mapper")
+                schema_to_json_schema(step.output_schema)
 
 
 _WORKFLOW_REGISTRY: WorkflowRegistry | None = None

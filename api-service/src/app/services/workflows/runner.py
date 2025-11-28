@@ -19,6 +19,7 @@ from app.services.agents.context import ConversationActorContext
 from app.services.agents.interaction_context import InteractionContextBuilder
 from app.services.agents.provider_registry import AgentProviderRegistry, get_provider_registry
 from app.workflows.registry import WorkflowRegistry
+from app.workflows.schema_utils import schema_to_json_schema, validate_against_schema
 from app.workflows.specs import WorkflowSpec, WorkflowStage, WorkflowStep
 
 
@@ -30,6 +31,7 @@ class WorkflowStepResult:
     stage_name: str | None = None
     parallel_group: str | None = None
     branch_index: int | None = None
+    output_schema: dict[str, Any] | None = None
 
 
 @dataclass(slots=True)
@@ -39,6 +41,7 @@ class WorkflowRunResult:
     conversation_id: str
     steps: list[WorkflowStepResult]
     final_output: Any | None = None
+    output_schema: dict[str, Any] | None = None
 
 
 class WorkflowRunner:
@@ -117,10 +120,16 @@ class WorkflowRunner:
                             conversation_id,
                         )
 
+            validated_output = validate_against_schema(
+                workflow.output_schema,
+                current_input if steps_results else None,
+                label="workflow output",
+            )
+
             await self._record_run_end(
                 run_id,
                 status="succeeded",
-                final_output=current_input if steps_results else None,
+                final_output=validated_output,
             )
         except _WorkflowCancelled:
             await self._record_run_end(run_id, status="cancelled", final_output=None)
@@ -134,7 +143,8 @@ class WorkflowRunner:
             workflow_run_id=run_id,
             conversation_id=conversation_id,
             steps=steps_results,
-            final_output=current_input if steps_results else None,
+            final_output=validated_output if steps_results else None,
+            output_schema=schema_to_json_schema(workflow.output_schema),
         )
 
     async def run_stream(
@@ -208,10 +218,16 @@ class WorkflowRunner:
                         if prior_steps:
                             current_input = prior_steps[-1].response.final_output
 
+            validated_output = validate_against_schema(
+                workflow.output_schema,
+                current_input if prior_steps else None,
+                label="workflow output",
+            )
+
             await self._record_run_end(
                 run_id,
                 status="succeeded",
-                final_output=current_input if prior_steps else None,
+                final_output=validated_output,
             )
         except _WorkflowCancelled:
             await self._record_run_end(run_id, status="cancelled", final_output=None)
@@ -312,6 +328,7 @@ class WorkflowRunner:
                     agent_key=step.agent_key,
                     response=response,
                     stage_name=stage.name,
+                    output_schema=schema_to_json_schema(step.output_schema),
                 )
             )
             current_input = response.final_output
@@ -391,6 +408,7 @@ class WorkflowRunner:
                     stage_name=stage.name,
                     parallel_group=stage.name,
                     branch_index=idx,
+                    output_schema=schema_to_json_schema(step.output_schema),
                 )
             )
 
@@ -441,6 +459,11 @@ class WorkflowRunner:
             usage=result.usage,
             metadata=safe_metadata or None,
             tool_outputs=result.tool_outputs,
+        )
+        validate_against_schema(
+            step.output_schema,
+            chosen_output,
+            label=f"step '{step.display_name()}' output",
         )
         return chosen_output, response
 
@@ -518,6 +541,12 @@ class WorkflowRunner:
             elif last_text is not None:
                 chosen_output = last_text
 
+            validate_against_schema(
+                step.output_schema,
+                chosen_output,
+                label=f"step '{step.display_name()}' output",
+            )
+
             prior_steps.append(
                 WorkflowStepResult(
                     name=step.display_name(),
@@ -537,6 +566,7 @@ class WorkflowRunner:
                         metadata=step_metadata,
                     ),
                     stage_name=stage.name,
+                    output_schema=schema_to_json_schema(step.output_schema),
                 )
             )
             await self._record_step_end(
@@ -645,6 +675,12 @@ class WorkflowRunner:
                 elif last_text is not None:
                     chosen_output = last_text
 
+                validate_against_schema(
+                    step.output_schema,
+                    chosen_output,
+                    label=f"step '{step.display_name()}' output",
+                )
+
                 response = AgentRunResult(
                     final_output=chosen_output,
                     response_text=last_text
@@ -669,6 +705,7 @@ class WorkflowRunner:
                             stage_name=stage.name,
                             parallel_group=stage.name,
                             branch_index=idx,
+                            output_schema=schema_to_json_schema(step.output_schema),
                         ),
                     )
                 )

@@ -4,6 +4,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 
+from app.workflows.schema_utils import SchemaLike
+
 GuardType = Literal["function"]
 InputMapperType = Literal["function"]
 
@@ -17,6 +19,8 @@ class WorkflowStep:
     - guard: dotted-path callable returning bool; skips step when False
     - input_mapper: dotted-path callable to produce the next input from prior output + request
     - max_turns: optional override of RunOptions.max_turns per step
+    - output_schema: optional JSON schema (or AgentOutputSchema) describing the
+      structured output of this step; if provided, outputs are validated.
     """
 
     agent_key: str
@@ -26,6 +30,7 @@ class WorkflowStep:
     input_mapper: str | None = None
     input_mapper_type: InputMapperType | None = "function"
     max_turns: int | None = None
+    output_schema: SchemaLike = None
 
     def display_name(self) -> str:
         return self.name or self.agent_key
@@ -63,6 +68,7 @@ class WorkflowSpec:
     stages: Sequence[WorkflowStage] | None = None
     default: bool = False
     allow_handoff_agents: bool = False  # optional guardrail for strict chains
+    output_schema: SchemaLike = None  # optional final output schema
 
     def ensure_valid(self) -> None:
         resolved = self.resolved_stages()
