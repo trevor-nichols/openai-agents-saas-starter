@@ -5,7 +5,7 @@ from xml.etree import ElementTree as ET
 
 from fastapi.testclient import TestClient
 
-os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///./test.db")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("RATE_LIMIT_REDIS_URL", os.environ["REDIS_URL"])
 os.environ.setdefault("AUTH_CACHE_REDIS_URL", os.environ["REDIS_URL"])

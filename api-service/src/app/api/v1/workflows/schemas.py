@@ -34,6 +34,9 @@ class WorkflowStepResultSchema(BaseModel):
     response_text: str | None
     structured_output: Any | None = None
     response_id: str | None = None
+    stage_name: str | None = None
+    parallel_group: str | None = None
+    branch_index: int | None = None
 
 
 class WorkflowRunResponse(BaseModel):
@@ -57,6 +60,9 @@ class StreamingWorkflowEvent(BaseModel):
     workflow_run_id: str | None = None
     step_name: str | None = None
     step_agent: str | None = None
+    stage_name: str | None = None
+    parallel_group: str | None = None
+    branch_index: int | None = None
     conversation_id: str | None = None
     agent_used: str | None = None
     response_id: str | None = None

@@ -41,3 +41,6 @@ class WorkflowRunStepModel(ModelBase):
     raw_payload = Column(JSONB if JSONB is not None else JSON, nullable=True)
     usage_input_tokens = Column(Integer, nullable=True)
     usage_output_tokens = Column(Integer, nullable=True)
+    stage_name = Column(String, nullable=True)
+    parallel_group = Column(String, nullable=True)
+    branch_index = Column(Integer, nullable=True)

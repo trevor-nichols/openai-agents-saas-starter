@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
 os.environ["REDIS_URL"] = "redis://localhost:6379/0"
 os.environ.setdefault("RATE_LIMIT_REDIS_URL", os.environ["REDIS_URL"])
 os.environ.setdefault("AUTH_CACHE_REDIS_URL", os.environ["REDIS_URL"])

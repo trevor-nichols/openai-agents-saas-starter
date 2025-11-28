@@ -40,6 +40,9 @@ class WorkflowRunStep:
     raw_payload: dict[str, Any] | None = None
     usage_input_tokens: int | None = None
     usage_output_tokens: int | None = None
+    stage_name: str | None = None
+    parallel_group: str | None = None
+    branch_index: int | None = None
 
 
 class WorkflowRunRepository(Protocol):

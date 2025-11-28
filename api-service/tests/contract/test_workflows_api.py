@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import anyio
 from typing import Any
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
@@ -10,12 +11,14 @@ from datetime import datetime, UTC
 import pytest
 from fastapi.testclient import TestClient
 
-os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///./test.db")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("ENABLE_BILLING", "false")
 os.environ.setdefault("ENABLE_USAGE_GUARDRAILS", "false")
 
 pytestmark = pytest.mark.auto_migrations(enabled=True)
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # noqa: E402
 
 from app.api.dependencies.auth import require_current_user  # noqa: E402
 from app.api.v1.workflows.schemas import StreamingWorkflowEvent  # noqa: E402
@@ -24,6 +27,9 @@ from app.domain.ai.models import AgentStreamEvent  # noqa: E402
 from app.domain.workflows import WorkflowRun, WorkflowRunStep  # noqa: E402
 from app.services.workflows.runner import WorkflowStepResult, WorkflowRunResult  # noqa: E402
 from app.services.workflows.service import get_workflow_service  # noqa: E402
+from app.infrastructure.persistence.models.base import Base as ModelBase  # noqa: E402
+from app.infrastructure.persistence.workflows import models as _workflow_models  # noqa: F401,E402
+from app.infrastructure.db.engine import get_engine  # noqa: E402
 from main import app  # noqa: E402
 
 TEST_TENANT_ID = str(uuid4())
@@ -80,6 +86,7 @@ def test_run_workflow_sync(mock_run_workflow: AsyncMock, client: TestClient) -> 
                 response=AgentRunResult(final_output="hi", response_text="hi"),
             )
         ],
+        final_output="hi",
     )
 
     response = client.post(
@@ -149,6 +156,14 @@ def test_get_workflow_run(client: TestClient) -> None:
     repo = getattr(service._runner, "_run_repository", None)
     assert repo is not None
 
+    async def _ensure_tables():
+        engine = get_engine()
+        assert engine is not None
+        async with engine.begin() as conn:  # pragma: no cover - test setup
+            await conn.run_sync(ModelBase.metadata.create_all)
+
+    anyio.run(_ensure_tables)
+
     run = WorkflowRun(
         id="run-abc",
         workflow_key="analysis_code",
@@ -181,8 +196,6 @@ def test_get_workflow_run(client: TestClient) -> None:
         usage_output_tokens=None,
     )
 
-    import anyio
-
     anyio.run(repo.create_run, run)
     anyio.run(repo.create_step, step)
 
@@ -199,8 +212,18 @@ def test_get_workflow_run_via_db(client: TestClient, _provider_engine) -> None:
     from app.infrastructure.persistence.workflows.repository import (
         SqlAlchemyWorkflowRunRepository,
     )
+    from app.infrastructure.db import get_async_sessionmaker
 
-    repo = SqlAlchemyWorkflowRunRepository(lambda: _provider_engine.begin().__aenter__())
+    session_factory = get_async_sessionmaker()
+    repo = SqlAlchemyWorkflowRunRepository(session_factory)
+
+    async def _ensure_tables():
+        engine = get_engine()
+        assert engine is not None
+        async with engine.begin() as conn:
+            await conn.run_sync(ModelBase.metadata.create_all)
+
+    anyio.run(_ensure_tables)
 
     run_id = "run-db"
     run = WorkflowRun(
@@ -234,8 +257,6 @@ def test_get_workflow_run_via_db(client: TestClient, _provider_engine) -> None:
         usage_input_tokens=None,
         usage_output_tokens=None,
     )
-
-    import anyio
 
     anyio.run(repo.create_run, run)
     anyio.run(repo.create_step, step)

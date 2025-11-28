@@ -88,6 +88,9 @@ async def run_workflow(
                 response_text=step.response.response_text,
                 structured_output=step.response.structured_output,
                 response_id=step.response.response_id,
+                stage_name=step.stage_name,
+                parallel_group=step.parallel_group,
+                branch_index=step.branch_index,
             )
             for step in result.steps
         ],
@@ -128,6 +131,9 @@ async def get_workflow_run(
                 response_text=step.response_text,
                 structured_output=step.structured_output,
                 response_id=step.response_id,
+                stage_name=step.stage_name,
+                parallel_group=step.parallel_group,
+                branch_index=step.branch_index,
             )
             for step in steps
         ],
@@ -189,6 +195,9 @@ async def run_workflow_stream(
                     workflow_run_id=metadata.get("workflow_run_id"),
                     step_name=metadata.get("step_name"),
                     step_agent=metadata.get("step_agent"),
+                    stage_name=metadata.get("stage_name"),
+                    parallel_group=metadata.get("parallel_group"),
+                    branch_index=metadata.get("branch_index"),
                     conversation_id=event.conversation_id,
                     agent_used=event.agent,
                     response_id=event.response_id,

@@ -65,27 +65,35 @@ class WorkflowRegistry:
                 key=spec.key,
                 display_name=spec.display_name,
                 description=spec.description.strip(),
-                step_count=len(spec.steps),
+                step_count=spec.step_count,
                 default=spec.default,
             )
 
     def _validate_steps(self, spec: WorkflowSpec) -> None:
-        for step in spec.steps:
-            if step.agent_key not in self._agent_specs:
+        for stage in spec.resolved_stages():
+            if stage.mode not in {"sequential", "parallel"}:
                 raise ValueError(
-                    "Workflow '{spec.key}' references agent "
-                    f"'{step.agent_key}' which is not configured"
+                    f"Workflow '{spec.key}' stage '{stage.name}' has invalid mode '{stage.mode}'"
                 )
-            if not spec.allow_handoff_agents:
-                agent_spec = self._agent_specs[step.agent_key]
-                if getattr(agent_spec, "handoff_keys", ()):
+            if stage.reducer:
+                _import_callable(stage.reducer, "reducer")
+            for step in stage.steps:
+                if step.agent_key not in self._agent_specs:
                     raise ValueError(
-                        f"Workflow '{spec.key}' disallows handoff-enabled agent '{step.agent_key}'"
+                        "Workflow '{spec.key}' references agent "
+                        f"'{step.agent_key}' which is not configured"
                     )
-            if step.guard:
-                _import_callable(step.guard, "guard")
-            if step.input_mapper:
-                _import_callable(step.input_mapper, "input_mapper")
+                if not spec.allow_handoff_agents:
+                    agent_spec = self._agent_specs[step.agent_key]
+                    if getattr(agent_spec, "handoff_keys", ()):
+                        raise ValueError(
+                            f"Workflow '{spec.key}' disallows handoff-enabled agent "
+                            f"'{step.agent_key}'"
+                        )
+                if step.guard:
+                    _import_callable(step.guard, "guard")
+                if step.input_mapper:
+                    _import_callable(step.input_mapper, "input_mapper")
 
 
 _WORKFLOW_REGISTRY: WorkflowRegistry | None = None

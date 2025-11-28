@@ -14,6 +14,12 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 - Keys are Ed25519 
 - Long-lived secrets such as signing keys live under var/keys/
 
+### Workflow orchestration (API service)
+- Declarative specs live in `api-service/src/app/workflows/**/spec.py`. You can define either a flat `steps` list (legacy) or explicit `stages`.
+- `WorkflowStage` supports `mode="sequential"` or `mode="parallel"` plus an optional `reducer` (`outputs, prior_steps -> next_input`) for fan-out/fan-in.
+- `WorkflowStep` retains guard + input_mapper hooks and per-step `max_turns`. Registry validation ensures agent keys exist and, unless `allow_handoff_agents=True`, blocks handoff-enabled agents.
+- Runner wraps executions in `agents.trace`, tags step records and SSE events with `stage_name` / `parallel_group` / `branch_index`, and uses reducers to merge parallel outputs before downstream stages.
+
 ## Frontend
 - The frontend uses the HeyAPI SDK to generate the API client. The API client is generated into the `lib/api/client` directory.
 - All hooks use TanStack Query

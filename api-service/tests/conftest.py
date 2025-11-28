@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
+import pytest_asyncio
 import sqlalchemy.ext.asyncio as sqla_async
 from fakeredis.aioredis import FakeRedis
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB
@@ -22,7 +23,7 @@ from tests.utils.pytest_stripe import (
     skip_stripe_replay_if_disabled,
 )
 
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
 os.environ["REDIS_URL"] = "redis://localhost:6379/0"
 os.environ.setdefault("RATE_LIMIT_REDIS_URL", os.environ["REDIS_URL"])
 os.environ.setdefault("AUTH_CACHE_REDIS_URL", os.environ["REDIS_URL"])
@@ -33,6 +34,10 @@ os.environ.setdefault("ENABLE_BILLING", "false")
 os.environ.setdefault("ALLOW_PUBLIC_SIGNUP", "true")
 os.environ.setdefault("STARTER_CLI_SKIP_ENV", "true")
 os.environ.setdefault("STARTER_CLI_SKIP_VAULT_PROBE", "true")
+
+TEST_DB_PATH = Path("test.db")
+if TEST_DB_PATH.exists():
+    TEST_DB_PATH.unlink()
 
 from app.bootstrap import get_container, reset_container
 from app.core import config as config_module
@@ -47,6 +52,7 @@ from app.domain.conversations import (
     ConversationSessionState,
 )
 from app.infrastructure.persistence.models.base import Base
+from app.infrastructure.persistence.workflows import models as _workflow_models  # noqa: F401
 from app.infrastructure.providers.openai import build_openai_provider
 from app.services.agents.provider_registry import get_provider_registry
 from app.services.conversation_service import conversation_service
@@ -109,17 +115,15 @@ def _provider_engine() -> Generator[sqla_async.AsyncEngine, None, None]:
         loop.close()
 
 
-@pytest.fixture(autouse=True)
-def _configure_agent_provider(
+@pytest_asyncio.fixture(autouse=True)
+async def _configure_agent_provider(
     _reset_application_container, _provider_engine
 ) -> Generator[None, None, None]:
     """Register the OpenAI provider against the in-memory test engine."""
 
-    async def _create_tables():
-        async with _provider_engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-
-    asyncio.get_event_loop().run_until_complete(_create_tables())
+    async with _provider_engine.begin() as conn:
+        # Populate ORM metadata (includes workflow tables via imports above)
+        await conn.run_sync(Base.metadata.create_all)
 
     registry = get_provider_registry()
     registry.clear()

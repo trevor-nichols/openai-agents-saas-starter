@@ -58,6 +58,9 @@ class SqlAlchemyWorkflowRunRepository(WorkflowRunRepository):
                     raw_payload=step.raw_payload,
                     usage_input_tokens=step.usage_input_tokens,
                     usage_output_tokens=step.usage_output_tokens,
+                    stage_name=step.stage_name,
+                    parallel_group=step.parallel_group,
+                    branch_index=step.branch_index,
                 )
             )
             await session.commit()
@@ -119,6 +122,9 @@ class SqlAlchemyWorkflowRunRepository(WorkflowRunRepository):
                 raw_payload=row.raw_payload,
                 usage_input_tokens=row.usage_input_tokens,
                 usage_output_tokens=row.usage_output_tokens,
+                stage_name=getattr(row, "stage_name", None),
+                parallel_group=getattr(row, "parallel_group", None),
+                branch_index=getattr(row, "branch_index", None),
             )
             for row in step_rows
         ]

@@ -210,6 +210,7 @@ def _import_all_models() -> None:
     from app.infrastructure.persistence.stripe import models as _stripe_models  # noqa: F401
     from app.infrastructure.persistence.tenants import models as _tenant_models  # noqa: F401
     from app.infrastructure.persistence.vector_stores import models as _vector_store_models  # noqa: F401
+    from app.infrastructure.persistence.workflows import models as _workflow_models  # noqa: F401
 
 
 @asynccontextmanager
