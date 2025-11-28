@@ -20,6 +20,11 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 - `WorkflowStep` retains guard + input_mapper hooks and per-step `max_turns`. Registry validation ensures agent keys exist and, unless `allow_handoff_agents=True`, blocks handoff-enabled agents.
 - Runner wraps executions in `agents.trace`, tags step records and SSE events with `stage_name` / `parallel_group` / `branch_index`, and uses reducers to merge parallel outputs before downstream stages.
 
+### Agents vs Workflows (API service)
+- `AgentSpec` (`api-service/src/app/agents/<key>/spec.py`) declares a single SDK agent: prompt/instructions, model selector, explicit tool surface, and optional handoff targets. Specs are loaded via `load_agent_specs()` and materialized into concrete OpenAI agents at startup.
+- `WorkflowSpec` (`api-service/src/app/workflows/<name>/spec.py`) stitches existing agents into deterministic chains or fan-out/fan-in stages. It reuses agent prompts and only controls sequencing via guards, input mappers, and reducers; the workflow registry validates referenced agent keys.
+- Reach for an agent spec when you need a single conversational entrypoint with tools or handoffs. Choose a workflow spec when you need a repeatable, auditable sequence where ordering and branching stay outside the model.
+
 ## Frontend
 - The frontend uses the HeyAPI SDK to generate the API client. The API client is generated into the `lib/api/client` directory.
 - All hooks use TanStack Query
