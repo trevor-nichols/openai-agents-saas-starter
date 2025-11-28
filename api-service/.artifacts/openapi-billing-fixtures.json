@@ -1,8 +1,8 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "anything-agents",
-    "description": "anything-agents FastAPI microservice",
+    "title": "api-service",
+    "description": "api-service FastAPI microservice",
     "version": "1.0.0"
   },
   "paths": {
@@ -2109,6 +2109,198 @@
         }
       }
     },
+    "/api/v1/workflows/runs": {
+      "get": {
+        "tags": [
+          "workflows"
+        ],
+        "summary": "List Workflow Runs",
+        "operationId": "list_workflow_runs_api_v1_workflows_runs_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workflow_key",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by workflow key.",
+              "title": "Workflow Key"
+            },
+            "description": "Filter by workflow key."
+          },
+          {
+            "name": "run_status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by workflow status.",
+              "title": "Run Status"
+            },
+            "description": "Filter by workflow status."
+          },
+          {
+            "name": "started_before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Return runs that started at or before this ISO timestamp.",
+              "title": "Started Before"
+            },
+            "description": "Return runs that started at or before this ISO timestamp."
+          },
+          {
+            "name": "started_after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Return runs that started at or after this ISO timestamp.",
+              "title": "Started After"
+            },
+            "description": "Return runs that started at or after this ISO timestamp."
+          },
+          {
+            "name": "conversation_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by conversation id.",
+              "title": "Conversation Id"
+            },
+            "description": "Filter by conversation id."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque pagination cursor.",
+              "title": "Cursor"
+            },
+            "description": "Opaque pagination cursor."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Maximum runs to return.",
+              "default": 20,
+              "title": "Limit"
+            },
+            "description": "Maximum runs to return."
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Tenant-Role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowRunListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/workflows/runs/{run_id}": {
       "get": {
         "tags": [
@@ -2172,6 +2364,83 @@
                 "schema": {
                   "$ref": "#/components/schemas/WorkflowRunDetail"
                 }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/runs/{run_id}/cancel": {
+      "post": {
+        "tags": [
+          "workflows"
+        ],
+        "summary": "Cancel Workflow Run",
+        "operationId": "cancel_workflow_run_api_v1_workflows_runs__run_id__cancel_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Tenant-Role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Role"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           },
@@ -2265,6 +2534,85 @@
               "text/event-stream": {
                 "schema": {
                   "$ref": "#/components/schemas/StreamingWorkflowEvent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/{workflow_key}": {
+      "get": {
+        "tags": [
+          "workflows"
+        ],
+        "summary": "Get Workflow Descriptor",
+        "operationId": "get_workflow_descriptor_api_v1_workflows__workflow_key__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workflow_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workflow Key"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Tenant-Role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowDescriptorResponse"
                 }
               }
             }
@@ -9539,6 +9887,17 @@
             ],
             "title": "Workflow Run Id"
           },
+          "server_timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Server Timestamp"
+          },
           "step_name": {
             "anyOf": [
               {
@@ -11125,6 +11484,52 @@
         ],
         "title": "VectorStoreSearchResponse"
       },
+      "WorkflowDescriptorResponse": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "default": {
+            "type": "boolean",
+            "title": "Default"
+          },
+          "allow_handoff_agents": {
+            "type": "boolean",
+            "title": "Allow Handoff Agents"
+          },
+          "step_count": {
+            "type": "integer",
+            "title": "Step Count"
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowStageDescriptor"
+            },
+            "type": "array",
+            "title": "Stages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "display_name",
+          "description",
+          "default",
+          "allow_handoff_agents",
+          "step_count",
+          "stages"
+        ],
+        "title": "WorkflowDescriptorResponse"
+      },
       "WorkflowRunDetail": {
         "properties": {
           "workflow_key": {
@@ -11229,6 +11634,121 @@
         ],
         "title": "WorkflowRunDetail"
       },
+      "WorkflowRunListItem": {
+        "properties": {
+          "workflow_run_id": {
+            "type": "string",
+            "title": "Workflow Run Id"
+          },
+          "workflow_key": {
+            "type": "string",
+            "title": "Workflow Key"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "succeeded",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status"
+          },
+          "started_at": {
+            "type": "string",
+            "title": "Started At"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          },
+          "step_count": {
+            "type": "integer",
+            "title": "Step Count"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "final_output_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Final Output Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflow_run_id",
+          "workflow_key",
+          "status",
+          "started_at",
+          "user_id",
+          "step_count"
+        ],
+        "title": "WorkflowRunListItem"
+      },
+      "WorkflowRunListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowRunListItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "WorkflowRunListResponse"
+      },
       "WorkflowRunRequestBody": {
         "properties": {
           "message": {
@@ -11318,6 +11838,120 @@
           "final_output"
         ],
         "title": "WorkflowRunResponse"
+      },
+      "WorkflowStageDescriptor": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "sequential",
+              "parallel"
+            ],
+            "title": "Mode"
+          },
+          "reducer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reducer"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowStepDescriptor"
+            },
+            "type": "array",
+            "title": "Steps"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "mode",
+          "steps"
+        ],
+        "title": "WorkflowStageDescriptor"
+      },
+      "WorkflowStepDescriptor": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "agent_key": {
+            "type": "string",
+            "title": "Agent Key"
+          },
+          "guard": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guard"
+          },
+          "guard_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guard Type"
+          },
+          "input_mapper": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Mapper"
+          },
+          "input_mapper_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Mapper Type"
+          },
+          "max_turns": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Turns"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "agent_key"
+        ],
+        "title": "WorkflowStepDescriptor"
       },
       "WorkflowStepResultSchema": {
         "properties": {
