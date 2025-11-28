@@ -2,19 +2,28 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import UTC, datetime
+from typing import cast
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 
 from app.api.dependencies.auth import CurrentUser, require_verified_scopes
 from app.api.dependencies.tenant import TenantContext, TenantRole, require_tenant_role
 from app.api.v1.workflows.schemas import (
     StreamingWorkflowEvent,
+    WorkflowDescriptorResponse,
     WorkflowRunDetail,
+    WorkflowRunListItem,
+    WorkflowRunListResponse,
     WorkflowRunRequestBody,
     WorkflowRunResponse,
+    WorkflowStageDescriptor,
+    WorkflowStepDescriptor,
     WorkflowStepResultSchema,
     WorkflowSummary,
 )
+from app.domain.workflows import WorkflowStatus
 from app.services.agents.context import ConversationActorContext
 from app.services.workflows.service import WorkflowRunRequest, get_workflow_service
 
@@ -98,6 +107,55 @@ async def run_workflow(
     )
 
 
+@router.get("/runs", response_model=WorkflowRunListResponse)
+async def list_workflow_runs(
+    workflow_key: str | None = Query(None, description="Filter by workflow key."),
+    run_status: str | None = Query(None, description="Filter by workflow status."),
+    started_before: str | None = Query(
+        None, description="Return runs that started at or before this ISO timestamp."
+    ),
+    started_after: str | None = Query(
+        None, description="Return runs that started at or after this ISO timestamp."
+    ),
+    conversation_id: str | None = Query(None, description="Filter by conversation id."),
+    cursor: str | None = Query(None, description="Opaque pagination cursor."),
+    limit: int = Query(20, ge=1, le=100, description="Maximum runs to return."),
+    current_user: CurrentUser = Depends(require_verified_scopes("conversations:read")),
+    tenant_context: TenantContext = Depends(require_tenant_role(*_ALLOWED_ROLES)),
+):
+    service = get_workflow_service()
+    try:
+        page = await service.list_runs(
+            tenant_id=tenant_context.tenant_id,
+            workflow_key=workflow_key,
+            status=_parse_status(run_status),
+            started_before=_parse_iso(started_before),
+            started_after=_parse_iso(started_after),
+            conversation_id=conversation_id,
+            cursor=cursor,
+            limit=limit,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    items = [
+        WorkflowRunListItem(
+            workflow_run_id=item.id,
+            workflow_key=item.workflow_key,
+            status=item.status,
+            started_at=item.started_at.isoformat(),
+            ended_at=item.ended_at.isoformat() if item.ended_at else None,
+            user_id=item.user_id,
+            conversation_id=item.conversation_id,
+            step_count=item.step_count,
+            duration_ms=item.duration_ms,
+            final_output_text=item.final_output_text,
+        )
+        for item in page.items
+    ]
+    return WorkflowRunListResponse(items=items, next_cursor=page.next_cursor)
+
+
 @router.get("/runs/{run_id}", response_model=WorkflowRunDetail)
 async def get_workflow_run(
     run_id: str,
@@ -138,6 +196,22 @@ async def get_workflow_run(
             for step in steps
         ],
     )
+
+
+@router.post("/runs/{run_id}/cancel", status_code=status.HTTP_202_ACCEPTED)
+async def cancel_workflow_run(
+    run_id: str,
+    current_user: CurrentUser = Depends(require_verified_scopes("conversations:write")),
+    tenant_context: TenantContext = Depends(require_tenant_role(*_ALLOWED_ROLES)),
+):
+    service = get_workflow_service()
+    try:
+        await service.cancel_run(run_id, tenant_id=tenant_context.tenant_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return {"success": True}
 
 
 STREAM_EVENT_RESPONSE = {
@@ -186,6 +260,9 @@ async def run_workflow_stream(
         ) from exc
 
     async def _event_stream():
+        event_id = 0
+        last_heartbeat = datetime.now(tz=UTC)
+
         try:
             async for event in stream:
                 metadata = event.metadata if isinstance(event.metadata, dict) else {}
@@ -216,8 +293,15 @@ async def run_workflow_stream(
                     is_terminal=event.is_terminal,
                     payload=event.payload if isinstance(event.payload, dict) else None,
                     attachments=event.attachments,
+                    server_timestamp=datetime.now(tz=UTC).isoformat(),
                 )
-                yield f"data: {payload.model_dump_json()}\n\n"
+                event_id += 1
+                yield f"id: {event_id}\nevent: {event.kind}\ndata: {payload.model_dump_json()}\n\n"
+
+                now = datetime.now(tz=UTC)
+                if (now - last_heartbeat).total_seconds() >= 15:
+                    last_heartbeat = now
+                    yield f": heartbeat {now.isoformat()}\n\n"
         except Exception as exc:
             error_payload = StreamingWorkflowEvent(
                 kind="error",
@@ -238,8 +322,10 @@ async def run_workflow_stream(
                 response_text=None,
                 is_terminal=True,
                 payload={"error": str(exc)},
+                server_timestamp=datetime.now(tz=UTC).isoformat(),
             )
-            yield f"data: {error_payload.model_dump_json()}\n\n"
+            event_id += 1
+            yield f"id: {event_id}\nevent: error\ndata: {error_payload.model_dump_json()}\n\n"
 
     headers = {
         "Cache-Control": "no-cache",
@@ -250,3 +336,71 @@ async def run_workflow_stream(
     }
 
     return StreamingResponse(_event_stream(), media_type="text/event-stream", headers=headers)
+
+
+@router.get("/{workflow_key}", response_model=WorkflowDescriptorResponse)
+async def get_workflow_descriptor(
+    workflow_key: str,
+    current_user: CurrentUser = Depends(require_verified_scopes("conversations:read")),
+    tenant_context: TenantContext = Depends(require_tenant_role(*_ALLOWED_ROLES)),
+):
+    service = get_workflow_service()
+    try:
+        spec = service.get_workflow_spec(workflow_key)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    stages = []
+    for stage in spec.resolved_stages():
+        steps = [
+            WorkflowStepDescriptor(
+                name=step.display_name(),
+                agent_key=step.agent_key,
+                guard=step.guard,
+                guard_type=step.guard_type,
+                input_mapper=step.input_mapper,
+                input_mapper_type=step.input_mapper_type,
+                max_turns=step.max_turns,
+            )
+            for step in stage.steps
+        ]
+        stages.append(
+            WorkflowStageDescriptor(
+                name=stage.name,
+                mode=stage.mode,
+                reducer=stage.reducer,
+                steps=steps,
+            )
+        )
+
+    return WorkflowDescriptorResponse(
+        key=spec.key,
+        display_name=spec.display_name,
+        description=spec.description,
+        default=spec.default,
+        allow_handoff_agents=spec.allow_handoff_agents,
+        step_count=spec.step_count,
+        stages=stages,
+    )
+
+
+def _parse_iso(value: str | None):
+    if value is None:
+        return None
+    try:
+        normalized = value.strip()
+        if normalized.endswith("Z"):
+            normalized = normalized[:-1] + "+00:00"
+        dt = datetime.fromisoformat(normalized)
+        return dt if dt.tzinfo is not None else dt.replace(tzinfo=UTC)
+    except ValueError as exc:  # pragma: no cover - invalid user input
+        raise ValueError("Invalid datetime format; use ISO-8601") from exc
+
+
+def _parse_status(value: str | None) -> WorkflowStatus | None:
+    if value is None:
+        return None
+    allowed: tuple[WorkflowStatus, ...] = ("running", "succeeded", "failed", "cancelled")
+    if value not in allowed:
+        raise ValueError("Invalid status filter.")
+    return cast(WorkflowStatus, value)

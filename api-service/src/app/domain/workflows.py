@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal, Protocol
 
-WorkflowStatus = Literal["running", "succeeded", "failed"]
+WorkflowStatus = Literal["running", "succeeded", "failed", "cancelled"]
 
 
 @dataclass(slots=True)
@@ -58,5 +58,49 @@ class WorkflowRunRepository(Protocol):
         self, run_id: str
     ) -> tuple[WorkflowRun, list[WorkflowRunStep]]: ...
 
+    async def list_runs(
+        self,
+        *,
+        tenant_id: str,
+        workflow_key: str | None = None,
+        status: WorkflowStatus | None = None,
+        started_before: datetime | None = None,
+        started_after: datetime | None = None,
+        conversation_id: str | None = None,
+        cursor: str | None = None,
+        limit: int = 20,
+    ) -> WorkflowRunListPage: ...
 
-__all__ = ["WorkflowRun", "WorkflowRunStep", "WorkflowRunRepository", "WorkflowStatus"]
+    async def cancel_run(self, run_id: str, *, ended_at: datetime) -> None: ...
+
+    async def cancel_running_steps(self, run_id: str, *, ended_at: datetime) -> None: ...
+
+
+@dataclass(slots=True)
+class WorkflowRunListItem:
+    id: str
+    workflow_key: str
+    status: WorkflowStatus
+    started_at: datetime
+    ended_at: datetime | None
+    user_id: str
+    conversation_id: str | None
+    step_count: int
+    duration_ms: int | None
+    final_output_text: str | None
+
+
+@dataclass(slots=True)
+class WorkflowRunListPage:
+    items: list[WorkflowRunListItem]
+    next_cursor: str | None
+
+
+__all__ = [
+    "WorkflowRun",
+    "WorkflowRunStep",
+    "WorkflowRunRepository",
+    "WorkflowStatus",
+    "WorkflowRunListItem",
+    "WorkflowRunListPage",
+]

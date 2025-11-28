@@ -4,6 +4,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from app.domain.workflows import WorkflowStatus
 from app.utils.tools.location import LocationHint
 
 
@@ -58,6 +59,7 @@ class StreamingWorkflowEvent(BaseModel):
     ]
     workflow_key: str
     workflow_run_id: str | None = None
+    server_timestamp: str | None = None
     step_name: str | None = None
     step_agent: str | None = None
     stage_name: str | None = None
@@ -96,3 +98,48 @@ class WorkflowRunDetail(BaseModel):
     request_message: str | None
     conversation_id: str | None
     steps: list[WorkflowStepResultSchema]
+
+
+class WorkflowRunListItem(BaseModel):
+    workflow_run_id: str
+    workflow_key: str
+    status: WorkflowStatus
+    started_at: str
+    ended_at: str | None = None
+    user_id: str
+    conversation_id: str | None = None
+    step_count: int
+    duration_ms: int | None = None
+    final_output_text: str | None = None
+
+
+class WorkflowRunListResponse(BaseModel):
+    items: list[WorkflowRunListItem]
+    next_cursor: str | None = None
+
+
+class WorkflowStepDescriptor(BaseModel):
+    name: str
+    agent_key: str
+    guard: str | None = None
+    guard_type: str | None = None
+    input_mapper: str | None = None
+    input_mapper_type: str | None = None
+    max_turns: int | None = None
+
+
+class WorkflowStageDescriptor(BaseModel):
+    name: str
+    mode: Literal["sequential", "parallel"]
+    reducer: str | None = None
+    steps: list[WorkflowStepDescriptor]
+
+
+class WorkflowDescriptorResponse(BaseModel):
+    key: str
+    display_name: str
+    description: str
+    default: bool
+    allow_handoff_agents: bool
+    step_count: int
+    stages: list[WorkflowStageDescriptor]

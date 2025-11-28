@@ -6,7 +6,7 @@ from typing import Any
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
-from datetime import datetime, UTC
+from datetime import datetime, UTC, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -266,3 +266,205 @@ def test_get_workflow_run_via_db(client: TestClient, _provider_engine) -> None:
     body = response.json()
     assert body["workflow_run_id"] == run_id
     assert body["steps"][0]["agent_key"] == "data_analyst"
+
+
+def test_list_workflow_runs_endpoint(client: TestClient) -> None:
+    service = get_workflow_service()
+    repo = getattr(service._runner, "_run_repository", None)
+    assert repo is not None
+
+    async def _ensure_tables():
+        engine = get_engine()
+        assert engine is not None
+        async with engine.begin() as conn:
+            await conn.run_sync(ModelBase.metadata.create_all)
+
+    anyio.run(_ensure_tables)
+
+    base_ts = datetime.now(tz=UTC)
+    run1 = WorkflowRun(
+        id="run-1",
+        workflow_key="analysis_code",
+        tenant_id=TEST_TENANT_ID,
+        user_id="test-user",
+        status="succeeded",
+        started_at=base_ts,
+        ended_at=base_ts,
+        final_output_text="done",
+        final_output_structured=None,
+        trace_id=None,
+        request_message="hello",
+        conversation_id="conv-1",
+        metadata=None,
+    )
+    run2 = WorkflowRun(
+        id="run-2",
+        workflow_key="analysis_code",
+        tenant_id=TEST_TENANT_ID,
+        user_id="test-user",
+        status="running",
+        started_at=base_ts - timedelta(minutes=1),
+        ended_at=None,
+        final_output_text=None,
+        final_output_structured=None,
+        trace_id=None,
+        request_message="hi",
+        conversation_id="conv-2",
+        metadata=None,
+    )
+    anyio.run(repo.create_run, run1)
+    anyio.run(repo.create_run, run2)
+
+    response = client.get("/api/v1/workflows/runs", params={"limit": 1})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["items"][0]["workflow_run_id"] == "run-1"
+    assert payload["next_cursor"]
+
+    cursor = payload["next_cursor"]
+    page2 = client.get("/api/v1/workflows/runs", params={"cursor": cursor})
+    assert page2.status_code == 200
+    page2_body = page2.json()
+    ids = [item["workflow_run_id"] for item in page2_body["items"]]
+    assert "run-2" in ids
+
+
+def test_list_workflow_runs_tenant_isolation(client: TestClient) -> None:
+    service = get_workflow_service()
+    repo = getattr(service._runner, "_run_repository", None)
+    assert repo is not None
+
+    async def _ensure_tables():
+        engine = get_engine()
+        assert engine is not None
+        async with engine.begin() as conn:
+            await conn.run_sync(ModelBase.metadata.create_all)
+
+    anyio.run(_ensure_tables)
+
+    run_allowed = WorkflowRun(
+        id="run-tenant-ok",
+        workflow_key="analysis_code",
+        tenant_id=TEST_TENANT_ID,
+        user_id="test-user",
+        status="succeeded",
+        started_at=datetime.now(tz=UTC),
+        ended_at=None,
+        final_output_text=None,
+        final_output_structured=None,
+        trace_id=None,
+        request_message="hello",
+        conversation_id=None,
+        metadata=None,
+    )
+    run_other = WorkflowRun(
+        id="run-tenant-other",
+        workflow_key="analysis_code",
+        tenant_id="other-tenant",
+        user_id="test-user",
+        status="succeeded",
+        started_at=datetime.now(tz=UTC),
+        ended_at=None,
+        final_output_text=None,
+        final_output_structured=None,
+        trace_id=None,
+        request_message="hi",
+        conversation_id=None,
+        metadata=None,
+    )
+
+    anyio.run(repo.create_run, run_allowed)
+    anyio.run(repo.create_run, run_other)
+
+    response = client.get("/api/v1/workflows/runs")
+    assert response.status_code == 200
+    body = response.json()
+    ids = [item["workflow_run_id"] for item in body["items"]]
+    assert "run-tenant-ok" in ids
+    assert "run-tenant-other" not in ids
+
+
+def test_get_workflow_descriptor(client: TestClient) -> None:
+    response = client.get("/api/v1/workflows/analysis_code")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["key"] == "analysis_code"
+    assert body["stages"]
+    assert body["stages"][0]["steps"]
+    assert body["stages"][0]["steps"][0]["agent_key"]
+
+
+def test_get_workflow_descriptor_not_found(client: TestClient) -> None:
+    response = client.get("/api/v1/workflows/does_not_exist")
+    assert response.status_code == 404
+
+
+def test_cancel_workflow_run(client: TestClient) -> None:
+    service = get_workflow_service()
+    repo = getattr(service._runner, "_run_repository", None)
+    assert repo is not None
+
+    async def _ensure_tables():
+        engine = get_engine()
+        assert engine is not None
+        async with engine.begin() as conn:
+            await conn.run_sync(ModelBase.metadata.create_all)
+
+    anyio.run(_ensure_tables)
+
+    run = WorkflowRun(
+        id="run-cancel",
+        workflow_key="analysis_code",
+        tenant_id=TEST_TENANT_ID,
+        user_id="test-user",
+        status="running",
+        started_at=datetime.now(tz=UTC),
+        ended_at=None,
+        final_output_text=None,
+        final_output_structured=None,
+        trace_id=None,
+        request_message="hello",
+        conversation_id=None,
+        metadata=None,
+    )
+    anyio.run(repo.create_run, run)
+
+    response = client.post("/api/v1/workflows/runs/run-cancel/cancel")
+    assert response.status_code == 202
+
+    run_after, _ = anyio.run(repo.get_run_with_steps, "run-cancel")
+    assert run_after.status == "cancelled"
+
+
+def test_cancel_completed_run_conflict(client: TestClient) -> None:
+    service = get_workflow_service()
+    repo = getattr(service._runner, "_run_repository", None)
+    assert repo is not None
+
+    async def _ensure_tables():
+        engine = get_engine()
+        assert engine is not None
+        async with engine.begin() as conn:
+            await conn.run_sync(ModelBase.metadata.create_all)
+
+    anyio.run(_ensure_tables)
+
+    run = WorkflowRun(
+        id="run-done",
+        workflow_key="analysis_code",
+        tenant_id=TEST_TENANT_ID,
+        user_id="test-user",
+        status="succeeded",
+        started_at=datetime.now(tz=UTC),
+        ended_at=datetime.now(tz=UTC),
+        final_output_text="ok",
+        final_output_structured=None,
+        trace_id=None,
+        request_message="hello",
+        conversation_id=None,
+        metadata=None,
+    )
+    anyio.run(repo.create_run, run)
+
+    response = client.post("/api/v1/workflows/runs/run-done/cancel")
+    assert response.status_code == 409

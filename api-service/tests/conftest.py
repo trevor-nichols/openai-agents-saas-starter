@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import os
 from collections import defaultdict
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
 from datetime import datetime
 from pathlib import Path
 
@@ -118,7 +118,7 @@ def _provider_engine() -> Generator[sqla_async.AsyncEngine, None, None]:
 @pytest_asyncio.fixture(autouse=True)
 async def _configure_agent_provider(
     _reset_application_container, _provider_engine
-) -> Generator[None, None, None]:
+) -> AsyncGenerator[None, None]:
     """Register the OpenAI provider against the in-memory test engine."""
 
     async with _provider_engine.begin() as conn:

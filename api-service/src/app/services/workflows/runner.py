@@ -49,11 +49,13 @@ class WorkflowRunner:
         provider_registry: AgentProviderRegistry | None = None,
         interaction_builder: InteractionContextBuilder | None = None,
         run_repository: WorkflowRunRepository | None = None,
+        cancellation_tracker: set[str] | None = None,
     ) -> None:
         self._registry = registry
         self._provider_registry = provider_registry or get_provider_registry()
         self._interaction_builder = interaction_builder or InteractionContextBuilder()
         self._run_repository = run_repository
+        self._cancellations = cancellation_tracker or set()
 
     async def run(
         self,
@@ -91,6 +93,7 @@ class WorkflowRunner:
         try:
             with trace(workflow_name=workflow.key, group_id=conversation_id):
                 for _stage_index, stage in enumerate(stages):
+                    self._raise_if_cancelled(run_id)
                     if stage.mode == "parallel":
                         current_input = await self._run_parallel_stage(
                             run_id,
@@ -119,6 +122,9 @@ class WorkflowRunner:
                 status="succeeded",
                 final_output=current_input if steps_results else None,
             )
+        except _WorkflowCancelled:
+            await self._record_run_end(run_id, status="cancelled", final_output=None)
+            raise
         except Exception:
             await self._record_run_end(run_id, status="failed", final_output=None)
             raise
@@ -167,6 +173,7 @@ class WorkflowRunner:
         try:
             with trace(workflow_name=workflow.key, group_id=conversation_id):
                 for _stage_index, stage in enumerate(stages):
+                    self._raise_if_cancelled(run_id)
                     if stage.mode == "parallel":
                         stage_state: dict[str, Any] = {}
                         async for event in self._stream_parallel_stage(
@@ -186,6 +193,7 @@ class WorkflowRunner:
                             prior_steps[-1].response.final_output if prior_steps else current_input,
                         )
                     else:
+                        self._raise_if_cancelled(run_id)
                         async for event in self._stream_sequential_stage(
                             run_id,
                             workflow,
@@ -204,6 +212,18 @@ class WorkflowRunner:
                 run_id,
                 status="succeeded",
                 final_output=current_input if prior_steps else None,
+            )
+        except _WorkflowCancelled:
+            await self._record_run_end(run_id, status="cancelled", final_output=None)
+            # Emit terminal lifecycle event so stream consumers learn about cancellation.
+            yield AgentStreamEvent(
+                kind="lifecycle",
+                is_terminal=True,
+                metadata={
+                    "workflow_key": workflow.key,
+                    "workflow_run_id": run_id,
+                    "state": "cancelled",
+                },
             )
         except Exception:
             await self._record_run_end(run_id, status="failed", final_output=None)
@@ -247,6 +267,7 @@ class WorkflowRunner:
         conversation_id: str,
     ) -> Any:
         for step in stage.steps:
+            self._raise_if_cancelled(run_id)
             if step.guard and not await self._evaluate_guard(
                 step.guard, current_input, steps_results
             ):
@@ -309,6 +330,7 @@ class WorkflowRunner:
     ) -> Any:
         branch_specs: list[tuple[int, WorkflowStep, Any, RunOptions | None, dict[str, Any]]] = []
         for idx, step in enumerate(stage.steps):
+            self._raise_if_cancelled(run_id)
             if step.guard and not await self._evaluate_guard(
                 step.guard, current_input, steps_results
             ):
@@ -434,6 +456,7 @@ class WorkflowRunner:
         conversation_id: str,
     ) -> AsyncIterator[AgentStreamEvent]:
         for step in stage.steps:
+            self._raise_if_cancelled(run_id)
             if step.guard and not await self._evaluate_guard(
                 step.guard, current_input, prior_steps
             ):
@@ -463,6 +486,7 @@ class WorkflowRunner:
             last_structured: Any | None = None
             step_metadata = getattr(stream_handle, "metadata", None)
             async for event in stream_handle.events():
+                self._raise_if_cancelled(run_id)
                 event.conversation_id = conversation_id
                 event.agent = event.agent or step.agent_key
                 event.metadata = {
@@ -543,6 +567,7 @@ class WorkflowRunner:
     ) -> AsyncIterator[AgentStreamEvent]:
         branch_specs: list[tuple[int, WorkflowStep, Any, RunOptions | None, dict[str, Any]]] = []
         for idx, step in enumerate(stage.steps):
+            self._raise_if_cancelled(run_id)
             if step.guard and not await self._evaluate_guard(
                 step.guard, current_input, prior_steps
             ):
@@ -586,6 +611,7 @@ class WorkflowRunner:
                 last_structured: Any | None = None
                 step_metadata = getattr(stream_handle, "metadata", None)
                 async for event in stream_handle.events():
+                    self._raise_if_cancelled(run_id)
                     event.conversation_id = conversation_id
                     event.agent = event.agent or step.agent_key
                     event.metadata = {
@@ -783,6 +809,13 @@ class WorkflowRunner:
             final_output_structured=final_output if not isinstance(final_output, str) else None,
         )
 
+    def flag_cancel(self, run_id: str) -> None:
+        self._cancellations.add(run_id)
+
+    def _raise_if_cancelled(self, run_id: str) -> None:
+        if run_id in self._cancellations:
+            raise _WorkflowCancelled()
+
 
 def _import_callable(path: str, label: str) -> Callable[..., Any]:
     if ":" in path:
@@ -813,6 +846,10 @@ class _WorkflowRequestProxy(SimpleNamespace):
 
     def __init__(self, *, message: str, location: Any | None, share_location: bool | None):
         super().__init__(message=message, location=location, share_location=share_location)
+
+
+class _WorkflowCancelled(Exception):
+    """Internal marker exception for cooperative cancellation."""
 
 
 __all__ = [
