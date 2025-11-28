@@ -8,6 +8,7 @@ import { useCallback, useState } from 'react';
 import { SectionHeader } from '@/components/ui/foundation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ConversationDetailDrawer } from '@/components/shared/conversations/ConversationDetailDrawer';
+import { Button } from '@/components/ui/button';
 import { useChatController } from '@/lib/chat/useChatController';
 
 import { AGENT_WORKSPACE_COPY } from './constants';
@@ -16,12 +17,17 @@ import { AgentCatalogGrid } from './components/AgentCatalogGrid';
 import { AgentWorkspaceChatPanel } from './components/AgentWorkspaceChatPanel';
 import { ConversationArchivePanel } from './components/ConversationArchivePanel';
 import { AgentToolsPanel } from './components/AgentToolsPanel';
+import { ContainerBindingsPanel } from './components/ContainerBindingsPanel';
+import { useCreateContainer, useDeleteContainer, useBindAgentContainer, useUnbindAgentContainer } from '@/lib/queries/containers';
 
 export function AgentWorkspace() {
   const {
     agents,
     isLoadingAgents,
     agentsError,
+    containers,
+    isLoadingContainers,
+    containersError,
     toolsSummary,
     toolsByAgent,
     isLoadingTools,
@@ -66,7 +72,13 @@ export function AgentWorkspace() {
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [detailConversationId, setDetailConversationId] = useState<string | null>(null);
   const [insightsOpen, setInsightsOpen] = useState(false);
-  const [insightsTab, setInsightsTab] = useState<'archive' | 'tools'>('archive');
+  const [insightsTab, setInsightsTab] = useState<'archive' | 'tools' | 'containers'>('archive');
+  const [selectedContainerId, setSelectedContainerId] = useState<string | null>(null);
+
+  const createContainer = useCreateContainer();
+  const deleteContainer = useDeleteContainer();
+  const bindContainer = useBindAgentContainer(selectedAgent);
+  const unbindContainer = useUnbindAgentContainer(selectedAgent);
 
   const rosterErrorMessage = agentsError?.message ?? toolsError;
 
@@ -163,26 +175,36 @@ export function AgentWorkspace() {
 
       <div className="flex justify-start">
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => {
               setInsightsOpen(true);
               setInsightsTab('archive');
             }}
-            className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-foreground/80 transition hover:bg-white/10"
           >
             View archive
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => {
               setInsightsOpen(true);
               setInsightsTab('tools');
             }}
-            className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-foreground/80 transition hover:bg-white/10"
           >
             View tools
-          </button>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setInsightsOpen(true);
+              setInsightsTab('containers');
+            }}
+          >
+            View containers
+          </Button>
         </div>
       </div>
 
@@ -191,12 +213,13 @@ export function AgentWorkspace() {
           <div className="rounded-2xl border border-white/10 bg-background/70 p-4 shadow-lg shadow-black/20 backdrop-blur">
             <Tabs
               value={insightsTab}
-              onValueChange={(value) => setInsightsTab(value as 'archive' | 'tools')}
+              onValueChange={(value) => setInsightsTab(value as 'archive' | 'tools' | 'containers')}
               className="space-y-4"
             >
               <TabsList className="w-full max-w-md">
                 <TabsTrigger value="archive">Conversation archive</TabsTrigger>
                 <TabsTrigger value="tools">Agent tools</TabsTrigger>
+                <TabsTrigger value="containers">Containers</TabsTrigger>
               </TabsList>
 
               <TabsContent value="archive" className="space-y-4">
@@ -219,6 +242,21 @@ export function AgentWorkspace() {
                   isLoading={isLoadingTools}
                   error={toolsError}
                   onRefresh={refetchTools}
+                />
+              </TabsContent>
+
+              <TabsContent value="containers" className="space-y-4">
+                <ContainerBindingsPanel
+                  containers={containers}
+                  isLoading={isLoadingContainers}
+                  error={containersError}
+                  selectedContainerId={selectedContainerId}
+                  onSelect={setSelectedContainerId}
+                  onCreate={(name, memory) => createContainer.mutate({ name, memory_limit: memory ?? null })}
+                  onDelete={(id) => deleteContainer.mutate(id)}
+                  onBind={(id) => bindContainer.mutate(id)}
+                  onUnbind={() => unbindContainer.mutate()}
+                  agentKey={selectedAgent}
                 />
               </TabsContent>
             </Tabs>

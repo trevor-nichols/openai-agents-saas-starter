@@ -100,6 +100,32 @@ The chat experience combines TanStack Query with an orchestrator hook so UI comp
 
 When extending the chat domain, follow the same pattern: update helpers/hooks, keep controller logic pure, and document cache impacts in this section.
 
+## Workflows
+
+- API wrappers: `lib/api/workflows.ts` (list, run, run-stream, run detail) with `USE_API_MOCK` support and streaming parser.
+- Queries: `lib/queries/workflows.ts`.
+- Feature UI: `features/workflows/WorkflowsWorkspace.tsx` with list + run form and streaming log (`WorkflowStreamLog`).
+- Mock stream trigger is available when `USE_API_MOCK` to exercise the UI without backend SSE.
+
+## Storage
+
+- Storage objects: `lib/api/storageObjects.ts`; presign download proxy in `app/api/storage/objects/[objectId]/download-url/`.
+- Queries: `lib/queries/storageObjects.ts`.
+- UI: `features/storage/StorageAdmin.tsx` (admin surface; mock-friendly).
+- Chat attachments resolve download URLs via the proxy; UI shows errors and allows manual fetch if presign is missing/expired.
+
+## Vector Stores
+
+- API wrappers: `lib/api/vectorStores.ts` (list/create/delete, file attach/list/delete, search) with `USE_API_MOCK` scaffolds.
+- Queries: `lib/queries/vectorStores.ts`.
+- UI: managed from `features/storage/StorageAdmin.tsx` for now (admin-facing).
+
+## Containers
+
+- API wrappers: `lib/api/containers.ts` (list/create/delete, bind/unbind agent→container) with mock support.
+- Queries: `lib/queries/containers.ts`.
+- UI: Agents workspace containers tab (`features/agents/AgentWorkspace.tsx` + `ContainerBindingsPanel`) for binding the selected agent to a container.
+
 ## Conversations Archive Flow
 
 1. **List view** – `features/conversations/ConversationsHub.tsx` consumes `useConversations()` (TanStack Query) to fetch `/api/conversations`. Local search filters the cached list client-side, and each row prefetches its detail query for snappy drawers.

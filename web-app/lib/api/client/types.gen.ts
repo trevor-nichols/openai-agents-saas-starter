@@ -46,6 +46,10 @@ export type AgentChatRequest = {
    * Optional coarse location (city/region/country/timezone) for location-biased search.
    */
   location?: LocationHint | null;
+  /**
+   * Advanced controls (max_turns, previous_response_id, run_config, hooks).
+   */
+  run_options?: RunOptionsRequest | null;
 };
 
 /**
@@ -60,6 +64,12 @@ export type AgentChatResponse = {
    * Natural language reply from the agent.
    */
   response: string;
+  /**
+   * Structured Output
+   *
+   * If the agent used structured outputs, this carries the parsed object.
+   */
+  structured_output?: unknown | null;
   /**
    * Conversation Id
    *
@@ -78,6 +88,12 @@ export type AgentChatResponse = {
    * Indicates whether a handoff happened mid-conversation.
    */
   handoff_occurred?: boolean;
+  /**
+   * Attachments
+   *
+   * Attachments created during the response (e.g., generated images).
+   */
+  attachments?: Array<MessageAttachment>;
   /**
    * Metadata
    *
@@ -468,6 +484,126 @@ export type ChatMessage = {
    * ISO-8601 timestamp if available.
    */
   timestamp?: string | null;
+  /**
+   * Attachments
+   *
+   * Attachments associated with this message (if any).
+   */
+  attachments?: Array<MessageAttachment>;
+};
+
+/**
+ * ContainerBindRequest
+ */
+export type ContainerBindRequest = {
+  /**
+   * Container Id
+   */
+  container_id: string;
+};
+
+/**
+ * ContainerCreateRequest
+ */
+export type ContainerCreateRequest = {
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Memory Limit
+   *
+   * 1g, 4g, 16g, or 64g
+   */
+  memory_limit?: string | null;
+  /**
+   * Expires After
+   */
+  expires_after?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * File Ids
+   */
+  file_ids?: Array<string> | null;
+  /**
+   * Metadata
+   */
+  metadata?: {
+    [key: string]: unknown;
+  } | null;
+};
+
+/**
+ * ContainerListResponse
+ */
+export type ContainerListResponse = {
+  /**
+   * Items
+   */
+  items: Array<ContainerResponse>;
+  /**
+   * Total
+   */
+  total: number;
+};
+
+/**
+ * ContainerResponse
+ */
+export type ContainerResponse = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Openai Id
+   */
+  openai_id: string;
+  /**
+   * Tenant Id
+   */
+  tenant_id: string;
+  /**
+   * Owner User Id
+   */
+  owner_user_id: string | null;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Memory Limit
+   */
+  memory_limit: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Expires After
+   */
+  expires_after: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Last Active At
+   */
+  last_active_at: string | null;
+  /**
+   * Metadata
+   */
+  metadata: {
+    [key: string]: unknown;
+  };
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Updated At
+   */
+  updated_at: string;
 };
 
 /**
@@ -977,6 +1113,48 @@ export type LocationHint = {
 };
 
 /**
+ * MessageAttachment
+ */
+export type MessageAttachment = {
+  /**
+   * Object Id
+   *
+   * Storage object identifier
+   */
+  object_id: string;
+  /**
+   * Filename
+   *
+   * Object filename
+   */
+  filename: string;
+  /**
+   * Mime Type
+   *
+   * Mime type of the attachment
+   */
+  mime_type?: string | null;
+  /**
+   * Size Bytes
+   *
+   * Size in bytes
+   */
+  size_bytes?: number | null;
+  /**
+   * Url
+   *
+   * Presigned download URL
+   */
+  url?: string | null;
+  /**
+   * Tool Call Id
+   *
+   * Originating tool call id
+   */
+  tool_call_id?: string | null;
+};
+
+/**
  * PasswordChangeRequest
  *
  * Self-service password change payload.
@@ -1113,6 +1291,40 @@ export type PlaywrightFixtureSpec = {
    * Tenants
    */
   tenants?: Array<FixtureTenant>;
+};
+
+/**
+ * RunOptionsRequest
+ *
+ * Optional advanced controls forwarded to the Agents SDK.
+ */
+export type RunOptionsRequest = {
+  /**
+   * Max Turns
+   *
+   * Override max agent turns for this run (default SDK limit).
+   */
+  max_turns?: number | null;
+  /**
+   * Previous Response Id
+   *
+   * Responses API previous_response_id to continue without resending history.
+   */
+  previous_response_id?: string | null;
+  /**
+   * Handoff Input Filter
+   *
+   * Named handoff input filter to apply globally (provider-defined registry).
+   */
+  handoff_input_filter?: string | null;
+  /**
+   * Run Config
+   *
+   * Raw RunConfig overrides (provider-specific).
+   */
+  run_config?: {
+    [key: string]: unknown;
+  } | null;
 };
 
 /**
@@ -1943,6 +2155,170 @@ export type StatusSubscriptionVerifyRequest = {
 };
 
 /**
+ * StorageObjectListResponse
+ */
+export type StorageObjectListResponse = {
+  /**
+   * Items
+   */
+  items: Array<StorageObjectResponse>;
+  /**
+   * Next Offset
+   */
+  next_offset?: number | null;
+};
+
+/**
+ * StorageObjectResponse
+ */
+export type StorageObjectResponse = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Bucket
+   */
+  bucket: string;
+  /**
+   * Object Key
+   */
+  object_key: string;
+  /**
+   * Filename
+   */
+  filename: string | null;
+  /**
+   * Mime Type
+   */
+  mime_type: string | null;
+  /**
+   * Size Bytes
+   */
+  size_bytes: number | null;
+  /**
+   * Status
+   */
+  status: string | null;
+  /**
+   * Created At
+   */
+  created_at: string | null;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string | null;
+  /**
+   * Agent Key
+   */
+  agent_key: string | null;
+};
+
+/**
+ * StoragePresignDownloadResponse
+ */
+export type StoragePresignDownloadResponse = {
+  /**
+   * Object Id
+   */
+  object_id: string;
+  /**
+   * Download Url
+   */
+  download_url: string;
+  /**
+   * Method
+   */
+  method: string;
+  /**
+   * Headers
+   */
+  headers: {
+    [key: string]: string;
+  };
+  /**
+   * Bucket
+   */
+  bucket: string;
+  /**
+   * Object Key
+   */
+  object_key: string;
+  /**
+   * Expires In Seconds
+   */
+  expires_in_seconds: number;
+};
+
+/**
+ * StoragePresignUploadRequest
+ */
+export type StoragePresignUploadRequest = {
+  /**
+   * Filename
+   */
+  filename: string;
+  /**
+   * Mime Type
+   */
+  mime_type: string;
+  /**
+   * Size Bytes
+   */
+  size_bytes: number;
+  /**
+   * Agent Key
+   */
+  agent_key?: string | null;
+  /**
+   * Conversation Id
+   */
+  conversation_id?: string | null;
+  /**
+   * Metadata
+   */
+  metadata?: {
+    [key: string]: unknown;
+  } | null;
+};
+
+/**
+ * StoragePresignUploadResponse
+ */
+export type StoragePresignUploadResponse = {
+  /**
+   * Object Id
+   */
+  object_id: string;
+  /**
+   * Upload Url
+   */
+  upload_url: string;
+  /**
+   * Method
+   */
+  method: string;
+  /**
+   * Headers
+   */
+  headers: {
+    [key: string]: string;
+  };
+  /**
+   * Bucket
+   */
+  bucket: string;
+  /**
+   * Object Key
+   */
+  object_key: string;
+  /**
+   * Expires In Seconds
+   */
+  expires_in_seconds: number;
+};
+
+/**
  * StreamingChatEvent
  *
  * Rich streaming envelope forwarded over SSE to the frontend.
@@ -1951,7 +2327,13 @@ export type StreamingChatEvent = {
   /**
    * Kind
    */
-  kind: "raw_response" | "run_item" | "agent_update" | "usage" | "error";
+  kind:
+    | "raw_response"
+    | "run_item"
+    | "agent_update"
+    | "usage"
+    | "error"
+    | "lifecycle";
   /**
    * Conversation Id
    *
@@ -2031,11 +2413,29 @@ export type StreamingChatEvent = {
    */
   reasoning_delta?: string | null;
   /**
+   * Response Text
+   *
+   * Final rendered response text when no deltas are sent (e.g., structured outputs).
+   */
+  response_text?: unknown | null;
+  /**
+   * Structured Output
+   *
+   * Parsed structured output when provided by the agent.
+   */
+  structured_output?: unknown | null;
+  /**
    * Is Terminal
    *
    * Marks terminal event for the stream.
    */
   is_terminal?: boolean;
+  /**
+   * Event
+   *
+   * Lifecycle event label emitted via hooks (e.g., agent_start, handoff).
+   */
+  event?: string | null;
   /**
    * Payload
    *
@@ -2044,6 +2444,132 @@ export type StreamingChatEvent = {
   payload?: {
     [key: string]: unknown;
   } | null;
+  /**
+   * Attachments
+   *
+   * Attachments generated during this event (e.g., stored images).
+   */
+  attachments?: Array<MessageAttachment> | null;
+};
+
+/**
+ * StreamingWorkflowEvent
+ */
+export type StreamingWorkflowEvent = {
+  /**
+   * Kind
+   */
+  kind:
+    | "raw_response"
+    | "run_item"
+    | "agent_update"
+    | "usage"
+    | "error"
+    | "lifecycle";
+  /**
+   * Workflow Key
+   */
+  workflow_key: string;
+  /**
+   * Workflow Run Id
+   */
+  workflow_run_id?: string | null;
+  /**
+   * Step Name
+   */
+  step_name?: string | null;
+  /**
+   * Step Agent
+   */
+  step_agent?: string | null;
+  /**
+   * Stage Name
+   */
+  stage_name?: string | null;
+  /**
+   * Parallel Group
+   */
+  parallel_group?: string | null;
+  /**
+   * Branch Index
+   */
+  branch_index?: number | null;
+  /**
+   * Conversation Id
+   */
+  conversation_id?: string | null;
+  /**
+   * Agent Used
+   */
+  agent_used?: string | null;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Sequence Number
+   */
+  sequence_number?: number | null;
+  /**
+   * Raw Type
+   */
+  raw_type?: string | null;
+  /**
+   * Run Item Name
+   */
+  run_item_name?: string | null;
+  /**
+   * Run Item Type
+   */
+  run_item_type?: string | null;
+  /**
+   * Tool Call Id
+   */
+  tool_call_id?: string | null;
+  /**
+   * Tool Name
+   */
+  tool_name?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  /**
+   * New Agent
+   */
+  new_agent?: string | null;
+  /**
+   * Text Delta
+   */
+  text_delta?: string | null;
+  /**
+   * Reasoning Delta
+   */
+  reasoning_delta?: string | null;
+  /**
+   * Response Text
+   */
+  response_text?: string | null;
+  /**
+   * Structured Output
+   */
+  structured_output?: unknown | null;
+  /**
+   * Is Terminal
+   */
+  is_terminal?: boolean;
+  /**
+   * Payload
+   */
+  payload?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Attachments
+   */
+  attachments?: Array<{
+    [key: string]: unknown;
+  }> | null;
 };
 
 /**
@@ -2669,6 +3195,422 @@ export type ValidationError = {
   type: string;
 };
 
+/**
+ * VectorStoreCreateRequest
+ */
+export type VectorStoreCreateRequest = {
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Description
+   */
+  description?: string | null;
+  /**
+   * Expires After
+   */
+  expires_after?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Metadata
+   */
+  metadata?: {
+    [key: string]: unknown;
+  } | null;
+};
+
+/**
+ * VectorStoreFileCreateRequest
+ */
+export type VectorStoreFileCreateRequest = {
+  /**
+   * File Id
+   */
+  file_id: string;
+  /**
+   * Attributes
+   */
+  attributes?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Chunking Strategy
+   */
+  chunking_strategy?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Poll
+   */
+  poll?: boolean;
+};
+
+/**
+ * VectorStoreFileListResponse
+ */
+export type VectorStoreFileListResponse = {
+  /**
+   * Items
+   */
+  items: Array<VectorStoreFileResponse>;
+  /**
+   * Total
+   */
+  total: number;
+};
+
+/**
+ * VectorStoreFileResponse
+ */
+export type VectorStoreFileResponse = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Openai File Id
+   */
+  openai_file_id: string;
+  /**
+   * Vector Store Id
+   */
+  vector_store_id: string;
+  /**
+   * Filename
+   */
+  filename: string;
+  /**
+   * Mime Type
+   */
+  mime_type: string | null;
+  /**
+   * Size Bytes
+   */
+  size_bytes: number | null;
+  /**
+   * Usage Bytes
+   */
+  usage_bytes: number;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Attributes
+   */
+  attributes: {
+    [key: string]: unknown;
+  };
+  /**
+   * Chunking Strategy
+   */
+  chunking_strategy: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Last Error
+   */
+  last_error: string | null;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Updated At
+   */
+  updated_at: string;
+};
+
+/**
+ * VectorStoreListResponse
+ */
+export type VectorStoreListResponse = {
+  /**
+   * Items
+   */
+  items: Array<VectorStoreResponse>;
+  /**
+   * Total
+   */
+  total: number;
+};
+
+/**
+ * VectorStoreResponse
+ */
+export type VectorStoreResponse = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Openai Id
+   */
+  openai_id: string;
+  /**
+   * Tenant Id
+   */
+  tenant_id: string;
+  /**
+   * Owner User Id
+   */
+  owner_user_id: string | null;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Description
+   */
+  description: string | null;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Usage Bytes
+   */
+  usage_bytes: number;
+  /**
+   * Expires After
+   */
+  expires_after?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Expires At
+   */
+  expires_at?: string | null;
+  /**
+   * Last Active At
+   */
+  last_active_at?: string | null;
+  /**
+   * Metadata
+   */
+  metadata: {
+    [key: string]: unknown;
+  };
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Updated At
+   */
+  updated_at: string;
+};
+
+/**
+ * VectorStoreSearchRequest
+ */
+export type VectorStoreSearchRequest = {
+  /**
+   * Query
+   */
+  query: string;
+  /**
+   * Filters
+   */
+  filters?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Max Num Results
+   */
+  max_num_results?: number | null;
+  /**
+   * Ranking Options
+   */
+  ranking_options?: {
+    [key: string]: unknown;
+  } | null;
+};
+
+/**
+ * VectorStoreSearchResponse
+ */
+export type VectorStoreSearchResponse = {
+  /**
+   * Data
+   */
+  data: unknown;
+};
+
+/**
+ * WorkflowRunDetail
+ */
+export type WorkflowRunDetail = {
+  /**
+   * Workflow Key
+   */
+  workflow_key: string;
+  /**
+   * Workflow Run Id
+   */
+  workflow_run_id: string;
+  /**
+   * Tenant Id
+   */
+  tenant_id: string;
+  /**
+   * User Id
+   */
+  user_id: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Started At
+   */
+  started_at: string;
+  /**
+   * Ended At
+   */
+  ended_at: string | null;
+  /**
+   * Final Output Text
+   */
+  final_output_text: string | null;
+  /**
+   * Final Output Structured
+   */
+  final_output_structured: unknown | null;
+  /**
+   * Request Message
+   */
+  request_message: string | null;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string | null;
+  /**
+   * Steps
+   */
+  steps: Array<WorkflowStepResultSchema>;
+};
+
+/**
+ * WorkflowRunRequestBody
+ */
+export type WorkflowRunRequestBody = {
+  /**
+   * Message
+   *
+   * Initial user message
+   */
+  message: string;
+  /**
+   * Conversation Id
+   *
+   * Optional conversation id to reuse across steps
+   */
+  conversation_id?: string | null;
+  /**
+   * Optional coarse location payload for hosted tools
+   */
+  location?: LocationHint | null;
+  /**
+   * Share Location
+   *
+   * If true, forward location to hosted web search
+   */
+  share_location?: boolean | null;
+};
+
+/**
+ * WorkflowRunResponse
+ */
+export type WorkflowRunResponse = {
+  /**
+   * Workflow Key
+   */
+  workflow_key: string;
+  /**
+   * Workflow Run Id
+   */
+  workflow_run_id: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Steps
+   */
+  steps: Array<WorkflowStepResultSchema>;
+  /**
+   * Final Output
+   */
+  final_output: unknown | null;
+};
+
+/**
+ * WorkflowStepResultSchema
+ */
+export type WorkflowStepResultSchema = {
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Agent Key
+   */
+  agent_key: string;
+  /**
+   * Response Text
+   */
+  response_text: string | null;
+  /**
+   * Structured Output
+   */
+  structured_output?: unknown | null;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Stage Name
+   */
+  stage_name?: string | null;
+  /**
+   * Parallel Group
+   */
+  parallel_group?: string | null;
+  /**
+   * Branch Index
+   */
+  branch_index?: number | null;
+};
+
+/**
+ * WorkflowSummary
+ */
+export type WorkflowSummary = {
+  /**
+   * Key
+   */
+  key: string;
+  /**
+   * Display Name
+   */
+  display_name: string;
+  /**
+   * Description
+   */
+  description: string;
+  /**
+   * Step Count
+   */
+  step_count: number;
+  /**
+   * Default
+   */
+  default?: boolean;
+};
+
 export type HealthCheckHealthGetData = {
   body?: never;
   path?: never;
@@ -2702,6 +3644,23 @@ export type ReadinessCheckHealthReadyGetResponses = {
 
 export type ReadinessCheckHealthReadyGetResponse =
   ReadinessCheckHealthReadyGetResponses[keyof ReadinessCheckHealthReadyGetResponses];
+
+export type StorageHealthHealthStorageGetData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/health/storage";
+};
+
+export type StorageHealthHealthStorageGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: HealthResponse;
+};
+
+export type StorageHealthHealthStorageGetResponse =
+  StorageHealthHealthStorageGetResponses[keyof StorageHealthHealthStorageGetResponses];
 
 export type HandleStripeWebhookWebhooksStripePostData = {
   body?: never;
@@ -3716,6 +4675,171 @@ export type GetAgentStatusApiV1AgentsAgentNameStatusGetResponses = {
 export type GetAgentStatusApiV1AgentsAgentNameStatusGetResponse =
   GetAgentStatusApiV1AgentsAgentNameStatusGetResponses[keyof GetAgentStatusApiV1AgentsAgentNameStatusGetResponses];
 
+export type ListWorkflowsApiV1WorkflowsGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path?: never;
+  query?: never;
+  url: "/api/v1/workflows";
+};
+
+export type ListWorkflowsApiV1WorkflowsGetErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type ListWorkflowsApiV1WorkflowsGetError =
+  ListWorkflowsApiV1WorkflowsGetErrors[keyof ListWorkflowsApiV1WorkflowsGetErrors];
+
+export type ListWorkflowsApiV1WorkflowsGetResponses = {
+  /**
+   * Response List Workflows Api V1 Workflows Get
+   *
+   * Successful Response
+   */
+  200: Array<WorkflowSummary>;
+};
+
+export type ListWorkflowsApiV1WorkflowsGetResponse =
+  ListWorkflowsApiV1WorkflowsGetResponses[keyof ListWorkflowsApiV1WorkflowsGetResponses];
+
+export type RunWorkflowApiV1WorkflowsWorkflowKeyRunPostData = {
+  body: WorkflowRunRequestBody;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Workflow Key
+     */
+    workflow_key: string;
+  };
+  query?: never;
+  url: "/api/v1/workflows/{workflow_key}/run";
+};
+
+export type RunWorkflowApiV1WorkflowsWorkflowKeyRunPostErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type RunWorkflowApiV1WorkflowsWorkflowKeyRunPostError =
+  RunWorkflowApiV1WorkflowsWorkflowKeyRunPostErrors[keyof RunWorkflowApiV1WorkflowsWorkflowKeyRunPostErrors];
+
+export type RunWorkflowApiV1WorkflowsWorkflowKeyRunPostResponses = {
+  /**
+   * Successful Response
+   */
+  200: WorkflowRunResponse;
+};
+
+export type RunWorkflowApiV1WorkflowsWorkflowKeyRunPostResponse =
+  RunWorkflowApiV1WorkflowsWorkflowKeyRunPostResponses[keyof RunWorkflowApiV1WorkflowsWorkflowKeyRunPostResponses];
+
+export type GetWorkflowRunApiV1WorkflowsRunsRunIdGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Run Id
+     */
+    run_id: string;
+  };
+  query?: never;
+  url: "/api/v1/workflows/runs/{run_id}";
+};
+
+export type GetWorkflowRunApiV1WorkflowsRunsRunIdGetErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type GetWorkflowRunApiV1WorkflowsRunsRunIdGetError =
+  GetWorkflowRunApiV1WorkflowsRunsRunIdGetErrors[keyof GetWorkflowRunApiV1WorkflowsRunsRunIdGetErrors];
+
+export type GetWorkflowRunApiV1WorkflowsRunsRunIdGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: WorkflowRunDetail;
+};
+
+export type GetWorkflowRunApiV1WorkflowsRunsRunIdGetResponse =
+  GetWorkflowRunApiV1WorkflowsRunsRunIdGetResponses[keyof GetWorkflowRunApiV1WorkflowsRunsRunIdGetResponses];
+
+export type RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostData = {
+  body: WorkflowRunRequestBody;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Workflow Key
+     */
+    workflow_key: string;
+  };
+  query?: never;
+  url: "/api/v1/workflows/{workflow_key}/run-stream";
+};
+
+export type RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostError =
+  RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostErrors[keyof RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostErrors];
+
+export type RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostResponses = {
+  /**
+   * Server-sent events stream of workflow outputs.
+   */
+  200: StreamingWorkflowEvent;
+};
+
+export type RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostResponse =
+  RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostResponses[keyof RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostResponses];
+
 export type ListConversationsApiV1ConversationsGetData = {
   body?: never;
   headers?: {
@@ -3935,6 +5059,833 @@ export type ListAvailableToolsApiV1ToolsGetResponses = {
 
 export type ListAvailableToolsApiV1ToolsGetResponse =
   ListAvailableToolsApiV1ToolsGetResponses[keyof ListAvailableToolsApiV1ToolsGetResponses];
+
+export type ListContainersApiV1ContainersGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path?: never;
+  query?: {
+    /**
+     * Limit
+     */
+    limit?: number;
+    /**
+     * Offset
+     */
+    offset?: number;
+  };
+  url: "/api/v1/containers";
+};
+
+export type ListContainersApiV1ContainersGetErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type ListContainersApiV1ContainersGetError =
+  ListContainersApiV1ContainersGetErrors[keyof ListContainersApiV1ContainersGetErrors];
+
+export type ListContainersApiV1ContainersGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: ContainerListResponse;
+};
+
+export type ListContainersApiV1ContainersGetResponse =
+  ListContainersApiV1ContainersGetResponses[keyof ListContainersApiV1ContainersGetResponses];
+
+export type CreateContainerApiV1ContainersPostData = {
+  body: ContainerCreateRequest;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path?: never;
+  query?: never;
+  url: "/api/v1/containers";
+};
+
+export type CreateContainerApiV1ContainersPostErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type CreateContainerApiV1ContainersPostError =
+  CreateContainerApiV1ContainersPostErrors[keyof CreateContainerApiV1ContainersPostErrors];
+
+export type CreateContainerApiV1ContainersPostResponses = {
+  /**
+   * Successful Response
+   */
+  201: ContainerResponse;
+};
+
+export type CreateContainerApiV1ContainersPostResponse =
+  CreateContainerApiV1ContainersPostResponses[keyof CreateContainerApiV1ContainersPostResponses];
+
+export type DeleteContainerApiV1ContainersContainerIdDeleteData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Container Id
+     */
+    container_id: string;
+  };
+  query?: never;
+  url: "/api/v1/containers/{container_id}";
+};
+
+export type DeleteContainerApiV1ContainersContainerIdDeleteErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type DeleteContainerApiV1ContainersContainerIdDeleteError =
+  DeleteContainerApiV1ContainersContainerIdDeleteErrors[keyof DeleteContainerApiV1ContainersContainerIdDeleteErrors];
+
+export type DeleteContainerApiV1ContainersContainerIdDeleteResponses = {
+  /**
+   * Successful Response
+   */
+  204: void;
+};
+
+export type DeleteContainerApiV1ContainersContainerIdDeleteResponse =
+  DeleteContainerApiV1ContainersContainerIdDeleteResponses[keyof DeleteContainerApiV1ContainersContainerIdDeleteResponses];
+
+export type GetContainerByIdApiV1ContainersContainerIdGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Container Id
+     */
+    container_id: string;
+  };
+  query?: never;
+  url: "/api/v1/containers/{container_id}";
+};
+
+export type GetContainerByIdApiV1ContainersContainerIdGetErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type GetContainerByIdApiV1ContainersContainerIdGetError =
+  GetContainerByIdApiV1ContainersContainerIdGetErrors[keyof GetContainerByIdApiV1ContainersContainerIdGetErrors];
+
+export type GetContainerByIdApiV1ContainersContainerIdGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: ContainerResponse;
+};
+
+export type GetContainerByIdApiV1ContainersContainerIdGetResponse =
+  GetContainerByIdApiV1ContainersContainerIdGetResponses[keyof GetContainerByIdApiV1ContainersContainerIdGetResponses];
+
+export type UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Agent Key
+       */
+      agent_key: string;
+    };
+    query?: never;
+    url: "/api/v1/containers/agents/{agent_key}/container";
+  };
+
+export type UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteErrors =
+  {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+  };
+
+export type UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteError =
+  UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteErrors[keyof UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteErrors];
+
+export type UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteResponses =
+  {
+    /**
+     * Successful Response
+     */
+    204: void;
+  };
+
+export type UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteResponse =
+  UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteResponses[keyof UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteResponses];
+
+export type BindAgentContainerApiV1ContainersAgentsAgentKeyContainerPostData = {
+  body: ContainerBindRequest;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Agent Key
+     */
+    agent_key: string;
+  };
+  query?: never;
+  url: "/api/v1/containers/agents/{agent_key}/container";
+};
+
+export type BindAgentContainerApiV1ContainersAgentsAgentKeyContainerPostErrors =
+  {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+  };
+
+export type BindAgentContainerApiV1ContainersAgentsAgentKeyContainerPostError =
+  BindAgentContainerApiV1ContainersAgentsAgentKeyContainerPostErrors[keyof BindAgentContainerApiV1ContainersAgentsAgentKeyContainerPostErrors];
+
+export type BindAgentContainerApiV1ContainersAgentsAgentKeyContainerPostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    204: void;
+  };
+
+export type BindAgentContainerApiV1ContainersAgentsAgentKeyContainerPostResponse =
+  BindAgentContainerApiV1ContainersAgentsAgentKeyContainerPostResponses[keyof BindAgentContainerApiV1ContainersAgentsAgentKeyContainerPostResponses];
+
+export type ListVectorStoresApiV1VectorStoresGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path?: never;
+  query?: {
+    /**
+     * Limit
+     */
+    limit?: number;
+    /**
+     * Offset
+     */
+    offset?: number;
+  };
+  url: "/api/v1/vector-stores";
+};
+
+export type ListVectorStoresApiV1VectorStoresGetErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type ListVectorStoresApiV1VectorStoresGetError =
+  ListVectorStoresApiV1VectorStoresGetErrors[keyof ListVectorStoresApiV1VectorStoresGetErrors];
+
+export type ListVectorStoresApiV1VectorStoresGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: VectorStoreListResponse;
+};
+
+export type ListVectorStoresApiV1VectorStoresGetResponse =
+  ListVectorStoresApiV1VectorStoresGetResponses[keyof ListVectorStoresApiV1VectorStoresGetResponses];
+
+export type CreateVectorStoreApiV1VectorStoresPostData = {
+  body: VectorStoreCreateRequest;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path?: never;
+  query?: never;
+  url: "/api/v1/vector-stores";
+};
+
+export type CreateVectorStoreApiV1VectorStoresPostErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type CreateVectorStoreApiV1VectorStoresPostError =
+  CreateVectorStoreApiV1VectorStoresPostErrors[keyof CreateVectorStoreApiV1VectorStoresPostErrors];
+
+export type CreateVectorStoreApiV1VectorStoresPostResponses = {
+  /**
+   * Successful Response
+   */
+  201: VectorStoreResponse;
+};
+
+export type CreateVectorStoreApiV1VectorStoresPostResponse =
+  CreateVectorStoreApiV1VectorStoresPostResponses[keyof CreateVectorStoreApiV1VectorStoresPostResponses];
+
+export type DeleteVectorStoreApiV1VectorStoresVectorStoreIdDeleteData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Vector Store Id
+     */
+    vector_store_id: string;
+  };
+  query?: never;
+  url: "/api/v1/vector-stores/{vector_store_id}";
+};
+
+export type DeleteVectorStoreApiV1VectorStoresVectorStoreIdDeleteErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type DeleteVectorStoreApiV1VectorStoresVectorStoreIdDeleteError =
+  DeleteVectorStoreApiV1VectorStoresVectorStoreIdDeleteErrors[keyof DeleteVectorStoreApiV1VectorStoresVectorStoreIdDeleteErrors];
+
+export type DeleteVectorStoreApiV1VectorStoresVectorStoreIdDeleteResponses = {
+  /**
+   * Successful Response
+   */
+  204: void;
+};
+
+export type DeleteVectorStoreApiV1VectorStoresVectorStoreIdDeleteResponse =
+  DeleteVectorStoreApiV1VectorStoresVectorStoreIdDeleteResponses[keyof DeleteVectorStoreApiV1VectorStoresVectorStoreIdDeleteResponses];
+
+export type GetVectorStoreApiV1VectorStoresVectorStoreIdGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Vector Store Id
+     */
+    vector_store_id: string;
+  };
+  query?: never;
+  url: "/api/v1/vector-stores/{vector_store_id}";
+};
+
+export type GetVectorStoreApiV1VectorStoresVectorStoreIdGetErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type GetVectorStoreApiV1VectorStoresVectorStoreIdGetError =
+  GetVectorStoreApiV1VectorStoresVectorStoreIdGetErrors[keyof GetVectorStoreApiV1VectorStoresVectorStoreIdGetErrors];
+
+export type GetVectorStoreApiV1VectorStoresVectorStoreIdGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: VectorStoreResponse;
+};
+
+export type GetVectorStoreApiV1VectorStoresVectorStoreIdGetResponse =
+  GetVectorStoreApiV1VectorStoresVectorStoreIdGetResponses[keyof GetVectorStoreApiV1VectorStoresVectorStoreIdGetResponses];
+
+export type ListFilesApiV1VectorStoresVectorStoreIdFilesGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Vector Store Id
+     */
+    vector_store_id: string;
+  };
+  query?: {
+    /**
+     * Status
+     */
+    status?: string | null;
+    /**
+     * Limit
+     */
+    limit?: number;
+    /**
+     * Offset
+     */
+    offset?: number;
+  };
+  url: "/api/v1/vector-stores/{vector_store_id}/files";
+};
+
+export type ListFilesApiV1VectorStoresVectorStoreIdFilesGetErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type ListFilesApiV1VectorStoresVectorStoreIdFilesGetError =
+  ListFilesApiV1VectorStoresVectorStoreIdFilesGetErrors[keyof ListFilesApiV1VectorStoresVectorStoreIdFilesGetErrors];
+
+export type ListFilesApiV1VectorStoresVectorStoreIdFilesGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: VectorStoreFileListResponse;
+};
+
+export type ListFilesApiV1VectorStoresVectorStoreIdFilesGetResponse =
+  ListFilesApiV1VectorStoresVectorStoreIdFilesGetResponses[keyof ListFilesApiV1VectorStoresVectorStoreIdFilesGetResponses];
+
+export type AttachFileApiV1VectorStoresVectorStoreIdFilesPostData = {
+  body: VectorStoreFileCreateRequest;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Vector Store Id
+     */
+    vector_store_id: string;
+  };
+  query?: never;
+  url: "/api/v1/vector-stores/{vector_store_id}/files";
+};
+
+export type AttachFileApiV1VectorStoresVectorStoreIdFilesPostErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type AttachFileApiV1VectorStoresVectorStoreIdFilesPostError =
+  AttachFileApiV1VectorStoresVectorStoreIdFilesPostErrors[keyof AttachFileApiV1VectorStoresVectorStoreIdFilesPostErrors];
+
+export type AttachFileApiV1VectorStoresVectorStoreIdFilesPostResponses = {
+  /**
+   * Successful Response
+   */
+  201: VectorStoreFileResponse;
+};
+
+export type AttachFileApiV1VectorStoresVectorStoreIdFilesPostResponse =
+  AttachFileApiV1VectorStoresVectorStoreIdFilesPostResponses[keyof AttachFileApiV1VectorStoresVectorStoreIdFilesPostResponses];
+
+export type DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Vector Store Id
+     */
+    vector_store_id: string;
+    /**
+     * File Id
+     */
+    file_id: string;
+  };
+  query?: never;
+  url: "/api/v1/vector-stores/{vector_store_id}/files/{file_id}";
+};
+
+export type DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteError =
+  DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteErrors[keyof DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteErrors];
+
+export type DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteResponses =
+  {
+    /**
+     * Successful Response
+     */
+    204: void;
+  };
+
+export type DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteResponse =
+  DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteResponses[keyof DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteResponses];
+
+export type GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Vector Store Id
+     */
+    vector_store_id: string;
+    /**
+     * File Id
+     */
+    file_id: string;
+  };
+  query?: never;
+  url: "/api/v1/vector-stores/{vector_store_id}/files/{file_id}";
+};
+
+export type GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetError =
+  GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetErrors[keyof GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetErrors];
+
+export type GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: VectorStoreFileResponse;
+};
+
+export type GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetResponse =
+  GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetResponses[keyof GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetResponses];
+
+export type SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostData = {
+  body: VectorStoreSearchRequest;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Vector Store Id
+     */
+    vector_store_id: string;
+  };
+  query?: never;
+  url: "/api/v1/vector-stores/{vector_store_id}/search";
+};
+
+export type SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostError =
+  SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostErrors[keyof SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostErrors];
+
+export type SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: VectorStoreSearchResponse;
+  };
+
+export type SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostResponse =
+  SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostResponses[keyof SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostResponses];
+
+export type CreatePresignedUploadApiV1StorageObjectsUploadUrlPostData = {
+  body: StoragePresignUploadRequest;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path?: never;
+  query?: never;
+  url: "/api/v1/storage/objects/upload-url";
+};
+
+export type CreatePresignedUploadApiV1StorageObjectsUploadUrlPostErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type CreatePresignedUploadApiV1StorageObjectsUploadUrlPostError =
+  CreatePresignedUploadApiV1StorageObjectsUploadUrlPostErrors[keyof CreatePresignedUploadApiV1StorageObjectsUploadUrlPostErrors];
+
+export type CreatePresignedUploadApiV1StorageObjectsUploadUrlPostResponses = {
+  /**
+   * Successful Response
+   */
+  201: StoragePresignUploadResponse;
+};
+
+export type CreatePresignedUploadApiV1StorageObjectsUploadUrlPostResponse =
+  CreatePresignedUploadApiV1StorageObjectsUploadUrlPostResponses[keyof CreatePresignedUploadApiV1StorageObjectsUploadUrlPostResponses];
+
+export type ListObjectsApiV1StorageObjectsGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path?: never;
+  query?: {
+    /**
+     * Limit
+     */
+    limit?: number;
+    /**
+     * Offset
+     */
+    offset?: number;
+    /**
+     * Conversation Id
+     */
+    conversation_id?: string | null;
+  };
+  url: "/api/v1/storage/objects";
+};
+
+export type ListObjectsApiV1StorageObjectsGetErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type ListObjectsApiV1StorageObjectsGetError =
+  ListObjectsApiV1StorageObjectsGetErrors[keyof ListObjectsApiV1StorageObjectsGetErrors];
+
+export type ListObjectsApiV1StorageObjectsGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: StorageObjectListResponse;
+};
+
+export type ListObjectsApiV1StorageObjectsGetResponse =
+  ListObjectsApiV1StorageObjectsGetResponses[keyof ListObjectsApiV1StorageObjectsGetResponses];
+
+export type GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Object Id
+     */
+    object_id: string;
+  };
+  query?: never;
+  url: "/api/v1/storage/objects/{object_id}/download-url";
+};
+
+export type GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetError =
+  GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetErrors[keyof GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetErrors];
+
+export type GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: StoragePresignDownloadResponse;
+};
+
+export type GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetResponse =
+  GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetResponses[keyof GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetResponses];
+
+export type DeleteObjectApiV1StorageObjectsObjectIdDeleteData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Object Id
+     */
+    object_id: string;
+  };
+  query?: never;
+  url: "/api/v1/storage/objects/{object_id}";
+};
+
+export type DeleteObjectApiV1StorageObjectsObjectIdDeleteErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type DeleteObjectApiV1StorageObjectsObjectIdDeleteError =
+  DeleteObjectApiV1StorageObjectsObjectIdDeleteErrors[keyof DeleteObjectApiV1StorageObjectsObjectIdDeleteErrors];
+
+export type DeleteObjectApiV1StorageObjectsObjectIdDeleteResponses = {
+  /**
+   * Successful Response
+   */
+  204: void;
+};
+
+export type DeleteObjectApiV1StorageObjectsObjectIdDeleteResponse =
+  DeleteObjectApiV1StorageObjectsObjectIdDeleteResponses[keyof DeleteObjectApiV1StorageObjectsObjectIdDeleteResponses];
 
 export type GetPlatformStatusApiV1StatusGetData = {
   body?: never;

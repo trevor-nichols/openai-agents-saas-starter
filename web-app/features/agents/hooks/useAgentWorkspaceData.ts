@@ -3,14 +3,19 @@ import { useMemo } from 'react';
 import { useAgents } from '@/lib/queries/agents';
 import { useConversations } from '@/lib/queries/conversations';
 import { useTools } from '@/lib/queries/tools';
+import { useContainersQuery } from '@/lib/queries/containers';
 
 import { buildToolsByAgentMap, summarizeToolRegistry } from '../utils/toolTransforms';
 import type { ToolRegistrySummary, ToolsByAgentMap } from '../types';
+import type { ContainerResponse } from '@/lib/api/client/types.gen';
 
 export interface AgentWorkspaceQueries {
   agents: ReturnType<typeof useAgents>['agents'];
   isLoadingAgents: boolean;
   agentsError: ReturnType<typeof useAgents>['agentsError'];
+  containers: ContainerResponse[];
+  isLoadingContainers: boolean;
+  containersError: Error | null;
   toolsSummary: ToolRegistrySummary;
   toolsByAgent: ToolsByAgentMap;
   tools: ReturnType<typeof useTools>['tools'];
@@ -32,6 +37,7 @@ export function useAgentWorkspaceData(): AgentWorkspaceQueries {
   const agentsQuery = useAgents();
   const toolsQuery = useTools();
   const conversationsQuery = useConversations();
+  const containersQuery = useContainersQuery();
 
   const toolsByAgent = useMemo(
     () => buildToolsByAgentMap(agentsQuery.agents, toolsQuery.tools),
@@ -47,6 +53,9 @@ export function useAgentWorkspaceData(): AgentWorkspaceQueries {
     agents: agentsQuery.agents,
     isLoadingAgents: agentsQuery.isLoadingAgents,
     agentsError: agentsQuery.agentsError,
+    containers: containersQuery.data?.items ?? [],
+    isLoadingContainers: containersQuery.isLoading,
+    containersError: (containersQuery.error as Error | null) ?? null,
     toolsSummary,
     toolsByAgent,
     tools: toolsQuery.tools,

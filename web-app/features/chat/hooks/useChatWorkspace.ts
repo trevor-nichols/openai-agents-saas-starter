@@ -83,6 +83,12 @@ export function useChatWorkspace() {
 
   const activeAgents = useMemo(() => agents.filter((agent) => agent.status === 'active').length, [agents]);
   const selectedAgentLabel = useMemo(() => normalizeAgentLabel(selectedAgent), [selectedAgent]);
+  const [runOptions, setRunOptions] = useState({
+    maxTurns: undefined as number | undefined,
+    previousResponseId: '' as string | null | undefined,
+    handoffInputFilter: '' as string | null | undefined,
+    runConfigRaw: '' as string,
+  });
 
   const handleSelectConversation = useCallback(
     (conversationId: string) => {
@@ -137,12 +143,32 @@ export function useChatWorkspace() {
   }, [shareLocation, locationHint]);
 
   const handleSendMessage = useCallback(
-    (message: string) =>
-      sendMessage(message, {
+    (message: string) => {
+      const cleanedRunConfig = runOptions.runConfigRaw?.trim();
+      let parsedRunConfig: unknown | null | undefined = undefined;
+      if (cleanedRunConfig) {
+        try {
+          parsedRunConfig = JSON.parse(cleanedRunConfig);
+        } catch (error) {
+          toast.error('Invalid run_config JSON', {
+            description: error instanceof Error ? error.message : 'Unable to parse run_config',
+          });
+          return Promise.resolve();
+        }
+      }
+
+      return sendMessage(message, {
         shareLocation,
         location: locationHint,
-      }),
-    [locationHint, sendMessage, shareLocation],
+        runOptions: {
+          maxTurns: runOptions.maxTurns ?? null,
+          previousResponseId: runOptions.previousResponseId?.trim() || null,
+          handoffInputFilter: runOptions.handoffInputFilter?.trim() || null,
+          runConfig: parsedRunConfig ?? null,
+        },
+      });
+    },
+    [locationHint, runOptions, sendMessage, shareLocation],
   );
 
   const updateLocationField = useCallback(
@@ -196,5 +222,7 @@ export function useChatWorkspace() {
     locationHint,
     updateLocationField,
     setSelectedAgent,
+    runOptions,
+    setRunOptions,
   };
 }

@@ -25,6 +25,7 @@ export async function buildPrimaryNav(): Promise<AppNavItem[]> {
   return [
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/chat', label: 'Workspace' },
+    { href: '/workflows', label: 'Workflows' },
     { href: '/agents', label: 'Agents' },
     ...(billingEnabled ? [{ href: '/billing', label: 'Billing' }] : []),
   ];
@@ -42,14 +43,22 @@ export async function buildNavItems(hasStatusScope: boolean) {
     return primaryNav;
   }
 
-  const opsLink: AppNavItem = {
-    href: '/ops/status',
-    label: 'Ops',
-    badge: 'Admin',
-    badgeVariant: 'outline',
-  };
+  const opsLinks: AppNavItem[] = [
+    {
+      href: '/ops/status',
+      label: 'Ops',
+      badge: 'Admin',
+      badgeVariant: 'outline',
+    },
+    {
+      href: '/ops/storage',
+      label: 'Storage',
+      badge: 'Admin',
+      badgeVariant: 'outline',
+    },
+  ];
 
-  return [...primaryNav, opsLink];
+  return [...primaryNav, ...opsLinks];
 }
 
 // --- AppLayout component ---

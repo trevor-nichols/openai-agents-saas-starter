@@ -34,6 +34,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { Info } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { getAttachmentDownloadUrl } from '@/lib/api/storage';
+import { createLogger } from '@/lib/logging';
+import { useToast } from '@/components/ui/use-toast';
+
+const log = createLogger('chat-ui');
 
 interface ChatInterfaceProps {
   messages: ChatMessage[];
@@ -56,6 +62,20 @@ interface ChatInterfaceProps {
     timezone?: string | null;
   };
   onLocationHintChange: (field: 'city' | 'region' | 'country' | 'timezone', value: string) => void;
+  runOptions: {
+    maxTurns?: number | undefined;
+    previousResponseId?: string | null | undefined;
+    handoffInputFilter?: string | null | undefined;
+    runConfigRaw?: string;
+  };
+  onRunOptionsChange: (
+    next: Partial<{
+      maxTurns: number | undefined;
+      previousResponseId: string | null | undefined;
+      handoffInputFilter: string | null | undefined;
+      runConfigRaw: string;
+    }>,
+  ) => void;
   className?: string;
 }
 
@@ -75,9 +95,61 @@ export function ChatInterface({
   onShareLocationChange,
   locationHint,
   onLocationHintChange,
+  runOptions,
+  onRunOptionsChange,
   className,
 }: ChatInterfaceProps) {
   const [messageInput, setMessageInput] = useState('');
+  const [attachmentState, setAttachmentState] = useState<
+    Record<string, { url?: string; error?: string; loading?: boolean }>
+  >({});
+  const { error: showErrorToast } = useToast();
+  const formatAttachmentSize = (size?: number | null) => {
+    if (!size || size <= 0) return '';
+    if (size < 1024) return `${size} B`;
+    const kb = size / 1024;
+    if (kb < 1024) return `${kb.toFixed(1)} KB`;
+    return `${(kb / 1024).toFixed(1)} MB`;
+  };
+
+  const formatStructuredOutput = (value: unknown) => {
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return String(value);
+    }
+  };
+
+  const resolveAttachment = async (objectId: string) => {
+    setAttachmentState((prev) => ({
+      ...prev,
+      [objectId]: { ...prev[objectId], loading: true, error: undefined },
+    }));
+    try {
+      const presign = await getAttachmentDownloadUrl(objectId);
+      setAttachmentState((prev) => ({
+        ...prev,
+        [objectId]: { ...prev[objectId], url: presign.download_url, loading: false },
+      }));
+      log.debug('Resolved attachment download', { objectId });
+    } catch (error) {
+      setAttachmentState((prev) => ({
+        ...prev,
+        [objectId]: {
+          ...prev[objectId],
+          loading: false,
+          error: error instanceof Error ? error.message : 'Unable to fetch link',
+        },
+      }));
+      log.debug('Attachment download failed', { objectId, error });
+      showErrorToast({
+        title: 'Attachment link unavailable',
+        description:
+          error instanceof Error ? error.message : 'Could not fetch a download link. Please try again.',
+      });
+    }
+  };
+
   const chatStatus = useMemo<ChatStatus | undefined>(() => {
     if (isClearingConversation || isLoadingHistory) return 'submitted';
     if (isSending) return 'streaming';
@@ -124,6 +196,78 @@ export function ChatInterface({
                       )}
                     </div>
                     <p className="mt-2 leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                    {message.structuredOutput ? (
+                      <div className="mt-3 space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-foreground/60">
+                          Structured output
+                        </p>
+                        <CodeBlock
+                          code={formatStructuredOutput(message.structuredOutput)}
+                          language="json"
+                        />
+                      </div>
+                    ) : null}
+                    {message.attachments && message.attachments.length > 0 ? (
+                      <div className="mt-3 space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-foreground/60">
+                          Attachments
+                        </p>
+                        <div className="space-y-2">
+                          {message.attachments.map((attachment) => (
+                            <div
+                              key={attachment.object_id}
+                              className="flex items-center justify-between gap-3 rounded-md border border-white/5 bg-white/5 px-3 py-2 text-xs"
+                            >
+                              <div className="flex flex-col">
+                                <span className="font-medium text-foreground">{attachment.filename}</span>
+                                <span className="text-foreground/60">
+                                  {attachment.mime_type ?? 'file'}
+                                  {attachment.size_bytes ? ` • ${formatAttachmentSize(attachment.size_bytes)}` : ''}
+                                </span>
+                              </div>
+                              {(() => {
+                                const state = attachmentState[attachment.object_id];
+                                const effectiveUrl = attachment.url ?? state?.url;
+                                if (effectiveUrl) {
+                                  return (
+                                    <a
+                                      className="text-primary font-semibold hover:underline"
+                                      href={effectiveUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                    >
+                                      Download
+                                    </a>
+                                  );
+                                }
+
+                                if (state?.loading) {
+                                  return <span className="text-foreground/50">Fetching link…</span>;
+                                }
+
+                                return (
+                                  <div className="flex flex-col items-end gap-1">
+                                    <button
+                                      type="button"
+                                      className="text-primary font-semibold hover:underline disabled:text-foreground/40"
+                                      onClick={() => void resolveAttachment(attachment.object_id)}
+                                      disabled={isSending || isLoadingHistory}
+                                    >
+                                      Get link
+                                    </button>
+                                    {state?.error ? (
+                                      <span className="text-[11px] text-destructive">{state.error}</span>
+                                    ) : (
+                                      <span className="text-foreground/50">Link not ready</span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                   </MessageContent>
                   <MessageAvatar
                     src=""
@@ -250,6 +394,63 @@ export function ChatInterface({
                   />
                 </div>
               ) : null}
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs text-foreground/70">Max turns</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    placeholder="SDK default"
+                    value={runOptions.maxTurns ?? ''}
+                    onChange={(e) =>
+                      onRunOptionsChange({
+                        maxTurns: e.target.value ? Number(e.target.value) : undefined,
+                      })
+                    }
+                    disabled={isSending || isLoadingHistory}
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs text-foreground/70">Previous response ID</Label>
+                  <Input
+                    placeholder="response_id to continue"
+                    value={runOptions.previousResponseId ?? ''}
+                    onChange={(e) =>
+                      onRunOptionsChange({
+                        previousResponseId: e.target.value || '',
+                      })
+                    }
+                    disabled={isSending || isLoadingHistory}
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs text-foreground/70">Handoff input filter</Label>
+                  <Input
+                    placeholder="registry key"
+                    value={runOptions.handoffInputFilter ?? ''}
+                    onChange={(e) =>
+                      onRunOptionsChange({
+                        handoffInputFilter: e.target.value || '',
+                      })
+                    }
+                    disabled={isSending || isLoadingHistory}
+                  />
+                </div>
+                <div className="flex flex-col gap-1 md:col-span-2 lg:col-span-2">
+                  <Label className="text-xs text-foreground/70">Run config (JSON)</Label>
+                  <Textarea
+                    placeholder='{"temperature":0.2}'
+                    value={runOptions.runConfigRaw ?? ''}
+                    onChange={(e) =>
+                      onRunOptionsChange({
+                        runConfigRaw: e.target.value,
+                      })
+                    }
+                    rows={2}
+                    disabled={isSending || isLoadingHistory}
+                  />
+                </div>
+              </div>
             </div>
           </PromptInputTools>
           <div className="flex flex-wrap items-center gap-2">

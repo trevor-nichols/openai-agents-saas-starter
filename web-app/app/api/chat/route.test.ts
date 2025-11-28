@@ -29,6 +29,16 @@ describe('/api/chat route', () => {
       agent_used: 'triage',
       handoff_occurred: false,
       metadata: null,
+      attachments: [
+        {
+          object_id: 'obj-1',
+          filename: 'img.png',
+          mime_type: 'image/png',
+          size_bytes: 1024,
+          url: 'https://example.com/img.png',
+        },
+      ],
+      structured_output: { foo: 'bar' },
     };
 
     sendChatMessage.mockResolvedValueOnce(agentResponse);
@@ -80,4 +90,3 @@ describe('/api/chat route', () => {
     expect(sendChatMessage).toHaveBeenCalledWith(payload);
   });
 });
-

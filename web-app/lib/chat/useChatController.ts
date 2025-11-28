@@ -6,8 +6,8 @@ import { streamChat } from '@/lib/api/chat';
 import { useSendChatMutation } from '@/lib/queries/chat';
 import { queryKeys } from '@/lib/queries/keys';
 import type { ConversationHistory, ConversationListItem, ConversationMessage } from '@/types/conversations';
-import type { ChatMessage, ConversationLifecycleStatus, ToolState } from './types';
-import type { LocationHint } from '@/lib/api/client/types.gen';
+import type { ChatMessage, ConversationLifecycleStatus, RunOptionsInput, ToolState } from './types';
+import type { LocationHint, MessageAttachment } from '@/lib/api/client/types.gen';
 
 import { createLogger } from '@/lib/logging';
 
@@ -45,6 +45,7 @@ export interface UseChatControllerReturn {
 export interface SendMessageOptions {
   shareLocation?: boolean;
   location?: Partial<LocationHint> | null;
+  runOptions?: RunOptionsInput | null;
 }
 
 export function useChatController(options: UseChatControllerOptions = {}): UseChatControllerReturn {
@@ -82,6 +83,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
           role: normalizedRole,
           content,
           timestamp: message.timestamp ?? undefined,
+          attachments: message.attachments ?? null,
         };
       });
   }, []);
@@ -202,12 +204,16 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
           agentType: selectedAgent,
           shareLocation,
           location: locationPayload,
+          runOptions: options?.runOptions ?? undefined,
         });
 
         let accumulatedContent = '';
         const toolMap = new Map<string, ToolState>();
         let terminalSeen = false;
         let streamErrored = false;
+        let streamedAttachments: MessageAttachment[] | null | undefined = undefined;
+        let streamedStructuredOutput: unknown | null = null;
+        let responseTextOverride: unknown | null = null;
 
         for await (const chunk of stream) {
           if (chunk.type === 'error') {
@@ -263,6 +269,10 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
                 setLifecycleStatus(nextStatus);
               }
             }
+
+            if (event.response_text !== undefined && event.response_text !== null) {
+              responseTextOverride = event.response_text;
+            }
           }
 
           if (event.kind === 'run_item' && event.run_item_name) {
@@ -306,6 +316,28 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
             finalConversationId = event.conversation_id;
           }
 
+          if (event.attachments && event.attachments.length > 0) {
+            streamedAttachments = event.attachments;
+            setMessages((prevMessages) =>
+              prevMessages.map((msg) =>
+                msg.id === assistantMessageId
+                  ? { ...msg, attachments: streamedAttachments ?? null }
+                  : msg,
+              ),
+            );
+          }
+
+          if (event.structured_output !== undefined) {
+            streamedStructuredOutput = event.structured_output;
+            setMessages((prevMessages) =>
+              prevMessages.map((msg) =>
+                msg.id === assistantMessageId
+                  ? { ...msg, structuredOutput: streamedStructuredOutput }
+                  : msg,
+              ),
+            );
+          }
+
           if (event.is_terminal) {
             terminalSeen = true;
           }
@@ -326,10 +358,28 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
           return;
         }
 
+        const finalContent = (() => {
+          if (responseTextOverride !== null && responseTextOverride !== undefined) {
+            if (typeof responseTextOverride === 'string') return responseTextOverride;
+            try {
+              return JSON.stringify(responseTextOverride);
+            } catch {
+              return String(responseTextOverride);
+            }
+          }
+          return accumulatedContent;
+        })();
+
         setMessages((prevMessages) =>
           prevMessages.map((msg) =>
             msg.id === assistantMessageId
-              ? { ...msg, content: accumulatedContent, isStreaming: false }
+              ? {
+                  ...msg,
+                  content: finalContent,
+                  isStreaming: false,
+                  attachments: streamedAttachments ?? msg.attachments ?? null,
+                  structuredOutput: streamedStructuredOutput ?? msg.structuredOutput ?? null,
+                }
               : msg,
           ),
         );
@@ -391,12 +441,19 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
             context: null,
             share_location: shareLocation,
             location: locationPayload,
+            run_options: mapRunOptionsInput(options?.runOptions),
           });
 
           setMessages((prevMessages) =>
             prevMessages.map((msg) =>
               msg.id === assistantMessageId
-                ? { ...msg, content: fallbackResponse.response, isStreaming: false }
+                ? {
+                    ...msg,
+                    content: fallbackResponse.response,
+                    isStreaming: false,
+                    attachments: fallbackResponse.attachments ?? null,
+                    structuredOutput: fallbackResponse.structured_output ?? null,
+                  }
                 : msg,
             ),
           );
@@ -558,4 +615,20 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       lifecycleStatus,
     ],
   );
+}
+
+function mapRunOptionsInput(runOptions?: RunOptionsInput | null) {
+  if (!runOptions) return undefined;
+  let normalizedRunConfig: Record<string, unknown> | null | undefined = undefined;
+  if (runOptions.runConfig === null) {
+    normalizedRunConfig = null;
+  } else if (typeof runOptions.runConfig === 'object') {
+    normalizedRunConfig = runOptions.runConfig as Record<string, unknown>;
+  }
+  return {
+    max_turns: runOptions.maxTurns ?? undefined,
+    previous_response_id: runOptions.previousResponseId ?? undefined,
+    handoff_input_filter: runOptions.handoffInputFilter ?? undefined,
+    run_config: normalizedRunConfig,
+  };
 }

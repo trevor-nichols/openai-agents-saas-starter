@@ -74,4 +74,22 @@ export const queryKeys = {
         [...queryKeys.signup.requests.all(), filters] as const,
     },
   },
+  workflows: {
+    all: ['workflows'] as const,
+    list: () => [...queryKeys.workflows.all, 'list'] as const,
+    run: (runId: string) => [...queryKeys.workflows.all, 'run', runId] as const,
+  },
+  storage: {
+    all: ['storage'] as const,
+    objects: (filters?: Record<string, unknown>) => [...queryKeys.storage.all, 'objects', filters ?? {}] as const,
+  },
+  vectorStores: {
+    all: ['vector-stores'] as const,
+    list: () => [...queryKeys.vectorStores.all, 'list'] as const,
+    files: (vectorStoreId: string) => [...queryKeys.vectorStores.all, 'files', vectorStoreId] as const,
+  },
+  containers: {
+    all: ['containers'] as const,
+    list: () => [...queryKeys.containers.all, 'list'] as const,
+  },
 } as const;

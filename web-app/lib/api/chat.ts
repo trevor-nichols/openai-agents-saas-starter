@@ -11,6 +11,7 @@ import type {
   AgentChatResponse,
 } from '@/lib/api/client/types.gen';
 import type {
+  RunOptionsInput,
   StreamChunk,
   StreamChatParams,
 } from '@/lib/chat/types';
@@ -114,7 +115,8 @@ export async function sendChatMessage(payload: AgentChatRequest): Promise<AgentC
 export async function* streamChat(
   params: StreamChatParams,
 ): AsyncGenerator<StreamChunk, void, unknown> {
-  const { message, conversationId, agentType = 'triage', shareLocation, location } = params;
+  const { message, conversationId, agentType = 'triage', shareLocation, location, runOptions } =
+    params;
 
   log.debug('Starting chat stream', {
     agentType,
@@ -133,6 +135,7 @@ export async function* streamChat(
       agent_type: agentType,
       share_location: shareLocation,
       location,
+      run_options: mapRunOptions(runOptions),
     }),
   });
 
@@ -178,6 +181,14 @@ export async function* streamChat(
         if (!segment.trim() || !segment.startsWith('data: ')) continue;
 
         const parsed = parseStreamSegment(segment);
+
+        if (parsed.chunk.type === 'event') {
+          log.debug('Stream event', {
+            kind: parsed.chunk.event.kind,
+            rawType: (parsed.chunk.event as StreamingChatEvent).raw_type,
+            terminal: parsed.done,
+          });
+        }
 
         if (parsed.chunk.type === 'error') {
           yield parsed.chunk;
@@ -251,6 +262,8 @@ function parseStreamSegment(segment: string): ParsedSegment {
         reasoning_delta: null,
         is_terminal: Boolean(legacy.is_complete),
         payload: legacy,
+        structured_output: null,
+        attachments: null,
       };
       return {
         chunk: { type: 'event', event },
@@ -279,4 +292,15 @@ function parseStreamSegment(segment: string): ParsedSegment {
       done: true,
     };
   }
+}
+
+function mapRunOptions(runOptions?: RunOptionsInput) {
+  if (!runOptions) return undefined;
+  const { maxTurns, previousResponseId, handoffInputFilter, runConfig } = runOptions;
+  return {
+    max_turns: maxTurns ?? undefined,
+    previous_response_id: previousResponseId ?? undefined,
+    handoff_input_filter: handoffInputFilter ?? undefined,
+    run_config: runConfig ?? undefined,
+  };
 }

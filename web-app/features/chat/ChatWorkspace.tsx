@@ -66,6 +66,8 @@ export function ChatWorkspace() {
     locationHint,
     updateLocationField,
     setSelectedAgent,
+    runOptions,
+    setRunOptions,
   } = useChatWorkspace();
 
   useEffect(() => {
@@ -148,6 +150,18 @@ export function ChatWorkspace() {
             onShareLocationChange={setShareLocation}
             locationHint={locationHint}
             onLocationHintChange={updateLocationField}
+            runOptions={{
+              maxTurns: runOptions.maxTurns,
+              previousResponseId: runOptions.previousResponseId,
+              handoffInputFilter: runOptions.handoffInputFilter,
+              runConfigRaw: runOptions.runConfigRaw,
+            }}
+            onRunOptionsChange={(next) =>
+              setRunOptions((prev) => ({
+                ...prev,
+                ...next,
+              }))
+            }
             className="h-[78vh]"
           />
         </div>

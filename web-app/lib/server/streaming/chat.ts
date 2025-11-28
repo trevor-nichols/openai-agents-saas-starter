@@ -108,6 +108,8 @@ function parseBackendStream(
         reasoning_delta: null,
         is_terminal: Boolean(legacy.is_complete),
         payload: legacy,
+        structured_output: null,
+        attachments: null,
       };
       return {
         chunk: { type: 'event', event },

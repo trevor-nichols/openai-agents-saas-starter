@@ -1,4 +1,7 @@
-import type { StreamingChatEvent } from '@/lib/api/client/types.gen';
+import type {
+  MessageAttachment,
+  StreamingChatEvent,
+} from '@/lib/api/client/types.gen';
 
 export interface StreamChatParams {
   message: string;
@@ -11,6 +14,7 @@ export interface StreamChatParams {
     country?: string | null;
     timezone?: string | null;
   } | null;
+  runOptions?: RunOptionsInput;
 }
 
 export type StreamChunk =
@@ -40,4 +44,13 @@ export interface ChatMessage {
   content: string;
   timestamp?: string;
   isStreaming?: boolean;
+  attachments?: MessageAttachment[] | null;
+  structuredOutput?: unknown | null;
 }
+
+export type RunOptionsInput = {
+  maxTurns?: number | null;
+  previousResponseId?: string | null;
+  handoffInputFilter?: string | null;
+  runConfig?: unknown | null;
+};

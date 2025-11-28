@@ -118,6 +118,13 @@ export function AgentWorkspaceChatPanel({
         onShareLocationChange={onShareLocationChange ?? (() => {})}
         locationHint={locationHint}
         onLocationHintChange={onLocationHintChange ?? (() => {})}
+        runOptions={{
+          maxTurns: undefined,
+          previousResponseId: undefined,
+          handoffInputFilter: undefined,
+          runConfigRaw: '',
+        }}
+        onRunOptionsChange={() => {}}
         className="min-h-[520px]"
       />
     </div>

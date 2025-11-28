@@ -16,9 +16,15 @@ import type {
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostData,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostErrors,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostResponses,
+  AttachFileApiV1VectorStoresVectorStoreIdFilesPostData,
+  AttachFileApiV1VectorStoresVectorStoreIdFilesPostErrors,
+  AttachFileApiV1VectorStoresVectorStoreIdFilesPostResponses,
   BillingEventStreamApiV1BillingStreamGetData,
   BillingEventStreamApiV1BillingStreamGetErrors,
   BillingEventStreamApiV1BillingStreamGetResponses,
+  BindAgentContainerApiV1ContainersAgentsAgentKeyContainerPostData,
+  BindAgentContainerApiV1ContainersAgentsAgentKeyContainerPostErrors,
+  BindAgentContainerApiV1ContainersAgentsAgentKeyContainerPostResponses,
   CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostData,
   CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostErrors,
   CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostResponses,
@@ -34,20 +40,50 @@ import type {
   ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostData,
   ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostErrors,
   ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostResponses,
+  CreateContainerApiV1ContainersPostData,
+  CreateContainerApiV1ContainersPostErrors,
+  CreateContainerApiV1ContainersPostResponses,
+  CreatePresignedUploadApiV1StorageObjectsUploadUrlPostData,
+  CreatePresignedUploadApiV1StorageObjectsUploadUrlPostErrors,
+  CreatePresignedUploadApiV1StorageObjectsUploadUrlPostResponses,
   CreateStatusSubscriptionApiV1StatusSubscriptionsPostData,
   CreateStatusSubscriptionApiV1StatusSubscriptionsPostErrors,
   CreateStatusSubscriptionApiV1StatusSubscriptionsPostResponses,
+  CreateVectorStoreApiV1VectorStoresPostData,
+  CreateVectorStoreApiV1VectorStoresPostErrors,
+  CreateVectorStoreApiV1VectorStoresPostResponses,
+  DeleteContainerApiV1ContainersContainerIdDeleteData,
+  DeleteContainerApiV1ContainersContainerIdDeleteErrors,
+  DeleteContainerApiV1ContainersContainerIdDeleteResponses,
   DeleteConversationApiV1ConversationsConversationIdDeleteData,
   DeleteConversationApiV1ConversationsConversationIdDeleteErrors,
   DeleteConversationApiV1ConversationsConversationIdDeleteResponses,
+  DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteData,
+  DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteErrors,
+  DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteResponses,
+  DeleteObjectApiV1StorageObjectsObjectIdDeleteData,
+  DeleteObjectApiV1StorageObjectsObjectIdDeleteErrors,
+  DeleteObjectApiV1StorageObjectsObjectIdDeleteResponses,
+  DeleteVectorStoreApiV1VectorStoresVectorStoreIdDeleteData,
+  DeleteVectorStoreApiV1VectorStoresVectorStoreIdDeleteErrors,
+  DeleteVectorStoreApiV1VectorStoresVectorStoreIdDeleteResponses,
   GetAgentStatusApiV1AgentsAgentNameStatusGetData,
   GetAgentStatusApiV1AgentsAgentNameStatusGetErrors,
   GetAgentStatusApiV1AgentsAgentNameStatusGetResponses,
+  GetContainerByIdApiV1ContainersContainerIdGetData,
+  GetContainerByIdApiV1ContainersContainerIdGetErrors,
+  GetContainerByIdApiV1ContainersContainerIdGetResponses,
   GetConversationApiV1ConversationsConversationIdGetData,
   GetConversationApiV1ConversationsConversationIdGetErrors,
   GetConversationApiV1ConversationsConversationIdGetResponses,
   GetCurrentUserInfoApiV1AuthMeGetData,
   GetCurrentUserInfoApiV1AuthMeGetResponses,
+  GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetData,
+  GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetErrors,
+  GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetResponses,
+  GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetData,
+  GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetErrors,
+  GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetResponses,
   GetPlatformStatusApiV1StatusGetData,
   GetPlatformStatusApiV1StatusGetResponses,
   GetPlatformStatusRssAliasApiV1StatusRssGetData,
@@ -62,6 +98,12 @@ import type {
   GetTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGetData,
   GetTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGetErrors,
   GetTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGetResponses,
+  GetVectorStoreApiV1VectorStoresVectorStoreIdGetData,
+  GetVectorStoreApiV1VectorStoresVectorStoreIdGetErrors,
+  GetVectorStoreApiV1VectorStoresVectorStoreIdGetResponses,
+  GetWorkflowRunApiV1WorkflowsRunsRunIdGetData,
+  GetWorkflowRunApiV1WorkflowsRunsRunIdGetErrors,
+  GetWorkflowRunApiV1WorkflowsRunsRunIdGetResponses,
   HandleStripeWebhookWebhooksStripePostData,
   HandleStripeWebhookWebhooksStripePostResponses,
   HealthCheckHealthGetData,
@@ -87,12 +129,21 @@ import type {
   ListBillingEventsApiV1BillingTenantsTenantIdEventsGetResponses,
   ListBillingPlansApiV1BillingPlansGetData,
   ListBillingPlansApiV1BillingPlansGetResponses,
+  ListContainersApiV1ContainersGetData,
+  ListContainersApiV1ContainersGetErrors,
+  ListContainersApiV1ContainersGetResponses,
   ListConversationsApiV1ConversationsGetData,
   ListConversationsApiV1ConversationsGetErrors,
   ListConversationsApiV1ConversationsGetResponses,
+  ListFilesApiV1VectorStoresVectorStoreIdFilesGetData,
+  ListFilesApiV1VectorStoresVectorStoreIdFilesGetErrors,
+  ListFilesApiV1VectorStoresVectorStoreIdFilesGetResponses,
   ListInvitesApiV1AuthInvitesGetData,
   ListInvitesApiV1AuthInvitesGetErrors,
   ListInvitesApiV1AuthInvitesGetResponses,
+  ListObjectsApiV1StorageObjectsGetData,
+  ListObjectsApiV1StorageObjectsGetErrors,
+  ListObjectsApiV1StorageObjectsGetResponses,
   ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetData,
   ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetErrors,
   ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetResponses,
@@ -105,6 +156,12 @@ import type {
   ListUserSessionsApiV1AuthSessionsGetData,
   ListUserSessionsApiV1AuthSessionsGetErrors,
   ListUserSessionsApiV1AuthSessionsGetResponses,
+  ListVectorStoresApiV1VectorStoresGetData,
+  ListVectorStoresApiV1VectorStoresGetErrors,
+  ListVectorStoresApiV1VectorStoresGetResponses,
+  ListWorkflowsApiV1WorkflowsGetData,
+  ListWorkflowsApiV1WorkflowsGetErrors,
+  ListWorkflowsApiV1WorkflowsGetResponses,
   LoginForAccessTokenApiV1AuthTokenPostData,
   LoginForAccessTokenApiV1AuthTokenPostErrors,
   LoginForAccessTokenApiV1AuthTokenPostResponses,
@@ -145,20 +202,34 @@ import type {
   RevokeUserSessionApiV1AuthSessionsSessionIdDeleteData,
   RevokeUserSessionApiV1AuthSessionsSessionIdDeleteErrors,
   RevokeUserSessionApiV1AuthSessionsSessionIdDeleteResponses,
+  RunWorkflowApiV1WorkflowsWorkflowKeyRunPostData,
+  RunWorkflowApiV1WorkflowsWorkflowKeyRunPostErrors,
+  RunWorkflowApiV1WorkflowsWorkflowKeyRunPostResponses,
+  RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostData,
+  RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostErrors,
+  RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostResponses,
   SearchConversationsApiV1ConversationsSearchGetData,
   SearchConversationsApiV1ConversationsSearchGetErrors,
   SearchConversationsApiV1ConversationsSearchGetResponses,
+  SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostData,
+  SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostErrors,
+  SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostResponses,
   SendEmailVerificationApiV1AuthEmailSendPostData,
   SendEmailVerificationApiV1AuthEmailSendPostResponses,
   StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostData,
   StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostErrors,
   StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponses,
+  StorageHealthHealthStorageGetData,
+  StorageHealthHealthStorageGetResponses,
   StreamChatWithAgentApiV1ChatStreamPostData,
   StreamChatWithAgentApiV1ChatStreamPostErrors,
   StreamChatWithAgentApiV1ChatStreamPostResponses,
   SubmitAccessRequestApiV1AuthRequestAccessPostData,
   SubmitAccessRequestApiV1AuthRequestAccessPostErrors,
   SubmitAccessRequestApiV1AuthRequestAccessPostResponses,
+  UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteData,
+  UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteErrors,
+  UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteResponses,
   UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchData,
   UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchErrors,
   UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchResponses,
@@ -224,6 +295,26 @@ export const readinessCheckHealthReadyGet = <
     ThrowOnError
   >({
     url: "/health/ready",
+    ...options,
+  });
+};
+
+/**
+ * Storage Health
+ *
+ * Storage provider health (informational; does not gate readiness).
+ */
+export const storageHealthHealthStorageGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<StorageHealthHealthStorageGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    StorageHealthHealthStorageGetResponses,
+    unknown,
+    ThrowOnError
+  >({
+    url: "/health/storage",
     ...options,
   });
 };
@@ -1055,6 +1146,116 @@ export const getAgentStatusApiV1AgentsAgentNameStatusGet = <
 };
 
 /**
+ * List Workflows
+ */
+export const listWorkflowsApiV1WorkflowsGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<ListWorkflowsApiV1WorkflowsGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    ListWorkflowsApiV1WorkflowsGetResponses,
+    ListWorkflowsApiV1WorkflowsGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/workflows",
+    ...options,
+  });
+};
+
+/**
+ * Run Workflow
+ */
+export const runWorkflowApiV1WorkflowsWorkflowKeyRunPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    RunWorkflowApiV1WorkflowsWorkflowKeyRunPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    RunWorkflowApiV1WorkflowsWorkflowKeyRunPostResponses,
+    RunWorkflowApiV1WorkflowsWorkflowKeyRunPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/workflows/{workflow_key}/run",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Get Workflow Run
+ */
+export const getWorkflowRunApiV1WorkflowsRunsRunIdGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<GetWorkflowRunApiV1WorkflowsRunsRunIdGetData, ThrowOnError>,
+) => {
+  return (options.client ?? client).get<
+    GetWorkflowRunApiV1WorkflowsRunsRunIdGetResponses,
+    GetWorkflowRunApiV1WorkflowsRunsRunIdGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/workflows/runs/{run_id}",
+    ...options,
+  });
+};
+
+/**
+ * Run Workflow Stream
+ */
+export const runWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostResponses,
+    RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/workflows/{workflow_key}/run-stream",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
  * List Conversations
  *
  * List stored conversations ordered by recency.
@@ -1189,6 +1390,527 @@ export const listAvailableToolsApiV1ToolsGet = <
       },
     ],
     url: "/api/v1/tools",
+    ...options,
+  });
+};
+
+/**
+ * List Containers
+ */
+export const listContainersApiV1ContainersGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<ListContainersApiV1ContainersGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    ListContainersApiV1ContainersGetResponses,
+    ListContainersApiV1ContainersGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/containers",
+    ...options,
+  });
+};
+
+/**
+ * Create Container
+ */
+export const createContainerApiV1ContainersPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<CreateContainerApiV1ContainersPostData, ThrowOnError>,
+) => {
+  return (options.client ?? client).post<
+    CreateContainerApiV1ContainersPostResponses,
+    CreateContainerApiV1ContainersPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/containers",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Delete Container
+ */
+export const deleteContainerApiV1ContainersContainerIdDelete = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    DeleteContainerApiV1ContainersContainerIdDeleteData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).delete<
+    DeleteContainerApiV1ContainersContainerIdDeleteResponses,
+    DeleteContainerApiV1ContainersContainerIdDeleteErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/containers/{container_id}",
+    ...options,
+  });
+};
+
+/**
+ * Get Container By Id
+ */
+export const getContainerByIdApiV1ContainersContainerIdGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    GetContainerByIdApiV1ContainersContainerIdGetData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).get<
+    GetContainerByIdApiV1ContainersContainerIdGetResponses,
+    GetContainerByIdApiV1ContainersContainerIdGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/containers/{container_id}",
+    ...options,
+  });
+};
+
+/**
+ * Unbind Agent Container
+ */
+export const unbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDelete =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).delete<
+      UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteResponses,
+      UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/containers/agents/{agent_key}/container",
+      ...options,
+    });
+  };
+
+/**
+ * Bind Agent Container
+ */
+export const bindAgentContainerApiV1ContainersAgentsAgentKeyContainerPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    BindAgentContainerApiV1ContainersAgentsAgentKeyContainerPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    BindAgentContainerApiV1ContainersAgentsAgentKeyContainerPostResponses,
+    BindAgentContainerApiV1ContainersAgentsAgentKeyContainerPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/containers/agents/{agent_key}/container",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * List Vector Stores
+ */
+export const listVectorStoresApiV1VectorStoresGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<ListVectorStoresApiV1VectorStoresGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    ListVectorStoresApiV1VectorStoresGetResponses,
+    ListVectorStoresApiV1VectorStoresGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/vector-stores",
+    ...options,
+  });
+};
+
+/**
+ * Create Vector Store
+ */
+export const createVectorStoreApiV1VectorStoresPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<CreateVectorStoreApiV1VectorStoresPostData, ThrowOnError>,
+) => {
+  return (options.client ?? client).post<
+    CreateVectorStoreApiV1VectorStoresPostResponses,
+    CreateVectorStoreApiV1VectorStoresPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/vector-stores",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Delete Vector Store
+ */
+export const deleteVectorStoreApiV1VectorStoresVectorStoreIdDelete = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    DeleteVectorStoreApiV1VectorStoresVectorStoreIdDeleteData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).delete<
+    DeleteVectorStoreApiV1VectorStoresVectorStoreIdDeleteResponses,
+    DeleteVectorStoreApiV1VectorStoresVectorStoreIdDeleteErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/vector-stores/{vector_store_id}",
+    ...options,
+  });
+};
+
+/**
+ * Get Vector Store
+ */
+export const getVectorStoreApiV1VectorStoresVectorStoreIdGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    GetVectorStoreApiV1VectorStoresVectorStoreIdGetData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).get<
+    GetVectorStoreApiV1VectorStoresVectorStoreIdGetResponses,
+    GetVectorStoreApiV1VectorStoresVectorStoreIdGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/vector-stores/{vector_store_id}",
+    ...options,
+  });
+};
+
+/**
+ * List Files
+ */
+export const listFilesApiV1VectorStoresVectorStoreIdFilesGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    ListFilesApiV1VectorStoresVectorStoreIdFilesGetData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).get<
+    ListFilesApiV1VectorStoresVectorStoreIdFilesGetResponses,
+    ListFilesApiV1VectorStoresVectorStoreIdFilesGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/vector-stores/{vector_store_id}/files",
+    ...options,
+  });
+};
+
+/**
+ * Attach File
+ */
+export const attachFileApiV1VectorStoresVectorStoreIdFilesPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    AttachFileApiV1VectorStoresVectorStoreIdFilesPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    AttachFileApiV1VectorStoresVectorStoreIdFilesPostResponses,
+    AttachFileApiV1VectorStoresVectorStoreIdFilesPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/vector-stores/{vector_store_id}/files",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Delete File
+ */
+export const deleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDelete = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).delete<
+    DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteResponses,
+    DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/vector-stores/{vector_store_id}/files/{file_id}",
+    ...options,
+  });
+};
+
+/**
+ * Get File
+ */
+export const getFileApiV1VectorStoresVectorStoreIdFilesFileIdGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).get<
+    GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetResponses,
+    GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/vector-stores/{vector_store_id}/files/{file_id}",
+    ...options,
+  });
+};
+
+/**
+ * Search Vector Store
+ */
+export const searchVectorStoreApiV1VectorStoresVectorStoreIdSearchPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostResponses,
+    SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/vector-stores/{vector_store_id}/search",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Create Presigned Upload
+ */
+export const createPresignedUploadApiV1StorageObjectsUploadUrlPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    CreatePresignedUploadApiV1StorageObjectsUploadUrlPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    CreatePresignedUploadApiV1StorageObjectsUploadUrlPostResponses,
+    CreatePresignedUploadApiV1StorageObjectsUploadUrlPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/storage/objects/upload-url",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * List Objects
+ */
+export const listObjectsApiV1StorageObjectsGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<ListObjectsApiV1StorageObjectsGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    ListObjectsApiV1StorageObjectsGetResponses,
+    ListObjectsApiV1StorageObjectsGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/storage/objects",
+    ...options,
+  });
+};
+
+/**
+ * Get Download Url
+ */
+export const getDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).get<
+    GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetResponses,
+    GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/storage/objects/{object_id}/download-url",
+    ...options,
+  });
+};
+
+/**
+ * Delete Object
+ */
+export const deleteObjectApiV1StorageObjectsObjectIdDelete = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    DeleteObjectApiV1StorageObjectsObjectIdDeleteData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).delete<
+    DeleteObjectApiV1StorageObjectsObjectIdDeleteResponses,
+    DeleteObjectApiV1StorageObjectsObjectIdDeleteErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/storage/objects/{object_id}",
     ...options,
   });
 };

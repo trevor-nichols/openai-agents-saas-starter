@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 
 import { fetchBillingHistory } from '@/lib/api/billingHistory';
 import { readClientSessionMeta } from '@/lib/auth/clientMeta';
-import type { BillingEvent, BillingEventProcessingStatus } from '@/types/billing';
+import type { BillingEvent, BillingEventHistoryResponse, BillingEventProcessingStatus } from '@/types/billing';
 import { billingEnabled } from '@/lib/config/features';
 import { queryKeys } from './keys';
 
@@ -32,7 +32,7 @@ export function useBillingHistory(options?: UseBillingHistoryOptions): UseBillin
       : null;
   const eventType = options?.eventType ?? null;
 
-  const queryResult = useInfiniteQuery({
+  const queryResult = useInfiniteQuery<BillingEventHistoryResponse, Error, BillingEventHistoryResponse, ReturnType<typeof queryKeys.billing.history>, string | null>({
     queryKey: queryKeys.billing.history(tenantId, {
       pageSize,
       eventType,
@@ -52,15 +52,14 @@ export function useBillingHistory(options?: UseBillingHistoryOptions): UseBillin
     },
     enabled: billingEnabled && Boolean(tenantId),
     initialPageParam: null as string | null,
-    getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+    getNextPageParam: (lastPage) => lastPage?.next_cursor ?? undefined,
     staleTime: 30 * 1000,
   });
 
   const events = useMemo(() => {
-    if (!queryResult.data) {
-      return [];
-    }
-    return queryResult.data.pages.flatMap((page) => page.items);
+    const pages = (queryResult.data as unknown as { pages?: BillingEventHistoryResponse[] })?.pages;
+    if (!pages) return [];
+    return pages.flatMap((page) => page.items);
   }, [queryResult.data]);
 
   return {
