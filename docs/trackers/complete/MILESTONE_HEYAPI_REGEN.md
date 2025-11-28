@@ -12,10 +12,10 @@ Goal: Integrate the regenerated HeyAPI surface into the Next.js app, upgrade cha
 ## Phases and Tasks
 
 ### M0 — Baseline & Guardrails (Planned)
-- [ ] Record regen delta summary and control branch.
-- [ ] Ensure `pnpm lint` / `pnpm type-check` pass on main (baseline).
-- [ ] Add brief changelog entry in `docs/trackers/SDK_CHANGES.md`.
-- Sign-off: ____________________
+- [x] Record regen delta summary and control branch.
+- [x] Ensure `pnpm lint` / `pnpm type-check` pass on main (baseline).
+- [x] Add brief changelog entry in `docs/trackers/SDK_CHANGES.md`.
+- Sign-off: ✅
 
 ### M1 — Chat Schema Alignment (Complete)
 - [x] Propagate `structured_output` and `attachments` through chat client/server layers (`lib/api/chat.ts`, `lib/server/services/chat.ts`, `lib/server/streaming/chat.ts`, `lib/queries/chat.ts`, `lib/chat/useChatController.ts`).
@@ -63,10 +63,10 @@ Goal: Integrate the regenerated HeyAPI surface into the Next.js app, upgrade cha
 - Sign-off: ✅ Observability/story coverage in place; lint/type-check green
 
 ### M8 — Documentation & Tracker Updates (Planned)
-- [ ] Update `docs/frontend/data-access.md` and `docs/trackers/` with milestone status.
-- [ ] UX notes for new controls/attachments in feature constants where applicable.
-- [ ] Final audit: all checkboxes completed, sign-offs recorded.
-- Sign-off: ____________________
+- [x] Update `docs/frontend/data-access.md` and `docs/trackers/` with milestone status.
+- [x] UX notes for new controls/attachments in feature constants where applicable.
+- [x] Final audit: all checkboxes completed, sign-offs recorded.
+- Sign-off: ✅
 
 ### Open UX/IA Follow-ups (Added 2025-11-28)
 - [x] Surface new routes in primary nav: add `/workflows` and `/ops/storage` to `buildPrimaryNav`/`AppSidebar` so pages are discoverable (web-app/app/(app)/layout.tsx).
