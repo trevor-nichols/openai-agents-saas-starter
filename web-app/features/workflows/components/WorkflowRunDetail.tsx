@@ -60,6 +60,13 @@ export function WorkflowRunDetail({ run, isLoading, onCancel, canceling }: Workf
         </div>
       ) : null}
 
+      {run.output_schema ? (
+        <div>
+          <p className="text-xs font-semibold text-foreground/60 mb-1">Declared output schema</p>
+          <CodeBlock code={JSON.stringify(run.output_schema, null, 2)} language="json" />
+        </div>
+      ) : null}
+
       <div className="space-y-2">
         <p className="text-xs font-semibold text-foreground/60">Steps</p>
         {run.steps.length === 0 ? (
@@ -80,6 +87,12 @@ export function WorkflowRunDetail({ run, isLoading, onCancel, canceling }: Workf
                 {step.structured_output ? (
                   <div className="mt-2">
                     <CodeBlock code={JSON.stringify(step.structured_output, null, 2)} language="json" />
+                  </div>
+                ) : null}
+                {step.output_schema ? (
+                  <div className="mt-2">
+                    <p className="text-xs font-semibold text-foreground/60 mb-1">Step output schema</p>
+                    <CodeBlock code={JSON.stringify(step.output_schema, null, 2)} language="json" />
                   </div>
                 ) : null}
               </div>

@@ -1,5 +1,6 @@
 import { SkeletonPanel, EmptyState } from '@/components/ui/states';
 import { Badge } from '@/components/ui/badge';
+import { CodeBlock } from '@/components/ui/ai/code-block';
 import type { WorkflowDescriptor } from '@/lib/workflows/types';
 
 interface WorkflowDescriptorCardProps {
@@ -41,6 +42,13 @@ export function WorkflowDescriptorCard({ descriptor, isLoading }: WorkflowDescri
           </Badge>
         ) : null}
       </div>
+
+      {descriptor.output_schema ? (
+        <div className="space-y-1">
+          <p className="text-xs font-semibold text-foreground/60">Output schema</p>
+          <CodeBlock code={JSON.stringify(descriptor.output_schema, null, 2)} language="json" />
+        </div>
+      ) : null}
     </div>
   );
 }

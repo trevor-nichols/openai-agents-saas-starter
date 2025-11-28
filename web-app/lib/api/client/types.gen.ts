@@ -3475,6 +3475,12 @@ export type WorkflowDescriptorResponse = {
    * Stages
    */
   stages: Array<WorkflowStageDescriptor>;
+  /**
+   * Output Schema
+   */
+  output_schema?: {
+    [key: string]: unknown;
+  } | null;
 };
 
 /**
@@ -3525,6 +3531,12 @@ export type WorkflowRunDetail = {
    * Conversation Id
    */
   conversation_id: string | null;
+  /**
+   * Output Schema
+   */
+  output_schema?: {
+    [key: string]: unknown;
+  } | null;
   /**
    * Steps
    */
@@ -3643,6 +3655,12 @@ export type WorkflowRunResponse = {
    * Final Output
    */
   final_output: unknown | null;
+  /**
+   * Output Schema
+   */
+  output_schema?: {
+    [key: string]: unknown;
+  } | null;
 };
 
 /**
@@ -3699,6 +3717,12 @@ export type WorkflowStepDescriptor = {
    * Max Turns
    */
   max_turns?: number | null;
+  /**
+   * Output Schema
+   */
+  output_schema?: {
+    [key: string]: unknown;
+  } | null;
 };
 
 /**
@@ -3737,6 +3761,12 @@ export type WorkflowStepResultSchema = {
    * Branch Index
    */
   branch_index?: number | null;
+  /**
+   * Output Schema
+   */
+  output_schema?: {
+    [key: string]: unknown;
+  } | null;
 };
 
 /**

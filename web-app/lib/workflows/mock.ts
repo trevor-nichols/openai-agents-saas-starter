@@ -37,6 +37,10 @@ export function mockWorkflowDescriptor(key: string): WorkflowDescriptor {
     default: Boolean(base.default),
     allow_handoff_agents: false,
     step_count: base.step_count,
+    output_schema: {
+      summary: { type: 'string', description: 'One-line summary of the workflow result' },
+      details: { type: 'object', properties: { items: { type: 'array' } } },
+    },
     stages: [
       {
         name: 'stage-1',
@@ -51,6 +55,7 @@ export function mockWorkflowDescriptor(key: string): WorkflowDescriptor {
             input_mapper: null,
             input_mapper_type: null,
             max_turns: 1,
+            output_schema: { summary: { type: 'string' } },
           },
         ],
       },
@@ -65,6 +70,7 @@ export function mockRunWorkflow(input: WorkflowRunInput): WorkflowRun {
     conversation_id: input.conversationId ?? `conv_${Date.now()}`,
     steps: [],
     final_output: null,
+    output_schema: { summary: { type: 'string' } },
   };
 }
 
@@ -79,9 +85,22 @@ export function mockWorkflowRunDetail(runId: string): WorkflowRunDetailView {
     ended_at: new Date().toISOString(),
     final_output_text: 'All tasks completed.',
     final_output_structured: { summary: 'All good.' },
+    output_schema: { summary: { type: 'string' }, details: { type: 'object' } },
     request_message: 'Example message',
     conversation_id: 'conv-mock',
-    steps: [],
+    steps: [
+      {
+        name: 'analyze',
+        agent_key: 'analysis',
+        response_text: 'Identified key intents.',
+        structured_output: { intents: ['support', 'pricing'] },
+        response_id: 'resp-1',
+        stage_name: 'stage-1',
+        parallel_group: null,
+        branch_index: null,
+        output_schema: { intents: { type: 'array', items: { type: 'string' } } },
+      },
+    ],
   };
 }
 
