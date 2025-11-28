@@ -28,6 +28,9 @@ import type {
   CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostData,
   CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostErrors,
   CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostResponses,
+  CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostData,
+  CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostErrors,
+  CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostResponses,
   ChangePasswordApiV1AuthPasswordChangePostData,
   ChangePasswordApiV1AuthPasswordChangePostErrors,
   ChangePasswordApiV1AuthPasswordChangePostResponses,
@@ -101,6 +104,9 @@ import type {
   GetVectorStoreApiV1VectorStoresVectorStoreIdGetData,
   GetVectorStoreApiV1VectorStoresVectorStoreIdGetErrors,
   GetVectorStoreApiV1VectorStoresVectorStoreIdGetResponses,
+  GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetData,
+  GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetErrors,
+  GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetResponses,
   GetWorkflowRunApiV1WorkflowsRunsRunIdGetData,
   GetWorkflowRunApiV1WorkflowsRunsRunIdGetErrors,
   GetWorkflowRunApiV1WorkflowsRunsRunIdGetResponses,
@@ -159,6 +165,9 @@ import type {
   ListVectorStoresApiV1VectorStoresGetData,
   ListVectorStoresApiV1VectorStoresGetErrors,
   ListVectorStoresApiV1VectorStoresGetResponses,
+  ListWorkflowRunsApiV1WorkflowsRunsGetData,
+  ListWorkflowRunsApiV1WorkflowsRunsGetErrors,
+  ListWorkflowRunsApiV1WorkflowsRunsGetResponses,
   ListWorkflowsApiV1WorkflowsGetData,
   ListWorkflowsApiV1WorkflowsGetErrors,
   ListWorkflowsApiV1WorkflowsGetResponses,
@@ -1201,6 +1210,30 @@ export const runWorkflowApiV1WorkflowsWorkflowKeyRunPost = <
 };
 
 /**
+ * List Workflow Runs
+ */
+export const listWorkflowRunsApiV1WorkflowsRunsGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<ListWorkflowRunsApiV1WorkflowsRunsGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    ListWorkflowRunsApiV1WorkflowsRunsGetResponses,
+    ListWorkflowRunsApiV1WorkflowsRunsGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/workflows/runs",
+    ...options,
+  });
+};
+
+/**
  * Get Workflow Run
  */
 export const getWorkflowRunApiV1WorkflowsRunsRunIdGet = <
@@ -1220,6 +1253,33 @@ export const getWorkflowRunApiV1WorkflowsRunsRunIdGet = <
       },
     ],
     url: "/api/v1/workflows/runs/{run_id}",
+    ...options,
+  });
+};
+
+/**
+ * Cancel Workflow Run
+ */
+export const cancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostResponses,
+    CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/workflows/runs/{run_id}/cancel",
     ...options,
   });
 };
@@ -1252,6 +1312,33 @@ export const runWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPost = <
       "Content-Type": "application/json",
       ...options.headers,
     },
+  });
+};
+
+/**
+ * Get Workflow Descriptor
+ */
+export const getWorkflowDescriptorApiV1WorkflowsWorkflowKeyGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).get<
+    GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetResponses,
+    GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/workflows/{workflow_key}",
+    ...options,
   });
 };
 

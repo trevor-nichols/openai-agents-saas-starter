@@ -1,18 +1,30 @@
 import {
+  cancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPost,
+  getWorkflowDescriptorApiV1WorkflowsWorkflowKeyGet,
   getWorkflowRunApiV1WorkflowsRunsRunIdGet,
+  listWorkflowRunsApiV1WorkflowsRunsGet,
   listWorkflowsApiV1WorkflowsGet,
   runWorkflowApiV1WorkflowsWorkflowKeyRunPost,
   runWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPost,
 } from '@/lib/api/client/sdk.gen';
 import type {
+  WorkflowDescriptorResponse,
+  WorkflowRunListResponse,
   WorkflowRunRequestBody,
   WorkflowRunResponse,
   WorkflowSummary,
   StreamingWorkflowEvent,
 } from '@/lib/api/client/types.gen';
 import { USE_API_MOCK } from '@/lib/config';
-import { mockRunWorkflow, mockWorkflowRunDetail, mockWorkflowStream, mockWorkflows } from '@/lib/workflows/mock';
-import type { WorkflowRunInput } from '@/lib/workflows/types';
+import {
+  mockRunWorkflow,
+  mockWorkflowDescriptor,
+  mockWorkflowRunDetail,
+  mockWorkflowRunList,
+  mockWorkflowStream,
+  mockWorkflows,
+} from '@/lib/workflows/mock';
+import type { WorkflowRunInput, WorkflowRunListFilters } from '@/lib/workflows/types';
 
 import { client } from './config';
 
@@ -22,6 +34,33 @@ export async function listWorkflows(): Promise<WorkflowSummary[]> {
   }
   const response = await listWorkflowsApiV1WorkflowsGet({ client, throwOnError: true, responseStyle: 'fields' });
   return response.data ?? [];
+}
+
+export async function listWorkflowRuns(filters: WorkflowRunListFilters = {}): Promise<WorkflowRunListResponse> {
+  if (USE_API_MOCK) {
+    return mockWorkflowRunList();
+  }
+
+  const response = await listWorkflowRunsApiV1WorkflowsRunsGet({
+    client,
+    throwOnError: true,
+    responseStyle: 'fields',
+    query: {
+      workflow_key: filters.workflowKey ?? undefined,
+      run_status: filters.runStatus ?? undefined,
+      started_before: filters.startedBefore ?? undefined,
+      started_after: filters.startedAfter ?? undefined,
+      conversation_id: filters.conversationId ?? undefined,
+      cursor: filters.cursor ?? undefined,
+      limit: filters.limit ?? undefined,
+    },
+  });
+
+  if (!response.data) {
+    throw new Error('Workflow runs response missing data');
+  }
+
+  return response.data;
 }
 
 export async function runWorkflow(input: WorkflowRunInput): Promise<WorkflowRunResponse> {
@@ -60,6 +99,37 @@ export async function getWorkflowRun(runId: string) {
   if (!response.data) {
     throw new Error('Workflow run detail missing data');
   }
+  return response.data;
+}
+
+export async function cancelWorkflowRun(runId: string): Promise<void> {
+  if (USE_API_MOCK) {
+    return;
+  }
+  await cancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPost({
+    client,
+    throwOnError: true,
+    responseStyle: 'fields',
+    path: { run_id: runId },
+  });
+}
+
+export async function getWorkflowDescriptor(workflowKey: string): Promise<WorkflowDescriptorResponse> {
+  if (USE_API_MOCK) {
+    return mockWorkflowDescriptor(workflowKey);
+  }
+
+  const response = await getWorkflowDescriptorApiV1WorkflowsWorkflowKeyGet({
+    client,
+    throwOnError: true,
+    responseStyle: 'fields',
+    path: { workflow_key: workflowKey },
+  });
+
+  if (!response.data) {
+    throw new Error('Workflow descriptor response missing data');
+  }
+
   return response.data;
 }
 

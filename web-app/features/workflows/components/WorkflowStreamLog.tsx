@@ -36,7 +36,11 @@ export function WorkflowStreamLog({ events }: WorkflowStreamLogProps) {
       {grouped.map((evt, idx) => {
         const label = KIND_LABEL[evt.kind] ?? evt.kind;
         const isTerminal = Boolean(evt.is_terminal);
-        const receivedTime = evt.receivedAt ? new Date(evt.receivedAt).toLocaleTimeString() : null;
+        const displayTime = evt.server_timestamp
+          ? new Date(evt.server_timestamp).toLocaleTimeString()
+          : evt.receivedAt
+            ? new Date(evt.receivedAt).toLocaleTimeString()
+            : null;
         return (
           <div
             key={`${evt.kind}-${evt.sequence_number ?? idx}-${idx}`}
@@ -45,19 +49,19 @@ export function WorkflowStreamLog({ events }: WorkflowStreamLogProps) {
               isTerminal ? 'ring-1 ring-primary/40' : undefined,
             )}
             tabIndex={0}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <Badge variant={isTerminal ? 'default' : 'outline'}>{label}</Badge>
-                {evt.raw_type ? (
-                  <span className="text-[11px] uppercase tracking-wide text-foreground/50">{evt.raw_type}</span>
-                ) : null}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant={isTerminal ? 'default' : 'outline'}>{label}</Badge>
+                  {evt.raw_type ? (
+                    <span className="text-[11px] uppercase tracking-wide text-foreground/50">{evt.raw_type}</span>
+                  ) : null}
+                </div>
+                <div className="flex items-center gap-2 text-[11px] text-foreground/60">
+                  {displayTime ? <span>{displayTime}</span> : null}
+                  {isTerminal ? <span className="text-primary">Terminal</span> : null}
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-[11px] text-foreground/60">
-                {receivedTime ? <span>{receivedTime}</span> : null}
-                {isTerminal ? <span className="text-primary">Terminal</span> : null}
-              </div>
-            </div>
 
             {evt.text_delta ? (
               <p className="mt-2 text-sm text-foreground">{evt.text_delta}</p>

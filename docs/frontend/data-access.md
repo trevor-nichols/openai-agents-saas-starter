@@ -102,10 +102,17 @@ When extending the chat domain, follow the same pattern: update helpers/hooks, k
 
 ## Workflows
 
-- API wrappers: `lib/api/workflows.ts` (list, run, run-stream, run detail) with `USE_API_MOCK` support and streaming parser.
-- Queries: `lib/queries/workflows.ts`.
-- Feature UI: `features/workflows/WorkflowsWorkspace.tsx` with list + run form and streaming log (`WorkflowStreamLog`).
-- Mock stream trigger is available when `USE_API_MOCK` to exercise the UI without backend SSE.
+- API wrappers: `lib/api/workflows.ts` (list, run, run-stream, run detail, list runs, descriptor, cancel) with `USE_API_MOCK` support and streaming parser.
+- Queries: `lib/queries/workflows.ts`:
+  - `useWorkflowsQuery()` — list available workflows.
+  - `useWorkflowDescriptorQuery(workflowKey)` — fetch descriptor (stages/steps/handoffs).
+  - `useWorkflowRunsQuery(filters)` — list runs with cursor pagination and filters.
+  - `useWorkflowRunQuery(runId)` — run detail.
+  - `useRunWorkflowMutation()` — start a run.
+  - `useWorkflowStream(...)` — async generator yielding streaming events.
+  - `useCancelWorkflowRunMutation()` — cancel a running workflow.
+- Feature UI: `features/workflows/WorkflowsWorkspace.tsx` with list + descriptor summary, run form, run history table, run detail (with cancel), and streaming log (`WorkflowStreamLog`).
+- Mock stream trigger remains available when `USE_API_MOCK` to exercise the UI without backend SSE.
 
 ## Storage
 

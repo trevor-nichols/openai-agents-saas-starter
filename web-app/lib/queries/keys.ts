@@ -78,6 +78,10 @@ export const queryKeys = {
     all: ['workflows'] as const,
     list: () => [...queryKeys.workflows.all, 'list'] as const,
     run: (runId: string) => [...queryKeys.workflows.all, 'run', runId] as const,
+    descriptor: (workflowKey: string | null) =>
+      [...queryKeys.workflows.all, 'descriptor', workflowKey ?? 'none'] as const,
+    runs: (filters?: Record<string, unknown>) =>
+      [...queryKeys.workflows.all, 'runs', filters ?? {}] as const,
   },
   storage: {
     all: ['storage'] as const,

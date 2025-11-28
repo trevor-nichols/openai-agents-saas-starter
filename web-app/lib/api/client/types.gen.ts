@@ -2475,6 +2475,10 @@ export type StreamingWorkflowEvent = {
    */
   workflow_run_id?: string | null;
   /**
+   * Server Timestamp
+   */
+  server_timestamp?: string | null;
+  /**
    * Step Name
    */
   step_name?: string | null;
@@ -3440,6 +3444,40 @@ export type VectorStoreSearchResponse = {
 };
 
 /**
+ * WorkflowDescriptorResponse
+ */
+export type WorkflowDescriptorResponse = {
+  /**
+   * Key
+   */
+  key: string;
+  /**
+   * Display Name
+   */
+  display_name: string;
+  /**
+   * Description
+   */
+  description: string;
+  /**
+   * Default
+   */
+  default: boolean;
+  /**
+   * Allow Handoff Agents
+   */
+  allow_handoff_agents: boolean;
+  /**
+   * Step Count
+   */
+  step_count: number;
+  /**
+   * Stages
+   */
+  stages: Array<WorkflowStageDescriptor>;
+};
+
+/**
  * WorkflowRunDetail
  */
 export type WorkflowRunDetail = {
@@ -3494,6 +3532,66 @@ export type WorkflowRunDetail = {
 };
 
 /**
+ * WorkflowRunListItem
+ */
+export type WorkflowRunListItem = {
+  /**
+   * Workflow Run Id
+   */
+  workflow_run_id: string;
+  /**
+   * Workflow Key
+   */
+  workflow_key: string;
+  /**
+   * Status
+   */
+  status: "running" | "succeeded" | "failed" | "cancelled";
+  /**
+   * Started At
+   */
+  started_at: string;
+  /**
+   * Ended At
+   */
+  ended_at?: string | null;
+  /**
+   * User Id
+   */
+  user_id: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id?: string | null;
+  /**
+   * Step Count
+   */
+  step_count: number;
+  /**
+   * Duration Ms
+   */
+  duration_ms?: number | null;
+  /**
+   * Final Output Text
+   */
+  final_output_text?: string | null;
+};
+
+/**
+ * WorkflowRunListResponse
+ */
+export type WorkflowRunListResponse = {
+  /**
+   * Items
+   */
+  items: Array<WorkflowRunListItem>;
+  /**
+   * Next Cursor
+   */
+  next_cursor?: string | null;
+};
+
+/**
  * WorkflowRunRequestBody
  */
 export type WorkflowRunRequestBody = {
@@ -3545,6 +3643,62 @@ export type WorkflowRunResponse = {
    * Final Output
    */
   final_output: unknown | null;
+};
+
+/**
+ * WorkflowStageDescriptor
+ */
+export type WorkflowStageDescriptor = {
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Mode
+   */
+  mode: "sequential" | "parallel";
+  /**
+   * Reducer
+   */
+  reducer?: string | null;
+  /**
+   * Steps
+   */
+  steps: Array<WorkflowStepDescriptor>;
+};
+
+/**
+ * WorkflowStepDescriptor
+ */
+export type WorkflowStepDescriptor = {
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Agent Key
+   */
+  agent_key: string;
+  /**
+   * Guard
+   */
+  guard?: string | null;
+  /**
+   * Guard Type
+   */
+  guard_type?: string | null;
+  /**
+   * Input Mapper
+   */
+  input_mapper?: string | null;
+  /**
+   * Input Mapper Type
+   */
+  input_mapper_type?: string | null;
+  /**
+   * Max Turns
+   */
+  max_turns?: number | null;
 };
 
 /**
@@ -4756,6 +4910,86 @@ export type RunWorkflowApiV1WorkflowsWorkflowKeyRunPostResponses = {
 export type RunWorkflowApiV1WorkflowsWorkflowKeyRunPostResponse =
   RunWorkflowApiV1WorkflowsWorkflowKeyRunPostResponses[keyof RunWorkflowApiV1WorkflowsWorkflowKeyRunPostResponses];
 
+export type ListWorkflowRunsApiV1WorkflowsRunsGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path?: never;
+  query?: {
+    /**
+     * Workflow Key
+     *
+     * Filter by workflow key.
+     */
+    workflow_key?: string | null;
+    /**
+     * Run Status
+     *
+     * Filter by workflow status.
+     */
+    run_status?: string | null;
+    /**
+     * Started Before
+     *
+     * Return runs that started at or before this ISO timestamp.
+     */
+    started_before?: string | null;
+    /**
+     * Started After
+     *
+     * Return runs that started at or after this ISO timestamp.
+     */
+    started_after?: string | null;
+    /**
+     * Conversation Id
+     *
+     * Filter by conversation id.
+     */
+    conversation_id?: string | null;
+    /**
+     * Cursor
+     *
+     * Opaque pagination cursor.
+     */
+    cursor?: string | null;
+    /**
+     * Limit
+     *
+     * Maximum runs to return.
+     */
+    limit?: number;
+  };
+  url: "/api/v1/workflows/runs";
+};
+
+export type ListWorkflowRunsApiV1WorkflowsRunsGetErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type ListWorkflowRunsApiV1WorkflowsRunsGetError =
+  ListWorkflowRunsApiV1WorkflowsRunsGetErrors[keyof ListWorkflowRunsApiV1WorkflowsRunsGetErrors];
+
+export type ListWorkflowRunsApiV1WorkflowsRunsGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: WorkflowRunListResponse;
+};
+
+export type ListWorkflowRunsApiV1WorkflowsRunsGetResponse =
+  ListWorkflowRunsApiV1WorkflowsRunsGetResponses[keyof ListWorkflowRunsApiV1WorkflowsRunsGetResponses];
+
 export type GetWorkflowRunApiV1WorkflowsRunsRunIdGetData = {
   body?: never;
   headers?: {
@@ -4798,6 +5032,45 @@ export type GetWorkflowRunApiV1WorkflowsRunsRunIdGetResponses = {
 export type GetWorkflowRunApiV1WorkflowsRunsRunIdGetResponse =
   GetWorkflowRunApiV1WorkflowsRunsRunIdGetResponses[keyof GetWorkflowRunApiV1WorkflowsRunsRunIdGetResponses];
 
+export type CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Run Id
+     */
+    run_id: string;
+  };
+  query?: never;
+  url: "/api/v1/workflows/runs/{run_id}/cancel";
+};
+
+export type CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostError =
+  CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostErrors[keyof CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostErrors];
+
+export type CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostResponses = {
+  /**
+   * Successful Response
+   */
+  202: unknown;
+};
+
 export type RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostData = {
   body: WorkflowRunRequestBody;
   headers?: {
@@ -4839,6 +5112,48 @@ export type RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostResponses = {
 
 export type RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostResponse =
   RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostResponses[keyof RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostResponses];
+
+export type GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Workflow Key
+     */
+    workflow_key: string;
+  };
+  query?: never;
+  url: "/api/v1/workflows/{workflow_key}";
+};
+
+export type GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetError =
+  GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetErrors[keyof GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetErrors];
+
+export type GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: WorkflowDescriptorResponse;
+};
+
+export type GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetResponse =
+  GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetResponses[keyof GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetResponses];
 
 export type ListConversationsApiV1ConversationsGetData = {
   body?: never;

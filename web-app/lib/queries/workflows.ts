@@ -1,7 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { getWorkflowRun, listWorkflows, runWorkflow, streamWorkflowRun } from '@/lib/api/workflows';
-import type { WorkflowRunInput } from '@/lib/workflows/types';
+import {
+  cancelWorkflowRun,
+  getWorkflowDescriptor,
+  getWorkflowRun,
+  listWorkflowRuns,
+  listWorkflows,
+  runWorkflow,
+  streamWorkflowRun,
+} from '@/lib/api/workflows';
+import type { WorkflowRunInput, WorkflowRunListFilters } from '@/lib/workflows/types';
 import type { LocationHint } from '@/lib/api/client/types.gen';
 import { queryKeys } from './keys';
 
@@ -20,6 +28,22 @@ export function useWorkflowRunQuery(runId: string, enabled = true) {
   });
 }
 
+export function useWorkflowDescriptorQuery(workflowKey: string | null) {
+  return useQuery({
+    queryKey: queryKeys.workflows.descriptor(workflowKey),
+    queryFn: () => (workflowKey ? getWorkflowDescriptor(workflowKey) : null),
+    enabled: Boolean(workflowKey),
+  });
+}
+
+export function useWorkflowRunsQuery(filters: WorkflowRunListFilters) {
+  return useQuery({
+    queryKey: queryKeys.workflows.runs(filters as Record<string, unknown>),
+    queryFn: () => listWorkflowRuns(filters),
+    enabled: Boolean(filters.workflowKey),
+  });
+}
+
 export function useRunWorkflowMutation() {
   const queryClient = useQueryClient();
 
@@ -29,7 +53,19 @@ export function useRunWorkflowMutation() {
       if (data.workflow_run_id) {
         queryClient.invalidateQueries({ queryKey: queryKeys.workflows.run(data.workflow_run_id) }).catch(() => {});
       }
-      queryClient.invalidateQueries({ queryKey: queryKeys.workflows.list() }).catch(() => {});
+      queryClient.invalidateQueries({ queryKey: queryKeys.workflows.all }).catch(() => {});
+    },
+  });
+}
+
+export function useCancelWorkflowRunMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (runId: string) => cancelWorkflowRun(runId),
+    onSuccess: (_data, runId) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.workflows.run(runId) }).catch(() => {});
+      queryClient.invalidateQueries({ queryKey: queryKeys.workflows.all }).catch(() => {});
     },
   });
 }
