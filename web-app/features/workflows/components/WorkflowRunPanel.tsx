@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { SkeletonPanel, EmptyState } from '@/components/ui/states';
 import { Switch } from '@/components/ui/switch';
+import { InlineTag } from '@/components/ui/foundation';
 
 interface WorkflowRunPanelProps {
   selectedKey: string | null;
@@ -13,6 +14,7 @@ interface WorkflowRunPanelProps {
   isRunning: boolean;
   runError?: string | null;
   isLoadingWorkflows?: boolean;
+  streamStatus?: 'idle' | 'connecting' | 'streaming' | 'completed' | 'error';
 }
 
 export function WorkflowRunPanel({
@@ -21,10 +23,18 @@ export function WorkflowRunPanel({
   isRunning,
   runError,
   isLoadingWorkflows,
+  streamStatus = 'idle',
 }: WorkflowRunPanelProps) {
   const [message, setMessage] = useState('');
   const [conversationId, setConversationId] = useState('');
   const [shareLocation, setShareLocation] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [selectedKey]);
 
   if (isLoadingWorkflows) {
     return <SkeletonPanel lines={6} />;
@@ -54,6 +64,7 @@ export function WorkflowRunPanel({
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Ask the workflow to act..."
           disabled={isRunning}
+          ref={textareaRef}
         />
       </div>
       <div className="grid gap-3 md:grid-cols-2">
@@ -72,19 +83,23 @@ export function WorkflowRunPanel({
             checked={shareLocation}
             onCheckedChange={setShareLocation}
             disabled={isRunning}
+            aria-label="Share location with hosted tools"
           />
           <Label htmlFor="workflow-share-location" className="text-sm">
             Share location with hosted tools
           </Label>
         </div>
       </div>
-      <div className="flex gap-2">
+      <div className="flex gap-2 items-center">
         <Button onClick={handleSubmit} disabled={isRunning || !message.trim()}>
           {isRunning ? 'Running…' : 'Run workflow'}
         </Button>
         <Button variant="ghost" onClick={() => setMessage('')} disabled={isRunning}>
           Clear
         </Button>
+        <InlineTag tone={streamStatus === 'error' ? 'warning' : 'default'}>
+          {streamStatus}
+        </InlineTag>
       </div>
 
       {runError ? (

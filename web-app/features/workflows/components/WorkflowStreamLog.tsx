@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { CodeBlock } from '@/components/ui/ai/code-block';
@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import type { StreamingWorkflowEvent } from '@/lib/api/client/types.gen';
 
 interface WorkflowStreamLogProps {
-  events: StreamingWorkflowEvent[];
+  events: (StreamingWorkflowEvent & { receivedAt?: string })[];
 }
 
 const KIND_LABEL: Record<StreamingWorkflowEvent['kind'], string> = {
@@ -20,16 +20,23 @@ const KIND_LABEL: Record<StreamingWorkflowEvent['kind'], string> = {
 
 export function WorkflowStreamLog({ events }: WorkflowStreamLogProps) {
   const grouped = useMemo(() => events, [events]);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    containerRef.current.scrollTo({ top: containerRef.current.scrollHeight, behavior: 'smooth' });
+  }, [grouped.length]);
 
   if (grouped.length === 0) {
     return <p className="text-sm text-foreground/60">No events yet.</p>;
   }
 
   return (
-    <div className="space-y-3 max-h-96 overflow-y-auto">
+    <div ref={containerRef} className="space-y-3 max-h-96 overflow-y-auto">
       {grouped.map((evt, idx) => {
         const label = KIND_LABEL[evt.kind] ?? evt.kind;
         const isTerminal = Boolean(evt.is_terminal);
+        const receivedTime = evt.receivedAt ? new Date(evt.receivedAt).toLocaleTimeString() : null;
         return (
           <div
             key={`${evt.kind}-${evt.sequence_number ?? idx}-${idx}`}
@@ -37,6 +44,7 @@ export function WorkflowStreamLog({ events }: WorkflowStreamLogProps) {
               'rounded-lg border border-white/5 bg-white/5 p-3 shadow-sm',
               isTerminal ? 'ring-1 ring-primary/40' : undefined,
             )}
+            tabIndex={0}
           >
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
@@ -45,7 +53,10 @@ export function WorkflowStreamLog({ events }: WorkflowStreamLogProps) {
                   <span className="text-[11px] uppercase tracking-wide text-foreground/50">{evt.raw_type}</span>
                 ) : null}
               </div>
-              {isTerminal ? <span className="text-xs text-primary">Terminal</span> : null}
+              <div className="flex items-center gap-2 text-[11px] text-foreground/60">
+                {receivedTime ? <span>{receivedTime}</span> : null}
+                {isTerminal ? <span className="text-primary">Terminal</span> : null}
+              </div>
             </div>
 
             {evt.text_delta ? (
