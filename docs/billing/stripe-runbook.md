@@ -202,7 +202,7 @@ The Starter CLI setup wizard now records these decisions automatically:
 
 Implementation checklist:
 
-1. During `starter_cli.app setup wizard` answer **No** to “Run the Stripe retry worker inside this deployment?” for customer-facing pods and **Yes** for the worker pod. This keeps env files honest (`starter_cli/workflows/setup/_wizard/sections/signup.py`).
+1. During `cd packages/starter_cli && python -m starter_cli.app setup wizard` answer **No** to “Run the Stripe retry worker inside this deployment?” for customer-facing pods and **Yes** for the worker pod. This keeps env files honest (`starter_cli/workflows/setup/_wizard/sections/signup.py`).
 2. In Kubernetes/Compose, create a dedicated deployment/statefulset for the worker with `replicas: 1`, `ENABLE_BILLING=true`, `ENABLE_BILLING_RETRY_WORKER=true`, and `ENABLE_BILLING_STREAM_REPLAY=true`. All other API deployments set the flags to `false`.
 3. Gate rollouts with metrics: alert on `stripe_dispatch_retry_total{result!="success"}` and watch for duplicate “stripe.dispatch.retry_success” log streams—two pods emitting those logs concurrently means the worker flag is misconfigured.
 4. Document the worker pod in your ops runbooks. During incidents, confirm logs show **one** pod starting the worker (“Stripe dispatch retry worker disabled” should appear on all others). If you ever need multiple replicas, add a Redis-backed lease before scaling out to avoid duplicate replays.

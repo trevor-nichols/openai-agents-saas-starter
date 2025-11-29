@@ -4,11 +4,11 @@ set shell := ["bash", "-uc"]
 
 # Env + helpers
 env_file := `python -c "import os; print(next((f for f in ['.env.local', '.env'] if os.path.exists(f)), ''))"`
-env_runner := "cd starter_cli && hatch run python -m starter_cli.app --skip-env util run-with-env"
-api_just := "just -f api-service/justfile"
-cli_just := "just -f starter_cli/justfile"
-contracts_just := "just -f starter_contracts/justfile"
-web_just := "just -f web-app/justfile"
+env_runner := "cd packages/starter_cli && hatch run python -m starter_cli.app --skip-env util run-with-env"
+api_just := "just -f apps/api-service/justfile"
+cli_just := "just -f packages/starter_cli/justfile"
+contracts_just := "just -f packages/starter_contracts/justfile"
+web_just := "just -f apps/web-app/justfile"
 compose_file := "ops/compose/docker-compose.yml"
 vault_compose_file := "ops/compose/docker-compose.vault-dev.yml"
 minio_compose_file := "ops/compose/docker-compose.minio.yml"
@@ -45,7 +45,7 @@ help:
     echo "  just dev-down               # Stop infra stack" && \
     echo "  just dev-logs               # Tail infra logs" && \
     echo "  just dev-ps                 # Show infra containers" && \
-    echo "  just api                    # Start FastAPI (delegates to api-service/justfile)" && \
+    echo "  just api                    # Start FastAPI (delegates to apps/api-service/justfile)" && \
     echo "  just migrate                # Run Alembic migrations" && \
     echo "  just migration-revision \"msg\" # Create Alembic revision" && \
     echo "  just bootstrap              # Create api-service hatch env" && \
@@ -61,9 +61,9 @@ help:
     echo "  just issue-demo-token       # Issue service-account token" && \
     echo "Package helpers:" && \
     echo "  just backend-lint|typecheck|test    # Delegates to api-service" && \
-    echo "  just cli-lint|typecheck|test        # Delegates to starter_cli" && \
-    echo "  just contracts-lint|typecheck|test  # Delegates to starter_contracts" && \
-    echo "  just web-lint|typecheck|dev|test    # Delegates to web-app"
+    echo "  just cli-lint|typecheck|test        # Delegates to packages/starter_cli" && \
+    echo "  just contracts-lint|typecheck|test  # Delegates to packages/starter_contracts" && \
+    echo "  just web-lint|typecheck|dev|test    # Delegates to apps/web-app"
 
 # -------------------------
 # Package delegation
@@ -121,6 +121,21 @@ web-test:
     {{web_just}} test
 
 # -------------------------
+# Aggregate quality gates
+# -------------------------
+
+lint-all:
+    just backend-lint
+    just cli-lint
+    just contracts-lint
+    just web-lint
+
+typecheck-all:
+    just backend-typecheck
+    just cli-typecheck
+    just contracts-typecheck
+    just web-typecheck
+# -------------------------
 # Infra (compose)
 # -------------------------
 
@@ -176,7 +191,7 @@ storage-logs: _check_env
 vault-up:
     @echo "Starting Vault dev signer on {{vault_dev_host_addr}}"
     VAULT_DEV_PORT={{vault_dev_port}} VAULT_DEV_ROOT_TOKEN_ID={{vault_dev_root_token_id}} docker compose -f {{vault_compose_file}} up -d
-    VAULT_ADDR={{vault_dev_host_addr}} scripts/vault/wait-for-dev.sh
+    VAULT_ADDR={{vault_dev_host_addr}} tools/vault/wait-for-dev.sh
     HOST_VAULT_ADDR={{vault_dev_host_addr}} VAULT_DEV_ROOT_TOKEN_ID={{vault_dev_root_token_id}} VAULT_TRANSIT_KEY={{vault_transit_key}} docker compose -f {{vault_compose_file}} exec vault-dev /vault/dev-init.sh
 
 vault-down:
@@ -201,16 +216,16 @@ stripe-replay args: _check_env
     {{env_runner}} ../.env.compose ../{{env_file}} -- python -m starter_cli.app stripe dispatches {{args}}
 
 stripe-listen:
-    cd starter_cli && hatch run python -m starter_cli.app stripe webhook-secret
+    cd packages/starter_cli && hatch run python -m starter_cli.app stripe webhook-secret
 
 lint-stripe-fixtures:
-    cd starter_cli && hatch run python -m starter_cli.app stripe dispatches validate-fixtures
+    cd packages/starter_cli && hatch run python -m starter_cli.app stripe dispatches validate-fixtures
 
 test-stripe: _check_env
-    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -lc 'cd api-service && hatch run pytest -m stripe_replay'
+    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -lc 'cd apps/api-service && hatch run pytest -m stripe_replay'
 
 cli cmd:
-    cd starter_cli && hatch run python -m starter_cli.app {{cmd}}
+    cd packages/starter_cli && hatch run python -m starter_cli.app {{cmd}}
 
 doctor: _check_env
     {{env_runner}} ../.env.compose ../{{env_file}} -- python -m starter_cli.app doctor --strict --json var/reports/operator-dashboard.json --markdown var/reports/operator-dashboard.md
@@ -227,8 +242,8 @@ start-frontend: _check_env
 # Wizards & seeding
 
 setup-local-lite:
-    cd starter_cli && hatch run python -m starter_cli.app infra deps
-    cd starter_cli && hatch run python -m starter_cli.app setup wizard \
+    cd packages/starter_cli && hatch run python -m starter_cli.app infra deps
+    cd packages/starter_cli && hatch run python -m starter_cli.app setup wizard \
         --profile local \
         --auto-infra \
         --auto-secrets \
@@ -236,12 +251,12 @@ setup-local-lite:
         --auto-redis \
         --no-auto-geoip \
         --auto-dev-user
-    cd starter_cli && hatch run python -m starter_cli.app users ensure-dev
+    cd packages/starter_cli && hatch run python -m starter_cli.app users ensure-dev
     @echo "" && echo "Next: run 'just api' in a new terminal; optionally 'just issue-demo-token' after API is up."
 
 setup-local-full:
-    cd starter_cli && hatch run python -m starter_cli.app infra deps
-    cd starter_cli && hatch run python -m starter_cli.app setup wizard \
+    cd packages/starter_cli && hatch run python -m starter_cli.app infra deps
+    cd packages/starter_cli && hatch run python -m starter_cli.app setup wizard \
         --profile local \
         --auto-infra \
         --auto-secrets \
@@ -252,8 +267,8 @@ setup-local-full:
         --auto-dev-user
 
 setup-staging:
-    cd starter_cli && hatch run python -m starter_cli.app infra deps
-    cd starter_cli && hatch run python -m starter_cli.app setup wizard \
+    cd packages/starter_cli && hatch run python -m starter_cli.app infra deps
+    cd packages/starter_cli && hatch run python -m starter_cli.app setup wizard \
         --profile staging \
         --no-auto-infra \
         --no-auto-secrets \
@@ -267,8 +282,8 @@ setup-production:
         echo "Error: set setup_production_answers=/absolute/path/to/answers.json"; \
         exit 1; \
     fi
-    cd starter_cli && hatch run python -m starter_cli.app infra deps
-    cd starter_cli && hatch run python -m starter_cli.app setup wizard \
+    cd packages/starter_cli && hatch run python -m starter_cli.app infra deps
+    cd packages/starter_cli && hatch run python -m starter_cli.app setup wizard \
         --profile production \
         --strict \
         --answers-file {{setup_production_answers}} \
@@ -297,7 +312,7 @@ seed-dev-user: dev-up _check_env
 
 issue-demo-token:
     @echo "Ensure FastAPI is running (e.g., 'just api') before issuing a token."
-    cd starter_cli && hatch run python -m starter_cli.app auth tokens issue-service-account \
+    cd packages/starter_cli && hatch run python -m starter_cli.app auth tokens issue-service-account \
         --account "{{setup_service_account}}" \
         --scopes "{{setup_service_scopes}}" \
         {{service_tenant_flag}} \

@@ -15,4 +15,4 @@ services:
     ports:
       - "${VAULT_DEV_PORT:-18200}:8200"
     volumes:
-      - ../../scripts/vault:/vault:rw
+      - ../../tools/vault:/vault:rw

@@ -28,20 +28,20 @@ jobs:
         with:
           node-version: "20"
           cache: pnpm
-          cache-dependency-path: web-app/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Verify billing OpenAPI artifact
-        run: node scripts/assert-billing-openapi.js
+        run: node tools/assert-billing-openapi.js
 
       - name: Use pnpm 10.15.0
         run: corepack prepare pnpm@10.15.0 --activate
 
       - name: Install dependencies
-        working-directory: web-app
+        working-directory: apps/web-app
         run: pnpm install --frozen-lockfile
 
       - name: Dependency audit (pnpm)
-        working-directory: web-app
+        working-directory: apps/web-app
         run: |
           pnpm audit --prod --audit-level=high --json > ../frontend-audit.json || (cat ../frontend-audit.json && exit 1)
           pnpm dlx @cyclonedx/cdxgen -o ../frontend-sbom.json -t javascript --no-analytics
@@ -56,7 +56,7 @@ jobs:
             frontend-sbom.json
 
       - name: SDK drift check (generate + diff)
-        working-directory: web-app
+        working-directory: apps/web-app
         run: |
           pnpm generate
           git diff --exit-code -- lib/api/client

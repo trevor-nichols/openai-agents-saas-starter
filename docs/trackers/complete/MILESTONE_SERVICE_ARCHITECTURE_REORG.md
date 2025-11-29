@@ -86,7 +86,7 @@ api-service/src/app/services/
 ## Phased Plan
 | Phase | Scope | Deliverables | Owner | Target |
 | --- | --- | --- | --- | --- |
-| 0. Baseline | Capture current imports, add module ownership doc, set up tracker. | This tracker, dependency graph via `scripts/moduleviz.py`. | Platform Foundations | Nov 19 |
+| 0. Baseline | Capture current imports, add module ownership doc, set up tracker. | This tracker, dependency graph via `tools/moduleviz.py`. | Platform Foundations | Nov 19 |
 | 1. Domain Scaffolding | Create domain folders (`billing`, `signup`, etc.), add README + `__init__` barrels, wire `ruff` `per-file-ignores` for temporary mixing. | Empty folders + docs committed, no code moves yet. | Platform Foundations | Nov 21 |
 | 2. Low-Risk Moves | Relocate purely internal modules (status, tenant, user, shared) with import re-exports; run `hatch run lint`/`typecheck`. | PR with path moves + updated imports + docs. | Platform Foundations | Nov 26 |
 | 3. High-Risk Moves | Split billing/Stripe and signup/auth flows; ensure async workers + background tasks updated. | PR with billing/signup migrations, new architectural tests. | Platform Foundations | Dec 3 |

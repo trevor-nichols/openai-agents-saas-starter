@@ -10,7 +10,7 @@ This runbook codifies the order-of-operations for shipping schema changes and bi
 | SRE/on-call | Provides Postgres access, observes infra metrics, and enforces the checklist in CI/CD.
 
 ## Prerequisites
-1. **Environment parity** – `.env.local` / deployment secrets contain the target `DATABASE_URL`, Redis URLs, and provider keys. Run `starter_cli config dump-schema` if you need to confirm coverage.
+1. **Environment parity** – `.env.local` / deployment secrets contain the target `DATABASE_URL`, Redis URLs, and provider keys. Run `cd packages/starter_cli && python -m starter_cli.app config dump-schema` if you need to confirm coverage.
 2. **Secrets** – `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and the desired `STRIPE_PRODUCT_PRICE_MAP` entries are available (from prior runs or the upcoming release).
 3. **Tooling** – Hatch environment created (`just bootstrap`), Docker/Compose available if you need local Postgres, and Stripe CLI installed+authenticated when using automation for Stripe provisioning.
 4. **Access** – Operator can reach the deployment Postgres instance (psql/SSL tunnels). Verify credentials by running `psql $DATABASE_URL -c 'select 1'` prior to the window.
@@ -21,7 +21,7 @@ Run this list **before** touching production:
 - [ ] Ensure no pending Alembic revisions on the source branch (`hatch run alembic -c api-service/alembic.ini heads`).
 - [ ] Verify Postgres reachability (`psql $DATABASE_URL -c 'select version();'`).
 - [ ] Run `just migrate` against a staging environment to smoke-test the revision.
-- [ ] Validate provider inputs with `python -m starter_cli.app providers validate` so Stripe/Resend/OpenAI keys exist before billing is enabled.
+- [ ] Validate provider inputs with `cd packages/starter_cli && python -m starter_cli.app providers validate` so Stripe/Resend/OpenAI keys exist before billing is enabled.
 - [ ] Confirm Stripe CLI authentication: `stripe whoami` should succeed (skip when using purely manual plan updates).
 
 ## Execution Order
@@ -79,7 +79,7 @@ The command executes the following steps:
    ```
    Confirm both `starter` and `pro` rows exist, are active, and have Stripe price IDs referenced in `.env.local`.
 
-4. **Provider sanity** – `python -m starter_cli.app providers validate` and `python -m starter_cli.app status summary` (if available) should both return success.
+4. **Provider sanity** – `cd packages/starter_cli && python -m starter_cli.app providers validate` and `cd packages/starter_cli && python -m starter_cli.app status summary` (if available) should both return success.
 
 ## Evidence Capture
 - Automation mode stores `var/reports/db-release-*.json`. Upload the file to your release record/PR and attach console logs.

@@ -1,8 +1,0 @@
-{
-  "include": ["src"],
-  "typeCheckingMode": "basic",
-  "pythonVersion": "3.11",
-  "extraPaths": ["src", "../starter_contracts/src"],
-  "venvPath": ".",
-  "venv": ".venv"
-}

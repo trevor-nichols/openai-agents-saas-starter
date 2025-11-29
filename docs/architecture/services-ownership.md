@@ -36,4 +36,4 @@ Escalation order for refactors: contact the owning pod, confirm rollout/test exp
 
 ## Enforcement
 - `pyproject.toml` now bans imports from the legacy flat modules (e.g., `app.services.signup_service`, `app.services.billing_service`). Ruff’s `flake8-tidy-imports` plugin enforces this during `hatch run lint`.
-- `api-service/tests/unit/test_service_import_boundaries.py` now scans `api-service/src/app`, `starter_cli/`, and `scripts/` to guarantee no banned module sneaks in anywhere in the monorepo, giving engineers fast feedback during `pytest` runs.
+- `api-service/tests/unit/test_service_import_boundaries.py` now scans `apps/api-service/src/app`, `packages/starter_cli/`, and `tools/` to guarantee no banned module sneaks in anywhere in the monorepo, giving engineers fast feedback during `pytest` runs.

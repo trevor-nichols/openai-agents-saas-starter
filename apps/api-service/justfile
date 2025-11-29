@@ -1,0 +1,42 @@
+set shell := ["bash", "-uc"]
+
+env_runner := "cd ../packages/starter_cli && hatch run python -m starter_cli.app --skip-env util run-with-env"
+project_dir := justfile_directory()
+repo_root := `cd .. && pwd`
+env_compose := repo_root + "/.env.compose"
+env_local := repo_root + "/.env.local"
+env_default := repo_root + "/.env"
+
+_check_env:
+    @if [ ! -f "{{env_local}}" ] && [ ! -f "{{env_default}}" ]; then \
+        echo "Error: No .env.local or .env file found at repo root ({{repo_root}}). Create one before running tasks."; \
+        exit 1; \
+    fi
+
+default:
+    @just --list
+
+bootstrap:
+    @echo "Creating/refreshing the Hatch environment for api-service"
+    cd {{project_dir}} && hatch env create
+
+serve: _check_env
+    @echo "Starting FastAPI via hatch run serve"
+    {{env_runner}} {{env_compose}} {{env_local}} {{env_default}} -- bash -lc 'cd {{project_dir}} && hatch run serve'
+
+migrate: _check_env
+    @echo "Running Alembic migrations"
+    {{env_runner}} {{env_compose}} {{env_local}} {{env_default}} -- bash -lc 'cd {{project_dir}} && hatch run migrate'
+
+migration-revision message: _check_env
+    @echo "Creating Alembic revision: {{message}}"
+    {{env_runner}} {{env_compose}} {{env_local}} {{env_default}} -- bash -lc 'cd {{project_dir}} && hatch run migration-revision "{{message}}"'
+
+lint:
+    cd {{project_dir}} && hatch run lint
+
+typecheck:
+    cd {{project_dir}} && hatch run typecheck
+
+test:
+    cd {{project_dir}} && hatch run test

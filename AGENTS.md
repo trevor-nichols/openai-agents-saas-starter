@@ -36,10 +36,10 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 
 ### OpenAPI + SDK regeneration
 - Export superset schema (billing + test fixtures) from repo root:
-  - `python -m starter_cli.app api export-openapi --output api-service/.artifacts/openapi-billing-fixtures.json --enable-billing --enable-test-fixtures`
+  - `cd packages/starter_cli && python -m starter_cli.app api export-openapi --output ../apps/api-service/.artifacts/openapi-billing-fixtures.json --enable-billing --enable-test-fixtures`
 - Regenerate the frontend client offline using that artifact:
-  - `cd web-app && OPENAPI_INPUT=../api-service/.artifacts/openapi-billing-fixtures.json pnpm generate:fixtures`
-  - Output is written to `web-app/lib/api/client/`.
+  - `cd apps/web-app && OPENAPI_INPUT=../api-service/.artifacts/openapi-billing-fixtures.json pnpm generate:fixtures`
+  - Output is written to `apps/web-app/lib/api/client/`.
 
 ### Next.js 16 working notes (must-read for frontend)
 - Toolchain: Node 20.9+ (we pin .nvmrc to 22), TypeScript 5.1+, React 19.2, Next 16.0.3; Turbopack is default for dev/build (no need for `--turbopack`; opt out with `--webpack` only if required).

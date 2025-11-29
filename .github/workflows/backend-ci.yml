@@ -30,13 +30,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install hatch
-          cd starter_cli && hatch env create
+          cd packages/starter_cli && hatch env create
 
       - name: CLI smoke help
-        run: cd starter_cli && hatch run python -m starter_cli.app --help
+        run: cd packages/starter_cli && hatch run python -m starter_cli.app --help
 
       - name: CLI typecheck (fast)
-        run: cd starter_cli && hatch run typecheck
+        run: cd packages/starter_cli && hatch run typecheck
 
   quality:
     runs-on: ubuntu-latest
@@ -97,7 +97,7 @@ jobs:
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/saas_strarter_db_ci
         run: |
-          cd api-service && hatch run pytest tests/integration --maxfail=1 -m postgres
+          cd apps/api-service && hatch run pytest tests/integration --maxfail=1 -m postgres
 
   sbom-audit:
     runs-on: ubuntu-latest
@@ -226,4 +226,4 @@ jobs:
         run: hatch env create
 
       - name: Platform smoke (health + JWKS + stub agent)
-        run: hatch run python scripts/smoke/platform_smoke.py
+        run: hatch run python tools/smoke/platform_smoke.py

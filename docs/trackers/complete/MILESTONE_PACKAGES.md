@@ -12,7 +12,7 @@ Status: Phase 1 completed (backend `src/` layout + pyproject). Phase 2 completed
 - `web-app/`: unchanged; owns its `package.json`, lint/typecheck configs.
 - `scripts/` and `ops/`: shared utilities; avoid importing app code directly.
 
-Tooling rules: each Python package self-owns `ruff`, `mypy/pyright`, coverage config; Hatch/uv env scoped per package. Root commands delegate into the package (`cd api-service && hatch run serve`, etc.).
+Tooling rules: each Python package self-owns `ruff`, `mypy/pyright`, coverage config; Hatch/uv env scoped per package. Root commands delegate into the package (`cd apps/api-service && hatch run serve`, etc.).
 
 ## Milestone plan
 

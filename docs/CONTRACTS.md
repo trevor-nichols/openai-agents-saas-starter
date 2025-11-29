@@ -1,9 +1,9 @@
 # Contracts Package (`starter_contracts`)
 
 Source of truth for shared config/secrets/key contracts consumed by:
-- Backend (`api-service/...`)
-- Starter CLI (`starter_cli/...`)
-- Repo scripts (`scripts/cli/verify_env_inventory.py`), tests, and contract snapshots.
+- Backend (`apps/api-service/...`)
+- Starter CLI (`packages/starter_cli/...`)
+- Repo tools (`tools/cli/verify_env_inventory.py`), tests, and contract snapshots.
 
 ## Allowed import graph
 - Only the surfaces above should import `starter_contracts.*`.
@@ -20,19 +20,19 @@ Source of truth for shared config/secrets/key contracts consumed by:
 ## Snapshots (drift blockers)
 - `docs/contracts/settings.schema.json`: JSON Schema snapshot of `app.core.settings.Settings`.
 - `docs/contracts/provider_literals.json`: Enumerated values for shared secret/provider/sign-up literals.
-- Tests enforce snapshots: `api-service/tests/unit/test_contract_schemas_snapshot.py`.
+- Tests enforce snapshots: `apps/api-service/tests/unit/test_contract_schemas_snapshot.py`.
 
 ### Updating snapshots
 Only update when you intentionally change settings or provider enums:
 
 ```bash
 # Ensure local path to backend wins over site-packages 'app'
-PYTHONPATH=api-service \
+PYTHONPATH=apps/api-service \
 python - <<'PY'
 from pathlib import Path
 from typing import get_args
 import json, sys
-sys.path.insert(0, 'api-service')
+sys.path.insert(0, 'apps/api-service')
 from app.core.settings import Settings, SignupAccessPolicyLiteral
 from starter_contracts.secrets.models import SecretProviderStatus, SecretPurpose, SecretScope, SecretsProviderLiteral
 
@@ -62,4 +62,4 @@ Commit the updated JSON along with the change that necessitated it.
 
 ## Tests enforcing boundaries
 - `starter_contracts/tests/test_import_boundaries.py`: ensures contracts don't pull backend/CLI modules on import and are only used from approved packages.
-- `api-service/tests/unit/test_contract_schemas_snapshot.py`: freezes settings + enum schemas.
+- `apps/api-service/tests/unit/test_contract_schemas_snapshot.py`: freezes settings + enum schemas.

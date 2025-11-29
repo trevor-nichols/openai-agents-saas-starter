@@ -16,7 +16,7 @@ Prevent billing-off environments from breaking the Next.js build while keeping b
 ## Workstreams & Tasks
 
 ### 1) Canonical OpenAPI Artifact
-- [x] Export billing-enabled OpenAPI spec from FastAPI CI (e.g., `api-service/.artifacts/openapi-billing.json`) and reference it in `web-app/openapi-ts.config.ts` instead of hitting the live dev server.
+- [x] Export billing-enabled OpenAPI spec from FastAPI CI (e.g., `apps/api-service/.artifacts/openapi-billing.json`) and reference it in `apps/web-app/openapi-ts.config.ts` instead of hitting the live dev server.
 - [x] Document the source of truth in `web-app/README.md` and `docs/frontend/data-access.md`; warn contributors not to regenerate against a billing-off backend.
 - [x] Add a lightweight CI guard that fails if the billing endpoints disappear from the artifact.
 

@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 node_modules/
+.next/
+apps/web-app/.next/
 
 # Scratch CLI runs
 tmp-cli-test*
@@ -27,6 +29,7 @@ lib64/
 parts/
 sdist/
 var/
+!var/README.md
 wheels/
 share/python-wheels/
 *.egg-info/
@@ -145,8 +148,8 @@ ENV/
 env.bak/
 venv.bak/
 # allow env adapter package to be tracked
-!starter_cli/adapters/env/
-!starter_cli/adapters/env/**
+!packages/starter_cli/adapters/env/
+!packages/starter_cli/adapters/env/**
 
 # Spyder project settings
 .spyderproject
