@@ -10,7 +10,7 @@ from collections.abc import Callable, Iterable
 from functools import lru_cache
 from typing import Any, cast
 
-from agents import CodeInterpreterTool, ImageGenerationTool, WebSearchTool
+from agents import CodeInterpreterTool, HostedMCPTool, ImageGenerationTool, WebSearchTool
 from openai.types.responses.tool_param import (
     CodeInterpreter,
     CodeInterpreterContainerCodeInterpreterToolAuto,
@@ -19,6 +19,24 @@ from openai.types.responses.tool_param import (
 from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
+
+
+class NamedHostedMCPTool(HostedMCPTool):
+    """HostedMCPTool with caller-assigned name so multiple instances can coexist."""
+
+    def __init__(
+        self,
+        *,
+        name: str,
+        tool_config: Any,
+        on_approval_request: Callable[[Any], Any] | None = None,
+    ):
+        self._name_override = name
+        super().__init__(tool_config=tool_config, on_approval_request=on_approval_request)
+
+    @property
+    def name(self) -> str:
+        return self._name_override
 
 
 class ToolRegistry:
@@ -193,6 +211,65 @@ def initialize_tools() -> ToolRegistry:
         logger.info(
             "OPENAI_API_KEY is not configured; hosted web search tool will be disabled.",
             extra={"provider": "openai"},
+        )
+
+    # Hosted MCP tools (OpenAI Responses API)
+    if (getattr(settings, "mcp_tools", []) or []) and not (
+        settings.openai_api_key and settings.openai_api_key.strip()
+    ):
+        logger.warning(
+            "Hosted MCP tools configured but OPENAI_API_KEY is missing; skipping registration.",
+            extra={"provider": "openai"},
+        )
+        return registry
+
+    for mcp_cfg in getattr(settings, "mcp_tools", []) or []:
+        tool_config: dict[str, Any] = {
+            "type": "mcp",
+            "server_label": mcp_cfg.server_label,
+        }
+        if mcp_cfg.server_url:
+            tool_config["server_url"] = mcp_cfg.server_url
+        if mcp_cfg.connector_id:
+            tool_config["connector_id"] = mcp_cfg.connector_id
+        if mcp_cfg.authorization:
+            tool_config["authorization"] = mcp_cfg.authorization
+        if mcp_cfg.require_approval:
+            tool_config["require_approval"] = mcp_cfg.require_approval
+        if mcp_cfg.allowed_tools:
+            tool_config["allowed_tools"] = mcp_cfg.allowed_tools
+        if mcp_cfg.description:
+            tool_config["server_description"] = mcp_cfg.description
+
+        def _build_approval_handler(cfg):
+            allow = set(cfg.auto_approve_tools or [])
+            deny = set(cfg.deny_tools or [])
+
+            def _approve(request):
+                tool_name = getattr(request.data, "name", None)
+                if tool_name in deny:
+                    return {"approve": False, "reason": "Denied by policy"}
+                if tool_name in allow:
+                    return {"approve": True}
+                return {"approve": False, "reason": "Not auto-approved"}
+
+            return _approve
+
+        mcp_tool = NamedHostedMCPTool(
+            name=mcp_cfg.name,
+            tool_config=cast(Any, tool_config),
+            on_approval_request=_build_approval_handler(mcp_cfg),
+        )
+
+        registry.register_tool(
+            mcp_tool,
+            category="mcp",
+            metadata={
+                "description": mcp_cfg.description or "Hosted MCP tool",
+                "server_label": mcp_cfg.server_label,
+                "server_url": mcp_cfg.server_url,
+                "connector_id": mcp_cfg.connector_id,
+            },
         )
 
     return registry

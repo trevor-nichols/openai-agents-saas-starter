@@ -129,6 +129,14 @@ return AgentSpec(
 2) Register it in `app/utils/tools/registry.py::initialize_tools()` with a stable name.
 3) Reference the name in `tool_keys` of any agent spec.
 
+### Adding hosted MCP tools (remote MCP servers or OpenAI connectors)
+- Configure the tool via settings (supports JSON env):
+  - Example: `MCP_TOOLS='[{"name":"repo_mcp","server_label":"gitmcp","server_url":"https://gitmcp.io/openai/codex","require_approval":"always"}]'`
+  - For connectors, use `connector_id` plus `authorization` instead of `server_url`.
+- On startup `initialize_tools()` registers each entry as a `HostedMCPTool`; add the `name` to any agent’s `tool_keys` to expose it.
+- Defaults are safe: `require_approval` defaults to `"always"`; validations enforce unique names and exactly one of `server_url` or `connector_id`.
+- Optional policy knobs per tool: `auto_approve_tools` (allow-list), `deny_tools` (block-list, wins over allow). Unlisted tool names are denied by default via the registry’s approval handler.
+
 ## Runtime knobs (per request)
 - `AgentChatRequest.run_options` maps to `RunOptions` → `agents.Runner`:
   - `max_turns`, `previous_response_id`

@@ -5,7 +5,7 @@ from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
-from agents import Agent, WebSearchTool
+from agents import Agent, HostedMCPTool, WebSearchTool
 from agents.handoffs import HandoffInputData
 from openai.types.responses.web_search_tool_param import UserLocation
 
@@ -41,6 +41,7 @@ def _web_search_settings(monkeypatch):
         image_default_background="auto",
         image_default_compression=None,
         image_max_partial_images=0,
+        mcp_tools=[],
     )
     monkeypatch.setattr("app.utils.tools.registry.get_settings", lambda: settings)
     yield
@@ -67,6 +68,177 @@ def test_initialize_tools_registers_web_search():
 
     categories = registry.list_categories()
     assert "web_search" in categories
+
+
+def test_initialize_tools_registers_mcp_tool(monkeypatch):
+    mcp_cfg = SimpleNamespace(
+        name="demo_mcp",
+        server_label="demo",
+        server_url="https://demo.mcp",
+        connector_id=None,
+        authorization=None,
+        require_approval="always",
+        allowed_tools=["roll"],
+        description="Demo MCP server",
+        auto_approve_tools=["read_metadata"],
+        deny_tools=["delete_file"],
+    )
+
+    settings = SimpleNamespace(
+        openai_api_key="test-key",
+        container_default_auto_memory="1g",
+        image_default_size="1024x1024",
+        image_default_quality="high",
+        image_default_format="png",
+        image_default_background="auto",
+        image_default_compression=None,
+        image_max_partial_images=0,
+        mcp_tools=[mcp_cfg],
+    )
+
+    monkeypatch.setattr("app.utils.tools.registry.get_settings", lambda: settings)
+
+    registry = initialize_tools()
+
+    tool_names = registry.list_tool_names()
+    assert "demo_mcp" in tool_names
+
+    tool = registry.get_tool("demo_mcp")
+    assert isinstance(tool, HostedMCPTool)
+
+    info = registry.get_tool_info("demo_mcp")
+    assert info is not None
+    assert info["category"] == "mcp"
+
+
+def test_initialize_tools_registers_multiple_named_mcp_tools(monkeypatch):
+    mcp_cfgs = [
+        SimpleNamespace(
+            name="alpha_mcp",
+            server_label="alpha",
+            server_url="https://alpha.mcp",
+            connector_id=None,
+            authorization=None,
+            require_approval="always",
+            allowed_tools=None,
+            description=None,
+            auto_approve_tools=["read"],
+            deny_tools=None,
+        ),
+        SimpleNamespace(
+            name="beta_mcp",
+            server_label="beta",
+            server_url="https://beta.mcp",
+            connector_id=None,
+            authorization=None,
+            require_approval="never",
+            allowed_tools=None,
+            description=None,
+            auto_approve_tools=None,
+            deny_tools=["write"],
+        ),
+    ]
+
+    settings = SimpleNamespace(
+        openai_api_key="test-key",
+        container_default_auto_memory="1g",
+        image_default_size="1024x1024",
+        image_default_quality="high",
+        image_default_format="png",
+        image_default_background="auto",
+        image_default_compression=None,
+        image_max_partial_images=0,
+        mcp_tools=mcp_cfgs,
+    )
+
+    monkeypatch.setattr("app.utils.tools.registry.get_settings", lambda: settings)
+
+    registry = initialize_tools()
+
+    assert registry.get_tool("alpha_mcp") is not None
+    assert registry.get_tool("beta_mcp") is not None
+    assert registry.get_tool("alpha_mcp") is not registry.get_tool("beta_mcp")
+
+
+def test_mcp_tool_approval_handler_respects_allow_and_deny(monkeypatch):
+    mcp_cfg = SimpleNamespace(
+        name="policy_mcp",
+        server_label="policy",
+        server_url="https://policy.mcp",
+        connector_id=None,
+        authorization=None,
+        require_approval="always",
+        allowed_tools=None,
+        description=None,
+        auto_approve_tools=["read"],
+        deny_tools=["delete"],
+    )
+
+    settings = SimpleNamespace(
+        openai_api_key="test-key",
+        container_default_auto_memory="1g",
+        image_default_size="1024x1024",
+        image_default_quality="high",
+        image_default_format="png",
+        image_default_background="auto",
+        image_default_compression=None,
+        image_max_partial_images=0,
+        mcp_tools=[mcp_cfg],
+    )
+
+    monkeypatch.setattr("app.utils.tools.registry.get_settings", lambda: settings)
+
+    registry = initialize_tools()
+    tool = registry.get_tool("policy_mcp")
+    assert isinstance(tool, HostedMCPTool)
+    assert callable(tool.on_approval_request)
+
+    class Req:
+        def __init__(self, name: str):
+            self.data = SimpleNamespace(name=name)
+
+    assert tool.on_approval_request(Req("read")) == {"approve": True}
+    assert tool.on_approval_request(Req("delete")) == {
+        "approve": False,
+        "reason": "Denied by policy",
+    }
+    assert tool.on_approval_request(Req("other")) == {
+        "approve": False,
+        "reason": "Not auto-approved",
+    }
+
+
+def test_initialize_tools_skips_mcp_when_no_api_key(monkeypatch):
+    mcp_cfg = SimpleNamespace(
+        name="demo_mcp",
+        server_label="demo",
+        server_url="https://demo.mcp",
+        connector_id=None,
+        authorization=None,
+        require_approval="always",
+        allowed_tools=None,
+        description=None,
+        auto_approve_tools=None,
+        deny_tools=None,
+    )
+
+    settings = SimpleNamespace(
+        openai_api_key="",
+        container_default_auto_memory="1g",
+        image_default_size="1024x1024",
+        image_default_quality="high",
+        image_default_format="png",
+        image_default_background="auto",
+        image_default_compression=None,
+        image_max_partial_images=0,
+        mcp_tools=[mcp_cfg],
+    )
+
+    monkeypatch.setattr("app.utils.tools.registry.get_settings", lambda: settings)
+
+    registry = initialize_tools()
+
+    assert "demo_mcp" not in registry.list_tool_names()
 
 
 # =============================================================================
@@ -122,6 +294,7 @@ def _build_openai_registry(monkeypatch, registry: ToolRegistry):
         agent_code_model: str | None = None
         agent_data_model: str | None = None
         container_default_auto_memory: str | None = "1g"
+        mcp_tools: list[Any] = []
 
     settings = _StubSettings()
     monkeypatch.setattr(

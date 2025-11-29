@@ -37,7 +37,7 @@ dev = [
 src = "src"
 
 [tool.hatch.build.targets.wheel]
-packages = ["starter_contracts"]
+packages = ["src/starter_contracts"]
 exclude = ["**/__pycache__", "**/*.pyc"]
 include = ["starter_contracts/py.typed"]
 
