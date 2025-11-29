@@ -119,67 +119,30 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 - When you come across a situation where you need the latest documentation, use your web search tool
 
 # Codebase Patterns
-openai-agents-starter/
-├── pyproject.toml
-├── web-app/
-│   ├── app/
-│   │   ├── (agent)/
-│   │   │   ├── actions.ts
-│   │   │   ├── layout.tsx
-│   │   │   └── page.tsx
-│   │   ├── globals.css
-│   │   └── layout.tsx
-│   ├── components/
-│   │   └── agent/
-│   │       ├── ChatInterface.tsx
-│   │       └── ConversationSidebar.tsx
-│   ├── hooks/
-│   │   └── useConversations.ts
-│   ├── lib/
-│   │   └── api/
-│   │       ├── client/… (generated HeyAPI SDK)
-│   │       ├── config.ts
-│   │       └── streaming.ts
-│   ├── types/
-│   │   └── generated/… (OpenAPI types)
-│   └── config + tooling files (package.json, tailwind.config.ts, etc.)
-├── api-service/
-│   ├── alembic/ (database migrations)
-│   ├── app/
-│   │   ├── api/ (FastAPI layer - versioned routes, dependencies, models)
-│   │   │   ├── dependencies/ (auth, tenant, common)
-│   │   │   ├── models/ (Pydantic request/response schemas)
-│   │   │   └── v1/ (agents, auth, billing, chat, conversations, tools)
-│   │   ├── cli/ (command-line tools for auth management)
-│   │   ├── core/ (config, security, keys, service accounts)
-│   │   ├── domain/ (business models, repository protocols)
-│   │   │   ├── auth.py, billing.py, conversations.py, users.py
-│   │   ├── infrastructure/ (external integrations)
-│   │   │   ├── db/ (SQLAlchemy engine, sessions)
-│   │   │   ├── openai/ (Agents SDK wrappers)
-│   │   │   ├── persistence/ (repository implementations)
-│   │   │   │   ├── auth/, billing/, conversations/, stripe/
-│   │   │   ├── security/ (nonce store, Vault clients)
-│   │   │   └── stripe/ (Stripe API client)
-│   │   ├── middleware/ (logging with correlation IDs)
-│   │   ├── observability/ (structured logging, Prometheus metrics)
-│   │   ├── presentation/ (health checks, webhooks, well-known endpoints)
-│   │   ├── services/ (orchestration layer)
-│   │   │   ├── agent_service.py, auth_service.py
-│   │   │   ├── billing_service.py, billing_events.py
-│   │   │   ├── conversation_service.py, user_service.py
-│   │   │   ├── payment_gateway.py, stripe_dispatcher.py, stripe_retry_worker.py
-│   │   └── utils/
-│   │       └── tools/ (agent tool registry and definitions)
-│   ├── main.py (FastAPI application entry point)
-│   ├── tests/
-│   │   ├── contract/ (API endpoint contract tests)
-│   │   ├── integration/ (tests with real database/Redis)
-│   │   ├── unit/ (fast tests with mocks)
-│   │   ├── fixtures/ (test data: keysets, Stripe events)
-│   │   └── utils/ (test helpers)
-│   └── var/keys/ (Ed25519 signing keys)
-└── docs/
-    ├── openai-agents-sdk/ (SDK reference documentation)
-    │   ├── agents/, examples/, tracing/, memory/, handoffs/, etc.
-    └── trackers/ (development status tracking)
+openai-agents-saas-starter/
+├── apps/                         # Runtime apps
+│   ├── api-service/              # FastAPI backend (see apps/api-service/SNAPSHOT.md)
+│   │   ├── alembic/              # Database migrations
+│   │   ├── src/app/              # Agents, API v1, services, infrastructure, workflows
+│   │   ├── tests/                # contract/, integration/, unit/ suites
+│   │   └── var/keys/             # Ed25519 signing keys
+│   └── web-app/                  # Next.js 16 frontend (see apps/web-app/SNAPSHOT.md)
+│       ├── app/                  # App Router groups: marketing, auth, app/workspace
+│       ├── features/             # Feature orchestrators (chat, billing, account, etc.)
+│       ├── components/           # Shadcn UI + domain assemblies
+│       ├── lib/                  # API client, config, streaming helpers
+│       ├── hooks/                # Client-side hooks
+│       ├── tests/ + storybook    # Vitest/Playwright and Storybook assets
+│       └── public/               # Static assets
+├── packages/                     # Shared Python libraries
+│   ├── starter_cli/              # Operator CLI (src/starter_cli/, tests/, justfile)
+│   └── starter_contracts/        # Shared contracts used by CLI + backend
+├── tools/                        # CI/utility scripts (typecheck, smoke tests, vault helpers)
+├── ops/                          # Local infra configs (compose stacks, observability)
+├── docs/                         # SDK reference, trackers, frontend docs
+├── scripts/                      # Repo-level helper scripts
+├── var/                          # Local runtime data (keys/, log/, reports/)
+├── justfile                      # Top-level task runner (preferred over ad-hoc commands)
+├── package.json / pnpm-workspace.yaml # Workspace root for JS/TS tooling
+├── tsconfig.scripts.json         # TS config for repo scripts
+└── SNAPSHOT.md                   # Root structure reference; per-project snapshots live beside each app/package
