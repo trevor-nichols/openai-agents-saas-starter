@@ -7,9 +7,10 @@ maintainable.
 
 from __future__ import annotations
 
+import inspect
 import logging
 import uuid
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Iterable
 from typing import Any
 
 from agents import trace
@@ -21,6 +22,7 @@ from app.bootstrap.container import get_container, wire_storage_service
 from app.domain.ai.models import AgentStreamEvent
 from app.domain.conversations import (
     ConversationAttachment,
+    ConversationEvent,
     ConversationMessage,
     ConversationMetadata,
     ConversationRepository,
@@ -32,6 +34,7 @@ from app.services.agents.context import (
     reset_current_actor,
     set_current_actor,
 )
+from app.services.agents.event_log import EventProjector
 from app.services.agents.history import ConversationHistoryService
 from app.services.agents.interaction_context import InteractionContextBuilder
 from app.services.agents.policy import AgentRuntimePolicy
@@ -92,6 +95,7 @@ class AgentService:
             self._conversation_service,
             self._attachment_service,
         )
+        self._event_projector = EventProjector(self._conversation_service)
         self._usage_service = usage_service or UsageService(usage_recorder)
 
     async def chat(
@@ -119,6 +123,8 @@ class AgentService:
             conversation_id,
             provider_conversation_id,
         )
+
+        pre_session_items = await self._get_session_items(session_handle)
 
         user_message = ConversationMessage(role="user", content=request.message)
         await self._conversation_service.append_message(
@@ -214,6 +220,16 @@ class AgentService:
             usage=result.usage,
         )
 
+        await self._ingest_new_session_items(
+            session_handle=session_handle,
+            pre_items=pre_session_items,
+            conversation_id=conversation_id,
+            tenant_id=actor.tenant_id,
+            agent=descriptor.key,
+            model=descriptor.model,
+            response_id=result.response_id,
+        )
+
         tool_overview = provider.tool_overview()
         return AgentChatResponse(
             response=response_text,
@@ -260,6 +276,8 @@ class AgentService:
             conversation_id,
             provider_conversation_id,
         )
+
+        pre_session_items = await self._get_session_items(session_handle)
 
         user_message = ConversationMessage(role="user", content=request.message)
         await self._conversation_service.append_message(
@@ -392,10 +410,42 @@ class AgentService:
             usage=getattr(stream_handle, "usage", None),
         )
 
+        await self._ingest_new_session_items(
+            session_handle=session_handle,
+            pre_items=pre_session_items,
+            conversation_id=conversation_id,
+            tenant_id=actor.tenant_id,
+            agent=descriptor.key,
+            model=descriptor.model,
+            response_id=getattr(stream_handle, "last_response_id", None),
+        )
+
     async def get_conversation_history(
         self, conversation_id: str, *, actor: ConversationActorContext
     ) -> ConversationHistory:
         return await self._history_service.get_history(conversation_id, actor=actor)
+
+    async def get_conversation_events(
+        self,
+        conversation_id: str,
+        *,
+        actor: ConversationActorContext,
+        mode: str = "transcript",
+    ) -> list[ConversationEvent]:
+        include_types = None
+        if mode == "transcript":
+            include_types = {
+                "user_message",
+                "assistant_message",
+                "system_message",
+                "tool_result",
+            }
+        events = await self._conversation_service.get_run_events(
+            conversation_id,
+            tenant_id=actor.tenant_id,
+            include_types=include_types,
+        )
+        return events
 
     async def list_conversations(
         self,
@@ -523,6 +573,57 @@ class AgentService:
             response_id=response_id,
             usage=usage,
         )
+
+    async def _get_session_items(self, session_handle: Any) -> list[dict[str, Any]]:
+        getter = getattr(session_handle, "get_items", None)
+        if getter is None or not callable(getter):
+            return []
+        try:
+            result = getter()
+            items = await result if inspect.isawaitable(result) else result
+            if items is None or not isinstance(items, Iterable):
+                return []
+            return list(items)
+        except Exception:
+            logger.exception("Failed to fetch session items; continuing without projection")
+            return []
+
+    async def _ingest_new_session_items(
+        self,
+        *,
+        session_handle: Any,
+        pre_items: list[dict[str, Any]],
+        conversation_id: str,
+        tenant_id: str,
+        agent: str | None,
+        model: str | None,
+        response_id: str | None,
+    ) -> None:
+        post_items = await self._get_session_items(session_handle)
+        if not post_items:
+            return
+        delta = post_items[len(pre_items) :]
+        if not delta:
+            return
+        try:
+            await self._event_projector.ingest_session_items(
+                conversation_id=conversation_id,
+                tenant_id=tenant_id,
+                session_items=delta,
+                agent=agent,
+                model=model,
+                response_id=response_id,
+            )
+        except Exception:
+            logger.exception(
+                "event_projection_failed",
+                extra={
+                    "conversation_id": conversation_id,
+                    "tenant_id": tenant_id,
+                    "agent": agent,
+                },
+            )
+            # Best-effort: do not fail the chat flow if telemetry ingestion breaks.
 
     @staticmethod
     def _build_metadata(

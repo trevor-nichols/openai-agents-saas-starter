@@ -1,15 +1,21 @@
 """Conversation management endpoints."""
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 
 from app.api.dependencies.auth import CurrentUser, require_verified_scopes
 from app.api.dependencies.tenant import TenantContext, TenantRole, get_tenant_context
+from app.api.v1.chat.schemas import MessageAttachment
 from app.api.v1.conversations.schemas import (
+    ConversationEventItem,
+    ConversationEventsResponse,
     ConversationHistory,
     ConversationListResponse,
     ConversationSearchResponse,
     ConversationSearchResult,
 )
+from app.domain.conversations import ConversationNotFoundError
 from app.services.agent_service import ConversationActorContext, agent_service
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
@@ -114,11 +120,89 @@ async def get_conversation(
     actor = _conversation_actor(current_user, tenant_context)
     try:
         return await agent_service.get_conversation_history(conversation_id, actor=actor)
+    except ConversationNotFoundError as exc:  # pragma: no cover - mapped to HTTP below
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
     except ValueError as exc:  # pragma: no cover - turned into HTTP below
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
+
+
+@router.get("/{conversation_id}/events", response_model=ConversationEventsResponse)
+async def get_conversation_events(
+    conversation_id: str,
+    mode: Literal["transcript", "full"] = Query(
+        "transcript",
+        description="Return only messages/tool results (transcript) or full fidelity (full).",
+    ),
+    current_user: CurrentUser = Depends(require_verified_scopes("conversations:read")),
+    tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
+    tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
+) -> ConversationEventsResponse:
+    tenant_context = await _resolve_tenant_context(
+        current_user,
+        tenant_id_header,
+        tenant_role_header,
+        min_role=TenantRole.VIEWER,
+    )
+    actor = _conversation_actor(current_user, tenant_context)
+    try:
+        events = await agent_service.get_conversation_events(
+            conversation_id,
+            actor=actor,
+            mode=mode,
+        )
+    except ConversationNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+    response_items: list[ConversationEventItem] = []
+    for ev in events:
+        response_items.append(
+            ConversationEventItem(
+                sequence_no=ev.sequence_no or 0,
+                run_item_type=ev.run_item_type,
+                run_item_name=ev.run_item_name,
+                role=ev.role,
+                agent=ev.agent,
+                tool_call_id=ev.tool_call_id,
+                tool_name=ev.tool_name,
+                model=ev.model,
+                content_text=ev.content_text,
+                reasoning_text=ev.reasoning_text,
+                call_arguments=ev.call_arguments,
+                call_output=ev.call_output,
+                attachments=[
+                    MessageAttachment(
+                        object_id=att.object_id,
+                        filename=att.filename,
+                        mime_type=att.mime_type,
+                        size_bytes=att.size_bytes,
+                        tool_call_id=att.tool_call_id,
+                    )
+                    for att in ev.attachments
+                ],
+                response_id=ev.response_id,
+                timestamp=ev.timestamp.isoformat(),
+            )
+        )
+
+    return ConversationEventsResponse(
+        conversation_id=conversation_id,
+        mode=mode,
+        items=response_items,
+    )
 
 
 @router.delete("/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)

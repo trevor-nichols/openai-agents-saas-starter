@@ -143,6 +143,7 @@ async def test_core_tables_exist(migrated_engine: AsyncEngine) -> None:
         "tenant_accounts",
         "agent_conversations",
         "agent_messages",
+        "agent_run_events",
         "sdk_agent_sessions",
         "sdk_agent_session_messages",
         "billing_plans",

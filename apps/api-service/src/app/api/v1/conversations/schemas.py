@@ -74,3 +74,33 @@ class ConversationSearchResponse(BaseModel):
         default=None,
         description="Opaque cursor for fetching the next page of search results.",
     )
+
+
+class ConversationEventItem(BaseModel):
+    """Full-fidelity run item in a conversation."""
+
+    sequence_no: int = Field(description="Monotonic sequence number within the conversation.")
+    run_item_type: str = Field(
+        description="Normalized item type (message, tool_call, tool_result, mcp_call, reasoning)."
+    )
+    run_item_name: str | None = Field(default=None, description="Provider-specific item name.")
+    role: Literal["user", "assistant", "system"] | None = Field(default=None)
+    agent: str | None = Field(default=None, description="Agent active when the item was created.")
+    tool_call_id: str | None = Field(default=None)
+    tool_name: str | None = Field(default=None)
+    model: str | None = Field(default=None)
+    content_text: str | None = Field(default=None)
+    reasoning_text: str | None = Field(default=None)
+    call_arguments: dict[str, Any] | None = Field(default=None)
+    call_output: dict[str, Any] | None = Field(default=None)
+    attachments: list[MessageAttachment] = Field(default_factory=list)
+    response_id: str | None = Field(default=None)
+    timestamp: str = Field(description="ISO-8601 creation time of the item.")
+
+
+class ConversationEventsResponse(BaseModel):
+    """List of event-log items for a conversation."""
+
+    conversation_id: str = Field(description="Conversation identifier.")
+    mode: Literal["transcript", "full"] = Field(description="Filter applied to returned events.")
+    items: list[ConversationEventItem]

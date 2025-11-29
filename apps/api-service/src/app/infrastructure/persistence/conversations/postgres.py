@@ -1,4 +1,4 @@
-"Postgres-backed conversation repository implementation."
+"""Postgres-backed conversation repository implementation."""
 
 from __future__ import annotations
 
@@ -8,15 +8,19 @@ import logging
 import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime
+from time import perf_counter
 from typing import Literal, cast
 
 from sqlalchemy import String, and_, func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.domain.conversations import (
     ConversationAttachment,
+    ConversationEvent,
     ConversationMessage,
     ConversationMetadata,
+    ConversationNotFoundError,
     ConversationPage,
     ConversationRecord,
     ConversationRepository,
@@ -24,7 +28,20 @@ from app.domain.conversations import (
     ConversationSearchPage,
     ConversationSessionState,
 )
-from app.infrastructure.persistence.conversations.models import AgentConversation, AgentMessage
+from app.infrastructure.persistence.conversations.models import (
+    AgentConversation,
+    AgentMessage,
+    AgentRunEvent,
+)
+from app.observability.metrics import (
+    AGENT_RUN_EVENTS_DRIFT,
+    AGENT_RUN_EVENTS_PROJECTION_DURATION_SECONDS,
+    AGENT_RUN_EVENTS_PROJECTION_TOTAL,
+    AGENT_RUN_EVENTS_READ_DURATION_SECONDS,
+    AGENT_RUN_EVENTS_READ_TOTAL,
+    _sanitize_agent,
+    _sanitize_tenant,
+)
 
 logger = logging.getLogger("api-service.persistence")
 
@@ -187,13 +204,17 @@ class PostgresConversationRepository(ConversationRepository):
         conversation_uuid = _coerce_conversation_uuid(conversation_id)
         tenant_uuid = _parse_tenant_id(tenant_id)
         async with self._session_factory() as session:
-            conversation = await self._get_conversation(
-                session,
-                conversation_uuid,
-                tenant_id=tenant_uuid,
-            )
+            try:
+                conversation = await self._get_conversation(
+                    session,
+                    conversation_uuid,
+                    tenant_id=tenant_uuid,
+                    strict=True,
+                )
+            except ValueError as exc:
+                raise ConversationNotFoundError(str(exc)) from exc
             if conversation is None:
-                return []
+                raise ConversationNotFoundError(f"Conversation {conversation_id} does not exist")
 
             result = await session.execute(
                 select(AgentMessage)
@@ -541,6 +562,192 @@ class PostgresConversationRepository(ConversationRepository):
 
             await session.commit()
 
+    async def add_run_events(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        events: list[ConversationEvent],
+    ) -> None:
+        if not events:
+            return
+        op_start = perf_counter()
+        conversation_uuid = _coerce_conversation_uuid(conversation_id)
+        tenant_uuid = _parse_tenant_id(tenant_id)
+
+        async with self._session_factory() as session:
+            conversation = await self._get_conversation(
+                session,
+                conversation_uuid,
+                tenant_id=tenant_uuid,
+                strict=True,
+            )
+            if conversation is None:
+                raise ValueError(f"Conversation {conversation_id} does not exist")
+
+            # Determine the next sequence number to preserve ordering.
+            current_seq = await session.execute(
+                select(func.coalesce(func.max(AgentRunEvent.sequence_no), -1)).where(
+                    AgentRunEvent.conversation_id == conversation_uuid
+                )
+            )
+            start_seq = int(current_seq.scalar_one() or -1) + 1
+
+            # Deduplicate on response_id when present to keep idempotence.
+            response_ids = {ev.response_id for ev in events if ev.response_id}
+            existing_keys: set[tuple[str | None, str | None, str | None]] = set()
+            if response_ids:
+                result = await session.execute(
+                    select(
+                        AgentRunEvent.response_id,
+                        AgentRunEvent.run_item_name,
+                        AgentRunEvent.tool_call_id,
+                    )
+                    .where(
+                        AgentRunEvent.conversation_id == conversation_uuid,
+                        AgentRunEvent.response_id.in_(response_ids),
+                    )
+                )
+                existing_keys = {(row[0], row[1], row[2]) for row in result.all()}
+
+            rows: list[AgentRunEvent] = []
+            seq = start_seq
+            for event in events:
+                key = (event.response_id, event.run_item_name, event.tool_call_id)
+                if event.response_id and key in existing_keys:
+                    continue
+
+                rows.append(
+                    AgentRunEvent(
+                        conversation_id=conversation_uuid,
+                        sequence_no=event.sequence_no if event.sequence_no is not None else seq,
+                        response_id=event.response_id,
+                        run_item_type=event.run_item_type,
+                        run_item_name=event.run_item_name,
+                        role=event.role,
+                        agent=event.agent,
+                        tool_call_id=event.tool_call_id,
+                        tool_name=event.tool_name,
+                        model=event.model,
+                        content_text=event.content_text,
+                        reasoning_text=event.reasoning_text,
+                        call_arguments=_coerce_mapping(event.call_arguments),
+                        call_output=_coerce_mapping(event.call_output),
+                        attachments=_serialize_attachments(event.attachments),
+                        created_at=_to_utc(event.timestamp),
+                        ingested_at=datetime.now(UTC),
+                    )
+                )
+                seq += 1
+
+            if rows:
+                session.add_all(rows)
+                agent_label = _sanitize_agent(events[0].agent if events else None)
+                tenant_label = _sanitize_tenant(tenant_id)
+                try:
+                    await session.commit()
+                except IntegrityError:
+                    AGENT_RUN_EVENTS_PROJECTION_TOTAL.labels(
+                        tenant=tenant_label,
+                        agent=agent_label,
+                        result="conflict",
+                    ).inc()
+                    await session.rollback()
+                    raise
+                except Exception:
+                    AGENT_RUN_EVENTS_PROJECTION_TOTAL.labels(
+                        tenant=tenant_label,
+                        agent=agent_label,
+                        result="error",
+                    ).inc()
+                    await session.rollback()
+                    raise
+                else:
+                    AGENT_RUN_EVENTS_PROJECTION_TOTAL.labels(
+                        tenant=tenant_label,
+                        agent=agent_label,
+                        result="success",
+                    ).inc()
+                    AGENT_RUN_EVENTS_PROJECTION_DURATION_SECONDS.labels(
+                        tenant=tenant_label,
+                        agent=agent_label,
+                    ).observe(perf_counter() - op_start)
+
+    async def get_run_events(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        include_types: set[str] | None = None,
+    ) -> list[ConversationEvent]:
+        op_start = perf_counter()
+        conversation_uuid = _coerce_conversation_uuid(conversation_id)
+        tenant_uuid = _parse_tenant_id(tenant_id)
+        async with self._session_factory() as session:
+            try:
+                conversation = await self._get_conversation(
+                    session,
+                    conversation_uuid,
+                    tenant_id=tenant_uuid,
+                    strict=True,
+                )
+            except ValueError as exc:
+                raise ConversationNotFoundError(str(exc)) from exc
+
+            if conversation is None:
+                raise ConversationNotFoundError(f"Conversation {conversation_id} does not exist")
+
+            stmt = select(AgentRunEvent).where(AgentRunEvent.conversation_id == conversation_uuid)
+            if include_types:
+                stmt = stmt.where(AgentRunEvent.run_item_type.in_(include_types))
+            stmt = stmt.order_by(AgentRunEvent.sequence_no)
+
+            result = await session.execute(stmt)
+            rows: Sequence[AgentRunEvent] = result.scalars().all()
+            events = [
+                ConversationEvent(
+                    run_item_type=row.run_item_type,
+                    run_item_name=row.run_item_name,
+                    role=_coerce_role(row.role) if row.role else None,
+                    agent=row.agent,
+                    tool_call_id=row.tool_call_id,
+                    tool_name=row.tool_name,
+                    model=row.model,
+                    content_text=row.content_text,
+                    reasoning_text=row.reasoning_text,
+                    call_arguments=row.call_arguments or None,
+                    call_output=row.call_output or None,
+                    attachments=_extract_attachments(row.attachments),
+                    response_id=row.response_id,
+                    sequence_no=row.sequence_no,
+                    timestamp=row.created_at,
+                )
+                for row in rows
+            ]
+            # Update drift gauge if sdk message count is available via related table.
+            try:
+                sdk_count = conversation.message_count
+                drift = sdk_count - len(events)
+                AGENT_RUN_EVENTS_DRIFT.labels(
+                    tenant=_sanitize_tenant(tenant_id),
+                    conversation_id=str(conversation_uuid),
+                ).set(drift)
+            except Exception:  # pragma: no cover - best-effort metric
+                logger.debug("drift_gauge_update_failed", exc_info=True)
+
+            tenant_label = _sanitize_tenant(tenant_id)
+            mode_label = "filtered" if include_types else "full"
+            AGENT_RUN_EVENTS_READ_TOTAL.labels(
+                tenant=tenant_label,
+                mode=mode_label,
+                result="success",
+            ).inc()
+            AGENT_RUN_EVENTS_READ_DURATION_SECONDS.labels(
+                tenant=tenant_label,
+                mode=mode_label,
+            ).observe(perf_counter() - op_start)
+            return events
+
     async def _get_or_create_conversation(
         self,
         session: AsyncSession,
@@ -674,6 +881,14 @@ def _to_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=UTC)
     return value.astimezone(UTC)
+
+
+def _coerce_mapping(value: object | None) -> dict[str, object] | None:
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        return value
+    return {"value": value}
 def _coerce_role(value: str) -> MessageRole:
     if value not in _MESSAGE_ROLES:
         raise ValueError(f"Unsupported conversation role '{value}'")

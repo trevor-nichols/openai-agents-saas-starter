@@ -1,8 +1,8 @@
 set shell := ["bash", "-uc"]
 
-env_runner := "cd ../packages/starter_cli && hatch run python -m starter_cli.app --skip-env util run-with-env"
+env_runner := "cd ../../packages/starter_cli && hatch run python -m starter_cli.app --skip-env util run-with-env"
 project_dir := justfile_directory()
-repo_root := `cd .. && pwd`
+repo_root := `cd ../.. && pwd`
 env_compose := repo_root + "/.env.compose"
 env_local := repo_root + "/.env.local"
 env_default := repo_root + "/.env"
@@ -40,3 +40,7 @@ typecheck:
 
 test:
     cd {{project_dir}} && hatch run test
+
+cleanup-run-events days?="" batch?="" sleep_ms?="" dry_run?="false": _check_env
+    @echo "Cleaning up agent_run_events"
+    {{env_runner}} {{env_compose}} {{env_local}} {{env_default}} -- bash -lc 'cd {{project_dir}} && hatch run python scripts/cleanup_run_events.py {{if days != "" { "--days " + days } else {""}}} {{if batch != "" { "--batch " + batch } else {""}}} {{if sleep_ms != "" { "--sleep-ms " + sleep_ms } else {""}}} {{if dry_run == "true" {"--dry-run"} else {""}}}'

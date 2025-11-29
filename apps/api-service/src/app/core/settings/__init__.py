@@ -13,6 +13,7 @@ from .observability import ObservabilitySettingsMixin
 from .providers import SecretsProviderSettingsMixin
 from .rate_limits import RateLimitSettingsMixin
 from .redis import RedisSettingsMixin
+from .retention import RetentionSettingsMixin
 from .security import SecuritySettingsMixin
 from .signup import SignupSettingsMixin
 from .storage import StorageSettingsMixin
@@ -32,6 +33,7 @@ class Settings(
     SecretsProviderSettingsMixin,
     DatabaseAndBillingSettingsMixin,
     ObservabilitySettingsMixin,
+    RetentionSettingsMixin,
     UsageGuardrailSettingsMixin,
     StorageSettingsMixin,
 ):

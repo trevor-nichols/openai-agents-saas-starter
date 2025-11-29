@@ -1,0 +1,47 @@
+groups:
+  - name: agent-run-events
+    rules:
+      - alert: RunEventProjectionErrorsHigh
+        expr: rate(agent_run_events_projection_total{result="error"}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "Run-event projection errors are elevated"
+          description: "agent_run_events projection errors >0.1/s for 5m. Check ingestion logs and DB health."
+
+      - alert: RunEventProjectionConflicts
+        expr: rate(agent_run_events_projection_total{result="conflict"}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warn
+        annotations:
+          summary: "Run-event projection conflicts detected"
+          description: "Conflicts on run-event insert (idempotency) are rising. Investigate duplicated response_id/sequence."
+
+      - alert: RunEventProjectionLatencyHigh
+        expr: histogram_quantile(0.95, sum by (le) (rate(agent_run_events_projection_duration_seconds_bucket[10m]))) > 5
+        for: 10m
+        labels:
+          severity: warn
+        annotations:
+          summary: "Run-event projection latency elevated"
+          description: "P95 projection latency >5s for 10m. Check DB load and ingestion path."
+
+      - alert: RunEventReadLatencyHigh
+        expr: histogram_quantile(0.95, sum by (le) (rate(agent_run_events_read_duration_seconds_bucket[10m]))) > 2
+        for: 10m
+        labels:
+          severity: warn
+        annotations:
+          summary: "Run-event read latency elevated"
+          description: "P95 read latency >2s for 10m. Investigate DB indices and query plans."
+
+      - alert: RunEventDriftDetected
+        expr: agent_run_events_drift != 0
+        for: 10m
+        labels:
+          severity: warn
+        annotations:
+          summary: "Run-event drift detected"
+          description: "Event log count does not match SDK message count for one or more conversations."

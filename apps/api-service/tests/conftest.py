@@ -42,6 +42,7 @@ if TEST_DB_PATH.exists():
 from app.bootstrap import get_container, reset_container
 from app.core import config as config_module
 from app.domain.conversations import (
+    ConversationEvent,
     ConversationMessage,
     ConversationMetadata,
     ConversationPage,
@@ -202,6 +203,7 @@ class EphemeralConversationRepository(ConversationRepository):
         self._messages: dict[tuple[str, str], list[ConversationMessage]] = defaultdict(list)
         self._metadata: dict[tuple[str, str], ConversationMetadata] = {}
         self._session_state: dict[tuple[str, str], ConversationSessionState] = {}
+        self._events: dict[tuple[str, str], list[ConversationEvent]] = defaultdict(list)
 
     async def add_message(
         self,
@@ -342,6 +344,7 @@ class EphemeralConversationRepository(ConversationRepository):
         self._messages.pop(key, None)
         self._metadata.pop(key, None)
         self._session_state.pop(key, None)
+        self._events.pop(key, None)
 
     async def get_session_state(
         self, conversation_id: str, *, tenant_id: str
@@ -358,6 +361,29 @@ class EphemeralConversationRepository(ConversationRepository):
     ) -> None:
         key = self._key(tenant_id, conversation_id)
         self._session_state[key] = state
+
+    async def add_run_events(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        events: list[ConversationEvent],
+    ) -> None:
+        key = self._key(tenant_id, conversation_id)
+        self._events[key].extend(events)
+
+    async def get_run_events(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        include_types: set[str] | None = None,
+    ) -> list[ConversationEvent]:
+        key = self._key(tenant_id, conversation_id)
+        events = list(self._events.get(key, []))
+        if include_types:
+            events = [ev for ev in events if ev.run_item_type in include_types]
+        return events
 
     def _key(self, tenant_id: str, conversation_id: str) -> tuple[str, str]:
         tenant = self._require_tenant(tenant_id)

@@ -180,9 +180,54 @@ class AgentMessage(Base):
     conversation: Mapped[AgentConversation] = relationship(back_populates="messages")
 
 
+class AgentRunEvent(Base):
+    """Structured event log entry mirroring SDK run items."""
+
+    __tablename__ = "agent_run_events"
+    __table_args__ = (
+        UniqueConstraint("conversation_id", "sequence_no", name="uq_agent_run_events_seq"),
+        Index("ix_agent_run_events_conv_seq", "conversation_id", "sequence_no"),
+        Index("ix_agent_run_events_toolcall", "tool_call_id"),
+        Index(
+            "ix_agent_run_events_conv_type_seq",
+            "conversation_id",
+            "run_item_type",
+            "sequence_no",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("agent_conversations.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    sequence_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    response_id: Mapped[str | None] = mapped_column(String(128))
+    run_item_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    run_item_name: Mapped[str | None] = mapped_column(String(128))
+    role: Mapped[str | None] = mapped_column(String(16))
+    agent: Mapped[str | None] = mapped_column(String(64))
+    tool_call_id: Mapped[str | None] = mapped_column(String(128))
+    tool_name: Mapped[str | None] = mapped_column(String(128))
+    model: Mapped[str | None] = mapped_column(String(64))
+    content_text: Mapped[str | None] = mapped_column(String)
+    reasoning_text: Mapped[str | None] = mapped_column(String)
+    call_arguments: Mapped[dict[str, object] | None] = mapped_column(JSONBCompat)
+    call_output: Mapped[dict[str, object] | None] = mapped_column(JSONBCompat)
+    attachments: Mapped[list[dict[str, object]] | None] = mapped_column(JSONBCompat)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=UTC_NOW, nullable=False
+    )
+    ingested_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=UTC_NOW, nullable=False
+    )
+
+
 __all__ = [
     "Base",
     "TenantAccount",
     "AgentConversation",
     "AgentMessage",
+    "AgentRunEvent",
 ]

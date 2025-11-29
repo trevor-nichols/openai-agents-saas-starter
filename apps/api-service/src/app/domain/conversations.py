@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Literal, Protocol
+
+
+class ConversationNotFoundError(RuntimeError):
+    """Raised when a conversation lookup fails for the given tenant."""
 
 
 @dataclass(slots=True)
@@ -27,6 +32,27 @@ class ConversationAttachment:
     size_bytes: int | None = None
     presigned_url: str | None = None
     tool_call_id: str | None = None
+
+
+@dataclass(slots=True)
+class ConversationEvent:
+    """Full-fidelity run item captured during an agent interaction."""
+
+    run_item_type: str
+    run_item_name: str | None = None
+    role: Literal["user", "assistant", "system"] | None = None
+    agent: str | None = None
+    tool_call_id: str | None = None
+    tool_name: str | None = None
+    model: str | None = None
+    content_text: str | None = None
+    reasoning_text: str | None = None
+    call_arguments: Mapping[str, object] | None = None
+    call_output: Mapping[str, object] | None = None
+    attachments: list[ConversationAttachment] = field(default_factory=list)
+    response_id: str | None = None
+    sequence_no: int | None = None
+    timestamp: datetime = field(default_factory=datetime.utcnow)
 
 
 @dataclass(slots=True)
@@ -170,3 +196,19 @@ class ConversationRepository(Protocol):
         tenant_id: str,
         state: ConversationSessionState,
     ) -> None: ...
+
+    async def add_run_events(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        events: list[ConversationEvent],
+    ) -> None: ...
+
+    async def get_run_events(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        include_types: set[str] | None = None,
+    ) -> list[ConversationEvent]: ...

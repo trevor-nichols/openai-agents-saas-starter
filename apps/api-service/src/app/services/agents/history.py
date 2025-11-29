@@ -6,6 +6,7 @@ from datetime import datetime
 
 from app.api.v1.chat.schemas import MessageAttachment
 from app.api.v1.conversations.schemas import ChatMessage, ConversationHistory, ConversationSummary
+from app.domain.conversations import ConversationNotFoundError
 from app.services.agents.attachments import AttachmentService
 from app.services.conversation_service import ConversationService, SearchResult
 
@@ -28,7 +29,7 @@ class ConversationHistoryService:
             conversation_id, tenant_id=actor.tenant_id
         )
         if not messages:
-            raise ValueError(f"Conversation {conversation_id} not found")
+            raise ConversationNotFoundError(f"Conversation {conversation_id} not found")
 
         await self._attachments.presign_message_attachments(
             messages, tenant_id=actor.tenant_id

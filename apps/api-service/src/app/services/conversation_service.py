@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from app.domain.conversations import (
+    ConversationEvent,
     ConversationMessage,
     ConversationMetadata,
     ConversationPage,
@@ -173,6 +174,36 @@ class ConversationService:
             conversation_id,
             tenant_id=normalized_tenant,
             state=state,
+        )
+
+    async def append_run_events(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        events: list[ConversationEvent],
+    ) -> None:
+        if not events:
+            return
+        normalized_tenant = _require_tenant_id(tenant_id)
+        await self._require_repository().add_run_events(
+            conversation_id,
+            tenant_id=normalized_tenant,
+            events=events,
+        )
+
+    async def get_run_events(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        include_types: set[str] | None = None,
+    ) -> list[ConversationEvent]:
+        normalized_tenant = _require_tenant_id(tenant_id)
+        return await self._require_repository().get_run_events(
+            conversation_id,
+            tenant_id=normalized_tenant,
+            include_types=include_types,
         )
 
 

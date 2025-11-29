@@ -40,6 +40,14 @@ def _bool_label(value: bool) -> str:
     return "true" if value else "false"
 
 
+def _sanitize_tenant(value: str | None) -> str:
+    return (value or "unknown").lower()
+
+
+def _sanitize_agent(value: str | None) -> str:
+    return (value or "unknown").lower()
+
+
 JWKS_REQUESTS_TOTAL = Counter(
     "jwks_requests_total",
     "Total number of JWKS responses served.",
@@ -197,6 +205,55 @@ CONTAINER_OPERATIONS_TOTAL = Counter(
     ("operation", "result"),
     registry=REGISTRY,
 )
+
+# Conversation run events (full-fidelity history)
+AGENT_RUN_EVENTS_PROJECTION_TOTAL = Counter(
+    "agent_run_events_projection_total",
+    "Count of run-event projection attempts segmented by tenant, agent, and result.",
+    ("tenant", "agent", "result"),
+    registry=REGISTRY,
+)
+
+AGENT_RUN_EVENTS_PROJECTION_DURATION_SECONDS = Histogram(
+    "agent_run_events_projection_duration_seconds",
+    "Latency histogram for run-event projection (ingest) segmented by tenant and agent.",
+    ("tenant", "agent"),
+    buckets=_LATENCY_BUCKETS,
+    registry=REGISTRY,
+)
+
+AGENT_RUN_EVENTS_READ_TOTAL = Counter(
+    "agent_run_events_read_total",
+    "Count of run-event read attempts segmented by tenant and mode.",
+    ("tenant", "mode", "result"),
+    registry=REGISTRY,
+)
+
+AGENT_RUN_EVENTS_READ_DURATION_SECONDS = Histogram(
+    "agent_run_events_read_duration_seconds",
+    "Latency histogram for run-event reads segmented by tenant and mode.",
+    ("tenant", "mode"),
+    buckets=_LATENCY_BUCKETS,
+    registry=REGISTRY,
+)
+
+AGENT_RUN_EVENTS_DRIFT = Gauge(
+    "agent_run_events_drift",
+    "Difference between SDK session message count and run-event log count (per conversation).",
+    ("tenant", "conversation_id"),
+    registry=REGISTRY,
+)
+
+__all__ = [
+    "AGENT_RUN_EVENTS_PROJECTION_TOTAL",
+    "AGENT_RUN_EVENTS_PROJECTION_DURATION_SECONDS",
+    "AGENT_RUN_EVENTS_READ_TOTAL",
+    "AGENT_RUN_EVENTS_READ_DURATION_SECONDS",
+    "AGENT_RUN_EVENTS_DRIFT",
+    "REGISTRY",
+    "_sanitize_tenant",
+    "_sanitize_agent",
+]
 
 CONTAINER_OPERATION_DURATION_SECONDS = Histogram(
     "container_operation_duration_seconds",

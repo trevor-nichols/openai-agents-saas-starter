@@ -1019,6 +1019,27 @@
       "description": "Optional Resend template ID for password reset messages.",
       "title": "Resend Password Reset Template Id"
     },
+    "RUN_EVENTS_CLEANUP_BATCH": {
+      "default": 10000,
+      "description": "Delete batch size for run-event cleanup jobs.",
+      "minimum": 1,
+      "title": "Run Events Cleanup Batch",
+      "type": "integer"
+    },
+    "RUN_EVENTS_CLEANUP_SLEEP_MS": {
+      "default": 0,
+      "description": "Sleep between cleanup batches in milliseconds (throttle).",
+      "minimum": 0,
+      "title": "Run Events Cleanup Sleep Ms",
+      "type": "integer"
+    },
+    "RUN_EVENTS_TTL_DAYS": {
+      "default": 180,
+      "description": "Number of days to retain agent_run_events before cleanup.",
+      "minimum": 1,
+      "title": "Run Events Ttl Days",
+      "type": "integer"
+    },
     "SECRETS_PROVIDER": {
       "$ref": "#/$defs/SecretsProviderLiteral",
       "default": "vault_dev",
