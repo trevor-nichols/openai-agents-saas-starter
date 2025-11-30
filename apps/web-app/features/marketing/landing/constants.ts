@@ -1,6 +1,8 @@
 import { Sparkles, Shield, BarChart3, Cable } from 'lucide-react';
 
-import type { CtaConfig, FaqItem, FeatureHighlight, ProofPoint } from './types';
+import type { CtaConfig, FaqItem, FeatureHighlight, ProofPoint, LogoItem } from './types';
+import type { ShowcaseTab } from '@/features/marketing/features/types';
+import type { Testimonial } from '@/components/ui/testimonials';
 
 export const HERO_COPY = {
   eyebrow: 'OpenAI Agent Starter',
@@ -98,3 +100,66 @@ export const CTA_CONFIG: CtaConfig = {
     intent: 'secondary',
   },
 };
+
+export const LOGO_ITEMS: LogoItem[] = [
+  'Snowshoe Capital',
+  'Northwind Energy',
+  'Atlas Labs',
+  'Aurora Health',
+  'LedgerStack',
+  'Harbor Systems',
+  'Bluebird Robotics',
+  'Signalcraft',
+];
+
+export const TESTIMONIALS: Testimonial[] = [
+  {
+    quote: 'We rebranded and shipped a GPT-5 console in six days. Auth, billing, and ops were already wired.',
+    name: 'Priya Narayanan',
+    designation: 'VP Product, Series B SaaS',
+    src: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="%2364b5f6"/><stop offset="1" stop-color="%2312457a"/></linearGradient></defs><rect width="200" height="200" rx="32" fill="url(%23g)"/></svg>',
+  },
+  {
+    quote: 'Ops loved that status feeds and incident emails were live on day one—no extra services to stitch in.',
+    name: 'Caleb Rivers',
+    designation: 'CTO, AI infra startup',
+    src: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none"><rect width="200" height="200" rx="32" fill="%23222"/><circle cx="100" cy="100" r="90" fill="%23333"/><circle cx="100" cy="100" r="52" fill="%23555"/></svg>',
+  },
+  {
+    quote: 'Status, billing, and the Starter CLI let us pass enterprise vendor checks without slowing the launch.',
+    name: 'Dana Schultz',
+    designation: 'Head of Platform, fintech pilot',
+    src: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none"><rect width="200" height="200" rx="32" fill="%23f5f5f5"/><path d="M30 140 L170 60" stroke="%23646cff" stroke-width="18" stroke-linecap="round"/><circle cx="60" cy="120" r="18" fill="%23646cff"/><circle cx="140" cy="80" r="18" fill="%23646cff"/></svg>',
+  },
+];
+
+export const SHOWCASE_TABS: ShowcaseTab[] = [
+  {
+    id: 'agents',
+    label: 'Agents',
+    title: 'Operate multi-agent workspaces',
+    description: 'Chat streaming, catalog search, and tool telemetry live in a single workspace so operators keep context.',
+    bullets: ['Multi-agent routing with GPT-5 memory', 'Searchable transcripts + exports', 'Tool registry insights per run'],
+  },
+  {
+    id: 'billing',
+    label: 'Billing',
+    title: 'Usage and plan automation',
+    description: 'Stripe dispatcher, usage hooks, and SSE dashboards are prewired so pricing changes ship safely.',
+    bullets: ['Plan catalogs + metered usage', 'Async retry worker for webhooks', 'Billing widgets powered by TanStack'],
+  },
+  {
+    id: 'ops',
+    label: 'Ops',
+    title: 'Observability and status by default',
+    description: 'Live uptime metrics, incident feeds, and CLI health checks keep stakeholders informed.',
+    bullets: ['Status page + RSS feeds', 'Prom metrics + middleware', 'CLI-based env hydration + rotation'],
+  },
+];
+
+export const OPERATOR_BULLETS = [
+  'Live incident email flows with verification built in',
+  'RBAC + service accounts enforced at every router',
+  'Observability middleware and Prom metrics ready for scraping',
+  'Starter CLI hydrates envs and rotates keys without custom scripts',
+] as const;

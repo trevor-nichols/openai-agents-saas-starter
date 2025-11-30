@@ -5,16 +5,19 @@ import type { LandingMetrics } from '../types';
 interface MetricsStripProps {
   metrics: LandingMetrics;
   isLoading: boolean;
+  showHeader?: boolean;
 }
 
-export function MetricsStrip({ metrics, isLoading }: MetricsStripProps) {
+export function MetricsStrip({ metrics, isLoading, showHeader = true }: MetricsStripProps) {
   return (
     <section className="space-y-6">
-      <SectionHeader
-        eyebrow="Operations"
-        title="Transparent health telemetry"
-        description="Live uptime metrics, billing coverage, and incident feeds keep operators informed—directly on the marketing site."
-      />
+      {showHeader ? (
+        <SectionHeader
+          eyebrow="Operations"
+          title="Transparent health telemetry"
+          description="Live uptime metrics, billing coverage, and incident feeds keep operators informed—directly on the marketing site."
+        />
+      ) : null}
       <div className="grid gap-4 md:grid-cols-4">
         {metrics.statusMetrics.map((metric) => (
           <StatCard

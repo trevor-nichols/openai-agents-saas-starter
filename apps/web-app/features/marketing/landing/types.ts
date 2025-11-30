@@ -22,6 +22,8 @@ export interface FeatureHighlight {
   bullets: readonly string[];
 }
 
+export type LogoItem = string;
+
 export interface MetricDatum {
   label: string;
   value: string;
