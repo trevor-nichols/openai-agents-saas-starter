@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { ReactNode } from "react";
 
 type ElegantShapeProps = {
   className?: string;
@@ -78,6 +79,8 @@ type HeroGeometricProps = {
   title2?: string;
   description?: string;
   className?: string;
+  actions?: ReactNode;
+  footer?: ReactNode;
 };
 
 export function HeroGeometric({
@@ -86,6 +89,8 @@ export function HeroGeometric({
   title2 = "Crafting Exceptional Websites",
   description = "Crafting exceptional digital experiences through innovative design and cutting-edge technology.",
   className,
+  actions,
+  footer,
 }: HeroGeometricProps) {
   const fadeUpVariants = {
     hidden: { opacity: 0, y: 30 },
@@ -197,6 +202,30 @@ export function HeroGeometric({
               {description}
             </p>
           </motion.div>
+
+          {actions ? (
+            <motion.div
+              custom={3}
+              variants={fadeUpVariants}
+              initial="hidden"
+              animate="visible"
+              className="flex flex-wrap justify-center gap-3 md:gap-4"
+            >
+              {actions}
+            </motion.div>
+          ) : null}
+
+          {footer ? (
+            <motion.div
+              custom={4}
+              variants={fadeUpVariants}
+              initial="hidden"
+              animate="visible"
+              className="mt-6 flex justify-center"
+            >
+              {footer}
+            </motion.div>
+          ) : null}
         </div>
       </div>
 

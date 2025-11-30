@@ -30,7 +30,7 @@ describe('/api/storage/objects/[objectId]/download-url route', () => {
     getPresignedDownloadUrl.mockResolvedValueOnce(payload);
 
     const request = {} as NextRequest;
-    const response = await GET(request, { params: { objectId: 'obj-1' } });
+    const response = await GET(request, { params: Promise.resolve({ objectId: 'obj-1' }) });
 
     expect(getPresignedDownloadUrl).toHaveBeenCalledWith('obj-1');
     expect(response.status).toBe(200);
@@ -41,7 +41,7 @@ describe('/api/storage/objects/[objectId]/download-url route', () => {
     getPresignedDownloadUrl.mockRejectedValueOnce(new Error('Missing access token'));
 
     const request = {} as NextRequest;
-    const response = await GET(request, { params: { objectId: 'obj-1' } });
+    const response = await GET(request, { params: Promise.resolve({ objectId: 'obj-1' }) });
 
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toEqual({ message: 'Missing access token' });
