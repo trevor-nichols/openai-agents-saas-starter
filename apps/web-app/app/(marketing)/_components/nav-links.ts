@@ -72,7 +72,7 @@ export const MARKETING_FOOTER_COLUMNS = [
   {
     title: 'Company',
     links: [
-      { label: 'About', href: '/features' },
+      { label: 'About', href: '/about' },
       { label: 'Contact', href: '/contact' },
       { label: 'Privacy', href: '/privacy' },
       { label: 'Terms', href: '/terms' },
