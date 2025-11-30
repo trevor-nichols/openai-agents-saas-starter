@@ -28,7 +28,7 @@ export function ThemeToggle() {
           variant="ghost"
           size="icon"
           aria-label="Toggle theme"
-          className="rounded-full border border-white/10 bg-transparent hover:bg-white/10"
+          className="rounded-full border border-black/10 dark:border-white/10 bg-transparent hover:bg-accent"
         >
           {icon}
           <span className="sr-only">Toggle theme</span>

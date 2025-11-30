@@ -56,7 +56,7 @@ export function MarketingHeader() {
   const navLinks = [...MARKETING_PRIMARY_LINKS, ...MARKETING_SECONDARY_LINKS];
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-background/70 backdrop-blur-glass">
+    <header className="sticky top-0 z-40 border-b border-black/10 dark:border-white/10 bg-background/70 backdrop-blur-glass">
       <div className="mx-auto w-full max-w-6xl px-6 py-4">
         {MARKETING_ANNOUNCEMENT ? (
           <Banner
@@ -91,7 +91,7 @@ export function MarketingHeader() {
         ) : null}
 
         <NavBar
-          className="bg-transparent px-0"
+          className="static border-0 bg-transparent px-0 shadow-none backdrop-blur-none"
           navigationLinks={navLinks.map((link) => ({ href: link.href, label: link.label }))}
           onNavItemClick={(href) => router.push(href)}
           actions={
@@ -101,7 +101,7 @@ export function MarketingHeader() {
               <Button
                 asChild
                 variant="secondary"
-                className="rounded-full border border-white/10 bg-white/5 text-sm font-semibold text-foreground"
+                className="rounded-full border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 text-sm font-semibold text-foreground hover:bg-accent"
               >
                 <Link href={cta.href}>{cta.label}</Link>
               </Button>
@@ -132,7 +132,7 @@ function CommandMenuButton({ onClick, compact }: { onClick: () => void; compact?
       variant="outline"
       size={compact ? 'icon' : 'sm'}
       className={cn(
-        'rounded-full border-white/10 bg-white/5 text-sm text-foreground/80 hover:bg-white/10',
+        'rounded-full border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 text-sm text-muted-foreground hover:bg-accent',
         compact ? 'px-0' : 'px-3',
       )}
       onClick={onClick}

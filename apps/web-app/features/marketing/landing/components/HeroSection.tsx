@@ -31,7 +31,6 @@ export function HeroSection({ copy, statusSummary, onCtaClick }: HeroSectionProp
   return (
     <section className="relative isolate w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] overflow-hidden pt-4 lg:pt-0">
       <HeroGeometric
-        badge={copy.eyebrow}
         title1={title1}
         title2={title2}
         description={copy.description}

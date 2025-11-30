@@ -11,6 +11,11 @@ const PUBLIC_EXACT_PATHS = new Set([
   '/login',
   '/register',
   '/request-access',
+  '/contact',
+  '/about',
+  '/terms',
+  '/privacy',
+  '/status',
 ]);
 const PUBLIC_PREFIXES = ['/password', '/email', '/api', '/_next', '/favicon.ico'];
 const AUTH_EXACT_PATHS = new Set(['/login', '/register']);

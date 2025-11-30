@@ -57,7 +57,7 @@ export const Banner = ({
           'flex w-full items-center justify-between gap-2 px-4 py-2',
           variant === 'primary'
             ? 'bg-primary text-primary-foreground'
-            : 'border border-white/10 bg-white/5 text-foreground',
+            : 'border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 text-foreground',
           inset && 'rounded-lg',
           className
         )}

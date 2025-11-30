@@ -20,7 +20,6 @@ export const Default: Story = {
     title1: 'Build with Agents',
     title2: 'Launch faster, safer',
     description: 'Composable UI primitives plus FastAPI + Next.js scaffolding to ship AI products quickly.',
-    badge: 'OpenAI Agents Starter',
     className: 'min-h-[70vh]',
   },
 };
