@@ -11,6 +11,7 @@ import { EmptyState, SkeletonPanel } from '@/components/ui/states';
 import { cn } from '@/lib/utils';
 import { formatClockTime } from '@/lib/utils/time';
 import type { ChatMessage, ConversationLifecycleStatus, ToolState } from '@/lib/chat/types';
+import { Banner, BannerClose, BannerTitle } from '@/components/ui/banner';
 import {
   Conversation,
   ConversationContent,
@@ -50,6 +51,7 @@ interface ChatInterfaceProps {
   isClearingConversation?: boolean;
   isLoadingHistory?: boolean;
   tools?: ToolState[];
+  agentNotices?: { id: string; text: string }[];
   reasoningText?: string;
   activeAgent?: string;
   lifecycleStatus?: ConversationLifecycleStatus;
@@ -88,6 +90,7 @@ export function ChatInterface({
   isClearingConversation = false,
   isLoadingHistory = false,
   tools = [],
+  agentNotices = [],
   reasoningText = '',
   activeAgent,
   lifecycleStatus,
@@ -168,6 +171,18 @@ export function ChatInterface({
     <GlassPanel className={cn('flex h-full flex-col overflow-hidden p-0', className)}>
       <Conversation className="flex-1">
         <ConversationContent className="space-y-4 px-6 py-6">
+          {agentNotices.length > 0 ? (
+            <div className="space-y-2">
+              {agentNotices.map((notice) => (
+                <Banner key={notice.id} variant="muted" inset>
+                  <BannerTitle>{notice.text}</BannerTitle>
+                  <InlineTag tone="default">Agent update</InlineTag>
+                  <BannerClose aria-label="Dismiss agent update" />
+                </Banner>
+              ))}
+            </div>
+          ) : null}
+
           {isLoadingHistory ? (
             <SkeletonPanel lines={9} />
           ) : messages.length === 0 ? (

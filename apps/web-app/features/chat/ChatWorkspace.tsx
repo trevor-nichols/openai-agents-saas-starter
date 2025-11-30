@@ -43,6 +43,7 @@ export function ChatWorkspace() {
     selectedAgent,
     selectedAgentLabel,
     activeAgent,
+    agentNotices,
     toolEvents,
     reasoningText,
     lifecycleStatus,
@@ -143,6 +144,7 @@ export function ChatWorkspace() {
             isClearingConversation={isClearingConversation}
             isLoadingHistory={isLoadingHistory}
             tools={toolEvents}
+            agentNotices={agentNotices}
             reasoningText={reasoningText}
             activeAgent={activeAgent}
             lifecycleStatus={lifecycleStatus}

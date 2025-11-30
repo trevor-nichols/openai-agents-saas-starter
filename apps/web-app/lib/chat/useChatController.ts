@@ -32,6 +32,7 @@ export interface UseChatControllerReturn {
   selectedAgent: string;
   setSelectedAgent: (agentName: string) => void;
   activeAgent: string;
+  agentNotices: AgentNotice[];
   toolEvents: ToolState[];
   reasoningText: string;
   lifecycleStatus: ConversationLifecycleStatus;
@@ -47,6 +48,8 @@ export interface SendMessageOptions {
   location?: Partial<LocationHint> | null;
   runOptions?: RunOptionsInput | null;
 }
+
+export type AgentNotice = { id: string; text: string };
 
 export function useChatController(options: UseChatControllerOptions = {}): UseChatControllerReturn {
   const {
@@ -67,6 +70,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [selectedAgent, setSelectedAgentState] = useState<string>('triage');
   const [activeAgent, setActiveAgent] = useState<string>('triage');
+  const [agentNotices, setAgentNotices] = useState<AgentNotice[]>([]);
   const [toolEvents, setToolEvents] = useState<ToolState[]>([]);
   const [reasoningText, setReasoningText] = useState('');
   const [lifecycleStatus, setLifecycleStatus] = useState<ConversationLifecycleStatus>('idle');
@@ -100,6 +104,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       setErrorMessage(null);
       setToolEvents([]);
       setReasoningText('');
+      setAgentNotices([]);
       setLifecycleStatus('idle');
       setActiveAgent(selectedAgent);
 
@@ -143,6 +148,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
     setErrorMessage(null);
     setToolEvents([]);
     setReasoningText('');
+    setAgentNotices([]);
     setLifecycleStatus('idle');
     setActiveAgent(selectedAgent);
   }, [selectedAgent]);
@@ -214,6 +220,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
         let streamedAttachments: MessageAttachment[] | null | undefined = undefined;
         let streamedStructuredOutput: unknown | null = null;
         let responseTextOverride: unknown | null = null;
+        let lastAgentNotice: string | null = null;
 
         for await (const chunk of stream) {
           if (chunk.type === 'error') {
@@ -234,6 +241,13 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
 
           if (event.kind === 'agent_update' && event.new_agent) {
             setActiveAgent(event.new_agent);
+            if (event.new_agent !== lastAgentNotice) {
+              lastAgentNotice = event.new_agent;
+              setAgentNotices((prev) => [
+                ...prev,
+                { id: `agent-${Date.now()}`, text: `Switched to ${event.new_agent}` },
+              ]);
+            }
           }
 
           if (event.kind === 'raw_response') {
@@ -289,6 +303,18 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
             } else if (event.run_item_name === 'tool_output') {
               existing.status = 'output-available';
               existing.output = event.payload;
+            }
+
+            if (
+              (event.run_item_name === 'handoff_requested' || event.run_item_name === 'handoff_occured') &&
+              event.agent &&
+              event.agent !== lastAgentNotice
+            ) {
+              lastAgentNotice = event.agent;
+              setAgentNotices((prev) => [
+                ...prev,
+                { id: `${assistantMessageId}-handoff-${Date.now()}`, text: `Handed off to ${event.agent}` },
+              ]);
             }
 
             toolMap.set(toolId, existing);
@@ -553,6 +579,9 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
         if (currentConversationId === conversationId) {
           setCurrentConversationId(null);
           setMessages([]);
+          setAgentNotices([]);
+          setToolEvents([]);
+          setReasoningText('');
         }
       } catch (error) {
         console.error('[useChatController] Failed to delete conversation:', error);
@@ -586,6 +615,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       selectedAgent,
       setSelectedAgent,
       activeAgent,
+      agentNotices,
       toolEvents,
       reasoningText,
       lifecycleStatus,
@@ -610,6 +640,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       deleteConversation,
       clearError,
       activeAgent,
+      agentNotices,
       toolEvents,
       reasoningText,
       lifecycleStatus,
