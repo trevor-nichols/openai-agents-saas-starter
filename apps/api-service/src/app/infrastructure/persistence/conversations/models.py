@@ -194,6 +194,8 @@ class AgentRunEvent(Base):
             "run_item_type",
             "sequence_no",
         ),
+        Index("ix_agent_run_events_workflow_run", "workflow_run_id"),
+        Index("ix_agent_run_events_workflow_run_seq", "workflow_run_id", "sequence_no"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -201,6 +203,11 @@ class AgentRunEvent(Base):
         PG_UUID(as_uuid=True),
         ForeignKey("agent_conversations.id", ondelete="CASCADE"),
         nullable=False,
+    )
+    workflow_run_id: Mapped[str | None] = mapped_column(
+        String(64),
+        ForeignKey("workflow_runs.id", ondelete="SET NULL"),
+        nullable=True,
     )
     sequence_no: Mapped[int] = mapped_column(Integer, nullable=False)
     response_id: Mapped[str | None] = mapped_column(String(128))

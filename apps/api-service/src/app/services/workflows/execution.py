@@ -17,6 +17,7 @@ async def execute_agent_step(
     conversation_id: str,
     metadata: dict[str, Any],
     options: RunOptions | None,
+    session_handle: Any | None = None,
 ) -> tuple[Any | None, AgentRunResult]:
     result = await provider.runtime.run(
         step.agent_key,
@@ -24,6 +25,7 @@ async def execute_agent_step(
         conversation_id=conversation_id,
         metadata=metadata,
         options=options,
+        session=session_handle,
     )
 
     chosen_output: Any | None = None

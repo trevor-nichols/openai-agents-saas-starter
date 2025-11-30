@@ -52,6 +52,7 @@ class ConversationEvent:
     attachments: list[ConversationAttachment] = field(default_factory=list)
     response_id: str | None = None
     sequence_no: int | None = None
+    workflow_run_id: str | None = None
     timestamp: datetime = field(default_factory=datetime.utcnow)
 
 
@@ -211,4 +212,5 @@ class ConversationRepository(Protocol):
         *,
         tenant_id: str,
         include_types: set[str] | None = None,
+        workflow_run_id: str | None = None,
     ) -> list[ConversationEvent]: ...

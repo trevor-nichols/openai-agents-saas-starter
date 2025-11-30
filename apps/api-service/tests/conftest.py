@@ -378,11 +378,14 @@ class EphemeralConversationRepository(ConversationRepository):
         *,
         tenant_id: str,
         include_types: set[str] | None = None,
+        workflow_run_id: str | None = None,
     ) -> list[ConversationEvent]:
         key = self._key(tenant_id, conversation_id)
         events = list(self._events.get(key, []))
         if include_types:
             events = [ev for ev in events if ev.run_item_type in include_types]
+        if workflow_run_id:
+            events = [ev for ev in events if ev.workflow_run_id == workflow_run_id]
         return events
 
     def _key(self, tenant_id: str, conversation_id: str) -> tuple[str, str]:

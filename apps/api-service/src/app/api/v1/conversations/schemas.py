@@ -95,6 +95,9 @@ class ConversationEventItem(BaseModel):
     call_output: dict[str, Any] | None = Field(default=None)
     attachments: list[MessageAttachment] = Field(default_factory=list)
     response_id: str | None = Field(default=None)
+    workflow_run_id: str | None = Field(
+        default=None, description="Workflow run identifier when the event was produced."
+    )
     timestamp: str = Field(description="ISO-8601 creation time of the item.")
 
 

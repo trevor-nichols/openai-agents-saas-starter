@@ -27,9 +27,16 @@ class EventProjector:
         agent: str | None,
         model: str | None,
         response_id: str | None,
+        workflow_run_id: str | None = None,
     ) -> None:
         events = [
-            self._map_item(_to_mapping(item), agent=agent, model=model, response_id=response_id)
+            self._map_item(
+                _to_mapping(item),
+                agent=agent,
+                model=model,
+                response_id=response_id,
+                workflow_run_id=workflow_run_id,
+            )
             for item in session_items
         ]
         # Filter out items we failed to map (None)
@@ -47,6 +54,7 @@ class EventProjector:
         agent: str | None,
         model: str | None,
         response_id: str | None,
+        workflow_run_id: str | None,
     ) -> ConversationEvent | None:
         item_type = str(item.get("type") or "unknown")
         role = item.get("role")
@@ -64,20 +72,29 @@ class EventProjector:
 
         timestamp = _extract_timestamp(item)
 
+        agent_value = agent
+        if agent_value is None:
+            agent_value = item.get("agent") or item.get("agent_key")
+
+        model_value = model
+        if model_value is None:
+            model_value = item.get("model") or item.get("model_id")
+
         return ConversationEvent(
             run_item_type=run_item_type,
             run_item_name=item.get("name") if isinstance(item.get("name"), str) else None,
             role=role_literal,
-            agent=agent,
+            agent=str(agent_value) if agent_value is not None else None,
             tool_call_id=str(tool_call_id) if tool_call_id else None,
             tool_name=str(tool_name) if tool_name else None,
-            model=model,
+            model=str(model_value) if model_value is not None else None,
             content_text=content_text,
             reasoning_text=reasoning_text,
             call_arguments=call_arguments,
             call_output=call_output,
             attachments=[],
             response_id=response_id,
+            workflow_run_id=workflow_run_id,
             timestamp=timestamp,
         )
 

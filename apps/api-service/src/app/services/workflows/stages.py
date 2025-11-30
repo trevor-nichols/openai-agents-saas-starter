@@ -27,6 +27,9 @@ async def run_sequential_stage(
     conversation_id: str,
     recorder: WorkflowRunRecorder,
     check_cancel: Callable[[], None],
+    session_getter,
+    ingest_session_delta,
+    session_handle,
 ) -> Any:
     for step in stage.steps:
         check_cancel()
@@ -44,6 +47,7 @@ async def run_sequential_stage(
             "workflow_run_id": run_id,
             "stage_name": stage.name,
         }
+        pre_items = await session_getter()
         chosen_output, response = await execute_agent_step(
             step,
             step_input,
@@ -52,6 +56,7 @@ async def run_sequential_stage(
             conversation_id,
             metadata,
             options,
+            session_handle=session_handle,
         )
 
         await recorder.step_end(
@@ -75,6 +80,12 @@ async def run_sequential_stage(
                 output_schema=schema_to_json_schema(step.output_schema),
             )
         )
+        await ingest_session_delta(
+            pre_items=pre_items,
+            agent=step.agent_key,
+            model=_response_model(response),
+            response_id=response.response_id,
+        )
         current_input = response.final_output
     return current_input
 
@@ -91,7 +102,12 @@ async def run_parallel_stage(
     conversation_id: str,
     recorder: WorkflowRunRecorder,
     check_cancel: Callable[[], None],
+    session_getter,
+    ingest_session_delta,
+    workflow_run_id: str,
+    session_handle,
 ) -> Any:
+    _ = workflow_run_id
     branch_specs: list[tuple[int, WorkflowStep, Any, RunOptions | None, dict[str, Any]]]=[]
     for idx, step in enumerate(stage.steps):
         check_cancel()
@@ -127,10 +143,13 @@ async def run_parallel_stage(
             conversation_id,
             metadata,
             options,
+            session_handle=session_handle,
         )
 
+    pre_items = await session_getter()
     branch_results = await asyncio.gather(*[_run_branch(spec) for spec in branch_specs])
-
+    post_items = await session_getter()
+    delta_items = post_items[len(pre_items) :] if post_items else []
     outputs: list[Any] = []
     for idx, step, (chosen_output, response) in sorted(branch_results, key=lambda x: x[0]):
         outputs.append(chosen_output)
@@ -158,7 +177,56 @@ async def run_parallel_stage(
         )
 
     next_input = await apply_reducer(stage.reducer, outputs, steps_results)
+
+    def _branch_index_of(item: Any) -> int | None:
+        def _as_int(value: Any) -> int | None:
+            if isinstance(value, int):
+                return value
+            if isinstance(value, str) and value.isdigit():
+                return int(value)
+            return None
+
+        if isinstance(item, dict):
+            direct = _as_int(item.get("branch_index"))
+            if direct is not None:
+                return direct
+            metadata = item.get("metadata")
+            if isinstance(metadata, dict):
+                meta_val = _as_int(metadata.get("branch_index"))
+                if meta_val is not None:
+                    return meta_val
+        return None
+
+    branch_meta = {
+        idx: (
+            step.agent_key,
+            _response_model(response),
+            getattr(response, "response_id", None),
+        )
+        for idx, step, (_chosen_output, response) in sorted(branch_results, key=lambda x: x[0])
+    }
+
+    for item in delta_items:
+        branch_idx = _branch_index_of(item)
+        agent = model = response_id = None
+        if branch_idx is not None and branch_idx in branch_meta:
+            agent, model, response_id = branch_meta[branch_idx]
+        await ingest_session_delta(
+            pre_items=[],
+            agent=agent,
+            model=model,
+            response_id=response_id,
+            session_items=[item],
+        )
     return next_input
+
+
+def _response_model(response) -> str | None:
+    metadata = getattr(response, "metadata", None)
+    if isinstance(metadata, dict):
+        model = metadata.get("model")
+        return str(model) if model is not None else None
+    return None
 
 
 __all__ = ["run_parallel_stage", "run_sequential_stage"]

@@ -622,6 +622,7 @@ class PostgresConversationRepository(ConversationRepository):
                         conversation_id=conversation_uuid,
                         sequence_no=event.sequence_no if event.sequence_no is not None else seq,
                         response_id=event.response_id,
+                        workflow_run_id=event.workflow_run_id,
                         run_item_type=event.run_item_type,
                         run_item_name=event.run_item_name,
                         role=event.role,
@@ -679,6 +680,7 @@ class PostgresConversationRepository(ConversationRepository):
         *,
         tenant_id: str,
         include_types: set[str] | None = None,
+        workflow_run_id: str | None = None,
     ) -> list[ConversationEvent]:
         op_start = perf_counter()
         conversation_uuid = _coerce_conversation_uuid(conversation_id)
@@ -700,6 +702,8 @@ class PostgresConversationRepository(ConversationRepository):
             stmt = select(AgentRunEvent).where(AgentRunEvent.conversation_id == conversation_uuid)
             if include_types:
                 stmt = stmt.where(AgentRunEvent.run_item_type.in_(include_types))
+            if workflow_run_id:
+                stmt = stmt.where(AgentRunEvent.workflow_run_id == workflow_run_id)
             stmt = stmt.order_by(AgentRunEvent.sequence_no)
 
             result = await session.execute(stmt)
@@ -720,6 +724,7 @@ class PostgresConversationRepository(ConversationRepository):
                     attachments=_extract_attachments(row.attachments),
                     response_id=row.response_id,
                     sequence_no=row.sequence_no,
+                    workflow_run_id=row.workflow_run_id,
                     timestamp=row.created_at,
                 )
                 for row in rows

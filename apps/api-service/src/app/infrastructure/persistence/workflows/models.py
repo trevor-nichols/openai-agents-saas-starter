@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import JSON, Column, DateTime, Integer, String
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
 
 from app.infrastructure.persistence.models.base import Base as ModelBase
@@ -20,7 +20,12 @@ class WorkflowRunModel(ModelBase):
     final_output_structured = Column(JSONB if JSONB is not None else JSON, nullable=True)
     trace_id = Column(String, nullable=True)
     request_message = Column(String, nullable=True)
-    conversation_id = Column(String, nullable=True)
+    conversation_id = Column(
+        String(255),
+        ForeignKey("agent_conversations.conversation_key", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     metadata_json = Column("metadata", JSONB if JSONB is not None else JSON, nullable=True)
 
 

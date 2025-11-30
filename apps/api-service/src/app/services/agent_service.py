@@ -431,6 +431,7 @@ class AgentService:
         *,
         actor: ConversationActorContext,
         mode: str = "transcript",
+        workflow_run_id: str | None = None,
     ) -> list[ConversationEvent]:
         include_types = None
         if mode == "transcript":
@@ -444,6 +445,7 @@ class AgentService:
             conversation_id,
             tenant_id=actor.tenant_id,
             include_types=include_types,
+            workflow_run_id=workflow_run_id,
         )
         return events
 
@@ -598,6 +600,7 @@ class AgentService:
         agent: str | None,
         model: str | None,
         response_id: str | None,
+        workflow_run_id: str | None = None,
     ) -> None:
         post_items = await self._get_session_items(session_handle)
         if not post_items:
@@ -613,6 +616,7 @@ class AgentService:
                 agent=agent,
                 model=model,
                 response_id=response_id,
+                workflow_run_id=workflow_run_id,
             )
         except Exception:
             logger.exception(

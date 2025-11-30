@@ -139,6 +139,10 @@ async def get_conversation_events(
         "transcript",
         description="Return only messages/tool results (transcript) or full fidelity (full).",
     ),
+    workflow_run_id: str | None = Query(
+        None,
+        description="Optional workflow run id to scope events to a single run.",
+    ),
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:read")),
     tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
     tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
@@ -155,6 +159,7 @@ async def get_conversation_events(
             conversation_id,
             actor=actor,
             mode=mode,
+            workflow_run_id=workflow_run_id,
         )
     except ConversationNotFoundError as exc:
         raise HTTPException(
@@ -194,6 +199,7 @@ async def get_conversation_events(
                     for att in ev.attachments
                 ],
                 response_id=ev.response_id,
+                workflow_run_id=getattr(ev, "workflow_run_id", None),
                 timestamp=ev.timestamp.isoformat(),
             )
         )

@@ -28,6 +28,9 @@ async def stream_sequential_stage(
     conversation_id: str,
     recorder: WorkflowRunRecorder,
     check_cancel: Callable[[], None],
+    session_getter,
+    ingest_session_delta,
+    session_handle,
 ) -> AsyncIterator[AgentStreamEvent]:
     for step in stage.steps:
         check_cancel()
@@ -45,12 +48,14 @@ async def stream_sequential_stage(
             "workflow_run_id": run_id,
             "stage_name": stage.name,
         }
+        pre_items = await session_getter()
         stream_handle = provider.runtime.run_stream(
             step.agent_key,
             step_input,
             conversation_id=conversation_id,
             metadata=metadata,
             options=options,
+            session=session_handle,
         )
 
         last_text: str | None = None
@@ -132,6 +137,12 @@ async def stream_sequential_stage(
 
         if chosen_output is not None:
             current_input = chosen_output
+        await ingest_session_delta(
+            pre_items=pre_items,
+            agent=step.agent_key,
+            model=_response_model(step_result.response),
+            response_id=step_result.response.response_id,
+        )
 
 
 async def stream_parallel_stage(
@@ -147,7 +158,12 @@ async def stream_parallel_stage(
     recorder: WorkflowRunRecorder,
     check_cancel: Callable[[], None],
     stage_state: dict[str, Any],
+    session_getter,
+    ingest_session_delta,
+    session_handle,
+    workflow_run_id: str,
 ) -> AsyncIterator[AgentStreamEvent]:
+    _ = workflow_run_id
     branch_specs: list[tuple[int, WorkflowStep, Any, RunOptions | None, dict[str, Any]]] = []
     for idx, step in enumerate(stage.steps):
         check_cancel()
@@ -173,6 +189,7 @@ async def stream_parallel_stage(
 
     queue: asyncio.Queue[Any] = asyncio.Queue()
     branch_results: list[tuple[int, WorkflowStepResult]] = []
+    pre_items = await session_getter()
 
     async def _consume_branch(
         spec: tuple[int, WorkflowStep, Any, RunOptions | None, dict[str, Any]]
@@ -185,6 +202,7 @@ async def stream_parallel_stage(
                 conversation_id=conversation_id,
                 metadata=metadata,
                 options=options,
+                session=session_handle,
             )
             last_text: str | None = None
             text_buffer: list[str] = []
@@ -302,6 +320,60 @@ async def stream_parallel_stage(
 
     merged_output = await apply_reducer(stage.reducer, outputs, prior_steps)
     stage_state["next_input"] = merged_output
+
+    post_items = await session_getter()
+    delta_items = post_items[len(pre_items) :] if post_items else []
+
+    def _branch_index_of(item: Any) -> int | None:
+        def _as_int(value: Any) -> int | None:
+            if isinstance(value, int):
+                return value
+            if isinstance(value, str) and value.isdigit():
+                return int(value)
+            return None
+
+        if isinstance(item, dict):
+            direct = _as_int(item.get("branch_index"))
+            if direct is not None:
+                return direct
+            metadata = item.get("metadata")
+            if isinstance(metadata, dict):
+                meta_val = _as_int(metadata.get("branch_index"))
+                if meta_val is not None:
+                    return meta_val
+        return None
+
+    branch_meta = {
+        idx: (
+            step_result.agent_key,
+            _response_model(step_result.response),
+            getattr(step_result.response, "response_id", None),
+        )
+        for idx, step_result in sorted(branch_results, key=lambda x: x[0])
+    }
+
+    for item in delta_items:
+        branch_idx = _branch_index_of(item)
+        agent = model = response_id = None
+        if branch_idx is not None and branch_idx in branch_meta:
+            agent, model, response_id = branch_meta[branch_idx]
+        await ingest_session_delta(
+            pre_items=[],
+            agent=agent,
+            model=model,
+            response_id=response_id,
+            session_items=[item],
+        )
+
+
+def _response_model(response: AgentRunResult | None) -> str | None:
+    if response is None:
+        return None
+    metadata = getattr(response, "metadata", None)
+    if isinstance(metadata, dict):
+        model = metadata.get("model")
+        return str(model) if model is not None else None
+    return None
 
 
 __all__ = ["stream_parallel_stage", "stream_sequential_stage"]
