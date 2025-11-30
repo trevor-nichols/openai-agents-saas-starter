@@ -53,6 +53,11 @@ export function WorkflowStreamLog({ events }: WorkflowStreamLogProps) {
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <Badge variant={isTerminal ? 'default' : 'outline'}>{label}</Badge>
+                  {evt.event ? (
+                    <Badge variant="secondary" className="text-[11px] uppercase tracking-wide">
+                      {evt.event}
+                    </Badge>
+                  ) : null}
                   {evt.raw_type ? (
                     <span className="text-[11px] uppercase tracking-wide text-foreground/50">{evt.raw_type}</span>
                   ) : null}

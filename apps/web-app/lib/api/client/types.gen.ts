@@ -2711,6 +2711,10 @@ export type StreamingWorkflowEvent = {
    */
   is_terminal?: boolean;
   /**
+   * Event
+   */
+  event?: string | null;
+  /**
    * Payload
    */
   payload?: {

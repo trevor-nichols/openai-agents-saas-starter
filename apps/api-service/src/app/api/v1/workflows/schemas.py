@@ -83,6 +83,7 @@ class StreamingWorkflowEvent(BaseModel):
     response_text: str | None = None
     structured_output: Any | None = None
     is_terminal: bool = False
+    event: str | None = None
     payload: dict[str, Any] | None = None
     attachments: list[dict[str, Any]] | None = None
 

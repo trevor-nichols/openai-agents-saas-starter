@@ -10533,6 +10533,17 @@
             "title": "Is Terminal",
             "default": false
           },
+          "event": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event"
+          },
           "payload": {
             "anyOf": [
               {

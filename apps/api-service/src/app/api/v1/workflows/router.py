@@ -312,6 +312,7 @@ async def run_workflow_stream(
                     response_text=event.response_text,
                     structured_output=event.structured_output,
                     is_terminal=event.is_terminal,
+                    event=getattr(event, "event", None),
                     payload=event.payload if isinstance(event.payload, dict) else None,
                     attachments=event.attachments,
                     server_timestamp=datetime.now(tz=UTC).isoformat(),
