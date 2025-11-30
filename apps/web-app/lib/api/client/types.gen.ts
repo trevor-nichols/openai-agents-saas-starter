@@ -749,12 +749,6 @@ export type ConversationEventsResponse = {
    */
   conversation_id: string;
   /**
-   * Mode
-   *
-   * Filter applied to returned events.
-   */
-  mode: "transcript" | "full";
-  /**
    * Items
    */
   items: Array<ConversationEventItem>;
@@ -5558,12 +5552,6 @@ export type GetConversationEventsApiV1ConversationsConversationIdEventsGetData =
       conversation_id: string;
     };
     query?: {
-      /**
-       * Mode
-       *
-       * Return only messages/tool results (transcript) or full fidelity (full).
-       */
-      mode?: "transcript" | "full";
       /**
        * Workflow Run Id
        *

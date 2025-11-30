@@ -97,13 +97,11 @@ export async function fetchConversationHistory(
 
 export async function fetchConversationEvents(params: {
   conversationId: string;
-  mode?: 'transcript' | 'full';
   workflowRunId?: string | null;
 }): Promise<ConversationEvents> {
-  const { conversationId, mode = 'transcript', workflowRunId } = params;
+  const { conversationId, workflowRunId } = params;
 
   const searchParams = new URLSearchParams();
-  if (mode) searchParams.set('mode', mode);
   if (workflowRunId) searchParams.set('workflow_run_id', workflowRunId);
 
   const response = await fetch(

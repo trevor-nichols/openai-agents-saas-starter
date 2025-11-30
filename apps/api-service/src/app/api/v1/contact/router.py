@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
+
 from fastapi import APIRouter, HTTPException, Request, status
 
 from app.api.dependencies import raise_rate_limit_http_error
@@ -48,7 +50,7 @@ async def submit_contact(payload: ContactSubmissionRequest, request: Request) ->
     except ContactSubmissionError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    response = ContactSubmissionResponse.model_validate(result.__dict__)
+    response = ContactSubmissionResponse.model_validate(asdict(result))
     return SuccessResponse(
         message="Thanks for reaching out. We'll respond soon.",
         data=response,

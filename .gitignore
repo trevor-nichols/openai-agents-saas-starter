@@ -149,6 +149,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.direnv/
 # allow env adapter package to be tracked
 !packages/starter_cli/adapters/env/
 !packages/starter_cli/adapters/env/**

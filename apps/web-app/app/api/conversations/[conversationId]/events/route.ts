@@ -32,14 +32,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
   }
 
   const { searchParams } = new URL(request.url);
-  const modeParam = searchParams.get('mode');
   const workflowRunId = searchParams.get('workflow_run_id');
-
-  const mode = modeParam === 'full' ? 'full' : 'transcript';
 
   try {
     const events = await getConversationEvents(conversationId, {
-      mode,
       workflowRunId: workflowRunId || undefined,
     });
 
@@ -50,4 +46,3 @@ export async function GET(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ success: false, error: message }, { status });
   }
 }
-

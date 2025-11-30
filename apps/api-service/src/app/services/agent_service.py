@@ -430,21 +430,11 @@ class AgentService:
         conversation_id: str,
         *,
         actor: ConversationActorContext,
-        mode: str = "transcript",
         workflow_run_id: str | None = None,
     ) -> list[ConversationEvent]:
-        include_types = None
-        if mode == "transcript":
-            include_types = {
-                "user_message",
-                "assistant_message",
-                "system_message",
-                "tool_result",
-            }
         events = await self._conversation_service.get_run_events(
             conversation_id,
             tenant_id=actor.tenant_id,
-            include_types=include_types,
             workflow_run_id=workflow_run_id,
         )
         return events

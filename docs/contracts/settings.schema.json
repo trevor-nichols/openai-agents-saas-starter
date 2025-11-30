@@ -565,6 +565,45 @@
       "title": "Chat Stream Rate Limit Per Minute",
       "type": "integer"
     },
+    "CONTACT_EMAIL_EMAIL_RATE_LIMIT_PER_HOUR": {
+      "default": 3,
+      "description": "Contact form submissions allowed per email per hour.",
+      "title": "Contact Email Email Rate Limit Per Hour",
+      "type": "integer"
+    },
+    "CONTACT_EMAIL_IP_RATE_LIMIT_PER_HOUR": {
+      "default": 20,
+      "description": "Contact form submissions allowed per IP per hour.",
+      "title": "Contact Email Ip Rate Limit Per Hour",
+      "type": "integer"
+    },
+    "CONTACT_EMAIL_SUBJECT_PREFIX": {
+      "default": "[Contact]",
+      "description": "Subject prefix prepended to contact form emails.",
+      "title": "Contact Email Subject Prefix",
+      "type": "string"
+    },
+    "CONTACT_EMAIL_TEMPLATE_ID": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional Resend template ID for contact form deliveries.",
+      "title": "Contact Email Template Id"
+    },
+    "CONTACT_EMAIL_TO": {
+      "description": "Comma-separated or JSON list of recipients for contact form submissions (e.g., support@example.com,security@example.com).",
+      "items": {
+        "type": "string"
+      },
+      "title": "Contact Email To",
+      "type": "array"
+    },
     "DATABASE_URL": {
       "anyOf": [
         {

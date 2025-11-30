@@ -23,7 +23,6 @@ describe('fetchConversationEvents', () => {
       success: true,
       data: {
         conversation_id: 'conv-1',
-        mode: 'transcript' as const,
         items: [],
       },
     };
@@ -38,7 +37,31 @@ describe('fetchConversationEvents', () => {
     const result = await fetchConversationEvents({ conversationId: 'conv-1' });
 
     expect(result).toEqual(payload.data);
-    expect(global.fetch).toHaveBeenCalledWith('/api/conversations/conv-1/events?mode=transcript', expect.any(Object));
+    expect(global.fetch).toHaveBeenCalledWith('/api/conversations/conv-1/events', expect.any(Object));
+  });
+
+  it('includes workflow_run_id when provided', async () => {
+    const payload = {
+      success: true,
+      data: {
+        conversation_id: 'conv-1',
+        items: [],
+      },
+    };
+
+    const response = new Response(JSON.stringify(payload), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    global.fetch = vi.fn().mockResolvedValue(response);
+
+    await fetchConversationEvents({ conversationId: 'conv-1', workflowRunId: 'run-42' });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/conversations/conv-1/events?workflow_run_id=run-42',
+      expect.any(Object),
+    );
   });
 
   it('throws when backend signals failure', async () => {
@@ -52,4 +75,3 @@ describe('fetchConversationEvents', () => {
     await expect(fetchConversationEvents({ conversationId: 'conv-1' })).rejects.toThrow('oops');
   });
 });
-

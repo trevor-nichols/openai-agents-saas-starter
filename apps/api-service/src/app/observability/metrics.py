@@ -224,15 +224,15 @@ AGENT_RUN_EVENTS_PROJECTION_DURATION_SECONDS = Histogram(
 
 AGENT_RUN_EVENTS_READ_TOTAL = Counter(
     "agent_run_events_read_total",
-    "Count of run-event read attempts segmented by tenant and mode.",
-    ("tenant", "mode", "result"),
+    "Count of run-event read attempts segmented by tenant and result.",
+    ("tenant", "result"),
     registry=REGISTRY,
 )
 
 AGENT_RUN_EVENTS_READ_DURATION_SECONDS = Histogram(
     "agent_run_events_read_duration_seconds",
-    "Latency histogram for run-event reads segmented by tenant and mode.",
-    ("tenant", "mode"),
+    "Latency histogram for run-event reads segmented by tenant.",
+    ("tenant",),
     buckets=_LATENCY_BUCKETS,
     registry=REGISTRY,
 )

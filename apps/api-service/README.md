@@ -69,6 +69,12 @@ hatch env create
 
 This provisions a local virtualenv with all runtime and developer dependencies defined in `pyproject.toml`.
 
+#### Always use the project virtualenv
+- Prefer `hatch shell` or `hatch run <cmd>`; they pin PATH to `.venv/bin`.
+- If you use direnv, run `direnv allow` once in `apps/api-service` to pick up `.envrc` (it refuses to load if `.venv` is missing or not active).
+- Without hatch/direnv, run commands through `./scripts/enter.sh <cmd>` to guarantee they execute inside `.venv` (or start a subshell if no command is provided).
+These guardrails prevent Homebrew/pyenv Pythons from shadowing the repo’s virtualenv— the common cause of missing packages like `fakeredis`.
+
 ### 3. Environment Configuration
 
 Copy `.env.local.example` to `.env.local` and configure every secret (do **not** reuse the sample values outside local dev). Sections are labeled to indicate what is **required** vs **optional** in production; the CLI setup wizard will surface the same groupings. Highlights:

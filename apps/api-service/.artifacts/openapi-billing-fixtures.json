@@ -3054,22 +3054,6 @@
             }
           },
           {
-            "name": "mode",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "enum": [
-                "transcript",
-                "full"
-              ],
-              "type": "string",
-              "description": "Return only messages/tool results (transcript) or full fidelity (full).",
-              "default": "transcript",
-              "title": "Mode"
-            },
-            "description": "Return only messages/tool results (transcript) or full fidelity (full)."
-          },
-          {
             "name": "workflow_run_id",
             "in": "query",
             "required": false,
@@ -7371,15 +7355,6 @@
             "title": "Conversation Id",
             "description": "Conversation identifier."
           },
-          "mode": {
-            "type": "string",
-            "enum": [
-              "transcript",
-              "full"
-            ],
-            "title": "Mode",
-            "description": "Filter applied to returned events."
-          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/ConversationEventItem"
@@ -7391,7 +7366,6 @@
         "type": "object",
         "required": [
           "conversation_id",
-          "mode",
           "items"
         ],
         "title": "ConversationEventsResponse",

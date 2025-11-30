@@ -36,7 +36,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 
 ### OpenAPI + SDK regeneration
 - Export superset schema (billing + test fixtures) from repo root:
-  - `cd packages/starter_cli && python -m starter_cli.app api export-openapi --output ../apps/api-service/.artifacts/openapi-billing-fixtures.json --enable-billing --enable-test-fixtures`
+  - `cd packages/starter_cli && python -m starter_cli.app api export-openapi --output apps/api-service/.artifacts/openapi-billing-fixtures.json --enable-billing --enable-test-fixtures` (paths are resolved from the repo root, so skip leading `../`)
 - Regenerate the frontend client offline using that artifact:
   - `cd apps/web-app && OPENAPI_INPUT=../api-service/.artifacts/openapi-billing-fixtures.json pnpm generate:fixtures`
   - Output is written to `apps/web-app/lib/api/client/`.

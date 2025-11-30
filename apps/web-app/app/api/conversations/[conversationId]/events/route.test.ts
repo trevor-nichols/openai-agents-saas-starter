@@ -23,7 +23,6 @@ describe('/api/conversations/[conversationId]/events route', () => {
   it('returns events on success', async () => {
     const payload: ConversationEvents = {
       conversation_id: 'conv-1',
-      mode: 'transcript',
       items: [
         {
           sequence_no: 1,
@@ -39,13 +38,32 @@ describe('/api/conversations/[conversationId]/events route', () => {
 
     getConversationEvents.mockResolvedValueOnce(payload);
 
-    const response = await GET({ url: 'https://example.com/api?mode=transcript' } as unknown as NextRequest, context('conv-1'));
+    const response = await GET({ url: 'https://example.com/api' } as unknown as NextRequest, context('conv-1'));
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ success: true, data: payload });
     expect(getConversationEvents).toHaveBeenCalledWith('conv-1', {
-      mode: 'transcript',
       workflowRunId: undefined,
+    });
+  });
+
+  it('passes workflow_run_id through to the service', async () => {
+    const payload: ConversationEvents = {
+      conversation_id: 'conv-1',
+      items: [],
+    };
+
+    getConversationEvents.mockResolvedValueOnce(payload);
+
+    const response = await GET(
+      { url: 'https://example.com/api?workflow_run_id=run-123' } as unknown as NextRequest,
+      context('conv-1'),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ success: true, data: payload });
+    expect(getConversationEvents).toHaveBeenCalledWith('conv-1', {
+      workflowRunId: 'run-123',
     });
   });
 
@@ -66,4 +84,3 @@ describe('/api/conversations/[conversationId]/events route', () => {
     await expect(response.json()).resolves.toEqual({ success: false, error: 'Conversation not found' });
   });
 });
-

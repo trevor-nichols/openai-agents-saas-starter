@@ -679,7 +679,6 @@ class PostgresConversationRepository(ConversationRepository):
         conversation_id: str,
         *,
         tenant_id: str,
-        include_types: set[str] | None = None,
         workflow_run_id: str | None = None,
     ) -> list[ConversationEvent]:
         op_start = perf_counter()
@@ -700,8 +699,6 @@ class PostgresConversationRepository(ConversationRepository):
                 raise ConversationNotFoundError(f"Conversation {conversation_id} does not exist")
 
             stmt = select(AgentRunEvent).where(AgentRunEvent.conversation_id == conversation_uuid)
-            if include_types:
-                stmt = stmt.where(AgentRunEvent.run_item_type.in_(include_types))
             if workflow_run_id:
                 stmt = stmt.where(AgentRunEvent.workflow_run_id == workflow_run_id)
             stmt = stmt.order_by(AgentRunEvent.sequence_no)
@@ -741,15 +738,12 @@ class PostgresConversationRepository(ConversationRepository):
                 logger.debug("drift_gauge_update_failed", exc_info=True)
 
             tenant_label = _sanitize_tenant(tenant_id)
-            mode_label = "filtered" if include_types else "full"
             AGENT_RUN_EVENTS_READ_TOTAL.labels(
                 tenant=tenant_label,
-                mode=mode_label,
                 result="success",
             ).inc()
             AGENT_RUN_EVENTS_READ_DURATION_SECONDS.labels(
                 tenant=tenant_label,
-                mode=mode_label,
             ).observe(perf_counter() - op_start)
             return events
 

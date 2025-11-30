@@ -248,7 +248,7 @@ export function useConversationDetail(conversationId: string | null): UseConvers
 
 export function useConversationEvents(
   conversationId: string | null,
-  options?: { mode?: 'transcript' | 'full'; workflowRunId?: string | null },
+  options?: { workflowRunId?: string | null },
 ): UseConversationEventsReturn {
   const isEnabled = Boolean(conversationId);
   const {
@@ -259,13 +259,11 @@ export function useConversationEvents(
     refetch,
   } = useQuery({
     queryKey: queryKeys.conversations.events(conversationId ?? 'preview', {
-      mode: options?.mode ?? 'transcript',
       workflowRunId: options?.workflowRunId ?? null,
     }),
     queryFn: () =>
       fetchConversationEvents({
         conversationId: conversationId as string,
-        mode: options?.mode ?? 'transcript',
         workflowRunId: options?.workflowRunId ?? null,
       }),
     enabled: isEnabled,

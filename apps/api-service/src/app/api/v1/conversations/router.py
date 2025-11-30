@@ -1,7 +1,5 @@
 """Conversation management endpoints."""
 
-from typing import Literal
-
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 
 from app.api.dependencies.auth import CurrentUser, require_verified_scopes
@@ -135,10 +133,6 @@ async def get_conversation(
 @router.get("/{conversation_id}/events", response_model=ConversationEventsResponse)
 async def get_conversation_events(
     conversation_id: str,
-    mode: Literal["transcript", "full"] = Query(
-        "transcript",
-        description="Return only messages/tool results (transcript) or full fidelity (full).",
-    ),
     workflow_run_id: str | None = Query(
         None,
         description="Optional workflow run id to scope events to a single run.",
@@ -158,7 +152,6 @@ async def get_conversation_events(
         events = await agent_service.get_conversation_events(
             conversation_id,
             actor=actor,
-            mode=mode,
             workflow_run_id=workflow_run_id,
         )
     except ConversationNotFoundError as exc:
@@ -206,7 +199,6 @@ async def get_conversation_events(
 
     return ConversationEventsResponse(
         conversation_id=conversation_id,
-        mode=mode,
         items=response_items,
     )
 

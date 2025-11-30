@@ -197,14 +197,12 @@ class ConversationService:
         conversation_id: str,
         *,
         tenant_id: str,
-        include_types: set[str] | None = None,
         workflow_run_id: str | None = None,
     ) -> list[ConversationEvent]:
         normalized_tenant = _require_tenant_id(tenant_id)
         return await self._require_repository().get_run_events(
             conversation_id,
             tenant_id=normalized_tenant,
-            include_types=include_types,
             workflow_run_id=workflow_run_id,
         )
 

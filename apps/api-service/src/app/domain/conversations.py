@@ -211,6 +211,5 @@ class ConversationRepository(Protocol):
         conversation_id: str,
         *,
         tenant_id: str,
-        include_types: set[str] | None = None,
         workflow_run_id: str | None = None,
     ) -> list[ConversationEvent]: ...

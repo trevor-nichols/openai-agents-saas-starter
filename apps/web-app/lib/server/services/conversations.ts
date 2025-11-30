@@ -126,7 +126,7 @@ export async function getConversationHistory(
 
 export async function getConversationEvents(
   conversationId: string,
-  options?: { mode?: 'transcript' | 'full'; workflowRunId?: string | null },
+  options?: { workflowRunId?: string | null },
 ): Promise<ConversationEvents> {
   if (!conversationId) {
     throw new Error('Conversation id is required.');
@@ -143,7 +143,6 @@ export async function getConversationEvents(
       conversation_id: conversationId,
     },
     query: {
-      mode: options?.mode ?? 'transcript',
       workflow_run_id: options?.workflowRunId ?? undefined,
     },
   });
