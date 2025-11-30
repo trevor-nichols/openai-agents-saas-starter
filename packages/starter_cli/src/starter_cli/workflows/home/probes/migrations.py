@@ -8,6 +8,7 @@ from starter_cli.core.status_models import ProbeResult, ProbeState
 from starter_cli.workflows.home.probes.db import _pg_ping  # reuse db connectivity helper
 
 VERSIONS_DIR = PROJECT_ROOT / "apps" / "api-service" / "alembic" / "versions"
+ALEMBIC_INI = PROJECT_ROOT / "apps" / "api-service" / "alembic.ini"
 
 
 def migrations_probe() -> ProbeResult:
@@ -19,14 +20,15 @@ def migrations_probe() -> ProbeResult:
             remediation="Verify repo checkout includes migrations or regenerate via alembic.",
         )
 
-    local_head = _latest_migration_version(VERSIONS_DIR)
-    if local_head is None:
+    local_heads = _head_revisions(VERSIONS_DIR)
+    if not local_heads:
         return ProbeResult(
             name="migrations",
             state=ProbeState.WARN,
             detail="No migration files present",
             remediation="Generate an initial migration via Alembic.",
         )
+    local_head = sorted(local_heads)[-1]
 
     db_url = os.getenv("DATABASE_URL")
     if not db_url:
@@ -48,12 +50,12 @@ def migrations_probe() -> ProbeResult:
             metadata={"local_head": local_head},
         )
 
-    if db_revision == local_head:
+    if db_revision in local_heads:
         return ProbeResult(
             name="migrations",
             state=ProbeState.OK,
             detail=f"DB at head {db_revision}",
-            metadata={"local_head": local_head, "db_revision": db_revision},
+            metadata={"local_heads": local_heads, "db_revision": db_revision},
         )
 
     return ProbeResult(
@@ -61,23 +63,44 @@ def migrations_probe() -> ProbeResult:
         state=ProbeState.WARN,
         detail=f"DB at {db_revision}, code at {local_head}",
         remediation="Run migrations (just migrate) so DB matches code.",
-        metadata={"local_head": local_head, "db_revision": db_revision},
+        metadata={"local_heads": local_heads, "db_revision": db_revision},
     )
 
 
-def _latest_migration_version(versions_dir: Path) -> str | None:
-    """Return the latest migration revision id (by filename sort)."""
+def _head_revisions(versions_dir: Path) -> list[str]:
+    """
+    Return the current head revision(s) according to Alembic.
 
-    versions = sorted(
-        (p for p in versions_dir.glob("*.py") if p.is_file()),
-        key=lambda p: p.name,
-        reverse=True,
-    )
-    if not versions:
-        return None
-    # Alembic files are typically like 202501010101_abcd.py -> take prefix before underscore
-    stem = versions[0].stem
-    return stem.split("_")[0] if "_" in stem else stem
+    Prefer Alembic's ScriptDirectory (authoritative for heads/branches) to
+    avoid lexicographic mistakes on filenames (e.g., hex IDs vs timestamps).
+    """
+
+    try:
+        from alembic.config import Config
+        from alembic.script import ScriptDirectory
+
+        cfg = Config(str(ALEMBIC_INI))
+        cfg.set_main_option("script_location", str(VERSIONS_DIR.parent))
+        script_dir = ScriptDirectory.from_config(cfg)
+        heads = script_dir.get_heads()
+        if heads:
+            return list(heads)
+    except Exception:
+        # Fallback: filename sort (best-effort)
+        versions = sorted(
+            (p for p in versions_dir.glob("*.py") if p.is_file()),
+            key=lambda p: p.name,
+            reverse=True,
+        )
+        if not versions:
+            return []
+        stems = []
+        for p in versions:
+            stem = p.stem
+            stems.append(stem.split("_")[0] if "_" in stem else stem)
+        return stems
+
+    return []
 
 
 def _db_revision(db_url: str) -> tuple[str | None, str | None]:

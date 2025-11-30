@@ -86,9 +86,17 @@ class OpenAPIExporter:
         if not api_service_dir.exists():
             raise CLIError("apps/api-service directory not found; run from the repository root.")
 
+        # Prefer the src/ layout used by the current repo; fall back to legacy app/.
+        app_dir = api_service_dir / "src" / "app"
+        main_path = api_service_dir / "src" / "main.py"
+        if not app_dir.exists():
+            app_dir = api_service_dir / "app"
+            main_path = api_service_dir / "main.py"
+
         os.chdir(api_service_dir)
-        sys.path.insert(0, str(api_service_dir))
-        sys.path.insert(1, str(repo_root))
+        sys.path.insert(0, str(app_dir.parent))  # e.g., apps/api-service/src
+        sys.path.insert(1, str(api_service_dir))
+        sys.path.insert(2, str(repo_root))
         self._purge_existing_app_modules()
 
         if self.enable_billing:
@@ -96,8 +104,8 @@ class OpenAPIExporter:
         if self.enable_test_fixtures:
             os.environ["USE_TEST_FIXTURES"] = "true"
 
-        self._load_module("app", api_service_dir / "app" / "__init__.py")
-        main_module = self._load_module("app.main", api_service_dir / "main.py")
+        self._load_module("app", app_dir / "__init__.py")
+        main_module = self._load_module("app.main", main_path)
 
         create_application = getattr(main_module, "create_application", None)
         if create_application is None:

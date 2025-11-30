@@ -697,7 +697,7 @@ class StripeSetupFlow(StripeCLIBase):
         self._update_frontend_env()
 
     def _update_frontend_env(self) -> None:
-        frontend_path = self.ctx.project_root / "web-app" / ".env.local"
+        frontend_path = self.ctx.project_root / "apps" / "web-app" / ".env.local"
         if not frontend_path.parent.exists():
             console.warn(
                 "Frontend directory missing; skipped web-app/.env.local.",

@@ -143,25 +143,25 @@ typecheck-all:
 dev-up: _check_env
     {{env_runner}} -- bash -c '\
         set -euo pipefail; \
-        cd ..; \
+        cd {{repo_root}}; \
         python ops/observability/render_collector_config.py; \
         services="postgres redis"; \
         collector_msg=""; \
-        if [ "${ENABLE_OTEL_COLLECTOR:-false}" = "true" ]; then \
-            services="${services} otel-collector"; \
-            collector_msg=" + otel-collector (ports ${OTEL_COLLECTOR_HTTP_PORT:-4318}/${OTEL_COLLECTOR_GRPC_PORT:-4317})"; \
+        if [ "$ENABLE_OTEL_COLLECTOR" = "true" ]; then \
+            services="$services otel-collector"; \
+            collector_msg=" + otel-collector"; \
         fi; \
-        echo "Starting ${services}${collector_msg}"; \
-        docker compose -f {{compose_file}} up -d ${services}; \
+        echo "Starting $services$collector_msg"; \
+        docker compose -f {{compose_file}} up -d $services; \
     '
 
 dev-down: _check_env
-    {{env_runner}} -- bash -c 'cd .. && docker compose -f {{compose_file}} down'
+    {{env_runner}} -- bash -c 'cd {{repo_root}} && docker compose -f {{compose_file}} down'
 
 dev-logs: _check_env
     {{env_runner}} -- bash -c '\
         set -euo pipefail; \
-        cd ..; \
+        cd {{repo_root}}; \
         services="postgres redis"; \
         if [ "${ENABLE_OTEL_COLLECTOR:-false}" = "true" ]; then \
             services="${services} otel-collector"; \
@@ -170,7 +170,7 @@ dev-logs: _check_env
     '
 
 dev-ps: _check_env
-    {{env_runner}} -- bash -c 'cd .. && docker compose -f {{compose_file}} ps'
+    {{env_runner}} -- bash -c 'cd {{repo_root}} && docker compose -f {{compose_file}} ps'
 
 # -------------------------
 # MinIO (storage)
@@ -297,7 +297,7 @@ setup-production:
 seed-dev-user: dev-up _check_env
     {{env_runner}} -- bash -c ' \
         set -euo pipefail; \
-        cd ..; \
+        cd {{repo_root}}; \
         cmd=(python -m starter_cli.app users seed \
             --email "{{setup_user_email}}" \
             --tenant-slug "{{setup_user_tenant}}" \

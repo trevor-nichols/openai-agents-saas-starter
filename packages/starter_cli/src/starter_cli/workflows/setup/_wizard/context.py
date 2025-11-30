@@ -31,7 +31,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from ..infra import InfraSession
     from ..tenant_summary import TenantSummary
 
-FRONTEND_ENV_RELATIVE = Path("web-app/.env.local")
+FRONTEND_ENV_RELATIVE = Path("apps/web-app/.env.local")
 
 
 @dataclass(slots=True)

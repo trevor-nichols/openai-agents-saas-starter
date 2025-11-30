@@ -163,14 +163,14 @@ async def run_migrations_if_configured(*, force: bool = False) -> None:
 def _resolve_alembic_ini() -> Path:
     """Return the absolute path to the Alembic configuration file."""
 
-    project_root = Path(__file__).resolve().parents[3]
+    project_root = Path(__file__).resolve().parents[4]
     return project_root / "alembic.ini"
 
 
 def _resolve_alembic_scripts() -> Path:
     """Return the absolute path to the Alembic migrations directory."""
 
-    project_root = Path(__file__).resolve().parents[3]
+    project_root = Path(__file__).resolve().parents[4]
     return project_root / "alembic"
 
 

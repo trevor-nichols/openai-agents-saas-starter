@@ -107,17 +107,16 @@ class StartRunner:
                 self._spawn(
                     "backend",
                     ["hatch", "run", "serve"],
-                    cwd=PROJECT_ROOT,
+                    cwd=PROJECT_ROOT / "apps" / "api-service",
                     env=self._backend_env(),
                 )
             )
         if self.target in {"dev", "frontend"}:
-            # Note: pnpm requires the filter flag before the script when not using -r.
             launches.append(
                 self._spawn(
                     "frontend",
-                    ["pnpm", "--filter", "web-app", "dev"],
-                    cwd=PROJECT_ROOT / "web-app",
+                    ["pnpm", "dev", "--webpack"],
+                    cwd=PROJECT_ROOT / "apps" / "web-app",
                     env=self._frontend_env(),
                 )
             )

@@ -364,7 +364,7 @@ class SetupWizard:
         console.newline()
         console.section("Next Actions", "Bring the stack online and smoke-test the flow.")
         console.step("1.", "Backend: run `cd apps/api-service && hatch run serve`")
-        console.step("2.", "Frontend: run `pnpm dev` inside web-app")
+        console.step("2.", "Frontend: run `pnpm --filter web-app dev` inside apps/web-app")
         if self.ui:
             self.ui.log("Ready for `cd apps/api-service && hatch run serve` + `pnpm dev`.")
 
