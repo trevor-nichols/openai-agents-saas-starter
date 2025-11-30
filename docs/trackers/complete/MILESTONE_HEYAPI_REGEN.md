@@ -18,7 +18,7 @@ Goal: Integrate the regenerated HeyAPI surface into the Next.js app, upgrade cha
 - Sign-off: ✅
 
 ### M1 — Chat Schema Alignment (Complete)
-- [x] Propagate `structured_output` and `attachments` through chat client/server layers (`lib/api/chat.ts`, `lib/server/services/chat.ts`, `lib/server/streaming/chat.ts`, `lib/queries/chat.ts`, `lib/chat/useChatController.ts`).
+- [x] Propagate `structured_output` and `attachments` through chat client/server layers (`lib/api/chat.ts`, `lib/server/services/chat.ts`, `lib/server/streaming/chat.ts`, `lib/queries/chat.ts`, `lib/chat/controller/useChatController.ts`).
 - [x] Extend chat UI to render attachments + structured output (components under `components/ui/ai/*` and any feature wrappers).
 - [x] Update domain types (`lib/chat/types.ts`) to include attachments and structured output; ensure SSE parsing tolerates new fields.
 - [x] Tests: expand `lib/chat/__tests__` and `app/api/chat/*` route tests for new payloads; snapshot or fixture updates as needed.

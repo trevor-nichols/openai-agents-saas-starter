@@ -5,7 +5,7 @@ __pycache__/
 node_modules/
 .next/
 apps/web-app/.next/
-
+GEMINI.md
 # Scratch CLI runs
 tmp-cli-test*
 docs/environments/*.answers.json

@@ -21,6 +21,7 @@ import { ToolMetadataPanel } from './components/ToolMetadataPanel';
 import { CHAT_COPY } from './constants';
 import { useChatWorkspace } from './hooks/useChatWorkspace';
 import { formatConversationLabel } from './utils/formatters';
+import { ChatControllerProvider } from '@/lib/chat';
 
 export function ChatWorkspace() {
   const [insightsTab, setInsightsTab] = useState<'tools' | 'billing'>('tools');
@@ -34,19 +35,10 @@ export function ChatWorkspace() {
     agents,
     isLoadingAgents,
     agentsError,
-    messages,
-    isSending,
-    isLoadingHistory,
-    isClearingConversation,
     errorMessage,
     currentConversationId,
     selectedAgent,
     selectedAgentLabel,
-    activeAgent,
-    agentNotices,
-    toolEvents,
-    reasoningText,
-    lifecycleStatus,
     toolDrawerOpen,
     setToolDrawerOpen,
     detailDrawerOpen,
@@ -69,6 +61,7 @@ export function ChatWorkspace() {
     setSelectedAgent,
     runOptions,
     setRunOptions,
+    chatController,
   } = useChatWorkspace();
 
   useEffect(() => {
@@ -129,43 +122,36 @@ export function ChatWorkspace() {
 
           {errorMessage ? <ErrorState message={errorMessage} /> : null}
 
-          <ChatInterface
-            messages={messages}
-            onSendMessage={sendMessage}
-            isSending={isSending}
-            currentConversationId={currentConversationId}
-            onClearConversation={
-              currentConversationId
-                ? () => {
-                    void handleDeleteConversation(currentConversationId);
-                  }
-                : undefined
-            }
-            isClearingConversation={isClearingConversation}
-            isLoadingHistory={isLoadingHistory}
-            tools={toolEvents}
-            agentNotices={agentNotices}
-            reasoningText={reasoningText}
-            activeAgent={activeAgent}
-            lifecycleStatus={lifecycleStatus}
-            shareLocation={shareLocation}
-            onShareLocationChange={setShareLocation}
-            locationHint={locationHint}
-            onLocationHintChange={updateLocationField}
-            runOptions={{
-              maxTurns: runOptions.maxTurns,
-              previousResponseId: runOptions.previousResponseId,
-              handoffInputFilter: runOptions.handoffInputFilter,
-              runConfigRaw: runOptions.runConfigRaw,
-            }}
-            onRunOptionsChange={(next) =>
-              setRunOptions((prev) => ({
-                ...prev,
-                ...next,
-              }))
-            }
-            className="h-[78vh]"
-          />
+          <ChatControllerProvider value={chatController}>
+            <ChatInterface
+              onSendMessage={sendMessage}
+              currentConversationId={currentConversationId}
+              onClearConversation={
+                currentConversationId
+                  ? () => {
+                      void handleDeleteConversation(currentConversationId);
+                    }
+                  : undefined
+              }
+              shareLocation={shareLocation}
+              onShareLocationChange={setShareLocation}
+              locationHint={locationHint}
+              onLocationHintChange={updateLocationField}
+              runOptions={{
+                maxTurns: runOptions.maxTurns,
+                previousResponseId: runOptions.previousResponseId,
+                handoffInputFilter: runOptions.handoffInputFilter,
+                runConfigRaw: runOptions.runConfigRaw,
+              }}
+              onRunOptionsChange={(next) =>
+                setRunOptions((prev) => ({
+                  ...prev,
+                  ...next,
+                }))
+              }
+              className="h-[78vh]"
+            />
+          </ChatControllerProvider>
         </div>
 
         <div className="grid h-full gap-4 xl:grid-rows-[auto_1fr]">

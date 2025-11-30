@@ -10,7 +10,6 @@ import { GlassPanel, InlineTag } from '@/components/ui/foundation';
 import { EmptyState, SkeletonPanel } from '@/components/ui/states';
 import { cn } from '@/lib/utils';
 import { formatClockTime } from '@/lib/utils/time';
-import type { ChatMessage, ConversationLifecycleStatus, ToolState } from '@/lib/chat/types';
 import { Banner, BannerClose, BannerTitle } from '@/components/ui/banner';
 import {
   Conversation,
@@ -39,22 +38,30 @@ import { Textarea } from '@/components/ui/textarea';
 import { getAttachmentDownloadUrl } from '@/lib/api/storage';
 import { createLogger } from '@/lib/logging';
 import { useToast } from '@/components/ui/use-toast';
+import {
+  useChatMessages,
+  useChatToolEvents,
+  useChatAgentNotices,
+  useChatLifecycle,
+  useChatSelector,
+} from '@/lib/chat';
+import type { ChatMessage, ToolState, ConversationLifecycleStatus } from '@/lib/chat/types';
 
 const log = createLogger('chat-ui');
 
 interface ChatInterfaceProps {
-  messages: ChatMessage[];
   onSendMessage: (messageText: string) => Promise<void>;
-  isSending: boolean;
   currentConversationId: string | null;
   onClearConversation?: () => void | Promise<void>;
-  isClearingConversation?: boolean;
-  isLoadingHistory?: boolean;
+  messages?: ChatMessage[];
   tools?: ToolState[];
   agentNotices?: { id: string; text: string }[];
   reasoningText?: string;
   activeAgent?: string;
   lifecycleStatus?: ConversationLifecycleStatus;
+  isSending?: boolean;
+  isClearingConversation?: boolean;
+  isLoadingHistory?: boolean;
   shareLocation: boolean;
   onShareLocationChange: (value: boolean) => void;
   locationHint: {
@@ -82,18 +89,18 @@ interface ChatInterfaceProps {
 }
 
 export function ChatInterface({
-  messages,
   onSendMessage,
-  isSending,
   currentConversationId,
   onClearConversation,
-  isClearingConversation = false,
-  isLoadingHistory = false,
-  tools = [],
-  agentNotices = [],
-  reasoningText = '',
-  activeAgent,
-  lifecycleStatus,
+  messages: messagesProp,
+  tools: toolsProp,
+  agentNotices: agentNoticesProp,
+  reasoningText: reasoningTextProp,
+  activeAgent: activeAgentProp,
+  lifecycleStatus: lifecycleStatusProp,
+  isSending: isSendingProp,
+  isClearingConversation: isClearingConversationProp,
+  isLoadingHistory: isLoadingHistoryProp,
   shareLocation,
   onShareLocationChange,
   locationHint,
@@ -102,6 +109,25 @@ export function ChatInterface({
   onRunOptionsChange,
   className,
 }: ChatInterfaceProps) {
+  const messagesFromStore = useChatMessages();
+  const toolEventsFromStore = useChatToolEvents();
+  const agentNoticesFromStore = useChatAgentNotices();
+  const lifecycleFromStore = useChatLifecycle();
+  const activeAgentFromStore = useChatSelector((s) => s.activeAgent);
+  const reasoningFromStore = useChatSelector((s) => s.reasoningText);
+  const isSendingFromStore = useChatSelector((s) => s.isSending);
+  const isClearingFromStore = useChatSelector((s) => s.isClearingConversation);
+  const isLoadingHistoryFromStore = useChatSelector((s) => s.isLoadingHistory);
+
+  const messages = messagesProp ?? messagesFromStore;
+  const toolEvents = toolsProp ?? toolEventsFromStore;
+  const agentNotices = agentNoticesProp ?? agentNoticesFromStore;
+  const lifecycleStatus = lifecycleStatusProp ?? lifecycleFromStore;
+  const activeAgent = activeAgentProp ?? activeAgentFromStore;
+  const reasoningText = reasoningTextProp ?? reasoningFromStore;
+  const isSending = isSendingProp ?? isSendingFromStore;
+  const isClearingConversation = isClearingConversationProp ?? isClearingFromStore;
+  const isLoadingHistory = isLoadingHistoryProp ?? isLoadingHistoryFromStore;
   const [messageInput, setMessageInput] = useState('');
   const [attachmentState, setAttachmentState] = useState<
     Record<string, { url?: string; error?: string; loading?: boolean }>
@@ -298,9 +324,9 @@ export function ChatInterface({
                 </Reasoning>
               ) : null}
 
-              {tools.length > 0 ? (
+              {toolEvents.length > 0 ? (
                 <div className="space-y-3">
-                  {tools.map((tool) => (
+                  {toolEvents.map((tool) => (
                     <Tool key={tool.id} defaultOpen={tool.status !== 'output-available'}>
                       <ToolHeader
                         type={`tool-${tool.name || 'call'}` as ToolUIPart['type']}

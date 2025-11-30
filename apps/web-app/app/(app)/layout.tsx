@@ -6,6 +6,8 @@
 
 import { Suspense } from 'react';
 
+import 'katex/dist/katex.min.css';
+
 import { SilentRefresh } from '@/components/auth/SilentRefresh';
 import { AppMobileNav } from '@/components/shell/AppMobileNav';
 import type { AppNavItem } from '@/components/shell/AppNavLinks';

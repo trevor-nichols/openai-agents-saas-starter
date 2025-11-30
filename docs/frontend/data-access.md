@@ -94,7 +94,7 @@ The chat experience combines TanStack Query with an orchestrator hook so UI comp
    - `lib/queries/conversations.ts` owns list/detail keys; detail queries are prefetched any time a conversation is opened or messages stream.
 
 3. **Controller hook**  
-   - `lib/chat/useChatController.ts` handles message streaming, fallback to mutation, deletion, and agent selection state.  
+   - `lib/chat/controller/useChatController.ts` handles message streaming, fallback to mutation, deletion, and agent selection state.  
    - Consumers (e.g., `app/(agent)/page.tsx`) only read the controller output, keeping UI files <200 lines.
 
 4. **Testing**  

@@ -2,11 +2,11 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ConversationHistory } from '@/types/conversations';
-import { useChatController } from '@/lib/chat/useChatController';
+import { useChatController } from '@/lib/chat';
 import {
   createMutationMock,
   createQueryWrapper,
-} from './testUtils';
+} from '../testUtils';
 
 vi.mock('@/lib/api/conversations', () => ({
   fetchConversationHistory: vi.fn(),

@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 
-import { useChatController } from '@/lib/chat/useChatController';
+import { useChatController } from '@/lib/chat';
 import type { LocationHint } from '@/lib/api/client/types.gen';
 import { useAgents } from '@/lib/queries/agents';
 import { useBillingStream } from '@/lib/queries/billing';
@@ -26,6 +26,12 @@ export function useChatWorkspace() {
   } = useConversations();
   const { events: billingEvents, status: billingStreamStatus } = useBillingStream();
   const { agents, isLoadingAgents, agentsError } = useAgents();
+  const chatController = useChatController({
+    onConversationAdded: addConversationToList,
+    onConversationUpdated: updateConversationInList,
+    onConversationRemoved: removeConversationFromList,
+    reloadConversations: loadConversations,
+  });
   const {
     messages,
     isSending,
@@ -45,12 +51,7 @@ export function useChatWorkspace() {
     selectConversation,
     startNewConversation,
     deleteConversation,
-  } = useChatController({
-    onConversationAdded: addConversationToList,
-    onConversationUpdated: updateConversationInList,
-    onConversationRemoved: removeConversationFromList,
-    reloadConversations: loadConversations,
-  });
+  } = chatController;
   const { tools, isLoading: isLoadingTools, error: toolsError, refetch: refetchTools } = useTools();
 
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
@@ -226,5 +227,6 @@ export function useChatWorkspace() {
     setSelectedAgent,
     runOptions,
     setRunOptions,
+    chatController,
   };
 }

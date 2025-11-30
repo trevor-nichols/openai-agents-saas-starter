@@ -9,7 +9,7 @@ import { SectionHeader } from '@/components/ui/foundation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ConversationDetailDrawer } from '@/components/shared/conversations/ConversationDetailDrawer';
 import { Button } from '@/components/ui/button';
-import { useChatController } from '@/lib/chat/useChatController';
+import { useChatController } from '@/lib/chat';
 
 import { AGENT_WORKSPACE_COPY } from './constants';
 import { useAgentWorkspaceData } from './hooks/useAgentWorkspaceData';
@@ -44,30 +44,24 @@ export function AgentWorkspace() {
     removeConversationFromList,
   } = useAgentWorkspaceData();
 
-  const {
-    messages,
-    isSending,
-    isLoadingHistory,
-    isClearingConversation,
-    errorMessage,
-    currentConversationId,
-    selectedAgent,
-    setSelectedAgent,
-    activeAgent,
-    toolEvents,
-    reasoningText,
-    lifecycleStatus,
-    sendMessage,
-    selectConversation,
-    startNewConversation,
-    deleteConversation,
-    clearError,
-  } = useChatController({
+  const chatController = useChatController({
     onConversationAdded: addConversationToList,
     onConversationUpdated: updateConversationInList,
     onConversationRemoved: removeConversationFromList,
     reloadConversations: loadConversations,
   });
+
+  const {
+    errorMessage,
+    currentConversationId,
+    selectedAgent,
+    setSelectedAgent,
+    sendMessage,
+    selectConversation,
+    startNewConversation,
+    deleteConversation,
+    clearError,
+  } = chatController;
 
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [detailConversationId, setDetailConversationId] = useState<string | null>(null);
@@ -156,22 +150,15 @@ export function AgentWorkspace() {
           isLoadingAgents={isLoadingAgents}
           selectedAgent={selectedAgent}
           onSelectAgent={handleSelectAgent}
-          messages={messages}
-        isSending={isSending}
-        isLoadingHistory={isLoadingHistory}
-        isClearingConversation={isClearingConversation}
-        currentConversationId={currentConversationId}
-        errorMessage={errorMessage}
-        onClearError={clearError}
-        onSendMessage={sendMessage}
-        onStartNewConversation={startNewConversation}
-        onShowConversationDetail={handleShowCurrentConversation}
-        activeAgent={activeAgent}
-        tools={toolEvents}
-        reasoningText={reasoningText}
-        lifecycleStatus={lifecycleStatus}
-      />
-    </div>
+          currentConversationId={currentConversationId}
+          errorMessage={errorMessage}
+          onClearError={clearError}
+          onSendMessage={sendMessage}
+          onStartNewConversation={startNewConversation}
+          onShowConversationDetail={handleShowCurrentConversation}
+          chatController={chatController}
+        />
+      </div>
 
       <div className="flex justify-start">
         <div className="flex flex-wrap gap-2">

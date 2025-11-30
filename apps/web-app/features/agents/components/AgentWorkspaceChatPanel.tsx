@@ -3,10 +3,12 @@
 
 'use client';
 
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/states';
 import type { AgentSummary } from '@/types/agents';
-import type { ChatMessage, ConversationLifecycleStatus, ToolState } from '@/lib/chat/types';
+import { ChatControllerProvider } from '@/lib/chat';
+import type { UseChatControllerReturn } from '@/lib/chat';
 import { AgentSwitcher, ChatInterface } from '@/features/chat';
 
 interface AgentWorkspaceChatPanelProps {
@@ -15,20 +17,12 @@ interface AgentWorkspaceChatPanelProps {
   isLoadingAgents: boolean;
   selectedAgent: string;
   onSelectAgent: (agentName: string) => void;
-  messages: ChatMessage[];
-  isSending: boolean;
-  isLoadingHistory: boolean;
-  isClearingConversation: boolean;
   currentConversationId: string | null;
   errorMessage: string | null;
   onClearError: () => void;
   onSendMessage: (message: string) => Promise<void>;
   onStartNewConversation: () => void;
   onShowConversationDetail: () => void;
-  tools: ToolState[];
-  reasoningText: string;
-  activeAgent: string;
-  lifecycleStatus: ConversationLifecycleStatus;
   shareLocation?: boolean;
   locationHint?: {
     city?: string | null;
@@ -41,6 +35,7 @@ interface AgentWorkspaceChatPanelProps {
     field: 'city' | 'region' | 'country' | 'timezone',
     value: string,
   ) => void;
+  chatController?: UseChatControllerReturn;
 }
 
 export function AgentWorkspaceChatPanel({
@@ -49,25 +44,25 @@ export function AgentWorkspaceChatPanel({
   isLoadingAgents,
   selectedAgent,
   onSelectAgent,
-  messages,
-  isSending,
-  isLoadingHistory,
-  isClearingConversation,
   currentConversationId,
   errorMessage,
   onClearError,
   onSendMessage,
   onStartNewConversation,
   onShowConversationDetail,
-  tools,
-  reasoningText,
-  activeAgent,
-  lifecycleStatus,
   shareLocation = false,
   locationHint = {},
   onShareLocationChange,
   onLocationHintChange,
+  chatController,
 }: AgentWorkspaceChatPanelProps) {
+  const chatWrapper = (content: React.ReactNode) =>
+    chatController ? (
+      <ChatControllerProvider value={chatController}>{content}</ChatControllerProvider>
+    ) : (
+      content
+    );
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -102,31 +97,25 @@ export function AgentWorkspaceChatPanel({
         />
       ) : null}
 
-      <ChatInterface
-        messages={messages}
-        onSendMessage={onSendMessage}
-        isSending={isSending}
-        currentConversationId={currentConversationId}
-        onClearConversation={onStartNewConversation}
-        isClearingConversation={isClearingConversation}
-        isLoadingHistory={isLoadingHistory}
-        tools={tools}
-        reasoningText={reasoningText}
-        activeAgent={activeAgent}
-        lifecycleStatus={lifecycleStatus}
-        shareLocation={shareLocation}
-        onShareLocationChange={onShareLocationChange ?? (() => {})}
-        locationHint={locationHint}
-        onLocationHintChange={onLocationHintChange ?? (() => {})}
-        runOptions={{
-          maxTurns: undefined,
-          previousResponseId: undefined,
-          handoffInputFilter: undefined,
-          runConfigRaw: '',
-        }}
-        onRunOptionsChange={() => {}}
-        className="min-h-[520px]"
-      />
+      {chatWrapper(
+        <ChatInterface
+          onSendMessage={onSendMessage}
+          currentConversationId={currentConversationId}
+          onClearConversation={onStartNewConversation}
+          shareLocation={shareLocation}
+          onShareLocationChange={onShareLocationChange ?? (() => {})}
+          locationHint={locationHint}
+          onLocationHintChange={onLocationHintChange ?? (() => {})}
+          runOptions={{
+            maxTurns: undefined,
+            previousResponseId: undefined,
+            handoffInputFilter: undefined,
+            runConfigRaw: '',
+          }}
+          onRunOptionsChange={() => {}}
+          className="min-h-[520px]"
+        />,
+      )}
     </div>
   );
 }

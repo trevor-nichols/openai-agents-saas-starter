@@ -1,11 +1,11 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { useChatController } from '@/lib/chat/useChatController';
+import { useChatController } from '@/lib/chat';
 import {
   createMutationMock,
   createQueryWrapper,
-} from './testUtils';
+} from '../testUtils';
 
 const originalFetch = global.fetch;
 
