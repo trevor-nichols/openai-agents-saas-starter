@@ -41,6 +41,6 @@ typecheck:
 test:
     cd {{project_dir}} && hatch run test
 
-cleanup-run-events days?="" batch?="" sleep_ms?="" dry_run?="false": _check_env
+cleanup-run-events days="" batch="" sleep_ms="" dry_run="false": _check_env
     @echo "Cleaning up agent_run_events"
-    {{env_runner}} {{env_compose}} {{env_local}} {{env_default}} -- bash -lc 'cd {{project_dir}} && hatch run python scripts/cleanup_run_events.py {{if days != "" { "--days " + days } else {""}}} {{if batch != "" { "--batch " + batch } else {""}}} {{if sleep_ms != "" { "--sleep-ms " + sleep_ms } else {""}}} {{if dry_run == "true" {"--dry-run"} else {""}}}'
+    {{env_runner}} {{env_compose}} {{env_local}} {{env_default}} -- bash -lc 'cd {{project_dir}} && hatch run python scripts/cleanup_run_events.py {{ if days != "" { "--days " + days } else { "" } }} {{ if batch != "" { "--batch " + batch } else { "" } }} {{ if sleep_ms != "" { "--sleep-ms " + sleep_ms } else { "" } }} {{ if dry_run == "true" { "--dry-run" } else { "" } }}'

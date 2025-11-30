@@ -2,7 +2,9 @@ version: "3.11"
 
 services:
   minio:
-    image: minio/minio:RELEASE.2025-10-15T02-00-00Z
+    # Upstream removed official docker images in Oct 2025. Use the community-rebuilt,
+    # source-derived image that tracks the latest security release.
+    image: bigbeartechworld/big-bear-minio:RELEASE.2025-10-15T17-29-55Z
     container_name: agents-minio
     restart: unless-stopped
     environment:

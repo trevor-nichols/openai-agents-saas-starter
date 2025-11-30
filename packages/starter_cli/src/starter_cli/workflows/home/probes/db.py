@@ -13,6 +13,21 @@ except Exception:  # pragma: no cover - optional import
     asyncpg = None
 
 
+def _normalize_db_url(url: str) -> str:
+    """
+    asyncpg accepts `postgresql://` or `postgres://` schemes, but our app
+    typically uses the SQLAlchemy async form `postgresql+asyncpg://`.
+    Normalize to keep doctor/health checks compatible without forcing a
+    separate sync DSN.
+    """
+
+    if url.startswith("postgresql+asyncpg://"):
+        return "postgresql://" + url.split("postgresql+asyncpg://", 1)[1]
+    if url.startswith("postgres+asyncpg://"):
+        return "postgres://" + url.split("postgres+asyncpg://", 1)[1]
+    return url
+
+
 def db_probe(*, warn_only: bool = False) -> ProbeResult:
     url = os.getenv("DATABASE_URL")
     if not url:
@@ -72,12 +87,14 @@ def _pg_ping(url: str, *, timeout: float = 1.5) -> tuple[bool | None, str]:
     Returns (ok|False|None, detail). ``None`` means ping skipped (asyncpg unavailable).
     """
 
+    safe_url = _normalize_db_url(url)
+
     if asyncpg is None:
         return None, "asyncpg not installed; ping skipped"
 
     async def _run_ping() -> str:
         assert asyncpg is not None
-        conn = await asyncpg.connect(dsn=url, timeout=int(timeout))
+        conn = await asyncpg.connect(dsn=safe_url, timeout=int(timeout))
         try:
             await conn.execute("SELECT 1")
             return "select 1 ok"

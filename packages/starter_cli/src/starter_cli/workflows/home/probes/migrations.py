@@ -95,8 +95,13 @@ def _db_revision(db_url: str) -> tuple[str | None, str | None]:
     except Exception:  # pragma: no cover - same fallback as _pg_ping
         return None, "asyncpg not installed; cannot read alembic_version"
 
+    try:
+        from starter_cli.workflows.home.probes.db import _normalize_db_url
+    except Exception:  # pragma: no cover - defensive import
+        _normalize_db_url = lambda u: u  # type: ignore
+
     async def _fetch_rev() -> str | None:
-        conn = await asyncpg.connect(dsn=db_url, timeout=2)
+        conn = await asyncpg.connect(dsn=_normalize_db_url(db_url), timeout=2)
         try:
             row = await conn.fetchrow("SELECT version_num FROM alembic_version LIMIT 1;")
             return row["version_num"] if row else None

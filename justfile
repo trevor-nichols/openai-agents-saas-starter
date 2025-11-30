@@ -4,7 +4,8 @@ set shell := ["bash", "-uc"]
 
 # Env + helpers
 env_file := `python -c "import os; print(next((f for f in ['.env.local', '.env'] if os.path.exists(f)), ''))"`
-env_runner := "cd packages/starter_cli && hatch run python -m starter_cli.app --skip-env util run-with-env"
+repo_root := justfile_directory()
+env_runner := "cd packages/starter_cli && hatch run python -m starter_cli.app --skip-env util run-with-env " + repo_root + "/.env.compose " + repo_root + "/" + env_file
 api_just := "just -f apps/api-service/justfile"
 cli_just := "just -f packages/starter_cli/justfile"
 contracts_just := "just -f packages/starter_contracts/justfile"
@@ -140,7 +141,7 @@ typecheck-all:
 # -------------------------
 
 dev-up: _check_env
-    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -c '\
+    {{env_runner}} -- bash -c '\
         set -euo pipefail; \
         cd ..; \
         python ops/observability/render_collector_config.py; \
@@ -155,10 +156,10 @@ dev-up: _check_env
     '
 
 dev-down: _check_env
-    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -c 'cd .. && docker compose -f {{compose_file}} down'
+    {{env_runner}} -- bash -c 'cd .. && docker compose -f {{compose_file}} down'
 
 dev-logs: _check_env
-    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -c '\
+    {{env_runner}} -- bash -c '\
         set -euo pipefail; \
         cd ..; \
         services="postgres redis"; \
@@ -169,20 +170,20 @@ dev-logs: _check_env
     '
 
 dev-ps: _check_env
-    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -c 'cd .. && docker compose -f {{compose_file}} ps'
+    {{env_runner}} -- bash -c 'cd .. && docker compose -f {{compose_file}} ps'
 
 # -------------------------
 # MinIO (storage)
 # -------------------------
 
 storage-up: _check_env
-    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -c 'cd .. && docker compose -f {{minio_compose_file}} up -d minio'
+    {{env_runner}} -- bash -c 'cd {{repo_root}} && docker compose -f {{minio_compose_file}} up -d minio'
 
 storage-down: _check_env
-    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -c 'cd .. && docker compose -f {{minio_compose_file}} down'
+    {{env_runner}} -- bash -c 'cd {{repo_root}} && docker compose -f {{minio_compose_file}} down'
 
 storage-logs: _check_env
-    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -c 'cd .. && docker compose -f {{minio_compose_file}} logs -f --tail=200 minio'
+    {{env_runner}} -- bash -c 'cd {{repo_root}} && docker compose -f {{minio_compose_file}} logs -f --tail=200 minio'
 
 # -------------------------
 # Vault dev signer
@@ -206,14 +207,14 @@ verify-vault: vault-up _check_env
     VAULT_TOKEN={{vault_dev_root_token_id}} \
     VAULT_TRANSIT_KEY={{vault_transit_key}} \
     VAULT_VERIFY_ENABLED=true \
-    {{env_runner}} ../.env.compose ../{{env_file}} -- python -m starter_cli.app auth tokens issue-service-account --account dev-automation --scopes conversations:read --output text
+    {{env_runner}} -- bash -lc 'python -m starter_cli.app auth tokens issue-service-account --account dev-automation --scopes conversations:read --output text'
 
 # -------------------------
 # CLI helpers
 # -------------------------
 
 stripe-replay args: _check_env
-    {{env_runner}} ../.env.compose ../{{env_file}} -- python -m starter_cli.app stripe dispatches {{args}}
+    {{env_runner}} -- bash -lc 'python -m starter_cli.app stripe dispatches {{args}}'
 
 stripe-listen:
     cd packages/starter_cli && hatch run python -m starter_cli.app stripe webhook-secret
@@ -222,22 +223,22 @@ lint-stripe-fixtures:
     cd packages/starter_cli && hatch run python -m starter_cli.app stripe dispatches validate-fixtures
 
 test-stripe: _check_env
-    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -lc 'cd apps/api-service && hatch run pytest -m stripe_replay'
+    {{env_runner}} -- bash -lc 'cd apps/api-service && hatch run pytest -m stripe_replay'
 
 cli cmd:
     cd packages/starter_cli && hatch run python -m starter_cli.app {{cmd}}
 
 doctor: _check_env
-    {{env_runner}} ../.env.compose ../{{env_file}} -- python -m starter_cli.app doctor --strict --json var/reports/operator-dashboard.json --markdown var/reports/operator-dashboard.md
+    {{env_runner}} -- bash -lc 'python -m starter_cli.app doctor --strict --json var/reports/operator-dashboard.json --markdown var/reports/operator-dashboard.md'
 
 start-dev: _check_env
-    {{env_runner}} ../.env.compose ../{{env_file}} -- python -m starter_cli.app start dev --timeout 180
+    {{env_runner}} -- bash -lc 'python -m starter_cli.app start dev --timeout 180'
 
 start-backend: _check_env
-    {{env_runner}} ../.env.compose ../{{env_file}} -- python -m starter_cli.app start backend --timeout 120
+    {{env_runner}} -- bash -lc 'python -m starter_cli.app start backend --timeout 120'
 
 start-frontend: _check_env
-    {{env_runner}} ../.env.compose ../{{env_file}} -- python -m starter_cli.app start frontend --timeout 120
+    {{env_runner}} -- bash -lc 'python -m starter_cli.app start frontend --timeout 120'
 
 # Wizards & seeding
 
@@ -294,7 +295,7 @@ setup-production:
         --auto-geoip
 
 seed-dev-user: dev-up _check_env
-    {{env_runner}} ../.env.compose ../{{env_file}} -- bash -c ' \
+    {{env_runner}} -- bash -c ' \
         set -euo pipefail; \
         cd ..; \
         cmd=(python -m starter_cli.app users seed \
