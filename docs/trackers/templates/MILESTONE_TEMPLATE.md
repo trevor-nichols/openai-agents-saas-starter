@@ -72,10 +72,10 @@ Top-level workstreams, each with its own mini checklist.
 
 ### Workstream A – <Name>
 
-| ID | Area | Description | Owner | Status | Target |
-|----|------|-------------|-------|--------|--------|
-| A1 | API | … | … | ✅ | 2025-11-26 |
-| A2 | Tests | … | … | ⏳ | 2025-11-27 |
+| ID | Area | Description | Owner | Status |
+|----|------|-------------|-------|--------|
+| A1 | API | … | … | ✅ |
+| A2 | Tests | … | … | ⏳ |
 
 ### Workstream B – <Name>
 
