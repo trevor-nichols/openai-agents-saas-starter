@@ -3,15 +3,18 @@
 import {
   deleteConversationApiV1ConversationsConversationIdDelete,
   getConversationApiV1ConversationsConversationIdGet,
+  getConversationEventsApiV1ConversationsConversationIdEventsGet,
   listConversationsApiV1ConversationsGet,
   searchConversationsApiV1ConversationsSearchGet,
 } from '@/lib/api/client/sdk.gen';
 import type {
   ConversationHistory,
+  ConversationEventsResponse,
   ConversationListResponse as BackendConversationListResponse,
   ConversationSearchResponse as BackendConversationSearchResponse,
 } from '@/lib/api/client/types.gen';
 import type {
+  ConversationEvents,
   ConversationListItem,
   ConversationListPage,
   ConversationSearchPage,
@@ -119,6 +122,38 @@ export async function getConversationHistory(
   }
 
   return history;
+}
+
+export async function getConversationEvents(
+  conversationId: string,
+  options?: { mode?: 'transcript' | 'full'; workflowRunId?: string | null },
+): Promise<ConversationEvents> {
+  if (!conversationId) {
+    throw new Error('Conversation id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+
+  const response = await getConversationEventsApiV1ConversationsConversationIdEventsGet({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    path: {
+      conversation_id: conversationId,
+    },
+    query: {
+      mode: options?.mode ?? 'transcript',
+      workflow_run_id: options?.workflowRunId ?? undefined,
+    },
+  });
+
+  const events = response.data as ConversationEventsResponse | null;
+  if (!events) {
+    throw new Error('Conversation events not found.');
+  }
+
+  return events;
 }
 
 /**

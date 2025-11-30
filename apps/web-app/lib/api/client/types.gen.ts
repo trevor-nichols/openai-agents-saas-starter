@@ -493,6 +493,48 @@ export type ChatMessage = {
 };
 
 /**
+ * ContactSubmissionRequest
+ */
+export type ContactSubmissionRequest = {
+  /**
+   * Name
+   *
+   * Full name of the submitter.
+   */
+  name?: string | null;
+  /**
+   * Email
+   *
+   * Reply-to email address for the requester.
+   */
+  email: string;
+  /**
+   * Company
+   *
+   * Company or organization (optional).
+   */
+  company?: string | null;
+  /**
+   * Topic
+   *
+   * Optional topic or subject to aid routing.
+   */
+  topic?: string | null;
+  /**
+   * Message
+   *
+   * The body of the request.
+   */
+  message: string;
+  /**
+   * Honeypot
+   *
+   * Spam trap field; should remain empty.
+   */
+  honeypot?: string | null;
+};
+
+/**
  * ContainerBindRequest
  */
 export type ContainerBindRequest = {
@@ -604,6 +646,118 @@ export type ContainerResponse = {
    * Updated At
    */
   updated_at: string;
+};
+
+/**
+ * ConversationEventItem
+ *
+ * Full-fidelity run item in a conversation.
+ */
+export type ConversationEventItem = {
+  /**
+   * Sequence No
+   *
+   * Monotonic sequence number within the conversation.
+   */
+  sequence_no: number;
+  /**
+   * Run Item Type
+   *
+   * Normalized item type (message, tool_call, tool_result, mcp_call, reasoning).
+   */
+  run_item_type: string;
+  /**
+   * Run Item Name
+   *
+   * Provider-specific item name.
+   */
+  run_item_name?: string | null;
+  /**
+   * Role
+   */
+  role?: "user" | "assistant" | "system" | null;
+  /**
+   * Agent
+   *
+   * Agent active when the item was created.
+   */
+  agent?: string | null;
+  /**
+   * Tool Call Id
+   */
+  tool_call_id?: string | null;
+  /**
+   * Tool Name
+   */
+  tool_name?: string | null;
+  /**
+   * Model
+   */
+  model?: string | null;
+  /**
+   * Content Text
+   */
+  content_text?: string | null;
+  /**
+   * Reasoning Text
+   */
+  reasoning_text?: string | null;
+  /**
+   * Call Arguments
+   */
+  call_arguments?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Call Output
+   */
+  call_output?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Attachments
+   */
+  attachments?: Array<MessageAttachment>;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Workflow Run Id
+   *
+   * Workflow run identifier when the event was produced.
+   */
+  workflow_run_id?: string | null;
+  /**
+   * Timestamp
+   *
+   * ISO-8601 creation time of the item.
+   */
+  timestamp: string;
+};
+
+/**
+ * ConversationEventsResponse
+ *
+ * List of event-log items for a conversation.
+ */
+export type ConversationEventsResponse = {
+  /**
+   * Conversation Id
+   *
+   * Conversation identifier.
+   */
+  conversation_id: string;
+  /**
+   * Mode
+   *
+   * Filter applied to returned events.
+   */
+  mode: "transcript" | "full";
+  /**
+   * Items
+   */
+  items: Array<ConversationEventItem>;
 };
 
 /**
@@ -5384,6 +5538,64 @@ export type GetConversationApiV1ConversationsConversationIdGetResponses = {
 export type GetConversationApiV1ConversationsConversationIdGetResponse =
   GetConversationApiV1ConversationsConversationIdGetResponses[keyof GetConversationApiV1ConversationsConversationIdGetResponses];
 
+export type GetConversationEventsApiV1ConversationsConversationIdEventsGetData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Conversation Id
+       */
+      conversation_id: string;
+    };
+    query?: {
+      /**
+       * Mode
+       *
+       * Return only messages/tool results (transcript) or full fidelity (full).
+       */
+      mode?: "transcript" | "full";
+      /**
+       * Workflow Run Id
+       *
+       * Optional workflow run id to scope events to a single run.
+       */
+      workflow_run_id?: string | null;
+    };
+    url: "/api/v1/conversations/{conversation_id}/events";
+  };
+
+export type GetConversationEventsApiV1ConversationsConversationIdEventsGetErrors =
+  {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+  };
+
+export type GetConversationEventsApiV1ConversationsConversationIdEventsGetError =
+  GetConversationEventsApiV1ConversationsConversationIdEventsGetErrors[keyof GetConversationEventsApiV1ConversationsConversationIdEventsGetErrors];
+
+export type GetConversationEventsApiV1ConversationsConversationIdEventsGetResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: ConversationEventsResponse;
+  };
+
+export type GetConversationEventsApiV1ConversationsConversationIdEventsGetResponse =
+  GetConversationEventsApiV1ConversationsConversationIdEventsGetResponses[keyof GetConversationEventsApiV1ConversationsConversationIdEventsGetResponses];
+
 export type ListAvailableToolsApiV1ToolsGetData = {
   body?: never;
   path?: never;
@@ -6231,6 +6443,33 @@ export type DeleteObjectApiV1StorageObjectsObjectIdDeleteResponses = {
 
 export type DeleteObjectApiV1StorageObjectsObjectIdDeleteResponse =
   DeleteObjectApiV1StorageObjectsObjectIdDeleteResponses[keyof DeleteObjectApiV1StorageObjectsObjectIdDeleteResponses];
+
+export type SubmitContactApiV1ContactPostData = {
+  body: ContactSubmissionRequest;
+  path?: never;
+  query?: never;
+  url: "/api/v1/contact";
+};
+
+export type SubmitContactApiV1ContactPostErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type SubmitContactApiV1ContactPostError =
+  SubmitContactApiV1ContactPostErrors[keyof SubmitContactApiV1ContactPostErrors];
+
+export type SubmitContactApiV1ContactPostResponses = {
+  /**
+   * Successful Response
+   */
+  202: SuccessResponse;
+};
+
+export type SubmitContactApiV1ContactPostResponse =
+  SubmitContactApiV1ContactPostResponses[keyof SubmitContactApiV1ContactPostResponses];
 
 export type GetPlatformStatusApiV1StatusGetData = {
   body?: never;

@@ -18,6 +18,7 @@ from app.services.billing.billing_events import BillingEventsService
 from app.services.billing.billing_service import BillingService
 from app.services.billing.stripe.dispatcher import StripeEventDispatcher
 from app.services.billing.stripe.retry_worker import StripeDispatchRetryWorker
+from app.services.contact_service import ContactService
 from app.services.containers import ContainerService
 from app.services.conversation_service import ConversationService
 from app.services.geoip_service import GeoIPService, NullGeoIPService, shutdown_geoip_service
@@ -67,6 +68,7 @@ class ApplicationContainer:
     )
     stripe_event_repository: StripeEventRepository | None = None
     user_service: UserService | None = None
+    contact_service: ContactService | None = None
     geoip_service: GeoIPService = field(default_factory=NullGeoIPService)
     slack_notifier: SlackNotifier | None = None
     auth_service: AuthService | None = None
@@ -117,6 +119,7 @@ class ApplicationContainer:
         self.email_verification_service = None
         self.user_session_service = None
         self.service_account_token_service = None
+        self.contact_service = None
         self.agent_service = None
         self.signup_service = None
         self.invite_service = None

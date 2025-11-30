@@ -1,38 +1,55 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { GlassPanel, SectionHeader } from '@/components/ui/foundation';
-
-const DEFAULT_TO = 'support@yourcompany.com';
+import { useSubmitContactMutation } from '@/lib/queries/marketing';
 
 export function ContactForm() {
   const toast = useToast();
+  const submitMutation = useSubmitContactMutation();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [company, setCompany] = useState('');
+  const [topic, setTopic] = useState('');
   const [message, setMessage] = useState('');
-
-  const mailtoHref = useMemo(() => {
-    const subject = encodeURIComponent('Contact: AI Agent Starter');
-    const body = encodeURIComponent(
-      `Name: ${name}\nEmail: ${email}\nCompany: ${company}\n\nMessage:\n${message}`,
-    );
-    return `mailto:${DEFAULT_TO}?subject=${subject}&body=${body}`;
-  }, [name, email, company, message]);
+  const [honeypot, setHoneypot] = useState('');
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!email || !message) {
+    if (!email.trim() || !message.trim()) {
       toast.error({ title: 'Missing info', description: 'Please add your email and a short message.' });
       return;
     }
-    toast.success({ title: 'Opening your email client', description: 'Review and send the prefilled message.' });
-    window.location.href = mailtoHref;
+
+    submitMutation.mutate(
+      {
+        name,
+        email,
+        company,
+        topic,
+        message,
+        honeypot,
+      },
+      {
+        onSuccess: () => {
+          toast.success({ title: 'Message sent', description: 'Thanks for reaching out. We will reply shortly.' });
+          setName('');
+          setEmail('');
+          setCompany('');
+          setTopic('');
+          setMessage('');
+          setHoneypot('');
+        },
+        onError: (error) => {
+          toast.error({ title: 'Unable to send', description: error.message });
+        },
+      },
+    );
   };
 
   return (
@@ -44,6 +61,16 @@ export function ContactForm() {
           description="Tell us what you are building and how we can help wire the starter."
         />
         <form className="space-y-4" onSubmit={handleSubmit}>
+          {/* Honeypot field for spam bots */}
+          <input
+            type="text"
+            tabIndex={-1}
+            autoComplete="off"
+            value={honeypot}
+            onChange={(e) => setHoneypot(e.target.value)}
+            className="hidden"
+            aria-hidden="true"
+          />
           <div className="grid gap-4 md:grid-cols-2">
             <Input
               value={name}
@@ -66,6 +93,12 @@ export function ContactForm() {
             placeholder="Company (optional)"
             aria-label="Company"
           />
+          <Input
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            placeholder="Topic (optional)"
+            aria-label="Topic"
+          />
           <Textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
@@ -75,7 +108,9 @@ export function ContactForm() {
             required
           />
           <div className="flex flex-wrap gap-3">
-            <Button type="submit">Send via email</Button>
+            <Button type="submit" disabled={submitMutation.isPending}>
+              {submitMutation.isPending ? 'Sending…' : 'Send message'}
+            </Button>
             <Button type="button" variant="secondary" asChild>
               <a href="https://calendly.com/your-team/intro" target="_blank" rel="noreferrer">
                 Book a 15-min call

@@ -105,5 +105,4 @@ class ConversationEventsResponse(BaseModel):
     """List of event-log items for a conversation."""
 
     conversation_id: str = Field(description="Conversation identifier.")
-    mode: Literal["transcript", "full"] = Field(description="Filter applied to returned events.")
     items: list[ConversationEventItem]

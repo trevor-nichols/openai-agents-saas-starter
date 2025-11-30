@@ -79,6 +79,9 @@ import type {
   GetConversationApiV1ConversationsConversationIdGetData,
   GetConversationApiV1ConversationsConversationIdGetErrors,
   GetConversationApiV1ConversationsConversationIdGetResponses,
+  GetConversationEventsApiV1ConversationsConversationIdEventsGetData,
+  GetConversationEventsApiV1ConversationsConversationIdEventsGetErrors,
+  GetConversationEventsApiV1ConversationsConversationIdEventsGetResponses,
   GetCurrentUserInfoApiV1AuthMeGetData,
   GetCurrentUserInfoApiV1AuthMeGetResponses,
   GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetData,
@@ -236,6 +239,9 @@ import type {
   SubmitAccessRequestApiV1AuthRequestAccessPostData,
   SubmitAccessRequestApiV1AuthRequestAccessPostErrors,
   SubmitAccessRequestApiV1AuthRequestAccessPostResponses,
+  SubmitContactApiV1ContactPostData,
+  SubmitContactApiV1ContactPostErrors,
+  SubmitContactApiV1ContactPostResponses,
   UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteData,
   UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteErrors,
   UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteResponses,
@@ -1456,6 +1462,33 @@ export const getConversationApiV1ConversationsConversationIdGet = <
 };
 
 /**
+ * Get Conversation Events
+ */
+export const getConversationEventsApiV1ConversationsConversationIdEventsGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    GetConversationEventsApiV1ConversationsConversationIdEventsGetData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).get<
+    GetConversationEventsApiV1ConversationsConversationIdEventsGetResponses,
+    GetConversationEventsApiV1ConversationsConversationIdEventsGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/conversations/{conversation_id}/events",
+    ...options,
+  });
+};
+
+/**
  * List Available Tools
  *
  * Return metadata about registered tools.
@@ -1999,6 +2032,28 @@ export const deleteObjectApiV1StorageObjectsObjectIdDelete = <
     ],
     url: "/api/v1/storage/objects/{object_id}",
     ...options,
+  });
+};
+
+/**
+ * Submit Contact
+ */
+export const submitContactApiV1ContactPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<SubmitContactApiV1ContactPostData, ThrowOnError>,
+) => {
+  return (options.client ?? client).post<
+    SubmitContactApiV1ContactPostResponses,
+    SubmitContactApiV1ContactPostErrors,
+    ThrowOnError
+  >({
+    url: "/api/v1/contact",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
   });
 };
 

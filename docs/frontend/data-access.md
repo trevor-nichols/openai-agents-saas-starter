@@ -57,6 +57,12 @@ This document codifies how the Next.js frontend talks to the FastAPI backend. Ev
 - Add any domain-specific notes here or in `docs/<domain>/`.  
 - Cover fetch helpers with unit tests or integration tests where it adds value.
 
+## Contact form
+
+- Flow: client form ➜ `/app/api/contact` ➜ `lib/server/services/marketing.submitContact` ➜ FastAPI `POST /api/v1/contact`.
+- UI calls `useSubmitContactMutation` (TanStack Query) which wraps `lib/api/contact.submitContactRequest`.
+- The backend endpoint is unauthenticated; we still gate spam with a honeypot field.
+
 ### Choosing Between Server Services and `/api` Fetchers
 
 - **Server components/actions** call domain services directly. Example: server actions in the chat workspace invoke `lib/server/services/chat.ts` so the SDK never leaks to the browser.  
@@ -141,6 +147,12 @@ When extending the chat domain, follow the same pattern: update helpers/hooks, k
 4. **Exports** – Until the backend delivers CSV/PDF, the drawer generates a JSON blob for quick downloads; once servers are ready we can swap the handler to call `/api/conversations/{id}/export` without touching UI code.
 
 This layering keeps the archive UX responsive and predictable, and the same hooks can be reused by upcoming admin/audit surfaces.
+
+### Conversation Events
+
+- Flow: `fetchConversationEvents` → `/app/api/conversations/[conversationId]/events` → `getConversationEvents` service → FastAPI `GET /api/v1/conversations/{id}/events`.
+- Default `mode` is `transcript`; pass `mode=full` plus optional `workflow_run_id` for audit-grade detail (tool calls, reasoning, outputs).
+- Hook: `useConversationEvents(conversationId, { mode, workflowRunId })` returns cached event logs; history remains available as a fallback while UI migrates to events.
 
 ## Agent Catalog Flow
 

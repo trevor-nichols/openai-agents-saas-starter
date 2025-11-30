@@ -1,6 +1,9 @@
 """Authentication, authorization, and token hygiene settings."""
 from __future__ import annotations
 
+import json
+from typing import Any
+
 from pydantic import BaseModel, Field, field_validator
 
 from .base import SAFE_ENVIRONMENTS, BaseAppSettings
@@ -138,6 +141,34 @@ class SecuritySettingsMixin(BaseModel):
         default=10,
         description="Verification email sends per IP per hour.",
         alias="EMAIL_VERIFICATION_IP_RATE_LIMIT_PER_HOUR",
+    )
+    contact_email_recipients: list[str] = Field(
+        default_factory=lambda: ["support@localhost"],
+        description=(
+            "Comma-separated or JSON list of recipients for contact form submissions "
+            "(e.g., support@example.com,security@example.com)."
+        ),
+        alias="CONTACT_EMAIL_TO",
+    )
+    contact_email_template_id: str | None = Field(
+        default=None,
+        description="Optional Resend template ID for contact form deliveries.",
+        alias="CONTACT_EMAIL_TEMPLATE_ID",
+    )
+    contact_email_subject_prefix: str = Field(
+        default="[Contact]",
+        description="Subject prefix prepended to contact form emails.",
+        alias="CONTACT_EMAIL_SUBJECT_PREFIX",
+    )
+    contact_email_rate_limit_per_email_per_hour: int = Field(
+        default=3,
+        description="Contact form submissions allowed per email per hour.",
+        alias="CONTACT_EMAIL_EMAIL_RATE_LIMIT_PER_HOUR",
+    )
+    contact_email_rate_limit_per_ip_per_hour: int = Field(
+        default=20,
+        description="Contact form submissions allowed per IP per hour.",
+        alias="CONTACT_EMAIL_IP_RATE_LIMIT_PER_HOUR",
     )
     enable_resend_email_delivery: bool = Field(
         default=False,
@@ -303,3 +334,46 @@ class SecuritySettingsMixin(BaseModel):
         if value <= 0:
             raise ValueError("Configuration value must be greater than zero.")
         return value
+
+    @field_validator("contact_email_recipients", mode="before")
+    @classmethod
+    def _parse_contact_recipients(cls, value: Any) -> list[str]:
+        recipients = _parse_email_list(value)
+        if not recipients:
+            return ["support@localhost"]
+        return recipients
+
+    @field_validator("contact_email_subject_prefix")
+    @classmethod
+    def _normalize_contact_subject_prefix(cls, value: str) -> str:
+        normalized = value.strip()
+        return normalized or "[Contact]"
+
+
+def _parse_email_list(value: Any) -> list[str]:
+    if value in (None, "", []):
+        return []
+    raw_list: list[str]
+    if isinstance(value, str):
+        trimmed = value.strip()
+        if not trimmed:
+            return []
+        try:
+            parsed = json.loads(trimmed)
+        except json.JSONDecodeError:
+            parsed = None
+        if isinstance(parsed, list):
+            raw_list = [str(item) for item in parsed]
+        else:
+            raw_list = list(trimmed.split(","))
+    elif isinstance(value, list | tuple | set):
+        raw_list = [str(item) for item in value]
+    else:
+        raise ValueError("Recipient list must be a string or sequence.")
+
+    normalized: list[str] = []
+    for entry in raw_list:
+        candidate = entry.strip()
+        if candidate and candidate not in normalized:
+            normalized.append(candidate)
+    return normalized

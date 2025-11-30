@@ -16,10 +16,12 @@ import type {
   ConversationListItem,
   ConversationListPage,
   ConversationSearchResultItem,
+  ConversationEvents,
 } from '@/types/conversations';
 import {
   fetchConversationsPage,
   fetchConversationHistory,
+  fetchConversationEvents,
   sortConversationsByDate,
   searchConversations,
 } from '@/lib/api/conversations';
@@ -52,6 +54,14 @@ interface UseConversationDetailReturn {
   isFetchingDetail: boolean;
   detailError: string | null;
   refetchDetail: () => Promise<void>;
+}
+
+interface UseConversationEventsReturn {
+  events: ConversationEvents | null;
+  isLoadingEvents: boolean;
+  isFetchingEvents: boolean;
+  eventsError: string | null;
+  refetchEvents: () => Promise<void>;
 }
 
 /**
@@ -233,5 +243,41 @@ export function useConversationDetail(conversationId: string | null): UseConvers
     isFetchingDetail: isFetching && isEnabled,
     detailError: error?.message ?? null,
     refetchDetail: () => refetch().then(() => undefined),
+  };
+}
+
+export function useConversationEvents(
+  conversationId: string | null,
+  options?: { mode?: 'transcript' | 'full'; workflowRunId?: string | null },
+): UseConversationEventsReturn {
+  const isEnabled = Boolean(conversationId);
+  const {
+    data,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: queryKeys.conversations.events(conversationId ?? 'preview', {
+      mode: options?.mode ?? 'transcript',
+      workflowRunId: options?.workflowRunId ?? null,
+    }),
+    queryFn: () =>
+      fetchConversationEvents({
+        conversationId: conversationId as string,
+        mode: options?.mode ?? 'transcript',
+        workflowRunId: options?.workflowRunId ?? null,
+      }),
+    enabled: isEnabled,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+
+  return {
+    events: data ?? null,
+    isLoadingEvents: isLoading && isEnabled,
+    isFetchingEvents: isFetching && isEnabled,
+    eventsError: error?.message ?? null,
+    refetchEvents: () => refetch().then(() => undefined),
   };
 }

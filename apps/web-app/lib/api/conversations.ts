@@ -13,6 +13,7 @@ import type {
   ConversationListItem,
   ConversationListPage,
   ConversationSearchPage,
+  ConversationEvents,
 } from '@/types/conversations';
 
 /**
@@ -92,6 +93,40 @@ export async function fetchConversationHistory(
   }
 
   return (await response.json()) as ConversationHistory;
+}
+
+export async function fetchConversationEvents(params: {
+  conversationId: string;
+  mode?: 'transcript' | 'full';
+  workflowRunId?: string | null;
+}): Promise<ConversationEvents> {
+  const { conversationId, mode = 'transcript', workflowRunId } = params;
+
+  const searchParams = new URLSearchParams();
+  if (mode) searchParams.set('mode', mode);
+  if (workflowRunId) searchParams.set('workflow_run_id', workflowRunId);
+
+  const response = await fetch(
+    `/api/conversations/${encodeURIComponent(conversationId)}/events${
+      searchParams.toString() ? `?${searchParams.toString()}` : ''
+    }`,
+    {
+      method: 'GET',
+      cache: 'no-store',
+    },
+  );
+
+  const payload = (await response.json().catch(() => ({}))) as {
+    success?: boolean;
+    data?: ConversationEvents;
+    error?: string;
+  };
+
+  if (!response.ok || payload.success === false || !payload.data) {
+    throw new Error(payload.error || 'Failed to load conversation events');
+  }
+
+  return payload.data;
 }
 
 /**

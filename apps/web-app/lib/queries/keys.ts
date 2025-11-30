@@ -16,6 +16,8 @@ export const queryKeys = {
       [...queryKeys.conversations.lists(), filters] as const,
     details: () => [...queryKeys.conversations.all, 'detail'] as const,
     detail: (id: string) => [...queryKeys.conversations.details(), id] as const,
+    events: (id: string, filters?: Record<string, unknown>) =>
+      [...queryKeys.conversations.all, 'events', id, filters ?? {}] as const,
   },
   billing: {
     all: ['billing'] as const,
@@ -95,5 +97,9 @@ export const queryKeys = {
   containers: {
     all: ['containers'] as const,
     list: () => [...queryKeys.containers.all, 'list'] as const,
+  },
+  marketing: {
+    all: ['marketing'] as const,
+    contact: () => [...queryKeys.marketing.all, 'contact'] as const,
   },
 } as const;
