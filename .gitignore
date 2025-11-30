@@ -72,6 +72,8 @@ cover/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+apps/api-service/test.db
+apps/api-service/smoke.db
 
 # Flask stuff:
 instance/

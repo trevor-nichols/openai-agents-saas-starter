@@ -60,6 +60,7 @@ help:
     echo "  just doctor                 # CLI doctor report" && \
     echo "  just seed-dev-user          # Seed a developer account" && \
     echo "  just issue-demo-token       # Issue service-account token" && \
+    echo "  just smoke-http             # Run api-service HTTP smoke suite (starts local server)" && \
     echo "Package helpers:" && \
     echo "  just backend-lint|typecheck|test    # Delegates to api-service" && \
     echo "  just cli-lint|typecheck|test        # Delegates to packages/starter_cli" && \
@@ -90,6 +91,9 @@ backend-typecheck:
 
 backend-test:
     {{api_just}} test
+
+smoke-http:
+    {{api_just}} smoke-http
 
 cli-lint:
     {{cli_just}} lint

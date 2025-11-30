@@ -221,6 +221,7 @@ markers = [
   "postgres: marks tests that require a running Postgres instance",
   "stripe_replay: fixture-driven Stripe webhook replay tests",
   "integration: long-running integration tests (docker, external services)",
+  "smoke: fast HTTP smoke tests against a running api-service",
 ]
 
 [tool.coverage.run]
