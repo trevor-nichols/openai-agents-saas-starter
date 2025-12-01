@@ -1,5 +1,6 @@
 import { SkeletonPanel } from '@/components/ui/states';
-import { Button } from '@/components/ui/button';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { InlineTag } from '@/components/ui/foundation';
 import { cn } from '@/lib/utils';
 import type { WorkflowSummaryView } from '@/lib/workflows/types';
 
@@ -24,34 +25,43 @@ export function WorkflowList({ items, isLoading, selectedKey, onSelect }: Workfl
   }
 
   return (
-    <div className="space-y-2">
+    <RadioGroup
+      value={selectedKey ?? undefined}
+      onValueChange={(value) => onSelect(value)}
+      className="flex flex-col gap-2"
+    >
       {items.map((workflow) => {
         const active = workflow.key === selectedKey;
         return (
-          <Button
+          <label
             key={workflow.key}
-            onClick={() => onSelect(workflow.key)}
-            variant={active ? 'default' : 'ghost'}
+            htmlFor={`workflow-${workflow.key}`}
             className={cn(
-              'w-full justify-start rounded-lg border px-4 py-3 text-left transition',
+              'flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 transition',
+              'hover:border-primary/30 hover:bg-primary/5 focus-within:ring-2 focus-within:ring-primary/40',
               active
-                ? 'border-primary/60 bg-primary/10 text-primary-foreground'
-                : 'border-white/5 bg-white/5 hover:border-white/10'
+                ? 'border-primary/60 bg-primary/10 shadow-sm'
+                : 'border-white/5 bg-white/5'
             )}
           >
-            <div className="flex items-center justify-between gap-2">
-              <div className="text-sm font-semibold">{workflow.display_name}</div>
-              {workflow.default ? (
-                <span className="text-[11px] uppercase tracking-wide text-primary">Default</span>
+            <RadioGroupItem id={`workflow-${workflow.key}`} value={workflow.key} className="mt-1" />
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex items-center gap-2">
+                <div className="truncate text-sm font-semibold">{workflow.display_name}</div>
+                {workflow.default ? (
+                  <InlineTag className="px-2 py-0.5 text-[10px] uppercase tracking-wide" tone="default">
+                    Default
+                  </InlineTag>
+                ) : null}
+              </div>
+              {workflow.description ? (
+                <p className="line-clamp-2 text-xs text-foreground/70">{workflow.description}</p>
               ) : null}
+              <p className="text-[11px] text-foreground/50">Steps: {workflow.step_count}</p>
             </div>
-            {workflow.description ? (
-              <p className="mt-1 text-xs text-foreground/70">{workflow.description}</p>
-            ) : null}
-              <p className="mt-1 text-[11px] text-foreground/50">Steps: {workflow.step_count}</p>
-          </Button>
+          </label>
         );
       })}
-    </div>
+    </RadioGroup>
   );
 }

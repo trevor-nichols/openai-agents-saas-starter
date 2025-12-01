@@ -28,6 +28,14 @@ import { WorkflowStreamLog } from './components/WorkflowStreamLog';
 import { WorkflowDescriptorCard } from './components/WorkflowDescriptorCard';
 import { WorkflowRunsList } from './components/WorkflowRunsList';
 import { WorkflowRunConversation } from './components/WorkflowRunConversation';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 
 type StreamEventWithMeta = StreamingWorkflowEvent & { receivedAt: string };
 
@@ -56,6 +64,7 @@ export function WorkflowsWorkspace() {
   const [runError, setRunError] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamStatus, setStreamStatus] = useState<StreamStatus>('idle');
+  const [isTranscriptOpen, setIsTranscriptOpen] = useState(false);
   const [lastRunSummary, setLastRunSummary] = useState<{
     workflowKey: string;
     runId?: string | null;
@@ -85,6 +94,9 @@ export function WorkflowsWorkspace() {
 
   useEffect(() => {
     selectedRunIdRef.current = selectedRunId;
+    if (!selectedRunId) {
+      setIsTranscriptOpen(false);
+    }
   }, [selectedRunId]);
 
   const initialKey = useMemo(() => workflows[0]?.key ?? null, [workflows]);
@@ -151,7 +163,6 @@ export function WorkflowsWorkspace() {
   const handleRun = async (input: {
     workflowKey: string;
     message: string;
-    conversationId?: string | null;
     shareLocation?: boolean;
   }) => {
     setRunError(null);
@@ -164,7 +175,6 @@ export function WorkflowsWorkspace() {
     try {
       const body: WorkflowRunRequestBody = {
         message: input.message,
-        conversation_id: input.conversationId ?? undefined,
         share_location: input.shareLocation ?? null,
       };
 
@@ -255,7 +265,7 @@ export function WorkflowsWorkspace() {
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+    <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)_320px]">
       <div className="space-y-3">
         <SectionHeader title="Workflows" description="Run multi-step workflows with streaming output." />
         <GlassPanel className="p-4 space-y-4">
@@ -307,8 +317,15 @@ export function WorkflowsWorkspace() {
             </div>
           ) : null}
 
-          <div className="space-y-2">
-            <div className="text-xs font-semibold uppercase tracking-wide text-foreground/60">Live events</div>
+          <Sheet open={isTranscriptOpen} onOpenChange={setIsTranscriptOpen}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-xs font-semibold uppercase tracking-wide text-foreground/60">Live events</div>
+              <SheetTrigger asChild>
+                <Button size="sm" variant="outline" disabled={!selectedRunId}>
+                  View transcript
+                </Button>
+              </SheetTrigger>
+            </div>
             {lastRunSummary ? (
               <div className="rounded-md border border-white/5 bg-white/5 px-3 py-2 text-xs text-foreground/80 flex flex-wrap gap-3">
                 <InlineTag tone="default">
@@ -327,9 +344,47 @@ export function WorkflowsWorkspace() {
               </div>
             ) : null}
             <WorkflowStreamLog events={streamEvents} />
-          </div>
+            <SheetContent side="right" className="sm:max-w-xl w-full">
+              <SheetHeader>
+                <SheetTitle>Run transcript</SheetTitle>
+                <SheetDescription>Displays step outputs as a conversation.</SheetDescription>
+              </SheetHeader>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {selectedRunId ? <InlineTag tone="default">Run: {selectedRunId}</InlineTag> : null}
+                {runDetailQuery.data?.workflow_key ? (
+                  <InlineTag tone="default">
+                    Workflow: {
+                      workflows.find((w) => w.key === runDetailQuery.data?.workflow_key)?.display_name ??
+                      runDetailQuery.data.workflow_key
+                    }
+                  </InlineTag>
+                ) : null}
+                {runDetailQuery.data?.status ? (
+                  <InlineTag tone="default">Status: {runDetailQuery.data.status}</InlineTag>
+                ) : null}
+                {runDetailQuery.data?.conversation_id ? (
+                  <InlineTag tone="default">Conversation: {runDetailQuery.data.conversation_id}</InlineTag>
+                ) : null}
+                {runDetailQuery.data?.status === 'running' ? (
+                  <Button size="sm" variant="outline" onClick={handleCancelRun} disabled={cancelRunMutation.isPending}>
+                    {cancelRunMutation.isPending ? 'Canceling…' : 'Cancel run'}
+                  </Button>
+                ) : null}
+              </div>
+              <div className="mt-4 h-[70vh] overflow-y-auto pr-2">
+                <WorkflowRunConversation
+                  run={runDetailQuery.data ?? null}
+                  events={runEventsQuery.data ?? null}
+                  isLoadingRun={runDetailQuery.isLoading}
+                  isLoadingEvents={runEventsQuery.isLoading}
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
         </GlassPanel>
+      </div>
 
+      <div className="space-y-4">
         <GlassPanel className="p-4 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -370,44 +425,6 @@ export function WorkflowsWorkspace() {
             onSelectRun={handleSelectRun}
             selectedRunId={selectedRunId}
             onRefresh={() => runsQuery.refetch()}
-          />
-        </GlassPanel>
-
-        <GlassPanel className="p-4 space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <div>
-              <div className="text-sm font-semibold">Run transcript</div>
-              <p className="text-xs text-foreground/60">Displays step outputs as a conversation.</p>
-            </div>
-            {selectedRunId ? (
-              <InlineTag tone="default">Run: {selectedRunId}</InlineTag>
-            ) : null}
-            {runDetailQuery.data?.workflow_key ? (
-              <InlineTag tone="default">
-                Workflow: {
-                  workflows.find((w) => w.key === runDetailQuery.data?.workflow_key)?.display_name ??
-                  runDetailQuery.data.workflow_key
-                }
-              </InlineTag>
-            ) : null}
-            {runDetailQuery.data?.status ? (
-              <InlineTag tone="default">Status: {runDetailQuery.data.status}</InlineTag>
-            ) : null}
-            {runDetailQuery.data?.conversation_id ? (
-              <InlineTag tone="default">Conversation: {runDetailQuery.data.conversation_id}</InlineTag>
-            ) : null}
-            {runDetailQuery.data?.status === 'running' ? (
-              <Button size="sm" variant="outline" onClick={handleCancelRun} disabled={cancelRunMutation.isPending}>
-                {cancelRunMutation.isPending ? 'Canceling…' : 'Cancel run'}
-              </Button>
-            ) : null}
-          </div>
-
-          <WorkflowRunConversation
-            run={runDetailQuery.data ?? null}
-            events={runEventsQuery.data ?? null}
-            isLoadingRun={runDetailQuery.isLoading}
-            isLoadingEvents={runEventsQuery.isLoading}
           />
         </GlassPanel>
       </div>

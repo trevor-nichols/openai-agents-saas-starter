@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { SkeletonPanel, EmptyState } from '@/components/ui/states';
@@ -10,7 +9,7 @@ import { InlineTag } from '@/components/ui/foundation';
 
 interface WorkflowRunPanelProps {
   selectedKey: string | null;
-  onRun: (payload: { workflowKey: string; message: string; conversationId?: string | null; shareLocation?: boolean }) => Promise<void>;
+  onRun: (payload: { workflowKey: string; message: string; shareLocation?: boolean }) => Promise<void>;
   isRunning: boolean;
   runError?: string | null;
   isLoadingWorkflows?: boolean;
@@ -26,7 +25,6 @@ export function WorkflowRunPanel({
   streamStatus = 'idle',
 }: WorkflowRunPanelProps) {
   const [message, setMessage] = useState('');
-  const [conversationId, setConversationId] = useState('');
   const [shareLocation, setShareLocation] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -49,7 +47,6 @@ export function WorkflowRunPanel({
     await onRun({
       workflowKey: selectedKey,
       message,
-      conversationId: conversationId.trim() || null,
       shareLocation,
     });
   };
@@ -67,28 +64,17 @@ export function WorkflowRunPanel({
           ref={textareaRef}
         />
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="space-y-1">
-          <Label className="text-sm font-semibold">Conversation ID (optional)</Label>
-          <Input
-            value={conversationId}
-            onChange={(e) => setConversationId(e.target.value)}
-            placeholder="Reuse an existing conversation"
-            disabled={isRunning}
-          />
-        </div>
-        <div className="flex items-center gap-3">
-          <Switch
-            id="workflow-share-location"
-            checked={shareLocation}
-            onCheckedChange={setShareLocation}
-            disabled={isRunning}
-            aria-label="Share location with hosted tools"
-          />
-          <Label htmlFor="workflow-share-location" className="text-sm">
-            Share location with hosted tools
-          </Label>
-        </div>
+      <div className="flex items-center gap-3">
+        <Switch
+          id="workflow-share-location"
+          checked={shareLocation}
+          onCheckedChange={setShareLocation}
+          disabled={isRunning}
+          aria-label="Share location with hosted tools"
+        />
+        <Label htmlFor="workflow-share-location" className="text-sm">
+          Share location with hosted tools
+        </Label>
       </div>
       <div className="flex gap-2 items-center">
         <Button onClick={handleSubmit} disabled={isRunning || !message.trim()}>
