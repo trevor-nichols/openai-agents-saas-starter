@@ -92,8 +92,6 @@ import type {
   GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetResponses,
   GetPlatformStatusApiV1StatusGetData,
   GetPlatformStatusApiV1StatusGetResponses,
-  GetPlatformStatusRssAliasApiV1StatusRssGetData,
-  GetPlatformStatusRssAliasApiV1StatusRssGetResponses,
   GetPlatformStatusRssApiV1StatusRssGetData,
   GetPlatformStatusRssApiV1StatusRssGetResponses,
   GetSignupAccessPolicyApiV1AuthSignupPolicyGetData,
@@ -2259,29 +2257,6 @@ export const resendStatusIncidentApiV1StatusIncidentsIncidentIdResendPost = <
       "Content-Type": "application/json",
       ...options.headers,
     },
-  });
-};
-
-/**
- * Get Platform Status Rss Alias
- *
- * Legacy alias for consumers using /status.rss paths.
- */
-export const getPlatformStatusRssAliasApiV1StatusRssGet = <
-  ThrowOnError extends boolean = false,
->(
-  options?: Options<
-    GetPlatformStatusRssAliasApiV1StatusRssGetData,
-    ThrowOnError
-  >,
-) => {
-  return (options?.client ?? client).get<
-    GetPlatformStatusRssAliasApiV1StatusRssGetResponses,
-    unknown,
-    ThrowOnError
-  >({
-    url: "/api/v1/status.rss",
-    ...options,
   });
 };
 

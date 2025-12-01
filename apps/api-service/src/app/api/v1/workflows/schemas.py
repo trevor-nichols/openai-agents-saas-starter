@@ -52,9 +52,9 @@ class WorkflowRunResponse(BaseModel):
 
 class StreamingWorkflowEvent(BaseModel):
     kind: Literal[
-        "raw_response",
-        "run_item",
-        "agent_update",
+        "raw_response_event",
+        "run_item_stream_event",
+        "agent_updated_stream_event",
         "usage",
         "error",
         "lifecycle",

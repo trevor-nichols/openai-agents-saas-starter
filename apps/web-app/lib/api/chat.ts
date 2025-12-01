@@ -247,7 +247,7 @@ function parseStreamSegment(segment: string): ParsedSegment {
     if (typeof data === 'object' && data !== null && 'chunk' in data) {
       const legacy = data as { chunk?: string; conversation_id?: string; is_complete?: boolean };
       const event: StreamingChatEvent = {
-        kind: 'raw_response',
+        kind: 'raw_response_event',
         conversation_id: legacy.conversation_id ?? '',
         agent_used: null,
         response_id: null,

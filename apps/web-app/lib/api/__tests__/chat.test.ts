@@ -82,12 +82,12 @@ describe('chat API helpers', () => {
       start(controller) {
         controller.enqueue(
           encoder.encode(
-            'data: {"kind":"raw_response","conversation_id":"conv-1","raw_type":"response.output_text.delta","text_delta":"Hello","is_terminal":false,"attachments":[{"object_id":"obj-1","filename":"image.png"}],"structured_output":{"foo":"bar"}}\n\n',
+            'data: {"kind":"raw_response_event","conversation_id":"conv-1","raw_type":"response.output_text.delta","text_delta":"Hello","is_terminal":false,"attachments":[{"object_id":"obj-1","filename":"image.png"}],"structured_output":{"foo":"bar"}}\n\n',
           ),
         );
         controller.enqueue(
           encoder.encode(
-            'data: {"kind":"raw_response","conversation_id":"conv-1","raw_type":"response.completed","text_delta":"","is_terminal":true}\n\n',
+            'data: {"kind":"raw_response_event","conversation_id":"conv-1","raw_type":"response.completed","text_delta":"","is_terminal":true}\n\n',
           ),
         );
         controller.close();
@@ -120,7 +120,7 @@ describe('chat API helpers', () => {
     expect(first?.type).toBe('event');
     if (first?.type === 'event') {
       expect(first.event).toMatchObject({
-        kind: 'raw_response',
+        kind: 'raw_response_event',
         conversation_id: 'conv-1',
         text_delta: 'Hello',
         attachments: [
@@ -146,7 +146,7 @@ describe('chat API helpers', () => {
       start(controller) {
         controller.enqueue(
           new TextEncoder().encode(
-            'data: {"kind":"raw_response","conversation_id":"conv-1","raw_type":"response.completed","text_delta":"","is_terminal":true}\n\n',
+            'data: {"kind":"raw_response_event","conversation_id":"conv-1","raw_type":"response.completed","text_delta":"","is_terminal":true}\n\n',
           ),
         );
         controller.close();

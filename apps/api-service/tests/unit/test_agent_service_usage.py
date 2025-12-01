@@ -49,12 +49,12 @@ class FakeStreamingHandle(AgentStreamingHandle):
         self._events = [
             AgentStreamEvent(kind="lifecycle", event="agent_start", agent="triage"),
             AgentStreamEvent(
-                kind="raw_response",
+                kind="raw_response_event",
                 raw_type="response.output_text.delta",
                 text_delta="chunk",
             ),
             AgentStreamEvent(
-                kind="raw_response",
+                kind="raw_response_event",
                 raw_type="response.completed",
                 is_terminal=True,
             ),

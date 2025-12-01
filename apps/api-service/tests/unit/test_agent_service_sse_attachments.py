@@ -20,7 +20,7 @@ async def test_sse_events_include_attachments(monkeypatch):
 
         async def events(self):
             yield AgentStreamEvent(
-                kind="run_item",
+                kind="run_item_stream_event",
                 response_id="resp_1",
                 payload={
                     "type": "image_generation_call",
@@ -30,7 +30,7 @@ async def test_sse_events_include_attachments(monkeypatch):
                 },
                 is_terminal=False,
             )
-            yield AgentStreamEvent(kind="run_item", response_id="resp_1", is_terminal=True)
+            yield AgentStreamEvent(kind="run_item_stream_event", response_id="resp_1", is_terminal=True)
 
     provider.runtime.run_stream.return_value = MockStream()
 

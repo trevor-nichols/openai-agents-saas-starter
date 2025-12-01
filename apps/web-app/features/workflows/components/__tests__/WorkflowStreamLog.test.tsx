@@ -14,7 +14,7 @@ describe('WorkflowStreamLog', () => {
   it('renders events with labels and payload', () => {
     const events = [
       {
-        kind: 'raw_response' as const,
+        kind: 'raw_response_event' as const,
         workflow_key: 'demo',
         workflow_run_id: 'run-1',
         raw_type: 'response.output_text.delta',

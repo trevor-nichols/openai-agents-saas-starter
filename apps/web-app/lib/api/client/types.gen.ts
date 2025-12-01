@@ -2476,9 +2476,9 @@ export type StreamingChatEvent = {
    * Kind
    */
   kind:
-    | "raw_response"
-    | "run_item"
-    | "agent_update"
+    | "raw_response_event"
+    | "run_item_stream_event"
+    | "agent_updated_stream_event"
     | "usage"
     | "error"
     | "lifecycle";
@@ -2608,9 +2608,9 @@ export type StreamingWorkflowEvent = {
    * Kind
    */
   kind:
-    | "raw_response"
-    | "run_item"
-    | "agent_update"
+    | "raw_response_event"
+    | "run_item_stream_event"
+    | "agent_updated_stream_event"
     | "usage"
     | "error"
     | "lifecycle";
@@ -6701,20 +6701,6 @@ export type ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponse
 
 export type ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponse =
   ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponses[keyof ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponses];
-
-export type GetPlatformStatusRssAliasApiV1StatusRssGetData = {
-  body?: never;
-  path?: never;
-  query?: never;
-  url: "/api/v1/status.rss";
-};
-
-export type GetPlatformStatusRssAliasApiV1StatusRssGetResponses = {
-  /**
-   * Successful Response
-   */
-  200: unknown;
-};
 
 export type GetTenantSettingsApiV1TenantsSettingsGetData = {
   body?: never;

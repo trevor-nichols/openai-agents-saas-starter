@@ -155,7 +155,7 @@ export async function* mockWorkflowStream(runId: string): AsyncGenerator<Streami
 
   yield {
     ...base,
-    kind: 'run_item',
+    kind: 'run_item_stream_event',
     run_item_name: 'agent_output',
     run_item_type: 'agent',
     agent: 'researcher',
@@ -168,7 +168,7 @@ export async function* mockWorkflowStream(runId: string): AsyncGenerator<Streami
 
   yield {
     ...base,
-    kind: 'raw_response',
+    kind: 'raw_response_event',
     raw_type: 'response.output_text.delta',
     text_delta: 'Done.',
     sequence_number: 2,
@@ -177,7 +177,7 @@ export async function* mockWorkflowStream(runId: string): AsyncGenerator<Streami
 
   yield {
     ...base,
-    kind: 'raw_response',
+    kind: 'raw_response_event',
     raw_type: 'response.completed',
     text_delta: '',
     sequence_number: 3,

@@ -5177,21 +5177,6 @@
         }
       }
     },
-    "/api/v1/status.rss": {
-      "get": {
-        "tags": [
-          "status"
-        ],
-        "summary": "Get Platform Status Rss Alias",
-        "description": "Legacy alias for consumers using /status.rss paths.",
-        "operationId": "get_platform_status_rss_alias_api_v1_status_rss_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          }
-        }
-      }
-    },
     "/api/v1/tenants/settings": {
       "get": {
         "tags": [
@@ -10037,9 +10022,9 @@
           "kind": {
             "type": "string",
             "enum": [
-              "raw_response",
-              "run_item",
-              "agent_update",
+              "raw_response_event",
+              "run_item_stream_event",
+              "agent_updated_stream_event",
               "usage",
               "error",
               "lifecycle"
@@ -10275,9 +10260,9 @@
           "kind": {
             "type": "string",
             "enum": [
-              "raw_response",
-              "run_item",
-              "agent_update",
+              "raw_response_event",
+              "run_item_stream_event",
+              "agent_updated_stream_event",
               "usage",
               "error",
               "lifecycle"

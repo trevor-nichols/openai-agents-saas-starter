@@ -84,7 +84,14 @@ class AgentChatResponse(BaseModel):
 class StreamingChatEvent(BaseModel):
     """Rich streaming envelope forwarded over SSE to the frontend."""
 
-    kind: Literal["raw_response", "run_item", "agent_update", "usage", "error", "lifecycle"]
+    kind: Literal[
+        "raw_response_event",
+        "run_item_stream_event",
+        "agent_updated_stream_event",
+        "usage",
+        "error",
+        "lifecycle",
+    ]
 
     conversation_id: str = Field(description="Conversation identifier.")
     agent_used: str | None = Field(default=None, description="Agent that produced the event.")

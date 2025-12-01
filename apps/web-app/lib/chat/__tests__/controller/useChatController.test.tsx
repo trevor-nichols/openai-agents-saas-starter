@@ -92,7 +92,7 @@ describe('useChatController', () => {
       yield {
         type: 'event' as const,
         event: {
-          kind: 'raw_response',
+        kind: 'raw_response_event',
           conversation_id: 'conv-99',
           agent_used: 'triage',
           response_id: 'resp-1',
@@ -227,7 +227,7 @@ describe('useChatController', () => {
       yield {
         type: 'event' as const,
         event: {
-          kind: 'agent_update',
+          kind: 'agent_updated_stream_event',
           conversation_id: 'conv-handoff',
           new_agent: 'other-agent',
           agent_used: 'other-agent',
@@ -272,7 +272,7 @@ describe('useChatController', () => {
       yield {
         type: 'event' as const,
         event: {
-          kind: 'raw_response',
+        kind: 'raw_response_event',
           conversation_id: 'conv-1',
           agent_used: 'triage',
           response_id: 'resp-1',
@@ -297,7 +297,7 @@ describe('useChatController', () => {
       yield {
         type: 'event' as const,
         event: {
-          kind: 'raw_response',
+        kind: 'raw_response_event',
           conversation_id: 'conv-1',
           agent_used: 'triage',
           response_id: 'resp-2',
@@ -341,7 +341,7 @@ describe('useChatController', () => {
       yield {
         type: 'event' as const,
         event: {
-          kind: 'run_item',
+          kind: 'run_item_stream_event',
           conversation_id: 'conv-1',
           agent_used: 'triage',
           response_id: 'resp-1',
@@ -362,7 +362,7 @@ describe('useChatController', () => {
       yield {
         type: 'event' as const,
         event: {
-          kind: 'run_item',
+          kind: 'run_item_stream_event',
           conversation_id: 'conv-1',
           agent_used: 'triage',
           response_id: 'resp-1',
@@ -387,7 +387,7 @@ describe('useChatController', () => {
       yield {
         type: 'event' as const,
         event: {
-          kind: 'raw_response',
+        kind: 'raw_response_event',
           conversation_id: 'conv-1',
           agent_used: 'triage',
           response_id: 'resp-2',

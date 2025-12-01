@@ -24,7 +24,7 @@ class _FakeStreamHandle:
 
     async def events(self) -> AsyncIterator[AgentStreamEvent]:
         yield AgentStreamEvent(
-            kind="run_item",
+            kind="run_item_stream_event",
             response_id=self.last_response_id,
             response_text=self._response_text,
             is_terminal=True,

@@ -26,7 +26,7 @@ class _MultiStepFakeStream:
     async def events(self) -> AsyncIterator[AgentStreamEvent]:
         for idx, payload in enumerate(self._responses):
             yield AgentStreamEvent(
-                kind="run_item",
+                kind="run_item_stream_event",
                 response_id=self.last_response_id,
                 response_text=payload.get("text"),
                 structured_output=payload.get("structured"),

@@ -204,7 +204,7 @@ class OpenAIStreamingHandle(AgentStreamingHandle):
                     reasoning_delta = _coerce_delta(getattr(raw, "delta", None))
 
                 yield AgentStreamEvent(
-                    kind="raw_response",
+                    kind="raw_response_event",
                     response_id=getattr(self._stream, "last_response_id", None),
                     sequence_number=sequence_number,
                     raw_type=raw_type,
@@ -221,7 +221,7 @@ class OpenAIStreamingHandle(AgentStreamingHandle):
                 tool_call_id, tool_name = _extract_tool_info(item)
 
                 yield AgentStreamEvent(
-                    kind="run_item",
+                    kind="run_item_stream_event",
                     response_id=getattr(self._stream, "last_response_id", None),
                     run_item_name=getattr(event, "name", None),
                     run_item_type=getattr(item, "type", None),
@@ -236,7 +236,7 @@ class OpenAIStreamingHandle(AgentStreamingHandle):
             elif event.type == "agent_updated_stream_event":
                 new_agent = getattr(event, "new_agent", None)
                 yield AgentStreamEvent(
-                    kind="agent_update",
+                    kind="agent_updated_stream_event",
                     response_id=getattr(self._stream, "last_response_id", None),
                     new_agent=_extract_agent_name(new_agent),
                     payload=AgentStreamEvent._to_mapping(new_agent),
@@ -261,7 +261,7 @@ class OpenAIStreamingHandle(AgentStreamingHandle):
                 except Exception:  # pragma: no cover
                     response_text = str(final_output)
             yield AgentStreamEvent(
-                kind="run_item",
+                kind="run_item_stream_event",
                 response_id=response_id,
                 is_terminal=True,
                 payload={"structured_output": structured_output, "response_text": response_text},

@@ -96,7 +96,7 @@ function createMockChatStream(): Response {
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       const event = {
-        kind: 'raw_response' as const,
+        kind: 'raw_response_event' as const,
         conversation_id: 'mock-conversation',
         agent_used: 'mock-agent',
         response_id: 'resp-mock',

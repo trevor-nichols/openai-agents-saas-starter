@@ -66,12 +66,12 @@ export async function consumeChatStream(
 
     const event = chunk.event;
 
-    if (event.kind === 'agent_update' && event.new_agent) {
+    if (event.kind === 'agent_updated_stream_event' && event.new_agent) {
       handlers.onAgentChange?.(event.new_agent);
       emitAgentNotice(event.new_agent, 'Switched to');
     }
 
-    if (event.kind === 'raw_response') {
+    if (event.kind === 'raw_response_event') {
       if (event.raw_type === 'response.output_text.delta' && event.text_delta) {
         accumulatedContent += event.text_delta;
         handlers.onTextDelta?.(`${accumulatedContent}▋`, accumulatedContent);
@@ -98,7 +98,7 @@ export async function consumeChatStream(
       }
     }
 
-    if (event.kind === 'run_item' && event.run_item_name) {
+    if (event.kind === 'run_item_stream_event' && event.run_item_name) {
       const toolId = event.tool_call_id || event.run_item_name;
       const existing = toolMap.get(toolId) || {
         id: toolId,

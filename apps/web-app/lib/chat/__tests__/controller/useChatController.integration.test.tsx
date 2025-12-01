@@ -51,12 +51,12 @@ describe('useChatController (integration)', () => {
       start(controller) {
         controller.enqueue(
           encoder.encode(
-            'data: {"kind":"raw_response","conversation_id":"conv-integration","raw_type":"response.output_text.delta","text_delta":"Integrated response","is_terminal":false}\n\n',
+            'data: {"kind":"raw_response_event","conversation_id":"conv-integration","raw_type":"response.output_text.delta","text_delta":"Integrated response","is_terminal":false}\n\n',
           ),
         );
         controller.enqueue(
           encoder.encode(
-            'data: {"kind":"raw_response","conversation_id":"conv-integration","raw_type":"response.completed","text_delta":"","is_terminal":true}\n\n',
+            'data: {"kind":"raw_response_event","conversation_id":"conv-integration","raw_type":"response.completed","text_delta":"","is_terminal":true}\n\n',
           ),
         );
         controller.close();

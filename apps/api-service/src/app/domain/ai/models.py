@@ -73,9 +73,9 @@ class AgentStreamEvent:
     """
 
     kind: Literal[
-        "raw_response",
-        "run_item",
-        "agent_update",
+        "raw_response_event",
+        "run_item_stream_event",
+        "agent_updated_stream_event",
         "usage",
         "error",
         "lifecycle",
@@ -122,20 +122,53 @@ class AgentStreamEvent:
     response_text: str | None = None
 
     @staticmethod
+    def _strip_unserializable(obj: Any) -> Any:
+        """Remove or coerce values that JSON encoders can't handle (e.g., callables)."""
+
+        # Primitive fast path
+        if obj is None or isinstance(obj, str | int | float | bool):
+            return obj
+
+        # Pydantic models (e.g., OpenAI Responses payloads)
+        model_dump = getattr(obj, "model_dump", None)
+        if callable(model_dump):
+            return AgentStreamEvent._strip_unserializable(
+                model_dump(mode="json", exclude_none=True)
+            )
+
+        # Dataclasses / mappings / sequences
+        if callable(obj):
+            name = getattr(obj, "__name__", obj.__class__.__name__)
+            return f"<callable {name}>"
+        if isinstance(obj, Mapping):
+            cleaned: dict[str, Any] = {}
+            for key, value in obj.items():
+                if callable(value):
+                    continue
+                cleaned[key] = AgentStreamEvent._strip_unserializable(value)
+            return cleaned
+        if isinstance(obj, list | tuple | set):
+            return [AgentStreamEvent._strip_unserializable(v) for v in obj]
+
+        # Conservative fallback: string representation to keep streaming resilient.
+        return repr(obj)
+        return obj
+
+    @staticmethod
     def _to_mapping(obj: Any) -> Mapping[str, Any] | None:
         """Best-effort conversion to a JSON-friendly mapping for SSE payloads."""
 
         if obj is None:
             return None
         if isinstance(obj, Mapping):
-            return obj
+            return AgentStreamEvent._strip_unserializable(obj)
         if is_dataclass(obj) and not isinstance(obj, type):
-            return asdict(obj)
+            return AgentStreamEvent._strip_unserializable(asdict(obj))
         model_dump = getattr(obj, "model_dump", None)
         if callable(model_dump):
             dumped = model_dump()
             if isinstance(dumped, Mapping):
-                return dumped
+                return AgentStreamEvent._strip_unserializable(dumped)
             return {"value": dumped}
         dict_fn = getattr(obj, "dict", None)
         if callable(dict_fn):
@@ -144,11 +177,11 @@ class AgentStreamEvent:
             except TypeError:  # pragma: no cover - fallback when dict() needs params
                 dumped = dict_fn(exclude_none=True)
             if isinstance(dumped, Mapping):
-                return dict(dumped)
+                return AgentStreamEvent._strip_unserializable(dict(dumped))
             return {"value": dumped}
         __dict__ = getattr(obj, "__dict__", None)
         if isinstance(__dict__, Mapping):
-            return dict(__dict__)
+            return AgentStreamEvent._strip_unserializable(dict(__dict__))
         return {"repr": repr(obj)}
 
 

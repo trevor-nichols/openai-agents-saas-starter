@@ -1,5 +1,6 @@
 """Chat-related API endpoints."""
 
+import logging
 from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -26,6 +27,8 @@ _ALLOWED_VIEWER_ROLES: tuple[TenantRole, ...] = (
     TenantRole.ADMIN,
     TenantRole.OWNER,
 )
+
+logger = logging.getLogger(__name__)
 
 
 STREAM_EVENT_RESPONSE = {
@@ -133,6 +136,14 @@ async def stream_chat_with_agent(
                     if event.is_terminal:
                         break
             except Exception as exc:
+                logger.exception(
+                    "chat.stream.serialization_error",
+                    extra={
+                        "conversation_id": request.conversation_id,
+                        "agent": request.agent_type,
+                        "error": str(exc),
+                    },
+                )
                 error_payload = StreamingChatEvent(
                     kind="error",
                     conversation_id=request.conversation_id or "unknown",

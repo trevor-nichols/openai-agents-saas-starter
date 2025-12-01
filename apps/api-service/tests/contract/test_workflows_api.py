@@ -105,7 +105,7 @@ def test_run_workflow_sync(mock_run_workflow: AsyncMock, client: TestClient) -> 
 def test_run_workflow_stream(mock_run_stream: AsyncMock, client: TestClient) -> None:
     async def _gen():
         yield AgentStreamEvent(
-            kind="run_item",
+            kind="run_item_stream_event",
             response_id="r1",
             text_delta="hello",
             metadata={
@@ -117,7 +117,7 @@ def test_run_workflow_stream(mock_run_stream: AsyncMock, client: TestClient) -> 
             is_terminal=False,
         )
         yield AgentStreamEvent(
-            kind="run_item",
+            kind="run_item_stream_event",
             response_id="r1",
             response_text="done",
             metadata={

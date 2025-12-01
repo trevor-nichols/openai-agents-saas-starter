@@ -132,10 +132,10 @@ async def test_streaming_emits_structured_output_event():
 
     assert len(events) == 2
     raw, final = events
-    assert raw.kind == "raw_response"
+    assert raw.kind == "raw_response_event"
     assert raw.is_terminal is False
 
-    assert final.kind == "run_item"
+    assert final.kind == "run_item_stream_event"
     assert final.is_terminal is True
     assert final.structured_output == {"message": "hi"}
     assert final.response_text == '{"message": "hi"}'

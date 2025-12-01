@@ -11,9 +11,9 @@ interface WorkflowStreamLogProps {
 
 const KIND_LABEL: Record<StreamingWorkflowEvent['kind'], string> = {
   lifecycle: 'Lifecycle',
-  run_item: 'Run Item',
-  agent_update: 'Agent Update',
-  raw_response: 'Response',
+  run_item_stream_event: 'Run Item',
+  agent_updated_stream_event: 'Agent Update',
+  raw_response_event: 'Response',
   usage: 'Usage',
   error: 'Error',
 };

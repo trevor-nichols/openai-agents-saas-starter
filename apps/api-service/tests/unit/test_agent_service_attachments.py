@@ -23,13 +23,13 @@ async def test_agent_service_stream_attaches_images(monkeypatch):
 
         async def events(self):
             yield AgentStreamEvent(
-                kind="run_item",
+                kind="run_item_stream_event",
                 response_id="resp_1",
                 payload={"type": "image_generation_call", "result": "dGVzdA==", "id": "tc1", "format": "png"},
                 is_terminal=False,
             )
             yield AgentStreamEvent(
-                kind="run_item",
+                kind="run_item_stream_event",
                 response_id="resp_1",
                 is_terminal=True,
             )

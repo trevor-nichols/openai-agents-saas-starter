@@ -108,15 +108,13 @@ class AgentService:
         runtime_ctx = await self._interaction_builder.build(
             actor=actor, request=request, conversation_id=conversation_id
         )
-        state = await self._conversation_service.get_session_state(
+        await self._conversation_service.get_session_state(
             conversation_id, tenant_id=actor.tenant_id
         )
-        provider_conversation_id = await self._session_manager.resolve_provider_conversation_id(
-            provider=provider,
-            actor=actor,
-            conversation_id=conversation_id,
-            existing_state=state,
-        )
+        # When using SDK sessions, do not also send provider conversation_id to avoid
+        # double-feeding history (Responses API would see duplicates). Keep server
+        # state off and rely on session_store only.
+        provider_conversation_id = None
         session_id, session_handle = await self._session_manager.acquire_session(
             provider,
             actor.tenant_id,
@@ -134,7 +132,7 @@ class AgentService:
             metadata=self._build_metadata(
                 tenant_id=actor.tenant_id,
                 provider=provider.name,
-                provider_conversation_id=provider_conversation_id,
+                provider_conversation_id=None,
                 agent_entrypoint=request.agent_type or descriptor.key,
                 active_agent=descriptor.key,
                 session_id=session_id,
@@ -189,7 +187,7 @@ class AgentService:
             metadata=self._build_metadata(
                 tenant_id=actor.tenant_id,
                 provider=provider.name,
-                provider_conversation_id=provider_conversation_id,
+                provider_conversation_id=None,
                 agent_entrypoint=request.agent_type or descriptor.key,
                 active_agent=descriptor.key,
                 session_id=session_id,
@@ -211,7 +209,7 @@ class AgentService:
             conversation_id=conversation_id,
             session_id=session_id,
             provider_name=provider.name,
-            provider_conversation_id=provider_conversation_id,
+            provider_conversation_id=None,
         )
         await self._record_usage_metrics(
             tenant_id=actor.tenant_id,
@@ -233,7 +231,7 @@ class AgentService:
         tool_overview = provider.tool_overview()
         return AgentChatResponse(
             response=response_text,
-            structured_output=result.structured_output,
+            structured_output=AgentStreamEvent._strip_unserializable(result.structured_output),
             conversation_id=conversation_id,
             agent_used=descriptor.key,
             handoff_occurred=False,
@@ -261,15 +259,12 @@ class AgentService:
         runtime_ctx = await self._interaction_builder.build(
             actor=actor, request=request, conversation_id=conversation_id
         )
-        state = await self._conversation_service.get_session_state(
+        await self._conversation_service.get_session_state(
             conversation_id, tenant_id=actor.tenant_id
         )
-        provider_conversation_id = await self._session_manager.resolve_provider_conversation_id(
-            provider=provider,
-            actor=actor,
-            conversation_id=conversation_id,
-            existing_state=state,
-        )
+        # Use SDK session memory only; avoid provider-side conversation ids to prevent
+        # duplicate item errors from the Responses API.
+        provider_conversation_id = None
         session_id, session_handle = await self._session_manager.acquire_session(
             provider,
             actor.tenant_id,
@@ -287,7 +282,7 @@ class AgentService:
             metadata=self._build_metadata(
                 tenant_id=actor.tenant_id,
                 provider=provider.name,
-                provider_conversation_id=provider_conversation_id,
+                provider_conversation_id=None,
                 agent_entrypoint=request.agent_type or descriptor.key,
                 active_agent=descriptor.key,
                 session_id=session_id,
@@ -311,11 +306,9 @@ class AgentService:
                 },
             )
             runtime_conversation_id = provider_conversation_id if provider_conversation_id else None
-            if runtime_conversation_id is None:
-                if provider.name != "openai":
-                    runtime_conversation_id = conversation_id
-                elif self._policy.allow_openai_uuid_fallback:
-                    runtime_conversation_id = conversation_id
+            # Disable provider-side conversation state when sessions are in use to
+            # prevent duplicate items being sent (Responses API 400 on duplicate ids).
+            runtime_conversation_id = None
 
             lifecycle_bus = LifecycleEventBus()
             run_options = build_run_options(request.run_options, hook_sink=lifecycle_bus)
@@ -356,6 +349,15 @@ class AgentService:
                             event.payload = {}
                         if isinstance(event.payload, dict):
                             event.payload.setdefault("_attachment_note", "stored")
+
+                    # Ensure stream payloads are JSON-serializable for SSE.
+                    event.payload = AgentStreamEvent._strip_unserializable(event.payload)
+                    event.structured_output = AgentStreamEvent._strip_unserializable(
+                        event.structured_output
+                    )
+                    event.response_text = (
+                        None if event.response_text is None else str(event.response_text)
+                    )
 
                     yield event
 
@@ -401,7 +403,7 @@ class AgentService:
             conversation_id=conversation_id,
             session_id=session_id,
             provider_name=provider.name,
-            provider_conversation_id=provider_conversation_id,
+            provider_conversation_id=None,
         )
         await self._record_usage_metrics(
             tenant_id=actor.tenant_id,

@@ -19,7 +19,7 @@ describe('consumeChatStream', () => {
         type: 'event',
         event: {
           conversation_id: 'c1',
-          kind: 'raw_response',
+          kind: 'raw_response_event',
           raw_type: 'response.output_text.delta',
           text_delta: 'Hello',
         },
@@ -28,7 +28,7 @@ describe('consumeChatStream', () => {
         type: 'event',
         event: {
           conversation_id: 'c1',
-          kind: 'raw_response',
+          kind: 'raw_response_event',
           raw_type: 'response.output_text.delta',
           text_delta: ' world',
         },
@@ -37,7 +37,7 @@ describe('consumeChatStream', () => {
         type: 'event',
         event: {
           conversation_id: 'c1',
-          kind: 'raw_response',
+          kind: 'raw_response_event',
           raw_type: 'response.completed',
           response_text: 'Override text',
           is_terminal: true,
@@ -67,7 +67,7 @@ describe('consumeChatStream', () => {
         type: 'event',
         event: {
           conversation_id: 'c2',
-          kind: 'agent_update',
+          kind: 'agent_updated_stream_event',
           new_agent: 'assistant-2',
         },
       },
@@ -75,7 +75,7 @@ describe('consumeChatStream', () => {
         type: 'event',
         event: {
           conversation_id: 'c2',
-          kind: 'run_item',
+          kind: 'run_item_stream_event',
           run_item_name: 'tool_called',
           tool_call_id: 'tool-1',
           tool_name: 'search',
@@ -86,7 +86,7 @@ describe('consumeChatStream', () => {
         type: 'event',
         event: {
           conversation_id: 'c2',
-          kind: 'run_item',
+          kind: 'run_item_stream_event',
           run_item_name: 'tool_output',
           tool_call_id: 'tool-1',
           tool_name: 'search',
