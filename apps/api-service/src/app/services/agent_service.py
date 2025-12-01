@@ -39,7 +39,6 @@ from app.services.agents.history import ConversationHistoryService
 from app.services.agents.interaction_context import InteractionContextBuilder
 from app.services.agents.policy import AgentRuntimePolicy
 from app.services.agents.provider_registry import AgentProviderRegistry, get_provider_registry
-from app.services.agents.run_options import build_run_options
 from app.services.agents.session_manager import SessionManager
 from app.services.agents.usage import UsageService
 from app.services.containers import ContainerService, get_container_service
@@ -154,7 +153,7 @@ class AgentService:
             runtime_conversation_id = (
                 provider_conversation_id if provider_conversation_id else conversation_id
             )
-            run_options = build_run_options(request.run_options)
+            run_options = None
             with trace(workflow_name="Agent Chat", group_id=conversation_id):
                 result = await provider.runtime.run(
                     descriptor.key,
@@ -311,7 +310,7 @@ class AgentService:
             runtime_conversation_id = None
 
             lifecycle_bus = LifecycleEventBus()
-            run_options = build_run_options(request.run_options, hook_sink=lifecycle_bus)
+            run_options = None
             with trace(workflow_name="Agent Chat Stream", group_id=conversation_id):
                 stream_handle = provider.runtime.run_stream(
                     descriptor.key,

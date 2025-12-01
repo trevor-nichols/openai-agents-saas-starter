@@ -41,8 +41,16 @@ class ConversationSummary(BaseModel):
     """Lightweight summary used when listing conversations."""
 
     conversation_id: str = Field(description="Conversation identifier.")
+    agent_entrypoint: str | None = Field(
+        default=None, description="Agent entrypoint configured for this thread."
+    )
+    active_agent: str | None = Field(
+        default=None, description="Most recent agent that responded in the thread."
+    )
+    topic_hint: str | None = Field(default=None, description="Short title/topic if available.")
+    status: str | None = Field(default=None, description="Lifecycle status (e.g., active).")
     message_count: int = Field(description="Number of messages recorded.")
-    last_message: str = Field(description="Content preview of the latest message.")
+    last_message_preview: str = Field(description="Content preview of the latest message.")
     created_at: str = Field(description="Creation timestamp.")
     updated_at: str = Field(description="Last update timestamp.")
 
@@ -61,7 +69,18 @@ class ConversationSearchResult(BaseModel):
     """Search hit with preview and relevance score."""
 
     conversation_id: str = Field(description="Conversation identifier.")
+    agent_entrypoint: str | None = Field(
+        default=None, description="Agent entrypoint configured for this thread."
+    )
+    active_agent: str | None = Field(
+        default=None, description="Most recent agent that responded in the thread."
+    )
+    topic_hint: str | None = Field(default=None, description="Short title/topic if available.")
+    status: str | None = Field(default=None, description="Lifecycle status (e.g., active).")
     preview: str = Field(description="Matched message snippet.")
+    last_message_preview: str | None = Field(
+        default=None, description="Content preview of the latest message."
+    )
     score: float | None = Field(default=None, description="Backend relevance score.")
     updated_at: str | None = Field(default=None, description="Last update timestamp.")
 

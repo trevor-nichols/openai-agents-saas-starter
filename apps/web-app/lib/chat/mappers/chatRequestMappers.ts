@@ -4,7 +4,7 @@ import type {
   ConversationListItem,
   ConversationMessage,
 } from '@/types/conversations';
-import type { ChatMessage, RunOptionsInput } from '../types';
+import type { ChatMessage } from '../types';
 
 export function mapHistoryToChatMessages(history: ConversationHistory): ChatMessage[] {
   return history.messages
@@ -35,22 +35,6 @@ export function normalizeLocationPayload(
   };
 }
 
-export function mapRunOptionsInput(runOptions?: RunOptionsInput | null) {
-  if (!runOptions) return undefined;
-  let normalizedRunConfig: Record<string, unknown> | null | undefined = undefined;
-  if (runOptions.runConfig === null) {
-    normalizedRunConfig = null;
-  } else if (typeof runOptions.runConfig === 'object') {
-    normalizedRunConfig = runOptions.runConfig as Record<string, unknown>;
-  }
-  return {
-    max_turns: runOptions.maxTurns ?? undefined,
-    previous_response_id: runOptions.previousResponseId ?? undefined,
-    handoff_input_filter: runOptions.handoffInputFilter ?? undefined,
-    run_config: normalizedRunConfig,
-  };
-}
-
 export function createConversationListEntry(
   messageText: string,
   conversationId: string,
@@ -58,7 +42,7 @@ export function createConversationListEntry(
   const summary = messageText.substring(0, 50) + (messageText.length > 50 ? '...' : '');
   return {
     id: conversationId,
-    last_message_summary: summary,
+    last_message_preview: summary,
     updated_at: new Date().toISOString(),
   };
 }

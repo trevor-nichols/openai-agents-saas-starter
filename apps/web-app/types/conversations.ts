@@ -7,8 +7,14 @@ import type {
 
 export interface ConversationListItem {
   id: string;
-  title?: string;
-  last_message_summary?: string;
+  agent_entrypoint?: string | null;
+  active_agent?: string | null;
+  title?: string | null;
+  topic_hint?: string | null;
+  status?: string | null;
+  message_count?: number;
+  last_message_preview?: string;
+  created_at?: string;
   updated_at: string;
 }
 
@@ -26,7 +32,12 @@ export interface ConversationListPage {
 
 export interface ConversationSearchResultItem {
   conversation_id: string;
+  agent_entrypoint?: string | null;
+  active_agent?: string | null;
+  topic_hint?: string | null;
+  status?: string | null;
   preview: string;
+  last_message_preview?: string | null;
   score?: number | null;
   updated_at?: string | null;
 }

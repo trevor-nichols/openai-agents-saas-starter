@@ -104,10 +104,10 @@
 ## chat
 
 `POST` `/api/v1/chat`
-- Chat With Agent
+- Chat With Agent (body: message, optional conversation_id, agent_type, context, share_location, location)
 
 `POST` `/api/v1/chat/stream`
-- Stream Chat With Agent
+- Stream Chat With Agent (same body as Chat; client-supplied run_options are not accepted)
 
 ## agents
 
@@ -143,13 +143,13 @@
 ## conversations
 
 `GET` `/api/v1/conversations`
-- List Conversations
+- List Conversations (returns agent_entrypoint, active_agent, topic_hint/title, status, message_count, last_message_preview, created_at, updated_at)
 
 `GET` `/api/v1/conversations/search`
-- Search Conversations
+- Search Conversations (same fields as list plus preview/score)
 
 `GET` `/api/v1/conversations/{conversation_id}`
-- Get Conversation
+- Get Conversation (messages plus agent_context populated with agent metadata)
 
 `DELETE` `/api/v1/conversations/{conversation_id}`
 - Delete Conversation

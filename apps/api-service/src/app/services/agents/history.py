@@ -25,9 +25,13 @@ class ConversationHistoryService:
     async def get_history(
         self, conversation_id: str, *, actor
     ) -> ConversationHistory:
-        messages = await self._conversation_service.get_messages(
+        record = await self._conversation_service.get_conversation(
             conversation_id, tenant_id=actor.tenant_id
         )
+        if record is None:
+            raise ConversationNotFoundError(f"Conversation {conversation_id} not found")
+
+        messages = record.messages
         if not messages:
             raise ConversationNotFoundError(f"Conversation {conversation_id} not found")
 
@@ -39,8 +43,14 @@ class ConversationHistoryService:
         return ConversationHistory(
             conversation_id=conversation_id,
             messages=api_messages,
-            created_at=messages[0].timestamp.isoformat(),
-            updated_at=messages[-1].timestamp.isoformat(),
+            created_at=record.created_at.isoformat(),
+            updated_at=record.updated_at.isoformat(),
+            agent_context={
+                "agent_entrypoint": record.agent_entrypoint,
+                "active_agent": record.active_agent,
+                "topic_hint": record.topic_hint,
+                "status": record.status,
+            },
         )
 
     async def list_summaries(
@@ -62,14 +72,17 @@ class ConversationHistoryService:
 
         summaries: list[ConversationSummary] = []
         for record in page.items:
-            if not record.messages:
-                continue
-            last_message = record.messages[-1]
             summaries.append(
                 ConversationSummary(
                     conversation_id=record.conversation_id,
+                    agent_entrypoint=record.agent_entrypoint,
+                    active_agent=record.active_agent,
+                    topic_hint=record.topic_hint,
+                    status=record.status,
                     message_count=len(record.messages),
-                    last_message=last_message.content[:160],
+                    last_message_preview=(
+                        record.messages[-1].content[:160] if record.messages else ""
+                    ),
                     created_at=record.created_at.isoformat(),
                     updated_at=record.updated_at.isoformat(),
                 )

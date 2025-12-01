@@ -58,17 +58,27 @@ class ConversationEvent:
 
 @dataclass(slots=True)
 class ConversationRecord:
-    """Aggregate containing an identifier and its message history."""
+    """Aggregate containing an identifier, its message history, and metadata."""
 
     conversation_id: str
     messages: list[ConversationMessage]
+    agent_entrypoint: str | None = None
+    active_agent: str | None = None
+    topic_hint: str | None = None
+    status: str | None = None
+    created_at_value: datetime | None = None
+    updated_at_value: datetime | None = None
 
     @property
     def created_at(self) -> datetime:
+        if self.created_at_value:
+            return self.created_at_value
         return self.messages[0].timestamp if self.messages else datetime.utcnow()
 
     @property
     def updated_at(self) -> datetime:
+        if self.updated_at_value:
+            return self.updated_at_value
         return self.messages[-1].timestamp if self.messages else datetime.utcnow()
 
 
@@ -175,6 +185,13 @@ class ConversationRepository(Protocol):
         cursor: str | None = None,
         agent_entrypoint: str | None = None,
     ) -> ConversationSearchPage: ...
+
+    async def get_conversation(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+    ) -> ConversationRecord | None: ...
 
     async def clear_conversation(
         self,

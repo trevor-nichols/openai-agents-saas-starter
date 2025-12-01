@@ -12,6 +12,7 @@ import {
 import type { WorkflowRunInput, WorkflowRunListFilters } from '@/lib/workflows/types';
 import type { LocationHint } from '@/lib/api/client/types.gen';
 import { queryKeys } from './keys';
+import { fetchConversationEvents } from '@/lib/api/conversations';
 
 export function useWorkflowsQuery() {
   return useQuery({
@@ -41,6 +42,18 @@ export function useWorkflowRunsQuery(filters: WorkflowRunListFilters) {
     queryKey: queryKeys.workflows.runs(filters as Record<string, unknown>),
     queryFn: () => listWorkflowRuns(filters),
     enabled: Boolean(filters.workflowKey),
+  });
+}
+
+export function useWorkflowRunEventsQuery(runId: string | null, conversationId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.workflows.runEvents(runId, conversationId),
+    queryFn: () =>
+      runId && conversationId
+        ? fetchConversationEvents({ conversationId, workflowRunId: runId })
+        : null,
+    enabled: Boolean(runId && conversationId),
+    staleTime: 30_000,
   });
 }
 

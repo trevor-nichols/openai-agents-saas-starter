@@ -59,10 +59,6 @@ export function ChatWorkspace() {
     locationHint,
     updateLocationField,
     setSelectedAgent,
-    runOptions,
-    setRunOptions,
-    runOptionsEnabled,
-    setRunOptionsEnabled,
     chatController,
   } = useChatWorkspace();
 
@@ -139,20 +135,6 @@ export function ChatWorkspace() {
               onShareLocationChange={setShareLocation}
               locationHint={locationHint}
               onLocationHintChange={updateLocationField}
-              runOptions={{
-                maxTurns: runOptions.maxTurns,
-                previousResponseId: runOptions.previousResponseId,
-                handoffInputFilter: runOptions.handoffInputFilter,
-                runConfigRaw: runOptions.runConfigRaw,
-              }}
-              runOptionsEnabled={runOptionsEnabled}
-              onRunOptionsEnabledChange={setRunOptionsEnabled}
-              onRunOptionsChange={(next) =>
-                setRunOptions((prev) => ({
-                  ...prev,
-                  ...next,
-                }))
-              }
               className="h-[78vh]"
             />
           </ChatControllerProvider>

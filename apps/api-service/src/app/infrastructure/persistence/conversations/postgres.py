@@ -232,6 +232,48 @@ class PostgresConversationRepository(ConversationRepository):
                 for row in rows
             ]
 
+    async def get_conversation(
+        self, conversation_id: str, *, tenant_id: str
+    ) -> ConversationRecord | None:
+        conversation_uuid = _coerce_conversation_uuid(conversation_id)
+        tenant_uuid = _parse_tenant_id(tenant_id)
+        async with self._session_factory() as session:
+            conversation = await self._get_conversation(
+                session,
+                conversation_uuid,
+                tenant_id=tenant_uuid,
+                strict=True,
+            )
+            if conversation is None:
+                return None
+
+            result = await session.execute(
+                select(AgentMessage)
+                .where(AgentMessage.conversation_id == conversation_uuid)
+                .order_by(AgentMessage.position)
+            )
+            rows: Sequence[AgentMessage] = result.scalars().all()
+            messages = [
+                ConversationMessage(
+                    role=_coerce_role(row.role),
+                    content=_extract_message_content(row.content),
+                    attachments=_extract_attachments(row.attachments),
+                    timestamp=row.created_at,
+                )
+                for row in rows
+            ]
+
+            return ConversationRecord(
+                conversation_id=conversation.conversation_key,
+                messages=messages,
+                agent_entrypoint=conversation.agent_entrypoint,
+                active_agent=conversation.active_agent,
+                topic_hint=conversation.topic_hint,
+                status=conversation.status,
+                created_at_value=conversation.created_at,
+                updated_at_value=conversation.updated_at,
+            )
+
     async def list_conversation_ids(self, *, tenant_id: str) -> list[str]:
         tenant_uuid = _parse_tenant_id(tenant_id)
         async with self._session_factory() as session:
@@ -282,6 +324,12 @@ class PostgresConversationRepository(ConversationRepository):
                     ConversationRecord(
                         conversation_id=conversation.conversation_key,
                         messages=messages_list,
+                        agent_entrypoint=conversation.agent_entrypoint,
+                        active_agent=conversation.active_agent,
+                        topic_hint=conversation.topic_hint,
+                        status=conversation.status,
+                        created_at_value=conversation.created_at,
+                        updated_at_value=conversation.updated_at,
                     )
                 )
             return records
@@ -365,6 +413,12 @@ class PostgresConversationRepository(ConversationRepository):
                     ConversationRecord(
                         conversation_id=conversation.conversation_key,
                         messages=messages_list,
+                        agent_entrypoint=conversation.agent_entrypoint,
+                        active_agent=conversation.active_agent,
+                        topic_hint=conversation.topic_hint,
+                        status=conversation.status,
+                        created_at_value=conversation.created_at,
+                        updated_at_value=conversation.updated_at,
                     )
                 )
 
@@ -488,6 +542,12 @@ class PostgresConversationRepository(ConversationRepository):
                         record=ConversationRecord(
                             conversation_id=conversation.conversation_key,
                             messages=messages_list,
+                            agent_entrypoint=conversation.agent_entrypoint,
+                            active_agent=conversation.active_agent,
+                            topic_hint=conversation.topic_hint,
+                            status=conversation.status,
+                            created_at_value=conversation.created_at,
+                            updated_at_value=conversation.updated_at,
                         ),
                         score=float(rank or 0.0),
                     )

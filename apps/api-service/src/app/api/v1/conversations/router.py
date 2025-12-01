@@ -91,7 +91,12 @@ async def search_conversations(
         response_items.append(
             ConversationSearchResult(
                 conversation_id=result.conversation_id,
+                agent_entrypoint=result.agent_entrypoint,
+                active_agent=result.active_agent,
+                topic_hint=result.topic_hint,
+                status=result.status,
                 preview=result.preview,
+                last_message_preview=result.last_message_preview,
                 score=result.score,
                 updated_at=result.updated_at.isoformat() if result.updated_at else None,
             )

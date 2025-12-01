@@ -46,10 +46,6 @@ export type AgentChatRequest = {
    * Optional coarse location (city/region/country/timezone) for location-biased search.
    */
   location?: LocationHint | null;
-  /**
-   * Advanced controls (max_turns, previous_response_id, run_config, hooks).
-   */
-  run_options?: RunOptionsRequest | null;
 };
 
 /**
@@ -843,11 +839,41 @@ export type ConversationSearchResult = {
    */
   conversation_id: string;
   /**
+   * Agent Entrypoint
+   *
+   * Agent entrypoint configured for this thread.
+   */
+  agent_entrypoint?: string | null;
+  /**
+   * Active Agent
+   *
+   * Most recent agent that responded in the thread.
+   */
+  active_agent?: string | null;
+  /**
+   * Topic Hint
+   *
+   * Short title/topic if available.
+   */
+  topic_hint?: string | null;
+  /**
+   * Status
+   *
+   * Lifecycle status (e.g., active).
+   */
+  status?: string | null;
+  /**
    * Preview
    *
    * Matched message snippet.
    */
   preview: string;
+  /**
+   * Last Message Preview
+   *
+   * Content preview of the latest message.
+   */
+  last_message_preview?: string | null;
   /**
    * Score
    *
@@ -875,17 +901,41 @@ export type ConversationSummary = {
    */
   conversation_id: string;
   /**
+   * Agent Entrypoint
+   *
+   * Agent entrypoint configured for this thread.
+   */
+  agent_entrypoint?: string | null;
+  /**
+   * Active Agent
+   *
+   * Most recent agent that responded in the thread.
+   */
+  active_agent?: string | null;
+  /**
+   * Topic Hint
+   *
+   * Short title/topic if available.
+   */
+  topic_hint?: string | null;
+  /**
+   * Status
+   *
+   * Lifecycle status (e.g., active).
+   */
+  status?: string | null;
+  /**
    * Message Count
    *
    * Number of messages recorded.
    */
   message_count: number;
   /**
-   * Last Message
+   * Last Message Preview
    *
    * Content preview of the latest message.
    */
-  last_message: string;
+  last_message_preview: string;
   /**
    * Created At
    *
@@ -915,242 +965,6 @@ export type EmailVerificationConfirmRequest = {
 };
 
 /**
- * EmailVerificationTokenRequest
- */
-export type EmailVerificationTokenRequest = {
-  /**
-   * Email
-   */
-  email: string;
-  /**
-   * Ip Address
-   */
-  ip_address?: string | null;
-  /**
-   * User Agent
-   */
-  user_agent?: string | null;
-};
-
-/**
- * EmailVerificationTokenResponse
- */
-export type EmailVerificationTokenResponse = {
-  /**
-   * Token
-   */
-  token: string;
-  /**
-   * User Id
-   */
-  user_id: string;
-  /**
-   * Expires At
-   */
-  expires_at: string;
-};
-
-/**
- * FixtureApplyResult
- */
-export type FixtureApplyResult = {
-  /**
-   * Tenants
-   */
-  tenants: {
-    [key: string]: FixtureTenantResult;
-  };
-  /**
-   * Generated At
-   */
-  generated_at: string;
-};
-
-/**
- * FixtureConversation
- */
-export type FixtureConversation = {
-  /**
-   * Key
-   */
-  key: string;
-  /**
-   * Agent Entrypoint
-   */
-  agent_entrypoint?: string;
-  /**
-   * Status
-   */
-  status?: "active" | "archived";
-  /**
-   * User Email
-   */
-  user_email?: string | null;
-  /**
-   * Messages
-   */
-  messages?: Array<FixtureConversationMessage>;
-};
-
-/**
- * FixtureConversationMessage
- */
-export type FixtureConversationMessage = {
-  /**
-   * Role
-   */
-  role: "user" | "assistant" | "system";
-  /**
-   * Text
-   */
-  text: string;
-};
-
-/**
- * FixtureConversationResult
- */
-export type FixtureConversationResult = {
-  /**
-   * Conversation Id
-   */
-  conversation_id: string;
-  /**
-   * Status
-   */
-  status: string;
-};
-
-/**
- * FixtureTenant
- */
-export type FixtureTenant = {
-  /**
-   * Slug
-   */
-  slug: string;
-  /**
-   * Name
-   */
-  name: string;
-  /**
-   * Plan Code
-   */
-  plan_code?: string | null;
-  /**
-   * Billing Email
-   */
-  billing_email?: string | null;
-  /**
-   * Users
-   */
-  users?: Array<FixtureUser>;
-  /**
-   * Conversations
-   */
-  conversations?: Array<FixtureConversation>;
-  /**
-   * Usage
-   */
-  usage?: Array<FixtureUsageEntry>;
-};
-
-/**
- * FixtureTenantResult
- */
-export type FixtureTenantResult = {
-  /**
-   * Tenant Id
-   */
-  tenant_id: string;
-  /**
-   * Plan Code
-   */
-  plan_code: string | null;
-  /**
-   * Users
-   */
-  users: {
-    [key: string]: FixtureUserResult;
-  };
-  /**
-   * Conversations
-   */
-  conversations: {
-    [key: string]: FixtureConversationResult;
-  };
-};
-
-/**
- * FixtureUsageEntry
- */
-export type FixtureUsageEntry = {
-  /**
-   * Feature Key
-   */
-  feature_key: string;
-  /**
-   * Quantity
-   */
-  quantity: number;
-  /**
-   * Unit
-   */
-  unit?: string;
-  /**
-   * Period Start
-   */
-  period_start: string;
-  /**
-   * Period End
-   */
-  period_end?: string | null;
-  /**
-   * Idempotency Key
-   */
-  idempotency_key?: string | null;
-};
-
-/**
- * FixtureUser
- */
-export type FixtureUser = {
-  /**
-   * Email
-   */
-  email: string;
-  /**
-   * Password
-   */
-  password: string;
-  /**
-   * Display Name
-   */
-  display_name?: string | null;
-  /**
-   * Role
-   */
-  role?: string;
-  /**
-   * Verify Email
-   */
-  verify_email?: boolean;
-};
-
-/**
- * FixtureUserResult
- */
-export type FixtureUserResult = {
-  /**
-   * User Id
-   */
-  user_id: string;
-  /**
-   * Role
-   */
-  role: string;
-};
-
-/**
  * HTTPValidationError
  */
 export type HttpValidationError = {
@@ -1158,38 +972,6 @@ export type HttpValidationError = {
    * Detail
    */
   detail?: Array<ValidationError>;
-};
-
-/**
- * HealthResponse
- *
- * Health check response payload.
- */
-export type HealthResponse = {
-  /**
-   * Status
-   *
-   * Service health status.
-   */
-  status: string;
-  /**
-   * Timestamp
-   *
-   * ISO-8601 timestamp of the probe.
-   */
-  timestamp: string;
-  /**
-   * Version
-   *
-   * Semantic version of the service.
-   */
-  version: string;
-  /**
-   * Uptime
-   *
-   * Process uptime in seconds when available.
-   */
-  uptime?: number | null;
 };
 
 /**
@@ -1429,50 +1211,6 @@ export type PlatformStatusResponse = {
    * Uptime Metrics
    */
   uptime_metrics: Array<UptimeMetricSchema>;
-};
-
-/**
- * PlaywrightFixtureSpec
- */
-export type PlaywrightFixtureSpec = {
-  /**
-   * Tenants
-   */
-  tenants?: Array<FixtureTenant>;
-};
-
-/**
- * RunOptionsRequest
- *
- * Optional advanced controls forwarded to the Agents SDK.
- */
-export type RunOptionsRequest = {
-  /**
-   * Max Turns
-   *
-   * Override max agent turns for this run (default SDK limit).
-   */
-  max_turns?: number | null;
-  /**
-   * Previous Response Id
-   *
-   * Responses API previous_response_id to continue without resending history.
-   */
-  previous_response_id?: string | null;
-  /**
-   * Handoff Input Filter
-   *
-   * Named handoff input filter to apply globally (provider-defined registry).
-   */
-  handoff_input_filter?: string | null;
-  /**
-   * Run Config
-   *
-   * Raw RunConfig overrides (provider-specific).
-   */
-  run_config?: {
-    [key: string]: unknown;
-  } | null;
 };
 
 /**
@@ -3946,78 +3684,6 @@ export type WorkflowSummary = {
    */
   default?: boolean;
 };
-
-export type HealthCheckHealthGetData = {
-  body?: never;
-  path?: never;
-  query?: never;
-  url: "/health";
-};
-
-export type HealthCheckHealthGetResponses = {
-  /**
-   * Successful Response
-   */
-  200: HealthResponse;
-};
-
-export type HealthCheckHealthGetResponse =
-  HealthCheckHealthGetResponses[keyof HealthCheckHealthGetResponses];
-
-export type ReadinessCheckHealthReadyGetData = {
-  body?: never;
-  path?: never;
-  query?: never;
-  url: "/health/ready";
-};
-
-export type ReadinessCheckHealthReadyGetResponses = {
-  /**
-   * Successful Response
-   */
-  200: HealthResponse;
-};
-
-export type ReadinessCheckHealthReadyGetResponse =
-  ReadinessCheckHealthReadyGetResponses[keyof ReadinessCheckHealthReadyGetResponses];
-
-export type StorageHealthHealthStorageGetData = {
-  body?: never;
-  path?: never;
-  query?: never;
-  url: "/health/storage";
-};
-
-export type StorageHealthHealthStorageGetResponses = {
-  /**
-   * Successful Response
-   */
-  200: HealthResponse;
-};
-
-export type StorageHealthHealthStorageGetResponse =
-  StorageHealthHealthStorageGetResponses[keyof StorageHealthHealthStorageGetResponses];
-
-export type HandleStripeWebhookWebhooksStripePostData = {
-  body?: never;
-  path?: never;
-  query?: never;
-  url: "/webhooks/stripe";
-};
-
-export type HandleStripeWebhookWebhooksStripePostResponses = {
-  /**
-   * Response Handle Stripe Webhook Webhooks Stripe Post
-   *
-   * Successful Response
-   */
-  202: {
-    [key: string]: boolean;
-  };
-};
-
-export type HandleStripeWebhookWebhooksStripePostResponse =
-  HandleStripeWebhookWebhooksStripePostResponses[keyof HandleStripeWebhookWebhooksStripePostResponses];
 
 export type LoginForAccessTokenApiV1AuthTokenPostData = {
   body: UserLoginRequest;
@@ -7116,60 +6782,3 @@ export type BillingEventStreamApiV1BillingStreamGetResponses = {
    */
   200: unknown;
 };
-
-export type ApplyTestFixturesApiV1TestFixturesApplyPostData = {
-  body: PlaywrightFixtureSpec;
-  path?: never;
-  query?: never;
-  url: "/api/v1/test-fixtures/apply";
-};
-
-export type ApplyTestFixturesApiV1TestFixturesApplyPostErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
-};
-
-export type ApplyTestFixturesApiV1TestFixturesApplyPostError =
-  ApplyTestFixturesApiV1TestFixturesApplyPostErrors[keyof ApplyTestFixturesApiV1TestFixturesApplyPostErrors];
-
-export type ApplyTestFixturesApiV1TestFixturesApplyPostResponses = {
-  /**
-   * Successful Response
-   */
-  201: FixtureApplyResult;
-};
-
-export type ApplyTestFixturesApiV1TestFixturesApplyPostResponse =
-  ApplyTestFixturesApiV1TestFixturesApplyPostResponses[keyof ApplyTestFixturesApiV1TestFixturesApplyPostResponses];
-
-export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData =
-  {
-    body: EmailVerificationTokenRequest;
-    path?: never;
-    query?: never;
-    url: "/api/v1/test-fixtures/email-verification-token";
-  };
-
-export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors =
-  {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-  };
-
-export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostError =
-  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors[keyof IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors];
-
-export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses =
-  {
-    /**
-     * Successful Response
-     */
-    201: EmailVerificationTokenResponse;
-  };
-
-export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponse =
-  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses[keyof IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses];

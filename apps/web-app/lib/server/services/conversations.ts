@@ -103,7 +103,12 @@ export async function searchConversationsPage(params: {
     items:
       data.items?.map((item) => ({
         conversation_id: item.conversation_id,
+        agent_entrypoint: item.agent_entrypoint ?? null,
+        active_agent: item.active_agent ?? null,
+        topic_hint: item.topic_hint ?? null,
+        status: item.status ?? null,
         preview: item.preview,
+        last_message_preview: item.last_message_preview ?? item.preview,
         score: item.score ?? undefined,
         updated_at: item.updated_at ?? undefined,
       })) ?? [],
@@ -193,13 +198,27 @@ export async function deleteConversation(conversationId: string): Promise<void> 
   });
 }
 
-function mapSummaryToListItem(summary: { conversation_id: string; last_message?: string | null; updated_at: string; created_at?: string; message_count?: number }): ConversationListItem {
-  const lastMessage = summary.last_message?.trim();
-
+function mapSummaryToListItem(summary: {
+  conversation_id: string;
+  agent_entrypoint?: string | null;
+  active_agent?: string | null;
+  topic_hint?: string | null;
+  status?: string | null;
+  message_count?: number;
+  last_message_preview?: string | null;
+  updated_at: string;
+  created_at?: string;
+}): ConversationListItem {
   return {
     id: summary.conversation_id,
-    title: lastMessage || undefined,
-    last_message_summary: lastMessage || undefined,
+    agent_entrypoint: summary.agent_entrypoint ?? null,
+    active_agent: summary.active_agent ?? null,
+    topic_hint: summary.topic_hint ?? null,
+    title: summary.topic_hint ?? null,
+    status: summary.status ?? null,
+    message_count: summary.message_count ?? 0,
+    last_message_preview: summary.last_message_preview ?? undefined,
+    created_at: summary.created_at,
     updated_at: summary.updated_at,
   };
 }

@@ -60,8 +60,9 @@ export function ConversationArchivePanel({
     if (debounced) {
       return searchResults.map((hit) => ({
         id: hit.conversation_id,
-        title: hit.preview,
-        last_message_summary: hit.preview,
+        title: hit.topic_hint ?? hit.preview,
+        topic_hint: hit.topic_hint,
+        last_message_preview: hit.last_message_preview ?? hit.preview,
         updated_at: hit.updated_at ?? new Date().toISOString(),
       }));
     }
@@ -79,7 +80,7 @@ export function ConversationArchivePanel({
         header: 'Title',
         cell: ({ row }) => (
           <div className="font-semibold text-foreground">
-            {row.original.title ?? `Conversation ${row.original.id.substring(0, 8)}…`}
+            {row.original.topic_hint ?? row.original.title ?? `Conversation ${row.original.id.substring(0, 8)}…`}
           </div>
         ),
       },
@@ -88,7 +89,7 @@ export function ConversationArchivePanel({
         header: 'Summary',
         cell: ({ row }) => (
           <span className="text-foreground/70">
-            {row.original.last_message_summary ?? 'Awaiting summary'}
+            {row.original.last_message_preview ?? 'Awaiting summary'}
           </span>
         ),
       },

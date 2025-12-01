@@ -1,99 +1,10 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "anything-agents",
-    "description": "anything-agents FastAPI microservice",
-    "version": "1.0.0"
+    "title": "FastAPI",
+    "version": "0.1.0"
   },
   "paths": {
-    "/health": {
-      "get": {
-        "tags": [
-          "health"
-        ],
-        "summary": "Health Check",
-        "description": "Basic liveness probe.",
-        "operationId": "health_check_health_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HealthResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/health/ready": {
-      "get": {
-        "tags": [
-          "health"
-        ],
-        "summary": "Readiness Check",
-        "description": "Readiness probe for orchestrators (extend with dependency checks).",
-        "operationId": "readiness_check_health_ready_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HealthResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/health/storage": {
-      "get": {
-        "tags": [
-          "health"
-        ],
-        "summary": "Storage Health",
-        "description": "Storage provider health (informational; does not gate readiness).",
-        "operationId": "storage_health_health_storage_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HealthResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/webhooks/stripe": {
-      "post": {
-        "summary": "Handle Stripe Webhook",
-        "operationId": "handle_stripe_webhook_webhooks_stripe_post",
-        "responses": {
-          "202": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "type": "boolean"
-                  },
-                  "type": "object",
-                  "title": "Response Handle Stripe Webhook Webhooks Stripe Post"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/auth/token": {
       "post": {
         "tags": [
@@ -6002,88 +5913,6 @@
           }
         }
       }
-    },
-    "/api/v1/test-fixtures/apply": {
-      "post": {
-        "tags": [
-          "test-fixtures"
-        ],
-        "summary": "Apply Test Fixtures",
-        "operationId": "apply_test_fixtures_api_v1_test_fixtures_apply_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PlaywrightFixtureSpec"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FixtureApplyResult"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/test-fixtures/email-verification-token": {
-      "post": {
-        "tags": [
-          "test-fixtures"
-        ],
-        "summary": "Issue Email Verification Token",
-        "operationId": "issue_email_verification_token_api_v1_test_fixtures_email_verification_token_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EmailVerificationTokenRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EmailVerificationTokenResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
     }
   },
   "components": {
@@ -6149,17 +5978,6 @@
               }
             ],
             "description": "Optional coarse location (city/region/country/timezone) for location-biased search."
-          },
-          "run_options": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/RunOptionsRequest"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Advanced controls (max_turns, previous_response_id, run_config, hooks)."
           }
         },
         "type": "object",
@@ -7470,10 +7288,70 @@
             "title": "Conversation Id",
             "description": "Conversation identifier."
           },
+          "agent_entrypoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Entrypoint",
+            "description": "Agent entrypoint configured for this thread."
+          },
+          "active_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Agent",
+            "description": "Most recent agent that responded in the thread."
+          },
+          "topic_hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic Hint",
+            "description": "Short title/topic if available."
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status",
+            "description": "Lifecycle status (e.g., active)."
+          },
           "preview": {
             "type": "string",
             "title": "Preview",
             "description": "Matched message snippet."
+          },
+          "last_message_preview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Message Preview",
+            "description": "Content preview of the latest message."
           },
           "score": {
             "anyOf": [
@@ -7515,14 +7393,62 @@
             "title": "Conversation Id",
             "description": "Conversation identifier."
           },
+          "agent_entrypoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Entrypoint",
+            "description": "Agent entrypoint configured for this thread."
+          },
+          "active_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Agent",
+            "description": "Most recent agent that responded in the thread."
+          },
+          "topic_hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic Hint",
+            "description": "Short title/topic if available."
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status",
+            "description": "Lifecycle status (e.g., active)."
+          },
           "message_count": {
             "type": "integer",
             "title": "Message Count",
             "description": "Number of messages recorded."
           },
-          "last_message": {
+          "last_message_preview": {
             "type": "string",
-            "title": "Last Message",
+            "title": "Last Message Preview",
             "description": "Content preview of the latest message."
           },
           "created_at": {
@@ -7540,7 +7466,7 @@
         "required": [
           "conversation_id",
           "message_count",
-          "last_message",
+          "last_message_preview",
           "created_at",
           "updated_at"
         ],
@@ -7563,398 +7489,6 @@
         "title": "EmailVerificationConfirmRequest",
         "description": "Payload for confirming the email verification token."
       },
-      "EmailVerificationTokenRequest": {
-        "properties": {
-          "email": {
-            "type": "string",
-            "format": "email",
-            "title": "Email"
-          },
-          "ip_address": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ip Address"
-          },
-          "user_agent": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "User Agent"
-          }
-        },
-        "type": "object",
-        "required": [
-          "email"
-        ],
-        "title": "EmailVerificationTokenRequest"
-      },
-      "EmailVerificationTokenResponse": {
-        "properties": {
-          "token": {
-            "type": "string",
-            "title": "Token"
-          },
-          "user_id": {
-            "type": "string",
-            "title": "User Id"
-          },
-          "expires_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Expires At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "token",
-          "user_id",
-          "expires_at"
-        ],
-        "title": "EmailVerificationTokenResponse"
-      },
-      "FixtureApplyResult": {
-        "properties": {
-          "tenants": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/FixtureTenantResult"
-            },
-            "type": "object",
-            "title": "Tenants"
-          },
-          "generated_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Generated At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "tenants",
-          "generated_at"
-        ],
-        "title": "FixtureApplyResult"
-      },
-      "FixtureConversation": {
-        "properties": {
-          "key": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Key"
-          },
-          "agent_entrypoint": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Agent Entrypoint",
-            "default": "default"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "active",
-              "archived"
-            ],
-            "title": "Status",
-            "default": "active"
-          },
-          "user_email": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "email"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "User Email"
-          },
-          "messages": {
-            "items": {
-              "$ref": "#/components/schemas/FixtureConversationMessage"
-            },
-            "type": "array",
-            "title": "Messages"
-          }
-        },
-        "type": "object",
-        "required": [
-          "key"
-        ],
-        "title": "FixtureConversation"
-      },
-      "FixtureConversationMessage": {
-        "properties": {
-          "role": {
-            "type": "string",
-            "enum": [
-              "user",
-              "assistant",
-              "system"
-            ],
-            "title": "Role"
-          },
-          "text": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Text"
-          }
-        },
-        "type": "object",
-        "required": [
-          "role",
-          "text"
-        ],
-        "title": "FixtureConversationMessage"
-      },
-      "FixtureConversationResult": {
-        "properties": {
-          "conversation_id": {
-            "type": "string",
-            "title": "Conversation Id"
-          },
-          "status": {
-            "type": "string",
-            "title": "Status"
-          }
-        },
-        "type": "object",
-        "required": [
-          "conversation_id",
-          "status"
-        ],
-        "title": "FixtureConversationResult"
-      },
-      "FixtureTenant": {
-        "properties": {
-          "slug": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Slug"
-          },
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Name"
-          },
-          "plan_code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Plan Code"
-          },
-          "billing_email": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "email"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Billing Email"
-          },
-          "users": {
-            "items": {
-              "$ref": "#/components/schemas/FixtureUser"
-            },
-            "type": "array",
-            "title": "Users"
-          },
-          "conversations": {
-            "items": {
-              "$ref": "#/components/schemas/FixtureConversation"
-            },
-            "type": "array",
-            "title": "Conversations"
-          },
-          "usage": {
-            "items": {
-              "$ref": "#/components/schemas/FixtureUsageEntry"
-            },
-            "type": "array",
-            "title": "Usage"
-          }
-        },
-        "type": "object",
-        "required": [
-          "slug",
-          "name"
-        ],
-        "title": "FixtureTenant"
-      },
-      "FixtureTenantResult": {
-        "properties": {
-          "tenant_id": {
-            "type": "string",
-            "title": "Tenant Id"
-          },
-          "plan_code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Plan Code"
-          },
-          "users": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/FixtureUserResult"
-            },
-            "type": "object",
-            "title": "Users"
-          },
-          "conversations": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/FixtureConversationResult"
-            },
-            "type": "object",
-            "title": "Conversations"
-          }
-        },
-        "type": "object",
-        "required": [
-          "tenant_id",
-          "plan_code",
-          "users",
-          "conversations"
-        ],
-        "title": "FixtureTenantResult"
-      },
-      "FixtureUsageEntry": {
-        "properties": {
-          "feature_key": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Feature Key"
-          },
-          "quantity": {
-            "type": "integer",
-            "exclusiveMinimum": 0.0,
-            "title": "Quantity"
-          },
-          "unit": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Unit",
-            "default": "requests"
-          },
-          "period_start": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Period Start"
-          },
-          "period_end": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Period End"
-          },
-          "idempotency_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Idempotency Key"
-          }
-        },
-        "type": "object",
-        "required": [
-          "feature_key",
-          "quantity",
-          "period_start"
-        ],
-        "title": "FixtureUsageEntry"
-      },
-      "FixtureUser": {
-        "properties": {
-          "email": {
-            "type": "string",
-            "format": "email",
-            "title": "Email"
-          },
-          "password": {
-            "type": "string",
-            "minLength": 8,
-            "title": "Password"
-          },
-          "display_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Display Name"
-          },
-          "role": {
-            "type": "string",
-            "minLength": 3,
-            "title": "Role",
-            "default": "admin"
-          },
-          "verify_email": {
-            "type": "boolean",
-            "title": "Verify Email",
-            "default": true
-          }
-        },
-        "type": "object",
-        "required": [
-          "email",
-          "password"
-        ],
-        "title": "FixtureUser"
-      },
-      "FixtureUserResult": {
-        "properties": {
-          "user_id": {
-            "type": "string",
-            "title": "User Id"
-          },
-          "role": {
-            "type": "string",
-            "title": "Role"
-          }
-        },
-        "type": "object",
-        "required": [
-          "user_id",
-          "role"
-        ],
-        "title": "FixtureUserResult"
-      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -7967,45 +7501,6 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
-      },
-      "HealthResponse": {
-        "properties": {
-          "status": {
-            "type": "string",
-            "title": "Status",
-            "description": "Service health status."
-          },
-          "timestamp": {
-            "type": "string",
-            "title": "Timestamp",
-            "description": "ISO-8601 timestamp of the probe."
-          },
-          "version": {
-            "type": "string",
-            "title": "Version",
-            "description": "Semantic version of the service."
-          },
-          "uptime": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Uptime",
-            "description": "Process uptime in seconds when available."
-          }
-        },
-        "type": "object",
-        "required": [
-          "status",
-          "timestamp",
-          "version"
-        ],
-        "title": "HealthResponse",
-        "description": "Health check response payload."
       },
       "IncidentSchema": {
         "properties": {
@@ -8352,75 +7847,6 @@
           "uptime_metrics"
         ],
         "title": "PlatformStatusResponse"
-      },
-      "PlaywrightFixtureSpec": {
-        "properties": {
-          "tenants": {
-            "items": {
-              "$ref": "#/components/schemas/FixtureTenant"
-            },
-            "type": "array",
-            "title": "Tenants"
-          }
-        },
-        "type": "object",
-        "title": "PlaywrightFixtureSpec"
-      },
-      "RunOptionsRequest": {
-        "properties": {
-          "max_turns": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Max Turns",
-            "description": "Override max agent turns for this run (default SDK limit)."
-          },
-          "previous_response_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Previous Response Id",
-            "description": "Responses API previous_response_id to continue without resending history."
-          },
-          "handoff_input_filter": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Handoff Input Filter",
-            "description": "Named handoff input filter to apply globally (provider-defined registry)."
-          },
-          "run_config": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Run Config",
-            "description": "Raw RunConfig overrides (provider-specific)."
-          }
-        },
-        "type": "object",
-        "title": "RunOptionsRequest",
-        "description": "Optional advanced controls forwarded to the Agents SDK."
       },
       "ServiceAccountIssueRequest": {
         "properties": {

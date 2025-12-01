@@ -32,7 +32,7 @@ describe('ConversationArchivePanel', () => {
             {
               id: 'conv-1',
               title: 'Alpha conversation',
-              last_message_summary: 'Summary',
+              last_message_preview: 'Summary',
               updated_at: '2025-01-01T00:00:00.000Z',
             },
           ]}

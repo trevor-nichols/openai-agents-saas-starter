@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { formatRelativeTime } from '@/lib/utils/time';
 import type { ConversationListItem } from '@/types/conversations';
 import { useConversationSearch } from '@/lib/queries/conversations';
+import { InlineTag } from '@/components/ui/foundation';
 
 interface ConversationSidebarProps {
   conversationList: ConversationListItem[];
@@ -82,47 +83,62 @@ export function ConversationSidebar({
 
     return (
       <ul className="space-y-2">
-        {items.map((conversation) => (
-          <li key={conversation.id}>
-            <button
-              type="button"
-              onClick={() => onSelectConversation(conversation.id)}
-              className={cn(
-                'group flex w-full flex-col gap-1 rounded-lg border px-3 py-2 text-left transition duration-quick ease-apple',
-                currentConversationId === conversation.id
-                  ? 'border-white/30 bg-white/15 text-foreground'
-                  : 'border-white/5 bg-white/5 text-foreground/80 hover:border-white/15 hover:bg-white/10'
-              )}
-            >
-              <div className="flex items-center justify-between gap-2 text-sm font-semibold">
-                <p className="truncate">
-                  {conversation.title ?? `Conversation ${conversation.id.substring(0, 8)}…`}
-                </p>
-                <span className="text-xs text-foreground/50">
-                  {formatRelativeTime(conversation.updated_at)}
-                </span>
-              </div>
-              {conversation.last_message_summary ? (
-                <p className="truncate text-xs text-foreground/60">{conversation.last_message_summary}</p>
+        {items.map((conversation) => {
+          const title =
+            conversation.title?.trim() ||
+            conversation.topic_hint?.trim() ||
+            conversation.last_message_preview?.slice(0, 50) ||
+            `Conversation ${conversation.id.substring(0, 8)}…`;
+
+          const agentLabel = conversation.active_agent || conversation.agent_entrypoint;
+
+          return (
+            <li key={conversation.id}>
+              <button
+                type="button"
+                onClick={() => onSelectConversation(conversation.id)}
+                className={cn(
+                  'group flex w-full flex-col gap-1 rounded-lg border px-3 py-2 text-left transition duration-quick ease-apple',
+                  currentConversationId === conversation.id
+                    ? 'border-primary/50 bg-primary/10 text-foreground'
+                    : 'border-white/5 bg-white/5 text-foreground/80 hover:border-white/15 hover:bg-white/10'
+                )}
+              >
+                <div className="flex items-center justify-between gap-2 text-sm font-semibold">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {agentLabel ? (
+                      <InlineTag tone="default" className="shrink-0">
+                        {agentLabel}
+                      </InlineTag>
+                    ) : null}
+                    <p className="truncate">{title}</p>
+                  </div>
+                  <span className="text-xs text-foreground/50" title={conversation.updated_at}>
+                    {formatRelativeTime(conversation.updated_at)}
+                  </span>
+                </div>
+                {conversation.last_message_preview ? (
+                  <p className="truncate text-xs text-foreground/60">{conversation.last_message_preview}</p>
+                ) : null}
+              </button>
+              {onDeleteConversation ? (
+                <div className="mt-1 flex justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs text-foreground/60"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void onDeleteConversation(conversation.id);
+                    }}
+                  >
+                    Clear
+                  </Button>
+                </div>
               ) : null}
-            </button>
-            {onDeleteConversation ? (
-              <div className="mt-1 flex justify-end">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs text-foreground/60"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    void onDeleteConversation(conversation.id);
-                  }}
-                >
-                  Clear
-                </Button>
-              </div>
-            ) : null}
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ul>
     );
   };
@@ -131,8 +147,11 @@ export function ConversationSidebar({
   const searchList = renderList(
     searchResults.map((hit) => ({
       id: hit.conversation_id,
-      title: hit.preview,
-      last_message_summary: hit.preview,
+      title: hit.topic_hint ?? hit.preview,
+      topic_hint: hit.topic_hint,
+      agent_entrypoint: hit.agent_entrypoint,
+      active_agent: hit.active_agent,
+      last_message_preview: hit.last_message_preview ?? hit.preview,
       updated_at: hit.updated_at ?? new Date().toISOString(),
     })),
     isSearching

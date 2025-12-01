@@ -14,7 +14,7 @@ import { streamChat } from '@/lib/api/chat';
 import { useSendChatMutation } from '@/lib/queries/chat';
 import { queryKeys } from '@/lib/queries/keys';
 import type { ConversationListItem } from '@/types/conversations';
-import type { ChatMessage, ConversationLifecycleStatus, RunOptionsInput, ToolState } from '../types';
+import type { ChatMessage, ConversationLifecycleStatus, ToolState } from '../types';
 import type { LocationHint } from '@/lib/api/client/types.gen';
 
 import { createLogger } from '@/lib/logging';
@@ -22,7 +22,6 @@ import { consumeChatStream } from '../adapters/chatStreamAdapter';
 import {
   createConversationListEntry,
   mapHistoryToChatMessages,
-  mapRunOptionsInput,
   normalizeLocationPayload,
 } from '../mappers/chatRequestMappers';
 import { upsertConversationCaches } from '../cache/conversationCache';
@@ -63,7 +62,6 @@ export interface UseChatControllerReturn {
 export interface SendMessageOptions {
   shareLocation?: boolean;
   location?: Partial<LocationHint> | null;
-  runOptions?: RunOptionsInput | null;
 }
 
 export type AgentNotice = { id: string; text: string };
@@ -92,7 +90,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
   const [reasoningText, setReasoningText] = useState('');
   const [lifecycleStatus, setLifecycleStatus] = useState<ConversationLifecycleStatus>('idle');
 
-  const { enqueueMessageAction, flushQueuedMessages } = useMessageDispatchQueue(dispatchMessages);
+      const { enqueueMessageAction, flushQueuedMessages } = useMessageDispatchQueue(dispatchMessages);
 
   const resetViewState = useCallback(
     () => {
@@ -216,7 +214,6 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
           agentType: selectedAgent,
           shareLocation,
           location: locationPayload,
-          runOptions: options?.runOptions ?? undefined,
         });
 
         const streamResult = await consumeChatStream(stream, {
@@ -304,7 +301,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
             context: null,
             share_location: shareLocation,
             location: locationPayload,
-            run_options: mapRunOptionsInput(options?.runOptions),
+            // Advanced run options are disallowed server-side; omit from payload.
           });
 
           dispatchMessages({

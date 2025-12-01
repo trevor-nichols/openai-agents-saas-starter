@@ -75,9 +75,9 @@ export function useDashboardData(): DashboardData {
         .slice(0, 5)
         .map((conversation) => ({
           id: conversation.id,
-          title: conversation.title ?? 'Untitled conversation',
+          title: conversation.topic_hint ?? conversation.title ?? 'Untitled conversation',
           updatedAt: conversation.updated_at,
-          summary: conversation.last_message_summary ?? 'Awaiting summary',
+          summary: conversation.last_message_preview ?? 'Awaiting summary',
         })),
     [conversationList]
   );

@@ -23,6 +23,11 @@ class SearchResult:
     preview: str
     score: float | None = None
     updated_at: datetime | None = None
+    agent_entrypoint: str | None = None
+    active_agent: str | None = None
+    topic_hint: str | None = None
+    status: str | None = None
+    last_message_preview: str | None = None
 
 
 @dataclass(slots=True)
@@ -77,6 +82,17 @@ class ConversationService:
     ) -> list[ConversationMessage]:
         normalized_tenant = _require_tenant_id(tenant_id)
         return await self._require_repository().get_messages(
+            conversation_id, tenant_id=normalized_tenant
+        )
+
+    async def get_conversation(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+    ) -> ConversationRecord | None:
+        normalized_tenant = _require_tenant_id(tenant_id)
+        return await self._require_repository().get_conversation(
             conversation_id, tenant_id=normalized_tenant
         )
 
@@ -149,6 +165,13 @@ class ConversationService:
                     preview=preview,
                     score=hit.score,
                     updated_at=hit.record.updated_at,
+                    agent_entrypoint=hit.record.agent_entrypoint,
+                    active_agent=hit.record.active_agent,
+                    topic_hint=hit.record.topic_hint,
+                    status=hit.record.status,
+                    last_message_preview=hit.record.messages[-1].content[:160]
+                    if hit.record.messages
+                    else None,
                 )
             )
 

@@ -51,10 +51,6 @@ class AgentChatRequest(BaseModel):
             "Optional coarse location (city/region/country/timezone) for location-biased search."
         ),
     )
-    run_options: "RunOptionsRequest | None" = Field(
-        default=None,
-        description="Advanced controls (max_turns, previous_response_id, run_config, hooks).",
-    )
 
 
 class AgentChatResponse(BaseModel):
@@ -155,26 +151,6 @@ class StreamingChatEvent(BaseModel):
     attachments: list["MessageAttachment"] | None = Field(
         default=None,
         description="Attachments generated during this event (e.g., stored images).",
-    )
-
-
-class RunOptionsRequest(BaseModel):
-    """Optional advanced controls forwarded to the Agents SDK."""
-
-    max_turns: int | None = Field(
-        default=None, description="Override max agent turns for this run (default SDK limit)."
-    )
-    previous_response_id: str | None = Field(
-        default=None,
-        description="Responses API previous_response_id to continue without resending history.",
-    )
-    handoff_input_filter: str | None = Field(
-        default=None,
-        description="Named handoff input filter to apply globally (provider-defined registry).",
-    )
-    run_config: dict[str, Any] | None = Field(
-        default=None,
-        description="Raw RunConfig overrides (provider-specific).",
     )
 
 

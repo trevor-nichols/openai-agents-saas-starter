@@ -1,64 +1,34 @@
 'use server';
 
-import {
-  healthCheckHealthGet,
-  readinessCheckHealthReadyGet,
-  storageHealthHealthStorageGet,
-} from '@/lib/api/client/sdk.gen';
-import type { HealthResponse } from '@/lib/api/client/types.gen';
+import { API_BASE_URL } from '@/lib/config';
 
-import { createApiClient } from '../apiClient';
+type HealthResponse = Record<string, unknown> & { status?: string };
 
-/**
- * Retrieve the API service liveness document.
- */
-export async function getHealthStatus(): Promise<HealthResponse> {
-  const response = await healthCheckHealthGet({
-    client: createApiClient(),
-    responseStyle: 'fields',
-    throwOnError: true,
-  });
+const BASE = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
 
-  const payload = response.data as HealthResponse | undefined;
+async function fetchJson(path: string): Promise<HealthResponse> {
+  const response = await fetch(`${BASE}${path}`, { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error(`Health request failed (${response.status})`);
+  }
+  const payload = (await response.json()) as HealthResponse | null;
   if (!payload) {
     throw new Error('Health endpoint returned an empty payload.');
   }
-
   return payload;
 }
 
-/**
- * Retrieve the API service readiness document.
- */
+/** Liveness probe – exercises FastAPI /health. */
+export async function getHealthStatus(): Promise<HealthResponse> {
+  return fetchJson('/health');
+}
+
+/** Readiness probe – exercises FastAPI /health/ready (includes DB check). */
 export async function getReadinessStatus(): Promise<HealthResponse> {
-  const response = await readinessCheckHealthReadyGet({
-    client: createApiClient(),
-    responseStyle: 'fields',
-    throwOnError: true,
-  });
-
-  const payload = response.data as HealthResponse | undefined;
-  if (!payload) {
-    throw new Error('Readiness endpoint returned an empty payload.');
-  }
-
-  return payload;
+  return fetchJson('/health/ready');
 }
 
-/**
- * Retrieve storage provider health (informational).
- */
-export async function getStorageHealthStatus(): Promise<unknown> {
-  const response = await storageHealthHealthStorageGet({
-    client: createApiClient(),
-    responseStyle: 'fields',
-    throwOnError: true,
-  });
-
-  const payload = response.data;
-  if (!payload) {
-    throw new Error('Storage health endpoint returned an empty payload.');
-  }
-
-  return payload;
+/** Storage probe – exercises FastAPI /health/storage. */
+export async function getStorageHealthStatus(): Promise<HealthResponse> {
+  return fetchJson('/health/storage');
 }

@@ -72,9 +72,33 @@ export async function searchConversations(params: {
     throw new Error('Failed to search conversations');
   }
 
-  const result = (await response.json()) as ConversationSearchPage;
+  const result = (await response.json()) as {
+    items?: Array<{
+      conversation_id: string;
+      agent_entrypoint?: string | null;
+      active_agent?: string | null;
+      topic_hint?: string | null;
+      status?: string | null;
+      preview: string;
+      last_message_preview?: string | null;
+      score?: number | null;
+      updated_at?: string | null;
+    }>;
+    next_cursor?: string | null;
+  };
+
   return {
-    items: result.items ?? [],
+    items: (result.items ?? []).map((item) => ({
+      conversation_id: item.conversation_id,
+      agent_entrypoint: item.agent_entrypoint ?? null,
+      active_agent: item.active_agent ?? null,
+      topic_hint: item.topic_hint ?? null,
+      status: item.status ?? null,
+      preview: item.preview,
+      last_message_preview: item.last_message_preview ?? item.preview,
+      score: item.score,
+      updated_at: item.updated_at ?? null,
+    })),
     next_cursor: result.next_cursor ?? null,
   };
 }
@@ -117,17 +141,25 @@ export async function fetchConversationEvents(params: {
     },
   );
 
-  const payload = (await response.json().catch(() => ({}))) as {
-    success?: boolean;
-    data?: ConversationEvents;
-    error?: string;
-  };
-
-  if (!response.ok || payload.success === false || !payload.data) {
-    throw new Error(payload.error || 'Failed to load conversation events');
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as { error?: string; message?: string };
+    throw new Error(payload.error || payload.message || 'Failed to load conversation events');
   }
 
-  return payload.data;
+  const body = (await response.json().catch(() => null)) as
+    | { success?: boolean; data?: ConversationEvents; error?: string; message?: string }
+    | null;
+
+  if (!body || body.success === false) {
+    const errMsg = body?.error || body?.message || 'Failed to load conversation events';
+    throw new Error(errMsg);
+  }
+
+  if (!body?.data) {
+    throw new Error('Conversation events payload was empty');
+  }
+
+  return body.data;
 }
 
 /**

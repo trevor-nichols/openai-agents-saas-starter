@@ -11,7 +11,6 @@ import type {
   AgentChatResponse,
 } from '@/lib/api/client/types.gen';
 import type {
-  RunOptionsInput,
   StreamChunk,
   StreamChatParams,
 } from '@/lib/chat/types';
@@ -116,8 +115,7 @@ export async function sendChatMessage(payload: AgentChatRequest): Promise<AgentC
 export async function* streamChat(
   params: StreamChatParams,
 ): AsyncGenerator<StreamChunk, void, unknown> {
-  const { message, conversationId, agentType = 'triage', shareLocation, location, runOptions } =
-    params;
+  const { message, conversationId, agentType = 'triage', shareLocation, location } = params;
 
   log.debug('Starting chat stream', {
     agentType,
@@ -136,7 +134,6 @@ export async function* streamChat(
       agent_type: agentType,
       share_location: shareLocation,
       location,
-      run_options: mapRunOptions(runOptions),
     }),
   });
 
@@ -293,15 +290,4 @@ function parseStreamSegment(segment: string): ParsedSegment {
       done: true,
     };
   }
-}
-
-function mapRunOptions(runOptions?: RunOptionsInput) {
-  if (!runOptions) return undefined;
-  const { maxTurns, previousResponseId, handoffInputFilter, runConfig } = runOptions;
-  return {
-    max_turns: maxTurns ?? undefined,
-    previous_response_id: previousResponseId ?? undefined,
-    handoff_input_filter: handoffInputFilter ?? undefined,
-    run_config: runConfig ?? undefined,
-  };
 }

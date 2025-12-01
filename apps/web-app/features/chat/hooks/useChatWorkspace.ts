@@ -85,13 +85,6 @@ export function useChatWorkspace() {
 
   const activeAgents = useMemo(() => agents.filter((agent) => agent.status === 'active').length, [agents]);
   const selectedAgentLabel = useMemo(() => normalizeAgentLabel(selectedAgent), [selectedAgent]);
-  const [runOptions, setRunOptions] = useState({
-    maxTurns: undefined as number | undefined,
-    previousResponseId: '' as string | null | undefined,
-    handoffInputFilter: '' as string | null | undefined,
-    runConfigRaw: '' as string,
-  });
-  const [runOptionsEnabled, setRunOptionsEnabled] = useState(false);
 
   const handleSelectConversation = useCallback(
     (conversationId: string) => {
@@ -146,41 +139,12 @@ export function useChatWorkspace() {
   }, [shareLocation, locationHint]);
 
   const handleSendMessage = useCallback(
-    (message: string) => {
-      const cleanedRunConfig = runOptions.runConfigRaw?.trim();
-      let parsedRunConfig: unknown | null | undefined = undefined;
-      if (cleanedRunConfig) {
-        try {
-          parsedRunConfig = JSON.parse(cleanedRunConfig);
-        } catch (error) {
-          toast.error('Invalid run_config JSON', {
-            description: error instanceof Error ? error.message : 'Unable to parse run_config',
-          });
-          return Promise.resolve();
-        }
-      }
-
-      const runOptionsPayload =
-        runOptionsEnabled &&
-        (runOptions.maxTurns != null ||
-          (runOptions.previousResponseId && runOptions.previousResponseId.trim().length > 0) ||
-          (runOptions.handoffInputFilter && runOptions.handoffInputFilter.trim().length > 0) ||
-          parsedRunConfig !== undefined)
-          ? {
-              maxTurns: runOptions.maxTurns ?? null,
-              previousResponseId: runOptions.previousResponseId?.trim() || null,
-              handoffInputFilter: runOptions.handoffInputFilter?.trim() || null,
-              runConfig: parsedRunConfig ?? null,
-            }
-          : undefined;
-
-      return sendMessage(message, {
+    (message: string) =>
+      sendMessage(message, {
         shareLocation,
         location: locationHint,
-        runOptions: runOptionsPayload ?? undefined,
-      });
-    },
-    [locationHint, runOptions, runOptionsEnabled, sendMessage, shareLocation],
+      }),
+    [locationHint, sendMessage, shareLocation],
   );
 
   const updateLocationField = useCallback(
@@ -235,10 +199,6 @@ export function useChatWorkspace() {
     locationHint,
     updateLocationField,
     setSelectedAgent,
-    runOptions,
-    setRunOptions,
-    runOptionsEnabled,
-    setRunOptionsEnabled,
     chatController,
   };
 }
