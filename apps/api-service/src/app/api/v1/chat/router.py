@@ -134,7 +134,11 @@ async def stream_chat_with_agent(
                     yield f"data: {payload.model_dump_json()}\n\n"
 
                     if event.is_terminal:
-                        break
+                        # Allow the upstream generator to finish naturally so
+                        # downstream cleanup (session sync, persistence) runs.
+                        # The generator will end on its own after emitting the
+                        # terminal event.
+                        continue
             except Exception as exc:
                 logger.exception(
                     "chat.stream.serialization_error",

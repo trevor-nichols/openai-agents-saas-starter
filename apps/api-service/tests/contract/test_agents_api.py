@@ -1,5 +1,6 @@
 """Test suite covering agent-facing endpoints and services."""
 
+import json
 import os
 from datetime import UTC, datetime
 from typing import cast
@@ -24,7 +25,7 @@ from app.api.dependencies.auth import require_current_user  # noqa: E402
 from app.api.v1.chat import router as chat_router  # noqa: E402
 from app.api.v1.chat.schemas import AgentChatResponse  # noqa: E402
 from app.bootstrap.container import get_container  # noqa: E402
-from app.domain.ai import AgentRunResult  # noqa: E402
+from app.domain.ai import AgentRunResult, AgentStreamEvent  # noqa: E402
 from app.domain.conversations import ConversationMessage, ConversationMetadata  # noqa: E402
 from app.services.agent_service import agent_service  # noqa: E402
 from app.services.shared.rate_limit_service import RateLimitExceeded, rate_limiter  # noqa: E402
@@ -132,6 +133,57 @@ def test_chat_falls_back_to_triage(mock_run: AsyncMock, client: TestClient) -> N
     payload = response.json()
     assert payload["response"] == "Fallback engaged."
     assert payload["agent_used"] == "triage"
+
+
+@patch("app.infrastructure.providers.openai.runtime.Runner.run_stream")
+def test_chat_stream_persists_assistant_message(
+    mock_run_stream, client: TestClient
+) -> None:
+    class _MockStream:
+        last_response_id = "resp_stream"
+        usage = None
+
+        async def events(self):
+            yield AgentStreamEvent(
+                kind="run_item_stream_event",
+                text_delta="Hello ",
+                response_id=self.last_response_id,
+                is_terminal=False,
+            )
+            yield AgentStreamEvent(
+                kind="run_item_stream_event",
+                response_text="Hello world",
+                response_id=self.last_response_id,
+                is_terminal=True,
+            )
+
+    mock_run_stream.return_value = _MockStream()
+
+    payload = {"message": "Hi there", "agent_type": "triage"}
+    with client.stream("POST", "/api/v1/chat/stream", json=payload) as response:
+        assert response.status_code == 200
+        lines = []
+        for raw in response.iter_lines():
+            if not raw:
+                continue
+            if isinstance(raw, (bytes, bytearray)):
+                line = raw.decode()
+            else:
+                line = raw
+            if not line.startswith("data: "):
+                continue
+            data = json.loads(line[len("data: ") :])
+            lines.append(data)
+
+    assert lines, "stream returned no events"
+    conversation_id = lines[-1]["conversation_id"]
+    assert conversation_id
+
+    history_response = client.get(f"/api/v1/conversations/{conversation_id}")
+    assert history_response.status_code == 200
+    history = history_response.json()
+    assert len(history["messages"]) >= 2
+    assert any(msg["role"] == "assistant" for msg in history["messages"])
 
 
 @patch("app.infrastructure.providers.openai.runtime.Runner.run", new_callable=AsyncMock)

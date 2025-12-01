@@ -246,6 +246,19 @@ class EphemeralConversationRepository(ConversationRepository):
             records.append(ConversationRecord(conversation_id=cid, messages=list(messages)))
         return records
 
+    async def get_conversation(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+    ) -> ConversationRecord | None:
+        tenant = self._require_tenant(tenant_id)
+        key = (tenant, conversation_id)
+        messages = self._messages.get(key, [])
+        if not messages:
+            return None
+        return ConversationRecord(conversation_id=conversation_id, messages=list(messages))
+
     async def paginate_conversations(
         self,
         *,
