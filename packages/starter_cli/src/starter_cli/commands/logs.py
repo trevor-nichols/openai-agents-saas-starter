@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import argparse
+import datetime
 import os
 import shlex
 import shutil
 import subprocess
 import threading
+from typing import cast
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,6 +18,7 @@ from starter_cli.core.constants import DEFAULT_COMPOSE_FILE
 
 DEFAULT_LINES = 200
 SERVICE_CHOICES = ("all", "api", "frontend", "collector", "postgres", "redis")
+DEFAULT_LOG_ROOT = Path("var/log")
 
 
 @dataclass(slots=True)
@@ -31,6 +34,29 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         help="Tail logs for backend, frontend ingest, and infra services.",
     )
     logs_subparsers = parser.add_subparsers(dest="logs_command")
+
+    archive_parser = logs_subparsers.add_parser(
+        "archive",
+        help="Archive and optionally prune dated log directories.",
+    )
+    archive_parser.add_argument(
+        "--days",
+        type=int,
+        default=7,
+        help="Archive/prune logs older than this many days (default 7).",
+    )
+    archive_parser.add_argument(
+        "--log-root",
+        type=Path,
+        default=None,
+        help="Override log root (defaults to LOG_ROOT or var/log).",
+    )
+    archive_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be archived/pruned without changing files.",
+    )
+    archive_parser.set_defaults(handler=_handle_archive)
 
     tail_parser = logs_subparsers.add_parser(
         "tail",
@@ -55,6 +81,11 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         action="store_true",
         help="Do not follow; exit after printing the last buffered lines.",
     )
+    tail_parser.add_argument(
+        "--errors",
+        action="store_true",
+        help="Tail error logs instead of all logs when available.",
+    )
     tail_parser.set_defaults(handler=_handle_tail)
 
 
@@ -62,7 +93,9 @@ def _handle_tail(args: argparse.Namespace, ctx: CLIContext) -> int:
     follow = not args.no_follow
     services = args.service or ["all"]
 
-    targets, notes = _plan_targets(ctx, services, lines=max(args.lines, 1), follow=follow)
+    targets, notes = _plan_targets(
+        ctx, services, lines=max(args.lines, 1), follow=follow, errors_only=args.errors
+    )
 
     for level, message in notes:
         if level == "warn":
@@ -98,12 +131,54 @@ def _handle_tail(args: argparse.Namespace, ctx: CLIContext) -> int:
     return 1 if errors else 0
 
 
+def _handle_archive(args: argparse.Namespace, ctx: CLIContext) -> int:
+    base_root_raw = (args.log_root or Path(os.getenv("LOG_ROOT", DEFAULT_LOG_ROOT))).expanduser()
+    base_root = base_root_raw if base_root_raw.is_absolute() else (ctx.project_root / base_root_raw).resolve()
+
+    days = max(args.days, 0)
+    cutoff = datetime.date.today() - datetime.timedelta(days=days)
+
+    if not base_root.exists():
+        console.info(f"No log root at {base_root}; nothing to archive.", topic="logs")
+        return 0
+
+    archived = 0
+    for entry in sorted(base_root.iterdir()):
+        if entry.name == "current" or not entry.is_dir():
+            continue
+        try:
+            entry_date = datetime.date.fromisoformat(entry.name)
+        except ValueError:
+            continue
+        if entry_date >= cutoff:
+            continue
+
+        archive_path = base_root / f"{entry.name}.zip"
+        if args.dry_run:
+            console.info(f"[dry-run] would archive {entry} -> {archive_path}", topic="logs")
+            archived += 1
+            continue
+
+        try:
+            shutil.make_archive(str(archive_path.with_suffix("")), "zip", base_root, entry.name)
+            shutil.rmtree(entry, ignore_errors=True)
+            console.info(f"Archived {entry} -> {archive_path.name}", topic="logs")
+            archived += 1
+        except Exception as exc:  # pragma: no cover - defensive
+            console.warn(f"Failed to archive {entry}: {exc}", topic="logs")
+
+    if archived == 0:
+        console.info("No dated log directories matched archive criteria.", topic="logs")
+    return 0
+
+
 def _plan_targets(
     ctx: CLIContext,
     requested: Iterable[str],
     *,
     lines: int,
     follow: bool,
+    errors_only: bool,
 ) -> tuple[list[TailTarget], list[tuple[str, str]]]:
     settings = ctx.optional_settings()
     env = os.environ
@@ -125,6 +200,14 @@ def _plan_targets(
             if value is not None:
                 value = str(value)
         return value or default
+
+    log_root_raw = cast(str, env_value("LOG_ROOT", None) or str(DEFAULT_LOG_ROOT))
+    base_root_raw = Path(log_root_raw).expanduser()
+    base_root = base_root_raw if base_root_raw.is_absolute() else (ctx.project_root / base_root_raw)
+    today_dir = datetime.date.today().isoformat()
+    current_root = (base_root / "current").resolve() if (base_root / "current").exists() else None
+    date_root = base_root / today_dir
+    resolved_root = current_root if current_root and current_root.exists() else date_root
 
     normalized = _normalize_services(requested, enable_collector=env_bool("ENABLE_OTEL_COLLECTOR"))
 
@@ -154,30 +237,37 @@ def _plan_targets(
     # API log file (rotating file sink)
     if "api" in normalized:
         sink = (env_value("LOGGING_SINK", "stdout") or "stdout").lower()
-        log_path_raw = env_value("LOGGING_FILE_PATH", "var/log/api-service.log")
-        log_path = Path(log_path_raw) if log_path_raw else None
+        log_path = _resolve_api_log_path(
+            ctx,
+            sink=sink,
+            base_root=base_root,
+            preferred_date_root=resolved_root if resolved_root.exists() else date_root,
+            explicit_path=env_value("LOGGING_FILE_PATH"),
+            errors_only=errors_only,
+        )
 
-        if sink == "file" and log_path is not None:
-            if not log_path.is_absolute():
-                log_path = (ctx.project_root / log_path).resolve()
-            if log_path.exists():
-                cmd = ["tail", "-n", str(lines), str(log_path)]
-                if follow:
-                    cmd.insert(2, "-f")
-                targets.append(TailTarget(name="api", command=cmd, cwd=ctx.project_root))
-            else:
+        if log_path:
+            cmd = ["tail", "-n", str(lines), str(log_path)]
+            if follow:
+                cmd.insert(2, "-f")
+            targets.append(TailTarget(name="api", command=cmd, cwd=ctx.project_root))
+        else:
+            if sink == "file":
                 message = (
-                    "LOGGING_SINK=file but log path"
-                    f" {log_path} does not exist; start the API once"
-                    " or adjust LOGGING_FILE_PATH."
+                    "LOGGING_SINK=file but no log file found yet; start the API"
+                    " or check LOG_ROOT/LOGGING_FILE_PATH."
                 )
                 notes.append(("warn", message))
-        else:
-            message = (
-                "API is not writing to a file sink. Run the API in another terminal"
-                " or set LOGGING_SINK=file to enable tailing."
-            )
-            notes.append(("info", message))
+            elif errors_only:
+                notes.append(
+                    ("info", "Error log not found; try without --errors or enable file sink.")
+                )
+            else:
+                message = (
+                    "API is not writing to a file sink. Run the API in another terminal"
+                    " or set LOGGING_SINK=file to enable tailing."
+                )
+                notes.append(("info", message))
 
     # Frontend guidance
     if "frontend" in normalized:
@@ -196,6 +286,49 @@ def _plan_targets(
             notes.append(("info", message))
 
     return targets, notes
+
+
+def _resolve_api_log_path(
+    ctx: CLIContext,
+    *,
+    sink: str,
+    base_root: Path,
+    preferred_date_root: Path | None,
+    explicit_path: str | None,
+    errors_only: bool,
+) -> Path | None:
+    # 1) Respect explicit LOGGING_FILE_PATH if set
+    if explicit_path:
+        candidate = Path(explicit_path)
+        if not candidate.is_absolute():
+            candidate = (ctx.project_root / candidate).resolve()
+        if errors_only:
+            error_candidate = candidate.parent / "error.log"
+            if error_candidate.exists():
+                return error_candidate
+        if candidate.exists():
+            return candidate
+
+    # 2) Dated layout: base_root/(current|YYYY-MM-DD)/api/(error|all).log
+    candidate_name = "error.log" if errors_only else "all.log"
+    if preferred_date_root and preferred_date_root.exists():
+        candidate = preferred_date_root / "api" / candidate_name
+        if candidate.exists():
+            return candidate
+
+    if not base_root.exists():
+        return None
+
+    dated_dirs = sorted(
+        [p for p in base_root.iterdir() if p.is_dir() and p.name != "current"],
+        reverse=True,
+    )
+    for root in dated_dirs:
+        path = root / "api" / candidate_name
+        if path.exists():
+            return path
+
+    return None
 
 
 def _normalize_services(requested: Iterable[str], *, enable_collector: bool) -> set[str]:

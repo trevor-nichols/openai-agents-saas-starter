@@ -5,6 +5,11 @@ from pydantic import BaseModel, Field
 
 
 class ObservabilitySettingsMixin(BaseModel):
+    log_root: str | None = Field(
+        default=None,
+        description="Base directory for dated log roots (defaults to var/log).",
+        alias="LOG_ROOT",
+    )
     logging_sink: str = Field(
         default="stdout",
         description="Logging sink (stdout, file, datadog, otlp, or none).",
@@ -26,6 +31,17 @@ class ObservabilitySettingsMixin(BaseModel):
         ge=0,
         description="Rotated backup files to retain when logging_sink=file.",
         alias="LOGGING_FILE_BACKUPS",
+    )
+    logging_max_days: int = Field(
+        default=0,
+        ge=0,
+        description="Prune dated log directories older than N days (0 disables pruning).",
+        alias="LOGGING_MAX_DAYS",
+    )
+    logging_duplex_error_file: bool = Field(
+        default=False,
+        description="When logging_sink=stdout, also write errors to the dated error file.",
+        alias="LOGGING_DUPLEX_ERROR_FILE",
     )
     enable_frontend_log_ingest: bool = Field(
         default=False,
@@ -51,6 +67,16 @@ class ObservabilitySettingsMixin(BaseModel):
         default=None,
         description="Optional OTLP headers JSON when logging_sink=otlp.",
         alias="LOGGING_OTLP_HEADERS",
+    )
+    allow_anon_frontend_logs: bool = Field(
+        default=False,
+        description="Allow anonymous frontend log ingest when signature is valid.",
+        alias="ALLOW_ANON_FRONTEND_LOGS",
+    )
+    frontend_log_shared_secret: str | None = Field(
+        default=None,
+        description="Shared secret for signed anonymous frontend logs.",
+        alias="FRONTEND_LOG_SHARED_SECRET",
     )
     geoip_provider: str = Field(
         default="none",

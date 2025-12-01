@@ -5,11 +5,13 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from datetime import date
 
 import pytest
 
 from app.core.config import Settings
 from app.observability.logging import (
+    DateRollingFileHandler,
     JSONLogFormatter,
     clear_log_context,
     configure_logging,
@@ -94,3 +96,155 @@ def test_configure_logging_writes_json_to_file(tmp_path: Path) -> None:
     payload = json.loads(contents[-1])
     assert payload["event"] == "unit.file_sink"
     assert payload["tenant"] == "tenant-1"
+
+
+def test_file_sink_uses_daily_root_and_writes_error(tmp_path: Path) -> None:
+    settings = Settings.model_validate(
+        {
+            "LOGGING_SINK": "file",
+            "LOG_ROOT": str(tmp_path),
+            "LOGGING_FILE_MAX_MB": 1,
+            "LOGGING_FILE_BACKUPS": 1,
+        }
+    )
+
+    configure_logging(settings)
+
+    log_event("unit.info", message="hello-info")
+    log_event("unit.error", level="error", message="boom")
+
+    date_dir = tmp_path / date.today().isoformat() / "api"
+    all_log = date_dir / "all.log"
+    err_log = date_dir / "error.log"
+    assert all_log.exists(), "All-log file missing"
+    assert err_log.exists(), "Error-log file missing"
+
+    all_lines = [json.loads(line) for line in all_log.read_text().splitlines() if line.strip()]
+    err_lines = [json.loads(line) for line in err_log.read_text().splitlines() if line.strip()]
+
+    assert any(entry["event"] == "unit.info" for entry in all_lines)
+    assert any(entry["event"] == "unit.error" for entry in all_lines)
+    assert any(entry["event"] == "unit.error" for entry in err_lines)
+    assert not any(entry["event"] == "unit.info" for entry in err_lines)
+
+
+def test_default_file_sink_uses_dated_layout_without_log_root(tmp_path: Path, monkeypatch) -> None:
+    # Ensure we don't write into the repo; run inside tmp_path
+    monkeypatch.chdir(tmp_path)
+    settings = Settings.model_validate(
+        {
+            "LOGGING_SINK": "file",
+            # LOG_ROOT unset, LOGGING_FILE_PATH default
+        }
+    )
+
+    configure_logging(settings)
+    log_event("unit.default", message="hi")
+
+    date_dir = tmp_path / "var" / "log" / date.today().isoformat() / "api"
+    assert (date_dir / "all.log").exists()
+
+
+def test_custom_file_path_ignores_unwritable_log_root(monkeypatch, tmp_path: Path) -> None:
+    custom = tmp_path / "custom.log"
+    settings = Settings.model_validate(
+        {
+            "LOGGING_SINK": "file",
+            "LOGGING_FILE_PATH": str(custom),
+            "LOGGING_MAX_DAYS": 7,
+            "LOG_ROOT": "/root/forbidden",
+        }
+    )
+
+    configure_logging(settings)
+    log_event("unit.custom", message="ok")
+
+    assert custom.exists(), "Custom log file not written"
+    # ensure we didn't create the forbidden root
+    assert not Path("/root/forbidden").exists() or Path("/root/forbidden").is_dir()
+
+
+def test_stdout_duplex_error_file(tmp_path: Path) -> None:
+    settings = Settings.model_validate(
+        {
+            "LOGGING_SINK": "stdout",
+            "LOG_ROOT": str(tmp_path),
+            "LOGGING_DUPLEX_ERROR_FILE": True,
+            "LOGGING_FILE_MAX_MB": 1,
+        }
+    )
+
+    configure_logging(settings)
+    log_event("unit.error", level="error", message="boom")
+
+    err_path = tmp_path / date.today().isoformat() / "api" / "error.log"
+    assert err_path.exists(), "Error log not created for duplex mode"
+    err_lines = [json.loads(line) for line in err_path.read_text().splitlines() if line.strip()]
+    assert any(entry["event"] == "unit.error" for entry in err_lines)
+
+
+def test_prunes_old_dated_directories(tmp_path: Path) -> None:
+    base = tmp_path
+    old_dir = base / "2024-01-01"
+    old_dir.mkdir(parents=True, exist_ok=True)
+    (old_dir / "api").mkdir(parents=True, exist_ok=True)
+    (old_dir / "api" / "all.log").write_text("stale")
+
+    settings = Settings.model_validate(
+        {
+            "LOGGING_SINK": "file",
+            "LOG_ROOT": str(base),
+            "LOGGING_MAX_DAYS": 1,
+        }
+    )
+
+    configure_logging(settings)
+    # Trigger a write to ensure today dir exists
+    log_event("unit.today", message="keep")
+
+    assert not old_dir.exists(), "Old dated directory should have been pruned"
+
+
+def test_date_rolling_handler_moves_to_new_day(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    handler = DateRollingFileHandler(
+        filename_base=None,
+        log_root=str(tmp_path),
+        max_bytes=1024 * 1024,
+        backup_count=1,
+        logging_max_days=0,
+        error_only=False,
+    )
+    handler.setFormatter(JSONLogFormatter())
+
+    handler._today = lambda: date(2025, 1, 1)
+    handler.emit(logging.LogRecord("t", logging.INFO, "", 0, "one", (), None))
+
+    handler._today = lambda: date(2025, 1, 2)
+    handler.emit(logging.LogRecord("t", logging.ERROR, "", 0, "two", (), None))
+
+    first = tmp_path / "2025-01-01" / "api" / "all.log"
+    second = tmp_path / "2025-01-02" / "api" / "all.log"
+    assert first.exists()
+    assert second.exists()
+
+
+def test_date_rolling_respects_log_root_even_with_filename_base(tmp_path: Path) -> None:
+    # filename_base points to day1, but handler should roll using log_root/dayN
+    day1 = tmp_path / "2025-01-01" / "api" / "all.log"
+    day1.parent.mkdir(parents=True)
+    handler = DateRollingFileHandler(
+        filename_base=str(day1),
+        log_root=str(tmp_path),
+        component="api",
+        max_bytes=1024 * 1024,
+        backup_count=1,
+        logging_max_days=0,
+        error_only=False,
+    )
+    handler.setFormatter(JSONLogFormatter())
+    handler._today = lambda: date(2025, 1, 1)
+    handler.emit(logging.LogRecord("t", logging.INFO, "", 0, "one", (), None))
+    handler._today = lambda: date(2025, 1, 2)
+    handler.emit(logging.LogRecord("t", logging.INFO, "", 0, "two", (), None))
+
+    assert (tmp_path / "2025-01-02" / "api" / "all.log").exists()

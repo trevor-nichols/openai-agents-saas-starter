@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import os
 import signal
 import subprocess
@@ -20,6 +21,8 @@ from starter_cli.workflows.home import stack_state
 from starter_cli.workflows.home.probes.api import api_probe
 from starter_cli.workflows.home.probes.frontend import frontend_probe
 from starter_cli.workflows.home.probes.util import tcp_check
+
+TODAY = datetime.date.today().isoformat()
 
 
 @dataclass(slots=True)
@@ -59,6 +62,7 @@ class StartRunner:
         self._stop_event = threading.Event()
         self._log_files: list[Any] = []
         self._infra_started = (self.target == "dev") and not self.skip_infra
+        self._base_log_root, self.log_dir = self._resolve_log_dir(log_dir)
 
     def run(self) -> int:
         self._install_signal_handlers()
@@ -439,6 +443,7 @@ class StartRunner:
     def _backend_env(self) -> dict[str, str]:
         env = os.environ.copy()
         env.pop("PORT", None)  # avoid inheriting frontend port for uvicorn
+        env["LOG_ROOT"] = str(self._base_log_root)
         env.setdefault(
             "ALEMBIC_CONFIG",
             str(PROJECT_ROOT / "apps" / "api-service" / "alembic.ini"),
@@ -454,6 +459,7 @@ class StartRunner:
         port = self._frontend_listen_port()
         env["PORT"] = str(port)
         env.setdefault("APP_PUBLIC_URL", "http://localhost:3000")
+        env["LOG_ROOT"] = str(self._base_log_root)
         return env
 
     def _frontend_listen_port(self) -> int:
@@ -472,6 +478,38 @@ class StartRunner:
 
     def _app_public_url(self) -> str:
         return os.getenv("APP_PUBLIC_URL") or "http://localhost:3000"
+
+    # ------------------------------------------------------------------
+    # Logging helpers
+    # ------------------------------------------------------------------
+    def _resolve_log_dir(self, configured: Path | None) -> tuple[Path, Path]:
+        """
+        Resolve the daily log root and CLI log directory.
+
+        - base_root: LOG_ROOT env or project var/log
+        - date_root: base_root/YYYY-MM-DD
+        - cli_root: date_root/cli
+        """
+
+        env_root = os.getenv("LOG_ROOT")
+        base_root_raw = Path(env_root).expanduser() if env_root else (PROJECT_ROOT / "var" / "log")
+        if configured:
+            base_root_raw = configured
+        base_root = base_root_raw if base_root_raw.is_absolute() else (PROJECT_ROOT / base_root_raw)
+        date_root = base_root / TODAY
+        cli_root = date_root / "cli"
+        try:
+            base_root.mkdir(parents=True, exist_ok=True)
+            date_root.mkdir(parents=True, exist_ok=True)
+            cli_root.mkdir(parents=True, exist_ok=True)
+            current_link = base_root / "current"
+            if current_link.exists() or current_link.is_symlink():
+                current_link.unlink()
+            current_link.symlink_to(date_root, target_is_directory=True)
+        except OSError:
+            # Non-fatal; fall back to base_root when symlink fails
+            cli_root = base_root
+        return base_root, cli_root
 
 
 def _parse_host_port(url: str, *, default_port: int) -> tuple[str, int]:

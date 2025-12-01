@@ -121,7 +121,8 @@ def _db_revision(db_url: str) -> tuple[str | None, str | None]:
     try:
         from starter_cli.workflows.home.probes.db import _normalize_db_url
     except Exception:  # pragma: no cover - defensive import
-        _normalize_db_url = lambda u: u  # type: ignore
+        def _normalize_db_url(url: str) -> str:
+            return url
 
     async def _fetch_rev() -> str | None:
         conn = await asyncpg.connect(dsn=_normalize_db_url(db_url), timeout=2)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 
 import pytest
@@ -29,7 +30,9 @@ def test_plan_targets_includes_api_tail_and_compose(monkeypatch, tmp_path: Path)
 
     monkeypatch.setattr(logs_cmd, "_detect_compose_command", lambda: ["docker", "compose"])
 
-    targets, notes = logs_cmd._plan_targets(_ctx(tmp_path), ["all"], lines=50, follow=True)
+    targets, notes = logs_cmd._plan_targets(
+        _ctx(tmp_path), ["all"], lines=50, follow=True, errors_only=False
+    )
 
     names = {t.name for t in targets}
     assert {"api", "postgres", "redis", "collector"}.issubset(names)
@@ -46,7 +49,9 @@ def test_plan_targets_warns_when_no_file_sink(monkeypatch, tmp_path: Path) -> No
     monkeypatch.delenv("LOGGING_FILE_PATH", raising=False)
     monkeypatch.setattr(logs_cmd, "_detect_compose_command", lambda: None)
 
-    targets, notes = logs_cmd._plan_targets(_ctx(tmp_path), ["api"], lines=10, follow=False)
+    targets, notes = logs_cmd._plan_targets(
+        _ctx(tmp_path), ["api"], lines=10, follow=False, errors_only=False
+    )
 
     assert not any(t.name == "api" for t in targets)
     assert any("not writing to a file" in note for level, note in notes)
@@ -63,3 +68,57 @@ def test_normalize_services_skips_collector_when_disabled(monkeypatch) -> None:
 
     assert "collector" not in normalized
     assert called  # warning emitted
+
+
+def test_resolves_api_error_log_from_dated_layout(monkeypatch, tmp_path: Path) -> None:
+    base = tmp_path / "var" / "log"
+    date_root = base / "2025-01-01" / "api"
+    date_root.mkdir(parents=True)
+    err_log = date_root / "error.log"
+    err_log.write_text("oops")
+
+    monkeypatch.setenv("LOG_ROOT", str(base))
+    monkeypatch.setenv("LOGGING_SINK", "file")
+
+    targets, _ = logs_cmd._plan_targets(
+        _ctx(tmp_path), ["api"], lines=5, follow=False, errors_only=True
+    )
+
+    assert any(str(err_log) in " ".join(t.command) for t in targets)
+
+
+def test_duplex_error_log_tail_when_stdout_sink(monkeypatch, tmp_path: Path) -> None:
+    base = tmp_path / "var" / "log"
+    date_root = base / "2025-01-01" / "api"
+    date_root.mkdir(parents=True)
+    err_log = date_root / "error.log"
+    err_log.write_text("stderr only")
+
+    monkeypatch.setenv("LOG_ROOT", str(base))
+    monkeypatch.setenv("LOGGING_SINK", "stdout")
+
+    targets, notes = logs_cmd._plan_targets(
+        _ctx(tmp_path), ["api"], lines=10, follow=False, errors_only=True
+    )
+
+    assert any(str(err_log) in " ".join(t.command) for t in targets)
+    assert not any("not writing to a file sink" in note for _level, note in notes)
+
+
+def test_archive_dry_run(monkeypatch, tmp_path: Path) -> None:
+    base = tmp_path / "var" / "log"
+    old = base / "2024-01-01"
+    old.mkdir(parents=True)
+    (old / "api").mkdir(parents=True)
+    ctx = _ctx(tmp_path)
+    args = argparse.Namespace(days=300, log_root=None, dry_run=True)
+
+    msgs: list[str] = []
+
+    def fake_info(msg, topic=None, stream=None):
+        msgs.append(msg)
+
+    monkeypatch.setattr(logs_cmd.console, "info", fake_info)
+    logs_cmd._handle_archive(args, ctx)
+
+    assert any("would archive" in msg for msg in msgs)

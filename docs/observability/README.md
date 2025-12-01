@@ -27,18 +27,33 @@ The collector image is pinned to `otel/opentelemetry-collector-contrib:0.139.0`,
 
 | Env Var | Purpose | Wizard support |
 | --- | --- | --- |
-| `LOGGING_SINK` | Set to `otlp` to route FastAPI logs through OTLP/HTTP. | ✅ |
-| `ENABLE_OTEL_COLLECTOR` | `true` launches the bundled `otel-collector` service via `just dev-up`. | ✅ |
-| `LOGGING_OTLP_ENDPOINT` | Auto-set to `http://otel-collector:4318/v1/logs` when the bundled collector is enabled (you can override for remote collectors). | ✅ |
-| `LOGGING_OTLP_HEADERS` | Optional JSON map for custom headers when pointing directly at a SaaS OTLP endpoint. | ✅ |
-| `OTEL_COLLECTOR_HTTP_PORT` / `OTEL_COLLECTOR_GRPC_PORT` / `OTEL_COLLECTOR_DIAG_PORT` | Host port mappings for the container; defaults are 4318/4317/13133. | Manual override in `.env.local`. |
-| `OTEL_MEMORY_LIMIT_MIB` | Process memory limiter for the collector (default `512`). | Manual override in `.env.local`. |
-| `OTEL_DEBUG_VERBOSITY` | Controls the bundled `debug` exporter detail level (`detailed` by default so collector logs include payloads). | Manual override in `.env.local`. |
-| `OTEL_EXPORTER_SENTRY_ENDPOINT` | Sentry OTLP/HTTP endpoint (e.g., `https://o11y.ingest.sentry.io/api/<project>/otlp`). | ✅ (only when bundled collector enabled). |
-| `OTEL_EXPORTER_SENTRY_AUTH_HEADER` | Authorization header value (typically `Bearer <token>`). | ✅ |
-| `OTEL_EXPORTER_SENTRY_HEADERS` | Optional JSON for additional OTLP headers to send to Sentry. | ✅ |
-| `OTEL_EXPORTER_DATADOG_API_KEY` | Datadog API key for the collector’s native Datadog exporter. | ✅ |
-| `OTEL_EXPORTER_DATADOG_SITE` | Datadog site (defaults to `datadoghq.com`). | ✅ |
+| `LOGGING_SINK` | Choose `stdout`, `file`, `datadog`, `otlp`, or `none` for FastAPI logs. | ✅ |
+| `LOG_ROOT` | Base directory for dated log roots (`<LOG_ROOT>/<YYYY-MM-DD>/<component>`). Defaults to `var/log`. | Manual |
+| `LOGGING_MAX_DAYS` | Prune dated log folders older than N days (0 disables). | Manual |
+| `LOGGING_DUPLEX_ERROR_FILE` | When `LOGGING_SINK=stdout`, also write errors to `<date>/api/error.log`. | Manual |
+| `LOGGING_FILE_PATH` / `LOGGING_FILE_BACKUPS` / `LOGGING_FILE_MAX_MB` | File sink location and rotation settings. | ✅ |
+| `ENABLE_FRONTEND_LOG_INGEST` | Expose `/api/v1/logs` (auth required by default). | ✅ |
+| `ALLOW_ANON_FRONTEND_LOGS` | Allow anonymous ingest when signature is valid (see below). | Manual |
+| `FRONTEND_LOG_SHARED_SECRET` | HMAC secret for signed anonymous frontend logs. | Manual |
+| `LOGGING_SINK=otlp` settings | `LOGGING_OTLP_ENDPOINT`, `LOGGING_OTLP_HEADERS`. | ✅ |
+| `ENABLE_OTEL_COLLECTOR` | `true` launches bundled collector via `just dev-up`. | ✅ |
+| `OTEL_COLLECTOR_HTTP_PORT` / `OTEL_COLLECTOR_GRPC_PORT` / `OTEL_COLLECTOR_DIAG_PORT` | Host port mappings for collector. | Manual |
+| `OTEL_MEMORY_LIMIT_MIB` | Collector memory cap (default 512). | Manual |
+| `OTEL_DEBUG_VERBOSITY` | Collector debug exporter verbosity (`detailed` default). | Manual |
+| `OTEL_EXPORTER_SENTRY_*` | Sentry OTLP settings. | ✅ |
+| `OTEL_EXPORTER_DATADOG_*` | Datadog exporter settings. | ✅ |
+
+### Local file logging layout (new)
+
+- When `LOG_ROOT` is set (or when `LOGGING_SINK=file`), FastAPI writes JSON logs to dated folders: `LOG_ROOT/YYYY-MM-DD/api/all.log` and `error.log`. A helper symlink `LOG_ROOT/current` points at the latest folder.
+- `starter-cli start dev --detached` and the new `starter-cli logs tail` respect this layout; `--errors` tails `error.log`.
+- Retention: set `LOGGING_MAX_DAYS` to prune old dated folders on startup; `starter-cli logs archive --days N` can zip+prune manually.
+
+### Frontend log ingest
+
+- By default, the Next.js client logger uses `beacon` in local dev; it posts to `/api/logs` → `/api/v1/logs` (backend) when `ENABLE_FRONTEND_LOG_INGEST=true`.
+- Auth is required unless `ALLOW_ANON_FRONTEND_LOGS=true` **and** the client sends `X-Log-Signature` = `hex(hmac_sha256(FRONTEND_LOG_SHARED_SECRET, raw_body))`.
+- Server/dev console output can also be tee’d to `LOG_ROOT/<date>/frontend/all.log` / `error.log` when you wrap dev with `node scripts/with-log-root.js` (already wired into `pnpm dev`).
 
 The wizard stores secrets in `.env.local` only. The generated collector config lives under `var/observability/collector.generated.yaml`, which is gitignored to avoid leaking API keys.
 
