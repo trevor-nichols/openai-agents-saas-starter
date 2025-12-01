@@ -9,11 +9,11 @@ import { Suspense } from 'react';
 import 'katex/dist/katex.min.css';
 
 import { SilentRefresh } from '@/components/auth/SilentRefresh';
-import { AppMobileNav } from '@/components/shell/AppMobileNav';
 import { AppPageHeading } from '@/components/shell/AppPageHeading';
 import { AppSidebar } from '@/components/shell/AppSidebar';
-import { AppUserMenu } from '@/components/shell/AppUserMenu';
 import { InfoMenu, NotificationMenu } from '@/components/ui/nav-bar';
+import { Separator } from '@/components/ui/separator';
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { getSessionMetaFromCookies } from '@/lib/auth/cookies';
 import { billingEnabled } from '@/lib/config/features';
 import { buildNavItems } from './nav';
@@ -47,24 +47,32 @@ async function AppLayoutContent({ children }: AppLayoutProps) {
     : 'Configure agents and monitor conversations.';
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
+    <SidebarProvider>
       <SilentRefresh />
 
-      <AppSidebar navItems={navItems} accountItems={accountNav} />
+      <AppSidebar 
+        navItems={navItems} 
+        accountItems={accountNav} 
+        user={{
+            email: session?.userId,
+            tenantId: session?.tenantId,
+        }}
+      />
 
-      <div className="flex min-h-screen flex-1 flex-col">
-        <header className="sticky top-0 z-30 border-b border-white/10 bg-background/80 backdrop-blur-glass">
-          <div className="flex flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+      <SidebarInset>
+        <header className="sticky top-0 z-30 flex shrink-0 items-center gap-2 border-b border-white/10 bg-background/80 px-4 py-4 backdrop-blur-glass transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-auto">
+           <div className="flex items-center gap-2 self-start pt-1">
+              <SidebarTrigger className="-ml-1" />
+              <Separator orientation="vertical" className="mr-2 h-4" />
+           </div>
+          
+          <div className="flex flex-1 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <AppPageHeading navItems={navItems} accountItems={accountNav} subtitle={subtitle} />
-            <div className="flex items-center gap-3 lg:justify-end">
+            <div className="flex items-center gap-3 justify-end self-start sm:self-auto">
               <div className="hidden md:flex items-center gap-2">
                 <InfoMenu />
                 <NotificationMenu notificationCount={4} />
               </div>
-              <div className="md:hidden">
-                <AppMobileNav navItems={navItems} accountItems={accountNav} />
-              </div>
-              <AppUserMenu userName={null} userEmail={session?.userId ?? null} tenantId={session?.tenantId ?? null} />
             </div>
           </div>
         </header>
@@ -74,7 +82,7 @@ async function AppLayoutContent({ children }: AppLayoutProps) {
             {children}
           </div>
         </main>
-      </div>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

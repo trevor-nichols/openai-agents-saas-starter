@@ -11,6 +11,7 @@ export interface AppNavItem {
   label: string;
   badge?: string;
   badgeVariant?: BadgeProps['variant'];
+  icon?: React.ComponentType<{ className?: string }>;
 }
 
 interface AppNavLinksProps {
