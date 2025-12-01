@@ -1,14 +1,6 @@
-import {
-  cancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPost,
-  getWorkflowDescriptorApiV1WorkflowsWorkflowKeyGet,
-  getWorkflowRunApiV1WorkflowsRunsRunIdGet,
-  listWorkflowRunsApiV1WorkflowsRunsGet,
-  listWorkflowsApiV1WorkflowsGet,
-  runWorkflowApiV1WorkflowsWorkflowKeyRunPost,
-  runWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPost,
-} from '@/lib/api/client/sdk.gen';
 import type {
   WorkflowDescriptorResponse,
+  WorkflowRunDetail,
   WorkflowRunListResponse,
   WorkflowRunRequestBody,
   WorkflowRunResponse,
@@ -26,14 +18,18 @@ import {
 } from '@/lib/workflows/mock';
 import type { WorkflowRunInput, WorkflowRunListFilters } from '@/lib/workflows/types';
 
-import { client } from './config';
-
 export async function listWorkflows(): Promise<WorkflowSummary[]> {
   if (USE_API_MOCK) {
     return mockWorkflows;
   }
-  const response = await listWorkflowsApiV1WorkflowsGet({ client, throwOnError: true, responseStyle: 'fields' });
-  return response.data ?? [];
+
+  // Call the Next.js API proxy so the server can attach auth from cookies.
+  const response = await fetch('/api/workflows', { method: 'GET', cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error(`Failed to load workflows (${response.status})`);
+  }
+  const data = (await response.json()) as WorkflowSummary[] | undefined;
+  return data ?? [];
 }
 
 export async function listWorkflowRuns(filters: WorkflowRunListFilters = {}): Promise<WorkflowRunListResponse> {
@@ -41,26 +37,20 @@ export async function listWorkflowRuns(filters: WorkflowRunListFilters = {}): Pr
     return mockWorkflowRunList();
   }
 
-  const response = await listWorkflowRunsApiV1WorkflowsRunsGet({
-    client,
-    throwOnError: true,
-    responseStyle: 'fields',
-    query: {
-      workflow_key: filters.workflowKey ?? undefined,
-      run_status: filters.runStatus ?? undefined,
-      started_before: filters.startedBefore ?? undefined,
-      started_after: filters.startedAfter ?? undefined,
-      conversation_id: filters.conversationId ?? undefined,
-      cursor: filters.cursor ?? undefined,
-      limit: filters.limit ?? undefined,
-    },
-  });
+  const query = new URLSearchParams();
+  if (filters.workflowKey) query.set('workflow_key', filters.workflowKey);
+  if (filters.runStatus) query.set('run_status', filters.runStatus);
+  if (filters.startedBefore) query.set('started_before', filters.startedBefore);
+  if (filters.startedAfter) query.set('started_after', filters.startedAfter);
+  if (filters.conversationId) query.set('conversation_id', filters.conversationId);
+  if (filters.cursor) query.set('cursor', filters.cursor);
+  if (filters.limit) query.set('limit', String(filters.limit));
 
-  if (!response.data) {
-    throw new Error('Workflow runs response missing data');
+  const response = await fetch(`/api/workflows/runs?${query.toString()}`, { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error(`Failed to load workflow runs (${response.status})`);
   }
-
-  return response.data;
+  return (await response.json()) as WorkflowRunListResponse;
 }
 
 export async function runWorkflow(input: WorkflowRunInput): Promise<WorkflowRunResponse> {
@@ -73,64 +63,58 @@ export async function runWorkflow(input: WorkflowRunInput): Promise<WorkflowRunR
     location: input.location,
     share_location: input.shareLocation ?? null,
   };
-  const response = await runWorkflowApiV1WorkflowsWorkflowKeyRunPost({
-    client,
-    throwOnError: true,
-    responseStyle: 'fields',
-    path: { workflow_key: input.workflowKey },
-    body,
+
+  const response = await fetch(`/api/workflows/${encodeURIComponent(input.workflowKey)}/run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   });
-  if (!response.data) {
-    throw new Error('Workflow run response missing data');
+
+  if (!response.ok) {
+    throw new Error(`Failed to run workflow (${response.status})`);
   }
-  return response.data;
+
+  return (await response.json()) as WorkflowRunResponse;
 }
 
-export async function getWorkflowRun(runId: string) {
+export async function getWorkflowRun(runId: string): Promise<WorkflowRunDetail> {
   if (USE_API_MOCK) {
     return mockWorkflowRunDetail(runId);
   }
-  const response = await getWorkflowRunApiV1WorkflowsRunsRunIdGet({
-    client,
-    throwOnError: true,
-    responseStyle: 'fields',
-    path: { run_id: runId },
-  });
-  if (!response.data) {
-    throw new Error('Workflow run detail missing data');
+  const response = await fetch(`/api/workflows/runs/${encodeURIComponent(runId)}`, { cache: 'no-store' });
+  if (response.status === 404) {
+    throw new Error('Workflow run not found');
   }
-  return response.data;
+  if (!response.ok) {
+    throw new Error(`Failed to load workflow run (${response.status})`);
+  }
+  return (await response.json()) as WorkflowRunDetail;
 }
 
 export async function cancelWorkflowRun(runId: string): Promise<void> {
   if (USE_API_MOCK) {
     return;
   }
-  await cancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPost({
-    client,
-    throwOnError: true,
-    responseStyle: 'fields',
-    path: { run_id: runId },
+  const response = await fetch(`/api/workflows/runs/${encodeURIComponent(runId)}/cancel`, {
+    method: 'POST',
   });
+  if (!response.ok) {
+    throw new Error(`Failed to cancel workflow run (${response.status})`);
+  }
 }
 
 export async function getWorkflowDescriptor(workflowKey: string): Promise<WorkflowDescriptorResponse> {
   if (USE_API_MOCK) {
     return mockWorkflowDescriptor(workflowKey);
   }
-
-  const response = await getWorkflowDescriptorApiV1WorkflowsWorkflowKeyGet({
-    client,
-    throwOnError: true,
-    responseStyle: 'fields',
-    path: { workflow_key: workflowKey },
-  });
-
-  if (!response.data) {
-    throw new Error('Workflow descriptor response missing data');
+  const response = await fetch(`/api/workflows/${encodeURIComponent(workflowKey)}`, { cache: 'no-store' });
+  if (response.status === 404) {
+    throw new Error('Workflow not found');
   }
-
-  return response.data;
+  if (!response.ok) {
+    throw new Error(`Failed to load workflow descriptor (${response.status})`);
+  }
+  return (await response.json()) as WorkflowDescriptorResponse;
 }
 
 export async function* streamWorkflowRun(
@@ -143,25 +127,17 @@ export async function* streamWorkflowRun(
     return;
   }
 
-  const response = await runWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPost({
-    client,
-    throwOnError: true,
-    responseStyle: undefined,
-    path: { workflow_key: workflowKey },
-    body,
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'text/event-stream',
-    },
-    parseAs: 'stream',
+  const response = await fetch(`/api/workflows/${encodeURIComponent(workflowKey)}/run/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+    body: JSON.stringify(body),
   });
 
-  const stream = response.response?.body;
-  if (!stream) {
+  if (!response.ok || !response.body) {
     throw new Error('Workflow stream response missing body');
   }
 
-  const reader = stream.getReader();
+  const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
 

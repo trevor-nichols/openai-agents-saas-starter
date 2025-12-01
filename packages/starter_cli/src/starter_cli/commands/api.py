@@ -25,7 +25,7 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         required=True,
         help=(
             "Destination path for the JSON schema "
-            "(e.g., apps/api-service/.artifacts/openapi-billing.json)."
+            "(e.g., apps/api-service/.artifacts/openapi.json)."
         ),
     )
     openapi_parser.add_argument(

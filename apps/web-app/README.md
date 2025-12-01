@@ -5,7 +5,7 @@ This package contains the Next.js 16 UI that talks to the FastAPI backend. It re
 ## Prerequisites
 
 - Node.js 22+
-- No backend required for client generation: the HeyAPI config now points at the committed billing-on artifact (`../api-service/.artifacts/openapi-billing.json`).
+- No backend required for client generation: the HeyAPI config now points at the committed billing-on artifact (`../api-service/.artifacts/openapi.json`).
 
 ## Install & Dev Server
 
@@ -32,7 +32,7 @@ This executes `openapi-ts` with the configuration in `openapi-ts.config.ts` and 
   ```bash
   cd ../packages/starter_cli
   python -m starter_cli.app api export-openapi \
-    --output apps/api-service/.artifacts/openapi-billing-fixtures.json \
+    --output apps/api-service/.artifacts/openapi-fixtures.json \
     --enable-billing --enable-test-fixtures
   ```
 

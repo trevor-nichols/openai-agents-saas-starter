@@ -58,7 +58,7 @@ function assertBillingSdkPresent() {
     throw new Error(
       `Billing SDK exports missing: ${missing.join(
         ', ',
-      )}. Regenerate via "pnpm generate" against api-service/.artifacts/openapi-billing.json.`,
+      )}. Regenerate via "pnpm generate" against api-service/.artifacts/openapi.json.`,
     );
   }
 }

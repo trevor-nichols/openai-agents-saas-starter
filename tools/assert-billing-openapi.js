@@ -2,13 +2,13 @@
  * CI guard: ensure billing endpoints remain in the committed OpenAPI artifact.
  *
  * Fails if any expected billing paths are missing from
- * apps/api-service/.artifacts/openapi-billing.json.
+ * apps/api-service/.artifacts/openapi.json.
  */
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const artifactPath = resolve(process.cwd(), 'apps/api-service/.artifacts/openapi-billing.json');
+const artifactPath = resolve(process.cwd(), 'apps/api-service/.artifacts/openapi.json');
 const requiredPaths = [
   '/api/v1/billing/plans',
   '/api/v1/billing/stream',

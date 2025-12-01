@@ -280,7 +280,7 @@ Exports the FastAPI OpenAPI schema with optional feature flags. Example:
 
 ```bash
 python -m starter_cli.app api export-openapi \
-  --output api-service/.artifacts/openapi-billing.json \
+  --output api-service/.artifacts/openapi.json \
   --enable-billing \
   --enable-test-fixtures
 ```

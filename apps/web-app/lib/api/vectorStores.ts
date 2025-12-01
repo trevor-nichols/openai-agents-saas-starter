@@ -1,12 +1,3 @@
-import {
-  attachFileApiV1VectorStoresVectorStoreIdFilesPost,
-  createVectorStoreApiV1VectorStoresPost,
-  deleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDelete,
-  deleteVectorStoreApiV1VectorStoresVectorStoreIdDelete,
-  listFilesApiV1VectorStoresVectorStoreIdFilesGet,
-  listVectorStoresApiV1VectorStoresGet,
-  searchVectorStoreApiV1VectorStoresVectorStoreIdSearchPost,
-} from '@/lib/api/client/sdk.gen';
 import type {
   VectorStoreListResponse,
   VectorStoreFileListResponse,
@@ -17,47 +8,64 @@ import type {
 } from '@/lib/api/client/types.gen';
 import { USE_API_MOCK } from '@/lib/config';
 import { mockVectorStores, mockVectorStoreFiles, mockVectorStoreSearch } from '@/lib/vector-stores/mock';
-import { client } from './config';
 
 export async function listVectorStores(): Promise<VectorStoreListResponse> {
   if (USE_API_MOCK) return mockVectorStores;
-  const res = await listVectorStoresApiV1VectorStoresGet({ client, throwOnError: true, responseStyle: 'fields' });
-  return res.data ?? { items: [], total: 0 };
+  const res = await fetch('/api/vector-stores', { cache: 'no-store' });
+  if (!res.ok) throw new Error(`Failed to load vector stores (${res.status})`);
+  return (await res.json()) as VectorStoreListResponse;
 }
 
 export async function createVectorStore(body: VectorStoreCreateRequest) {
   if (USE_API_MOCK) return mockVectorStores.items[0];
-  const res = await createVectorStoreApiV1VectorStoresPost({ client, throwOnError: true, responseStyle: 'fields', body });
-  if (!res.data) throw new Error('Vector store create missing data');
-  return res.data;
+  const res = await fetch('/api/vector-stores/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Failed to create vector store (${res.status})`);
+  return (await res.json()) as VectorStoreListResponse['items'][number];
 }
 
 export async function deleteVectorStore(vectorStoreId: string) {
   if (USE_API_MOCK) return;
-  await deleteVectorStoreApiV1VectorStoresVectorStoreIdDelete({ client, throwOnError: true, path: { vector_store_id: vectorStoreId } });
+  const res = await fetch(`/api/vector-stores/${encodeURIComponent(vectorStoreId)}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error(`Failed to delete vector store (${res.status})`);
 }
 
 export async function listVectorStoreFiles(vectorStoreId: string): Promise<VectorStoreFileListResponse> {
   if (USE_API_MOCK) return mockVectorStoreFiles;
-  const res = await listFilesApiV1VectorStoresVectorStoreIdFilesGet({ client, throwOnError: true, responseStyle: 'fields', path: { vector_store_id: vectorStoreId } });
-  return res.data ?? { items: [], total: 0 };
+  const res = await fetch(`/api/vector-stores/${encodeURIComponent(vectorStoreId)}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`Failed to load vector store files (${res.status})`);
+  return (await res.json()) as VectorStoreFileListResponse;
 }
 
 export async function attachVectorStoreFile(vectorStoreId: string, body: VectorStoreFileCreateRequest) {
   if (USE_API_MOCK) return mockVectorStoreFiles.items[0];
-  const res = await attachFileApiV1VectorStoresVectorStoreIdFilesPost({ client, throwOnError: true, responseStyle: 'fields', path: { vector_store_id: vectorStoreId }, body });
-  if (!res.data) throw new Error('Attach file missing data');
-  return res.data;
+  const res = await fetch(`/api/vector-stores/${encodeURIComponent(vectorStoreId)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Failed to attach file (${res.status})`);
+  return (await res.json()) as VectorStoreFileListResponse['items'][number];
 }
 
 export async function deleteVectorStoreFile(vectorStoreId: string, fileId: string) {
   if (USE_API_MOCK) return;
-  await deleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDelete({ client, throwOnError: true, path: { vector_store_id: vectorStoreId, file_id: fileId } });
+  const res = await fetch(`/api/vector-stores/${encodeURIComponent(vectorStoreId)}/files/${encodeURIComponent(fileId)}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error(`Failed to delete vector store file (${res.status})`);
 }
 
 export async function searchVectorStore(vectorStoreId: string, body: VectorStoreSearchRequest): Promise<VectorStoreSearchResponse> {
   if (USE_API_MOCK) return mockVectorStoreSearch;
-  const res = await searchVectorStoreApiV1VectorStoresVectorStoreIdSearchPost({ client, throwOnError: true, responseStyle: 'fields', path: { vector_store_id: vectorStoreId }, body });
-  if (!res.data) throw new Error('Vector store search missing data');
-  return res.data;
+  const res = await fetch(`/api/vector-stores/${encodeURIComponent(vectorStoreId)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Failed to search vector store (${res.status})`);
+  return (await res.json()) as VectorStoreSearchResponse;
 }

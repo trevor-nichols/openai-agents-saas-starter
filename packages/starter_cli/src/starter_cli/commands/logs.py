@@ -7,10 +7,10 @@ import shlex
 import shutil
 import subprocess
 import threading
-from typing import cast
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext
@@ -133,7 +133,11 @@ def _handle_tail(args: argparse.Namespace, ctx: CLIContext) -> int:
 
 def _handle_archive(args: argparse.Namespace, ctx: CLIContext) -> int:
     base_root_raw = (args.log_root or Path(os.getenv("LOG_ROOT", DEFAULT_LOG_ROOT))).expanduser()
-    base_root = base_root_raw if base_root_raw.is_absolute() else (ctx.project_root / base_root_raw).resolve()
+    base_root = (
+        base_root_raw
+        if base_root_raw.is_absolute()
+        else (ctx.project_root / base_root_raw).resolve()
+    )
 
     days = max(args.days, 0)
     cutoff = datetime.date.today() - datetime.timedelta(days=days)

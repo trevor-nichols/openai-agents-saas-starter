@@ -30,15 +30,16 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 - All hooks use TanStack Query
 - Use Shadcn components from components/ui/. DO NOT create custom components. If a component we need is not included yet, add it. Refer to `docs/frontend/ui/components.md` for the latest list of components.
 - Detailed frontend data-access patterns (SDK → services → API routes → hooks) live in `docs/frontend/data-access.md`. Review that doc before adding new queries or routes.
+- Browser-facing code must NOT call the FastAPI backend directly. Always route through Next.js API routes that attach auth from cookies. In `lib/api/**` use fetches to `/api/...` proxy routes; direct SDK calls are allowed only in server-only utilities that already use `getServerApiClient()`.
 - Separation of Concerns
   - lib/queries/ = Server data (TanStack Query)
   - hooks/ = UI logic, local state, browser APIs
 
 ### OpenAPI + SDK regeneration
 - Export superset schema (billing + test fixtures) from repo root:
-  - `cd packages/starter_cli && python -m starter_cli.app api export-openapi --output apps/api-service/.artifacts/openapi-billing-fixtures.json --enable-billing --enable-test-fixtures` (paths are resolved from the repo root, so skip leading `../`)
+  - `cd packages/starter_cli && python -m starter_cli.app api export-openapi --output apps/api-service/.artifacts/openapi-fixtures.json --enable-billing --enable-test-fixtures` (paths are resolved from the repo root, so skip leading `../`)
 - Regenerate the frontend client offline using that artifact:
-  - `cd apps/web-app && OPENAPI_INPUT=../api-service/.artifacts/openapi-billing-fixtures.json pnpm generate:fixtures`
+  - `cd apps/web-app && OPENAPI_INPUT=../api-service/.artifacts/openapi-fixtures.json pnpm generate:fixtures`
   - Output is written to `apps/web-app/lib/api/client/`.
 
 ### Next.js 16 working notes (must-read for frontend)

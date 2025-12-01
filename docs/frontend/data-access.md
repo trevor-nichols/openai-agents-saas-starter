@@ -7,7 +7,7 @@ This document codifies how the Next.js frontend talks to the FastAPI backend. Ev
 ## Layered Architecture
 
 1. **Generated SDK (`web-app/lib/api/client`)**  
-   - Auto-generated via HeyAPI against the committed billing-on spec `../api-service/.artifacts/openapi-billing.json` (see `openapi-ts.config.ts`).  
+  - Auto-generated via HeyAPI against the committed billing-on spec `../api-service/.artifacts/openapi.json` (see `openapi-ts.config.ts`).  
    - Never imported directly from React components.  
    - Only server-side services may create SDK clients, typically via `lib/server/apiClient.ts`.
 

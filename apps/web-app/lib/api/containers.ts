@@ -1,96 +1,102 @@
-import {
-  bindAgentContainerApiV1ContainersAgentsAgentKeyContainerPost,
-  createContainerApiV1ContainersPost,
-  deleteContainerApiV1ContainersContainerIdDelete,
-  getContainerByIdApiV1ContainersContainerIdGet,
-  listContainersApiV1ContainersGet,
-  unbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDelete,
-} from '@/lib/api/client/sdk.gen';
 import type {
+  ContainerBindRequest,
   ContainerCreateRequest,
   ContainerListResponse,
   ContainerResponse,
-  ContainerBindRequest,
 } from '@/lib/api/client/types.gen';
 import { USE_API_MOCK } from '@/lib/config';
 import { mockContainers } from '@/lib/containers/mock';
-import { client } from './config';
+
+async function parseJson<T>(response: Response): Promise<T> {
+  try {
+    return (await response.json()) as T;
+  } catch {
+    throw new Error('Failed to parse containers response');
+  }
+}
+
+function buildError(response: Response, fallback: string): Error {
+  return new Error(fallback || `Request failed with ${response.status}`);
+}
 
 export async function listContainers(): Promise<ContainerListResponse> {
   if (USE_API_MOCK) return { items: mockContainers, total: mockContainers.length };
-  const res = await listContainersApiV1ContainersGet({ client, throwOnError: true, responseStyle: 'fields' });
-  return res.data ?? { items: [], total: 0 };
+
+  const res = await fetch('/api/containers', { cache: 'no-store' });
+  if (!res.ok) throw buildError(res, 'Failed to load containers');
+  return parseJson<ContainerListResponse>(res);
 }
 
 export async function createContainer(body: ContainerCreateRequest): Promise<ContainerResponse> {
   if (USE_API_MOCK) {
+    const now = new Date().toISOString();
     const id = `ctr-${Date.now()}`;
-    const base =
-      mockContainers[0] ??
-      ({
-        id: 'ctr-base',
-        openai_id: 'ctr-base',
+    const base = mockContainers[0];
+    return {
+      ...(base ?? {
+        id,
+        openai_id: id,
         tenant_id: 'tenant',
         owner_user_id: 'user',
-        name: 'base',
-        memory_limit: '4g',
         status: 'ready',
         expires_after: null,
-        last_active_at: new Date().toISOString(),
+        last_active_at: now,
         metadata: {},
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      } as ContainerResponse);
-    const now = new Date().toISOString();
-    return {
-      ...base,
+        created_at: now,
+        updated_at: now,
+      }),
       id,
       openai_id: id,
-      tenant_id: base.tenant_id ?? 'tenant',
-      owner_user_id: base.owner_user_id ?? 'user',
       name: body.name,
-      memory_limit: body.memory_limit ?? base.memory_limit,
-      status: base.status ?? 'ready',
-      expires_after: base.expires_after ?? null,
-      last_active_at: base.last_active_at ?? now,
-      metadata: base.metadata ?? {},
-      created_at: base.created_at ?? now,
+      memory_limit: body.memory_limit ?? base?.memory_limit ?? '4g',
       updated_at: now,
     };
   }
-  const res = await createContainerApiV1ContainersPost({ client, throwOnError: true, responseStyle: 'fields', body });
-  if (!res.data) throw new Error('Create container missing data');
-  return res.data;
+
+  const res = await fetch('/api/containers', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) throw buildError(res, 'Failed to create container');
+  return parseJson<ContainerResponse>(res);
 }
 
 export async function deleteContainer(containerId: string) {
   if (USE_API_MOCK) return;
-  await deleteContainerApiV1ContainersContainerIdDelete({ client, throwOnError: true, path: { container_id: containerId } });
+
+  const res = await fetch(`/api/containers/${encodeURIComponent(containerId)}`, { method: 'DELETE' });
+  if (!res.ok) throw buildError(res, 'Failed to delete container');
 }
 
 export async function getContainer(containerId: string) {
   if (USE_API_MOCK) return mockContainers.find((c) => c.id === containerId) ?? mockContainers[0];
-  const res = await getContainerByIdApiV1ContainersContainerIdGet({ client, throwOnError: true, responseStyle: 'fields', path: { container_id: containerId } });
-  if (!res.data) throw new Error('Container not found');
-  return res.data;
+
+  const res = await fetch(`/api/containers/${encodeURIComponent(containerId)}`, { cache: 'no-store' });
+  if (res.status === 404) throw new Error('Container not found');
+  if (!res.ok) throw buildError(res, 'Failed to load container');
+  return parseJson<ContainerResponse>(res);
 }
 
 export async function bindAgentToContainer(agentKey: string, body: ContainerBindRequest) {
   if (USE_API_MOCK) return;
-  await bindAgentContainerApiV1ContainersAgentsAgentKeyContainerPost({
-    client,
-    throwOnError: true,
-    responseStyle: 'fields',
-    path: { agent_key: agentKey },
-    body,
+
+  const res = await fetch(`/api/containers/agents/${encodeURIComponent(agentKey)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   });
+
+  if (!res.ok) throw buildError(res, 'Failed to bind agent to container');
 }
 
 export async function unbindAgentFromContainer(agentKey: string) {
   if (USE_API_MOCK) return;
-  await unbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDelete({
-    client,
-    throwOnError: true,
-    path: { agent_key: agentKey },
+
+  const res = await fetch(`/api/containers/agents/${encodeURIComponent(agentKey)}`, {
+    method: 'DELETE',
   });
+
+  if (!res.ok) throw buildError(res, 'Failed to unbind agent from container');
 }
