@@ -10,58 +10,23 @@ import 'katex/dist/katex.min.css';
 
 import { SilentRefresh } from '@/components/auth/SilentRefresh';
 import { AppMobileNav } from '@/components/shell/AppMobileNav';
-import type { AppNavItem } from '@/components/shell/AppNavLinks';
 import { AppPageHeading } from '@/components/shell/AppPageHeading';
 import { AppSidebar } from '@/components/shell/AppSidebar';
 import { AppUserMenu } from '@/components/shell/AppUserMenu';
 import { InfoMenu, NotificationMenu } from '@/components/ui/nav-bar';
 import { getSessionMetaFromCookies } from '@/lib/auth/cookies';
 import { billingEnabled } from '@/lib/config/features';
+import { buildNavItems } from './nav';
 
 interface AppLayoutProps {
   children: React.ReactNode;
 }
 
-// --- Navigation configuration ---
-export async function buildPrimaryNav(): Promise<AppNavItem[]> {
-  return [
-    { href: '/dashboard', label: 'Dashboard' },
-    { href: '/chat', label: 'Workspace' },
-    { href: '/workflows', label: 'Workflows' },
-    { href: '/agents', label: 'Agents' },
-    ...(billingEnabled ? [{ href: '/billing', label: 'Billing' }] : []),
-  ];
-}
-
-const accountNav: AppNavItem[] = [
+const accountNav = [
   { href: '/account', label: 'Account' },
   { href: '/settings/access', label: 'Signup guardrails' },
   { href: '/settings/tenant', label: 'Tenant settings' },
 ];
-
-export async function buildNavItems(hasStatusScope: boolean) {
-  const primaryNav = await buildPrimaryNav();
-  if (!hasStatusScope) {
-    return primaryNav;
-  }
-
-  const opsLinks: AppNavItem[] = [
-    {
-      href: '/ops/status',
-      label: 'Ops',
-      badge: 'Admin',
-      badgeVariant: 'outline',
-    },
-    {
-      href: '/ops/storage',
-      label: 'Storage',
-      badge: 'Admin',
-      badgeVariant: 'outline',
-    },
-  ];
-
-  return [...primaryNav, ...opsLinks];
-}
 
 // --- AppLayout component ---
 export default function AppLayout({ children }: AppLayoutProps) {

@@ -44,15 +44,32 @@ export async function listConversationsPage(params?: {
     },
   });
 
-  const payload = response.data as BackendConversationListResponse | BackendConversationListResponse['items'];
+  // The generated client returns plain data when responseStyle==='data'. Be defensive
+  // because upstream errors or empty bodies can come back as undefined/null.
+  const payload = response as unknown as
+    | BackendConversationListResponse
+    | BackendConversationListResponse['items']
+    | undefined
+    | null
+    | string;
+
+  if (!payload) {
+    return { items: [], next_cursor: null };
+  }
 
   if (Array.isArray(payload)) {
     const items = payload.map(mapSummaryToListItem);
     return { items, next_cursor: null };
   }
 
-  const items = (payload.items ?? []).map(mapSummaryToListItem);
-  return { items, next_cursor: payload.next_cursor ?? null };
+  const safeItems = Array.isArray((payload as BackendConversationListResponse).items)
+    ? (payload as BackendConversationListResponse).items
+    : [];
+
+  return {
+    items: safeItems.map(mapSummaryToListItem),
+    next_cursor: (payload as BackendConversationListResponse).next_cursor ?? null,
+  };
 }
 
 /**

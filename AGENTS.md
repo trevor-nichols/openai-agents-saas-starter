@@ -118,6 +118,13 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 - Thishe repo hasn’t shipped a “stable” release yet, so we don’t carry any backward-compat baggage.
 - When you come across a situation where you need the latest documentation, use your web search tool
 
+## Local Logs (one place)
+- All local logs live under `var/log/<YYYY-MM-DD>/` at the repo root (`var/log/current` points to today).
+- Backend (FastAPI): `var/log/current/api/all.log` and `error.log` (requires `LOGGING_SINK=file`, set in `.env.local`).
+- Frontend (Next dev): `var/log/current/frontend/all.log` and `error.log` via the bundled log tee used by `pnpm dev`.
+- CLI (detached runs): `var/log/current/cli/*.log` per process when started with `just start-dev -- --detached`.
+- Quick tail: `python -m starter_cli.app logs tail --service api --service frontend --errors`.
+
 # Codebase Patterns
 openai-agents-saas-starter/
 ├── apps/                         # Runtime apps
