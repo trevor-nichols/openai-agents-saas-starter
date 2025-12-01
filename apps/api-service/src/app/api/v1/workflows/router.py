@@ -34,6 +34,7 @@ _ALLOWED_ROLES: tuple[TenantRole, ...] = (
     TenantRole.ADMIN,
     TenantRole.OWNER,
 )
+_ADMIN_ROLES: tuple[TenantRole, ...] = (TenantRole.ADMIN, TenantRole.OWNER)
 
 
 @router.get("", response_model=list[WorkflowSummary])
@@ -229,6 +230,37 @@ async def cancel_workflow_run(
     except RuntimeError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     return {"success": True}
+
+
+@router.delete("/runs/{run_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_workflow_run(
+    run_id: str,
+    hard: bool = Query(
+        False,
+        description="If true, permanently deletes the run and steps (subject to retention guard).",
+    ),
+    reason: str | None = Query(
+        None,
+        description="Optional audit reason for deletion.",
+    ),
+    current_user: CurrentUser = Depends(require_verified_scopes("workflows:delete")),
+    tenant_context: TenantContext = Depends(require_tenant_role(*_ADMIN_ROLES)),
+):
+    service = get_workflow_service()
+    user_id = str(current_user.get("user_id") or current_user.get("subject") or "unknown")
+    try:
+        await service.delete_run(
+            run_id,
+            tenant_id=tenant_context.tenant_id,
+            user_id=user_id,
+            hard=hard,
+            reason=reason,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return None
 
 
 STREAM_EVENT_RESPONSE = {

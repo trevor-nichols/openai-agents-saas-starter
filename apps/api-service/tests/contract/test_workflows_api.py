@@ -40,7 +40,7 @@ def _stub_current_user():
         "user_id": "test-user",
         "subject": "user:test-user",
         "payload": {
-            "scope": "conversations:read conversations:write",
+            "scope": "conversations:read conversations:write workflows:delete",
             "tenant_id": TEST_TENANT_ID,
             "roles": ["admin"],
         },
@@ -468,3 +468,40 @@ def test_cancel_completed_run_conflict(client: TestClient) -> None:
 
     response = client.post("/api/v1/workflows/runs/run-done/cancel")
     assert response.status_code == 409
+
+
+def test_delete_workflow_run(client: TestClient) -> None:
+    service = get_workflow_service()
+    repo = getattr(service._runner, "_run_repository", None)
+    assert repo is not None
+
+    async def _ensure_tables():
+        engine = get_engine()
+        assert engine is not None
+        async with engine.begin() as conn:
+            await conn.run_sync(ModelBase.metadata.create_all)
+
+    anyio.run(_ensure_tables)
+
+    run = WorkflowRun(
+        id="run-delete",
+        workflow_key="analysis_code",
+        tenant_id=TEST_TENANT_ID,
+        user_id="test-user",
+        status="succeeded",
+        started_at=datetime.now(tz=UTC),
+        ended_at=datetime.now(tz=UTC),
+        final_output_text="done",
+        final_output_structured=None,
+        trace_id=None,
+        request_message="hello",
+        conversation_id=None,
+        metadata=None,
+    )
+    anyio.run(repo.create_run, run)
+
+    response = client.delete("/api/v1/workflows/runs/run-delete")
+    assert response.status_code == 204
+
+    response_get = client.get("/api/v1/workflows/runs/run-delete")
+    assert response_get.status_code == 404

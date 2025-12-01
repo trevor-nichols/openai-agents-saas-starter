@@ -10,13 +10,18 @@ import { GlassPanel, SectionHeader } from '@/components/ui/foundation';
 import { ErrorState, SkeletonPanel } from '@/components/ui/states';
 import {
   useCancelWorkflowRunMutation,
+  useDeleteWorkflowRunMutation,
   useWorkflowDescriptorQuery,
   useWorkflowRunEventsQuery,
   useWorkflowRunQuery,
   useWorkflowRunsQuery,
   useWorkflowsQuery,
 } from '@/lib/queries/workflows';
-import type { StreamingWorkflowEvent, WorkflowRunRequestBody } from '@/lib/api/client/types.gen';
+import type {
+  StreamingWorkflowEvent,
+  WorkflowRunRequestBody,
+  LocationHint,
+} from '@/lib/api/client/types.gen';
 import { USE_API_MOCK } from '@/lib/config';
 import { listWorkflowRuns } from '@/lib/api/workflows';
 import { mockWorkflowStream } from '@/lib/workflows/mock';
@@ -36,6 +41,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import { WorkflowRunDeleteButton } from './components/WorkflowRunDeleteButton';
+import { useToast } from '@/components/ui/use-toast';
 
 type StreamEventWithMeta = StreamingWorkflowEvent & { receivedAt: string };
 
@@ -71,6 +78,7 @@ export function WorkflowsWorkspace() {
     message?: string;
   } | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [deletingRunId, setDeletingRunId] = useState<string | null>(null);
 
   const updateUrl = useCallback(
     (updates: { workflow?: string | null; run?: string | null }) => {
@@ -135,6 +143,8 @@ export function WorkflowsWorkspace() {
     runDetailQuery.data?.conversation_id ?? null,
   );
   const cancelRunMutation = useCancelWorkflowRunMutation();
+  const deleteRunMutation = useDeleteWorkflowRunMutation();
+  const toast = useToast();
 
   // reset runs when workflow or filter changes
   useEffect(() => {
@@ -164,6 +174,7 @@ export function WorkflowsWorkspace() {
     workflowKey: string;
     message: string;
     shareLocation?: boolean;
+    location?: LocationHint | null;
   }) => {
     setRunError(null);
     setStreamEvents([]);
@@ -176,6 +187,7 @@ export function WorkflowsWorkspace() {
       const body: WorkflowRunRequestBody = {
         message: input.message,
         share_location: input.shareLocation ?? null,
+        location: input.shareLocation ? input.location ?? null : null,
       };
 
       for await (const evt of streamWorkflowRun(input.workflowKey, body)) {
@@ -228,6 +240,29 @@ export function WorkflowsWorkspace() {
   const handleCancelRun = () => {
     if (!selectedRunId) return;
     cancelRunMutation.mutate(selectedRunId);
+  };
+
+  const handleDeleteRun = async (runId: string, conversationId?: string | null) => {
+    setDeletingRunId(runId);
+    const wasSelected = selectedRunIdRef.current === runId;
+    try {
+      await deleteRunMutation.mutateAsync({ runId, conversationId });
+      if (selectedRunIdRef.current === runId) {
+        updateUrl({ workflow: effectiveSelectedKey ?? null, run: null });
+        setIsTranscriptOpen(false);
+      }
+      await runsQuery.refetch();
+      if (!wasSelected) {
+        await runDetailQuery.refetch();
+        await runEventsQuery.refetch();
+      }
+      toast.success({ title: 'Run deleted' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to delete run';
+      toast.error({ title: 'Delete failed', description: message });
+    } finally {
+      setDeletingRunId(null);
+    }
   };
 
   const handleLoadMore = async () => {
@@ -362,15 +397,27 @@ export function WorkflowsWorkspace() {
                 {runDetailQuery.data?.status ? (
                   <InlineTag tone="default">Status: {runDetailQuery.data.status}</InlineTag>
                 ) : null}
-                {runDetailQuery.data?.conversation_id ? (
-                  <InlineTag tone="default">Conversation: {runDetailQuery.data.conversation_id}</InlineTag>
-                ) : null}
-                {runDetailQuery.data?.status === 'running' ? (
-                  <Button size="sm" variant="outline" onClick={handleCancelRun} disabled={cancelRunMutation.isPending}>
-                    {cancelRunMutation.isPending ? 'Canceling…' : 'Cancel run'}
-                  </Button>
-                ) : null}
-              </div>
+            {runDetailQuery.data?.conversation_id ? (
+              <InlineTag tone="default">Conversation: {runDetailQuery.data.conversation_id}</InlineTag>
+            ) : null}
+            {runDetailQuery.data?.status === 'running' ? (
+              <Button size="sm" variant="outline" onClick={handleCancelRun} disabled={cancelRunMutation.isPending}>
+                {cancelRunMutation.isPending ? 'Canceling…' : 'Cancel run'}
+              </Button>
+            ) : null}
+            {runDetailQuery.data ? (
+              <WorkflowRunDeleteButton
+                onConfirm={() =>
+                  handleDeleteRun(
+                    runDetailQuery.data!.workflow_run_id,
+                    runDetailQuery.data!.conversation_id ?? null,
+                  )
+                }
+                pending={deletingRunId === runDetailQuery.data.workflow_run_id}
+                tooltip="Delete run"
+              />
+            ) : null}
+          </div>
               <div className="mt-4 h-[70vh] overflow-y-auto pr-2">
                 <WorkflowRunConversation
                   run={runDetailQuery.data ?? null}
@@ -425,6 +472,8 @@ export function WorkflowsWorkspace() {
             onSelectRun={handleSelectRun}
             selectedRunId={selectedRunId}
             onRefresh={() => runsQuery.refetch()}
+            onDeleteRun={handleDeleteRun}
+            deletingRunId={deletingRunId}
           />
         </GlassPanel>
       </div>

@@ -10,6 +10,9 @@ import type {
   AdminResetPasswordApiV1AuthPasswordResetPostData,
   AdminResetPasswordApiV1AuthPasswordResetPostErrors,
   AdminResetPasswordApiV1AuthPasswordResetPostResponses,
+  ApplyTestFixturesApiV1TestFixturesApplyPostData,
+  ApplyTestFixturesApiV1TestFixturesApplyPostErrors,
+  ApplyTestFixturesApiV1TestFixturesApplyPostResponses,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostData,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostErrors,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostResponses,
@@ -67,6 +70,9 @@ import type {
   DeleteVectorStoreApiV1VectorStoresVectorStoreIdDeleteData,
   DeleteVectorStoreApiV1VectorStoresVectorStoreIdDeleteErrors,
   DeleteVectorStoreApiV1VectorStoresVectorStoreIdDeleteResponses,
+  DeleteWorkflowRunApiV1WorkflowsRunsRunIdDeleteData,
+  DeleteWorkflowRunApiV1WorkflowsRunsRunIdDeleteErrors,
+  DeleteWorkflowRunApiV1WorkflowsRunsRunIdDeleteResponses,
   GetAgentStatusApiV1AgentsAgentNameStatusGetData,
   GetAgentStatusApiV1AgentsAgentNameStatusGetErrors,
   GetAgentStatusApiV1AgentsAgentNameStatusGetResponses,
@@ -108,6 +114,13 @@ import type {
   GetWorkflowRunApiV1WorkflowsRunsRunIdGetData,
   GetWorkflowRunApiV1WorkflowsRunsRunIdGetErrors,
   GetWorkflowRunApiV1WorkflowsRunsRunIdGetResponses,
+  HandleStripeWebhookWebhooksStripePostData,
+  HandleStripeWebhookWebhooksStripePostResponses,
+  HealthCheckHealthGetData,
+  HealthCheckHealthGetResponses,
+  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData,
+  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors,
+  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses,
   IssueInviteApiV1AuthInvitesPostData,
   IssueInviteApiV1AuthInvitesPostErrors,
   IssueInviteApiV1AuthInvitesPostResponses,
@@ -170,6 +183,8 @@ import type {
   LogoutSessionApiV1AuthLogoutPostData,
   LogoutSessionApiV1AuthLogoutPostErrors,
   LogoutSessionApiV1AuthLogoutPostResponses,
+  ReadinessCheckHealthReadyGetData,
+  ReadinessCheckHealthReadyGetResponses,
   RecordUsageApiV1BillingTenantsTenantIdUsagePostData,
   RecordUsageApiV1BillingTenantsTenantIdUsagePostErrors,
   RecordUsageApiV1BillingTenantsTenantIdUsagePostResponses,
@@ -217,6 +232,8 @@ import type {
   StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostData,
   StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostErrors,
   StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponses,
+  StorageHealthHealthStorageGetData,
+  StorageHealthHealthStorageGetResponses,
   StreamChatWithAgentApiV1ChatStreamPostData,
   StreamChatWithAgentApiV1ChatStreamPostErrors,
   StreamChatWithAgentApiV1ChatStreamPostResponses,
@@ -258,6 +275,82 @@ export type Options<
    * used to access values that aren't defined as part of the SDK function.
    */
   meta?: Record<string, unknown>;
+};
+
+/**
+ * Health Check
+ *
+ * Basic liveness probe.
+ */
+export const healthCheckHealthGet = <ThrowOnError extends boolean = false>(
+  options?: Options<HealthCheckHealthGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    HealthCheckHealthGetResponses,
+    unknown,
+    ThrowOnError
+  >({
+    url: "/health",
+    ...options,
+  });
+};
+
+/**
+ * Readiness Check
+ *
+ * Readiness probe for orchestrators (extend with dependency checks).
+ */
+export const readinessCheckHealthReadyGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<ReadinessCheckHealthReadyGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    ReadinessCheckHealthReadyGetResponses,
+    unknown,
+    ThrowOnError
+  >({
+    url: "/health/ready",
+    ...options,
+  });
+};
+
+/**
+ * Storage Health
+ *
+ * Storage provider health (informational; does not gate readiness).
+ */
+export const storageHealthHealthStorageGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<StorageHealthHealthStorageGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    StorageHealthHealthStorageGetResponses,
+    unknown,
+    ThrowOnError
+  >({
+    url: "/health/storage",
+    ...options,
+  });
+};
+
+/**
+ * Handle Stripe Webhook
+ */
+export const handleStripeWebhookWebhooksStripePost = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<HandleStripeWebhookWebhooksStripePostData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).post<
+    HandleStripeWebhookWebhooksStripePostResponses,
+    unknown,
+    ThrowOnError
+  >({
+    url: "/webhooks/stripe",
+    ...options,
+  });
 };
 
 /**
@@ -1143,6 +1236,33 @@ export const listWorkflowRunsApiV1WorkflowsRunsGet = <
       },
     ],
     url: "/api/v1/workflows/runs",
+    ...options,
+  });
+};
+
+/**
+ * Delete Workflow Run
+ */
+export const deleteWorkflowRunApiV1WorkflowsRunsRunIdDelete = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    DeleteWorkflowRunApiV1WorkflowsRunsRunIdDeleteData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).delete<
+    DeleteWorkflowRunApiV1WorkflowsRunsRunIdDeleteResponses,
+    DeleteWorkflowRunApiV1WorkflowsRunsRunIdDeleteErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/workflows/runs/{run_id}",
     ...options,
   });
 };
@@ -2457,3 +2577,52 @@ export const billingEventStreamApiV1BillingStreamGet = <
     ...options,
   });
 };
+
+/**
+ * Apply Test Fixtures
+ */
+export const applyTestFixturesApiV1TestFixturesApplyPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    ApplyTestFixturesApiV1TestFixturesApplyPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    ApplyTestFixturesApiV1TestFixturesApplyPostResponses,
+    ApplyTestFixturesApiV1TestFixturesApplyPostErrors,
+    ThrowOnError
+  >({
+    url: "/api/v1/test-fixtures/apply",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Issue Email Verification Token
+ */
+export const issueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPost =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).post<
+      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses,
+      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors,
+      ThrowOnError
+    >({
+      url: "/api/v1/test-fixtures/email-verification-token",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
+  };

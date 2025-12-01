@@ -170,3 +170,51 @@ async def test_list_runs_respects_started_filters(repo):
 
     before_filter = await repo.list_runs(tenant_id=tenant_id, started_before=earlier + timedelta(seconds=1))
     assert [item.id for item in before_filter.items] == ["r-old"]
+
+
+@pytest.mark.anyio
+async def test_soft_delete_hides_run_and_steps(repo):
+    tenant_id = "tenant-a"
+    now = datetime.now(tz=UTC)
+    run = _run(
+        run_id="run-del",
+        workflow_key="alpha",
+        tenant_id=tenant_id,
+        status=cast(WorkflowStatus, "succeeded"),
+        started_at=now,
+    )
+    step = _step(run.id, run.started_at)
+    await repo.create_run(run)
+    await repo.create_step(step)
+
+    await repo.soft_delete_run(run.id, tenant_id=tenant_id, deleted_by="user-1", reason="cleanup")
+
+    with pytest.raises(ValueError):
+        await repo.get_run_with_steps(run.id)
+
+    page = await repo.list_runs(tenant_id=tenant_id)
+    assert not page.items
+
+    run_row, steps = await repo.get_run_with_steps(run.id, include_deleted=True)
+    assert run_row.deleted_at is not None
+    assert steps[0].deleted_at is not None
+    assert steps[0].deleted_reason == "cleanup"
+
+
+@pytest.mark.anyio
+async def test_hard_delete_removes_run(repo):
+    tenant_id = "tenant-a"
+    now = datetime.now(tz=UTC)
+    run = _run(
+        run_id="run-hard",
+        workflow_key="alpha",
+        tenant_id=tenant_id,
+        status=cast(WorkflowStatus, "succeeded"),
+        started_at=now,
+    )
+    await repo.create_run(run)
+
+    await repo.hard_delete_run(run.id, tenant_id=tenant_id)
+
+    with pytest.raises(ValueError):
+        await repo.get_run_with_steps(run.id, include_deleted=True)

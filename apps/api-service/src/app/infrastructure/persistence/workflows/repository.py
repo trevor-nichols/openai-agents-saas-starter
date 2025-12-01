@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import base64
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, cast
 
-from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy import and_, delete, func, or_, select, update
 
 from app.domain.workflows import (
     WorkflowRun,
@@ -84,11 +84,14 @@ class SqlAlchemyWorkflowRunRepository(WorkflowRunRepository):
             )
             await session.commit()
 
-    async def get_run_with_steps(self, run_id: str) -> tuple[WorkflowRun, list[WorkflowRunStep]]:
+    async def get_run_with_steps(
+        self, run_id: str, *, include_deleted: bool = False
+    ) -> tuple[WorkflowRun, list[WorkflowRunStep]]:
         async with self._session_factory() as session:
-            run_row = await session.scalar(
-                select(WorkflowRunModel).where(WorkflowRunModel.id == run_id)
-            )
+            stmt = select(WorkflowRunModel).where(WorkflowRunModel.id == run_id)
+            if not include_deleted:
+                stmt = stmt.where(WorkflowRunModel.deleted_at.is_(None))
+            run_row = await session.scalar(stmt)
             if run_row is None:
                 raise ValueError(f"Workflow run '{run_id}' not found")
 
@@ -99,6 +102,8 @@ class SqlAlchemyWorkflowRunRepository(WorkflowRunRepository):
                     .order_by(WorkflowRunStepModel.sequence_no)
                 )
             ).scalars().all()
+            if not include_deleted:
+                step_rows = [row for row in step_rows if row.deleted_at is None]
 
         run = WorkflowRun(
             id=run_row.id,
@@ -114,6 +119,9 @@ class SqlAlchemyWorkflowRunRepository(WorkflowRunRepository):
             request_message=run_row.request_message,
             conversation_id=run_row.conversation_id,
             metadata=run_row.metadata_json if hasattr(run_row, "metadata_json") else None,
+            deleted_at=getattr(run_row, "deleted_at", None),
+            deleted_by=getattr(run_row, "deleted_by", None),
+            deleted_reason=getattr(run_row, "deleted_reason", None),
         )
 
         steps = [
@@ -135,6 +143,9 @@ class SqlAlchemyWorkflowRunRepository(WorkflowRunRepository):
                 stage_name=getattr(row, "stage_name", None),
                 parallel_group=getattr(row, "parallel_group", None),
                 branch_index=getattr(row, "branch_index", None),
+                deleted_at=getattr(row, "deleted_at", None),
+                deleted_by=getattr(row, "deleted_by", None),
+                deleted_reason=getattr(row, "deleted_reason", None),
             )
             for row in step_rows
         ]
@@ -152,12 +163,15 @@ class SqlAlchemyWorkflowRunRepository(WorkflowRunRepository):
         conversation_id: str | None = None,
         cursor: str | None = None,
         limit: int = 20,
+        include_deleted: bool = False,
     ) -> WorkflowRunListPage:
         safe_limit = max(1, min(limit, 100))
         cursor_filter = _decode_cursor(cursor) if cursor else None
 
         async with self._session_factory() as session:
             stmt = select(WorkflowRunModel).where(WorkflowRunModel.tenant_id == tenant_id)
+            if not include_deleted:
+                stmt = stmt.where(WorkflowRunModel.deleted_at.is_(None))
 
             if workflow_key:
                 stmt = stmt.where(WorkflowRunModel.workflow_key == workflow_key)
@@ -247,6 +261,54 @@ class SqlAlchemyWorkflowRunRepository(WorkflowRunRepository):
                 )
                 .values(status="cancelled", ended_at=ended_at)
             )
+            await session.commit()
+
+    async def soft_delete_run(
+        self, run_id: str, *, tenant_id: str, deleted_by: str, reason: str | None = None
+    ) -> None:
+        async with self._session_factory() as session:
+            result = await session.execute(
+                update(WorkflowRunModel)
+                .where(
+                    WorkflowRunModel.id == run_id,
+                    WorkflowRunModel.tenant_id == tenant_id,
+                    WorkflowRunModel.deleted_at.is_(None),
+                )
+                .values(
+                    deleted_at=datetime.now(tz=UTC),
+                    deleted_by=deleted_by,
+                    deleted_reason=reason,
+                )
+            )
+            if result.rowcount == 0:
+                raise ValueError("Workflow run not found")
+
+            await session.execute(
+                update(WorkflowRunStepModel)
+                .where(WorkflowRunStepModel.workflow_run_id == run_id)
+                .values(
+                    deleted_at=datetime.now(tz=UTC),
+                    deleted_by=deleted_by,
+                    deleted_reason=reason,
+                )
+            )
+            await session.commit()
+
+    async def hard_delete_run(self, run_id: str, *, tenant_id: str) -> None:
+        async with self._session_factory() as session:
+            await session.execute(
+                delete(WorkflowRunStepModel).where(
+                    WorkflowRunStepModel.workflow_run_id == run_id
+                )
+            )
+            run_deleted = await session.execute(
+                delete(WorkflowRunModel).where(
+                    WorkflowRunModel.id == run_id, WorkflowRunModel.tenant_id == tenant_id
+                )
+            )
+            if run_deleted.rowcount == 0:
+                await session.rollback()
+                raise ValueError("Workflow run not found")
             await session.commit()
 
 

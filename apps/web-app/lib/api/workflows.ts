@@ -161,3 +161,37 @@ export async function* streamWorkflowRun(
     reader.releaseLock();
   }
 }
+
+export async function deleteWorkflowRun(runId: string, opts?: { hard?: boolean }): Promise<void> {
+  if (USE_API_MOCK) {
+    return;
+  }
+  const query = new URLSearchParams();
+  if (opts?.hard) query.set('hard', 'true');
+
+  const response = await fetch(
+    apiV1Path(
+      `/workflows/runs/${encodeURIComponent(runId)}${query.toString() ? `?${query.toString()}` : ''}`,
+    ),
+    {
+      method: 'DELETE',
+    },
+  );
+  if (!response.ok) {
+    let message = `Failed to delete workflow run (${response.status})`;
+    let detail: string | undefined;
+    try {
+      const payload = await response.json();
+      detail = typeof payload?.detail === 'string' ? payload.detail : undefined;
+      const msgField = typeof payload?.message === 'string' ? payload.message : undefined;
+      message = msgField ?? detail ?? message;
+    } catch {
+      detail = undefined;
+      // ignore JSON parse errors; fall back to default message
+    }
+    const error = new Error(message);
+    (error as any).detail = detail;
+    (error as any).status = response.status;
+    throw error;
+  }
+}

@@ -4,12 +4,18 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { SkeletonPanel, EmptyState } from '@/components/ui/states';
-import { Switch } from '@/components/ui/switch';
 import { InlineTag } from '@/components/ui/foundation';
+import { LocationOptIn } from '@/components/ui/location';
+import type { LocationHint } from '@/lib/api/client/types.gen';
 
 interface WorkflowRunPanelProps {
   selectedKey: string | null;
-  onRun: (payload: { workflowKey: string; message: string; shareLocation?: boolean }) => Promise<void>;
+  onRun: (payload: {
+    workflowKey: string;
+    message: string;
+    shareLocation?: boolean;
+    location?: LocationHint | null;
+  }) => Promise<void>;
   isRunning: boolean;
   runError?: string | null;
   isLoadingWorkflows?: boolean;
@@ -26,6 +32,12 @@ export function WorkflowRunPanel({
 }: WorkflowRunPanelProps) {
   const [message, setMessage] = useState('');
   const [shareLocation, setShareLocation] = useState(false);
+  const [location, setLocation] = useState<LocationHint>({
+    city: '',
+    region: '',
+    country: '',
+    timezone: '',
+  });
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
@@ -48,6 +60,7 @@ export function WorkflowRunPanel({
       workflowKey: selectedKey,
       message,
       shareLocation,
+      location: shareLocation ? location : null,
     });
   };
 
@@ -64,18 +77,21 @@ export function WorkflowRunPanel({
           ref={textareaRef}
         />
       </div>
-      <div className="flex items-center gap-3">
-        <Switch
-          id="workflow-share-location"
-          checked={shareLocation}
-          onCheckedChange={setShareLocation}
-          disabled={isRunning}
-          aria-label="Share location with hosted tools"
-        />
-        <Label htmlFor="workflow-share-location" className="text-sm">
-          Share location with hosted tools
-        </Label>
-      </div>
+      <LocationOptIn
+        id="workflow-share-location"
+        shareLocation={shareLocation}
+        onShareLocationChange={setShareLocation}
+        location={location}
+        onLocationChange={(field, value) =>
+          setLocation((prev) => ({
+            ...prev,
+            [field]: value,
+          }))
+        }
+        disabled={isRunning}
+        label="Share location with hosted tools"
+        showOptionalBadge
+      />
       <div className="flex gap-2 items-center">
         <Button onClick={handleSubmit} disabled={isRunning || !message.trim()}>
           {isRunning ? 'Running…' : 'Run workflow'}

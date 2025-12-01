@@ -372,6 +372,7 @@ class UserService:
                 "conversations:read",
                 "conversations:write",
                 "conversations:delete",
+                "workflows:delete",
                 "tools:read",
                 "billing:read",
                 "billing:manage",

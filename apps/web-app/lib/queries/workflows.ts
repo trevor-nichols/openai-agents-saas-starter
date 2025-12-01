@@ -8,6 +8,7 @@ import {
   listWorkflows,
   runWorkflow,
   streamWorkflowRun,
+  deleteWorkflowRun,
 } from '@/lib/api/workflows';
 import type { WorkflowRunInput, WorkflowRunListFilters } from '@/lib/workflows/types';
 import type { LocationHint } from '@/lib/api/client/types.gen';
@@ -88,4 +89,20 @@ export async function* useWorkflowStream(
   body: { message: string; conversation_id?: string | null; location?: LocationHint | null; share_location?: boolean | null },
 ) {
   yield* streamWorkflowRun(workflowKey, body);
+}
+
+export function useDeleteWorkflowRunMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ runId, hard, conversationId }: { runId: string; hard?: boolean; conversationId?: string | null }) =>
+      deleteWorkflowRun(runId, { hard }).then(() => ({ runId, conversationId })),
+    onSuccess: ({ runId, conversationId }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.workflows.all }).catch(() => {});
+      queryClient.invalidateQueries({ queryKey: queryKeys.workflows.run(runId) }).catch(() => {});
+      queryClient
+        .invalidateQueries({ queryKey: queryKeys.workflows.runEvents(runId, conversationId ?? null) })
+        .catch(() => {});
+    },
+  });
 }

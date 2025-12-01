@@ -22,6 +22,9 @@ class WorkflowRun:
     request_message: str | None = None
     conversation_id: str | None = None
     metadata: dict[str, Any] | None = None
+    deleted_at: datetime | None = None
+    deleted_by: str | None = None
+    deleted_reason: str | None = None
 
 
 @dataclass(slots=True)
@@ -43,6 +46,9 @@ class WorkflowRunStep:
     stage_name: str | None = None
     parallel_group: str | None = None
     branch_index: int | None = None
+    deleted_at: datetime | None = None
+    deleted_by: str | None = None
+    deleted_reason: str | None = None
 
 
 class WorkflowRunRepository(Protocol):
@@ -55,7 +61,7 @@ class WorkflowRunRepository(Protocol):
     async def update_step(self, step_id: str, **fields: Any) -> None: ...
 
     async def get_run_with_steps(
-        self, run_id: str
+        self, run_id: str, *, include_deleted: bool = False
     ) -> tuple[WorkflowRun, list[WorkflowRunStep]]: ...
 
     async def list_runs(
@@ -69,11 +75,18 @@ class WorkflowRunRepository(Protocol):
         conversation_id: str | None = None,
         cursor: str | None = None,
         limit: int = 20,
+        include_deleted: bool = False,
     ) -> WorkflowRunListPage: ...
 
     async def cancel_run(self, run_id: str, *, ended_at: datetime) -> None: ...
 
     async def cancel_running_steps(self, run_id: str, *, ended_at: datetime) -> None: ...
+
+    async def soft_delete_run(
+        self, run_id: str, *, tenant_id: str, deleted_by: str, reason: str | None = None
+    ) -> None: ...
+
+    async def hard_delete_run(self, run_id: str, *, tenant_id: str) -> None: ...
 
 
 @dataclass(slots=True)

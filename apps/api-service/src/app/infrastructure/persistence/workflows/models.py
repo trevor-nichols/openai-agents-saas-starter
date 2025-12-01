@@ -27,6 +27,9 @@ class WorkflowRunModel(ModelBase):
         index=True,
     )
     metadata_json = Column("metadata", JSONB if JSONB is not None else JSON, nullable=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    deleted_by = Column(String, nullable=True)
+    deleted_reason = Column(String, nullable=True)
 
 
 class WorkflowRunStepModel(ModelBase):
@@ -49,3 +52,6 @@ class WorkflowRunStepModel(ModelBase):
     stage_name = Column(String, nullable=True)
     parallel_group = Column(String, nullable=True)
     branch_index = Column(Integer, nullable=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    deleted_by = Column(String, nullable=True)
+    deleted_reason = Column(String, nullable=True)

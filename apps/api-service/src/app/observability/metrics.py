@@ -182,6 +182,14 @@ RATE_LIMIT_HITS_TOTAL = Counter(
     registry=REGISTRY,
 )
 
+# Workflow operations
+WORKFLOW_RUN_DELETES_TOTAL = Counter(
+    "workflow_run_deletes_total",
+    "Count of workflow run delete operations segmented by action and result.",
+    ("action", "result"),
+    registry=REGISTRY,
+)
+
 # Vector store operations
 VECTOR_STORE_OPERATIONS_TOTAL = Counter(
     "vector_store_operations_total",

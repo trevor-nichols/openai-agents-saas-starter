@@ -24,3 +24,13 @@ class RetentionSettingsMixin(BaseModel):
         description="Sleep between cleanup batches in milliseconds (throttle).",
         alias="RUN_EVENTS_CLEANUP_SLEEP_MS",
     )
+
+    workflow_min_purge_age_hours: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Minimum age in hours before a workflow run can be hard-deleted. "
+            "Set to 0 to disable the guard."
+        ),
+        alias="WORKFLOW_MIN_PURGE_AGE_HOURS",
+    )

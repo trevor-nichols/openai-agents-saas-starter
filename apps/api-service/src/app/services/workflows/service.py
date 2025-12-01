@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import logging
 import uuid
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from typing import Any
 
+from app.core.settings import get_settings
 from app.domain.workflows import WorkflowRunListPage, WorkflowRunRepository, WorkflowStatus
+from app.observability.metrics import WORKFLOW_RUN_DELETES_TOTAL
 from app.services.agents.context import ConversationActorContext
 from app.services.agents.interaction_context import InteractionContextBuilder
 from app.services.agents.provider_registry import (
@@ -116,6 +119,137 @@ class WorkflowService:
         now = datetime.now(tz=timezone.utc)  # noqa: UP017
         await self._runner._run_repository.cancel_running_steps(run_id, ended_at=now)
         await self._runner._run_repository.cancel_run(run_id, ended_at=now)
+
+    async def delete_run(
+        self,
+        run_id: str,
+        *,
+        tenant_id: str,
+        user_id: str,
+        hard: bool = False,
+        reason: str | None = None,
+    ) -> None:
+        logger = logging.getLogger("app.services.workflows")
+        if not self._runner._run_repository:
+            raise RuntimeError("Workflow run repository is not configured")
+
+        action = "hard" if hard else "soft"
+
+        try:
+            run, _ = await self._runner._run_repository.get_run_with_steps(
+                run_id, include_deleted=True
+            )
+        except ValueError:
+            WORKFLOW_RUN_DELETES_TOTAL.labels(action=action, result="not_found").inc()
+            logger.info(
+                "workflow_run.delete",
+                extra={
+                    "structured": {
+                        "event": "workflow_run.delete",
+                        "result": "not_found",
+                        "action": action,
+                        "workflow_run_id": run_id,
+                        "tenant_id": tenant_id,
+                        "reason": reason,
+                    }
+                },
+            )
+            raise
+
+        if run.tenant_id != tenant_id:
+            WORKFLOW_RUN_DELETES_TOTAL.labels(action=action, result="not_found").inc()
+            logger.info(
+                "workflow_run.delete",
+                extra={
+                    "structured": {
+                        "event": "workflow_run.delete",
+                        "result": "not_found",
+                        "action": action,
+                        "workflow_run_id": run_id,
+                        "tenant_id": tenant_id,
+                        "reason": "tenant_mismatch",
+                    }
+                },
+            )
+            raise ValueError("Workflow run not found")
+
+        if hard:
+            settings = get_settings()
+            guard_hours = getattr(settings, "workflow_min_purge_age_hours", 0) or 0
+            if guard_hours > 0 and run.started_at:
+                age_hours = (datetime.now(tz=UTC) - run.started_at).total_seconds() / 3600
+                if age_hours < guard_hours:
+                    WORKFLOW_RUN_DELETES_TOTAL.labels(action=action, result="blocked").inc()
+                    logger.warning(
+                        "workflow_run.delete",
+                        extra={
+                            "structured": {
+                                "event": "workflow_run.delete",
+                                "result": "blocked",
+                                "action": action,
+                                "workflow_run_id": run_id,
+                                "tenant_id": tenant_id,
+                                "reason": "retention_guard",
+                                "guard_hours": guard_hours,
+                                "run_started_at": run.started_at,
+                            }
+                        },
+                    )
+                    raise RuntimeError("Hard delete blocked by retention window")
+            await self._runner._run_repository.hard_delete_run(run_id, tenant_id=tenant_id)
+            WORKFLOW_RUN_DELETES_TOTAL.labels(action=action, result="success").inc()
+            logger.info(
+                "workflow_run.delete",
+                extra={
+                    "structured": {
+                        "event": "workflow_run.delete",
+                        "result": "success",
+                        "action": action,
+                        "workflow_run_id": run_id,
+                        "tenant_id": tenant_id,
+                        "user_id": user_id,
+                        "reason": reason,
+                    }
+                },
+            )
+            return
+
+        if run.deleted_at:
+            # Already deleted; treat as 404 to avoid leaking existence.
+            WORKFLOW_RUN_DELETES_TOTAL.labels(action=action, result="not_found").inc()
+            logger.info(
+                "workflow_run.delete",
+                extra={
+                    "structured": {
+                        "event": "workflow_run.delete",
+                        "result": "not_found",
+                        "action": action,
+                        "workflow_run_id": run_id,
+                        "tenant_id": tenant_id,
+                        "reason": "already_deleted",
+                    }
+                },
+            )
+            raise ValueError("Workflow run not found")
+
+        await self._runner._run_repository.soft_delete_run(
+            run_id, tenant_id=tenant_id, deleted_by=user_id, reason=reason
+        )
+        WORKFLOW_RUN_DELETES_TOTAL.labels(action=action, result="success").inc()
+        logger.info(
+            "workflow_run.delete",
+            extra={
+                "structured": {
+                    "event": "workflow_run.delete",
+                    "result": "success",
+                    "action": action,
+                    "workflow_run_id": run_id,
+                    "tenant_id": tenant_id,
+                    "user_id": user_id,
+                    "reason": reason,
+                }
+            },
+        )
 
     async def run_workflow_stream(
         self,

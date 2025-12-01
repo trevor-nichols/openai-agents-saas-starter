@@ -5,6 +5,7 @@ import { SkeletonPanel, EmptyState } from '@/components/ui/states';
 import { cn } from '@/lib/utils';
 import type { WorkflowRunListItemView } from '@/lib/workflows/types';
 import type { WorkflowSummary } from '@/lib/api/client/types.gen';
+import { WorkflowRunDeleteButton } from './WorkflowRunDeleteButton';
 
 interface WorkflowRunsListProps {
   runs: WorkflowRunListItemView[];
@@ -16,6 +17,8 @@ interface WorkflowRunsListProps {
   onSelectRun: (runId: string, workflowKey: string) => void;
   selectedRunId?: string | null;
   onRefresh?: () => void;
+  onDeleteRun?: (runId: string, conversationId?: string | null) => void | Promise<void>;
+  deletingRunId?: string | null;
 }
 
 const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
@@ -46,6 +49,8 @@ export function WorkflowRunsList({
   onSelectRun,
   selectedRunId,
   onRefresh,
+  onDeleteRun,
+  deletingRunId,
 }: WorkflowRunsListProps) {
   if (isLoading) {
     return <SkeletonPanel lines={6} />;
@@ -74,13 +79,21 @@ export function WorkflowRunsList({
         const variant = STATUS_VARIANT[run.status] ?? 'outline';
         const workflowLabel = workflows?.find((w) => w.key === run.workflow_key)?.display_name ?? run.workflow_key;
         return (
-          <button
+          <div
             key={run.workflow_run_id}
+            role="button"
+            tabIndex={0}
             className={cn(
-              'w-full rounded-lg border px-4 py-3 text-left transition focus:outline-none',
+              'w-full rounded-lg border px-4 py-3 text-left transition focus:outline-none focus:ring-2 focus:ring-primary/60',
               active ? 'border-primary/60 bg-primary/10' : 'border-white/5 bg-white/5 hover:border-white/10'
             )}
             onClick={() => onSelectRun(run.workflow_run_id, run.workflow_key)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onSelectRun(run.workflow_run_id, run.workflow_key);
+              }
+            }}
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
@@ -89,10 +102,20 @@ export function WorkflowRunsList({
                 </Badge>
                 <InlineTag tone="default">{workflowLabel}</InlineTag>
               </div>
-              <span className="text-xs text-foreground/60">{formatTimestamp(run.started_at)}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-foreground/60">{formatTimestamp(run.started_at)}</span>
+                {onDeleteRun ? (
+                  <WorkflowRunDeleteButton
+                    onConfirm={() => onDeleteRun(run.workflow_run_id, run.conversation_id ?? null)}
+                    pending={deletingRunId === run.workflow_run_id}
+                    tooltip="Delete run"
+                    stopPropagation
+                  />
+                ) : null}
+              </div>
             </div>
             <p className="mt-2 text-sm text-foreground font-semibold line-clamp-1">{summarize(run)}</p>
-          </button>
+          </div>
         );
       })}
 
