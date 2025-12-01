@@ -12,8 +12,8 @@ import jwt
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.core.config import Settings, get_settings
 from app.core.keys import KeyMaterial, load_keyset
+from app.core.settings import Settings, get_settings
 from app.domain.auth import (
     RefreshTokenRecord,
     RefreshTokenRepository,
@@ -347,11 +347,6 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
         return f"service-account:{account}"
 
     def _encode_with_signing_kid(self, payload: dict[str, Any], signing_kid: str) -> str:
-        if signing_kid == "legacy-hs256":
-            encoded = jwt.encode(
-                payload, self._settings.secret_key, algorithm=self._settings.jwt_algorithm
-            )
-            return self._ensure_token_str(encoded)
         material = self._find_key_material(signing_kid)
         if not material or not material.private_key:
             raise RuntimeError(f"Missing key material for kid '{signing_kid}'.")

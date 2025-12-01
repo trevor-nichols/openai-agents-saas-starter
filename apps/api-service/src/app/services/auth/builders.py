@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from app.core.config import Settings, get_settings
 from app.core.service_accounts import ServiceAccountRegistry, get_default_service_account_registry
+from app.core.settings import Settings, get_settings
 from app.infrastructure.persistence.auth.repository import get_refresh_token_repository
 from app.infrastructure.persistence.auth.session_repository import get_user_session_repository
 from app.services.auth import RefreshTokenManager, SessionStore

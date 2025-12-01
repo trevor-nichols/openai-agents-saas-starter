@@ -8,7 +8,7 @@ import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from app.core.config import Settings
+from app.core.settings import Settings
 from app.domain.storage import (
     StorageObjectRef,
     StoragePresignedUrl,

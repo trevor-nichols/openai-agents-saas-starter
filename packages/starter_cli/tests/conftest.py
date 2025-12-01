@@ -125,7 +125,7 @@ def _install_google_stubs() -> None:
 
 _install_google_stubs()
 
-from app.core import config as api_config
+from app.core import settings as api_config
 from tests.utils.pytest_stripe import (
     configure_stripe_replay_option,
     register_stripe_replay_marker,

@@ -19,7 +19,7 @@ VAULT_PROVIDER_KEYS = {
     SecretsProviderLiteral.VAULT_HCP,
 }
 
-signup_policy_logger = logging.getLogger("app.core.config.signup")
+signup_policy_logger = logging.getLogger("app.core.settings.signup")
 
 
 class BaseAppSettings(BaseSettings):

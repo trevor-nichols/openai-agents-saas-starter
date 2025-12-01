@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from app.services.agents.image_ingestor import ingest_image_output
 from app.services.storage.service import StorageService
-from app.core.config import get_settings
+from app.core.settings import get_settings
 
 
 class StubStorage(StorageService):

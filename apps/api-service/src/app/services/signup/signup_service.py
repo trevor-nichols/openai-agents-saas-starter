@@ -13,9 +13,9 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.core.config import Settings, get_settings
 from app.core.password_policy import PasswordPolicyError, validate_password_strength
 from app.core.security import PASSWORD_HASH_VERSION, get_password_hash
+from app.core.settings import Settings, get_settings
 from app.infrastructure.db import get_async_sessionmaker
 from app.infrastructure.persistence.auth.models import (
     PasswordHistory,

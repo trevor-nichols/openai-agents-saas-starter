@@ -7,8 +7,8 @@ from datetime import UTC, datetime, timedelta
 from typing import Protocol
 from uuid import UUID, uuid4
 
-from app.core.config import get_settings
 from app.core.security import TokenVerifierError, get_token_signer, get_token_verifier
+from app.core.settings import get_settings
 from app.domain.auth import UserSessionListResult, UserSessionTokens
 from app.domain.users import AuthenticatedUser
 from app.observability.logging import log_event

@@ -11,7 +11,7 @@ import importlib
 
 logs_module = importlib.import_module("app.api.v1.logs.router")
 from app.api.v1.logs.router import MAX_BODY_BYTES
-from app.core.config import Settings
+from app.core.settings import Settings
 from app.services.shared.rate_limit_service import rate_limiter
 
 

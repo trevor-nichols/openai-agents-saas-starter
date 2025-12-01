@@ -6,7 +6,7 @@ import asyncio
 from threading import Lock
 from typing import Protocol, cast
 
-from app.core.config import Settings, get_settings
+from app.core.settings import Settings, get_settings
 from app.infrastructure.redis.factory import get_redis_factory
 from app.infrastructure.redis_types import RedisBytesClient
 

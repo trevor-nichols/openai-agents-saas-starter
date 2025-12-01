@@ -21,7 +21,7 @@ def _fresh(data: HandoffInputData) -> HandoffInputData:
 
 
 FILTERS: dict[str, HandoffFilter] = {
-    # Mirrors legacy policy shortcuts
+    # Mirrors prior policy shortcuts
     "full": lambda d: d,
     "fresh": _fresh,
     "last_turn": _last_turn,

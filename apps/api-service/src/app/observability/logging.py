@@ -18,7 +18,7 @@ from typing import Any
 
 import httpx
 
-from app.core.config import Settings
+from app.core.settings import Settings
 
 LOGGER = logging.getLogger("api-service.observability")
 _LOG_CONTEXT: ContextVar[dict[str, Any]] = ContextVar("structured_log_context", default={})

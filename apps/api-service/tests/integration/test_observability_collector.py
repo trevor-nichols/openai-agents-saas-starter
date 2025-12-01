@@ -12,7 +12,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from app.core.config import Settings
+from app.core.settings import Settings
 from app.observability.logging import configure_logging, log_event
 
 COLLECTOR_IMAGE = "otel/opentelemetry-collector-contrib:0.139.0"

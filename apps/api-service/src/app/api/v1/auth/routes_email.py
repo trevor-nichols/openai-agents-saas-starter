@@ -76,7 +76,7 @@ async def verify_email_token(
 
 
 async def _enforce_email_verification_quota(user_id: str, client_ip: str | None) -> None:
-    from app.core.config import get_settings
+    from app.core.settings import get_settings
 
     settings = get_settings()
     quotas: list[tuple[RateLimitQuota, list[str]]] = []

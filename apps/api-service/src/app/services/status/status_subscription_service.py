@@ -17,7 +17,7 @@ from uuid import UUID
 import httpx
 from fastapi import HTTPException, status
 
-from app.core.config import Settings, get_settings
+from app.core.settings import Settings, get_settings
 from app.domain.status import (
     StatusSubscription,
     StatusSubscriptionCreate,

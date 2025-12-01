@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable, Mapping
 
-from app.core.config import Settings, get_settings
+from app.core.settings import Settings, get_settings
 from app.domain.secrets import SecretProviderProtocol, SecretsProviderLiteral
 
 from .aws_provider import build_aws_secret_provider

@@ -10,7 +10,7 @@ from time import perf_counter
 from typing import Protocol, TypeVar
 from uuid import uuid4
 
-from app.core.config import Settings, get_settings
+from app.core.settings import Settings, get_settings
 from app.infrastructure.stripe import (
     StripeClient,
     StripeClientError,

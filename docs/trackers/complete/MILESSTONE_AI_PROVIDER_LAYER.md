@@ -41,7 +41,7 @@ Create a provider-agnostic AI orchestration layer so new OpenAI (Agents, Realtim
 
 ### 2. Provider Registry & Bootstrap
 - Introduce registry pattern with named providers and selection logic (default, tenant-scoped future hooks).
-- Extend `app/core/config` with `OpenAISettings` + provider enablement map.
+- Extend `app/core/settings/__init__.py` with `OpenAISettings` + provider enablement map.
 - Wire FastAPI startup + CLI to register providers via bootstrap module.
 
 ### 3. OpenAI Adapter Extraction

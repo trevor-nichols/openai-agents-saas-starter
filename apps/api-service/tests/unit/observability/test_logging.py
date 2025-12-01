@@ -9,7 +9,7 @@ from datetime import date
 
 import pytest
 
-from app.core.config import Settings
+from app.core.settings import Settings
 from app.observability.logging import (
     DateRollingFileHandler,
     JSONLogFormatter,

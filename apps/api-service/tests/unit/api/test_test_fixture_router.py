@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api.v1.test_fixtures.router import router as test_fixture_router
-from app.core.config import get_settings
+from app.core.settings import get_settings
 from app.services.signup.email_verification_service import EmailVerificationTokenIssueResult
 from app.services.test_fixtures import FixtureApplyResult
 

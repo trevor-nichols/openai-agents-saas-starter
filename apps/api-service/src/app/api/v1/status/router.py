@@ -21,15 +21,14 @@ from app.api.v1.status.schemas import (
     StatusSubscriptionVerifyRequest,
 )
 from app.bootstrap import get_container
-from app.core.config import get_settings
 from app.core.security import get_current_user
+from app.core.settings import get_settings
 from app.domain.status import PlatformStatusSnapshot
 from app.services.status.status_alert_dispatcher import StatusAlertDispatcher
 from app.services.status.status_service import get_status_service
 from app.services.status.status_subscription_service import StatusSubscriptionService
 
 router = APIRouter(prefix="/status", tags=["status"])
-legacy_router = APIRouter(tags=["status"])
 _settings = get_settings()
 _status_service = get_status_service()
 _optional_bearer = HTTPBearer(auto_error=False)
@@ -124,13 +123,6 @@ async def get_platform_status() -> PlatformStatusResponse:
 @router.get("/rss", response_class=Response)
 async def get_platform_status_rss() -> Response:
     """Return the incident feed as an RSS document."""
-
-    return await _build_status_rss_response()
-
-
-@legacy_router.get("/status.rss", response_class=Response)
-async def get_platform_status_rss_alias() -> Response:
-    """Legacy alias for consumers using /status.rss paths."""
 
     return await _build_status_rss_response()
 

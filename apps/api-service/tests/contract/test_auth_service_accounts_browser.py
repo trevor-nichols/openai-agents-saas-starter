@@ -12,7 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette import status
 
-from app.core.config import get_settings
+from app.core.settings import get_settings
 from app.core.security import get_token_signer
 from app.services.service_account_bridge import (
     BrowserIssuanceError,

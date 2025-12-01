@@ -5,7 +5,7 @@ from typing import cast
 
 import pytest
 
-from app.core.config import Settings
+from app.core.settings import Settings
 from app.infrastructure.geoip.providers import IPinfoGeoIPService
 from app.services.geoip_service import (
     NullGeoIPService,

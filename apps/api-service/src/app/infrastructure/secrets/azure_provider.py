@@ -11,7 +11,7 @@ from typing import Any
 
 from anyio import to_thread
 
-from app.core.config import Settings
+from app.core.settings import Settings
 from app.domain.secrets import (
     SecretProviderHealth,
     SecretProviderProtocol,

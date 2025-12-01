@@ -28,7 +28,7 @@
 | STRIPE-06 | Tests & Runbooks | Fixture-driven integration tests (`tests/integration/test_stripe_webhook.py`, new SSE tests) plus `docs/billing/stripe-runbook.md` covering replay, secret rotation, and alert response. | Completed | Added `just test-stripe`/`just stripe-replay` workflow, replay CLI integration test, billing stream unit coverage for metrics, and runbook/setup docs that spell out verification + recovery drills. |
 
 ## Execution Plan
-1. **STRIPE-01 – Environment Guardrails**: Extend `app/core/config.py` and the FastAPI lifespan to validate `ENABLE_BILLING`, Stripe keys, and plan maps at startup, with troubleshooting guidance captured in `docs/billing/stripe-setup.md`.
+1. **STRIPE-01 – Environment Guardrails**: Extend `app/core/settings/__init__.py` and the FastAPI lifespan to validate `ENABLE_BILLING`, Stripe keys, and plan maps at startup, with troubleshooting guidance captured in `docs/billing/stripe-setup.md`.
 2. **STRIPE-02 – Developer Setup Script**: Deliver the consolidated CLI command (`python -m starter_cli.app stripe setup`, aliased by `pnpm stripe:setup`) so new contributors can authenticate the Stripe CLI, launch Postgres/Redis, auto-provision Starter/Pro prices, and persist secrets into `.env.local` safely.
 3. **STRIPE-03 – Gateway Observability**: Update `StripeGateway`/`StripeClient` to emit structured logs and Prometheus metrics, enforce centralized retries, and translate plan codes via `stripe_product_price_map`, backed by unit tests.
 4. **STRIPE-04 – Webhook → Domain Sync**: Implement webhook orchestration that stores raw payloads, records processing metadata, and routes events through `BillingService` APIs plus replay tooling (CLI + persistence) without touching ORM models directly.

@@ -7,8 +7,8 @@ from typing import Any
 
 from fastapi import Depends, HTTPException, status
 
-from app.core.config import get_settings
 from app.core.security import get_current_user
+from app.core.settings import get_settings
 
 CurrentUser = dict[str, Any]
 

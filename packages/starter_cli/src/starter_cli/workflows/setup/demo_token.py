@@ -104,7 +104,7 @@ def run_demo_token_automation(context: WizardContext) -> None:
 
     _ensure_import_paths(context.cli_ctx.project_root)
     try:
-        get_settings = import_module("app.core.config").get_settings
+        get_settings = import_module("app.core.settings").get_settings
         get_settings()
         result = asyncio.run(_issue_demo_token(config, tenant_id))
     except Exception as exc:  # pragma: no cover - runtime failures

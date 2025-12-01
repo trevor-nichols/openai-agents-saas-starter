@@ -15,7 +15,7 @@ from agents.usage import Usage
 
 from app.agents._shared.handoff_filters import get_filter as get_handoff_filter
 from app.agents._shared.prompt_context import PromptRuntimeContext
-from app.core.config import get_settings
+from app.core.settings import get_settings
 from app.domain.ai import AgentRunResult, AgentRunUsage, AgentStreamEvent, RunOptions
 from app.domain.ai.ports import (
     AgentRuntime,

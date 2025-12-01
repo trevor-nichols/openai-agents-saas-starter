@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from typing import Final, cast
 from uuid import UUID
 
-from app.core.config import Settings, get_settings
+from app.core.settings import Settings, get_settings
 from app.domain.email_verification import (
     EmailVerificationTokenRecord,
     EmailVerificationTokenStore,

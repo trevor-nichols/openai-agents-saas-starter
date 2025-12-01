@@ -116,14 +116,14 @@ class StarterSettingsProtocol(Protocol):
 
 def _resolve_settings_class() -> type[StarterSettingsProtocol]:
     try:
-        module = import_module("app.core.config")
+        module = import_module("app.core.settings")
     except ModuleNotFoundError as exc:  # pragma: no cover - defensive
         raise RuntimeError("FastAPI settings module is unavailable") from exc
     settings_cls: Any = getattr(module, "Settings", None)
     if settings_cls is None:
-        raise RuntimeError("app.core.config.Settings is missing")
+        raise RuntimeError("app.core.settings.Settings is missing")
     if not isinstance(settings_cls, type):
-        raise RuntimeError("app.core.config.Settings is not a class")
+        raise RuntimeError("app.core.settings.Settings is not a class")
     return cast(type[StarterSettingsProtocol], settings_cls)
 
 

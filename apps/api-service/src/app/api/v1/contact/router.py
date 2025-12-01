@@ -10,7 +10,7 @@ from app.api.dependencies import raise_rate_limit_http_error
 from app.api.models.common import SuccessResponse
 from app.api.models.contact import ContactSubmissionRequest, ContactSubmissionResponse
 from app.api.v1.auth.utils import extract_client_ip, extract_user_agent
-from app.core.config import get_settings
+from app.core.settings import get_settings
 from app.services.contact_service import (
     ContactDeliveryError,
     ContactSubmissionError,

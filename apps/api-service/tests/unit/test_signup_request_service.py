@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.core.config import Settings
+from app.core.settings import Settings
 from app.domain.signup import (
     SignupRequest,
     SignupRequestCreate,

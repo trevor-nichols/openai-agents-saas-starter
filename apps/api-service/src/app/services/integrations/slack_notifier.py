@@ -10,7 +10,7 @@ from uuid import UUID
 
 import httpx
 
-from app.core.config import Settings
+from app.core.settings import Settings
 from app.domain.status import IncidentRecord
 from app.observability.logging import log_event
 from app.observability.metrics import observe_slack_notification

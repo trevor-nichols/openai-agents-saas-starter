@@ -27,7 +27,7 @@ Reduce the attack surface of `/api/v1/auth/register` by moving the platform towa
 ## Workstreams & Tasks
 
 ### WS1 – Policy & Configuration (Phase 1)
-- ✅ Introduced `SignupAccessPolicyLiteral = Literal["public", "invite_only", "approval"]` in `app/core/config.py`, defaulting to `"invite_only"` with env alias `SIGNUP_ACCESS_POLICY`. (Nov 16, 2025)
+- ✅ Introduced `SignupAccessPolicyLiteral = Literal["public", "invite_only", "approval"]` in `app/core/settings/signup.py`, defaulting to `"invite_only"` with env alias `SIGNUP_ACCESS_POLICY`. (Nov 16, 2025)
 - ✅ `allow_public_signup` now derives from the policy (with conflict warnings for legacy envs). (Nov 16, 2025)
 - ✅ CLI wizard prompts for the policy, records it in env/audit output, and keeps `ALLOW_PUBLIC_SIGNUP` in sync for backward compatibility. (Nov 16, 2025)
 - ✅ Docs + README updated to document the new policy posture and defaults. (Nov 16, 2025)

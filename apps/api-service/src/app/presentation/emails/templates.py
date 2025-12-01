@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from textwrap import dedent
 from urllib.parse import urlencode
 
-from app.core.config import Settings
+from app.core.settings import Settings
 
 
 @dataclass(slots=True)

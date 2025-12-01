@@ -9,9 +9,9 @@ from datetime import UTC, datetime
 from typing import Literal, Protocol, cast
 from uuid import UUID
 
-from app.core.config import Settings, get_settings
 from app.core.password_policy import PasswordPolicyError, validate_password_strength
 from app.core.security import PASSWORD_HASH_VERSION, get_password_hash, verify_password
+from app.core.settings import Settings, get_settings
 from app.domain.users import (
     AuthenticatedUser,
     PasswordReuseError,

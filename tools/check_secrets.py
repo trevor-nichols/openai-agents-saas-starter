@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "apps" / "api-service"))
 
-from app.core.config import Settings  # noqa: E402
+from app.core.settings import Settings  # noqa: E402
 
 
 def main() -> int:

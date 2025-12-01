@@ -4,15 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from app.core.config import (
+from app.core.settings import Settings, enforce_secret_overrides
+from app.core.settings.security import (
     DEFAULT_PASSWORD_PEPPER,
     DEFAULT_REFRESH_TOKEN_PEPPER,
     DEFAULT_SECRET_KEY,
     PLACEHOLDER_PASSWORD_PEPPER,
     PLACEHOLDER_REFRESH_TOKEN_PEPPER,
     PLACEHOLDER_SECRET_KEY,
-    Settings,
-    enforce_secret_overrides,
 )
 
 

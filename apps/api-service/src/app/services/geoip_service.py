@@ -5,7 +5,7 @@ from __future__ import annotations
 import inspect
 from typing import Protocol
 
-from app.core.config import Settings
+from app.core.settings import Settings
 from app.domain.auth import SessionLocation
 from app.infrastructure.geoip.providers import (
     IP2LocationDatabaseService,

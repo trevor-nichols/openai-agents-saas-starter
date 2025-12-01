@@ -9,7 +9,7 @@ import httpx
 import pytest
 from starter_contracts import vault_kv as shared_vault_kv
 
-from app.core import config as config_module
+from app.core import settings as config_module
 from app.infrastructure.security import vault_kv
 from app.infrastructure.security.vault_kv import VaultKVSecretManagerClient
 

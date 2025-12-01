@@ -14,7 +14,7 @@ from fakeredis.aioredis import FakeRedis
 from fastapi.testclient import TestClient
 from starter_cli.commands.auth import build_parser, handle_issue_service_account
 
-from app.core import config as config_module
+from app.core import settings as config_module
 from app.core.keys import load_keyset
 from app.core.security import get_token_signer, get_token_verifier
 from app.domain.secrets import (

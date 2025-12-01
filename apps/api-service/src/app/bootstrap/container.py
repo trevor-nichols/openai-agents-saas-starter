@@ -6,7 +6,7 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from app.core.config import get_settings
+from app.core.settings import get_settings
 from app.infrastructure.persistence.workflows.repository import (
     SqlAlchemyWorkflowRunRepository,
 )

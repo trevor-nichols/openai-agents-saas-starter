@@ -13,7 +13,7 @@ import resend
 from resend import exceptions as resend_exceptions
 from resend.http_client_requests import RequestsClient
 
-from app.core.config import Settings, get_settings
+from app.core.settings import Settings, get_settings
 from app.observability.logging import log_event
 from app.observability.metrics import observe_email_delivery
 

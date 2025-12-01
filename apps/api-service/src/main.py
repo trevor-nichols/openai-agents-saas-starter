@@ -11,16 +11,16 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from app.api.errors import register_exception_handlers
 from app.api.router import api_router
 from app.bootstrap import get_container, shutdown_container
-from app.core.config import (
-    Settings,
-    enforce_secret_overrides,
-    enforce_vault_verification,
-    get_settings,
-)
 from app.core.provider_validation import (
     ProviderViolation,
     ensure_provider_parity,
     validate_providers,
+)
+from app.core.settings import (
+    Settings,
+    enforce_secret_overrides,
+    enforce_vault_verification,
+    get_settings,
 )
 from app.infrastructure.billing.events.redis_backend import RedisBillingEventBackend
 from app.infrastructure.db import (

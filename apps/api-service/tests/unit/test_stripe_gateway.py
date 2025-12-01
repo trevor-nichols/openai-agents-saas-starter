@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from app.core.config import Settings
+from app.core.settings import Settings
 from app.infrastructure.stripe import (
     StripeClientError,
     StripeCustomer,

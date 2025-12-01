@@ -59,7 +59,7 @@ class UserAccount(Base):
     id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk)
     email: Mapped[str] = mapped_column(CITEXTCompat(), nullable=False)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
-    password_pepper_version: Mapped[str] = mapped_column(String(32), nullable=False, default="v1")
+    password_pepper_version: Mapped[str] = mapped_column(String(32), nullable=False, default="v2")
     status: Mapped[UserStatus] = mapped_column(
         SAEnum(
             UserStatus,
@@ -441,7 +441,7 @@ class ServiceAccountToken(Base):
     scopes: Mapped[list[str]] = mapped_column(JSONBCompat, nullable=False)
     refresh_token_hash: Mapped[str] = mapped_column(Text, nullable=False)
     refresh_jti: Mapped[str] = mapped_column(String(64), nullable=False)
-    signing_kid: Mapped[str] = mapped_column(String(64), nullable=False, default="legacy-hs256")
+    signing_kid: Mapped[str] = mapped_column(String(64), nullable=False)
     fingerprint: Mapped[str | None] = mapped_column(String(128))
     session_id: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),

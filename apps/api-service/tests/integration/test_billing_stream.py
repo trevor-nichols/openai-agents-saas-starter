@@ -15,7 +15,7 @@ from httpx import ASGITransport, AsyncClient
 from app.api.dependencies.auth import require_current_user
 from app.api.v1.billing.router import router as billing_router
 from app.bootstrap import get_container
-from app.core.config import get_settings
+from app.core.settings import get_settings
 from app.infrastructure.persistence.stripe.models import StripeEvent, StripeEventStatus
 from app.services.billing.billing_events import (
     BillingEventHistoryPage,

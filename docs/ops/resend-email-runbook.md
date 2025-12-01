@@ -36,7 +36,7 @@ Use pytest snapshots or run this helper snippet in a shell:
 ```bash
 python - <<'PY'
 from datetime import UTC, datetime
-from app.core.config import Settings
+from app.core.settings import Settings
 from app.presentation.emails import render_verification_email
 settings = Settings(app_public_url="https://app.dev")
 content = render_verification_email(settings, token="demo123", expires_at=datetime.now(UTC))

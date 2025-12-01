@@ -21,7 +21,7 @@ for path in (SRC_DIR, BASE_DIR):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
-from app.core.config import get_settings  # noqa: E402
+from app.core.settings import get_settings  # noqa: E402
 from app.infrastructure.persistence.models.base import Base  # noqa: E402
 
 # Ensure all ORM metadata is registered before Alembic inspects Base metadata.

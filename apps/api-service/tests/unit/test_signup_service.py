@@ -11,7 +11,7 @@ from uuid import uuid4
 import pytest
 
 from app.bootstrap import get_container
-from app.core.config import Settings
+from app.core.settings import Settings
 from app.domain.billing import BillingPlan
 from app.services.auth_service import UserSessionTokens
 from app.services.billing.billing_service import BillingService

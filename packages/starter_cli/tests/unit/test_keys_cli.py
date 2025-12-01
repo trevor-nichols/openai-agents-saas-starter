@@ -8,7 +8,7 @@ import time
 from starter_cli.commands.auth import build_parser, handle_keys_rotate
 from starter_contracts import config as shared_config
 
-from app.core import config as config_module
+from app.core import settings as config_module
 from app.core.keys import FileKeyStorage
 from app.core.security import get_token_signer, get_token_verifier
 

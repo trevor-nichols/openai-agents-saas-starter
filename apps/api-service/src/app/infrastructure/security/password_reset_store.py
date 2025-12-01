@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from typing import Final, cast
 from uuid import UUID
 
-from app.core.config import Settings, get_settings
+from app.core.settings import Settings, get_settings
 from app.domain.password_reset import PasswordResetTokenRecord, PasswordResetTokenStore
 from app.infrastructure.redis.factory import get_redis_factory
 from app.infrastructure.redis_types import RedisStrClient

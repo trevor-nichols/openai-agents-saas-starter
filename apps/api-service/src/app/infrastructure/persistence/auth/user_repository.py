@@ -12,7 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
 
-from app.core.config import Settings, get_settings
+from app.core.settings import Settings, get_settings
 from app.domain.users import (
     PasswordHistoryEntry,
     TenantMembershipDTO,

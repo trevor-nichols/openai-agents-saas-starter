@@ -812,7 +812,7 @@ def _run_dispatch_task(task: Callable[[], Awaitable[int]]) -> int:
     async def _runner() -> int:
         from importlib import import_module
 
-        config_module = import_module("app.core.config")
+        config_module = import_module("app.core.settings")
         db_module = import_module("app.infrastructure.db")
         dispose_engine = db_module.dispose_engine
 
@@ -834,7 +834,7 @@ def _run_dispatch_task(task: Callable[[], Awaitable[int]]) -> int:
 async def _init_dispatch_repo():
     from importlib import import_module
 
-    config_module = import_module("app.core.config")
+    config_module = import_module("app.core.settings")
     db_module = import_module("app.infrastructure.db")
     billing_repo_module = import_module("app.infrastructure.persistence.billing")
     stripe_repo_module = import_module("app.infrastructure.persistence.stripe.repository")

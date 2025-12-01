@@ -4,7 +4,7 @@ from typing import cast
 
 import pytest
 
-from app.core.config import Settings
+from app.core.settings import Settings
 from app.infrastructure.notifications import ResendEmailAdapter
 from app.infrastructure.notifications.resend import ResendEmailSendResult
 from app.services.contact_service import (

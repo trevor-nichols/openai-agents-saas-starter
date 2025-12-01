@@ -10,7 +10,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Protocol
 from uuid import uuid4
 
-from app.core.config import Settings, get_settings
+from app.core.settings import Settings, get_settings
 from app.domain.password_reset import PasswordResetTokenRecord, PasswordResetTokenStore
 from app.domain.users import UserRecord, UserRepository
 from app.infrastructure.notifications import (

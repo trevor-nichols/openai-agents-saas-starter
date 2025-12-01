@@ -6,7 +6,7 @@ from collections.abc import Generator
 
 import pytest
 
-from app.core.config import Settings
+from app.core.settings import Settings
 from app.infrastructure.redis.factory import (
     get_redis_factory,
     reset_redis_factory,

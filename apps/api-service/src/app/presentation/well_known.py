@@ -8,8 +8,8 @@ from email.utils import format_datetime
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, Response
 
-from app.core.config import get_settings
 from app.core.keys import load_keyset
+from app.core.settings import get_settings
 from app.observability.metrics import JWKS_NOT_MODIFIED_TOTAL, JWKS_REQUESTS_TOTAL
 
 router = APIRouter()

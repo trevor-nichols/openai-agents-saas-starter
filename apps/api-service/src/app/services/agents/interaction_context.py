@@ -7,7 +7,7 @@ from collections.abc import Callable
 from typing import Any
 
 from app.agents._shared.prompt_context import PromptRuntimeContext
-from app.core.config import Settings, get_settings
+from app.core.settings import Settings, get_settings
 from app.services.containers import ContainerService
 from app.utils.tools.location import build_web_search_location
 

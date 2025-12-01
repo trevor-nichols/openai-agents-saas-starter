@@ -41,7 +41,7 @@
 - **Refresh Tokens:** Long-lived credentials persisted by AuthService with `jti`, tenant, device fingerprint. Stored hashed-at-rest in Postgres with Redis cache for quick revoke checks.  
 - **Revocation Registry:** Redis primary cache plus Postgres fallback mapping `jti` to revocation state. Unavailability or corruption undermines refresh rotation guarantees.  
 - **Audit & Metrics Streams:** Structured logs, Prometheus counters, trace IDs that document sign/verify decisions. Required for incident response and repudiation protection.  
-- **Configuration & Feature Flags:** `auth_issuer`, `auth_audience`, JWKS caching knobs (via `app/core/config.py`). Incorrect values break verification or weaken protections.
+- **Configuration & Feature Flags:** `auth_issuer`, `auth_audience`, JWKS caching knobs (via `app/core/settings/__init__.py`). Incorrect values break verification or weaken protections.
 
 ### 3.2 Supporting Components
 

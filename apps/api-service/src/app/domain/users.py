@@ -92,7 +92,7 @@ class UserRecord:
 class UserCreatePayload:
     email: EmailStr
     password_hash: str
-    password_pepper_version: str = "v1"
+    password_pepper_version: str = "v2"
     status: UserStatus = UserStatus.ACTIVE
     tenant_id: UUID | None = None
     role: str = "member"

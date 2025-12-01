@@ -118,7 +118,7 @@ Vault returns `{"data": {"valid": true}}` when verification succeeds.
 - `app/infrastructure/security/nonce_store.py`
   - Provides Redis-backed nonce caching (tests rely on fakeredis to avoid external dependencies).  
   - `check_and_store(nonce, ttl_seconds)` ensures each CLI payload nonce is single-use with ≤5 minute TTL.
-- `app/core/config.py`
+- `app/core/settings/__init__.py`
   - Add settings: `vault_addr`, `vault_token`, `vault_transit_key`, `vault_verify_enabled` (feature flag for local).
 - Dependency injection:
   - Provide `get_vault_client()` for FastAPI dependencies.  

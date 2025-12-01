@@ -6,7 +6,7 @@ import logging
 from fastapi import Depends, HTTPException, status
 
 from app.api.dependencies.tenant import TenantContext, TenantRole, require_tenant_role
-from app.core.config import get_settings
+from app.core.settings import get_settings
 from app.observability import metrics as observability_metrics
 from app.services.usage_policy_service import (
     UsagePolicyConfigurationError,

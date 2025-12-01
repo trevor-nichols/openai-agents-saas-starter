@@ -11,7 +11,7 @@ import pytest
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 
-from app.core.config import get_settings
+from app.core.settings import get_settings
 from app.core.keys import load_keyset
 from app.core.security import (
     TokenVerifierError,

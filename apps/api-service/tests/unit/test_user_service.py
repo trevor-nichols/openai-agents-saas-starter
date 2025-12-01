@@ -16,12 +16,8 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.compiler import compiles
 
-from app.core.config import Settings
-from app.core.security import (
-    LEGACY_PASSWORD_HASH_VERSION,
-    PASSWORD_HASH_VERSION,
-    pwd_context,
-)
+from app.core.settings import Settings
+from app.core.security import PASSWORD_HASH_VERSION, pwd_context
 from app.domain.users import PasswordReuseError, UserCreate, UserCreatePayload, UserStatus
 from app.infrastructure.persistence.auth.models import (
     PasswordHistory,
@@ -221,37 +217,6 @@ async def test_locked_user_unlocks_after_duration(
         user_agent="pytest",
     )
     assert auth_user.user_id is not None
-
-
-@pytest.mark.asyncio
-async def test_authenticate_migrates_legacy_hash(
-    user_service: UserService,
-    tenant_id,
-) -> None:
-    legacy_password = "LegacyPassword42!!"
-    payload = UserCreatePayload(
-        email="legacy@example.com",
-        password_hash=pwd_context.hash(legacy_password),
-        password_pepper_version=LEGACY_PASSWORD_HASH_VERSION,
-        tenant_id=tenant_id,
-        role="admin",
-        display_name="Legacy",
-        status=UserStatus.ACTIVE,
-    )
-    await user_service._repository.create_user(payload)
-
-    auth_user = await user_service.authenticate(
-        email="legacy@example.com",
-        password=legacy_password,
-        tenant_id=tenant_id,
-        ip_address="3.3.3.3",
-        user_agent="pytest",
-    )
-    assert auth_user.email == "legacy@example.com"
-
-    refreshed = await user_service._repository.get_user_by_email("legacy@example.com")
-    assert refreshed is not None
-    assert refreshed.password_pepper_version == PASSWORD_HASH_VERSION
 
 
 @pytest.mark.asyncio

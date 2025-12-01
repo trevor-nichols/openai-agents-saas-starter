@@ -19,7 +19,7 @@ from app.api.models.auth import (
 )
 from app.api.v1.auth.rate_limit_helpers import apply_signup_quota
 from app.api.v1.auth.utils import extract_client_ip, extract_user_agent
-from app.core.config import Settings, get_settings
+from app.core.settings import Settings, get_settings
 from app.domain.signup import SignupRequest, SignupRequestStatus
 from app.observability.metrics import record_signup_attempt, record_signup_blocked
 from app.services.shared.rate_limit_service import RateLimitQuota, build_rate_limit_identity

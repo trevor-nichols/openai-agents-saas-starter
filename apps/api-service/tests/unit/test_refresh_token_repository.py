@@ -11,7 +11,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.sql.elements import ColumnElement
 
-from app.core.config import Settings
+from app.core.settings import Settings
 from app.domain.auth import ServiceAccountTokenStatus
 from app.infrastructure.persistence.auth import repository as repository_module
 from app.infrastructure.persistence.auth.models import ServiceAccountToken

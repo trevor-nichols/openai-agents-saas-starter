@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from typing import Protocol, cast
 from uuid import UUID
 
-from app.core.config import Settings
+from app.core.settings import Settings
 from app.domain.auth import RefreshTokenRecord
 from app.infrastructure.redis.factory import get_redis_factory
 from app.infrastructure.redis_types import RedisBytesClient

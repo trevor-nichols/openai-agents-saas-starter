@@ -8,7 +8,7 @@ from uuid import UUID
 import httpx
 import pytest
 
-from app.core.config import get_settings
+from app.core.settings import get_settings
 from app.domain.status import (
     IncidentRecord,
     StatusSubscriptionListResult,

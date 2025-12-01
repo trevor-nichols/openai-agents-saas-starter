@@ -9,7 +9,6 @@ from datetime import UTC, datetime, timedelta
 from time import perf_counter
 from uuid import uuid4
 
-from app.core.config import Settings, get_settings
 from app.core.security import TokenSignerError, get_token_signer
 from app.core.service_accounts import (
     ServiceAccountCatalogError,
@@ -18,6 +17,7 @@ from app.core.service_accounts import (
     ServiceAccountRegistry,
     get_default_service_account_registry,
 )
+from app.core.settings import Settings, get_settings
 from app.domain.auth import ServiceAccountTokenListResult, ServiceAccountTokenStatus
 from app.observability.logging import log_event
 from app.observability.metrics import observe_service_account_issuance

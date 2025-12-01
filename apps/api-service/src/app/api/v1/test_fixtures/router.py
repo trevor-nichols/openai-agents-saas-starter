@@ -7,7 +7,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
 
-from app.core.config import Settings, get_settings
+from app.core.settings import Settings, get_settings
 from app.services.signup.email_verification_service import (
     EmailVerificationError,
     EmailVerificationTokenIssueResult,

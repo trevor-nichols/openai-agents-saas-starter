@@ -74,7 +74,7 @@
 - `jti` (uuid) — unique token id for revocation.
 - `iat`, `exp`, `nbf` — standard temporal claims.
 
-### Settings Additions (`app/core/config.py`)
+### Settings Additions (`app/core/settings/__init__.py`)
 - `auth_audience: list[str]` — defaults to `["agent-api", "analytics-service", "billing-worker", "support-console", "synthetic-monitor"]`; override with a JSON array via `AUTH_AUDIENCE` (comma-separated strings remain backward compatible) and keep ordering stable across services.
 - `auth_key_storage_backend: str` — `file` (default) or `secret-manager`.
 - `auth_key_storage_path: str` — filesystem location for keyset JSON when using the file backend.

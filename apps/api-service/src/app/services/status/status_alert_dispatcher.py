@@ -11,7 +11,7 @@ from uuid import UUID
 
 import httpx
 
-from app.core.config import Settings, get_settings
+from app.core.settings import Settings, get_settings
 from app.domain.status import (
     IncidentRecord,
     StatusSubscription,

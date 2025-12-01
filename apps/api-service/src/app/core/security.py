@@ -20,8 +20,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import PyJWTError
 from passlib.context import CryptContext
 
-from app.core.config import Settings, get_settings
 from app.core.keys import KeyMaterial, KeySet, load_keyset
+from app.core.settings import Settings, get_settings
 from app.observability.logging import bind_log_context, log_event
 from app.observability.metrics import observe_jwt_signing, observe_jwt_verification
 
@@ -59,7 +59,6 @@ def _is_user_subject(value: str | None) -> bool:
 ACCESS_TOKEN_USE = "access"
 USER_SUBJECT_PREFIX = "user:"
 PASSWORD_HASH_VERSION = "v2"
-LEGACY_PASSWORD_HASH_VERSION = "v1"
 
 # =============================================================================
 # PASSWORD UTILITIES
@@ -84,17 +83,12 @@ def verify_password(
     settings: Settings | None = None,
     pepper: str | None = None,
 ) -> PasswordVerificationResult:
-    """Verify a password hash, supporting legacy (unpeppered) digests."""
+    """Verify a password hash."""
 
     pepper_value = _password_pepper(settings, override=pepper)
     material = _pepperize_password(plain_password, pepper=pepper_value)
     if pwd_context.verify(material, hashed_password):
         return PasswordVerificationResult(is_valid=True, requires_rehash=False)
-
-    # Fallback for legacy hashes that omitted the pepper. If this succeeds,
-    # callers should rehash the password with the new pepper immediately.
-    if pwd_context.verify(plain_password, hashed_password):
-        return PasswordVerificationResult(is_valid=True, requires_rehash=True)
 
     return PasswordVerificationResult(is_valid=False, requires_rehash=False)
 

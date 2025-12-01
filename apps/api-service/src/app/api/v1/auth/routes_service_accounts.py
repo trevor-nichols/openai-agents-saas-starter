@@ -390,7 +390,7 @@ def _validate_request_against_claims(
 
 
 def _vault_verification_enabled() -> bool:
-    from app.core.config import get_settings
+    from app.core.settings import get_settings
 
     settings = get_settings()
     return settings.vault_verify_enabled

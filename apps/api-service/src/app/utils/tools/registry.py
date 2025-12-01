@@ -16,7 +16,7 @@ from openai.types.responses.tool_param import (
     CodeInterpreterContainerCodeInterpreterToolAuto,
 )
 
-from app.core.config import get_settings
+from app.core.settings import get_settings
 
 logger = logging.getLogger(__name__)
 

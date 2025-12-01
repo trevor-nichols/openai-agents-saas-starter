@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from pydantic import EmailStr
 
-from app.core.config import Settings, get_settings
+from app.core.settings import Settings, get_settings
 from app.infrastructure.notifications import (
     ResendEmailAdapter,
     ResendEmailError,

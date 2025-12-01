@@ -1,7 +1,7 @@
 # Workflow Orchestration
 
 We model deterministic flows over OpenAI Agents via `WorkflowSpec`. A spec can be:
-- **Single-stage (legacy)**: provide `steps` and we wrap them in one sequential stage.
+- **Single-stage (classic)**: provide `steps` and we wrap them in one sequential stage.
 - **Multi-stage**: provide `stages`, each with a `mode` (`sequential` or `parallel`). Parallel stages fan out across steps and optionally use a `reducer` callable to consolidate outputs before the next stage.
 
 Key primitives:

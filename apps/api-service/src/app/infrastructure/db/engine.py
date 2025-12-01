@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import NullPool
 
-from app.core.config import get_settings
+from app.core.settings import get_settings
 
 logger = logging.getLogger("api-service.db")
 

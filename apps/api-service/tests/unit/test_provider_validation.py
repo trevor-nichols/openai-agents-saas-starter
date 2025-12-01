@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.core.config import Settings
+from app.core.settings import Settings
 from app.core.provider_validation import ensure_provider_parity, validate_providers
 
 

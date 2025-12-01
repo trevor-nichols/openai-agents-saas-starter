@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.api.v1.chat.schemas import AgentChatRequest
 from app.bootstrap import reset_container
-from app.core import config as config_module
+from app.core import settings as config_module
 from app.domain.ai import AgentRunResult
 from app.infrastructure.persistence.conversations.postgres import (
     PostgresConversationRepository,

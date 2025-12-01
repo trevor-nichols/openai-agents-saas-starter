@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 from redis.asyncio import Redis
 
-from app.core.config import Settings, get_settings
+from app.core.settings import Settings, get_settings
 from app.infrastructure.redis_types import RedisBytesClient, RedisStrClient
 
 RedisPurpose = Literal[

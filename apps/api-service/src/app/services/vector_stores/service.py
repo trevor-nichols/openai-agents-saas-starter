@@ -16,8 +16,7 @@ from sqlalchemy import update as sa_update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.core.config import get_settings
-from app.core.settings import Settings
+from app.core.settings import Settings, get_settings
 from app.infrastructure.db import get_async_sessionmaker
 from app.infrastructure.persistence.vector_stores.models import VectorStore, VectorStoreFile
 from app.observability.metrics import (

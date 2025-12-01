@@ -10,7 +10,7 @@ from app.api.dependencies.auth import CurrentUser, require_verified_scopes
 from app.api.dependencies.tenant import TenantContext, TenantRole, require_tenant_role
 from app.api.dependencies.usage import enforce_usage_guardrails
 from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse, StreamingChatEvent
-from app.core.config import get_settings
+from app.core.settings import get_settings
 from app.services.agent_service import ConversationActorContext, agent_service
 from app.services.shared.rate_limit_service import (
     ConcurrencyQuota,

@@ -10,7 +10,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Protocol
 from uuid import UUID, uuid4
 
-from app.core.config import Settings, get_settings
+from app.core.settings import Settings, get_settings
 from app.domain.email_verification import (
     EmailVerificationTokenRecord,
     EmailVerificationTokenStore,

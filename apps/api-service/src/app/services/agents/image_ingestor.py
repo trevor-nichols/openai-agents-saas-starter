@@ -6,7 +6,7 @@ import base64
 import uuid
 from dataclasses import dataclass
 
-from app.core.config import get_settings
+from app.core.settings import get_settings
 from app.domain.conversations import ConversationAttachment
 from app.services.storage.service import StorageService
 

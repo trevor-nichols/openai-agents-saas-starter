@@ -15,7 +15,7 @@ from sqlalchemy import Table
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.bootstrap import get_container
-from app.core.config import get_settings
+from app.core.settings import get_settings
 from app.infrastructure.persistence.auth import models as auth_models
 from app.infrastructure.persistence.conversations import models as conversation_models
 from app.infrastructure.persistence.stripe.models import StripeEvent, StripeEventDispatch

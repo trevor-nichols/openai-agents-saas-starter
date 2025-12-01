@@ -5,7 +5,7 @@ from datetime import datetime
 from app.domain.conversations import ConversationAttachment, ConversationMessage, ConversationMetadata
 from app.infrastructure.persistence.conversations.postgres import PostgresConversationRepository
 from app.infrastructure.db import get_async_sessionmaker, get_engine
-from app.core.config import get_settings
+from app.core.settings import get_settings
 
 
 @pytest.mark.asyncio

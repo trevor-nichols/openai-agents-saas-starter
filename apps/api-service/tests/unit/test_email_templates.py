@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from app.core.config import Settings
+from app.core.settings import Settings
 from app.presentation.emails import (
     EmailTemplateContent,
     render_password_reset_email,

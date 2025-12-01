@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.api.models.common import HealthResponse
 from app.bootstrap.container import get_container, wire_storage_service
-from app.core.config import get_settings
+from app.core.settings import get_settings
 from app.infrastructure.db import verify_database_connection
 
 router = APIRouter()

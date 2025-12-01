@@ -5,7 +5,7 @@ from typing import Any, cast
 
 import pytest
 
-from app.core.config import Settings, enforce_vault_verification
+from app.core.settings import Settings, enforce_vault_verification
 
 
 def make_settings(**overrides) -> Settings:

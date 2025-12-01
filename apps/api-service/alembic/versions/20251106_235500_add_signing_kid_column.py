@@ -23,7 +23,7 @@ def upgrade() -> None:
             "signing_kid",
             sa.String(length=64),
             nullable=False,
-            server_default="legacy-hs256",
+            server_default="ed25519-active",
         ),
     )
     if dialect != "sqlite":

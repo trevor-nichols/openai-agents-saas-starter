@@ -9,7 +9,7 @@ from typing import Any, cast
 import stripe
 from fastapi import APIRouter, HTTPException, Request, status
 
-from app.core.config import get_settings
+from app.core.settings import get_settings
 from app.infrastructure.persistence.stripe.repository import (
     StripeEventStatus,
     get_stripe_event_repository,

@@ -40,7 +40,7 @@ if TEST_DB_PATH.exists():
     TEST_DB_PATH.unlink()
 
 from app.bootstrap import get_container, reset_container
-from app.core import config as config_module
+from app.core import settings as config_module
 from app.domain.conversations import (
     ConversationEvent,
     ConversationMessage,

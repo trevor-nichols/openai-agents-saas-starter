@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { MarketingFooter } from './_components/marketing-footer';
 import { MarketingHeader } from './_components/marketing-header';
 
-import { getHealthStatus } from '@/lib/server/services/health';
+import { fetchPlatformStatusSnapshot } from '@/lib/server/services/status';
 import type { PlatformStatusResponse } from '@/lib/api/client/types.gen';
 
 interface MarketingLayoutProps {
@@ -43,7 +43,7 @@ async function fetchMarketingStatus(): Promise<PlatformStatusResponse | null> {
       return null;
     }
 
-    const payload = await getHealthStatus();
+    const payload = await fetchPlatformStatusSnapshot();
     return payload;
   } catch (error) {
     console.debug('[marketing-layout] Failed to load platform status', error);

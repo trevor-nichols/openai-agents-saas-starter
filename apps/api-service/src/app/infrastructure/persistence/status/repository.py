@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.core.config import Settings, get_settings
+from app.core.settings import Settings, get_settings
 from app.infrastructure.db import get_async_sessionmaker
 from app.infrastructure.persistence.status.postgres import PostgresStatusSubscriptionRepository
 

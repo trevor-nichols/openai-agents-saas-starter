@@ -26,7 +26,7 @@ from app.api.v1.billing.schemas import (
     UpdateSubscriptionRequest,
     UsageRecordRequest,
 )
-from app.core.config import get_settings
+from app.core.settings import get_settings
 from app.infrastructure.persistence.stripe.models import StripeEventStatus
 from app.services.billing.billing_events import get_billing_events_service
 from app.services.billing.billing_service import (

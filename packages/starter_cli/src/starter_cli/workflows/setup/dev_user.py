@@ -190,7 +190,7 @@ async def _seed_dev_user(config: DevUserConfig) -> str:
 def seed_dev_user(context: WizardContext, config: DevUserConfig) -> str:
     _ensure_import_paths(context.cli_ctx.project_root)
     try:
-        get_settings = import_module("app.core.config").get_settings
+        get_settings = import_module("app.core.settings").get_settings
     except ImportError as exc:  # pragma: no cover - environment dependent
         raise CLIError(
             "Unable to import backend modules. Ensure apps/api-service is on PYTHONPATH "

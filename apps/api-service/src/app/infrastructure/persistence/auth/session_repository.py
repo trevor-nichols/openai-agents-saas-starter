@@ -12,7 +12,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.core.config import Settings, get_settings
+from app.core.settings import Settings, get_settings
 from app.domain.auth import (
     SessionClientDetails,
     SessionLocation,

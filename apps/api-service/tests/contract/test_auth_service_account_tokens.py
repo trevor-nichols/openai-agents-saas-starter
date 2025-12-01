@@ -10,7 +10,7 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core.config import get_settings
+from app.core.settings import get_settings
 from app.core.security import get_token_signer
 from app.domain.auth import (
     ServiceAccountTokenListResult,

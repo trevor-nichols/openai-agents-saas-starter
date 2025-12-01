@@ -153,7 +153,7 @@ async def admin_reset_password(
 
 
 async def _enforce_password_reset_quota(email: str, client_ip: str | None) -> None:
-    from app.core.config import get_settings
+    from app.core.settings import get_settings
 
     settings = get_settings()
     quotas: list[tuple[RateLimitQuota, list[str]]] = []

@@ -12,6 +12,6 @@ os.environ.setdefault("SECURITY_TOKEN_REDIS_URL", os.environ["REDIS_URL"])
 os.environ.setdefault("AUTO_RUN_MIGRATIONS", "false")
 os.environ.setdefault("ENABLE_BILLING", "false")
 
-from app.core import config as config_module
+from app.core import settings as config_module
 
 config_module.get_settings.cache_clear()

@@ -16,8 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.core.config import get_settings
-from app.core.settings import Settings
+from app.core.settings import Settings, get_settings
 from app.infrastructure.db import get_async_sessionmaker
 from app.infrastructure.persistence.containers.models import AgentContainer, Container
 from app.observability.metrics import (

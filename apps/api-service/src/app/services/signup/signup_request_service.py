@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from app.core.config import Settings, get_settings
+from app.core.settings import Settings, get_settings
 from app.domain.signup import (
     SignupRequest,
     SignupRequestCreate,
