@@ -91,6 +91,7 @@ export function useChatWorkspace() {
     handoffInputFilter: '' as string | null | undefined,
     runConfigRaw: '' as string,
   });
+  const [runOptionsEnabled, setRunOptionsEnabled] = useState(false);
 
   const handleSelectConversation = useCallback(
     (conversationId: string) => {
@@ -159,18 +160,27 @@ export function useChatWorkspace() {
         }
       }
 
+      const runOptionsPayload =
+        runOptionsEnabled &&
+        (runOptions.maxTurns != null ||
+          (runOptions.previousResponseId && runOptions.previousResponseId.trim().length > 0) ||
+          (runOptions.handoffInputFilter && runOptions.handoffInputFilter.trim().length > 0) ||
+          parsedRunConfig !== undefined)
+          ? {
+              maxTurns: runOptions.maxTurns ?? null,
+              previousResponseId: runOptions.previousResponseId?.trim() || null,
+              handoffInputFilter: runOptions.handoffInputFilter?.trim() || null,
+              runConfig: parsedRunConfig ?? null,
+            }
+          : undefined;
+
       return sendMessage(message, {
         shareLocation,
         location: locationHint,
-        runOptions: {
-          maxTurns: runOptions.maxTurns ?? null,
-          previousResponseId: runOptions.previousResponseId?.trim() || null,
-          handoffInputFilter: runOptions.handoffInputFilter?.trim() || null,
-          runConfig: parsedRunConfig ?? null,
-        },
+        runOptions: runOptionsPayload ?? undefined,
       });
     },
-    [locationHint, runOptions, sendMessage, shareLocation],
+    [locationHint, runOptions, runOptionsEnabled, sendMessage, shareLocation],
   );
 
   const updateLocationField = useCallback(
@@ -227,6 +237,8 @@ export function useChatWorkspace() {
     setSelectedAgent,
     runOptions,
     setRunOptions,
+    runOptionsEnabled,
+    setRunOptionsEnabled,
     chatController,
   };
 }

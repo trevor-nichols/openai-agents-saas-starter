@@ -12,6 +12,11 @@ import { cn } from '@/lib/utils';
 import { formatClockTime } from '@/lib/utils/time';
 import { Banner, BannerClose, BannerTitle } from '@/components/ui/banner';
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {
   Conversation,
   ConversationContent,
   ConversationScrollButton,
@@ -71,6 +76,8 @@ interface ChatInterfaceProps {
     timezone?: string | null;
   };
   onLocationHintChange: (field: 'city' | 'region' | 'country' | 'timezone', value: string) => void;
+  runOptionsEnabled: boolean;
+  onRunOptionsEnabledChange: (value: boolean) => void;
   runOptions: {
     maxTurns?: number | undefined;
     previousResponseId?: string | null | undefined;
@@ -105,6 +112,8 @@ export function ChatInterface({
   onShareLocationChange,
   locationHint,
   onLocationHintChange,
+  runOptionsEnabled,
+  onRunOptionsEnabledChange,
   runOptions,
   onRunOptionsChange,
   className,
@@ -435,63 +444,75 @@ export function ChatInterface({
                   />
                 </div>
               ) : null}
-              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-                <div className="flex flex-col gap-1">
-                  <Label className="text-xs text-foreground/70">Max turns</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    placeholder="SDK default"
-                    value={runOptions.maxTurns ?? ''}
-                    onChange={(e) =>
-                      onRunOptionsChange({
-                        maxTurns: e.target.value ? Number(e.target.value) : undefined,
-                      })
-                    }
-                    disabled={isSending || isLoadingHistory}
-                  />
+              <Collapsible open={runOptionsEnabled} onOpenChange={onRunOptionsEnabledChange}>
+                <div className="flex items-center gap-2">
+                  <CollapsibleTrigger asChild>
+                    <PromptInputButton variant="ghost" size="sm">
+                      <InlineTag tone="default">Advanced</InlineTag>
+                      <span className="text-xs text-foreground/60">SDK overrides (engineering)</span>
+                    </PromptInputButton>
+                  </CollapsibleTrigger>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <Label className="text-xs text-foreground/70">Previous response ID</Label>
-                  <Input
-                    placeholder="response_id to continue"
-                    value={runOptions.previousResponseId ?? ''}
-                    onChange={(e) =>
-                      onRunOptionsChange({
-                        previousResponseId: e.target.value || '',
-                      })
-                    }
-                    disabled={isSending || isLoadingHistory}
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <Label className="text-xs text-foreground/70">Handoff input filter</Label>
-                  <Input
-                    placeholder="registry key"
-                    value={runOptions.handoffInputFilter ?? ''}
-                    onChange={(e) =>
-                      onRunOptionsChange({
-                        handoffInputFilter: e.target.value || '',
-                      })
-                    }
-                    disabled={isSending || isLoadingHistory}
-                  />
-                </div>
-                <div className="flex flex-col gap-1 md:col-span-2 lg:col-span-2">
-                  <Label className="text-xs text-foreground/70">Run config (JSON)</Label>
-                  <Textarea
-                    placeholder='{"temperature":0.2}'
-                    value={runOptions.runConfigRaw ?? ''}
-                    onChange={(e) =>
-                      onRunOptionsChange({
-                        runConfigRaw: e.target.value,
-                      })
-                    }
-                    rows={2}
-                    disabled={isSending || isLoadingHistory}
-                  />
-                </div>
-              </div>
+                <CollapsibleContent className="pt-3">
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="flex flex-col gap-1">
+                      <Label className="text-xs text-foreground/70">Max turns</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        placeholder="SDK default"
+                        value={runOptions.maxTurns ?? ''}
+                        onChange={(e) =>
+                          onRunOptionsChange({
+                            maxTurns: e.target.value ? Number(e.target.value) : undefined,
+                          })
+                        }
+                        disabled={!runOptionsEnabled || isSending || isLoadingHistory}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <Label className="text-xs text-foreground/70">Previous response ID</Label>
+                      <Input
+                        placeholder="response_id to continue"
+                        value={runOptions.previousResponseId ?? ''}
+                        onChange={(e) =>
+                          onRunOptionsChange({
+                            previousResponseId: e.target.value || '',
+                          })
+                        }
+                        disabled={!runOptionsEnabled || isSending || isLoadingHistory}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <Label className="text-xs text-foreground/70">Handoff input filter</Label>
+                      <Input
+                        placeholder="registry key"
+                        value={runOptions.handoffInputFilter ?? ''}
+                        onChange={(e) =>
+                          onRunOptionsChange({
+                            handoffInputFilter: e.target.value || '',
+                          })
+                        }
+                        disabled={!runOptionsEnabled || isSending || isLoadingHistory}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1 md:col-span-2 lg:col-span-2">
+                      <Label className="text-xs text-foreground/70">Run config (JSON)</Label>
+                      <Textarea
+                        placeholder='{"temperature":0.2}'
+                        value={runOptions.runConfigRaw ?? ''}
+                        onChange={(e) =>
+                          onRunOptionsChange({
+                            runConfigRaw: e.target.value,
+                          })
+                        }
+                        rows={2}
+                        disabled={!runOptionsEnabled || isSending || isLoadingHistory}
+                      />
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             </div>
           </PromptInputTools>
           <div className="flex flex-wrap items-center gap-2">

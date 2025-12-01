@@ -3,7 +3,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/states';
 import type { AgentSummary } from '@/types/agents';
@@ -63,6 +63,8 @@ export function AgentWorkspaceChatPanel({
       content
     );
 
+  const [runOptionsEnabled, setRunOptionsEnabled] = useState(false);
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -112,6 +114,8 @@ export function AgentWorkspaceChatPanel({
             handoffInputFilter: undefined,
             runConfigRaw: '',
           }}
+          runOptionsEnabled={runOptionsEnabled}
+          onRunOptionsEnabledChange={setRunOptionsEnabled}
           onRunOptionsChange={() => {}}
           className="min-h-[520px]"
         />,

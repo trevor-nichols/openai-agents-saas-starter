@@ -61,6 +61,8 @@ export function ChatWorkspace() {
     setSelectedAgent,
     runOptions,
     setRunOptions,
+    runOptionsEnabled,
+    setRunOptionsEnabled,
     chatController,
   } = useChatWorkspace();
 
@@ -143,6 +145,8 @@ export function ChatWorkspace() {
                 handoffInputFilter: runOptions.handoffInputFilter,
                 runConfigRaw: runOptions.runConfigRaw,
               }}
+              runOptionsEnabled={runOptionsEnabled}
+              onRunOptionsEnabledChange={setRunOptionsEnabled}
               onRunOptionsChange={(next) =>
                 setRunOptions((prev) => ({
                   ...prev,

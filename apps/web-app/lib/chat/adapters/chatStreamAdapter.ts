@@ -99,6 +99,23 @@ export async function consumeChatStream(
     }
 
     if (event.kind === 'run_item_stream_event' && event.run_item_name) {
+      const isToolEvent =
+        event.run_item_type === 'tool_call_item' ||
+        event.run_item_type === 'tool_call_output_item' ||
+        (event.run_item_name?.startsWith('tool_') ?? false);
+
+      if (!isToolEvent) {
+        // Ignore non-tool run items (e.g., agent messages) for tool state UI.
+        if (
+          (event.run_item_name === 'handoff_requested' || event.run_item_name === 'handoff_occured') &&
+          event.agent
+        ) {
+          emitAgentNotice(event.agent, 'Handed off to');
+          handlers.onAgentChange?.(event.agent);
+        }
+        continue;
+      }
+
       const toolId = event.tool_call_id || event.run_item_name;
       const existing = toolMap.get(toolId) || {
         id: toolId,
