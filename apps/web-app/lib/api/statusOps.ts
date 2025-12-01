@@ -6,10 +6,11 @@ import {
   mapStatusSubscriptionResponse,
   type StatusSubscriptionList,
 } from '@/types/statusSubscriptions';
+import { apiV1Path } from '@/lib/apiPaths';
 
-const SUBSCRIPTIONS_ENDPOINT = '/api/status/subscriptions';
+const SUBSCRIPTIONS_ENDPOINT = apiV1Path('/status/subscriptions');
 const INCIDENT_RESEND_ENDPOINT = (incidentId: string) =>
-  `/api/status/incidents/${incidentId}/resend`;
+  apiV1Path(`/status/incidents/${incidentId}/resend`);
 
 interface ApiEnvelope {
   success?: boolean;

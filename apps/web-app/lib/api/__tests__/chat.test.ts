@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentChatRequest } from '@/lib/api/client/types.gen';
 import { sendChatMessage, streamChat } from '@/lib/api/chat';
 import type { StreamChunk } from '@/lib/chat/types';
+import { apiV1Path } from '@/lib/apiPaths';
 
 const originalFetch = global.fetch;
 
@@ -42,7 +43,7 @@ describe('chat API helpers', () => {
 
     const result = await sendChatMessage(request);
 
-    expect(global.fetch).toHaveBeenCalledWith('/api/chat', expect.objectContaining({
+    expect(global.fetch).toHaveBeenCalledWith(apiV1Path('/chat'), expect.objectContaining({
       method: 'POST',
     }));
     expect(result).toEqual(payload);

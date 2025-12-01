@@ -12,6 +12,7 @@ import type {
   SignupRequestListFilters,
   SignupRequestListResult,
 } from '@/types/signup';
+import { apiV1Path } from '@/lib/apiPaths';
 
 interface ApiResponse<TData> {
   success: boolean;
@@ -42,7 +43,7 @@ interface AccessRequestResponse {
 }
 
 export async function fetchSignupPolicy(): Promise<SignupAccessPolicy> {
-  const response = await fetch('/api/auth/signup-policy', { method: 'GET', cache: 'no-store' });
+  const response = await fetch(apiV1Path('/auth/signup-policy'), { method: 'GET', cache: 'no-store' });
   const payload = (await response.json()) as PolicyResponse;
 
   if (!response.ok || payload.success === false || !payload.policy) {
@@ -73,7 +74,7 @@ export async function fetchSignupInvites(
   }
 
   const response = await fetch(
-    `/api/auth/signup-invites${search.size > 0 ? `?${search.toString()}` : ''}`,
+    apiV1Path(`/auth/invites${search.size > 0 ? `?${search.toString()}` : ''}`),
     {
       method: 'GET',
       cache: 'no-store',
@@ -97,7 +98,7 @@ export async function fetchSignupInvites(
 export async function issueSignupInviteRequest(
   payload: IssueSignupInviteInput,
 ): Promise<SignupInviteIssueResult> {
-  const response = await fetch('/api/auth/signup-invites', {
+  const response = await fetch(apiV1Path('/auth/invites'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -120,7 +121,7 @@ export async function revokeSignupInviteRequest(inviteId: string): Promise<Signu
     throw new Error('Invite id is required.');
   }
 
-  const response = await fetch(`/api/auth/signup-invites/${encodeURIComponent(inviteId)}/revoke`, {
+  const response = await fetch(apiV1Path(`/auth/invites/${encodeURIComponent(inviteId)}/revoke`), {
     method: 'POST',
     cache: 'no-store',
   });
@@ -149,7 +150,7 @@ export async function fetchSignupRequests(
   }
 
   const response = await fetch(
-    `/api/auth/signup-requests${search.size > 0 ? `?${search.toString()}` : ''}`,
+    apiV1Path(`/auth/signup-requests${search.size > 0 ? `?${search.toString()}` : ''}`),
     {
       method: 'GET',
       cache: 'no-store',
@@ -179,7 +180,7 @@ export async function approveSignupRequestAction(
   }
 
   const response = await fetch(
-    `/api/auth/signup-requests/${encodeURIComponent(requestId)}/approve`,
+    apiV1Path(`/auth/signup-requests/${encodeURIComponent(requestId)}/approve`),
     {
       method: 'POST',
       headers: {
@@ -208,7 +209,7 @@ export async function rejectSignupRequestAction(
   }
 
   const response = await fetch(
-    `/api/auth/signup-requests/${encodeURIComponent(requestId)}/reject`,
+    apiV1Path(`/auth/signup-requests/${encodeURIComponent(requestId)}/reject`),
     {
       method: 'POST',
       headers: {
@@ -231,7 +232,7 @@ export async function rejectSignupRequestAction(
 export async function submitSignupAccessRequest(
   payload: SignupAccessRequestInput,
 ): Promise<SignupAccessPolicy> {
-  const response = await fetch('/api/auth/request-access', {
+  const response = await fetch(apiV1Path('/auth/request-access'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

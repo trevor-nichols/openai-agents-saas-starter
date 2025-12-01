@@ -1,10 +1,11 @@
 'use client';
 
 import { useTransition } from 'react';
+import { apiV1Path } from '@/lib/apiPaths';
 
 /**
  * Lightweight client-side trigger that delegates the actual logout
- * to the server-side Route Handler (/api/auth/logout). This keeps
+ * to the server-side Route Handler (/api/v1/auth/logout). This keeps
  * cookie mutation on the server and avoids the Next.js cookie
  * restriction seen when calling server actions directly in the
  * client event loop.
@@ -15,7 +16,7 @@ export function LogoutButton() {
   const handleLogout = () => {
     startTransition(async () => {
       try {
-        await fetch('/api/auth/logout', { method: 'POST', cache: 'no-store' });
+        await fetch(apiV1Path('/auth/logout'), { method: 'POST', cache: 'no-store' });
       } catch (error) {
         console.error('[auth] Logout request failed', error);
       } finally {

@@ -1,7 +1,8 @@
 import type { StoragePresignDownloadResponse } from '@/lib/api/client/types.gen';
+import { apiV1Path } from '@/lib/apiPaths';
 
 const STORAGE_DOWNLOAD_ROUTE = (objectId: string) =>
-  `/api/storage/objects/${encodeURIComponent(objectId)}/download-url`;
+  apiV1Path(`/storage/objects/${encodeURIComponent(objectId)}/download-url`);
 
 /**
  * Fetch a presigned download URL for a storage object via the Next proxy route.

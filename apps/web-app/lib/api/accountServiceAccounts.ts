@@ -6,6 +6,7 @@ import type {
   ServiceAccountTokenQueryParams,
   VaultServiceAccountIssuePayload,
 } from '@/types/serviceAccounts';
+import { apiV1Path } from '@/lib/apiPaths';
 
 interface TokensApiResponse {
   success: boolean;
@@ -59,7 +60,7 @@ export async function fetchServiceAccountTokens(
   }
 
   const qs = search.toString();
-  const response = await fetch(`/api/auth/service-accounts/tokens${qs ? `?${qs}` : ''}`, {
+  const response = await fetch(apiV1Path(`/auth/service-accounts/tokens${qs ? `?${qs}` : ''}`), {
     method: 'GET',
     cache: 'no-store',
   });
@@ -89,7 +90,7 @@ export async function revokeServiceAccountTokenRequest(
   const body = reason && reason.trim().length > 0 ? { reason: reason.trim() } : {};
 
   const response = await fetch(
-    `/api/auth/service-accounts/tokens/${encodeURIComponent(tokenId)}/revoke`,
+    apiV1Path(`/auth/service-accounts/tokens/${encodeURIComponent(tokenId)}/revoke`),
     {
       method: 'POST',
       headers: {
@@ -117,7 +118,7 @@ export async function issueServiceAccountTokenRequest(
 }
 
 async function issueBrowserToken(payload: BrowserServiceAccountIssuePayload): Promise<ServiceAccountIssueResult> {
-  const response = await fetch('/api/auth/service-accounts/browser-issue', {
+  const response = await fetch(apiV1Path('/auth/service-accounts/browser-issue'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -151,7 +152,7 @@ async function issueVaultToken(payload: VaultServiceAccountIssuePayload): Promis
     headers['X-Vault-Payload'] = payload.vaultPayload;
   }
 
-  const response = await fetch('/api/auth/service-accounts/issue', {
+  const response = await fetch(apiV1Path('/auth/service-accounts/issue'), {
     method: 'POST',
     headers,
     cache: 'no-store',

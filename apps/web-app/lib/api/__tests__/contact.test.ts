@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { submitContactRequest } from '@/lib/api/contact';
+import { apiV1Path } from '@/lib/apiPaths';
 
 const originalFetch = global.fetch;
 
@@ -31,7 +32,7 @@ describe('contact API helper', () => {
     ).resolves.toBeUndefined();
 
     expect(global.fetch).toHaveBeenCalledWith(
-      '/api/contact',
+      apiV1Path('/contact'),
       expect.objectContaining({ method: 'POST' }),
     );
   });
@@ -49,4 +50,3 @@ describe('contact API helper', () => {
     ).rejects.toThrow('oops');
   });
 });
-

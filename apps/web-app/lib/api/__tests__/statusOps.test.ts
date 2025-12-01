@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { fetchStatusSubscriptions, resendIncident } from '../statusOps';
+import { apiV1Path } from '@/lib/apiPaths';
 
 const originalFetch = global.fetch;
 
@@ -47,7 +48,7 @@ describe('status ops API helpers', () => {
     const result = await fetchStatusSubscriptions({ limit: 10, cursor: '5', tenantId: 'tenant-1' });
 
     expect(global.fetch).toHaveBeenCalledWith(
-      '/api/status/subscriptions?limit=10&cursor=5&tenant_id=tenant-1',
+      `${apiV1Path('/status/subscriptions')}?limit=10&cursor=5&tenant_id=tenant-1`,
       expect.objectContaining({ cache: 'no-store' }),
     );
     expect(result.items[0]).toMatchObject({
@@ -83,7 +84,7 @@ describe('status ops API helpers', () => {
     const result = await resendIncident({ incidentId: 'inc-1', severity: 'all', tenantId: null });
 
     expect(global.fetch).toHaveBeenCalledWith(
-      '/api/status/incidents/inc-1/resend',
+      apiV1Path('/status/incidents/inc-1/resend'),
       expect.objectContaining({
         method: 'POST',
       }),
@@ -126,7 +127,7 @@ describe('status ops API helpers - global scope', () => {
     await fetchStatusSubscriptions({ tenantId: null });
 
     expect(global.fetch).toHaveBeenCalledWith(
-      '/api/status/subscriptions?tenant_id=all',
+      `${apiV1Path('/status/subscriptions')}?tenant_id=all`,
       expect.anything(),
     );
   });

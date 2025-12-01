@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { fetchConversationEvents } from '@/lib/api/conversations';
+import { apiV1Path } from '@/lib/apiPaths';
 
 const originalFetch = global.fetch;
 
@@ -37,7 +38,7 @@ describe('fetchConversationEvents', () => {
     const result = await fetchConversationEvents({ conversationId: 'conv-1' });
 
     expect(result).toEqual(payload.data);
-    expect(global.fetch).toHaveBeenCalledWith('/api/conversations/conv-1/events', expect.any(Object));
+    expect(global.fetch).toHaveBeenCalledWith(apiV1Path('/conversations/conv-1/events'), expect.any(Object));
   });
 
   it('includes workflow_run_id when provided', async () => {
@@ -59,7 +60,7 @@ describe('fetchConversationEvents', () => {
     await fetchConversationEvents({ conversationId: 'conv-1', workflowRunId: 'run-42' });
 
     expect(global.fetch).toHaveBeenCalledWith(
-      '/api/conversations/conv-1/events?workflow_run_id=run-42',
+      `${apiV1Path('/conversations/conv-1/events')}?workflow_run_id=run-42`,
       expect.any(Object),
     );
   });

@@ -13,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { apiV1Path } from '@/lib/apiPaths';
 
 interface AppUserMenuProps {
   userName?: string | null;
@@ -37,7 +38,7 @@ export function AppUserMenu({ userName, userEmail, tenantId, avatarUrl }: AppUse
   const handleLogout = () => {
     startTransition(async () => {
       try {
-        await fetch('/api/auth/logout', { method: 'POST', cache: 'no-store' });
+        await fetch(apiV1Path('/auth/logout'), { method: 'POST', cache: 'no-store' });
       } catch (error) {
         console.error('[auth] Logout request failed', error);
       } finally {

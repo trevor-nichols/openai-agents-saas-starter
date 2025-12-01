@@ -14,6 +14,7 @@ import { StatusAlertsCard } from '@/features/marketing/components';
 import { useMarketingAnalytics } from '@/features/marketing/hooks/useMarketingAnalytics';
 import { unsubscribeStatusSubscription, verifyStatusSubscriptionToken } from '@/lib/api/statusSubscriptions';
 import { usePlatformStatusQuery } from '@/lib/queries/status';
+import { apiV1Path } from '@/lib/apiPaths';
 
 const DEFAULT_STATUS_DESCRIPTION = 'FastAPI, Next.js, and the async workers are all reporting healthy.';
 
@@ -38,6 +39,7 @@ export function StatusExperience() {
   const updatedLabel = status ? formatTimestamp(status.generatedAt) : 'Refreshing status…';
   const showServiceSkeletons = isLoading && services.length === 0;
   const showMetricSkeletons = isLoading && uptimeMetrics.length === 0;
+  const rssHref = apiV1Path('/status/rss');
   const showIncidentSkeletons = isLoading && incidents.length === 0;
 
   useEffect(() => {
@@ -231,11 +233,11 @@ export function StatusExperience() {
             <div className="flex flex-wrap gap-2">
               <Button asChild size="sm">
                 <Link
-                  href="/api/status/rss"
+                  href={rssHref}
                   onClick={() =>
                     trackCtaClick({
                       location: 'status-rss',
-                      cta: { label: 'RSS Feed', href: '/api/status/rss', intent: 'secondary' },
+                      cta: { label: 'RSS Feed', href: rssHref, intent: 'secondary' },
                     })
                   }
                 >

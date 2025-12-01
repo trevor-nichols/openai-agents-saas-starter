@@ -1,3 +1,5 @@
+import { apiV1Path } from '@/lib/apiPaths';
+
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 type LogSink = 'console' | 'beacon' | 'none';
 
@@ -96,12 +98,12 @@ async function emitBeacon(payload: LogPayload) {
   const body = JSON.stringify(payload);
 
   if (navigator.sendBeacon) {
-    const ok = navigator.sendBeacon('/api/logs', body);
+    const ok = navigator.sendBeacon(apiV1Path('/logs'), body);
     if (ok) return;
   }
 
   try {
-    await fetch('/api/logs', {
+    await fetch(apiV1Path('/logs'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

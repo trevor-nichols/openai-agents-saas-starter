@@ -1,7 +1,8 @@
 import type { BillingPlan, BillingPlanListResponse } from '@/types/billing';
+import { apiV1Path } from '@/lib/apiPaths';
 
 export async function fetchBillingPlans(): Promise<BillingPlan[]> {
-  const response = await fetch('/api/billing/plans', { cache: 'no-store' });
+  const response = await fetch(apiV1Path('/billing/plans'), { cache: 'no-store' });
   const payload = (await response.json()) as BillingPlanListResponse;
 
   if (response.status === 404) {

@@ -6,6 +6,7 @@ import {
   createMutationMock,
   createQueryWrapper,
 } from '../testUtils';
+import { apiV1Path } from '@/lib/apiPaths';
 
 const originalFetch = global.fetch;
 
@@ -85,7 +86,7 @@ describe('useChatController (integration)', () => {
     });
 
     expect(global.fetch).toHaveBeenCalledWith(
-      '/api/chat/stream',
+      apiV1Path('/chat/stream'),
       expect.objectContaining({
         method: 'POST',
       }),

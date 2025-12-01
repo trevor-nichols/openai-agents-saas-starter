@@ -17,6 +17,7 @@ import {
   mockWorkflows,
 } from '@/lib/workflows/mock';
 import type { WorkflowRunInput, WorkflowRunListFilters } from '@/lib/workflows/types';
+import { apiV1Path } from '@/lib/apiPaths';
 
 export async function listWorkflows(): Promise<WorkflowSummary[]> {
   if (USE_API_MOCK) {
@@ -24,7 +25,7 @@ export async function listWorkflows(): Promise<WorkflowSummary[]> {
   }
 
   // Call the Next.js API proxy so the server can attach auth from cookies.
-  const response = await fetch('/api/workflows', { method: 'GET', cache: 'no-store' });
+  const response = await fetch(apiV1Path('/workflows'), { method: 'GET', cache: 'no-store' });
   if (!response.ok) {
     throw new Error(`Failed to load workflows (${response.status})`);
   }
@@ -46,7 +47,7 @@ export async function listWorkflowRuns(filters: WorkflowRunListFilters = {}): Pr
   if (filters.cursor) query.set('cursor', filters.cursor);
   if (filters.limit) query.set('limit', String(filters.limit));
 
-  const response = await fetch(`/api/workflows/runs?${query.toString()}`, { cache: 'no-store' });
+  const response = await fetch(apiV1Path(`/workflows/runs?${query.toString()}`), { cache: 'no-store' });
   if (!response.ok) {
     throw new Error(`Failed to load workflow runs (${response.status})`);
   }
@@ -64,7 +65,7 @@ export async function runWorkflow(input: WorkflowRunInput): Promise<WorkflowRunR
     share_location: input.shareLocation ?? null,
   };
 
-  const response = await fetch(`/api/workflows/${encodeURIComponent(input.workflowKey)}/run`, {
+  const response = await fetch(apiV1Path(`/workflows/${encodeURIComponent(input.workflowKey)}/run`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -81,7 +82,7 @@ export async function getWorkflowRun(runId: string): Promise<WorkflowRunDetail> 
   if (USE_API_MOCK) {
     return mockWorkflowRunDetail(runId);
   }
-  const response = await fetch(`/api/workflows/runs/${encodeURIComponent(runId)}`, { cache: 'no-store' });
+  const response = await fetch(apiV1Path(`/workflows/runs/${encodeURIComponent(runId)}`), { cache: 'no-store' });
   if (response.status === 404) {
     throw new Error('Workflow run not found');
   }
@@ -95,7 +96,7 @@ export async function cancelWorkflowRun(runId: string): Promise<void> {
   if (USE_API_MOCK) {
     return;
   }
-  const response = await fetch(`/api/workflows/runs/${encodeURIComponent(runId)}/cancel`, {
+  const response = await fetch(apiV1Path(`/workflows/runs/${encodeURIComponent(runId)}/cancel`), {
     method: 'POST',
   });
   if (!response.ok) {
@@ -107,7 +108,7 @@ export async function getWorkflowDescriptor(workflowKey: string): Promise<Workfl
   if (USE_API_MOCK) {
     return mockWorkflowDescriptor(workflowKey);
   }
-  const response = await fetch(`/api/workflows/${encodeURIComponent(workflowKey)}`, { cache: 'no-store' });
+  const response = await fetch(apiV1Path(`/workflows/${encodeURIComponent(workflowKey)}`), { cache: 'no-store' });
   if (response.status === 404) {
     throw new Error('Workflow not found');
   }
@@ -127,7 +128,7 @@ export async function* streamWorkflowRun(
     return;
   }
 
-  const response = await fetch(`/api/workflows/${encodeURIComponent(workflowKey)}/run/stream`, {
+  const response = await fetch(apiV1Path(`/workflows/${encodeURIComponent(workflowKey)}/run-stream`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
     body: JSON.stringify(body),

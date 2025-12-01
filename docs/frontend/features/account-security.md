@@ -27,7 +27,7 @@ Owner: Frontend Platform (Account & Security workstream)
 | Need | Source | Hook/Action | Notes |
 | ---- | ------ | ----------- | ----- |
 | Password change | `app/api/auth/password/change` server action | `useChangePasswordMutation` (new) | Wraps existing se rver action + toasts, revokes sessions server-side automatically. |
-| Admin password reset | `app/api/auth/password/admin-reset` (scope-guarded proxy) | `useAdminResetPasswordMutation` | Requires `support:read` + tenant context; revokes sessions and expects operator audit trail. |
+| Admin password reset | `app/api/v1/auth/password/reset` (scope-guarded proxy) | `useAdminResetPasswordMutation` | Requires `support:read` + tenant context; revokes sessions and expects operator audit trail. |
 | MFA status placeholder | Static copy (until backend lands) | N/A | Document roadmap + CLI flag hook-ups. |
 | Recent session summary | `/api/auth/session` + `/api/auth/sessions?limit=5` | `useSessionSummaryQuery` (optional) / reuse `useAccountProfileQuery` data | For now, show last login timestamp from profile session data; link to `/account/sessions`. |
 | Docs/support links | `docs/security/` content | Static links | Keep copy light; point to runbook. |
@@ -94,7 +94,7 @@ Implementation notes:
   - RTL test for `SecurityPasswordForm` covering success/error paths (mock mutation).
   - Snapshot test for MFA panel (ensures copy/tags rendered).
   - Hook test for `useChangePasswordMutation` verifying error propagation.
-  - Route/unit test for `app/api/auth/password/admin-reset` covering scope guard + error mapping.
+- Route/unit test for `app/api/v1/auth/password/reset` covering scope guard + error mapping.
 
 ## 7. Decisions & Follow-Ups
 

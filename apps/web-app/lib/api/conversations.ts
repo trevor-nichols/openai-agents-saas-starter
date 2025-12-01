@@ -15,6 +15,7 @@ import type {
   ConversationSearchPage,
   ConversationEvents,
 } from '@/types/conversations';
+import { apiV1Path } from '@/lib/apiPaths';
 
 /**
  * Fetch paginated conversations for the current user
@@ -29,7 +30,9 @@ export async function fetchConversationsPage(params?: {
   if (params?.cursor) searchParams.set('cursor', params.cursor);
   if (params?.agent) searchParams.set('agent', params.agent);
 
-  const response = await fetch(`/api/conversations${searchParams.toString() ? `?${searchParams.toString()}` : ''}`);
+  const response = await fetch(
+    `${apiV1Path('/conversations')}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`,
+  );
   if (!response.ok) {
     throw new Error('Failed to load conversations');
   }
@@ -64,7 +67,7 @@ export async function searchConversations(params: {
   if (params.cursor) searchParams.set('cursor', params.cursor);
   if (params.agent) searchParams.set('agent', params.agent);
 
-  const response = await fetch(`/api/conversations/search?${searchParams.toString()}`);
+  const response = await fetch(`${apiV1Path('/conversations/search')}?${searchParams.toString()}`);
   if (!response.ok) {
     throw new Error('Failed to search conversations');
   }
@@ -82,7 +85,7 @@ export async function searchConversations(params: {
 export async function fetchConversationHistory(
   conversationId: string,
 ): Promise<ConversationHistory> {
-  const response = await fetch(`/api/conversations/${conversationId}`, {
+  const response = await fetch(apiV1Path(`/conversations/${encodeURIComponent(conversationId)}`), {
     method: 'GET',
     cache: 'no-store',
   });
@@ -105,7 +108,7 @@ export async function fetchConversationEvents(params: {
   if (workflowRunId) searchParams.set('workflow_run_id', workflowRunId);
 
   const response = await fetch(
-    `/api/conversations/${encodeURIComponent(conversationId)}/events${
+    `${apiV1Path(`/conversations/${encodeURIComponent(conversationId)}/events`)}${
       searchParams.toString() ? `?${searchParams.toString()}` : ''
     }`,
     {
@@ -131,7 +134,7 @@ export async function fetchConversationEvents(params: {
  * Delete a stored conversation by id.
  */
 export async function deleteConversationById(conversationId: string): Promise<void> {
-  const response = await fetch(`/api/conversations/${conversationId}`, {
+  const response = await fetch(apiV1Path(`/conversations/${encodeURIComponent(conversationId)}`), {
     method: 'DELETE',
   });
 

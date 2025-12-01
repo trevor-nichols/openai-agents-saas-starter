@@ -1,8 +1,8 @@
 import type { StatusSubscriptionResponse } from '@/lib/api/client/types.gen';
+import { apiV1Path } from '@/lib/apiPaths';
 
-const CREATE_ENDPOINT = '/api/status-subscriptions';
-const VERIFY_ENDPOINT = '/api/status-subscriptions/verify';
-const UNSUBSCRIBE_ENDPOINT = '/api/status-subscriptions/unsubscribe';
+const CREATE_ENDPOINT = apiV1Path('/status/subscriptions');
+const VERIFY_ENDPOINT = apiV1Path('/status/subscriptions/verify');
 
 interface ApiResponse {
   success?: boolean;
@@ -65,11 +65,24 @@ export async function unsubscribeStatusSubscription(
   if (!subscriptionId) {
     throw new Error('Missing subscription identifier.');
   }
-  await submitToken(
-    UNSUBSCRIBE_ENDPOINT,
-    { token, subscriptionId },
-    'Unable to unsubscribe from alerts.',
+  const response = await fetch(
+    `${apiV1Path(`/status/subscriptions/${encodeURIComponent(subscriptionId)}`)}?token=${encodeURIComponent(token)}`,
+    {
+      method: 'DELETE',
+      cache: 'no-store',
+    },
   );
+
+  if (!response.ok) {
+    let message = 'Unable to unsubscribe from alerts.';
+    try {
+      const body = (await response.json()) as ApiResponse;
+      message = resolveErrorMessage(body, message);
+    } catch (_error) {
+      // ignore JSON parse issues
+    }
+    throw new Error(message);
+  }
 }
 
 async function submitToken(

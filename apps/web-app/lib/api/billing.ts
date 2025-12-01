@@ -5,6 +5,7 @@
  */
 
 import type { BillingEvent } from '@/types/billing';
+import { apiV1Path } from '@/lib/apiPaths';
 
 /**
  * Connect to the billing events SSE stream
@@ -19,7 +20,7 @@ export async function connectBillingStream(
   signal: AbortSignal
 ): Promise<void> {
   try {
-    const response = await fetch('/api/billing/stream', {
+    const response = await fetch(apiV1Path('/billing/stream'), {
       cache: 'no-store',
       signal,
       credentials: 'include',

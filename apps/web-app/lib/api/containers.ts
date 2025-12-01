@@ -6,6 +6,7 @@ import type {
 } from '@/lib/api/client/types.gen';
 import { USE_API_MOCK } from '@/lib/config';
 import { mockContainers } from '@/lib/containers/mock';
+import { apiV1Path } from '@/lib/apiPaths';
 
 async function parseJson<T>(response: Response): Promise<T> {
   try {
@@ -22,7 +23,7 @@ function buildError(response: Response, fallback: string): Error {
 export async function listContainers(): Promise<ContainerListResponse> {
   if (USE_API_MOCK) return { items: mockContainers, total: mockContainers.length };
 
-  const res = await fetch('/api/containers', { cache: 'no-store' });
+  const res = await fetch(apiV1Path('/containers'), { cache: 'no-store' });
   if (!res.ok) throw buildError(res, 'Failed to load containers');
   return parseJson<ContainerListResponse>(res);
 }
@@ -53,7 +54,7 @@ export async function createContainer(body: ContainerCreateRequest): Promise<Con
     };
   }
 
-  const res = await fetch('/api/containers', {
+  const res = await fetch(apiV1Path('/containers'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -66,14 +67,14 @@ export async function createContainer(body: ContainerCreateRequest): Promise<Con
 export async function deleteContainer(containerId: string) {
   if (USE_API_MOCK) return;
 
-  const res = await fetch(`/api/containers/${encodeURIComponent(containerId)}`, { method: 'DELETE' });
+  const res = await fetch(apiV1Path(`/containers/${encodeURIComponent(containerId)}`), { method: 'DELETE' });
   if (!res.ok) throw buildError(res, 'Failed to delete container');
 }
 
 export async function getContainer(containerId: string) {
   if (USE_API_MOCK) return mockContainers.find((c) => c.id === containerId) ?? mockContainers[0];
 
-  const res = await fetch(`/api/containers/${encodeURIComponent(containerId)}`, { cache: 'no-store' });
+  const res = await fetch(apiV1Path(`/containers/${encodeURIComponent(containerId)}`), { cache: 'no-store' });
   if (res.status === 404) throw new Error('Container not found');
   if (!res.ok) throw buildError(res, 'Failed to load container');
   return parseJson<ContainerResponse>(res);
@@ -82,7 +83,7 @@ export async function getContainer(containerId: string) {
 export async function bindAgentToContainer(agentKey: string, body: ContainerBindRequest) {
   if (USE_API_MOCK) return;
 
-  const res = await fetch(`/api/containers/agents/${encodeURIComponent(agentKey)}`, {
+  const res = await fetch(apiV1Path(`/containers/agents/${encodeURIComponent(agentKey)}/container`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -94,7 +95,7 @@ export async function bindAgentToContainer(agentKey: string, body: ContainerBind
 export async function unbindAgentFromContainer(agentKey: string) {
   if (USE_API_MOCK) return;
 
-  const res = await fetch(`/api/containers/agents/${encodeURIComponent(agentKey)}`, {
+  const res = await fetch(apiV1Path(`/containers/agents/${encodeURIComponent(agentKey)}/container`), {
     method: 'DELETE',
   });
 

@@ -5,6 +5,7 @@ import type {
   TenantSubscription,
   UsageRecordPayload,
 } from '@/lib/types/billing';
+import { apiV1Path } from '@/lib/apiPaths';
 
 interface RequestOptions {
   tenantRole?: string | null;
@@ -28,14 +29,14 @@ const subscriptionPath = (tenantId: string) => {
   if (!tenantId || tenantId.trim().length === 0) {
     throw new Error('Tenant id is required.');
   }
-  return `/api/billing/tenants/${encodeURIComponent(tenantId)}/subscription`;
+  return apiV1Path(`/billing/tenants/${encodeURIComponent(tenantId)}/subscription`);
 };
 
 const usagePath = (tenantId: string) => {
   if (!tenantId || tenantId.trim().length === 0) {
     throw new Error('Tenant id is required.');
   }
-  return `/api/billing/tenants/${encodeURIComponent(tenantId)}/usage`;
+  return apiV1Path(`/billing/tenants/${encodeURIComponent(tenantId)}/usage`);
 };
 
 const cancelPath = (tenantId: string) => `${subscriptionPath(tenantId)}/cancel`;

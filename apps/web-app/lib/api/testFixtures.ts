@@ -4,6 +4,8 @@
  * These should not be wired into production UI flows.
  */
 
+import { apiV1Path } from '@/lib/apiPaths';
+
 type PlaywrightFixtureSpec = {
   tenants?: Array<Record<string, unknown>>;
 };
@@ -36,7 +38,7 @@ export async function applyTestFixtures(
   options?: ClientOptions,
 ): Promise<FixtureApplyResult> {
   const baseUrl = options?.baseUrl ? options.baseUrl.replace(/\/$/, '') : '';
-  const response = await fetch(`${baseUrl}/api/v1/test-fixtures/apply`, {
+  const response = await fetch(`${baseUrl}${apiV1Path('/test-fixtures/apply')}`.replace('//api', '/api'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(spec),
@@ -61,11 +63,14 @@ export async function issueEmailVerificationToken(
   options?: ClientOptions,
 ): Promise<EmailVerificationTokenResponse> {
   const baseUrl = options?.baseUrl ? options.baseUrl.replace(/\/$/, '') : '';
-  const response = await fetch(`${baseUrl}/api/v1/test-fixtures/email-verification-token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
-  });
+  const response = await fetch(
+    `${baseUrl}${apiV1Path('/test-fixtures/email-verification-token')}`.replace('//api', '/api'),
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    },
+  );
 
   if (!response.ok) {
     throw new Error(`Email verification token request failed (${response.status})`);

@@ -1,5 +1,6 @@
 import type { StripeEventStatus } from '@/lib/api/client/types.gen';
 import type { BillingEventHistoryResponse } from '@/types/billing';
+import { apiV1Path } from '@/lib/apiPaths';
 
 export interface FetchBillingHistoryParams {
   tenantId: string;
@@ -29,10 +30,13 @@ export async function fetchBillingHistory(params: FetchBillingHistoryParams): Pr
     search.set('processing_status', processingStatus);
   }
 
-  const response = await fetch(`/api/billing/tenants/${tenantId}/events?${search.toString()}`, {
-    cache: 'no-store',
-    signal,
-  });
+  const response = await fetch(
+    `${apiV1Path(`/billing/tenants/${encodeURIComponent(tenantId)}/events`)}?${search.toString()}`,
+    {
+      cache: 'no-store',
+      signal,
+    },
+  );
 
   const payload = (await response.json()) as BillingEventHistoryResponse & { message?: string; error?: string };
 

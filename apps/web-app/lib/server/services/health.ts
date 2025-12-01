@@ -1,6 +1,6 @@
 'use server';
 
-import { getPlatformStatusApiV1StatusGet } from '@/lib/api/client/sdk.gen';
+import { getPlatformStatusApiV1StatusGet, storageHealthHealthStorageGet } from '@/lib/api/client/sdk.gen';
 import type { PlatformStatusResponse } from '@/lib/api/client/types.gen';
 
 import { createApiClient } from '../apiClient';
@@ -33,4 +33,22 @@ export async function getHealthStatus(): Promise<PlatformStatusResponse> {
  */
 export async function getReadinessStatus(): Promise<PlatformStatusResponse> {
   return fetchPlatformStatus();
+}
+
+/**
+ * Retrieve storage provider health (informational).
+ */
+export async function getStorageHealthStatus(): Promise<unknown> {
+  const response = await storageHealthHealthStorageGet({
+    client: createApiClient(),
+    responseStyle: 'fields',
+    throwOnError: true,
+  });
+
+  const payload = response.data;
+  if (!payload) {
+    throw new Error('Storage health endpoint returned an empty payload.');
+  }
+
+  return payload;
 }

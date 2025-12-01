@@ -17,9 +17,10 @@ import type {
 } from '@/lib/chat/types';
 import { createLogger } from '@/lib/logging';
 import type { StreamingChatEvent } from '@/lib/api/client/types.gen';
+import { apiV1Path } from '@/lib/apiPaths';
 
-const CHAT_ROUTE = '/api/chat';
-const CHAT_STREAM_ROUTE = '/api/chat/stream';
+const CHAT_ROUTE = apiV1Path('/chat');
+const CHAT_STREAM_ROUTE = apiV1Path('/chat/stream');
 const log = createLogger('chat-api');
 
 export class ChatApiError extends Error {

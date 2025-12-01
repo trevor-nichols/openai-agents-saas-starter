@@ -1,5 +1,6 @@
 import type { PlatformStatusSnapshot, RawPlatformStatusResponse } from '@/types/status';
 import { mapPlatformStatusResponse } from '@/types/status';
+import { apiV1Path } from '@/lib/apiPaths';
 
 interface PlatformStatusApiResponse {
   success: boolean;
@@ -22,7 +23,7 @@ function createStatusError(message?: string): Error {
 }
 
 export async function fetchPlatformStatusSnapshot(): Promise<PlatformStatusSnapshot> {
-  const response = await fetch('/api/status', { cache: 'no-store' });
+  const response = await fetch(apiV1Path('/status'), { cache: 'no-store' });
   const payload = await parseJson(response);
 
   if (!response.ok || payload.success !== true || !payload.status) {

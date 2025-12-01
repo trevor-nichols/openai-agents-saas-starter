@@ -5,6 +5,7 @@ import type {
 } from '@/lib/api/client/types.gen';
 import { USE_API_MOCK } from '@/lib/config';
 import { mockPresignUpload, mockStorageObjects } from '@/lib/storage/mock';
+import { apiV1Path } from '@/lib/apiPaths';
 
 async function parseJson<T>(response: Response): Promise<T> {
   try {
@@ -33,7 +34,7 @@ export async function listStorageObjects(params?: {
   if (params?.offset !== undefined) query.set('offset', String(params.offset));
   if (params?.conversationId) query.set('conversation_id', params.conversationId);
 
-  const res = await fetch(`/api/storage/objects${query.size ? `?${query.toString()}` : ''}`, {
+  const res = await fetch(apiV1Path(`/storage/objects${query.size ? `?${query.toString()}` : ''}`), {
     cache: 'no-store',
   });
 
@@ -44,7 +45,7 @@ export async function listStorageObjects(params?: {
 export async function deleteStorageObject(objectId: string) {
   if (USE_API_MOCK) return;
 
-  const res = await fetch(`/api/storage/objects/${encodeURIComponent(objectId)}`, { method: 'DELETE' });
+  const res = await fetch(apiV1Path(`/storage/objects/${encodeURIComponent(objectId)}`), { method: 'DELETE' });
   if (!res.ok) throw buildError(res, 'Failed to delete storage object');
 }
 
@@ -53,7 +54,7 @@ export async function createPresignedUpload(
 ): Promise<StoragePresignUploadResponse> {
   if (USE_API_MOCK) return mockPresignUpload;
 
-  const res = await fetch('/api/storage/objects/upload-url', {
+  const res = await fetch(apiV1Path('/storage/objects/upload-url'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),

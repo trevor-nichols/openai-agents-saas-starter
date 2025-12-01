@@ -1,4 +1,5 @@
 import type { AgentStatus, AgentSummary } from '@/types/agents';
+import { apiV1Path } from '@/lib/apiPaths';
 
 interface AgentsListResponse {
   success: boolean;
@@ -7,7 +8,7 @@ interface AgentsListResponse {
 }
 
 export async function fetchAgents(): Promise<AgentSummary[]> {
-  const response = await fetch('/api/agents', {
+  const response = await fetch(apiV1Path('/agents'), {
     method: 'GET',
     cache: 'no-store',
   });
@@ -22,7 +23,7 @@ export async function fetchAgents(): Promise<AgentSummary[]> {
 }
 
 export async function fetchAgentStatus(agentName: string): Promise<AgentStatus> {
-  const response = await fetch(`/api/agents/${encodeURIComponent(agentName)}/status`, {
+  const response = await fetch(apiV1Path(`/agents/${encodeURIComponent(agentName)}/status`), {
     method: 'GET',
     cache: 'no-store',
   });
@@ -34,4 +35,3 @@ export async function fetchAgentStatus(agentName: string): Promise<AgentStatus> 
 
   return (await response.json()) as AgentStatus;
 }
-

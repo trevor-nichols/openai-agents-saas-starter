@@ -1,6 +1,7 @@
 import type { SuccessResponse } from '@/lib/api/client/types.gen';
 import type { TenantSubscription } from '@/lib/types/billing';
 import type { AccountSessionResponse } from '@/types/account';
+import { apiV1Path } from '@/lib/apiPaths';
 
 async function parseJson<T>(response: Response): Promise<T> {
   try {
@@ -20,7 +21,7 @@ function createError(response: Response, fallbackMessage: string, detail?: strin
 }
 
 export async function fetchAccountSession(): Promise<AccountSessionResponse> {
-  const response = await fetch('/api/auth/session', { cache: 'no-store' });
+  const response = await fetch(apiV1Path('/auth/me'), { cache: 'no-store' });
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
     throw createError(
@@ -35,7 +36,7 @@ export async function fetchAccountSession(): Promise<AccountSessionResponse> {
 export async function fetchTenantSubscriptionSummary(
   tenantId: string,
 ): Promise<TenantSubscription> {
-  const response = await fetch(`/api/billing/tenants/${encodeURIComponent(tenantId)}/subscription`, {
+  const response = await fetch(apiV1Path(`/billing/tenants/${encodeURIComponent(tenantId)}/subscription`), {
     cache: 'no-store',
   });
   if (!response.ok) {
@@ -50,7 +51,7 @@ export async function fetchTenantSubscriptionSummary(
 }
 
 export async function resendVerificationEmailRequest(): Promise<SuccessResponse> {
-  const response = await fetch('/api/auth/email/send', {
+  const response = await fetch(apiV1Path('/auth/email/send'), {
     method: 'POST',
     cache: 'no-store',
   });

@@ -4,6 +4,7 @@ import type {
   TenantSettingsResponse,
   TenantSettingsUpdateRequest,
 } from '@/lib/api/client/types.gen';
+import { apiV1Path } from '@/lib/apiPaths';
 
 function mapContact(dto: BillingContactModel, index: number): BillingContact {
   const idSeat = dto.email ? `${dto.email}:${index}` : `contact-${index}`;
@@ -70,7 +71,7 @@ function extractErrorMessage(payload: unknown): string | undefined {
 }
 
 export async function fetchTenantSettings(): Promise<TenantSettings> {
-  const response = await fetch('/api/v1/tenants/settings', { cache: 'no-store' });
+  const response = await fetch(apiV1Path('/tenants/settings'), { cache: 'no-store' });
   const payload = await parseJson<unknown>(response);
   if (!response.ok) {
     throw createError(
@@ -85,7 +86,7 @@ export async function fetchTenantSettings(): Promise<TenantSettings> {
 export async function updateTenantSettings(
   payload: TenantSettingsUpdateInput,
 ): Promise<TenantSettings> {
-  const response = await fetch('/api/v1/tenants/settings', {
+  const response = await fetch(apiV1Path('/tenants/settings'), {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',

@@ -1,4 +1,5 @@
 import type { ContactSubmission } from '@/types/marketing';
+import { apiV1Path } from '@/lib/apiPaths';
 
 interface ContactApiResponse {
   success: boolean;
@@ -6,7 +7,7 @@ interface ContactApiResponse {
 }
 
 export async function submitContactRequest(payload: ContactSubmission): Promise<void> {
-  const response = await fetch('/api/contact', {
+  const response = await fetch(apiV1Path('/contact'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -21,4 +22,3 @@ export async function submitContactRequest(payload: ContactSubmission): Promise<
     throw new Error(data.error || 'Failed to send your message.');
   }
 }
-

@@ -3,6 +3,7 @@ import type {
   PasswordResetRequest,
   SuccessResponse,
 } from '@/lib/api/client/types.gen';
+import { apiV1Path } from '@/lib/apiPaths';
 
 async function parseJson<T>(response: Response): Promise<T> {
   try {
@@ -13,7 +14,7 @@ async function parseJson<T>(response: Response): Promise<T> {
 }
 
 export async function changePasswordRequest(payload: PasswordChangeRequest): Promise<SuccessResponse> {
-  const response = await fetch('/api/auth/password/change', {
+  const response = await fetch(apiV1Path('/auth/password/change'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -33,7 +34,7 @@ export async function changePasswordRequest(payload: PasswordChangeRequest): Pro
 }
 
 export async function adminResetPasswordRequest(payload: PasswordResetRequest): Promise<SuccessResponse> {
-  const response = await fetch('/api/auth/password/admin-reset', {
+  const response = await fetch(apiV1Path('/auth/password/reset'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

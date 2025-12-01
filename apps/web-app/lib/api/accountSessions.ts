@@ -1,4 +1,5 @@
 import type { SuccessResponse, UserSessionListResponse } from '@/lib/api/client/types.gen';
+import { apiV1Path } from '@/lib/apiPaths';
 
 export interface SessionListParams {
   limit?: number;
@@ -32,7 +33,7 @@ export async function fetchUserSessions(params: SessionListParams = {}): Promise
     search.set('tenant_id', params.tenantId);
   }
 
-  const response = await fetch(`/api/auth/sessions?${search.toString()}`, { cache: 'no-store' });
+  const response = await fetch(apiV1Path(`/auth/sessions?${search.toString()}`), { cache: 'no-store' });
   const payload = await parseJson<{ success?: boolean; error?: string } & Partial<SessionListPayload>>(response);
 
   if (!response.ok || payload.success === false || !payload.sessions) {
@@ -52,7 +53,7 @@ export async function revokeSessionRequest(sessionId: string): Promise<SuccessRe
   if (!sessionId) {
     throw new Error('Session id is required.');
   }
-  const response = await fetch(`/api/auth/sessions/${sessionId}`, {
+  const response = await fetch(apiV1Path(`/auth/sessions/${sessionId}`), {
     method: 'DELETE',
     cache: 'no-store',
   });
@@ -71,7 +72,7 @@ export interface LogoutAllResponse {
 }
 
 export async function logoutAllSessionsRequest(): Promise<LogoutAllResponse> {
-  const response = await fetch('/api/auth/logout/all', {
+  const response = await fetch(apiV1Path('/auth/logout/all'), {
     method: 'POST',
     cache: 'no-store',
   });

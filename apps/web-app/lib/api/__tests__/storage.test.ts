@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { getAttachmentDownloadUrl } from '@/lib/api/storage';
+import { apiV1Path } from '@/lib/apiPaths';
 
 const originalFetch = global.fetch;
 
@@ -30,7 +31,7 @@ describe('storage API helpers', () => {
     global.fetch = vi.fn().mockResolvedValue(response);
 
     const result = await getAttachmentDownloadUrl('obj-1');
-    expect(global.fetch).toHaveBeenCalledWith('/api/storage/objects/obj-1/download-url', {
+    expect(global.fetch).toHaveBeenCalledWith(apiV1Path('/storage/objects/obj-1/download-url'), {
       method: 'GET',
       cache: 'no-store',
     });
