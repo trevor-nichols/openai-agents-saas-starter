@@ -130,6 +130,9 @@ import type {
   IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostData,
   IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostErrors,
   IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostResponses,
+  ListActivityEventsApiV1ActivityGetData,
+  ListActivityEventsApiV1ActivityGetErrors,
+  ListActivityEventsApiV1ActivityGetResponses,
   ListAvailableAgentsApiV1AgentsGetData,
   ListAvailableAgentsApiV1AgentsGetResponses,
   ListAvailableToolsApiV1ToolsGetData,
@@ -234,6 +237,9 @@ import type {
   StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponses,
   StorageHealthHealthStorageGetData,
   StorageHealthHealthStorageGetResponses,
+  StreamActivityEventsApiV1ActivityStreamGetData,
+  StreamActivityEventsApiV1ActivityStreamGetErrors,
+  StreamActivityEventsApiV1ActivityStreamGetResponses,
   StreamChatWithAgentApiV1ChatStreamPostData,
   StreamChatWithAgentApiV1ChatStreamPostErrors,
   StreamChatWithAgentApiV1ChatStreamPostResponses,
@@ -1538,6 +1544,57 @@ export const listAvailableToolsApiV1ToolsGet = <
       },
     ],
     url: "/api/v1/tools",
+    ...options,
+  });
+};
+
+/**
+ * List Activity Events
+ */
+export const listActivityEventsApiV1ActivityGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<ListActivityEventsApiV1ActivityGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    ListActivityEventsApiV1ActivityGetResponses,
+    ListActivityEventsApiV1ActivityGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/activity",
+    ...options,
+  });
+};
+
+/**
+ * Stream Activity Events
+ */
+export const streamActivityEventsApiV1ActivityStreamGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<
+    StreamActivityEventsApiV1ActivityStreamGetData,
+    ThrowOnError
+  >,
+) => {
+  return (options?.client ?? client).get<
+    StreamActivityEventsApiV1ActivityStreamGetResponses,
+    StreamActivityEventsApiV1ActivityStreamGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/activity/stream",
     ...options,
   });
 };

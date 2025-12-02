@@ -25,11 +25,13 @@ export interface QuickAction {
   icon: LucideIcon;
 }
 
-export interface RecentConversationSummary {
+export interface ActivityFeedItem {
   id: string;
   title: string;
-  updatedAt: string;
-  summary?: string;
+  detail: string;
+  status: 'success' | 'failure' | 'pending';
+  timestamp: string;
+  metadataSummary?: string | null;
 }
 
 export interface BillingPreviewSummary {
@@ -44,10 +46,10 @@ export interface DashboardData {
   kpis: DashboardKpi[];
   isLoadingKpis: boolean;
   kpiError: string | null;
-  recentConversations: RecentConversationSummary[];
-  isLoadingConversations: boolean;
-  conversationsError: string | null;
+  activityFeed: ActivityFeedItem[];
+  isLoadingActivity: boolean;
+  activityError: string | null;
   billingPreview: BillingPreviewSummary;
   quickActions: QuickAction[];
-  refreshConversations: () => void;
+  refreshActivity: () => void;
 }

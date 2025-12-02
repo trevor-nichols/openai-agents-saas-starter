@@ -5,7 +5,7 @@ export const DASHBOARD_COPY = {
   header: {
     eyebrow: 'Overview',
     title: 'Command center',
-    description: 'Monitor agents, conversations, and billing health from a single glass surface.',
+    description: 'Monitor agents, activity, and billing health from a single glass surface.',
     ctaLabel: 'New chat',
   },
   billingPreview: {
@@ -15,11 +15,11 @@ export const DASHBOARD_COPY = {
     ctaLabel: 'Manage plan',
     emptyEvents: 'Usage, invoices, and subscription updates will land here once activity starts.',
   },
-  recentConversations: {
-    title: 'Recent conversations',
-    description: 'Track the latest transcripts and jump back in.',
-    emptyTitle: 'No conversations found',
-    emptyDescription: 'Start a new chat to populate this list.',
+  activityFeed: {
+    title: 'Recent activity',
+    description: 'Tenant-scoped audit log across auth, workflows, billing, and storage.',
+    emptyTitle: 'No activity yet',
+    emptyDescription: 'Actions across your tenant will appear here as they happen.',
   },
 };
 

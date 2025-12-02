@@ -5,27 +5,29 @@ import { Sparkles, TrendingUp, Wallet } from 'lucide-react';
 
 import { useAgents } from '@/lib/queries/agents';
 import { useBillingStream } from '@/lib/queries/billing';
-import { useConversations } from '@/lib/queries/conversations';
+import { useActivityFeed } from '@/lib/queries/activity';
+import { useActivityStream } from '@/lib/queries/useActivityStream';
 
 import { QUICK_ACTIONS } from '../constants';
-import type { BillingPreviewSummary, DashboardData, DashboardKpi, RecentConversationSummary } from '../types';
+import type { ActivityFeedItem, BillingPreviewSummary, DashboardData, DashboardKpi } from '../types';
 
 const numberFormatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 
 export function useDashboardData(): DashboardData {
   const { agents, isLoadingAgents, agentsError } = useAgents();
   const {
-    conversationList,
-    isLoadingConversations,
-    error: conversationsError,
-    loadConversations,
-  } = useConversations();
+    activity,
+    isLoading: isLoadingActivity,
+    error: activityError,
+    refresh: refreshActivity,
+  } = useActivityFeed({ limit: 20 });
+  const { events: liveActivity } = useActivityStream({ enabled: true });
   const { events: billingEvents, status: billingStreamStatus } = useBillingStream();
 
   const activeAgents = useMemo(() => agents.filter((agent) => agent.status === 'active').length, [agents]);
   const idleAgents = useMemo(() => Math.max(agents.length - activeAgents, 0), [agents, activeAgents]);
 
-  const conversationsLast24h = conversationList.length;
+  const recentActivityCount = activity.length;
 
   const kpis = useMemo<DashboardKpi[]>(() => {
     const utilization = agents.length ? Math.round((activeAgents / agents.length) * 100) : 0;
@@ -43,15 +45,15 @@ export function useDashboardData(): DashboardData {
         },
       },
       {
-        id: 'conversation-volume',
-        label: 'Conversations (24h)',
-        value: numberFormatter.format(conversationsLast24h),
-        helperText: `${conversationList.length} total conversations`,
+        id: 'activity-volume',
+        label: 'Recent activity',
+        value: numberFormatter.format(recentActivityCount),
+        helperText: `${activity.length} events cached`,
         icon: <TrendingUp className="h-4 w-4" />,
         trend: {
-          value: conversationsLast24h > 0 ? '+ active' : 'Awaiting traffic',
-          tone: conversationsLast24h > 0 ? 'positive' : 'neutral',
-          label: 'Monitoring audit log',
+          value: recentActivityCount > 0 ? 'Live' : 'Awaiting traffic',
+          tone: recentActivityCount > 0 ? 'positive' : 'neutral',
+          label: activity[0]?.action ?? 'Monitoring audit log',
         },
       },
       {
@@ -67,19 +69,33 @@ export function useDashboardData(): DashboardData {
         },
       },
     ];
-  }, [activeAgents, agents.length, billingEvents, billingStreamStatus, conversationList.length, conversationsLast24h, idleAgents]);
+  }, [
+    activeAgents,
+    activity,
+    agents.length,
+    billingEvents,
+    billingStreamStatus,
+    idleAgents,
+    recentActivityCount,
+  ]);
 
-  const recentConversations = useMemo<RecentConversationSummary[]>(
-    () =>
-      conversationList
-        .slice(0, 5)
-        .map((conversation) => ({
-          id: conversation.id,
-          title: conversation.topic_hint ?? conversation.title ?? 'Untitled conversation',
-          updatedAt: conversation.updated_at,
-          summary: conversation.last_message_preview ?? 'Awaiting summary',
-        })),
-    [conversationList]
+  const activityFeed = useMemo<ActivityFeedItem[]>(
+    () => {
+      const merged = [
+        ...liveActivity,
+        ...activity.filter((event) => !liveActivity.some((live) => live.id === event.id)),
+      ].slice(0, 20);
+
+      return merged.slice(0, 8).map((event) => ({
+        id: event.id,
+        title: humanizeAction(event.action),
+        detail: event.object_type ? `${event.object_type}${event.object_id ? ` • ${event.object_id}` : ''}` : 'General',
+        status: event.status,
+        timestamp: event.created_at,
+        metadataSummary: summarizeMetadata(event.metadata),
+      }));
+    },
+    [activity, liveActivity],
   );
 
   const billingPreview = useMemo<BillingPreviewSummary>(() => {
@@ -100,17 +116,34 @@ export function useDashboardData(): DashboardData {
     } satisfies BillingPreviewSummary;
   }, [billingEvents, billingStreamStatus]);
 
-  const kpiError = agentsError?.message ?? conversationsError ?? null;
+  const kpiError = agentsError?.message ?? activityError ?? null;
 
   return {
     kpis,
-    isLoadingKpis: isLoadingAgents || isLoadingConversations,
+    isLoadingKpis: isLoadingAgents || isLoadingActivity,
     kpiError,
-    recentConversations,
-    isLoadingConversations,
-    conversationsError,
+    activityFeed,
+    isLoadingActivity,
+    activityError,
     billingPreview,
     quickActions: QUICK_ACTIONS,
-    refreshConversations: loadConversations,
+    refreshActivity,
   } satisfies DashboardData;
+}
+
+function humanizeAction(action: string): string {
+  if (!action) return 'Activity';
+  return action
+    .split('.')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function summarizeMetadata(metadata: Record<string, unknown> | null | undefined): string | null {
+  if (!metadata) return null;
+  const entries = Object.entries(metadata).slice(0, 2);
+  if (!entries.length) return null;
+  return entries
+    .map(([key, value]) => `${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`)
+    .join(' • ');
 }

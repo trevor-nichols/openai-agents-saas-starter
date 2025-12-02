@@ -5,6 +5,94 @@ export type ClientOptions = {
 };
 
 /**
+ * ActivityEventItem
+ */
+export type ActivityEventItem = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Tenant Id
+   */
+  tenant_id: string;
+  /**
+   * Action
+   */
+  action: string;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Actor Id
+   */
+  actor_id?: string | null;
+  /**
+   * Actor Type
+   */
+  actor_type?: string | null;
+  /**
+   * Actor Role
+   */
+  actor_role?: string | null;
+  /**
+   * Object Type
+   */
+  object_type?: string | null;
+  /**
+   * Object Id
+   */
+  object_id?: string | null;
+  /**
+   * Object Name
+   */
+  object_name?: string | null;
+  /**
+   * Status
+   */
+  status: "success" | "failure" | "pending";
+  /**
+   * Source
+   */
+  source?: string | null;
+  /**
+   * Request Id
+   */
+  request_id?: string | null;
+  /**
+   * Ip Hash
+   *
+   * Hashed IP (if supplied)
+   */
+  ip_hash?: string | null;
+  /**
+   * User Agent
+   */
+  user_agent?: string | null;
+  /**
+   * Metadata
+   */
+  metadata?: {
+    [key: string]: unknown;
+  } | null;
+};
+
+/**
+ * ActivityListResponse
+ */
+export type ActivityListResponse = {
+  /**
+   * Items
+   */
+  items: Array<ActivityEventItem>;
+  /**
+   * Next Cursor
+   */
+  next_cursor?: string | null;
+};
+
+/**
  * AgentChatRequest
  *
  * Request body for initiating or continuing a chat session.
@@ -5679,6 +5767,132 @@ export type ListAvailableToolsApiV1ToolsGetResponses = {
 
 export type ListAvailableToolsApiV1ToolsGetResponse =
   ListAvailableToolsApiV1ToolsGetResponses[keyof ListAvailableToolsApiV1ToolsGetResponses];
+
+export type ListActivityEventsApiV1ActivityGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path?: never;
+  query?: {
+    /**
+     * Limit
+     */
+    limit?: number;
+    /**
+     * Cursor
+     *
+     * Opaque pagination cursor
+     */
+    cursor?: string | null;
+    /**
+     * Action
+     *
+     * Filter by action name
+     */
+    action?: string | null;
+    /**
+     * Actor Id
+     *
+     * Filter by actor id
+     */
+    actor_id?: string | null;
+    /**
+     * Object Type
+     *
+     * Filter by object type
+     */
+    object_type?: string | null;
+    /**
+     * Object Id
+     *
+     * Filter by object id
+     */
+    object_id?: string | null;
+    /**
+     * Status
+     *
+     * Filter by status
+     */
+    status?: string | null;
+    /**
+     * Request Id
+     *
+     * Filter by request id
+     */
+    request_id?: string | null;
+    /**
+     * Created After
+     */
+    created_after?: string | null;
+    /**
+     * Created Before
+     */
+    created_before?: string | null;
+  };
+  url: "/api/v1/activity";
+};
+
+export type ListActivityEventsApiV1ActivityGetErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type ListActivityEventsApiV1ActivityGetError =
+  ListActivityEventsApiV1ActivityGetErrors[keyof ListActivityEventsApiV1ActivityGetErrors];
+
+export type ListActivityEventsApiV1ActivityGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: ActivityListResponse;
+};
+
+export type ListActivityEventsApiV1ActivityGetResponse =
+  ListActivityEventsApiV1ActivityGetResponses[keyof ListActivityEventsApiV1ActivityGetResponses];
+
+export type StreamActivityEventsApiV1ActivityStreamGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path?: never;
+  query?: never;
+  url: "/api/v1/activity/stream";
+};
+
+export type StreamActivityEventsApiV1ActivityStreamGetErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type StreamActivityEventsApiV1ActivityStreamGetError =
+  StreamActivityEventsApiV1ActivityStreamGetErrors[keyof StreamActivityEventsApiV1ActivityStreamGetErrors];
+
+export type StreamActivityEventsApiV1ActivityStreamGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: unknown;
+};
 
 export type ListContainersApiV1ContainersGetData = {
   body?: never;

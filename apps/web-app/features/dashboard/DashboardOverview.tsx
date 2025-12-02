@@ -8,7 +8,7 @@ import { SectionHeader } from '@/components/ui/foundation';
 import { BillingPreview } from './components/BillingPreview';
 import { KpiGrid } from './components/KpiGrid';
 import { QuickActions } from './components/QuickActions';
-import { RecentConversations } from './components/RecentConversations';
+import { ActivityFeed } from './components/ActivityFeed';
 import { DASHBOARD_COPY } from './constants';
 import { useDashboardData } from './hooks/useDashboardData';
 
@@ -17,12 +17,12 @@ export function DashboardOverview() {
     kpis,
     isLoadingKpis,
     kpiError,
-    recentConversations,
-    isLoadingConversations,
-    conversationsError,
+    activityFeed,
+    isLoadingActivity,
+    activityError,
     billingPreview,
     quickActions,
-    refreshConversations,
+    refreshActivity,
   } = useDashboardData();
 
   return (
@@ -41,11 +41,11 @@ export function DashboardOverview() {
       <KpiGrid kpis={kpis} isLoading={isLoadingKpis} error={kpiError} />
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-        <RecentConversations
-          conversations={recentConversations}
-          isLoading={isLoadingConversations}
-          error={conversationsError}
-          onRefresh={refreshConversations}
+        <ActivityFeed
+          items={activityFeed}
+          isLoading={isLoadingActivity}
+          error={activityError}
+          onRefresh={refreshActivity}
         />
         <BillingPreview preview={billingPreview} />
       </div>

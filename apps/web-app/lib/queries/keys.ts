@@ -104,4 +104,8 @@ export const queryKeys = {
     all: ['marketing'] as const,
     contact: () => [...queryKeys.marketing.all, 'contact'] as const,
   },
+  activity: {
+    all: ['activity'] as const,
+    list: (filters?: Record<string, unknown>) => [...queryKeys.activity.all, 'list', filters ?? {}] as const,
+  },
 } as const;
