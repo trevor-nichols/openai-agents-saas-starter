@@ -132,7 +132,10 @@ def _run_infisical_flow(
     steps = [
         "Install the Infisical CLI or configure service tokens for CI/CD.",
         "Store the service token securely (rotate via Infisical dashboard).",
-        "Add the env vars above to .env/.env.local and restart FastAPI + CLI shells.",
+        (
+            "Add the env vars above to apps/api-service/.env and apps/api-service/.env.local, "
+            "then restart FastAPI + CLI shells."
+        ),
     ]
     warnings: list[str] = []
 

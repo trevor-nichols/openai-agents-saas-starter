@@ -4,9 +4,9 @@ This guide explains the minimum configuration required to turn on billing with S
 
 ## Prerequisites
 
-1. **Durable storage** – Billing requires Postgres. Provide a valid `DATABASE_URL`. The Docker helper `just dev-up` launches Postgres + Redis with the correct defaults sourced from `.env.compose` and your `.env.local`.
+1. **Durable storage** – Billing requires Postgres. Provide a valid `DATABASE_URL`. The Docker helper `just dev-up` launches Postgres + Redis with the correct defaults sourced from `.env.compose` and your `apps/api-service/.env.local`.
 2. **Stripe account access** – You need permission to view the project in the Stripe Dashboard so you can create products/prices and view API/webhook keys. The backend talks directly to Stripe via the official Python SDK, so the secret key you provide must have customer/subscription/usage write scope (test mode keys are fine locally).
-3. **Local env files** – Never commit secrets. Copy `.env.local.example` to `.env.local` and keep your Stripe credentials there (gitignored).
+3. **Local env files** – Never commit secrets. Copy `apps/api-service/.env.local.example` to `apps/api-service/.env.local` and keep your Stripe credentials there (gitignored).
 
 ## Required environment variables
 
@@ -23,7 +23,7 @@ Optional but recommended for live dashboards:
 | `ENABLE_BILLING_STREAM` | Flip to `true` to expose the `/api/v1/billing/stream` SSE endpoint. Requires Redis. |
 | `BILLING_EVENTS_REDIS_URL` | Redis connection string used for billing pub/sub. Defaults to `REDIS_URL` when omitted. |
 
-Add the variables plus the existing toggles to `.env.local` (the setup script writes this JSON automatically):
+Add the variables plus the existing toggles to `apps/api-service/.env.local` (the setup script writes this JSON automatically):
 
 ```env
 ENABLE_BILLING=true
@@ -33,7 +33,7 @@ STRIPE_WEBHOOK_SECRET=whsec_your_signing_secret
 STRIPE_PRODUCT_PRICE_MAP={"starter":"price_123","pro":"price_456"}
 ```
 
-> ⚠️ **Secrets stay local** – Do not reuse the placeholder values from `.env.local.example`, do not commit real keys, and avoid exporting them in your shell history. The backend now fails fast if these values are missing while billing is enabled, so empty strings will not bypass the guard.
+> ⚠️ **Secrets stay local** – Do not reuse the placeholder values from `apps/api-service/.env.local.example`, do not commit real keys, and avoid exporting them in your shell history. The backend now fails fast if these values are missing while billing is enabled, so empty strings will not bypass the guard.
 
 ## Startup validation & troubleshooting
 
@@ -43,7 +43,7 @@ will exit non-zero whenever billing is enabled but a Stripe variable is missing 
 
 | Symptom / Log snippet | What it means | Fix |
 | --- | --- | --- |
-| `RuntimeError: ENABLE_BILLING=true requires Stripe configuration. Set ...` | Billing is enabled but one or more required env vars (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRODUCT_PRICE_MAP`) is missing or empty. | Populate the missing variables in `.env.local` and restart the server. |
+| `RuntimeError: ENABLE_BILLING=true requires Stripe configuration. Set ...` | Billing is enabled but one or more required env vars (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRODUCT_PRICE_MAP`) is missing or empty. | Populate the missing variables in `apps/api-service/.env.local` and restart the server. |
 | `ValueError: Invalid STRIPE_PRODUCT_PRICE_MAP entry...` | The price map string could not be parsed (bad JSON or malformed `plan=price` pairs). | Provide valid JSON (recommended) or comma-delimited `plan=price` entries with no stray spaces. |
 | `INFO ... Stripe billing configuration validated; 2 plan(s) mapped.` (with `stripe_config=` payload) | Startup verification succeeded. Secrets are masked and the log lists the plan codes plus whether the Redis billing stream is enabled. | No action required. If the stream is expected but the log shows `"billing_stream_backend": "disabled"`, set `ENABLE_BILLING_STREAM=true` and configure the Redis URL. |
 
@@ -57,7 +57,7 @@ Use the masked prefixes/suffixes to confirm you copied the right keys without ex
 
 ## Enabling billing end-to-end
 
-1. Populate the variables above in `.env.local`.
+1. Populate the variables above in `apps/api-service/.env.local`.
 2. Ensure Postgres is running (`just dev-up`) and run migrations (`just migrate`).
 3. Flip `ENABLE_BILLING=true` and restart the FastAPI server (`cd apps/api-service && hatch run serve` or your preferred process manager).
 4. On startup the app verifies that Stripe settings are present before wiring the billing repository. Misconfigurations surface immediately with an error that lists the missing env vars.
@@ -80,7 +80,7 @@ The assistant guides you through Stripe CLI login, optional `just dev-up`, Postg
    stripe listen --forward-to http://localhost:8000/webhooks/stripe
    ```
 
-   Copy the printed `whsec_...` secret into `.env.local` (`STRIPE_WEBHOOK_SECRET`). The CLI can rotate secrets at any time, so re-run the helper or update the env file whenever you restart `stripe listen`.
+   Copy the printed `whsec_...` secret into `apps/api-service/.env.local` (`STRIPE_WEBHOOK_SECRET`). The CLI can rotate secrets at any time, so re-run the helper or update the env file whenever you restart `stripe listen`.
 
 2. **Hosted environments** – Create a webhook endpoint in the Stripe Dashboard that points to `https://<your-domain>/webhooks/stripe` and subscribe to the billing-focused events you care about (`customer.subscription.*`, `invoice.*`, `charge.*`). The backend now persists *every* event to the `stripe_events` table before attempting to process it.
 

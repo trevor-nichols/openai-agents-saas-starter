@@ -157,7 +157,7 @@ def _token_payload(user_id: str, tenant_id: str) -> UserSessionTokens:
 
 
 def _build_settings(**overrides: Any) -> Settings:
-    # Use an explicit empty env file to avoid leaking repo-level .env.local defaults
+    # Use an explicit empty env file to avoid leaking developer env defaults
     # (which currently set SIGNUP_ACCESS_POLICY=public). Tests supply the desired
     # policy via overrides, so keep the environment out of the equation.
     return Settings(_env_file=None, **overrides)  # pyright: ignore[reportCallIssue]

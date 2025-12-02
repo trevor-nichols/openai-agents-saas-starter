@@ -10,7 +10,7 @@ This runbook codifies the order-of-operations for shipping schema changes and bi
 | SRE/on-call | Provides Postgres access, observes infra metrics, and enforces the checklist in CI/CD.
 
 ## Prerequisites
-1. **Environment parity** – `.env.local` / deployment secrets contain the target `DATABASE_URL`, Redis URLs, and provider keys. Run `cd packages/starter_cli && python -m starter_cli.app config dump-schema` if you need to confirm coverage.
+1. **Environment parity** – `apps/api-service/.env.local` / deployment secrets contain the target `DATABASE_URL`, Redis URLs, and provider keys. Run `cd packages/starter_cli && python -m starter_cli.app config dump-schema` if you need to confirm coverage.
 2. **Secrets** – `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and the desired `STRIPE_PRODUCT_PRICE_MAP` entries are available (from prior runs or the upcoming release).
 3. **Tooling** – Hatch environment created (`just bootstrap`), Docker/Compose available if you need local Postgres, and Stripe CLI installed+authenticated when using automation for Stripe provisioning.
 4. **Access** – Operator can reach the deployment Postgres instance (psql/SSL tunnels). Verify credentials by running `psql $DATABASE_URL -c 'select 1'` prior to the window.
@@ -77,7 +77,7 @@ The command executes the following steps:
    order by code;
    SQL
    ```
-   Confirm both `starter` and `pro` rows exist, are active, and have Stripe price IDs referenced in `.env.local`.
+   Confirm both `starter` and `pro` rows exist, are active, and have Stripe price IDs referenced in `apps/api-service/.env.local`.
 
 4. **Provider sanity** – `cd packages/starter_cli && python -m starter_cli.app providers validate` and `cd packages/starter_cli && python -m starter_cli.app status summary` (if available) should both return success.
 
@@ -91,7 +91,7 @@ The command executes the following steps:
 
 ## Rollback / Recovery
 1. **Schema rollback** – Use Alembic to revert once: `hatch run alembic -c api-service/alembic.ini downgrade -1`. Coordinate with engineering to confirm whether data migrations require manual cleanup.
-2. **Stripe rollback** – Archive newly created prices/products in the Stripe dashboard or via CLI. Update `.env.local` to point back to known-good `price_…` IDs.
+2. **Stripe rollback** – Archive newly created prices/products in the Stripe dashboard or via CLI. Update `apps/api-service/.env.local` to point back to known-good `price_…` IDs.
 3. **Re-run release** – After fixing issues, repeat the Execution Order (automation or manual) and attach fresh artifacts.
 
 ## Frequently Asked Questions
@@ -102,7 +102,7 @@ No. `AUTO_RUN_MIGRATIONS` remains `false` outside local dev, so pods refuse to a
 Use the `--skip-stripe` flag (once the release command lands) and follow the manual plan seeding steps. Attach the manual evidence to the release summary.
 
 **Q: How do I know which database the CLI targets?**
-`just migrate` loads env files via `starter_cli util run-with-env`, respecting `.env.compose` + `.env.local`. Confirm `DATABASE_URL` before running the commands, especially when using remote Postgres.
+`just migrate` loads env files via `starter_cli util run-with-env`, respecting `.env.compose` + `apps/api-service/.env.local`. Confirm `DATABASE_URL` before running the commands, especially when using remote Postgres.
 
 **Q: When should this runbook be updated?**
 Whenever a new migration workflow, plan catalog change, or CLI flag lands. Log the update in `docs/trackers/MILESTONE_DB_RELEASE_AUTOMATION.md` and reference the change in release notes.

@@ -11,8 +11,8 @@ PROJECT_ROOT = REPO_ROOT  # backward-compat alias for existing imports
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_ENV_FILES: tuple[Path, ...] = (
     REPO_ROOT / ".env.compose",
-    REPO_ROOT / ".env",
-    REPO_ROOT / ".env.local",
+    REPO_ROOT / "apps" / "api-service" / ".env",
+    REPO_ROOT / "apps" / "api-service" / ".env.local",
 )
 DEFAULT_COMPOSE_FILE = REPO_ROOT / "ops" / "compose" / "docker-compose.yml"
 TELEMETRY_ENV_FLAG = "STARTER_CLI_TELEMETRY_OPT_IN"

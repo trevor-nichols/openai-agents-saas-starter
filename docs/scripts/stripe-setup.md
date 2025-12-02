@@ -1,6 +1,6 @@
 # Stripe Developer Setup Script (STRIPE-02)
 
-`python -m starter_cli.app stripe setup` is the interactive helper that bootstraps billing end-to-end for local development. It wraps the Stripe CLI, Docker/Postgres helpers, and the official Stripe Python SDK so you only need to provide your Stripe secrets and pick the monthly price for each plan (Starter + Pro). The command creates or reuses the corresponding Stripe products/prices with a 7-day trial and writes the resulting configuration into `.env.local`.
+`python -m starter_cli.app stripe setup` is the interactive helper that bootstraps billing end-to-end for local development. It wraps the Stripe CLI, Docker/Postgres helpers, and the official Stripe Python SDK so you only need to provide your Stripe secrets and pick the monthly price for each plan (Starter + Pro). The command creates or reuses the corresponding Stripe products/prices with a 7-day trial and writes the resulting configuration into `apps/api-service/.env.local`.
 
 ## Prerequisites
 
@@ -18,12 +18,12 @@ pnpm stripe:setup   # invokes python -m starter_cli.app stripe setup
 ### What happens during the run?
 
 1. **Stripe CLI check** – Verifies installation/auth. If auth is missing it can open <https://dashboard.stripe.com/stripe-cli/auth> and run `stripe login --interactive` inline.
-2. **Postgres helper** – Offers to run `just dev-up` and (optionally) executes a `psql` smoke test against your `DATABASE_URL` (discovered from `.env.local`, `.env`, `.env.compose`, or manual input).
+2. **Postgres helper** – Offers to run `just dev-up` and (optionally) executes a `psql` smoke test against your `DATABASE_URL` (discovered from `apps/api-service/.env.local`, `apps/api-service/.env`, `.env.compose`, or manual input).
 3. **Stripe provisioning** – Prompts for `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and the monthly price for each plan. Using the official Stripe SDK it:
    - creates (or updates) the `starter` and `pro` products,
    - ensures each product has a monthly price with a 7-day trial, and
    - records the resulting price IDs in `STRIPE_PRODUCT_PRICE_MAP`.
-4. **Env writer** – Stores the secrets + JSON map inside `.env.local` and flips `ENABLE_BILLING=true`. Existing values are detected so you can opt to keep them.
+4. **Env writer** – Stores the secrets + JSON map inside `apps/api-service/.env.local` and flips `ENABLE_BILLING=true`. Existing values are detected so you can opt to keep them.
 
 Sample output (abbreviated):
 
@@ -34,7 +34,7 @@ Sample output (abbreviated):
 ...
 [SUCCESS] Configured Starter (USD 29.00) → price_1Qabcd...
 [SUCCESS] Configured Pro (USD 79.00) → price_1Qefgh...
-[SUCCESS] Stripe configuration captured in .env.local
+[SUCCESS] Stripe configuration captured in apps/api-service/.env.local
 {
   "STRIPE_SECRET_KEY": "sk_test…1234",
   "STRIPE_WEBHOOK_SECRET": "whsec…abcd",

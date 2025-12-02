@@ -278,7 +278,7 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     webhook_parser.add_argument(
         "--print-only",
         action="store_true",
-        help="Print the secret without writing .env.local.",
+        help="Print the secret without writing apps/api-service/.env.local.",
     )
     webhook_parser.add_argument(
         "--skip-stripe-cli",
@@ -442,7 +442,10 @@ class StripeSetupFlow(StripeCLIBase):
         price_map = self._provision_plans(secret_key, plan_amounts)
         self._update_env(env_files[0], price_map, secret_key, webhook_secret)
 
-        console.success("Stripe configuration captured in .env.local", topic="stripe")
+        console.success(
+            "Stripe configuration captured in apps/api-service/.env.local",
+            topic="stripe",
+        )
         summary = json.dumps(
             {
                 "STRIPE_SECRET_KEY": self._mask(secret_key),
@@ -467,8 +470,8 @@ class StripeSetupFlow(StripeCLIBase):
         signal.signal(signal.SIGTERM, self._graceful_exit)
 
     def _load_env_files(self) -> tuple[EnvFile, EnvFile, EnvFile]:
-        env_local = EnvFile(self.ctx.project_root / ".env.local")
-        env_fallback = EnvFile(self.ctx.project_root / ".env")
+        env_local = EnvFile(self.ctx.project_root / "apps" / "api-service" / ".env.local")
+        env_fallback = EnvFile(self.ctx.project_root / "apps" / "api-service" / ".env")
         env_compose = EnvFile(self.ctx.project_root / ".env.compose")
         return (env_local, env_fallback, env_compose)
 
@@ -733,12 +736,12 @@ class WebhookSecretFlow(StripeCLIBase):
             print(secret)
             return
 
-        env_local = EnvFile(self.ctx.project_root / ".env.local")
+        env_local = EnvFile(self.ctx.project_root / "apps" / "api-service" / ".env.local")
         env_local.set("STRIPE_WEBHOOK_SECRET", secret)
         env_local.save()
         os.environ["STRIPE_WEBHOOK_SECRET"] = secret
         console.success(
-            f"Saved STRIPE_WEBHOOK_SECRET={self._mask(secret)} to .env.local",
+            f"Saved STRIPE_WEBHOOK_SECRET={self._mask(secret)} to apps/api-service/.env.local",
             topic="stripe",
         )
 

@@ -31,7 +31,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--skip-env",
         action="store_true",
-        help="Skip loading default env files (.env.local, .env, .env.compose).",
+        help=(
+            "Skip loading default env files (.env.compose, apps/api-service/.env.local, "
+            "apps/api-service/.env, .env)."
+        ),
     )
     parser.add_argument(
         "--quiet-env",

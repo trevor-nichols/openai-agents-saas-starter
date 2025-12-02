@@ -77,7 +77,7 @@ These guardrails prevent Homebrew/pyenv Pythons from shadowing the repo’s virt
 
 ### 3. Environment Configuration
 
-Copy `.env.local.example` to `.env.local` and configure every secret (do **not** reuse the sample values outside local dev). Sections are labeled to indicate what is **required** vs **optional** in production; the CLI setup wizard will surface the same groupings. Highlights:
+Copy `apps/api-service/.env.local.example` to `apps/api-service/.env.local` and configure every secret (do **not** reuse the sample values outside local dev). Sections are labeled to indicate what is **required** vs **optional** in production; the CLI setup wizard will surface the same groupings. Highlights:
 
 ```bash
 # Core application (required)
@@ -178,7 +178,7 @@ python -m starter_cli.app infra compose up    # start Postgres + Redis via docke
 python -m starter_cli.app infra vault up      # run the Vault dev signer helper
 ```
 
-The wizard now walks through profiles (local/staging/production), captures required vs. optional secrets, verifies Vault Transit connectivity before enabling service-account issuance, validates Stripe/Redis/Resend inputs (with optional migration + seeding helpers), and records tenant/logging/GeoIP/signup policies so auditors can trace every decision. It writes `.env.local` + `web-app/.env.local`, then emits a milestone-aligned report. Stripe provisioning and auth tooling now live exclusively under the consolidated CLI (`python -m starter_cli.app stripe …`, `python -m starter_cli.app auth …`).
+The wizard now walks through profiles (local/staging/production), captures required vs. optional secrets, verifies Vault Transit connectivity before enabling service-account issuance, validates Stripe/Redis/Resend inputs (with optional migration + seeding helpers), and records tenant/logging/GeoIP/signup policies so auditors can trace every decision. It writes `apps/api-service/.env.local` + `web-app/.env.local`, then emits a milestone-aligned report. Stripe provisioning and auth tooling now live exclusively under the consolidated CLI (`python -m starter_cli.app stripe …`, `python -m starter_cli.app auth …`).
 
 After the wizard, use the new `infra` command group instead of raw Just recipes:
 
@@ -198,12 +198,12 @@ The API will be available at `http://localhost:8000`
 
 > **Compose vs. application env files**
 > - `.env.compose` (tracked) holds the non-sensitive defaults that Docker Compose needs (ports, default credentials, project name). You should not edit this file.
-> - `.env.local` (gitignored) contains your secrets and any overrides. The Make targets below source **both** files, so you never have to `export` variables manually.
+> - `apps/api-service/.env.local` (gitignored) contains your secrets and any overrides. The Make targets below source **both** files, so you never have to `export` variables manually.
 > - `.env.compose` now sets `DATABASE_URL`, so durable Postgres storage is the out-of-the-box behavior.
 
 ### 5. Database & Migrations
 
-1. Start the infrastructure stack (Postgres + Redis) via the helper, which automatically sources `.env.compose` and your `.env.local`:
+1. Start the infrastructure stack (Postgres + Redis) via the helper, which automatically sources `.env.compose` and your `apps/api-service/.env.local`:
    ```bash
    just dev-up
    ```
@@ -219,7 +219,7 @@ The API will be available at `http://localhost:8000`
 
 ### 6. Seed a Local Admin User
 
-Once Postgres is running and the new auth tables are migrated, create a bootstrap user via the CLI (the Just recipes automatically load both `.env.compose` and `.env.local`):
+Once Postgres is running and the new auth tables are migrated, create a bootstrap user via the CLI (the Just recipes automatically load both `.env.compose` and `apps/api-service/.env.local`):
 
 ```bash
 python -m starter_cli.app users seed --email admin@example.com --tenant-slug default --role admin
@@ -285,7 +285,7 @@ curl -X POST "http://localhost:8000/api/v1/billing/tenants/tenant-123/usage" \
 
 #### Stripe configuration
 
-Billing routes now require Stripe credentials whenever `ENABLE_BILLING=true`. The quickest path is to run the consolidated operator CLI via `python -m starter_cli.app stripe setup` (aliased by `pnpm stripe:setup`), which prompts for your Stripe secret/webhook secrets, asks how much to charge for the Starter + Pro plans, and then creates/reuses the corresponding Stripe products/prices (7-day trial included). The CLI writes `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PRODUCT_PRICE_MAP` into `.env.local` and flips `ENABLE_BILLING=true` for you. Prefer manual edits? You can still populate those keys yourself—just keep the JSON map in sync with your real Stripe price IDs. See `docs/billing/stripe-setup.md` for the full checklist.
+Billing routes now require Stripe credentials whenever `ENABLE_BILLING=true`. The quickest path is to run the consolidated operator CLI via `python -m starter_cli.app stripe setup` (aliased by `pnpm stripe:setup`), which prompts for your Stripe secret/webhook secrets, asks how much to charge for the Starter + Pro plans, and then creates/reuses the corresponding Stripe products/prices (7-day trial included). The CLI writes `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PRODUCT_PRICE_MAP` into `apps/api-service/.env.local` and flips `ENABLE_BILLING=true` for you. Prefer manual edits? You can still populate those keys yourself—just keep the JSON map in sync with your real Stripe price IDs. See `docs/billing/stripe-setup.md` for the full checklist.
 
 ## 📈 Observability & Logging
 
@@ -350,7 +350,7 @@ POST /api/v1/chat
 POST /api/v1/chat/stream
 # Returns Server-Sent Events stream
 
-> **Rate limits:** Chat and streaming endpoints enforce per-user quotas (`CHAT_RATE_LIMIT_PER_MINUTE`, `CHAT_STREAM_RATE_LIMIT_PER_MINUTE`) plus concurrent stream caps (`CHAT_STREAM_CONCURRENT_LIMIT`). Adjust these environment variables (see `.env.local.example`) to tune throughput per environment and watch for HTTP 429 responses if callers exceed the limits.
+> **Rate limits:** Chat and streaming endpoints enforce per-user quotas (`CHAT_RATE_LIMIT_PER_MINUTE`, `CHAT_STREAM_RATE_LIMIT_PER_MINUTE`) plus concurrent stream caps (`CHAT_STREAM_CONCURRENT_LIMIT`). Adjust these environment variables (see `apps/api-service/.env.local.example`) to tune throughput per environment and watch for HTTP 429 responses if callers exceed the limits.
 ```
 
 ### Conversation Management

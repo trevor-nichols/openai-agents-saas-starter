@@ -345,8 +345,8 @@ class DatabaseReleaseWorkflow:
             return str(self.summary_path)
 
     def _load_env_files(self) -> tuple[EnvFile, EnvFile, EnvFile]:
-        env_local = EnvFile(self.project_root / ".env.local")
-        env_fallback = EnvFile(self.project_root / ".env")
+        env_local = EnvFile(self.project_root / "apps" / "api-service" / ".env.local")
+        env_fallback = EnvFile(self.project_root / "apps" / "api-service" / ".env")
         env_compose = EnvFile(self.project_root / ".env.compose")
         return (env_local, env_fallback, env_compose)
 

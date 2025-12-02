@@ -526,7 +526,8 @@ class StartRunner:
         try:
             if os.name == "nt":
                 # CTRL_BREAK reaches the new process group created above
-                sig = signal.CTRL_BREAK_EVENT if not force else signal.SIGTERM
+                ctrl_break = getattr(signal, "CTRL_BREAK_EVENT", signal.SIGTERM)
+                sig = ctrl_break if not force else signal.SIGTERM
                 proc.send_signal(sig)
             else:
                 sig = signal.SIGKILL if force else signal.SIGTERM

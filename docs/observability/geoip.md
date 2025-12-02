@@ -23,7 +23,7 @@ All providers honor the shared cache knobs: `GEOIP_CACHE_TTL_SECONDS`, `GEOIP_CA
 ### 3.1 SaaS APIs (IPinfo, IP2Location)
 1. Run `python -m starter_cli.app setup wizard --profile <env>` (interactive) or pass `--answers-file` for headless mode.
 2. In the `[M3] Tenant & Observability` step choose `ipinfo` or `ip2location`.
-3. Provide the API token when prompted. Secrets are written to `.env.local` with masking in the console output.
+3. Provide the API token when prompted. Secrets are written to `apps/api-service/.env.local` with masking in the console output.
 4. Adjust cache TTL/capacity/timeouts if the default 900 s/4 096 entries/2 seconds does not match your expected login burst.
 5. Redeploy FastAPI or restart the dev server; the container bootstrap will instantiate the correct provider immediately.
 

@@ -80,7 +80,8 @@ _BASE_ENV = dict(os.environ)
 @pytest.fixture()
 def cli_ctx(tmp_path: Path) -> CLIContext:
     project_root = tmp_path
-    env_path = project_root / ".env.local"
+    env_path = project_root / "apps" / "api-service" / ".env.local"
+    env_path.parent.mkdir(parents=True, exist_ok=True)
     env_path.write_text("", encoding="utf-8")
     return CLIContext(project_root=project_root, env_files=(env_path,))
 
@@ -93,7 +94,7 @@ def env_snapshot():
 
 
 def _build_context(cli_ctx: CLIContext, *, profile: str = "local") -> WizardContext:
-    backend_env = EnvFile(cli_ctx.project_root / ".env.local")
+    backend_env = EnvFile(cli_ctx.project_root / "apps" / "api-service" / ".env.local")
     return WizardContext(
         cli_ctx=cli_ctx,
         profile=profile,
@@ -207,7 +208,7 @@ def test_frontend_section_writes_env_values(cli_ctx: CLIContext, tmp_path: Path)
     context = WizardContext(
         cli_ctx=cli_ctx,
         profile="staging",
-        backend_env=EnvFile(cli_ctx.project_root / ".env.local"),
+        backend_env=EnvFile(cli_ctx.project_root / "apps" / "api-service" / ".env.local"),
         frontend_env=frontend_env,
         frontend_path=frontend_env_path,
     )

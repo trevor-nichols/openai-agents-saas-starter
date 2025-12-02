@@ -33,7 +33,7 @@ Our SaaS starter currently hardcodes Vault as the only secrets/signing backend. 
 ### Phase 2 — CLI Onboarding UX (ETA: 4 days)
 - Add `starter_cli secrets onboard` with interactive + non-interactive flags.
 - Menu covers Vault Dev, HCP Vault, Infisical Cloud, Infisical Self-Host (others stubbed as “coming soon”).
-- Each path emits `.env`/`.env.local` snippets and runs a post-setup health check.
+- Each path emits `apps/api-service/.env`/`apps/api-service/.env.local` snippets and runs a post-setup health check.
 - Integration tests mock external APIs (Vault sys/health, HCP, Infisical) to keep CI hermetic.
 
 ### Phase 3 — Infisical Integration (ETA: 6 days)
@@ -101,7 +101,7 @@ class SecretProviderProtocol(Protocol):
 ### 6.5 CLI Onboarding Command
 - New command: `starter_cli secrets onboard [--provider ...] [--non-interactive --answers-file path]`.
 - Supported choices in Phase 1: `vault_dev` (runs `just vault-up`, captures printed envs), `hcp_vault` (prompts for HCP org/project + service principal, optionally hits HCP API), `infisical_cloud` (runs `infisical login/init`, captures workspace/env IDs), `infisical_self_host` (downloads Infisical compose bundle, runs docker compose up, collects admin token).
-- Output artifacts: `.env.local` snippets for backend/frontend, optional CI secret checklist, post-setup validation summary.
+- Output artifacts: `apps/api-service/.env.local` snippets for backend/frontend, optional CI secret checklist, post-setup validation summary.
 
 ### 6.6 Next Steps (Phase 1 Prep)
 1. Scaffold `app/domain/secrets.py` + `starter_contracts/secrets/models.py` with the Protocol/types above.

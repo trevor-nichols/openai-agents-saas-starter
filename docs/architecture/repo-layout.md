@@ -15,8 +15,8 @@ packages/
   starter_contracts/    # shared contracts/lib
 tools/                  # shared scripts (typecheck, smoke, moduleviz, vault helpers)
 var/                    # runtime artifacts (keys/, logs/, reports/) — gitignored
-.env.local(.example)    # runtime secrets for services
 .env.compose(.example)  # docker-compose defaults
+apps/api-service/.env.local(.example)    # backend runtime secrets
 pnpm-workspace.yaml     # JS/TS workspaces (apps/*, packages/*)
 tsconfig.scripts.json   # TS settings for tools
 .github/                # CI workflows, issue templates

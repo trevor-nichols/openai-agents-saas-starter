@@ -22,7 +22,8 @@ from starter_cli.workflows.setup.validators import set_vault_probe_request
 
 @pytest.fixture()
 def temp_ctx(tmp_path: Path) -> CLIContext:
-    env_path = tmp_path / ".env.local"
+    env_path = tmp_path / "apps" / "api-service" / ".env.local"
+    env_path.parent.mkdir(parents=True, exist_ok=True)
     env_path.write_text("", encoding="utf-8")
     return CLIContext(project_root=tmp_path, env_files=(env_path,))
 
@@ -35,6 +36,10 @@ def stub_vault_probe():
     set_vault_probe_request(fake_request)
     yield
     set_vault_probe_request(None)
+
+
+def backend_env_path(ctx: CLIContext) -> Path:
+    return ctx.project_root / "apps" / "api-service" / ".env.local"
 
 
 def _cleanup_env(snapshot: dict[str, str]) -> None:
@@ -128,7 +133,7 @@ def test_wizard_headless_local_generates_env(temp_ctx: CLIContext) -> None:
     )
     wizard.execute()
 
-    env_body = (temp_ctx.project_root / ".env.local").read_text(encoding="utf-8")
+    env_body = backend_env_path(temp_ctx).read_text(encoding="utf-8")
     assert "OPENAI_API_KEY" in env_body
     assert "TENANT_DEFAULT_SLUG=local" in env_body
     assert "API_BASE_URL=http://127.0.0.1:8000" in env_body
@@ -155,7 +160,7 @@ def test_wizard_configures_slack_section(temp_ctx: CLIContext) -> None:
     )
     wizard.execute()
 
-    env_body = (temp_ctx.project_root / ".env.local").read_text(encoding="utf-8")
+    env_body = backend_env_path(temp_ctx).read_text(encoding="utf-8")
     assert "ENABLE_SLACK_STATUS_NOTIFICATIONS=true" in env_body
     assert 'SLACK_STATUS_DEFAULT_CHANNELS="#incidents"' in env_body
     assert "SLACK_STATUS_BOT_TOKEN=xoxb-test" in env_body
@@ -204,7 +209,7 @@ def test_wizard_configures_bundled_collector(temp_ctx: CLIContext) -> None:
     )
     wizard.execute()
 
-    env_body = (temp_ctx.project_root / ".env.local").read_text(encoding="utf-8")
+    env_body = backend_env_path(temp_ctx).read_text(encoding="utf-8")
     assert "ENABLE_OTEL_COLLECTOR=true" in env_body
     assert "LOGGING_OTLP_ENDPOINT=http://otel-collector:4318/v1/logs" in env_body
     assert "OTEL_EXPORTER_SENTRY_ENDPOINT=https://o11y.ingest.sentry.io/api/42/otlp" in env_body
@@ -384,7 +389,7 @@ def test_wizard_writes_dedicated_worker_artifacts(temp_ctx: CLIContext) -> None:
     )
     wizard.execute()
 
-    env_body = (temp_ctx.project_root / ".env.local").read_text(encoding="utf-8")
+    env_body = backend_env_path(temp_ctx).read_text(encoding="utf-8")
     assert "ENABLE_BILLING_RETRY_WORKER=false" in env_body
     assert "ENABLE_BILLING_STREAM_REPLAY=false" in env_body
     assert "BILLING_RETRY_DEPLOYMENT_MODE=dedicated" in env_body
@@ -403,7 +408,7 @@ def test_wizard_writes_dedicated_worker_artifacts(temp_ctx: CLIContext) -> None:
 
 def test_wizard_refreshes_cached_settings(temp_ctx: CLIContext) -> None:
     # Seed .env.local with an initial value so Settings caches it.
-    env_file = temp_ctx.project_root / ".env.local"
+    env_file = backend_env_path(temp_ctx)
     env_file.write_text("ALLOW_PUBLIC_SIGNUP=false\n", encoding="utf-8")
 
     temp_ctx.load_environment(verbose=False)
@@ -469,7 +474,7 @@ def test_wizard_refreshes_cached_settings(temp_ctx: CLIContext) -> None:
 
 
 def test_wizard_clears_optional_provider_keys(temp_ctx: CLIContext) -> None:
-    env_file = temp_ctx.project_root / ".env.local"
+    env_file = backend_env_path(temp_ctx)
     env_file.write_text(
         "\n".join(
             [
@@ -605,7 +610,7 @@ def test_wizard_does_not_leak_env_values(temp_ctx: CLIContext) -> None:
 
 
 def test_wizard_rotates_new_peppers(monkeypatch, temp_ctx: CLIContext) -> None:
-    env_file = temp_ctx.project_root / ".env.local"
+    env_file = backend_env_path(temp_ctx)
     env_file.write_text(
         "\n".join(
             [
@@ -786,7 +791,7 @@ def test_wizard_summary_writes_milestones(temp_ctx: CLIContext) -> None:
 
 
 def test_collect_database_allows_clearing_local(temp_ctx: CLIContext) -> None:
-    env_path = temp_ctx.project_root / ".env.local"
+    env_path = backend_env_path(temp_ctx)
     env_path.write_text(
         "DATABASE_URL=postgresql+asyncpg://remote.example/saas_strarter_db\n",
         encoding="utf-8",

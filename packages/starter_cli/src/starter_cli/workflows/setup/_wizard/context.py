@@ -174,7 +174,7 @@ class WizardContext:
     # ------------------------------------------------------------------
     def save_env_files(self) -> None:
         self.backend_env.save()
-        console.success("Updated .env.local", topic="wizard")
+        console.success("Updated apps/api-service/.env.local", topic="wizard")
         if self.frontend_env:
             self.frontend_env.save()
             console.success("Updated web-app/.env.local", topic="wizard")
@@ -246,7 +246,7 @@ class WizardContext:
 
 
 def build_env_files(cli_ctx: CLIContext) -> tuple[EnvFile, EnvFile | None, Path | None]:
-    backend_path = cli_ctx.project_root / ".env.local"
+    backend_path = cli_ctx.project_root / "apps" / "api-service" / ".env.local"
     backend_path.parent.mkdir(parents=True, exist_ok=True)
     backend_env = EnvFile(backend_path)
 

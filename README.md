@@ -22,8 +22,8 @@ packages/
   starter_contracts/    # shared contracts
 tools/                  # shared scripts (typecheck, smoke, moduleviz, vault helpers)
 var/                    # runtime artifacts (keys, logs, reports) — gitignored
-.env.local(.example)    # service secrets
 .env.compose(.example)  # docker compose defaults
+apps/api-service/.env.local(.example)    # backend service secrets
 pnpm-workspace.yaml     # JS/TS workspaces (apps/*, packages/*)
 tsconfig.scripts.json   # TS config for repo scripts
 ```
@@ -68,7 +68,7 @@ See `docs/architecture/repo-layout.md` for rules and ownership.
    python -m starter_cli.app setup wizard --profile local
    # OR from repo root: just cli cmd="setup wizard --profile local"
    ```  
-   The wizard writes `.env.local` (backend) and `apps/web-app/.env.local`, covering secrets, providers, tenants, signup policy, and frontend runtime config. Use `--non-interactive`, `--answers-file`, and `--summary-path` for headless or auditable runs.
+   The wizard writes `apps/api-service/.env.local` (backend) and `apps/web-app/.env.local`, covering secrets, providers, tenants, signup policy, and frontend runtime config. Use `--non-interactive`, `--answers-file`, and `--summary-path` for headless or auditable runs.
 4. **Bring up local infrastructure**  
    ```bash
    just dev-up        # Postgres + Redis
@@ -80,7 +80,7 @@ See `docs/architecture/repo-layout.md` for rules and ownership.
   ```bash
   just api
   ```  
-  Wraps `cd apps/api-service && hatch run serve` with `.env.compose` + `.env.local`. Use `just migrate` / `just migration-revision message="add_users"` for Alembic workflows.
+  Wraps `cd apps/api-service && hatch run serve` with `.env.compose` + `apps/api-service/.env.local`. Use `just migrate` / `just migration-revision message="add_users"` for Alembic workflows.
 
 - **Frontend App**  
   ```bash
@@ -112,7 +112,7 @@ Refer to `starter_cli/README.md` for detailed flags, answers-file formats, and c
 
 ## Development Workflow
 - Keep FastAPI routers <300 lines; extract shared helpers once reused.
-- Redis is dual-use: refresh-token cache and billing event transport. Coordinate settings through the wizard or `.env.local`.
+- Redis is dual-use: refresh-token cache and billing event transport. Coordinate settings through the wizard or `apps/api-service/.env.local`.
 - Secrets live in `var/keys/`; Vault workflows (`just vault-up`, `just verify-vault`) help issue signed tokens locally.
 - Tests are SQLite + fakeredis by default (`conftest.py`); avoid leaking env mutations between tests.
 - Backend edits → `cd apps/api-service && hatch run lint` & `hatch run pyright`; frontend edits → `cd apps/web-app && pnpm lint` & `pnpm type-check`.

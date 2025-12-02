@@ -63,7 +63,7 @@ This tracker captures the Starter CLI setup flow plus the recommended environmen
      --scopes chat:write,conversations:read
    ```
 5. **Promote configs**  
-   - Copy `.env.local` + `web-app/.env.local` outputs into the staging secrets store.
+   - Copy `apps/api-service/.env.local` + `web-app/.env.local` outputs into the staging secrets store.
    - Re-run the wizard with `--profile staging --no-auto-infra --no-auto-secrets` to validate hosted dependencies before shipping.
 6. **Document findings**  
    - Check `var/reports/setup-summary.json` and `cli-one-stop-summary.md` into the operator runbook for each milestone.

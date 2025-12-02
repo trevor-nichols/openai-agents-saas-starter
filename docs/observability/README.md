@@ -10,7 +10,7 @@ This doc explains how the starter repo ships a turnkey OpenTelemetry Collector s
 1. Run the Starter CLI setup wizard (interactive or headless) and select `otlp` as your logging sink.
 2. When prompted, choose **“Start bundled OpenTelemetry Collector”** to let docker compose manage the collector container.
 3. (Optional) Enable Sentry and/or Datadog exporters directly from the wizard—provide the OTLP endpoint + bearer token for Sentry or the API key + site for Datadog.
-4. The wizard writes the env vars below to `.env.local`, and `just dev-up` renders `var/observability/collector.generated.yaml` before launching `otel/opentelemetry-collector-contrib:0.139.0` with those settings.
+4. The wizard writes the env vars below to `apps/api-service/.env.local`, and `just dev-up` renders `var/observability/collector.generated.yaml` before launching `otel/opentelemetry-collector-contrib:0.139.0` with those settings.
 5. FastAPI points `LOGGING_OTLP_ENDPOINT` at `http://otel-collector:4318/v1/logs` automatically, so structured logs flow through the collector and on to any configured exporters.
 
 ## Services & Ports
@@ -55,7 +55,7 @@ The collector image is pinned to `otel/opentelemetry-collector-contrib:0.139.0`,
 - Auth is required unless `ALLOW_ANON_FRONTEND_LOGS=true` **and** the client sends `X-Log-Signature` = `hex(hmac_sha256(FRONTEND_LOG_SHARED_SECRET, raw_body))`.
 - Server/dev console output can also be tee’d to `LOG_ROOT/<date>/frontend/all.log` / `error.log` when you wrap dev with `node scripts/with-log-root.js` (already wired into `pnpm dev`).
 
-The wizard stores secrets in `.env.local` only. The generated collector config lives under `var/observability/collector.generated.yaml`, which is gitignored to avoid leaking API keys.
+The wizard stores secrets in `apps/api-service/.env.local` only. The generated collector config lives under `var/observability/collector.generated.yaml`, which is gitignored to avoid leaking API keys.
 
 ## Code Flow
 
@@ -123,4 +123,4 @@ The test renders a one-off collector config, starts `otel/opentelemetry-collecto
 
 - You can keep using the bundled collector in production (deploy it alongside FastAPI) or point `LOGGING_OTLP_ENDPOINT` at your managed OpenTelemetry Collector / SaaS endpoint.
 - For production secrets, use the existing secrets-provider workflow (Vault, AWS Secrets Manager, Infisical, etc.) to template `.env` before rendering the collector config—never commit the generated file.
-- If you disable the bundled collector later, rerun the wizard (or edit `.env.local`) to set `ENABLE_OTEL_COLLECTOR=false`. FastAPI can still log to any external OTLP endpoint—only the docker compose automation is tied to this flag.
+- If you disable the bundled collector later, rerun the wizard (or edit `apps/api-service/.env.local`) to set `ENABLE_OTEL_COLLECTOR=false`. FastAPI can still log to any external OTLP endpoint—only the docker compose automation is tied to this flag.

@@ -18,7 +18,7 @@ packages/
   starter_contracts/    # shared contracts/lib
 tools/                  # shared scripts (smoke tests, moduleviz, vault helpers, env inventory)
 var/                    # runtime artifacts (keys, logs, reports) – gitignored, documented
-.env.local(.example)
+.env.local(.example) -> apps/api-service/.env.local(.example)
 .env.compose(.example)
 pnpm-workspace.yaml     # spans apps/* and packages/* JS/TS workspaces
 tsconfig.scripts.json   # shared TS config for tools/scripts
@@ -37,12 +37,12 @@ What was done
 - Collected path-sensitive tooling that will break when directories move.
 
 Inventory highlights
-- Root still owns (pre-move snapshot): `api-service/`, `web-app/`, `starter_cli/`, `starter_contracts/`, `scripts/`, `ops/`, `var/`, `.env.local`, `.env.compose`, `pnpm-workspace.yaml`, `tsconfig.scripts.json`, `justfile`, node_modules/.venv (gitignored). No nested `api-service/api-service` folder exists; only `api-service/.artifacts` is present.
+- Root still owns (post-move snapshot): `apps/api-service/`, `apps/web-app/`, `packages/starter_cli/`, `packages/starter_contracts/`, `scripts/`, `ops/`, `var/`, `.env.compose`, `pnpm-workspace.yaml`, `tsconfig.scripts.json`, `justfile`, node_modules/.venv (gitignored). No nested `api-service/api-service` folder exists; only `api-service/.artifacts` is present.
 - `var/` contains `keys/`, `log/`, `logs/`, `reports/`; fully gitignored (note: var/ blanket ignore will hide future runtime assets unless explicitly surfaced).
 - Ops: compose files live at `ops/compose/*.yml`; observability generator at `ops/observability/render_collector_config.py` used by just recipes.
 
 Env + gitignore posture
-- Env files in root: `.env.local`, `.env.local.example`, `.env.compose`, `.env.compose.example`; all gitignored alongside generic `.env*` variants.
+- Env files: `apps/api-service/.env.local`, `apps/api-service/.env.local.example`, `.env.compose`, `.env.compose.example`; all gitignored alongside generic `.env*` variants.
 - `var/` is globally ignored; caches (`.ruff_cache`, `.mypy_cache`, `.pytest_cache`, `.next`) are already covered. Keeping env + var at root is compatible with the target layout; future `apps/*` and `packages/*` need no gitignore changes unless we add new build dirs.
 
 Path-sensitive tooling (must update in Phases 2–3)

@@ -17,7 +17,7 @@ This runbook explains how to operate the Resend-backed email delivery path for v
 
 ## Enabling Resend
 
-1. Populate the env vars above in `.env.local` (dev) or deployment secrets.
+1. Populate the env vars above in `apps/api-service/.env.local` (dev) or deployment secrets.
 2. Deploy. The service builders automatically switch to the Resend notifier when `RESEND_EMAIL_ENABLED=true`.
 3. Watch metrics/alerts (see Monitoring below) for the first few sends.
 

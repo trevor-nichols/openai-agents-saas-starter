@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 from types import MethodType
 from typing import Any, Literal, cast
 
@@ -25,8 +26,13 @@ signup_policy_logger = logging.getLogger("app.core.settings.signup")
 class BaseAppSettings(BaseSettings):
     """Shared base for all application settings."""
 
+    _APP_ROOT = Path(__file__).resolve().parents[4]
+
     model_config = {
-        "env_file": (".env.local", ".env"),
+        "env_file": (
+            _APP_ROOT / ".env",
+            _APP_ROOT / ".env.local",
+        ),
         "env_file_encoding": "utf-8",
         "case_sensitive": False,
         "extra": "ignore",

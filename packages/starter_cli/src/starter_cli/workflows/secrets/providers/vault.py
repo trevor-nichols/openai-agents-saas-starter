@@ -60,7 +60,7 @@ def run_vault_dev(
 
     steps = [
         "Run `just vault-up` to start the local dev signer (remains in-memory, non-production).",
-        "Export the variables above or add them to .env.local / .env.compose.",
+        "Export the variables above or add them to apps/api-service/.env.local / .env.compose.",
         "Re-run `just verify-vault` after updating FastAPI env to ensure end-to-end signing works.",
     ]
 

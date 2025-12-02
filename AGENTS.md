@@ -114,14 +114,14 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 # Notes
 - Throughout the codebase, you will see `SNAPSHOT.md` files. `SNAPSHOT.md` files contain the full structure of the codebase at a given point in time. Refer to these files when you need understand the architecture or need help navigating the codebase.
 - Refer to `docs/trackers/` for the latest status of the codebase. Keep these trackers up to date with the latest changes and status of the codebase.
-- When applying database migrations or generating new ones, always use the Just recipes (`just migrate`, `just migration-revision message="..."`) so your `.env.local`/`.env` secrets and `.env.compose` values are loaded consistently. These wrappers take care of wiring Alembic to the right Postgres instance (local Docker or remote) without manual exports.
+- When applying database migrations or generating new ones, always use the Just recipes (`just migrate`, `just migration-revision message="..."`) so your `apps/api-service/.env.local` secrets and `.env.compose` values are loaded consistently. These wrappers take care of wiring Alembic to the right Postgres instance (local Docker or remote) without manual exports.
 - Need to test Vault Transit locally? Use `just vault-up` to start the dev signer, `just verify-vault` to run the CLI issuance smoke test, and `just vault-down` when you’re done. Details live in `docs/security/vault-transit-signing.md`.
 - Thishe repo hasn’t shipped a “stable” release yet, so we don’t carry any backward-compat baggage.
 - When you come across a situation where you need the latest documentation, use your web search tool
 
 ## Local Logs (one place)
 - All local logs live under `var/log/<YYYY-MM-DD>/` at the repo root (`var/log/current` points to today).
-- Backend (FastAPI): `var/log/current/api/all.log` and `error.log` (requires `LOGGING_SINK=file`, set in `.env.local`).
+- Backend (FastAPI): `var/log/current/api/all.log` and `error.log` (requires `LOGGING_SINK=file`, set in `apps/api-service/.env.local`).
 - Frontend (Next dev): `var/log/current/frontend/all.log` and `error.log` via the bundled log tee used by `pnpm dev`.
 - CLI (detached runs): `var/log/current/cli/*.log` per process when started with `just start-dev -- --detached`.
 - Quick tail: `python -m starter_cli.app logs tail --service api --service frontend --errors`.

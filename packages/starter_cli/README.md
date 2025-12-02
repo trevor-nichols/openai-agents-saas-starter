@@ -30,8 +30,7 @@ starter-cli --help
 
 Environment loading rules:
 
-1. By default the CLI loads `.env.compose`, `.env`, and `.env.local` in that order (see
-   `starter_cli/core/context.py`).
+1. By default the CLI loads `.env.compose`, `apps/api-service/.env.local`, and `apps/api-service/.env` in that order (see `starter_cli/core/context.py`).
 2. Use `--env-file PATH` to append additional env files.
 3. Pass `--skip-env` (or export `STARTER_CLI_SKIP_ENV=true`) to rely solely on explicit
    `--env-file` arguments or the current shell.
@@ -60,7 +59,7 @@ Most subcommands support headless execution. Provide answers via one or more JSO
 
 ### 1. `setup wizard`
 
-Guided setup that writes `.env.local` (backend) and, when present, `web-app/.env.local`.
+Guided setup that writes `apps/api-service/.env.local` (backend) and, when present, `web-app/.env.local`.
 The flow covers five milestones plus frontend wiring:
 
 | Milestone | Focus | Key outputs |
@@ -122,7 +121,7 @@ Artifacts generated per run:
 4. Replay the wizard headlessly with `python -m starter_cli.app setup wizard --profile staging --non-interactive --answers-file ops/environments/staging.json`.
 5. For hardened runs, add `--strict` (production only) so the CLI refuses to prompt and enforces that every answer is pre-supplied.
 
-This workflow keeps a single schema-driven wizard while avoiding ad-hoc copying of `.env.local` files between environments.
+This workflow keeps a single schema-driven wizard while avoiding ad-hoc copying of `apps/api-service/.env.local` files between environments.
 
 #### Dashboard + Dependency Graph
 
@@ -147,7 +146,7 @@ Onboards a hosted secrets/signing provider. Available runners today: Vault Dev, 
 1. Prompts (or reads headless answers) for provider-specific values.
 2. Validates connectivity (e.g., Vault transit probe, AWS `GetSecretValue`, Azure Key Vault reads,
    Infisical API check).
-3. Prints env updates + next steps so you can copy them into `.env.local` or CI secrets.
+3. Prints env updates + next steps so you can copy them into `apps/api-service/.env.local` or CI secrets.
 4. Optionally runs helper Just recipes (e.g., `just vault-up`).
 
 ### 3. `stripe setup`
@@ -162,11 +161,11 @@ Interactive provisioning of Stripe products/prices plus secret capture:
   `--auto-webhook-secret` or the wizard prompt (local profile).
 - Ensures one product & price per plan (`starter`, `pro`) in Stripe and writes
   `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRODUCT_PRICE_MAP`, and `ENABLE_BILLING=true`
-  into `.env.local`, plus `NEXT_PUBLIC_ENABLE_BILLING=true` into `web-app/.env.local` when present.
+  into `apps/api-service/.env.local`, plus `NEXT_PUBLIC_ENABLE_BILLING=true` into `web-app/.env.local` when present.
 
 Convenience command: `python -m starter_cli.app stripe webhook-secret --forward-url <url>` (also
 available as `just stripe-listen`) captures the signing secret via Stripe CLI and writes it to
-`.env.local`.
+`apps/api-service/.env.local`.
 
 Useful flags: `--currency`, `--trial-days`, `--plan code=amount`, `--skip-postgres-check`.
 
@@ -292,7 +291,7 @@ Use this before regenerating the HeyAPI SDK so billing/test-fixture endpoints st
 Utility to merge env files and exec another command (replacement for `scripts/run_with_env.py`):
 
 ```bash
-python -m starter_cli.app --skip-env util run-with-env .env.compose .env.local -- bash -lc "cd apps/api-service && hatch run serve"
+python -m starter_cli.app --skip-env util run-with-env .env.compose apps/api-service/.env.local -- bash -lc "cd apps/api-service && hatch run serve"
 ```
 
 Later env files win on conflicts; the current shell env is preserved.
@@ -311,7 +310,7 @@ Later env files win on conflicts; the current shell env is preserved.
 
 ## Generated Outputs & Reference Material
 
-- `.env.local` (backend) and `web-app/.env.local` are written via
+- `apps/api-service/.env.local` (backend) and `web-app/.env.local` are written via
   `starter_cli/adapters/env/files.py`.
 - Milestone reports live in `var/reports/setup-summary.json` unless overridden.
 - Wizard coverage of backend env vars is tracked in `starter_cli/core/inventory.py`.

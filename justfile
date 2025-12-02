@@ -3,7 +3,17 @@ set shell := ["bash", "-uc"]
 # Root orchestrator: delegates to per-package Justfiles and shared infra.
 
 # Env + helpers
-env_file := `python -c "import os; print(next((f for f in ['.env.local', '.env'] if os.path.exists(f)), ''))"`
+env_file := `python - <<'PY'
+import os
+from pathlib import Path
+import sys
+candidates = [
+    Path("apps/api-service/.env.local"),
+    Path("apps/api-service/.env"),
+]
+path = next((str(p) for p in candidates if p.exists()), "")
+sys.stdout.write(path)
+PY`
 repo_root := justfile_directory()
 env_runner := "cd packages/starter_cli && hatch run python -m starter_cli.app --skip-env util run-with-env " + repo_root + "/.env.compose " + repo_root + "/" + env_file
 api_just := "just -f apps/api-service/justfile"
@@ -33,7 +43,7 @@ service_tenant_flag := if setup_service_tenant != "" { "--tenant " + setup_servi
 
 _check_env:
     @if [ -z "{{env_file}}" ]; then \
-        echo "Error: No .env.local or .env file found. Create one before running tasks."; \
+        echo "Error: No apps/api-service/.env.local or apps/api-service/.env file found. Create one before running tasks."; \
         exit 1; \
     fi
 

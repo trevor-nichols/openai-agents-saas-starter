@@ -4,12 +4,12 @@ env_runner := "cd ../../packages/starter_cli && hatch run python -m starter_cli.
 project_dir := justfile_directory()
 repo_root := `cd ../.. && pwd`
 env_compose := repo_root + "/.env.compose"
-env_local := repo_root + "/.env.local"
-env_default := repo_root + "/.env"
+env_local := repo_root + "/apps/api-service/.env.local"
+env_default := repo_root + "/apps/api-service/.env"
 
 _check_env:
     @if [ ! -f "{{env_local}}" ] && [ ! -f "{{env_default}}" ]; then \
-        echo "Error: No .env.local or .env file found at repo root ({{repo_root}}). Create one before running tasks."; \
+        echo "Error: No apps/api-service/.env.local or apps/api-service/.env file found. Create one before running tasks."; \
         exit 1; \
     fi
 
