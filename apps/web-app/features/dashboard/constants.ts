@@ -33,8 +33,8 @@ export const QUICK_ACTIONS: QuickAction[] = [
   },
   {
     id: 'register-agent',
-    label: 'Register a new agent',
-    description: 'Provision a service account and configure a new GPT-5 agent persona.',
+    label: 'View agent registry',
+    description: 'Review the agent specs already deployed in your backend.',
     href: '/agents',
     icon: Bot,
   },
