@@ -25,6 +25,25 @@ class RetentionSettingsMixin(BaseModel):
         alias="RUN_EVENTS_CLEANUP_SLEEP_MS",
     )
 
+    activity_events_ttl_days: int = Field(
+        default=365,
+        ge=1,
+        description="Number of days to retain activity_events before cleanup.",
+        alias="ACTIVITY_EVENTS_TTL_DAYS",
+    )
+    activity_events_cleanup_batch_size: int = Field(
+        default=10_000,
+        ge=1,
+        description="Delete batch size for activity-event cleanup jobs.",
+        alias="ACTIVITY_EVENTS_CLEANUP_BATCH",
+    )
+    activity_events_cleanup_sleep_ms: int = Field(
+        default=0,
+        ge=0,
+        description="Sleep between cleanup batches in milliseconds (throttle).",
+        alias="ACTIVITY_EVENTS_CLEANUP_SLEEP_MS",
+    )
+
     workflow_min_purge_age_hours: int = Field(
         default=0,
         ge=0,

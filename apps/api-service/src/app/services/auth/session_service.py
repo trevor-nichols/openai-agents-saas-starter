@@ -12,6 +12,7 @@ from app.core.settings import get_settings
 from app.domain.auth import UserSessionListResult, UserSessionTokens
 from app.domain.users import AuthenticatedUser
 from app.observability.logging import log_event
+from app.services.activity import activity_service
 from app.services.users.user_service import (
     InvalidCredentialsError,
     IpThrottledError,
@@ -184,6 +185,21 @@ class UserSessionService:
             reason=reason,
             tenant_id=record.tenant_id,
         )
+        try:
+            await activity_service.record(
+                tenant_id=str(record.tenant_id),
+                action="auth.logout",
+                actor_id=str(token_user_id),
+                actor_type="user",
+                status="success",
+                source="api",
+                metadata={
+                    "user_id": str(token_user_id),
+                    "tenant_id": str(record.tenant_id),
+                },
+            )
+        except Exception:  # pragma: no cover - best effort
+            pass
         return True
 
     async def revoke_user_session_by_id(

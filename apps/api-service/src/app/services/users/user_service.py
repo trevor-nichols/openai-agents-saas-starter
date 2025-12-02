@@ -27,6 +27,7 @@ from app.infrastructure.persistence.auth.user_repository import get_user_reposit
 from app.infrastructure.redis.factory import get_redis_factory
 from app.infrastructure.redis_types import RedisBytesClient
 from app.observability.logging import log_event
+from app.services.activity import activity_service
 
 logger = logging.getLogger("api-service.services.user")
 
@@ -122,6 +123,19 @@ class UserService:
             result="success",
             user_id=str(user.id),
         )
+        try:
+            tenant_id = str(user.memberships[0].tenant_id) if user.memberships else None
+            if tenant_id:
+                await activity_service.record(
+                    tenant_id=tenant_id,
+                    action="auth.password.changed",
+                    actor_id=str(user.id),
+                    actor_type="user",
+                    status="success",
+                    metadata={"user_id": str(user.id)},
+                )
+        except Exception:  # pragma: no cover - best effort
+            logger.debug("activity.log.password_change.skipped", exc_info=True)
 
     async def admin_reset_password(
         self,
@@ -152,6 +166,17 @@ class UserService:
             user_id=str(user.id),
             tenant_id=str(tenant_id),
         )
+        try:
+            await activity_service.record(
+                tenant_id=str(tenant_id),
+                action="auth.password.changed",
+                actor_id=str(user.id),
+                actor_type="user",
+                status="success",
+                metadata={"user_id": str(user.id)},
+            )
+        except Exception:  # pragma: no cover - best effort
+            logger.debug("activity.log.password_reset.skipped", exc_info=True)
 
     async def reset_password_via_token(self, *, user_id: UUID, new_password: str) -> None:
         user = await self._repository.get_user_by_id(user_id)
@@ -173,6 +198,19 @@ class UserService:
             result="success",
             user_id=str(user.id),
         )
+        try:
+            tenant_id = str(user.memberships[0].tenant_id) if user.memberships else None
+            if tenant_id:
+                await activity_service.record(
+                    tenant_id=tenant_id,
+                    action="auth.password.changed",
+                    actor_id=str(user.id),
+                    actor_type="user",
+                    status="success",
+                    metadata={"user_id": str(user.id)},
+                )
+        except Exception:  # pragma: no cover - best effort
+            logger.debug("activity.log.password_reset_token.skipped", exc_info=True)
 
     async def authenticate(
         self,
@@ -358,6 +396,25 @@ class UserService:
             created_at=datetime.now(UTC),
         )
         await self._repository.record_login_event(event)
+        try:
+            action = "auth.login.success" if result == "success" else "auth.login.failure"
+            if action == "auth.login.success":
+                metadata = {"user_id": str(user_id), "tenant_id": str(tenant_id)}
+            else:
+                metadata = {"reason": reason or "unknown"}
+            await activity_service.record(
+                tenant_id=str(tenant_id),
+                action=action,
+                actor_id=str(user_id),
+                actor_type="user",
+                status=result if result in {"success", "failure"} else "failure",
+                source="api",
+                user_agent=user_agent,
+                ip_address=ip_address,
+                metadata=metadata,
+            )
+        except Exception:  # pragma: no cover - best effort
+            logger.debug("activity.log.login.skipped", exc_info=True)
 
     def _hash_ip(self, ip_address: str | None) -> str:
         if not ip_address:
@@ -377,6 +434,7 @@ class UserService:
                 "billing:read",
                 "billing:manage",
                 "support:read",
+                "activity:read",
             ]
         if normalized in {"member", "editor"}:
             return [

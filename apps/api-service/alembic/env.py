@@ -29,6 +29,7 @@ importlib.import_module("app.infrastructure.persistence.auth.models")
 importlib.import_module("app.infrastructure.persistence.conversations.models")
 importlib.import_module("app.infrastructure.persistence.billing.models")
 importlib.import_module("app.infrastructure.persistence.vector_stores.models")
+importlib.import_module("app.infrastructure.persistence.activity.models")
 
 config = context.config
 

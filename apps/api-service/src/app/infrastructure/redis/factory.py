@@ -18,6 +18,7 @@ RedisPurpose = Literal[
     "security_tokens",
     "billing_events",
     "usage_cache",
+    "activity_events",
 ]
 RedisClient = RedisBytesClient | RedisStrClient
 
@@ -77,6 +78,7 @@ class RedisClientFactory:
             "security_tokens": self._settings.resolve_security_token_redis_url,
             "billing_events": self._settings.resolve_billing_events_redis_url,
             "usage_cache": self._settings.resolve_usage_guardrail_redis_url,
+            "activity_events": self._settings.resolve_activity_events_redis_url,
         }
         resolver = resolver_map[purpose]
         url = resolver()

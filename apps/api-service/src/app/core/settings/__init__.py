@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from .activity import ActivitySettingsMixin
 from .ai import AIProviderSettingsMixin
 from .application import ApplicationSettingsMixin
 from .base import VAULT_PROVIDER_KEYS, BaseAppSettings, SignupAccessPolicyLiteral
@@ -24,6 +25,7 @@ class Settings(
     BaseAppSettings,
     AIProviderSettingsMixin,
     ApplicationSettingsMixin,
+    ActivitySettingsMixin,
     MCPSettingsMixin,
     IntegrationSettingsMixin,
     RedisSettingsMixin,

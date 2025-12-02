@@ -107,7 +107,7 @@ class AgentService:
         runtime_ctx = await self._interaction_builder.build(
             actor=actor, request=request, conversation_id=conversation_id
         )
-        await self._conversation_service.get_session_state(
+        existing_state = await self._conversation_service.get_session_state(
             conversation_id, tenant_id=actor.tenant_id
         )
         # When using SDK sessions, do not also send provider conversation_id to avoid
@@ -137,6 +137,12 @@ class AgentService:
                 session_id=session_id,
                 user_id=actor.user_id,
             ),
+        )
+        await self._conversation_service.record_conversation_created(
+            conversation_id,
+            tenant_id=actor.tenant_id,
+            agent_entrypoint=request.agent_type or descriptor.key,
+            existed=existing_state is not None,
         )
 
         token = set_current_actor(actor)
@@ -258,7 +264,7 @@ class AgentService:
         runtime_ctx = await self._interaction_builder.build(
             actor=actor, request=request, conversation_id=conversation_id
         )
-        await self._conversation_service.get_session_state(
+        existing_state = await self._conversation_service.get_session_state(
             conversation_id, tenant_id=actor.tenant_id
         )
         # Use SDK session memory only; avoid provider-side conversation ids to prevent
@@ -287,6 +293,12 @@ class AgentService:
                 session_id=session_id,
                 user_id=actor.user_id,
             ),
+        )
+        await self._conversation_service.record_conversation_created(
+            conversation_id,
+            tenant_id=actor.tenant_id,
+            agent_entrypoint=request.agent_type or descriptor.key,
+            existed=existing_state is not None,
         )
 
         complete_response = ""

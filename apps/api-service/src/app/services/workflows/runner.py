@@ -124,6 +124,9 @@ class WorkflowRunner:
         provider = self._provider_registry.get_default()
         run_id = _uuid()
         session_handle = provider.session_store.build(conversation_id)
+        conversation_exists = await self._conversation_service.conversation_exists(
+            conversation_id, tenant_id=actor.tenant_id
+        )
 
         await self._conversation_service.append_message(
             conversation_id,
@@ -136,6 +139,12 @@ class WorkflowRunner:
                 provider=provider.name,
                 user_id=actor.user_id,
             ),
+        )
+        await self._conversation_service.record_conversation_created(
+            conversation_id,
+            tenant_id=actor.tenant_id,
+            agent_entrypoint=workflow.key,
+            existed=conversation_exists,
         )
         await self._recorder.start(
             run_id,
@@ -232,12 +241,22 @@ class WorkflowRunner:
                 run_id,
                 status="succeeded",
                 final_output=validated_output,
+                actor=actor,
+                workflow_key=workflow.key,
             )
         except _WorkflowCancelled:
-            await self._recorder.end(run_id, status="cancelled", final_output=None)
+            await self._recorder.end(
+                run_id,
+                status="cancelled",
+                final_output=None,
+                actor=actor,
+                workflow_key=workflow.key,
+            )
             raise
         except Exception:
-            await self._recorder.end(run_id, status="failed", final_output=None)
+            await self._recorder.end(
+                run_id, status="failed", final_output=None, actor=actor, workflow_key=workflow.key
+            )
             raise
 
         return WorkflowRunResult(
@@ -262,6 +281,9 @@ class WorkflowRunner:
         provider = self._provider_registry.get_default()
         run_id = _uuid()
         session_handle = provider.session_store.build(conversation_id)
+        conversation_exists = await self._conversation_service.conversation_exists(
+            conversation_id, tenant_id=actor.tenant_id
+        )
         await self._conversation_service.append_message(
             conversation_id,
             ConversationMessage(role="user", content=message),
@@ -273,6 +295,12 @@ class WorkflowRunner:
                 provider=provider.name,
                 user_id=actor.user_id,
             ),
+        )
+        await self._conversation_service.record_conversation_created(
+            conversation_id,
+            tenant_id=actor.tenant_id,
+            agent_entrypoint=workflow.key,
+            existed=conversation_exists,
         )
         await self._recorder.start(
             run_id,
@@ -380,9 +408,17 @@ class WorkflowRunner:
                 run_id,
                 status="succeeded",
                 final_output=validated_output,
+                actor=actor,
+                workflow_key=workflow.key,
             )
         except _WorkflowCancelled:
-            await self._recorder.end(run_id, status="cancelled", final_output=None)
+            await self._recorder.end(
+                run_id,
+                status="cancelled",
+                final_output=None,
+                actor=actor,
+                workflow_key=workflow.key,
+            )
             # Emit terminal lifecycle event so stream consumers learn about cancellation.
             yield AgentStreamEvent(
                 kind="lifecycle",
@@ -394,7 +430,9 @@ class WorkflowRunner:
                 },
             )
         except Exception:
-            await self._recorder.end(run_id, status="failed", final_output=None)
+            await self._recorder.end(
+                run_id, status="failed", final_output=None, actor=actor, workflow_key=workflow.key
+            )
             raise
 
     def flag_cancel(self, run_id: str) -> None:

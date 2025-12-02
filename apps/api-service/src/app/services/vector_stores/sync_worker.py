@@ -16,6 +16,7 @@ from sqlalchemy.sql.elements import ColumnElement
 
 from app.core.settings import Settings
 from app.infrastructure.persistence.vector_stores.models import VectorStore, VectorStoreFile
+from app.services.activity import activity_service
 
 logger = logging.getLogger(__name__)
 
@@ -210,10 +211,18 @@ class VectorStoreSyncWorker:
                 remote = remote_index.get(row.openai_file_id)
                 if remote is None:
                     continue
+                prior_status = row.status
                 row.status = getattr(remote, "status", row.status)
                 remote_usage = getattr(remote, "usage_bytes", None)
                 row.usage_bytes = row.usage_bytes if remote_usage is None else remote_usage
                 row.last_error = getattr(remote, "last_error", row.last_error)
+                if row.status != prior_status:
+                    await self._record_activity(
+                        tenant_id=str(store.tenant_id),
+                        vector_store_id=str(store.id),
+                        file_id=row.openai_file_id,
+                        state=row.status,
+                    )
             await session.commit()
 
     async def _purge_store(self, client: AsyncOpenAI, store: VectorStore) -> None:
@@ -242,6 +251,38 @@ class VectorStoreSyncWorker:
         if self._stop_event is None:
             raise RuntimeError("VectorStoreSyncWorker not started")
         return self._stop_event
+
+    async def _record_activity(
+        self,
+        *,
+        tenant_id: str,
+        vector_store_id: str,
+        file_id: str,
+        state: str,
+    ) -> None:
+        if state in {"completed", "ready"}:
+            status = "success"
+        elif state == "failed":
+            status = "failure"
+        else:
+            status = "pending"
+        try:
+            await activity_service.record(
+                tenant_id=tenant_id,
+                action="vector.file.synced",
+                actor_type="system",
+                object_type="vector_file",
+                object_id=file_id,
+                status=status,
+                metadata={
+                    "vector_store_id": vector_store_id,
+                    "file_id": file_id,
+                    "state": state,
+                },
+                source="sync_worker",
+            )
+        except Exception:  # pragma: no cover - best effort
+            logger.debug("vector_store.activity.skipped", exc_info=True)
 
 
 def build_vector_store_sync_worker(

@@ -18,6 +18,7 @@ from app.domain.storage import (
 from app.observability import metrics
 from app.infrastructure.persistence.storage.postgres import StorageRepository
 from app.infrastructure.storage.registry import get_storage_provider
+from app.services.activity import activity_service
 
 _SAFE_CHARS = re.compile(r"[^A-Za-z0-9._-]+")
 
@@ -109,6 +110,20 @@ class StorageService:
             metadata_json=metadata or {},
             expires_at=None,
         )
+
+        try:
+            await activity_service.record(
+                tenant_id=str(tenant_id),
+                action="storage.file.uploaded",
+                actor_id=str(user_id) if user_id else None,
+                actor_type="user" if user_id else "system",
+                object_type="storage_object",
+                object_id=str(object_id),
+                source="api",
+                metadata={"object_id": str(object_id), "bucket": bucket_name},
+            )
+        except Exception:  # pragma: no cover - best effort
+            pass
 
         metrics.observe_storage_operation(
             operation="presign_upload",
@@ -211,6 +226,19 @@ class StorageService:
             result="success",
             duration_seconds=0.0,
         )
+        try:
+            await activity_service.record(
+                tenant_id=str(tenant_id),
+                action="storage.file.deleted",
+                actor_id=str(obj.created_by_user_id) if obj.created_by_user_id else None,
+                actor_type="user" if obj.created_by_user_id else "system",
+                object_type="storage_object",
+                object_id=str(object_id),
+                source="api",
+                metadata={"object_id": str(object_id), "bucket": obj.bucket.bucket_name},
+            )
+        except Exception:  # pragma: no cover - best effort
+            pass
 
     async def put_object(
         self,

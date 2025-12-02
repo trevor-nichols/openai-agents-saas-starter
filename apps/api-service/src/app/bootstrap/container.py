@@ -11,6 +11,7 @@ from app.infrastructure.persistence.workflows.repository import (
     SqlAlchemyWorkflowRunRepository,
 )
 from app.infrastructure.redis.factory import reset_redis_factory, shutdown_redis_factory
+from app.services.activity import ActivityService
 from app.services.agents.interaction_context import InteractionContextBuilder
 from app.services.auth.service_account_service import ServiceAccountTokenService
 from app.services.auth.session_service import UserSessionService
@@ -59,6 +60,7 @@ class ApplicationContainer:
     conversation_service: ConversationService = field(default_factory=ConversationService)
     billing_service: BillingService = field(default_factory=BillingService)
     billing_events_service: BillingEventsService = field(default_factory=BillingEventsService)
+    activity_service: ActivityService | None = None
     rate_limiter: RateLimiter = field(default_factory=RateLimiter)
     stripe_event_dispatcher: StripeEventDispatcher = field(
         default_factory=StripeEventDispatcher

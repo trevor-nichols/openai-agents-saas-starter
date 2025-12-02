@@ -198,6 +198,21 @@ VECTOR_STORE_OPERATIONS_TOTAL = Counter(
     registry=REGISTRY,
 )
 
+# Activity log operations
+ACTIVITY_EVENTS_TOTAL = Counter(
+    "activity_events_total",
+    "Count of activity events recorded segmented by action and result.",
+    ("action", "result"),
+    registry=REGISTRY,
+)
+
+ACTIVITY_STREAM_PUBLISH_TOTAL = Counter(
+    "activity_stream_publish_total",
+    "Count of activity stream publish attempts segmented by result.",
+    ("result",),
+    registry=REGISTRY,
+)
+
 VECTOR_STORE_OPERATION_DURATION_SECONDS = Histogram(
     "vector_store_operation_duration_seconds",
     "Latency histogram for vector store operations segmented by operation and result.",

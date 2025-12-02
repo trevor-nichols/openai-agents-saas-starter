@@ -23,6 +23,7 @@ from app.observability.metrics import (
     CONTAINER_OPERATION_DURATION_SECONDS,
     CONTAINER_OPERATIONS_TOTAL,
 )
+from app.services.activity import activity_service
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +128,21 @@ class ContainerService:
                 await self._safe_delete_remote(client, openai_id)
                 raise
             await session.refresh(container)
-            return container
+        try:
+            await activity_service.record(
+                tenant_id=str(tenant_id),
+                action="container.lifecycle",
+                actor_id=str(owner_user_id) if owner_user_id else None,
+                actor_type="user" if owner_user_id else "system",
+                object_type="container",
+                object_id=str(container.id),
+                status="success",
+                metadata={"container_id": str(container.id), "event": "created"},
+                source="api",
+            )
+        except Exception:  # pragma: no cover - best effort
+            logger.debug("activity.container.create.skipped", exc_info=True)
+        return container
 
     async def list_containers(
         self, *, tenant_id: uuid.UUID, limit: int = 50, offset: int = 0
@@ -206,6 +221,20 @@ class ContainerService:
 
         for agent_key in agent_keys:
             self._binding_cache.pop((tenant_id, agent_key), None)
+        try:
+            await activity_service.record(
+                tenant_id=str(tenant_id),
+                action="container.lifecycle",
+                actor_id=str(container.owner_user_id) if container.owner_user_id else None,
+                actor_type="user" if container.owner_user_id else "system",
+                object_type="container",
+                object_id=str(container.id),
+                status="success",
+                metadata={"container_id": str(container.id), "event": "deleted"},
+                source="api",
+            )
+        except Exception:  # pragma: no cover - best effort
+            logger.debug("activity.container.delete.skipped", exc_info=True)
 
     async def bind_agent(
         self, *, tenant_id: uuid.UUID, agent_key: str, container_id: uuid.UUID
@@ -227,9 +256,32 @@ class ContainerService:
             session.add(binding)
             await session.commit()
         self._binding_cache[(tenant_id, agent_key)] = container.openai_id
+        try:
+            await activity_service.record(
+                tenant_id=str(tenant_id),
+                action="container.lifecycle",
+                actor_type="system",
+                object_type="container",
+                object_id=str(container.id),
+                status="success",
+                metadata={
+                    "container_id": str(container.id),
+                    "event": "bound",
+                    "agent_key": agent_key,
+                },
+                source="api",
+            )
+        except Exception:  # pragma: no cover - best effort
+            logger.debug("activity.container.bind.skipped", exc_info=True)
 
     async def unbind_agent(self, *, tenant_id: uuid.UUID, agent_key: str) -> None:
         async with self._session_factory() as session:
+            container_id = await session.scalar(
+                select(AgentContainer.container_id).where(
+                    AgentContainer.agent_key == agent_key,
+                    AgentContainer.tenant_id == tenant_id,
+                )
+            )
             await session.execute(
                 sa_delete(AgentContainer).where(
                     AgentContainer.agent_key == agent_key,
@@ -238,6 +290,24 @@ class ContainerService:
             )
             await session.commit()
         self._binding_cache.pop((tenant_id, agent_key), None)
+        try:
+            if container_id:
+                await activity_service.record(
+                    tenant_id=str(tenant_id),
+                    action="container.lifecycle",
+                    actor_type="system",
+                    object_type="container",
+                    object_id=str(container_id),
+                    status="success",
+                    metadata={
+                        "container_id": str(container_id),
+                        "event": "unbound",
+                        "agent_key": agent_key,
+                    },
+                    source="api",
+                )
+        except Exception:  # pragma: no cover - best effort
+            logger.debug("activity.container.unbind.skipped", exc_info=True)
 
     async def resolve_agent_container_openai_id(
         self, *, tenant_id: uuid.UUID, agent_key: str

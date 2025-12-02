@@ -15,6 +15,7 @@ from app.domain.conversations import (
     ConversationRepository,
     ConversationSessionState,
 )
+from app.services.activity import activity_service
 
 
 @dataclass(slots=True)
@@ -46,6 +47,47 @@ class ConversationService:
         """Swap the underlying conversation store."""
 
         self._repository = repository
+
+    async def conversation_exists(self, conversation_id: str, *, tenant_id: str) -> bool:
+        """Return True when a conversation already exists for the tenant."""
+
+        normalized_tenant = _require_tenant_id(tenant_id)
+        state = await self._require_repository().get_session_state(
+            conversation_id, tenant_id=normalized_tenant
+        )
+        return state is not None
+
+    async def record_conversation_created(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        agent_entrypoint: str | None = None,
+        existed: bool | None = None,
+    ) -> None:
+        """Best-effort activity hook when a new conversation is started."""
+
+        normalized_tenant = _require_tenant_id(tenant_id)
+        already_exists = existed if existed is not None else await self.conversation_exists(
+            conversation_id, tenant_id=normalized_tenant
+        )
+        if already_exists:
+            return
+
+        try:
+            metadata = {"conversation_id": conversation_id}
+            if agent_entrypoint:
+                metadata["agent_entrypoint"] = agent_entrypoint
+            await activity_service.record(
+                tenant_id=normalized_tenant,
+                action="conversation.created",
+                object_type="conversation",
+                object_id=conversation_id,
+                source="api",
+                metadata=metadata,
+            )
+        except Exception:  # pragma: no cover - best effort
+            pass
 
     @property
     def repository(self) -> ConversationRepository:
@@ -133,6 +175,17 @@ class ConversationService:
         await self._require_repository().clear_conversation(
             conversation_id, tenant_id=normalized_tenant
         )
+        try:
+            await activity_service.record(
+                tenant_id=normalized_tenant,
+                action="conversation.cleared",
+                object_type="conversation",
+                object_id=conversation_id,
+                source="api",
+                metadata={"conversation_id": conversation_id},
+            )
+        except Exception:  # pragma: no cover - best effort
+            pass
 
     async def search(
         self,

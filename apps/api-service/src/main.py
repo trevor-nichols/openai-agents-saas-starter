@@ -22,12 +22,16 @@ from app.core.settings import (
     enforce_vault_verification,
     get_settings,
 )
+from app.infrastructure.activity.redis_backend import RedisActivityEventBackend
 from app.infrastructure.billing.events.redis_backend import RedisBillingEventBackend
 from app.infrastructure.db import (
     dispose_engine,
     get_async_sessionmaker,
     get_engine,
     init_engine,
+)
+from app.infrastructure.persistence.activity.repository import (
+    SqlAlchemyActivityEventRepository,
 )
 from app.infrastructure.persistence.auth.repository import get_refresh_token_repository
 from app.infrastructure.persistence.auth.session_repository import (
@@ -58,6 +62,7 @@ from app.presentation import health as health_routes
 from app.presentation import metrics as metrics_routes
 from app.presentation import well_known as well_known_routes
 from app.presentation.webhooks import stripe as stripe_webhook
+from app.services.activity import ActivityService
 from app.services.agent_service import build_agent_service
 from app.services.agents.provider_registry import get_provider_registry
 from app.services.auth.builders import (
@@ -201,6 +206,30 @@ async def lifespan(app: FastAPI):
         raise RuntimeError("Database engine failed to initialise; cannot configure sessions.")
     session_factory = get_async_sessionmaker()
     container.session_factory = session_factory
+
+    container.activity_service = ActivityService()
+    activity_repo = SqlAlchemyActivityEventRepository(session_factory)
+    container.activity_service.set_repository(activity_repo)
+
+    if settings.enable_activity_stream:
+        redis_url = settings.resolve_activity_events_redis_url()
+        if not redis_url:
+            raise RuntimeError(
+                "ENABLE_ACTIVITY_STREAM requires ACTIVITY_EVENTS_REDIS_URL or REDIS_URL"
+            )
+        activity_client = cast(
+            RedisBytesClient,
+            redis_factory.get_client("activity_events"),
+        )
+        activity_backend = RedisActivityEventBackend(
+            activity_client,
+            stream_max_length=settings.activity_stream_max_length,
+            stream_ttl_seconds=settings.activity_stream_ttl_seconds,
+            owns_client=False,
+        )
+        container.activity_service.set_stream_backend(activity_backend, enable=True)
+    else:
+        container.activity_service.set_stream_backend(None, enable=False)
 
     try:
         _ = container.conversation_service.repository

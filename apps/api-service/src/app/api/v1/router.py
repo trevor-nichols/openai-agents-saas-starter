@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter
 
+from app.api.v1.activity.router import router as activity_router
 from app.api.v1.agents.router import router as agents_router
 from app.api.v1.auth.router import router as auth_router
 from app.api.v1.billing.router import router as billing_router
@@ -26,6 +27,7 @@ router.include_router(agents_router)
 router.include_router(workflows_router)
 router.include_router(conversations_router)
 router.include_router(tools_router)
+router.include_router(activity_router)
 router.include_router(containers_router)
 router.include_router(vector_stores_router)
 router.include_router(storage_router)

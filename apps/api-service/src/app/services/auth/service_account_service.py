@@ -21,6 +21,7 @@ from app.core.settings import Settings, get_settings
 from app.domain.auth import ServiceAccountTokenListResult, ServiceAccountTokenStatus
 from app.observability.logging import log_event
 from app.observability.metrics import observe_service_account_issuance
+from app.services.activity import activity_service
 
 from .errors import (
     ServiceAccountCatalogUnavailable,
@@ -100,6 +101,13 @@ class ServiceAccountTokenService:
                         started=started,
                         detail="returned_cached_token",
                     )
+                    await self._maybe_record_activity(
+                        tenant_id=tenant_id,
+                        account=account,
+                        scopes=sanitized_scopes,
+                        result="success",
+                        reused=True,
+                    )
                     return self._refresh_tokens.record_to_response(existing)
 
             issued_at = now
@@ -160,6 +168,13 @@ class ServiceAccountTokenService:
                 reused=False,
                 started=started,
             )
+            await self._maybe_record_activity(
+                tenant_id=tenant_id if definition.requires_tenant else None,
+                account=account,
+                scopes=sanitized_scopes,
+                result="success",
+                reused=False,
+            )
             return {
                 "refresh_token": signed.primary.token,
                 "expires_at": expires_at.isoformat(),
@@ -199,7 +214,21 @@ class ServiceAccountTokenService:
             raise
 
     async def revoke_token(self, jti: str, *, reason: str | None) -> None:
+        record = await self._refresh_tokens.get_by_jti(jti, require=False)
         await self._refresh_tokens.revoke(jti, reason=reason, require=False)
+        if record and record.tenant_id:
+            try:
+                await activity_service.record(
+                    tenant_id=record.tenant_id,
+                    action="auth.service_account.revoked",
+                    actor_type="system",
+                    object_type="service_account",
+                    object_id=record.account,
+                    status="success",
+                    metadata={"service_account": record.account, "reason": reason or "revoked"},
+                )
+            except Exception:  # pragma: no cover - best effort
+                pass
 
     async def list_tokens(
         self,
@@ -355,3 +384,32 @@ class ServiceAccountTokenService:
             duration_seconds=duration,
             detail=detail,
         )
+
+    async def _maybe_record_activity(
+        self,
+        *,
+        tenant_id: str | None,
+        account: str,
+        scopes: Sequence[str],
+        result: str,
+        reused: bool,
+    ) -> None:
+        if not tenant_id:
+            return
+        try:
+            await activity_service.record(
+                tenant_id=tenant_id,
+                action="auth.service_account.issued",
+                actor_type="system",
+                object_type="service_account",
+                object_id=account,
+                status="success" if result == "success" else "failure",
+                metadata={
+                    "service_account": account,
+                    "scopes": " ".join(scopes),
+                    "actor_id": None,
+                    "reason": "reused" if reused else "issued",
+                },
+            )
+        except Exception:  # pragma: no cover - best effort
+            pass

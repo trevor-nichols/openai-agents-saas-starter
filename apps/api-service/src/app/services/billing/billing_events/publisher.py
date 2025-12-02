@@ -15,6 +15,7 @@ from app.observability.metrics import (
     record_billing_stream_backlog,
     record_billing_stream_event,
 )
+from app.services.activity import activity_service
 from app.services.billing.stripe.event_models import DispatchBroadcastContext
 
 from .normalizer import BillingEventNormalizer
@@ -169,6 +170,7 @@ class BillingEventPublisher:
         observe_stripe_webhook_event(event_type=message.event_type, result="broadcasted")
         result_label = "replayed" if source == "replay" else "published"
         record_billing_stream_event(source=source, result=result_label)
+        await self._record_activity(message)
         logger.info(
             "Broadcasted billing event",
             extra={
@@ -180,3 +182,42 @@ class BillingEventPublisher:
 
     def _channel(self, tenant_id: str) -> str:
         return f"{self._channel_prefix}{tenant_id}"
+
+    async def _record_activity(self, message) -> None:
+        invoice = getattr(message, "invoice", None)
+        subscription = getattr(message, "subscription", None)
+        try:
+            if subscription:
+                await activity_service.record(
+                    tenant_id=message.tenant_id,
+                    action="billing.subscription.updated",
+                    actor_type="system",
+                    object_type="subscription",
+                    object_id=subscription.plan_code,
+                    status="success",
+                    metadata={
+                        "plan_code": subscription.plan_code,
+                        "status": subscription.status,
+                        "subscription_id": subscription.plan_code,
+                    },
+                    source="billing_bridge",
+                )
+            if invoice:
+                status = (invoice.status or "").lower()
+                action = "billing.invoice.paid" if status == "paid" else "billing.invoice.failed"
+                await activity_service.record(
+                    tenant_id=message.tenant_id,
+                    action=action,
+                    actor_type="system",
+                    object_type="invoice",
+                    object_id=invoice.invoice_id,
+                    status="success" if status == "paid" else "failure",
+                    metadata={
+                        "invoice_id": invoice.invoice_id,
+                        "total": invoice.amount_due_cents,
+                        "reason": message.summary or status,
+                    },
+                    source="billing_bridge",
+                )
+        except Exception:  # pragma: no cover - best effort
+            logger.debug("billing.activity.record.skipped", exc_info=True)

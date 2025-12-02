@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 import secrets
 import uuid
@@ -26,6 +27,7 @@ from app.infrastructure.persistence.auth.models import (
 )
 from app.infrastructure.persistence.conversations.models import TenantAccount
 from app.observability.logging import log_event
+from app.services.activity import activity_service
 from app.services.auth_service import AuthService, UserSessionTokens, get_auth_service
 from app.services.billing.billing_service import (
     BillingError,
@@ -50,6 +52,8 @@ from app.services.signup.invite_service import (
 )
 
 SlugGenerator = Callable[[str], str]
+
+logger = logging.getLogger(__name__)
 
 
 class SignupServiceError(RuntimeError):
@@ -195,6 +199,22 @@ class SignupService:
                 plan_code=resolved_plan or "none",
                 invite_id=str(invite_context.invite.id) if invite_context else None,
             )
+
+            try:
+                await activity_service.record(
+                    tenant_id=str(tenant_id),
+                    action="auth.signup.success",
+                    actor_id=str(user_id),
+                    actor_type="user",
+                    object_type="tenant",
+                    object_id=str(tenant_id),
+                    source="api",
+                    user_agent=user_agent,
+                    ip_address=ip_address,
+                    metadata={"user_id": str(user_id), "tenant_id": str(tenant_id)},
+                )
+            except Exception:  # pragma: no cover - best effort
+                logger.debug("activity.log.signup.skipped", exc_info=True)
 
             if invite_context:
                 await invite_context.mark_succeeded(tenant_id=tenant_id, user_id=user_id)
