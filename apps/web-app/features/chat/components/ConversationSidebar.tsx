@@ -16,6 +16,8 @@ import { formatRelativeTime } from '@/lib/utils/time';
 import type { ConversationListItem } from '@/types/conversations';
 import { useConversationSearch } from '@/lib/queries/conversations';
 import { InlineTag } from '@/components/ui/foundation';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Trash } from 'lucide-react';
 
 interface ConversationSidebarProps {
   conversationList: ConversationListItem[];
@@ -82,7 +84,8 @@ export function ConversationSidebar({
     }
 
     return (
-      <ul className="space-y-2">
+      <TooltipProvider>
+        <ul className="space-y-2">
         {items.map((conversation) => {
           const title =
             conversation.title?.trim() ||
@@ -93,12 +96,12 @@ export function ConversationSidebar({
           const agentLabel = conversation.active_agent || conversation.agent_entrypoint;
 
           return (
-            <li key={conversation.id}>
+            <li key={conversation.id} className="group relative">
               <button
                 type="button"
                 onClick={() => onSelectConversation(conversation.id)}
                 className={cn(
-                  'group flex w-full flex-col gap-1 rounded-lg border px-3 py-2 text-left transition duration-quick ease-apple',
+                  'flex w-full flex-col gap-1 rounded-lg border px-3 py-2 pr-11 text-left transition duration-quick ease-apple',
                   currentConversationId === conversation.id
                     ? 'border-primary/50 bg-primary/10 text-foreground'
                     : 'border-white/5 bg-white/5 text-foreground/80 hover:border-white/15 hover:bg-white/10'
@@ -122,24 +125,29 @@ export function ConversationSidebar({
                 ) : null}
               </button>
               {onDeleteConversation ? (
-                <div className="mt-1 flex justify-end">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs text-foreground/60"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      void onDeleteConversation(conversation.id);
-                    }}
-                  >
-                    Clear
-                  </Button>
-                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Clear conversation"
+                      className="absolute right-1.5 top-1.5 h-8 w-8 text-foreground/60 opacity-0 transition duration-150 group-hover:opacity-100 focus-visible:opacity-100"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void onDeleteConversation(conversation.id);
+                      }}
+                    >
+                      <Trash className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Clear</TooltipContent>
+                </Tooltip>
               ) : null}
             </li>
           );
         })}
-      </ul>
+        </ul>
+      </TooltipProvider>
     );
   };
 

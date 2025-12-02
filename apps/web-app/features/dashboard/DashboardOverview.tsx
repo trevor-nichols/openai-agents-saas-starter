@@ -26,7 +26,7 @@ export function DashboardOverview() {
   } = useDashboardData();
 
   return (
-    <section className="space-y-10">
+    <section className="space-y-8">
       <SectionHeader
         eyebrow={DASHBOARD_COPY.header.eyebrow}
         title={DASHBOARD_COPY.header.title}
@@ -40,14 +40,18 @@ export function DashboardOverview() {
 
       <KpiGrid kpis={kpis} isLoading={isLoadingKpis} error={kpiError} />
 
-      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-        <ActivityFeed
-          items={activityFeed}
-          isLoading={isLoadingActivity}
-          error={activityError}
-          onRefresh={refreshActivity}
-        />
-        <BillingPreview preview={billingPreview} />
+      <div className="grid gap-8 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <ActivityFeed
+            items={activityFeed}
+            isLoading={isLoadingActivity}
+            error={activityError}
+            onRefresh={refreshActivity}
+          />
+        </div>
+        <div className="lg:col-span-1">
+          <BillingPreview preview={billingPreview} />
+        </div>
       </div>
 
       <QuickActions actions={quickActions} />

@@ -208,6 +208,7 @@ class StartRunner:
                 stdout=stdout_target,
                 stderr=subprocess.STDOUT,
                 text=not self.detach,
+                **self._subprocess_start_opts(),
             )
             launch = LaunchResult(label=label, command=command, process=proc, log_path=log_path)
             self._launches.append(launch)
@@ -336,19 +337,13 @@ class StartRunner:
             if not proc:
                 continue
             if proc.poll() is None:
-                try:
-                    proc.terminate()
-                except Exception:  # pragma: no cover - defensive
-                    pass
+                self._terminate_process(proc, force=False)
         # Give them a beat to exit
         time.sleep(0.2)
         for launch in self._launches:
             proc = launch.process
             if proc and proc.poll() is None:
-                try:
-                    proc.kill()
-                except Exception:
-                    pass
+                self._terminate_process(proc, force=True)
         self._close_logs()
 
     def _install_signal_handlers(self) -> None:
@@ -510,6 +505,39 @@ class StartRunner:
             # Non-fatal; fall back to base_root when symlink fails
             cli_root = base_root
         return base_root, cli_root
+
+    def _subprocess_start_opts(self) -> dict[str, Any]:
+        """
+        Ensure each child becomes its own process group so we can tear down all
+        descendants (pnpm -> node, hatch -> uvicorn reloaders) without leaving
+        orphaned listeners on ports 3000/8000.
+        """
+
+        if os.name == "nt":
+            return {"creationflags": getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)}
+        return {"start_new_session": True}
+
+    def _terminate_process(self, proc: subprocess.Popen[Any], *, force: bool) -> None:
+        """
+        Terminate a process and its process group to avoid orphaned children
+        (e.g., Next.js dev server continuing after pnpm is killed).
+        """
+
+        try:
+            if os.name == "nt":
+                # CTRL_BREAK reaches the new process group created above
+                sig = signal.CTRL_BREAK_EVENT if not force else signal.SIGTERM
+                proc.send_signal(sig)
+            else:
+                sig = signal.SIGKILL if force else signal.SIGTERM
+                os.killpg(proc.pid, sig)
+        except ProcessLookupError:
+            return
+        except Exception:
+            try:
+                proc.kill() if force else proc.terminate()
+            except Exception:
+                pass
 
 
 def _parse_host_port(url: str, *, default_port: int) -> tuple[str, int]:
