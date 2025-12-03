@@ -38,8 +38,10 @@ def test_status_degraded(monkeypatch):
 
 
 def test_stop_processes_fallback_without_sigkill(monkeypatch):
-    # Simulate Windows where SIGKILL may be absent
+    # Simulate Windows where SIGKILL may be absent and killpg unavailable
     monkeypatch.delattr(stack_state.signal, "SIGKILL", raising=False)
+    monkeypatch.delattr(stack_state.os, "killpg", raising=False)
+    monkeypatch.delattr(stack_state.os, "getpgid", raising=False)
 
     calls: list[tuple[int, int]] = []
     monkeypatch.setattr(stack_state.os, "kill", lambda pid, sig: calls.append((pid, sig)))
@@ -55,3 +57,27 @@ def test_stop_processes_fallback_without_sigkill(monkeypatch):
 
     # Two calls: initial SIGTERM, fallback SIGTERM (since SIGKILL missing)
     assert calls == [(1, stack_state.signal.SIGTERM), (1, stack_state.signal.SIGTERM)]
+
+
+def test_stop_processes_prefers_process_group(monkeypatch):
+    # Ensure we target the whole process group (pnpm/node, uvicorn reloaders)
+    pg_calls: list[tuple[int, int]] = []
+    kill_calls: list[tuple[int, int]] = []
+
+    monkeypatch.setattr(stack_state.os, "killpg", lambda pgid, sig: pg_calls.append((pgid, sig)))
+    monkeypatch.setattr(stack_state.os, "getpgid", lambda pid: pid + 100)
+    monkeypatch.setattr(stack_state.os, "kill", lambda pid, sig: kill_calls.append((pid, sig)))
+    monkeypatch.setattr(stack_state.signal, "SIGKILL", stack_state.signal.SIGKILL)
+    monkeypatch.setattr(stack_state.time, "time", lambda: 0)
+    monkeypatch.setattr(stack_state.time, "sleep", lambda _secs: None)
+    monkeypatch.setattr(stack_state, "is_alive", lambda pid: True)
+
+    state = stack_state.StackState(
+        processes=[stack_state.StackProcess(label="frontend", pid=5, command=["pnpm", "dev"])],
+    )
+
+    stack_state.stop_processes(state, grace_seconds=0)
+
+    # Should signal the group both times; no direct pid kill when killpg succeeds
+    assert pg_calls == [(105, stack_state.signal.SIGTERM), (105, stack_state.signal.SIGKILL)]
+    assert kill_calls == []

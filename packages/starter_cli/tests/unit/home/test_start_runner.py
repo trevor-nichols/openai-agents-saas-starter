@@ -154,3 +154,46 @@ def test_force_skips_stop_when_no_running(monkeypatch):
 
     assert called_stop is False
     assert called_clear is True
+
+
+def test_ctrl_c_during_health_wait_cleans_up(monkeypatch):
+    ctx = build_context()
+    fake_proc = FakeProc()
+
+    # Prevent real port checks and process start side effects
+    monkeypatch.setattr(start_mod.StartRunner, "_ports_available", lambda self: True)
+    monkeypatch.setattr(
+        start_mod,
+        "subprocess",
+        SimpleNamespace(Popen=lambda *args, **kwargs: fake_proc, PIPE="PIPE", STDOUT="STDOUT"),
+    )
+    probe_calls = {"api": 0}
+
+    def api_probe_flap():
+        probe_calls["api"] += 1
+        state = ProbeState.ERROR if probe_calls["api"] == 1 else ProbeState.OK
+        return ProbeResult(name="api", state=state, detail="flap")
+
+    ok_frontend = ProbeResult(name="frontend", state=ProbeState.OK, detail="ok")
+    monkeypatch.setattr(start_mod, "api_probe", api_probe_flap)
+    monkeypatch.setattr(start_mod, "frontend_probe", lambda: ok_frontend)
+
+    # Interrupt the sleep inside the health loop
+    sleep_calls = {"count": 0}
+
+    def interrupting_sleep(_secs):
+        sleep_calls["count"] += 1
+        raise InterruptedError
+
+    monkeypatch.setattr(start_mod.time, "sleep", interrupting_sleep)
+
+    cleaned = {"called": False}
+    monkeypatch.setattr(StartRunner, "_cleanup_processes", lambda self: cleaned.update(called=True))
+    monkeypatch.setattr(StartRunner, "_wait_for_processes", lambda self: 0)
+
+    runner = StartRunner(ctx, target="dev", timeout=5, open_browser=False, skip_infra=True)
+    exit_code = runner.run()
+
+    assert exit_code == 0
+    assert cleaned["called"] is True
+    assert sleep_calls["count"] == 1

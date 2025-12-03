@@ -67,121 +67,143 @@ class StartRunner:
     def run(self) -> int:
         self._install_signal_handlers()
 
-        # Guard: prevent two stacks running concurrently unless forced.
-        existing_state = stack_state.load(self.pidfile)
-        existing_status = stack_state.status(existing_state) if existing_state else None
-        if (
-            self.detach
-            and existing_status
-            and existing_status.state == "running"
-            and not self.force
-        ):
-            console.warn(
-                "Stack already running (use --force to replace).",
-                topic="start",
-            )
-            for proc in existing_status.running:
-                console.info(f"- {proc.label} pid={proc.pid}")
-            return 1
-        if self.force and existing_state:
-            console.warn(
-                "--force set; stopping previously tracked stack before launch",
-                topic="start",
-            )
-            if existing_status and existing_status.running:
-                safe_state = stack_state.StackState(
-                    processes=existing_status.running,
-                    log_dir=existing_state.log_dir,
-                    infra_started=existing_state.infra_started,
+        try:
+            # Guard: prevent two stacks running concurrently unless forced.
+            existing_state = stack_state.load(self.pidfile)
+            existing_status = stack_state.status(existing_state) if existing_state else None
+            if (
+                self.detach
+                and existing_status
+                and existing_status.state == "running"
+                and not self.force
+            ):
+                console.warn(
+                    "Stack already running (use --force to replace).",
+                    topic="start",
                 )
-                stack_state.stop_processes(safe_state)
-            else:
-                console.info("No running PIDs in prior state; skipping process stop", topic="start")
-            stack_state.clear(self.pidfile)
-
-        # Guard: ensure required ports are free.
-        if not self._ports_available():
-            return 1
-
-        launches: list[LaunchResult] = []
-        if self.target == "dev" and not self.skip_infra:
-            launches.append(self._spawn("infra", ["just", "dev-up"]))
-        if self.target in {"dev", "backend"}:
-            launches.append(
-                self._spawn(
-                    "backend",
-                    ["hatch", "run", "serve"],
-                    cwd=PROJECT_ROOT / "apps" / "api-service",
-                    env=self._backend_env(),
+                for proc in existing_status.running:
+                    console.info(f"- {proc.label} pid={proc.pid}")
+                return 1
+            if self.force and existing_state:
+                console.warn(
+                    "--force set; stopping previously tracked stack before launch",
+                    topic="start",
                 )
-            )
-        if self.target in {"dev", "frontend"}:
-            launches.append(
-                self._spawn(
-                    "frontend",
-                    ["pnpm", "dev", "--webpack"],
-                    cwd=PROJECT_ROOT / "apps" / "web-app",
-                    env=self._frontend_env(),
+                if existing_status and existing_status.running:
+                    safe_state = stack_state.StackState(
+                        processes=existing_status.running,
+                        log_dir=existing_state.log_dir,
+                        infra_started=existing_state.infra_started,
+                    )
+                    stack_state.stop_processes(safe_state)
+                else:
+                    console.info(
+                        "No running PIDs in prior state; skipping process stop", topic="start"
+                    )
+                stack_state.clear(self.pidfile)
+
+            # Guard: ensure required ports are free.
+            if not self._ports_available():
+                return 1
+
+            launches: list[LaunchResult] = []
+            if self.target == "dev" and not self.skip_infra:
+                launches.append(self._spawn("infra", ["just", "dev-up"]))
+            if self.target in {"dev", "backend"}:
+                launches.append(
+                    self._spawn(
+                        "backend",
+                        ["hatch", "run", "serve"],
+                        cwd=PROJECT_ROOT / "apps" / "api-service",
+                        env=self._backend_env(),
+                    )
                 )
-            )
+            if self.target in {"dev", "frontend"}:
+                launches.append(
+                    self._spawn(
+                        "frontend",
+                        ["pnpm", "dev", "--webpack"],
+                        cwd=PROJECT_ROOT / "apps" / "web-app",
+                        env=self._frontend_env(),
+                    )
+                )
 
-        failures = [launch for launch in launches if launch.error]
-        if failures:
-            for failure in failures:
-                console.error(f"Failed to start {failure.label}: {failure.error}")
-            self._cleanup_processes()
-            return 1
-
-        # Health waiters
-        deadline = time.time() + (self.timeout or 120)
-        api_ok = frontend_ok = False
-        while time.time() < deadline:
-            early_failure = self._poll_launch_failures()
-            if early_failure:
-                console.error(early_failure)
-                self._dump_tail()
+            failures = [launch for launch in launches if launch.error]
+            if failures:
+                for failure in failures:
+                    console.error(f"Failed to start {failure.label}: {failure.error}")
                 self._cleanup_processes()
                 return 1
-            api_ok = (
-                api_probe().state is ProbeState.OK if self.target in {"dev", "backend"} else True
+
+            # Health waiters
+            deadline = time.time() + (self.timeout or 120)
+            api_ok = frontend_ok = False
+            while time.time() < deadline:
+                if self._stop_event.is_set():
+                    console.warn("Stop requested; cleaning up processes...", topic="start")
+                    self._cleanup_processes()
+                    return 0
+                early_failure = self._poll_launch_failures()
+                if early_failure:
+                    console.error(early_failure)
+                    self._dump_tail()
+                    self._cleanup_processes()
+                    return 1
+                api_ok = (
+                    api_probe().state is ProbeState.OK
+                    if self.target in {"dev", "backend"}
+                    else True
+                )
+                frontend_ok = (
+                    frontend_probe().state is ProbeState.OK
+                    if self.target in {"dev", "frontend"}
+                    else True
+                )
+                if api_ok and frontend_ok:
+                    break
+                try:
+                    time.sleep(1)
+                except InterruptedError:
+                    raise KeyboardInterrupt from None
+
+            console.info(
+                "Health check: api="
+                f"{'ok' if api_ok else 'down'} "
+                f"frontend={'ok' if frontend_ok else 'down'}"
             )
-            frontend_ok = (
-                frontend_probe().state is ProbeState.OK
-                if self.target in {"dev", "frontend"}
-                else True
+
+            if not (api_ok and frontend_ok):
+                self._dump_tail()
+
+            if self.open_browser and frontend_ok:
+                self._open_browser()
+
+            code = 0 if api_ok and frontend_ok else 1
+            if code != 0:
+                console.error("Start failed; see above logs and remediation.")
+                self._cleanup_processes()
+                return code
+
+            if self.detach:
+                self._record_state()
+                console.success("Stack is running in background (managed by CLI).")
+                self._print_ready_urls()
+                self._close_logs()
+                return 0
+
+            console.success(
+                "Stack is running. Press Ctrl+C to stop processes started by this command."
             )
-            if api_ok and frontend_ok:
-                break
-            time.sleep(1)
-
-        console.info(
-            "Health check: api="
-            f"{'ok' if api_ok else 'down'} "
-            f"frontend={'ok' if frontend_ok else 'down'}"
-        )
-
-        if not (api_ok and frontend_ok):
-            self._dump_tail()
-
-        if self.open_browser and frontend_ok:
-            self._open_browser()
-
-        code = 0 if api_ok and frontend_ok else 1
-        if code != 0:
-            console.error("Start failed; see above logs and remediation.")
-            self._cleanup_processes()
-            return code
-
-        if self.detach:
-            self._record_state()
-            console.success("Stack is running in background (managed by CLI).")
             self._print_ready_urls()
-            self._close_logs()
+            return self._wait_for_processes()
+        except KeyboardInterrupt:
+            console.warn("Interrupted; cleaning up processes...", topic="start")
+            self._cleanup_processes()
             return 0
-
-        console.success("Stack is running. Press Ctrl+C to stop processes started by this command.")
-        self._print_ready_urls()
-        return self._wait_for_processes()
+        except Exception:
+            # Defensive: never leave children orphaned
+            self._cleanup_processes()
+            raise
 
     # ------------------------------------------------------------------
     # Helpers

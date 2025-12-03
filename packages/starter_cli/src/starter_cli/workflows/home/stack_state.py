@@ -129,12 +129,7 @@ def stop_processes(state: StackState, *, grace_seconds: float = 5.0) -> None:
     pids: Iterable[int] = [p.pid for p in state.processes]
     sigkill = getattr(signal, "SIGKILL", None)
     for pid in pids:
-        try:
-            os.kill(pid, signal.SIGTERM)
-        except ProcessLookupError:
-            continue
-        except PermissionError:
-            continue
+        _send_signal(pid, signal.SIGTERM, prefer_group=True)
 
     deadline = time.time() + grace_seconds
     remaining: set[int] = set(pids)
@@ -144,16 +139,30 @@ def stop_processes(state: StackState, *, grace_seconds: float = 5.0) -> None:
             time.sleep(0.2)
 
     for pid in list(remaining):
-        try:
-            if sigkill is not None:
-                os.kill(pid, sigkill)
-            else:
-                # Windows lacks SIGKILL; fall back to a second SIGTERM
-                os.kill(pid, signal.SIGTERM)
-        except ProcessLookupError:
-            continue
-        except PermissionError:
-            continue
+        if sigkill is not None:
+            _send_signal(pid, sigkill, prefer_group=True)
+        else:
+            # Windows lacks SIGKILL; fall back to a second SIGTERM
+            _send_signal(pid, signal.SIGTERM, prefer_group=True)
+
+
+def _send_signal(pid: int, sig: int, *, prefer_group: bool = False) -> None:
+    """Signal a process; prefer its process group when available."""
+
+    try:
+        if prefer_group and hasattr(os, "killpg"):
+            try:
+                pgid = os.getpgid(pid)
+            except OSError:
+                pgid = None
+            if pgid is not None and pgid > 0:
+                os.killpg(pgid, sig)
+                return
+        os.kill(pid, sig)
+    except ProcessLookupError:
+        return
+    except PermissionError:
+        return
 
 
 __all__ = [
