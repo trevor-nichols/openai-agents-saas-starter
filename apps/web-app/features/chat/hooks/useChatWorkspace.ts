@@ -114,11 +114,7 @@ export function useChatWorkspace() {
     [deleteConversation],
   );
 
-  const handleExportTranscript = useCallback(() => {
-    toast.info(CHAT_COPY.transcript.exportInfoTitle, {
-      description: CHAT_COPY.transcript.exportInfoDescription,
-    });
-  }, []);
+
 
   const handleWorkspaceError = useCallback(() => {
     if (!errorMessage) {
@@ -191,7 +187,6 @@ export function useChatWorkspace() {
     handleSelectConversation,
     handleNewConversation,
     handleDeleteConversation,
-    handleExportTranscript,
     handleWorkspaceError,
     sendMessage: handleSendMessage,
     shareLocation,

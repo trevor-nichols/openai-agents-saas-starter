@@ -50,7 +50,6 @@ export function ChatWorkspace() {
     handleSelectConversation,
     handleNewConversation,
     handleDeleteConversation,
-    handleExportTranscript,
     handleWorkspaceError,
     sendMessage,
     shareLocation,
@@ -150,7 +149,6 @@ export function ChatWorkspace() {
               error={agentsError}
               onShowInsights={() => setToolDrawerOpen(true)}
               onShowDetails={() => setDetailDrawerOpen(true)}
-              onExport={handleExportTranscript}
               hasConversation={!!currentConversationId}
             />
           </GlassPanel>
