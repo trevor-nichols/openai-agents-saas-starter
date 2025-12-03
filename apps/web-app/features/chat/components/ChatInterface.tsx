@@ -6,7 +6,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import type { ChatStatus } from 'ai';
 
-import { GlassPanel, InlineTag } from '@/components/ui/foundation';
+import { GlassPanel, InlineTag, SectionHeader, type SectionHeaderProps } from '@/components/ui/foundation';
 import { EmptyState, SkeletonPanel } from '@/components/ui/states';
 import { cn } from '@/lib/utils';
 import { formatClockTime } from '@/lib/utils/time';
@@ -67,6 +67,7 @@ interface ChatInterfaceProps {
   };
   onLocationHintChange: (field: 'city' | 'region' | 'country' | 'timezone', value: string) => void;
   className?: string;
+  headerProps?: SectionHeaderProps;
 }
 
 export function ChatInterface({
@@ -87,6 +88,7 @@ export function ChatInterface({
   locationHint,
   onLocationHintChange,
   className,
+  headerProps,
 }: ChatInterfaceProps) {
   const messagesFromStore = useChatMessages();
   const toolEventsFromStore = useChatToolEvents();
@@ -174,6 +176,11 @@ export function ChatInterface({
 
   return (
     <GlassPanel className={cn('flex h-full flex-col overflow-hidden p-0', className)}>
+      {headerProps && (
+        <div className="border-b border-white/5 px-6 py-4">
+          <SectionHeader {...headerProps} size="compact" />
+        </div>
+      )}
       <Conversation className="flex-1">
         <ConversationContent className="space-y-4 px-6 py-6">
           {agentNotices.length > 0 ? (

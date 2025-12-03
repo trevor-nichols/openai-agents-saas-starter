@@ -4,11 +4,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { PanelRightOpen, PanelRightClose } from 'lucide-react';
 
-import { GlassPanel, InlineTag, SectionHeader } from '@/components/ui/foundation';
+import { GlassPanel, InlineTag } from '@/components/ui/foundation';
 import { ErrorState } from '@/components/ui/states';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 import { ConversationDetailDrawer } from '@/components/shared/conversations/ConversationDetailDrawer';
 
@@ -24,6 +27,8 @@ import { ChatControllerProvider } from '@/lib/chat';
 
 export function ChatWorkspace() {
   const [insightsTab, setInsightsTab] = useState<'tools' | 'billing'>('tools');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  
   const {
     conversationList,
     isLoadingConversations,
@@ -99,23 +104,11 @@ export function ChatWorkspace() {
         </SheetContent>
       </Sheet>
 
-      <div className="grid min-h-[70vh] gap-6 lg:grid-cols-[320px_1fr]">
-        <div className="flex flex-col gap-4">
-          <SectionHeader
-            eyebrow={CHAT_COPY.header.eyebrow}
-            title={CHAT_COPY.header.title}
-            description={formatConversationLabel(currentConversationId)}
-            actions={
-              <InlineTag tone={agentsError ? 'warning' : activeAgents ? 'positive' : 'default'}>
-                {isLoadingAgents
-                  ? 'Loading agents…'
-                  : agentsError
-                    ? 'Inventory unavailable'
-                    : `${activeAgents}/${agents.length || 0} active`}
-              </InlineTag>
-            }
-          />
-
+      {/* Main Layout Container - Flex row to manage sidebar transition smoothly */}
+      <div className="flex min-h-[70vh] gap-6 overflow-hidden">
+        
+        {/* Chat Interface (Flex Grow) */}
+        <div className="flex-1 min-w-0 flex flex-col gap-4 transition-all duration-300 ease-in-out">
           {errorMessage ? <ErrorState message={errorMessage} /> : null}
 
           <ChatControllerProvider value={chatController}>
@@ -133,37 +126,75 @@ export function ChatWorkspace() {
               onShareLocationChange={setShareLocation}
               locationHint={locationHint}
               onLocationHintChange={updateLocationField}
-              className="h-[78vh]"
+              className="h-full min-h-[600px]"
+              headerProps={{
+                eyebrow: CHAT_COPY.header.eyebrow,
+                title: CHAT_COPY.header.title,
+                description: formatConversationLabel(currentConversationId),
+                actions: (
+                  <div className="flex items-center gap-2">
+                    <InlineTag tone={agentsError ? 'warning' : activeAgents ? 'positive' : 'default'}>
+                      {isLoadingAgents
+                        ? 'Loading agents…'
+                        : agentsError
+                          ? 'Inventory unavailable'
+                          : `${activeAgents}/${agents.length || 0} active`}
+                    </InlineTag>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:text-foreground"
+                      onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                      title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+                    >
+                      {isSidebarOpen ? <PanelRightClose className="h-5 w-5" /> : <PanelRightOpen className="h-5 w-5" />}
+                    </Button>
+                  </div>
+                ),
+              }}
             />
           </ChatControllerProvider>
         </div>
 
-        <div className="grid h-full gap-4 xl:grid-rows-[auto_1fr] lg:order-first">
-          <GlassPanel className="p-4">
-            <AgentSwitcher
-              className="w-full"
-              agents={agents}
-              selectedAgent={selectedAgent}
-              onChange={setSelectedAgent}
-              isLoading={isLoadingAgents}
-              error={agentsError}
-              onShowInsights={() => setToolDrawerOpen(true)}
-              onShowDetails={() => setDetailDrawerOpen(true)}
-              hasConversation={!!currentConversationId}
-            />
-          </GlassPanel>
+        {/* Right Sidebar (Collapsible) */}
+        <div 
+            className={cn(
+                "relative flex-shrink-0 transition-[width,opacity,transform] duration-300 ease-in-out",
+                isSidebarOpen ? "w-[320px] opacity-100 translate-x-0" : "w-0 opacity-0 translate-x-10"
+            )}
+        >
+           <div className="w-[320px] h-full flex flex-col">
+              <GlassPanel className="flex h-full flex-col p-0 overflow-hidden bg-background/40 backdrop-blur-xl border-l border-white/10">
+                {/* Agent Switcher Section */}
+                <div className="p-4 border-b border-white/5">
+                  <AgentSwitcher
+                    className="w-full"
+                    agents={agents}
+                    selectedAgent={selectedAgent}
+                    onChange={setSelectedAgent}
+                    isLoading={isLoadingAgents}
+                    error={agentsError}
+                    onShowInsights={() => setToolDrawerOpen(true)}
+                    onShowDetails={() => setDetailDrawerOpen(true)}
+                    hasConversation={!!currentConversationId}
+                  />
+                </div>
 
-          <ConversationSidebar
-            conversationList={conversationList}
-            isLoadingConversations={isLoadingConversations}
-            loadMoreConversations={loadMore}
-            hasNextConversationPage={hasNextPage}
-            currentConversationId={currentConversationId}
-            onSelectConversation={handleSelectConversation}
-            onNewConversation={handleNewConversation}
-            onDeleteConversation={handleDeleteConversation}
-            className="h-full"
-          />
+                {/* Conversation List Section */}
+                <ConversationSidebar
+                  conversationList={conversationList}
+                  isLoadingConversations={isLoadingConversations}
+                  loadMoreConversations={loadMore}
+                  hasNextConversationPage={hasNextPage}
+                  currentConversationId={currentConversationId}
+                  onSelectConversation={handleSelectConversation}
+                  onNewConversation={handleNewConversation}
+                  onDeleteConversation={handleDeleteConversation}
+                  className="flex-1 border-none bg-transparent"
+                  variant="embedded"
+                />
+              </GlassPanel>
+           </div>
         </div>
       </div>
 

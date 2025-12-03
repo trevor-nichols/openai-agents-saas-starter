@@ -98,7 +98,8 @@ export function ConversationSidebar({
   onNewConversation,
   onDeleteConversation,
   className,
-}: ConversationSidebarProps) {
+  variant = 'default',
+}: ConversationSidebarProps & { variant?: 'default' | 'embedded' }) {
   const [tab, setTab] = useState<'recent' | 'search'>('recent');
   const [searchTerm, setSearchTerm] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -230,8 +231,8 @@ export function ConversationSidebar({
     );
   };
 
-  return (
-    <GlassPanel className={cn('flex h-full w-full flex-col overflow-hidden bg-background/40 backdrop-blur-xl border-r', className)}>
+  const Content = (
+    <>
       {/* Header Section */}
       <div className="flex flex-col gap-4 p-4 pb-2">
         <div className="flex items-center justify-between">
@@ -285,7 +286,8 @@ export function ConversationSidebar({
         )}
 
         <ScrollArea className="flex-1">
-          <div className="py-2">
+          {/* We use w-full max-w-full min-w-0 to enforce strict width constraint on the scroll content */}
+          <div className="flex flex-col py-2 w-full max-w-full min-w-0">
             {tab === 'recent' 
               ? renderList(conversationList, isLoadingConversations) 
               : renderList(
@@ -313,6 +315,16 @@ export function ConversationSidebar({
           </div>
         </ScrollArea>
       </Tabs>
+    </>
+  );
+
+  if (variant === 'embedded') {
+    return <div className={cn('flex h-full w-full flex-col overflow-hidden', className)}>{Content}</div>;
+  }
+
+  return (
+    <GlassPanel className={cn('flex h-full w-full flex-col overflow-hidden bg-background/40 backdrop-blur-xl border-r', className)}>
+      {Content}
     </GlassPanel>
   );
 }
@@ -334,19 +346,19 @@ function ConversationItem({
     `New Conversation`;
 
   return (
-    <li className="group relative">
+    <li className="group relative w-full min-w-0">
       <button
         type="button"
         onClick={onSelect}
         className={cn(
-          'flex w-full flex-col gap-1 rounded-lg px-3 py-2.5 text-left transition-all duration-200',
+          'grid w-full grid-cols-1 gap-0.5 rounded-lg px-3 py-2.5 text-left transition-all duration-200',
           isActive
             ? 'bg-muted font-medium text-foreground'
             : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
         )}
       >
-        <span className="truncate text-sm leading-none">{title}</span>
-        <span className="truncate text-xs text-muted-foreground/60 font-normal">
+        <span className="truncate text-sm leading-tight block">{title}</span>
+        <span className="truncate text-xs text-muted-foreground/60 font-normal block">
           {conversation.last_message_preview || 'No messages'}
         </span>
       </button>

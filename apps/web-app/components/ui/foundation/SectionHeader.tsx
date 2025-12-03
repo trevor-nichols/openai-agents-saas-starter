@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 
-interface SectionHeaderProps {
+export interface SectionHeaderProps {
   title: string;
   description?: string;
   eyebrow?: string;
