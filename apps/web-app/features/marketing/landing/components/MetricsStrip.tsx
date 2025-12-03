@@ -1,4 +1,5 @@
 import { GlassPanel, SectionHeader, StatCard } from '@/components/ui/foundation';
+import { cn } from '@/lib/utils';
 
 import type { LandingMetrics } from '../types';
 
@@ -6,9 +7,10 @@ interface MetricsStripProps {
   metrics: LandingMetrics;
   isLoading: boolean;
   showHeader?: boolean;
+  gridClassName?: string;
 }
 
-export function MetricsStrip({ metrics, isLoading, showHeader = true }: MetricsStripProps) {
+export function MetricsStrip({ metrics, isLoading, showHeader = true, gridClassName }: MetricsStripProps) {
   return (
     <section className="space-y-6">
       {showHeader ? (
@@ -18,7 +20,7 @@ export function MetricsStrip({ metrics, isLoading, showHeader = true }: MetricsS
           description="Live uptime metrics, billing coverage, and incident feeds keep operators informed—directly on the marketing site."
         />
       ) : null}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className={cn('grid gap-4 md:grid-cols-4', gridClassName)}>
         {metrics.statusMetrics.map((metric) => (
           <StatCard
             key={metric.label}

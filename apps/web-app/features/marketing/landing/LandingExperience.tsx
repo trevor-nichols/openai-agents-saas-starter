@@ -110,7 +110,12 @@ export function LandingExperience() {
               title="Live telemetry"
               description="Usage, uptime, and billing coverage update in real time."
             />
-            <MetricsStrip metrics={metrics} isLoading={isStatusLoading} showHeader={false} />
+            <MetricsStrip
+              metrics={metrics}
+              isLoading={isStatusLoading}
+              showHeader={false}
+              gridClassName="grid-cols-1 md:grid-cols-1"
+            />
           </div>
         </div>
       </section>
