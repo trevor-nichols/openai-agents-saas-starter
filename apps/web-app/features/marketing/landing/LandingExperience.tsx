@@ -99,25 +99,9 @@ export function LandingExperience() {
 
       <TestimonialsSection testimonials={TESTIMONIALS} />
 
-      <section className="mx-auto w-full max-w-6xl space-y-10 px-6">
-        <div className="grid gap-8 md:grid-cols-12">
-          <div className="md:col-span-8">
-            <PlanShowcase plans={plansSnapshot} />
-          </div>
-          <div className="md:col-span-4 space-y-4">
-            <SectionHeader
-              eyebrow="Operations"
-              title="Live telemetry"
-              description="Usage, uptime, and billing coverage update in real time."
-            />
-            <MetricsStrip
-              metrics={metrics}
-              isLoading={isStatusLoading}
-              showHeader={false}
-              gridClassName="grid-cols-1 md:grid-cols-1"
-            />
-          </div>
-        </div>
+      <section className="mx-auto w-full max-w-6xl space-y-16 px-6">
+        <PlanShowcase plans={plansSnapshot} />
+        <MetricsStrip metrics={metrics} isLoading={isStatusLoading} />
       </section>
 
       <section className="mx-auto w-full max-w-6xl space-y-10 px-6">

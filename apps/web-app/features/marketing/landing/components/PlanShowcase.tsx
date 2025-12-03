@@ -1,8 +1,5 @@
-import { ArrowRight } from 'lucide-react';
-
 import { GlassPanel, SectionHeader } from '@/components/ui/foundation';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 
 interface PlanShowcaseProps {
   plans: Array<{ name: string; price: string; cadence: string; summary: string }>;
@@ -37,23 +34,6 @@ export function PlanShowcase({ plans }: PlanShowcaseProps) {
             <p className="text-sm text-foreground/70">{plan.summary}</p>
           </GlassPanel>
         ))}
-
-        <GlassPanel className="col-span-full flex flex-col items-start justify-between gap-4 border border-primary/20 bg-primary/5 p-6 sm:flex-row sm:items-center">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <p className="text-lg font-semibold text-foreground">Enterprise</p>
-              <Badge variant="secondary" className="bg-primary/20 text-primary hover:bg-primary/30">
-                Custom
-              </Badge>
-            </div>
-            <p className="text-sm text-foreground/70">
-              Volume discounts, SLA guarantees, and dedicated support channels.
-            </p>
-          </div>
-          <Button variant="outline" className="shrink-0 gap-2 border-primary/20 hover:bg-primary/10">
-            Contact sales <ArrowRight className="h-4 w-4" />
-          </Button>
-        </GlassPanel>
       </div>
     </section>
   );
