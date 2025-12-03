@@ -26,7 +26,7 @@ import { CtaBand, FaqSection, StatusAlertsCard } from '@/features/marketing/comp
 import { useLandingContent } from './hooks';
 import { useMarketingAnalytics, useSignupCtaTarget } from '@/features/marketing/hooks';
 import { Button } from '@/components/ui/button';
-import { StatCard, SectionHeader } from '@/components/ui/foundation';
+import { SectionHeader } from '@/components/ui/foundation';
 import Link from 'next/link';
 
 export function LandingExperience() {
@@ -87,10 +87,13 @@ export function LandingExperience() {
         </section>
       </div>
 
-      <section className="relative w-full rounded-3xl bg-gradient-to-r from-primary/5 via-background to-primary/5 px-6 py-12">
-        <div className="mx-auto grid w-full max-w-6xl gap-4 sm:grid-cols-2 md:grid-cols-3">
+      <section className="relative w-full rounded-3xl bg-primary/5 px-6 py-20">
+        <div className="mx-auto grid w-full max-w-6xl gap-6 sm:grid-cols-2 md:grid-cols-3">
           {PROOF_POINTS.map((item) => (
-            <StatCard key={item.label} label={item.label} value={item.value} />
+            <div key={item.label} className="flex flex-col rounded-3xl border bg-card p-8 shadow-sm transition-shadow hover:shadow-md">
+              <p className="mb-4 text-xs font-bold uppercase tracking-wider text-primary">{item.label}</p>
+              <p className="text-2xl font-bold leading-tight text-foreground">{item.value}</p>
+            </div>
           ))}
         </div>
       </section>

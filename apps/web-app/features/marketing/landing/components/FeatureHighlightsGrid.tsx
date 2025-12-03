@@ -1,5 +1,3 @@
-import { GlassPanel, SectionHeader } from '@/components/ui/foundation';
-
 import type { FeatureHighlight } from '../types';
 
 interface FeatureHighlightsGridProps {
@@ -8,30 +6,28 @@ interface FeatureHighlightsGridProps {
 
 export function FeatureHighlightsGrid({ highlights }: FeatureHighlightsGridProps) {
   return (
-    <section className="space-y-6">
-      <SectionHeader
-        eyebrow="Product"
-        title="Designed for enterprise-ready launches"
-        description="Every feature ships inside a dedicated directory so you can extend the surfaces without untangling monoliths."
-      />
-      <div className="grid gap-4 md:grid-cols-2">
-        {highlights.map((highlight) => (
-          <GlassPanel key={highlight.title} className="space-y-4">
-            <div className="flex items-center gap-3">
-              <highlight.icon className="h-5 w-5 text-foreground/70" />
-              <div>
-                <p className="text-lg font-semibold text-foreground">{highlight.title}</p>
-                <p className="text-sm text-foreground/70">{highlight.description}</p>
-              </div>
+    <div className="grid gap-4 md:grid-cols-2">
+      {highlights.map((highlight) => (
+        <div key={highlight.title} className="flex flex-col gap-4 rounded-3xl border bg-card p-6 shadow-sm transition-all hover:shadow-md">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <highlight.icon className="h-5 w-5" />
             </div>
-            <ul className="space-y-2 text-sm text-foreground/70">
-              {highlight.bullets.map((bullet) => (
-                <li key={bullet}>• {bullet}</li>
-              ))}
-            </ul>
-          </GlassPanel>
-        ))}
-      </div>
-    </section>
+            <div className="space-y-1">
+              <p className="text-base font-bold text-foreground">{highlight.title}</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">{highlight.description}</p>
+            </div>
+          </div>
+          <ul className="mt-2 space-y-2">
+            {highlight.bullets.map((bullet) => (
+              <li key={bullet} className="flex items-start gap-2 text-xs font-medium text-foreground/80">
+                <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/50" />
+                <span>{bullet}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
   );
 }

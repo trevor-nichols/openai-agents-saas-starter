@@ -51,31 +51,44 @@ export function HeroSection({ copy, statusSummary, onCtaClick }: HeroSectionProp
           </>
         }
         footer={
-          <GlassPanel className="space-y-3 border border-white/10 bg-white/5 backdrop-blur w-full max-w-xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-foreground/50">
-              Deployment snapshot
-            </p>
-            {statusSummary ? (
-              <>
-                <div className="flex items-center gap-3">
-                  <span
-                    className="inline-flex items-center rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-primary"
-                    role="status"
-                  >
-                    {statusSummary.state}
-                  </span>
-                  <p className="text-sm text-foreground/60">Updated {statusSummary.updatedAt}</p>
-                </div>
-                <p className="text-base text-foreground/80">{statusSummary.description}</p>
-              </>
-            ) : (
-              <p className="text-base text-foreground/70">
-                Live status, billing telemetry, and agents SDK sessions all ship ready for your brand.
+          <GlassPanel className="flex flex-col gap-4 w-full max-w-lg rounded-3xl border border-white/10 bg-background/40 p-6 shadow-2xl backdrop-blur-xl">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <p className="text-xs font-bold uppercase tracking-wider text-primary">
+                Deployment snapshot
               </p>
-            )}
-            <Button variant="ghost" className="px-0" asChild onClick={handleClick(statusCta, 'hero-status')}>
-              <Link href={statusCta.href}>{statusCta.label}</Link>
-            </Button>
+              {statusSummary ? (
+                <span
+                  className="flex h-6 items-center rounded-full bg-emerald-500/15 px-2.5 text-[10px] font-bold uppercase tracking-wide text-emerald-500"
+                  role="status"
+                >
+                  {statusSummary.state}
+                </span>
+              ) : null}
+            </div>
+            
+            <div className="space-y-4">
+              {statusSummary ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <p>Updated {statusSummary.updatedAt}</p>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{statusSummary.description}</p>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Live status, billing telemetry, and agents SDK sessions all ship ready for your brand.
+                </p>
+              )}
+              
+              <Button 
+                className="w-full rounded-full bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary font-semibold h-10 shadow-none" 
+                onClick={handleClick(statusCta, 'hero-status')}
+                asChild
+              >
+                <Link href={statusCta.href}>{statusCta.label}</Link>
+              </Button>
+            </div>
           </GlassPanel>
         }
       />
