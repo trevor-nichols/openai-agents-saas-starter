@@ -38,11 +38,6 @@ async function MarketingFooterWithStatus() {
 
 async function fetchMarketingStatus(): Promise<PlatformStatusResponse | null> {
   try {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
-    if (apiBase.includes('localhost') || apiBase.includes('127.0.0.1')) {
-      return null;
-    }
-
     const payload = await fetchPlatformStatusSnapshot();
     return payload;
   } catch (error) {

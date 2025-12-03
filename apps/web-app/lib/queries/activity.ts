@@ -8,6 +8,8 @@ import { useCallback, useMemo } from 'react';
 import { fetchActivityPage } from '@/lib/api/activity';
 import { queryKeys } from './keys';
 import type { ActivityEvent } from '@/types/activity';
+import { mergeActivityEvents, toActivityDisplayItem } from '@/lib/utils/activity';
+import { useActivityStream } from './useActivityStream';
 
 interface UseActivityFeedReturn {
   activity: ActivityEvent[];
@@ -42,4 +44,45 @@ export function useActivityFeed(params?: { limit?: number }): UseActivityFeedRet
     error: error?.message ?? null,
     refresh,
   };
+}
+
+export interface RecentActivityItem extends ReturnType<typeof toActivityDisplayItem> {}
+
+interface UseRecentActivityReturn {
+  items: RecentActivityItem[];
+  badgeCount: number;
+  streamStatus: 'idle' | 'connecting' | 'open' | 'closed' | 'error';
+  isLoading: boolean;
+  error: string | null;
+  refresh: () => void;
+}
+
+export function useRecentActivity(options?: { limit?: number; live?: boolean }): UseRecentActivityReturn {
+  const limit = options?.limit ?? 8;
+  const liveEnabled = options?.live ?? true;
+
+  const {
+    activity,
+    isLoading,
+    error,
+    refresh,
+  } = useActivityFeed({ limit: limit * 2 });
+
+  const { events: liveEvents, status: streamStatus } = useActivityStream({ enabled: liveEnabled });
+
+  const merged = useMemo(
+    () => mergeActivityEvents(liveEvents, activity, limit),
+    [activity, liveEvents, limit],
+  );
+
+  const items = useMemo(() => merged.map(toActivityDisplayItem), [merged]);
+
+  return {
+    items,
+    badgeCount: merged.length,
+    streamStatus,
+    isLoading,
+    error,
+    refresh,
+  } satisfies UseRecentActivityReturn;
 }

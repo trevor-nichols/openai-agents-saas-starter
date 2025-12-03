@@ -131,10 +131,8 @@ export function LandingExperience() {
         <FaqSection items={FAQ_ITEMS} columns={2} />
       </section>
 
-      <section className="relative w-full rounded-3xl bg-gradient-to-r from-primary/15 via-background to-primary/10 px-6 pb-16 pt-4">
-        <div className="mx-auto w-full max-w-6xl rounded-3xl border border-primary/20 bg-white/5 px-6 py-10">
-          <CtaBand config={ctaBandConfig} onCtaClick={trackCtaClick} />
-        </div>
+      <section className="mx-auto w-full max-w-6xl px-6">
+        <CtaBand config={ctaBandConfig} onCtaClick={trackCtaClick} />
       </section>
     </div>
   );

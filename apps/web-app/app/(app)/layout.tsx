@@ -11,7 +11,8 @@ import 'katex/dist/katex.min.css';
 import { SilentRefresh } from '@/components/auth/SilentRefresh';
 import { AppPageHeading } from '@/components/shell/AppPageHeading';
 import { AppSidebar } from '@/components/shell/AppSidebar';
-import { InfoMenu, NotificationMenu } from '@/components/ui/nav-bar';
+import { InfoMenu } from '@/components/ui/nav-bar';
+import { AppNotificationMenu } from '@/components/shell/AppNotificationMenu';
 import { Separator } from '@/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { getSessionMetaFromCookies } from '@/lib/auth/cookies';
@@ -71,7 +72,7 @@ async function AppLayoutContent({ children }: AppLayoutProps) {
             <div className="flex items-center gap-3 justify-end self-start sm:self-auto">
               <div className="hidden md:flex items-center gap-2">
                 <InfoMenu />
-                <NotificationMenu notificationCount={4} />
+                <AppNotificationMenu />
               </div>
             </div>
           </div>

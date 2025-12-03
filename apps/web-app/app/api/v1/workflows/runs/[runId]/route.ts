@@ -19,7 +19,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ ru
       path: { run_id: runId },
     });
 
-    const status = response.response?.status ?? 500;
+    const status = response.response?.status ?? (response.error ? 500 : 204);
     if (response.error || status >= 400) {
       const err = response.error;
       const detail =
@@ -59,7 +59,9 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
       query: { hard, reason },
     });
 
-    const status = response.response?.status ?? 500;
+    const upstreamStatus = response.response?.status;
+    const status = upstreamStatus ?? (response.error ? 500 : 204);
+
     if (response.error || status >= 400) {
       const err = response.error;
       const detail =
@@ -68,12 +70,20 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
           : err && typeof err === 'object' && 'detail' in err && typeof (err as any).detail === 'string'
             ? (err as any).detail
             : undefined;
-      return NextResponse.json({ message: detail ?? 'Failed to delete workflow run', detail }, { status });
+
+      return NextResponse.json(
+        {
+          message: detail ?? 'Failed to delete workflow run',
+          detail: detail ?? undefined,
+        },
+        { status },
+      );
     }
 
-    return NextResponse.json(null, { status: 204 });
+    // Surface a consistent 204 regardless of upstream "204 vs 200" differences when deletion succeeds.
+    return new NextResponse(null, { status: 204 });
   } catch (error) {
     const { status, body } = normalizeApiError(error);
-    return NextResponse.json(body, { status });
+    return NextResponse.json({ ...body, detail: body.detail ?? body.message }, { status });
   }
 }

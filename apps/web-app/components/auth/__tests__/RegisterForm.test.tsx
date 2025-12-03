@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import { RegisterForm } from '../RegisterForm';
 import type { SignupAccessPolicy } from '@/types/signup';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -42,7 +43,11 @@ describe('RegisterForm', () => {
   });
 
   it('requires invite token when policy is not public', async () => {
-    render(<RegisterForm policy={buildPolicy('invite_only')} requestAccessHref="/request-access" />);
+    render(
+      <TooltipProvider>
+        <RegisterForm policy={buildPolicy('invite_only')} requestAccessHref="/request-access" />
+      </TooltipProvider>,
+    );
 
     fireEvent.input(screen.getByLabelText('Full name'), { target: { value: 'Ada Lovelace' } });
     fireEvent.input(screen.getByLabelText('Organization'), { target: { value: 'Ada Labs' } });
@@ -58,7 +63,11 @@ describe('RegisterForm', () => {
 
   it('submits invite token when provided', async () => {
     registerTenantAction.mockResolvedValueOnce(undefined);
-    render(<RegisterForm policy={buildPolicy('invite_only')} requestAccessHref="/request-access" />);
+    render(
+      <TooltipProvider>
+        <RegisterForm policy={buildPolicy('invite_only')} requestAccessHref="/request-access" />
+      </TooltipProvider>,
+    );
 
     fireEvent.input(screen.getByLabelText('Full name'), { target: { value: 'Grace Hopper' } });
     fireEvent.input(screen.getByLabelText('Organization'), { target: { value: 'Fleet Ops' } });

@@ -7,6 +7,7 @@ import { useAgents } from '@/lib/queries/agents';
 import { useBillingStream } from '@/lib/queries/billing';
 import { useActivityFeed } from '@/lib/queries/activity';
 import { useActivityStream } from '@/lib/queries/useActivityStream';
+import { mergeActivityEvents, toActivityDisplayItem } from '@/lib/utils/activity';
 
 import { QUICK_ACTIONS } from '../constants';
 import type { ActivityFeedItem, BillingPreviewSummary, DashboardData, DashboardKpi } from '../types';
@@ -79,23 +80,14 @@ export function useDashboardData(): DashboardData {
     recentActivityCount,
   ]);
 
-  const activityFeed = useMemo<ActivityFeedItem[]>(
-    () => {
-      const merged = [
-        ...liveActivity,
-        ...activity.filter((event) => !liveActivity.some((live) => live.id === event.id)),
-      ].slice(0, 20);
-
-      return merged.slice(0, 8).map((event) => ({
-        id: event.id,
-        title: humanizeAction(event.action),
-        detail: event.object_type ? `${event.object_type}${event.object_id ? ` • ${event.object_id}` : ''}` : 'General',
-        status: event.status,
-        timestamp: event.created_at,
-        metadataSummary: summarizeMetadata(event.metadata),
-      }));
-    },
+  const mergedActivity = useMemo(
+    () => mergeActivityEvents(liveActivity, activity, 20),
     [activity, liveActivity],
+  );
+
+  const activityFeed = useMemo<ActivityFeedItem[]>(
+    () => mergedActivity.slice(0, 8).map(toActivityDisplayItem),
+    [mergedActivity],
   );
 
   const billingPreview = useMemo<BillingPreviewSummary>(() => {
@@ -129,21 +121,4 @@ export function useDashboardData(): DashboardData {
     quickActions: QUICK_ACTIONS,
     refreshActivity,
   } satisfies DashboardData;
-}
-
-function humanizeAction(action: string): string {
-  if (!action) return 'Activity';
-  return action
-    .split('.')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-}
-
-function summarizeMetadata(metadata: Record<string, unknown> | null | undefined): string | null {
-  if (!metadata) return null;
-  const entries = Object.entries(metadata).slice(0, 2);
-  if (!entries.length) return null;
-  return entries
-    .map(([key, value]) => `${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`)
-    .join(' • ');
 }
