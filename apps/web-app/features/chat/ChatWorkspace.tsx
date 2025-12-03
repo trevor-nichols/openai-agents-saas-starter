@@ -5,7 +5,6 @@
 
 import { useEffect, useState } from 'react';
 
-import { Button } from '@/components/ui/button';
 import { GlassPanel, InlineTag, SectionHeader } from '@/components/ui/foundation';
 import { ErrorState } from '@/components/ui/states';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -141,13 +140,7 @@ export function ChatWorkspace() {
         </div>
 
         <div className="grid h-full gap-4 xl:grid-rows-[auto_1fr]">
-          <GlassPanel className="space-y-3 p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/50">Agent</p>
-              <Button variant="ghost" size="sm" onClick={() => setToolDrawerOpen(true)}>
-                Insights
-              </Button>
-            </div>
+          <GlassPanel className="p-4">
             <AgentSwitcher
               className="w-full"
               agents={agents}
@@ -155,15 +148,11 @@ export function ChatWorkspace() {
               onChange={setSelectedAgent}
               isLoading={isLoadingAgents}
               error={agentsError}
+              onShowInsights={() => setToolDrawerOpen(true)}
+              onShowDetails={() => setDetailDrawerOpen(true)}
+              onExport={handleExportTranscript}
+              hasConversation={!!currentConversationId}
             />
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={!currentConversationId} onClick={() => setDetailDrawerOpen(true)}>
-                Conversation details
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleExportTranscript}>
-                Export transcript
-              </Button>
-            </div>
           </GlassPanel>
 
           <ConversationSidebar
