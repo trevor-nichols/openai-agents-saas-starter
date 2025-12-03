@@ -5,7 +5,6 @@ import type { ReactNode } from 'react';
 import { createContext, useContext } from 'react';
 import type { DropEvent, DropzoneOptions, FileRejection } from 'react-dropzone';
 import { useDropzone } from 'react-dropzone';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 type DropzoneContextType = {
@@ -81,20 +80,21 @@ export const Dropzone = ({
       key={JSON.stringify(src)}
       value={{ src, accept, maxSize, minSize, maxFiles }}
     >
-      <Button
+      <div
+        {...getRootProps()}
         className={cn(
-          'relative h-auto w-full flex-col overflow-hidden p-8',
-          isDragActive && 'outline-none ring-1 ring-ring',
+          'group relative flex h-auto w-full cursor-pointer flex-col items-center justify-center gap-4 overflow-hidden rounded-3xl border-2 border-dashed border-muted-foreground/25 bg-muted/5 px-6 py-10 transition-all hover:bg-muted/10 active:scale-[0.98]',
+          isDragActive && 'border-primary bg-primary/5 ring-4 ring-primary/10',
+          disabled && 'pointer-events-none opacity-50',
           className
         )}
-        disabled={disabled}
-        type="button"
-        variant="outline"
-        {...getRootProps()}
+        role="button"
+        tabIndex={0}
+        aria-disabled={disabled}
       >
         <input {...getInputProps()} disabled={disabled} />
         {children}
-      </Button>
+      </div>
     </DropzoneContext.Provider>
   );
 };
@@ -131,18 +131,18 @@ export const DropzoneContent = ({
   }
 
   return (
-    <div className={cn('flex flex-col items-center justify-center', className)}>
-      <div className="flex size-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
-        <UploadIcon size={16} />
+    <div className={cn('flex flex-col items-center justify-center gap-2 text-center', className)}>
+      <div className="flex size-12 items-center justify-center rounded-full bg-muted/50 text-muted-foreground transition-colors group-hover:bg-background group-hover:text-foreground">
+        <UploadIcon size={20} />
       </div>
-      <p className="my-2 w-full truncate font-medium text-sm">
+      <p className="w-full truncate font-semibold text-base">
         {src.length > maxLabelItems
           ? `${new Intl.ListFormat('en').format(
               src.slice(0, maxLabelItems).map((file) => file.name)
             )} and ${src.length - maxLabelItems} more`
           : new Intl.ListFormat('en').format(src.map((file) => file.name))}
       </p>
-      <p className="w-full text-wrap text-muted-foreground text-xs">
+      <p className="w-full text-wrap text-sm text-muted-foreground/80">
         Drag and drop or click to replace
       </p>
     </div>
@@ -184,18 +184,18 @@ export const DropzoneEmptyState = ({
   }
 
   return (
-    <div className={cn('flex flex-col items-center justify-center', className)}>
-      <div className="flex size-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
-        <UploadIcon size={16} />
+    <div className={cn('flex flex-col items-center justify-center gap-2 text-center', className)}>
+      <div className="flex size-12 items-center justify-center rounded-full bg-muted/50 text-muted-foreground transition-colors group-hover:bg-background group-hover:text-foreground">
+        <UploadIcon size={20} />
       </div>
-      <p className="my-2 w-full truncate text-wrap font-medium text-sm">
+      <p className="w-full truncate text-wrap font-semibold text-base">
         Upload {maxFiles === 1 ? 'a file' : 'files'}
       </p>
-      <p className="w-full truncate text-wrap text-muted-foreground text-xs">
+      <p className="w-full truncate text-wrap text-sm text-muted-foreground/80">
         Drag and drop or click to upload
       </p>
       {caption && (
-        <p className="text-wrap text-muted-foreground text-xs">{caption}.</p>
+        <p className="text-wrap text-xs text-muted-foreground/60 mt-1">{caption}.</p>
       )}
     </div>
   );

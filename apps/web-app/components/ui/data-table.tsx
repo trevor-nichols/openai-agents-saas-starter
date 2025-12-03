@@ -114,13 +114,13 @@ export function DataTable<TData extends object>({
   } else {
     const rows = table.getRowModel().rows;
     content = (
-      <ScrollArea className="max-h-[520px] overflow-hidden rounded-b-2xl">
+      <ScrollArea className="max-h-[520px] overflow-hidden rounded-2xl border shadow-sm">
         <Table className="min-w-full text-sm">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup: HeaderGroup<TData>) => (
-              <TableRow key={headerGroup.id}>
+              <TableRow key={headerGroup.id} className="hover:bg-transparent">
                 {headerGroup.headers.map((header: Header<TData, unknown>) => (
-                  <TableHead key={header.id} className="px-4 py-3">
+                  <TableHead key={header.id} className="px-4 py-3 h-12">
                     {header.isPlaceholder ? null : (
                       <div
                         className={cn(
@@ -153,7 +153,7 @@ export function DataTable<TData extends object>({
               <TableRow
                 key={row.id}
                 className={cn(
-                  'border-t border-white/5 transition-colors hover:bg-white/5 focus-visible:bg-white/10',
+                  'border-t border-border/40 transition-colors hover:bg-muted/30 focus-visible:bg-muted/30',
                   onRowClick ? 'cursor-pointer' : '',
                   rowClassName,
                 )}
@@ -186,7 +186,7 @@ export function DataTable<TData extends object>({
   }
 
   return (
-    <div className={cn('flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/5 p-0', className)}>
+    <div className={cn('flex flex-col gap-4', className)}>
       {content}
       {enablePagination && !isLoading && !isError && data.length > 0 ? (
         <DataTablePagination

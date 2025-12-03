@@ -15,29 +15,28 @@ export function SectionHeader({ title, description, eyebrow, actions, className,
   return (
     <div
       className={cn(
-        'flex flex-col sm:flex-row sm:items-end sm:justify-between',
-        isCompact ? 'gap-2' : 'gap-3',
+        'flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between',
         className,
       )}
     >
-      <div>
+      <div className="space-y-1.5">
         {eyebrow ? (
-          <p className={cn('font-semibold uppercase tracking-[0.3em] text-foreground/50', isCompact ? 'text-[11px]' : 'text-xs')}>
+          <p className="text-xs font-medium uppercase tracking-wider text-primary">
             {eyebrow}
           </p>
         ) : null}
-        <div className={cn(isCompact ? 'mt-0.5' : 'mt-1')}>
-          <h2 className={cn('font-semibold tracking-tight text-foreground', isCompact ? 'text-lg' : 'text-xl')}>
+        <div className="space-y-1">
+          <h2 className={cn('font-bold tracking-tight text-foreground', isCompact ? 'text-xl' : 'text-3xl')}>
             {title}
           </h2>
           {description ? (
-            <p className={cn('text-foreground/70', isCompact ? 'mt-0.5 text-sm' : 'mt-1 text-sm')}>
+            <p className={cn('text-muted-foreground max-w-3xl', isCompact ? 'text-sm' : 'text-base')}>
               {description}
             </p>
           ) : null}
         </div>
       </div>
-      {actions ? <div className="flex flex-shrink-0 items-center gap-2">{actions}</div> : null}
+      {actions ? <div className={cn("flex flex-shrink-0 items-center gap-2", isCompact ? "" : "sm:pt-1")}>{actions}</div> : null}
     </div>
   );
 }

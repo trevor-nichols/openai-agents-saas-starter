@@ -15,7 +15,7 @@ type Story = StoryObj<typeof Tabs>;
 export const Default: Story = {
   render: () => (
     <Tabs defaultValue="overview" className="w-full max-w-xl">
-      <TabsList className="w-full justify-start">
+      <TabsList>
         <TabsTrigger value="overview">Overview</TabsTrigger>
         <TabsTrigger value="usage">Usage</TabsTrigger>
         <TabsTrigger value="alerts">Alerts</TabsTrigger>

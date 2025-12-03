@@ -22,32 +22,34 @@ type Story = StoryObj<typeof Table>;
 
 export const Basic: Story = {
   render: () => (
-    <Table>
-      <TableCaption>Current active tenants</TableCaption>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Tenant</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead className="text-right">Monthly Spend</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableRow>
-          <TableCell>Acme Corp</TableCell>
-          <TableCell>Active</TableCell>
-          <TableCell className="text-right">$1,240</TableCell>
-        </TableRow>
-        <TableRow>
-          <TableCell>Northwind</TableCell>
-          <TableCell>Trial</TableCell>
-          <TableCell className="text-right">$180</TableCell>
-        </TableRow>
-        <TableRow>
-          <TableCell>Globex</TableCell>
-          <TableCell>Active</TableCell>
-          <TableCell className="text-right">$3,420</TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
+    <div className="overflow-hidden rounded-2xl border shadow-sm">
+      <Table>
+        <TableCaption>Current active tenants</TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Tenant</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Monthly Spend</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow>
+            <TableCell>Acme Corp</TableCell>
+            <TableCell>Active</TableCell>
+            <TableCell className="text-right">$1,240</TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Northwind</TableCell>
+            <TableCell>Trial</TableCell>
+            <TableCell className="text-right">$180</TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Globex</TableCell>
+            <TableCell>Active</TableCell>
+            <TableCell className="text-right">$3,420</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
   ),
 };

@@ -54,11 +54,11 @@ export const Banner = ({
     <BannerContext.Provider value={{ show, setShow }}>
       <div
         className={cn(
-          'flex w-full items-center justify-between gap-2 px-4 py-2',
+          'flex w-full items-center justify-between gap-3 px-4 py-3 transition-all animate-in fade-in slide-in-from-top-2 duration-300',
           variant === 'primary'
-            ? 'bg-primary text-primary-foreground'
-            : 'border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 text-foreground',
-          inset && 'rounded-lg',
+            ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
+            : 'bg-muted/50 border-transparent text-foreground shadow-sm',
+          inset && 'rounded-3xl',
           className
         )}
         {...props}
@@ -80,7 +80,7 @@ export const BannerIcon = ({
 }: BannerIconProps) => (
   <div
     className={cn(
-      'rounded-full border border-background/20 bg-background/10 p-1 shadow-sm',
+      'flex shrink-0 items-center justify-center rounded-full bg-background/20 p-1.5',
       className
     )}
     {...props}
@@ -92,7 +92,7 @@ export const BannerIcon = ({
 export type BannerTitleProps = HTMLAttributes<HTMLParagraphElement>;
 
 export const BannerTitle = ({ className, ...props }: BannerTitleProps) => (
-  <p className={cn('flex-1 text-sm', className)} {...props} />
+  <p className={cn('flex-1 text-sm font-medium tracking-tight', className)} {...props} />
 );
 
 export type BannerActionProps = ComponentProps<typeof Button>;
@@ -105,7 +105,7 @@ export const BannerAction = ({
 }: BannerActionProps) => (
   <Button
     className={cn(
-      'shrink-0 bg-transparent hover:bg-background/10 hover:text-background',
+      'h-8 shrink-0 rounded-full border-background/20 px-4 text-xs font-semibold hover:bg-background/10 hover:text-current hover:border-background/40',
       className
     )}
     size={size}
@@ -133,7 +133,7 @@ export const BannerClose = ({
   return (
     <Button
       className={cn(
-        'shrink-0 bg-transparent hover:bg-background/10 hover:text-background',
+        'h-7 w-7 shrink-0 rounded-full hover:bg-background/20 hover:text-current',
         className
       )}
       onClick={handleClick}
@@ -141,7 +141,7 @@ export const BannerClose = ({
       variant={variant}
       {...props}
     >
-      <XIcon size={18} />
+      <XIcon size={14} />
     </Button>
   );
 };

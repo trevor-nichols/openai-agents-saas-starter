@@ -9,7 +9,7 @@ export const GlassPanel = React.forwardRef<HTMLDivElement, GlassPanelProps>(
     <div
       ref={ref}
       className={cn(
-        'rounded-lg border border-white/10 bg-white/5 p-6 shadow-glass backdrop-blur-glass transition duration-surface ease-apple',
+        'rounded-3xl border border-white/10 bg-glass p-8 shadow-xl backdrop-blur-xl transition-all duration-surface ease-apple hover:bg-glass-strong hover:shadow-2xl',
         className
       )}
       {...props}
