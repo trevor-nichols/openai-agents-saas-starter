@@ -14,10 +14,12 @@ type ToastContent = {
 
 type AuthSchema = z.ZodObject<Record<string, z.ZodTypeAny>>;
 
+type SubmitResult = { success?: boolean; error?: string } | void;
+
 interface UseAuthFormOptions<TSchema extends AuthSchema> {
   schema: TSchema;
   initialValues: z.infer<TSchema>;
-  submitHandler: (values: z.infer<TSchema>) => Promise<void>;
+  submitHandler: (values: z.infer<TSchema>) => Promise<SubmitResult>;
   successToast?: ToastContent;
   errorToast?: ToastContent;
   onSuccess?: () => void;
@@ -43,7 +45,18 @@ export function useAuthForm<TSchema extends AuthSchema>({
   const onSubmit = form.handleSubmit(async (values) => {
     setFormError(null);
     try {
-      await submitHandler(values);
+      const result = await submitHandler(values);
+
+      const resultError = extractResultError(result);
+      if (resultError) {
+        setFormError(resultError);
+        error({
+          title: errorToast?.title ?? 'Request failed',
+          description: resultError,
+        });
+        return;
+      }
+
       if (successToast) {
         success(successToast);
       }
@@ -75,4 +88,15 @@ function getErrorMessage(error: unknown, fallback?: string) {
     return error;
   }
   return fallback ?? 'Something went wrong. Please try again.';
+}
+
+function extractResultError(result: SubmitResult): string | null {
+  if (!result || typeof result !== 'object') return null;
+  if ('error' in result && typeof result.error === 'string') {
+    return result.error;
+  }
+  if ('success' in result && result.success === false) {
+    return 'Request failed.';
+  }
+  return null;
 }

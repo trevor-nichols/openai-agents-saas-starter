@@ -41,7 +41,7 @@ export function LoginForm({ redirectTo }: { redirectTo?: string }) {
     schema: loginSchema,
     initialValues: defaultValues,
     submitHandler: async (values) => {
-      await loginAction({
+      return loginAction({
         email: values.email,
         password: values.password,
         tenantId: values.tenantId?.trim() ? values.tenantId.trim() : undefined,

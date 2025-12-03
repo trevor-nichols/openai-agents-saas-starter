@@ -11,9 +11,14 @@ interface LoginActionInput {
   tenantId?: string | null;
 }
 
-export async function loginAction({ email, password, tenantId }: LoginActionInput): Promise<void> {
+interface AuthActionResult {
+  success: boolean;
+  error?: string;
+}
+
+export async function loginAction({ email, password, tenantId }: LoginActionInput): Promise<AuthActionResult> {
   if (!email || !password) {
-    throw new Error('Email and password are required.');
+    return { success: false, error: 'Email and password are required.' };
   }
 
   const tenantIdValue = tenantId && tenantId.trim().length > 0 ? tenantId.trim() : null;
@@ -24,8 +29,9 @@ export async function loginAction({ email, password, tenantId }: LoginActionInpu
       password,
       tenant_id: tenantIdValue,
     });
+    return { success: true };
   } catch (error) {
-    throw new Error(error instanceof Error ? error.message : 'Login failed.');
+    return { success: false, error: resolveAuthErrorMessage(error) };
   }
 }
 
@@ -41,4 +47,27 @@ export async function silentRefreshAction(): Promise<void> {
     redirect('/login');
   }
   await refreshSessionWithBackend(refreshToken);
+}
+
+function resolveAuthErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  if (error && typeof error === 'object') {
+    const maybeMessage = (error as { message?: unknown }).message;
+    if (typeof maybeMessage === 'string' && maybeMessage.trim()) {
+      return maybeMessage;
+    }
+    const maybeDetail = (error as { detail?: unknown }).detail;
+    if (typeof maybeDetail === 'string' && maybeDetail.trim()) {
+      return maybeDetail;
+    }
+  }
+
+  return 'Invalid email or password. Please try again.';
 }

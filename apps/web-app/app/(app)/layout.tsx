@@ -40,7 +40,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 async function AppLayoutContent({ children }: AppLayoutProps) {
   const session = await getSessionMetaFromCookies();
   const hasStatusScope = session?.scopes?.includes('status:manage') ?? false;
-  const navItems = await buildNavItems(hasStatusScope);
+  const navItems = buildNavItems(hasStatusScope);
 
   const subtitle = billingEnabled
     ? 'Configure agents, monitor conversations, and keep billing healthy.'

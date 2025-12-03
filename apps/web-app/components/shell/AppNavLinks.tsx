@@ -6,12 +6,21 @@ import { usePathname } from 'next/navigation';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
+export type NavIconKey =
+  | 'layout-dashboard'
+  | 'message-square'
+  | 'workflow'
+  | 'bot'
+  | 'credit-card'
+  | 'activity'
+  | 'database';
+
 export interface AppNavItem {
   href: string;
   label: string;
   badge?: string;
   badgeVariant?: BadgeProps['variant'];
-  icon?: React.ComponentType<{ className?: string }>;
+  icon?: NavIconKey;
 }
 
 interface AppNavLinksProps {

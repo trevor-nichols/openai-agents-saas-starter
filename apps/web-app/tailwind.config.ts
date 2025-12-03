@@ -87,6 +87,8 @@ const config = {
       },
       transitionTimingFunction: {
         apple: "var(--ease-apple)",
+        "smooth-overshoot": "cubic-bezier(.5,.85,.25,1.1)",
+        "snap-rebound": "cubic-bezier(.5,.85,.25,1.8)",
       },
       transitionDuration: {
         quick: "var(--duration-quick)",

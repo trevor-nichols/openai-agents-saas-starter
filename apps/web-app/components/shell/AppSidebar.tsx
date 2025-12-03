@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Command } from 'lucide-react';
+import { Activity, Bot, Command, CreditCard, Database, LayoutDashboard, MessageSquare, Workflow } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 import {
   Sidebar,
@@ -18,7 +19,17 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar';
 import { SidebarUserMenu } from './SidebarUserMenu';
-import type { AppNavItem } from './AppNavLinks';
+import type { AppNavItem, NavIconKey } from './AppNavLinks';
+
+const iconMap: Record<NavIconKey, LucideIcon> = {
+  'layout-dashboard': LayoutDashboard,
+  'message-square': MessageSquare,
+  workflow: Workflow,
+  bot: Bot,
+  'credit-card': CreditCard,
+  activity: Activity,
+  database: Database,
+};
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   navItems: AppNavItem[];
@@ -67,16 +78,21 @@ export function AppSidebar({
           <SidebarGroupLabel>Platform</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={pathname === item.href || (item.href !== '/' && pathname.startsWith(`${item.href}/`))} tooltip={item.label}>
-                    <Link href={item.href}>
-                      {item.icon && <item.icon />}
-                      <span>{item.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {navItems.map((item) => {
+                const Icon = item.icon ? iconMap[item.icon] : null;
+                const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(`${item.href}/`));
+
+                return (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.label}>
+                      <Link href={item.href}>
+                        {Icon ? <Icon className="h-4 w-4" aria-hidden /> : null}
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -86,16 +102,19 @@ export function AppSidebar({
                 <SidebarGroupLabel>Account</SidebarGroupLabel>
                 <SidebarGroupContent>
                     <SidebarMenu>
-                    {accountItems.map((item) => (
+                    {accountItems.map((item) => {
+                        const Icon = item.icon ? iconMap[item.icon] : null;
+                        return (
                         <SidebarMenuItem key={item.href}>
                         <SidebarMenuButton asChild isActive={pathname === item.href} tooltip={item.label}>
                             <Link href={item.href}>
-                            {item.icon && <item.icon />}
+                            {Icon ? <Icon className="h-4 w-4" aria-hidden /> : null}
                             <span>{item.label}</span>
                             </Link>
                         </SidebarMenuButton>
                         </SidebarMenuItem>
-                    ))}
+                    );
+                    })}
                     </SidebarMenu>
                 </SidebarGroupContent>
             </SidebarGroup>
