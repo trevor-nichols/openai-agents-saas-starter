@@ -99,7 +99,7 @@ export function ChatWorkspace() {
         </SheetContent>
       </Sheet>
 
-      <div className="grid min-h-[70vh] gap-6 lg:grid-cols-[minmax(0,1.9fr)_minmax(320px,1fr)]">
+      <div className="grid min-h-[70vh] gap-6 lg:grid-cols-[320px_1fr]">
         <div className="flex flex-col gap-4">
           <SectionHeader
             eyebrow={CHAT_COPY.header.eyebrow}
@@ -138,7 +138,7 @@ export function ChatWorkspace() {
           </ChatControllerProvider>
         </div>
 
-        <div className="grid h-full gap-4 xl:grid-rows-[auto_1fr]">
+        <div className="grid h-full gap-4 xl:grid-rows-[auto_1fr] lg:order-first">
           <GlassPanel className="p-4">
             <AgentSwitcher
               className="w-full"
