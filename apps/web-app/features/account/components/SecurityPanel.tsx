@@ -19,7 +19,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { GlassPanel, InlineTag, KeyValueList, PasswordPolicyList, SectionHeader } from '@/components/ui/foundation';
-import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { EmptyState, ErrorState, SkeletonPanel } from '@/components/ui/states';
 import {
   Tooltip,
@@ -160,7 +160,7 @@ export function SecurityPanel() {
                     <FormItem>
                       <FormLabel>Current password</FormLabel>
                       <FormControl>
-                        <Input {...field} type="password" autoComplete="current-password" />
+                        <PasswordInput {...field} autoComplete="current-password" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -174,7 +174,7 @@ export function SecurityPanel() {
                     <FormItem>
                       <FormLabel>New password</FormLabel>
                       <FormControl>
-                        <Input {...field} type="password" autoComplete="new-password" />
+                        <PasswordInput {...field} autoComplete="new-password" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -190,7 +190,7 @@ export function SecurityPanel() {
                     <FormItem>
                       <FormLabel>Confirm new password</FormLabel>
                       <FormControl>
-                        <Input {...field} type="password" autoComplete="new-password" />
+                        <PasswordInput {...field} autoComplete="new-password" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

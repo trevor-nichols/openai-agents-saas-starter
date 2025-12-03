@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { PasswordInput } from '@/components/ui/password-input';
 import { useAuthForm } from '@/hooks/useAuthForm';
 import type { SignupAccessPolicy } from '@/types/signup';
 import { resolveSignupPolicyMode, type SignupAccessPolicyMode } from '@/types/signup';
@@ -192,12 +193,7 @@ export function RegisterForm({ policy, requestAccessHref = '/request-access' }: 
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input
-                  {...field}
-                  type="password"
-                  autoComplete="new-password"
-                  placeholder="Minimum 12 characters"
-                />
+                <PasswordInput {...field} autoComplete="new-password" placeholder="Minimum 12 characters" />
               </FormControl>
               <FormMessage />
             </FormItem>

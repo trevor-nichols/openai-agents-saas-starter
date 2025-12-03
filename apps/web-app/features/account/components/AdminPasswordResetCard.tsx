@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/form';
 import { GlassPanel, InlineTag, PasswordPolicyList, SectionHeader } from '@/components/ui/foundation';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { useToast } from '@/components/ui/use-toast';
 import { useAdminResetPasswordMutation } from '@/lib/queries/accountSecurity';
 import { PASSWORD_POLICY_RULES } from '../constants';
@@ -161,30 +162,30 @@ export function AdminPasswordResetCard({ tenantName }: AdminPasswordResetCardPro
               <FormField
                 control={form.control}
                 name="newPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>New password</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="password" autoComplete="new-password" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>New password</FormLabel>
+                  <FormControl>
+                    <PasswordInput {...field} autoComplete="new-password" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
               <FormField
                 control={form.control}
                 name="confirmNewPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Confirm new password</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="password" autoComplete="new-password" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Confirm new password</FormLabel>
+                  <FormControl>
+                    <PasswordInput {...field} autoComplete="new-password" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
               <PasswordPolicyList items={PASSWORD_POLICY_RULES} />
 

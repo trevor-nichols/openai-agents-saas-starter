@@ -13,7 +13,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { useAuthForm } from '@/hooks/useAuthForm';
 
 const resetSchema = z
@@ -76,7 +76,11 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
             <FormItem>
               <FormLabel>New password</FormLabel>
               <FormControl>
-                <Input {...field} type="password" autoComplete="new-password" placeholder="Minimum 12 characters" />
+                <PasswordInput
+                  {...field}
+                  autoComplete="new-password"
+                  placeholder="Minimum 12 characters"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -90,7 +94,11 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
             <FormItem>
               <FormLabel>Confirm password</FormLabel>
               <FormControl>
-                <Input {...field} type="password" autoComplete="new-password" placeholder="Re-enter password" />
+                <PasswordInput
+                  {...field}
+                  autoComplete="new-password"
+                  placeholder="Re-enter password"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

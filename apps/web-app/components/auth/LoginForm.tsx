@@ -14,6 +14,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { useAuthForm } from '@/hooks/useAuthForm';
 
 const loginSchema = z.object({
@@ -91,12 +92,7 @@ export function LoginForm({ redirectTo }: { redirectTo?: string }) {
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input
-                  {...field}
-                  type="password"
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                />
+                <PasswordInput {...field} placeholder="••••••••" autoComplete="current-password" />
               </FormControl>
               <FormMessage />
             </FormItem>
