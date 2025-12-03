@@ -101,6 +101,9 @@ class FakeProvider:
     async def create(self, *, tenant_id, user_id, conversation_key):
         return self._conversation_id
 
+    def mark_seen(self, agent_key, ts):  # pragma: no cover - simple stub
+        self._descriptor.last_seen_at = ts
+
 
 @pytest.mark.asyncio
 async def test_agent_service_uses_conv_id_when_available(monkeypatch: pytest.MonkeyPatch):

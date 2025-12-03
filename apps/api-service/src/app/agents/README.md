@@ -50,11 +50,11 @@ def get_agent_spec() -> AgentSpec:
         model_key="triage",
         tool_keys=("web_search", "search_conversations"),
         prompt_path=base / "prompt.md.j2",
-        handoff_keys=("code_assistant", "data_analyst"),
+        handoff_keys=("code_assistant", "researcher"),
         wrap_with_handoff_prompt=True,
-        handoff_context={"code_assistant": "last_turn", "data_analyst": "fresh"},
+        handoff_context={"code_assistant": "last_turn", "researcher": "fresh"},
         handoff_overrides={
-            "data_analyst": HandoffConfig(
+            "researcher": HandoffConfig(
                 tool_name="handoff_to_data",
                 input_filter="remove_all_tools",
             )

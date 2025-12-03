@@ -6882,6 +6882,18 @@
             "title": "Status",
             "description": "Health status of the agent."
           },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name",
+            "description": "Human-friendly display name for the agent."
+          },
           "description": {
             "anyOf": [
               {
@@ -6893,6 +6905,30 @@
             ],
             "title": "Description",
             "description": "Short human-readable description."
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model",
+            "description": "Model configured for this agent."
+          },
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen At",
+            "description": "Last time the agent was observed handling a request."
           }
         },
         "type": "object",

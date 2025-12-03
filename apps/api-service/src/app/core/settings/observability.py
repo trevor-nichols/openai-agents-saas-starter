@@ -17,8 +17,10 @@ class ObservabilitySettingsMixin(BaseModel):
     )
     logging_sinks: str | None = Field(
         default=None,
-        description=
-        "Comma-separated logging sinks (stdout, file, datadog, otlp, none). Overrides LOGGING_SINK when set.",
+        description=(
+            "Comma-separated logging sinks (stdout, file, datadog, otlp, none). "
+            "Overrides LOGGING_SINK when set."
+        ),
         alias="LOGGING_SINKS",
     )
     logging_file_path: str = Field(

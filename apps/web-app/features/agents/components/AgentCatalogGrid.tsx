@@ -3,7 +3,6 @@
 
 'use client';
 
-import { useMemo } from 'react';
 import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
 
@@ -31,7 +30,7 @@ interface AgentCatalogGridProps {
 export function AgentCatalogGrid({
   agents,
   toolsByAgent,
-  summary,
+  summary: _summary,
   isLoadingAgents,
   isLoadingTools,
   errorMessage,
@@ -40,13 +39,6 @@ export function AgentCatalogGrid({
   onSelectAgent,
 }: AgentCatalogGridProps) {
   const totalAgents = agents.length;
-
-  const toolingSummary = useMemo(() => {
-    if (!summary.totalTools) {
-      return 'No shared tools registered';
-    }
-    return `${summary.totalTools} tool${summary.totalTools === 1 ? '' : 's'} available`;
-  }, [summary.totalTools]);
 
   const isLoading = isLoadingAgents || isLoadingTools;
 
@@ -111,6 +103,7 @@ export function AgentCatalogGrid({
         {agents.map((agent) => {
           const agentTools = toolsByAgent[agent.name] ?? [];
           const isSelected = selectedAgent === agent.name;
+          const displayName = agent.display_name ?? agent.name;
           return (
             <GlassPanel
               key={agent.name}
@@ -129,13 +122,12 @@ export function AgentCatalogGrid({
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-lg font-semibold text-foreground">
-                      {agent.display_name ?? agent.name}
+                      {displayName}
                     </p>
                     <p className="text-xs uppercase tracking-[0.2em] text-foreground/60">
                       {agent.model ?? 'Unknown model'}
                     </p>
                   </div>
-                  <StatusBadge status={agent.status} />
                 </div>
                 <p className="text-sm text-foreground/70">
                   {agent.description ?? 'No description provided.'}
@@ -172,8 +164,7 @@ export function AgentCatalogGrid({
                 </div>
               </div>
 
-              <div className="flex items-center justify-between border-t border-white/10 pt-4 text-sm">
-                <span className="text-foreground/60">{toolingSummary}</span>
+              <div className="flex items-center justify-end border-t border-white/10 pt-4 text-sm">
                 <Button
                   variant={isSelected ? 'default' : 'ghost'}
                   size="sm"
@@ -194,18 +185,4 @@ export function AgentCatalogGrid({
       </div>
     </div>
   );
-}
-
-function StatusBadge({ status }: { status?: string | null }) {
-  const normalized = (status ?? 'unknown').toLowerCase();
-  if (normalized === 'active') {
-    return <Badge className="bg-emerald-500/20 text-emerald-100">Active</Badge>;
-  }
-  if (normalized === 'paused') {
-    return <Badge className="bg-amber-500/20 text-amber-100">Paused</Badge>;
-  }
-  if (normalized === 'error') {
-    return <Badge variant="destructive">Error</Badge>;
-  }
-  return <Badge variant="outline">Unknown</Badge>;
 }

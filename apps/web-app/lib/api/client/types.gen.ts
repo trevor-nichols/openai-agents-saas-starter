@@ -239,11 +239,29 @@ export type AgentSummary = {
    */
   status: "active" | "inactive" | "error";
   /**
+   * Display Name
+   *
+   * Human-friendly display name for the agent.
+   */
+  display_name?: string | null;
+  /**
    * Description
    *
    * Short human-readable description.
    */
   description?: string | null;
+  /**
+   * Model
+   *
+   * Model configured for this agent.
+   */
+  model?: string | null;
+  /**
+   * Last Seen At
+   *
+   * Last time the agent was observed handling a request.
+   */
+  last_seen_at?: string | null;
 };
 
 /**

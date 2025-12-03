@@ -42,7 +42,7 @@ def get_workflow_spec() -> WorkflowSpec:
                 name="fanout",
                 mode="parallel",
                 steps=(
-                    WorkflowStep(agent_key="data_analyst", name="analysis"),
+                    WorkflowStep(agent_key="researcher", name="analysis"),
                     WorkflowStep(agent_key="code_assistant", name="code"),
                 ),
                 reducer="app.workflows.analysis_parallel.spec:concat_outputs",
@@ -61,4 +61,3 @@ def get_workflow_spec() -> WorkflowSpec:
         ),
         allow_handoff_agents=False,
     )
-

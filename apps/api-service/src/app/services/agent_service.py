@@ -11,6 +11,7 @@ import inspect
 import logging
 import uuid
 from collections.abc import AsyncGenerator, Iterable
+from datetime import datetime
 from typing import Any
 
 from agents import trace
@@ -223,6 +224,8 @@ class AgentService:
             usage=result.usage,
         )
 
+        provider.mark_seen(descriptor.key, datetime.utcnow())
+
         await self._ingest_new_session_items(
             session_handle=session_handle,
             pre_items=pre_session_items,
@@ -433,6 +436,8 @@ class AgentService:
             response_id=getattr(stream_handle, "last_response_id", None),
         )
 
+        provider.mark_seen(descriptor.key, datetime.utcnow())
+
     async def get_conversation_history(
         self, conversation_id: str, *, actor: ConversationActorContext
     ) -> ConversationHistory:
@@ -502,11 +507,19 @@ class AgentService:
 
     def list_available_agents(self) -> list[AgentSummary]:
         provider = self._get_provider()
+        def _serialize_ts(dt):
+            if dt is None:
+                return None
+            return dt.replace(microsecond=0).isoformat() + "Z"
+
         return [
             AgentSummary(
                 name=descriptor.key,
                 status=descriptor.status,
                 description=descriptor.description,
+                display_name=descriptor.display_name,
+                model=descriptor.model,
+                last_seen_at=_serialize_ts(getattr(descriptor, "last_seen_at", None)),
             )
             for descriptor in provider.list_agents()
         ]
@@ -516,10 +529,13 @@ class AgentService:
         descriptor = provider.get_agent(agent_name)
         if not descriptor:
             raise ValueError(f"Agent '{agent_name}' not found")
+        last_used = getattr(descriptor, "last_seen_at", None)
+        if last_used:
+            last_used = last_used.replace(microsecond=0).isoformat() + "Z"
         return AgentStatus(
             name=descriptor.key,
             status="active",
-            last_used=None,
+            last_used=last_used,
             total_conversations=0,
         )
 

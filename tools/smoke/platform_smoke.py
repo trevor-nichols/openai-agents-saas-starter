@@ -124,6 +124,9 @@ class _StubProvider:
     def tool_overview(self) -> dict[str, Any]:
         return {self._descriptor.key: []}
 
+    def mark_seen(self, agent_key: str, ts):  # pragma: no cover - smoke-only stub
+        return None
+
 
 # Monkeypatch the provider factory before app import so lifespan uses the stub.
 main_spec = importlib.util.spec_from_file_location(

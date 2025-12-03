@@ -27,6 +27,9 @@ class FakeProvider:
         await asyncio.sleep(0)
         return f"conv_{conversation_key}"
 
+    def mark_seen(self, agent_key, ts):  # pragma: no cover - not used in these tests
+        return None
+
 
 class FakeConversationService(ConversationService):
     def __init__(self, state: ConversationSessionState | None = None):

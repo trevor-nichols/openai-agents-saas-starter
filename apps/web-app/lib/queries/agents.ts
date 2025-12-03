@@ -1,6 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { fetchAgentStatus, fetchAgents } from '@/lib/api/agents';
+import type { AgentStatus } from '@/types/agents';
 
 import { queryKeys } from './keys';
 
@@ -19,6 +20,36 @@ export function useAgents() {
     agents,
     isLoadingAgents: isLoading,
     agentsError: error instanceof Error ? error : null,
+  };
+}
+
+export function useAgentStatuses(agentNames: string[]) {
+  const queries = useQueries({
+    queries: agentNames.map((agentName) => ({
+      queryKey: queryKeys.agents.detail(agentName),
+      queryFn: () => fetchAgentStatus(agentName),
+      enabled: Boolean(agentName),
+      staleTime: 15 * 1000,
+    })),
+    combine: (results) => results,
+  });
+
+  const statusMap = queries.reduce<Record<string, AgentStatus | null>>((acc, query, idx) => {
+    const name = agentNames[idx];
+    if (!name) {
+      return acc;
+    }
+    acc[name] = (query.data as AgentStatus | null) ?? null;
+    return acc;
+  }, {});
+
+  const isLoadingStatuses = queries.some((q) => q.isLoading);
+  const statusError = (queries.find((q) => q.error)?.error as Error | null) ?? null;
+
+  return {
+    statusMap,
+    isLoadingStatuses,
+    statusError,
   };
 }
 
@@ -41,4 +72,3 @@ export function useAgentStatus(agentName: string | null) {
     agentStatusError: error instanceof Error ? error : null,
   };
 }
-

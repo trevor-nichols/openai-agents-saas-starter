@@ -89,6 +89,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
   const [toolEvents, setToolEvents] = useState<ToolState[]>([]);
   const [reasoningText, setReasoningText] = useState('');
   const [lifecycleStatus, setLifecycleStatus] = useState<ConversationLifecycleStatus>('idle');
+  const lastActiveAgentRef = useRef<string>('triage');
 
       const { enqueueMessageAction, flushQueuedMessages } = useMessageDispatchQueue(dispatchMessages);
 
@@ -102,6 +103,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       setAgentNotices([]);
       setLifecycleStatus('idle');
       setActiveAgent(selectedAgent);
+      lastActiveAgentRef.current = selectedAgent;
     },
     [selectedAgent],
   );
@@ -160,6 +162,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
   const setSelectedAgent = useCallback((agentName: string) => {
     setSelectedAgentState(agentName);
     setActiveAgent(agentName);
+    lastActiveAgentRef.current = agentName;
   }, []);
 
   const startNewConversation = useCallback(() => {
@@ -226,8 +229,15 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
           onReasoningDelta: (delta) => setReasoningText((prev) => `${prev}${delta}`),
           onToolStates: setToolEvents,
           onLifecycle: setLifecycleStatus,
-          onAgentChange: setActiveAgent,
-          onAgentNotice: appendAgentNotice,
+          onAgentChange: (agent) => {
+            setActiveAgent(agent);
+            lastActiveAgentRef.current = agent;
+          },
+          onAgentNotice: (notice) => {
+            const current = lastActiveAgentRef.current;
+            if (notice.endsWith(current)) return;
+            appendAgentNotice(notice);
+          },
           onAttachments: (attachments) =>
             enqueueMessageAction({
               type: 'updateById',

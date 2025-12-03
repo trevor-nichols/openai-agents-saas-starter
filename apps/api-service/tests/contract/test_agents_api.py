@@ -115,6 +115,25 @@ def test_chat_with_agent(mock_run: AsyncMock, client: TestClient) -> None:
     assert payload["agent_used"] == "triage"
     assert payload["conversation_id"]
 
+    # Heartbeat should be recorded on the agent after a successful chat
+    agents_after = client.get("/api/v1/agents").json()
+    triage = next(a for a in agents_after if a["name"] == "triage")
+    assert triage.get("last_seen_at") is not None
+
+
+def test_tools_endpoint_returns_per_agent_tooling(client: TestClient) -> None:
+    response = client.get("/api/v1/tools")
+    assert response.status_code == 200
+
+    payload = response.json()
+    assert "per_agent" in payload
+    per_agent = payload["per_agent"]
+    assert per_agent == {
+        "triage": ["get_current_time", "search_conversations"],
+        "code_assistant": ["code_interpreter"],
+        "researcher": ["web_search"],
+    }
+
 
 @patch("app.infrastructure.providers.openai.runtime.Runner.run", new_callable=AsyncMock)
 def test_chat_falls_back_to_triage(mock_run: AsyncMock, client: TestClient) -> None:
@@ -221,7 +240,7 @@ def test_agent_service_initialization() -> None:
     agents = agent_service.list_available_agents()
     names = {agent.name for agent in agents}
 
-    assert {"triage", "code_assistant", "data_analyst"}.issubset(names)
+    assert {"triage", "code_assistant", "researcher"}.issubset(names)
 
 
 def test_chat_requires_write_scope(client: TestClient) -> None:

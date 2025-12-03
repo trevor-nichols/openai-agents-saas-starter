@@ -25,7 +25,7 @@ def get_workflow_spec() -> WorkflowSpec:
         ),
         steps=(
             WorkflowStep(
-                agent_key="data_analyst",
+                agent_key="researcher",
                 name="analysis",
             ),
             WorkflowStep(

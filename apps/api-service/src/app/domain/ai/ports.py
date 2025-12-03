@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Mapping, Sequence
+from datetime import datetime
 from typing import Any, Protocol, runtime_checkable
 
 from .models import (
@@ -96,6 +97,9 @@ class AgentProvider(Protocol):
         ...
 
     def tool_overview(self) -> Mapping[str, Any]:
+        ...
+
+    def mark_seen(self, agent_key: str, ts: datetime) -> None:
         ...
 
 

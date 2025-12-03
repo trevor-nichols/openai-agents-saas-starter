@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { useAgents } from '@/lib/queries/agents';
+import { useAgentStatuses, useAgents } from '@/lib/queries/agents';
 import { useConversations } from '@/lib/queries/conversations';
 import { useTools } from '@/lib/queries/tools';
 import { useContainersQuery } from '@/lib/queries/containers';
@@ -35,13 +35,23 @@ export interface AgentWorkspaceQueries {
 
 export function useAgentWorkspaceData(): AgentWorkspaceQueries {
   const agentsQuery = useAgents();
+  const statusQuery = useAgentStatuses(agentsQuery.agents.map((agent) => agent.name));
   const toolsQuery = useTools();
   const conversationsQuery = useConversations();
   const containersQuery = useContainersQuery();
 
+  const agentsWithStatus = useMemo(
+    () =>
+      agentsQuery.agents.map((agent) => ({
+        ...agent,
+        last_seen_at: statusQuery.statusMap[agent.name]?.last_used ?? agent.last_seen_at ?? null,
+      })),
+    [agentsQuery.agents, statusQuery.statusMap],
+  );
+
   const toolsByAgent = useMemo(
-    () => buildToolsByAgentMap(agentsQuery.agents, toolsQuery.tools),
-    [agentsQuery.agents, toolsQuery.tools],
+    () => buildToolsByAgentMap(agentsWithStatus, toolsQuery.tools),
+    [agentsWithStatus, toolsQuery.tools],
   );
 
   const toolsSummary = useMemo(
@@ -50,9 +60,9 @@ export function useAgentWorkspaceData(): AgentWorkspaceQueries {
   );
 
   return {
-    agents: agentsQuery.agents,
-    isLoadingAgents: agentsQuery.isLoadingAgents,
-    agentsError: agentsQuery.agentsError,
+    agents: agentsWithStatus,
+    isLoadingAgents: agentsQuery.isLoadingAgents || statusQuery.isLoadingStatuses,
+    agentsError: agentsQuery.agentsError ?? statusQuery.statusError,
     containers: containersQuery.data?.items ?? [],
     isLoadingContainers: containersQuery.isLoading,
     containersError: (containersQuery.error as Error | null) ?? null,

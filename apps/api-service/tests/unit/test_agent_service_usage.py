@@ -123,6 +123,9 @@ class FakeProvider:
     def tool_overview(self) -> dict[str, list[str]]:  # pragma: no cover - not used
         return {"tool_names": []}
 
+    def mark_seen(self, agent_key: str, ts):  # pragma: no cover - simple stub
+        self._descriptor.last_seen_at = ts
+
 
 @pytest.mark.asyncio
 async def test_chat_records_usage():

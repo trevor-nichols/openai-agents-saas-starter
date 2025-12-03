@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass, is_dataclass
+from datetime import datetime
 from typing import Any, Literal
 
 
@@ -17,6 +18,7 @@ class AgentDescriptor:
     model: str
     capabilities: tuple[str, ...] = ()
     status: Literal["active", "inactive", "error"] = "active"
+    last_seen_at: datetime | None = None
 
 
 @dataclass(slots=True)

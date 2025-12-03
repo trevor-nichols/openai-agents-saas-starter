@@ -82,7 +82,7 @@ def test_run_workflow_sync(mock_run_workflow: AsyncMock, client: TestClient) -> 
         steps=[
             WorkflowStepResult(
                 name="analysis",
-                agent_key="data_analyst",
+                agent_key="researcher",
                 response=AgentRunResult(final_output="hi", response_text="hi"),
             )
         ],
@@ -98,7 +98,7 @@ def test_run_workflow_sync(mock_run_workflow: AsyncMock, client: TestClient) -> 
     data = response.json()
     assert data["workflow_key"] == "analysis_code"
     assert data["workflow_run_id"] == "run-1"
-    assert data["steps"][0]["agent_key"] == "data_analyst"
+    assert data["steps"][0]["agent_key"] == "researcher"
 
 
 @patch("app.services.workflows.service.WorkflowService.run_workflow_stream", new_callable=AsyncMock)
@@ -112,7 +112,7 @@ def test_run_workflow_stream(mock_run_stream: AsyncMock, client: TestClient) -> 
                 "workflow_key": "analysis_code",
                 "workflow_run_id": "run-1",
                 "step_name": "analysis",
-                "step_agent": "data_analyst",
+                "step_agent": "researcher",
             },
             is_terminal=False,
         )
@@ -124,7 +124,7 @@ def test_run_workflow_stream(mock_run_stream: AsyncMock, client: TestClient) -> 
                 "workflow_key": "analysis_code",
                 "workflow_run_id": "run-1",
                 "step_name": "analysis",
-                "step_agent": "data_analyst",
+                "step_agent": "researcher",
             },
             is_terminal=True,
         )
@@ -184,7 +184,7 @@ def test_get_workflow_run(client: TestClient) -> None:
         workflow_run_id="run-abc",
         sequence_no=0,
         step_name="analysis",
-        step_agent="data_analyst",
+        step_agent="researcher",
         status="succeeded",
         started_at=datetime.now(tz=UTC),
         ended_at=datetime.now(tz=UTC),
@@ -203,7 +203,7 @@ def test_get_workflow_run(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["workflow_run_id"] == run.id
-    assert body["steps"][0]["agent_key"] == "data_analyst"
+    assert body["steps"][0]["agent_key"] == "researcher"
 
 
 @pytest.mark.auto_migrations(enabled=True)
@@ -246,7 +246,7 @@ def test_get_workflow_run_via_db(client: TestClient, _provider_engine) -> None:
         workflow_run_id=run_id,
         sequence_no=0,
         step_name="analysis",
-        step_agent="data_analyst",
+        step_agent="researcher",
         status="succeeded",
         started_at=datetime.now(tz=UTC),
         ended_at=datetime.now(tz=UTC),
@@ -265,7 +265,7 @@ def test_get_workflow_run_via_db(client: TestClient, _provider_engine) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["workflow_run_id"] == run_id
-    assert body["steps"][0]["agent_key"] == "data_analyst"
+    assert body["steps"][0]["agent_key"] == "researcher"
 
 
 def test_list_workflow_runs_endpoint(client: TestClient) -> None:

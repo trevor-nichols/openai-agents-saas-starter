@@ -41,6 +41,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 - Regenerate the frontend client offline using that artifact:
   - `cd apps/web-app && OPENAPI_INPUT=../api-service/.artifacts/openapi-fixtures.json pnpm generate:fixtures`
   - Output is written to `apps/web-app/lib/api/client/`.
+- **Hard rule:** Any API/schemas change (backend or contracts) must run the two commands above *before* touching web-app code. Do not hand-edit generated SDK files. Frontend edits that depend on new fields should be in the same PR *after* regeneration.
 
 ### Next.js 16 working notes (must-read for frontend)
 - Toolchain: Node 20.9+ (we pin .nvmrc to 22), TypeScript 5.1+, React 19.2, Next 16.0.3; Turbopack is default for dev/build (no need for `--turbopack`; opt out with `--webpack` only if required).

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -63,6 +64,9 @@ class OpenAIAgentProvider(AgentProvider):
 
     def tool_overview(self):
         return self._registry.tool_overview()
+
+    def mark_seen(self, agent_key: str, ts: datetime) -> None:
+        self._registry.mark_seen(agent_key, ts)
 
 
 def build_openai_provider(

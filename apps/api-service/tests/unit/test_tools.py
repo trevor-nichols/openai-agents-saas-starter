@@ -418,4 +418,4 @@ def test_agent_specs_are_sorted_topologically():
 
     assert set(order) == {spec.key for spec in specs}
     assert order.index("triage") > order.index("code_assistant")
-    assert order.index("triage") > order.index("data_analyst")
+    assert order.index("triage") > order.index("researcher")

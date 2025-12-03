@@ -22,9 +22,12 @@ export function summarizeToolRegistry(registry: ToolRegistry): ToolRegistrySumma
 export function buildToolsByAgentMap(agents: AgentSummary[], registry: ToolRegistry): ToolsByAgentMap {
   const record = toRecord(registry);
   const fallbackToolNames = summarizeToolRegistry(registry).toolNames;
+  const perAgent = record.per_agent && typeof record.per_agent === 'object'
+    ? (record.per_agent as Record<string, unknown>)
+    : null;
 
   return agents.reduce<ToolsByAgentMap>((acc, agent) => {
-    const entry = record[agent.name];
+    const entry = (perAgent ? perAgent[agent.name] : undefined) ?? record[agent.name];
     if (Array.isArray(entry)) {
       acc[agent.name] = entry as string[];
     } else if (entry && typeof entry === 'object') {

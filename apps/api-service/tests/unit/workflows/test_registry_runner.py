@@ -100,7 +100,7 @@ async def test_runner_sync_applies_guards_and_mappers(monkeypatch: pytest.Monkey
         steps=(
             WorkflowStep(agent_key="code_assistant", name="first"),
             WorkflowStep(
-                agent_key="data_analyst",
+                agent_key="researcher",
                 name="second",
                 guard="tests.unit.workflows.test_registry_runner:guard",
                 input_mapper="tests.unit.workflows.test_registry_runner:mapper",
@@ -124,10 +124,10 @@ async def test_runner_sync_applies_guards_and_mappers(monkeypatch: pytest.Monkey
     finally:
         setattr(provider, "_runtime", original_runtime)
 
-    assert result.final_output == "data_analyst:mapped-code_assistant:please go-1"
+    assert result.final_output == "researcher:mapped-code_assistant:please go-1"
     assert len(result.steps) == 2
     assert result.steps[0].response.response_text == "code_assistant:please go"
-    assert result.steps[1].response.response_text == "data_analyst:mapped-code_assistant:please go-1"
+    assert result.steps[1].response.response_text == "researcher:mapped-code_assistant:please go-1"
 
 
 @pytest.mark.asyncio
@@ -145,7 +145,7 @@ async def test_runner_parallel_stage_executes_in_parallel(monkeypatch: pytest.Mo
                 mode="parallel",
                 steps=(
                     WorkflowStep(agent_key="code_assistant", name="code"),
-                    WorkflowStep(agent_key="data_analyst", name="analysis"),
+                    WorkflowStep(agent_key="researcher", name="analysis"),
                 ),
                 reducer="tests.unit.workflows.test_registry_runner:reducer",
             ),
@@ -176,9 +176,9 @@ async def test_runner_parallel_stage_executes_in_parallel(monkeypatch: pytest.Mo
     assert len(calls) == 3
     # Fanout receives original input
     assert ("code_assistant", "prompt") in calls
-    assert ("data_analyst", "prompt") in calls
+    assert ("researcher", "prompt") in calls
     # Synthesis receives reducer output
-    assert calls[-1][1] == "code_assistant:prompt|data_analyst:prompt"
+    assert calls[-1][1] == "code_assistant:prompt|researcher:prompt"
     assert result.steps[-1].stage_name == "synthesis"
     assert result.final_output == f"code_assistant:{calls[-1][1]}"
 
@@ -198,7 +198,7 @@ async def test_runner_parallel_reducer_failure_bubbles(monkeypatch: pytest.Monke
                 mode="parallel",
                 steps=(
                     WorkflowStep(agent_key="code_assistant", name="code"),
-                    WorkflowStep(agent_key="data_analyst", name="analysis"),
+                    WorkflowStep(agent_key="researcher", name="analysis"),
                 ),
                 reducer="tests.unit.workflows.test_registry_runner:reducer_raises",
             ),
@@ -243,7 +243,7 @@ async def test_runner_parallel_all_guards_skipped_preserves_input(monkeypatch: p
                         guard="tests.unit.workflows.test_registry_runner:guard_false",
                     ),
                     WorkflowStep(
-                        agent_key="data_analyst",
+                        agent_key="researcher",
                         name="analysis",
                         guard="tests.unit.workflows.test_registry_runner:guard_false",
                     ),

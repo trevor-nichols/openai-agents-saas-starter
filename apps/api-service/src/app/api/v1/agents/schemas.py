@@ -12,9 +12,21 @@ class AgentSummary(BaseModel):
     status: Literal["active", "inactive", "error"] = Field(
         description="Health status of the agent.",
     )
+    display_name: str | None = Field(
+        default=None,
+        description="Human-friendly display name for the agent.",
+    )
     description: str | None = Field(
         default=None,
         description="Short human-readable description.",
+    )
+    model: str | None = Field(
+        default=None,
+        description="Model configured for this agent.",
+    )
+    last_seen_at: str | None = Field(
+        default=None,
+        description="Last time the agent was observed handling a request.",
     )
 
 

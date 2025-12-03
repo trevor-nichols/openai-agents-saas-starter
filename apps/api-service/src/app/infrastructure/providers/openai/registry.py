@@ -119,7 +119,30 @@ class OpenAIAgentRegistry:
             "total_tools": len(self._tool_registry.list_tool_names()),
             "tool_names": self._tool_registry.list_tool_names(),
             "categories": self._tool_registry.list_categories(),
+            "per_agent": self._tools_by_agent(),
         }
+
+    def mark_seen(self, agent_key: str, ts: datetime) -> None:
+        descriptor = self._descriptors.get(agent_key)
+        if descriptor:
+            descriptor.last_seen_at = ts
+
+    def _tools_by_agent(self) -> dict[str, list[str]]:
+        """Return declarative tool lists per agent based on specs.
+
+        Uses the agent specs' declared `tool_keys` (and, when present,
+        `agent_tool_keys`) to provide a stable surface for the UI. This keeps
+        the API payload lightweight while still reflecting agent-specific
+        tool selection.
+        """
+
+        result: dict[str, list[str]] = {}
+        for spec in self._specs:
+            tool_keys = list(getattr(spec, "tool_keys", []) or [])
+            agent_tool_keys = list(getattr(spec, "agent_tool_keys", []) or [])
+            combined = tool_keys + agent_tool_keys
+            result[spec.key] = combined
+        return result
 
     def resolve_agent(self, preferred_key: str | None) -> AgentDescriptor:
         key = preferred_key or self.default_agent_key
@@ -341,6 +364,7 @@ class OpenAIAgentRegistry:
             description=spec.description.strip(),
             model=str(agent.model),
             capabilities=spec.capabilities,
+            last_seen_at=None,
         )
 
     def _select_tools(

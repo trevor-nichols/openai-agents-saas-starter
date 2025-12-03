@@ -131,6 +131,9 @@ class _StubProvider:
     def tool_overview(self):
         return {}
 
+    def mark_seen(self, agent_key: str, ts):  # pragma: no cover - not used in these tests
+        return None
+
 
 class _StubRegistry:
     def __init__(self, provider: _StubProvider):

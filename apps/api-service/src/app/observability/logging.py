@@ -420,17 +420,15 @@ def _handlers_for_sink(
     if sink == "otlp":
         if not settings.logging_otlp_endpoint:
             raise ValueError("LOGGING_OTLP_ENDPOINT is required when LOGGING_SINK=otlp")
-        headers = _parse_headers(settings.logging_otlp_headers)
-        handlers = {
-            "otlp": {
-                "class": "app.observability.logging.OTLPHTTPLogHandler",
-                "level": log_level,
-                "formatter": formatter_ref,
-                "endpoint": settings.logging_otlp_endpoint,
-                "headers": headers,
-            }
+        headers = _parse_headers(settings.logging_otlp_headers) or {}
+        otlp_cfg: dict[str, Any] = {
+            "class": "app.observability.logging.OTLPHTTPLogHandler",
+            "level": log_level,
+            "formatter": formatter_ref,
+            "endpoint": settings.logging_otlp_endpoint,
+            "headers": headers,
         }
-        return handlers, ["otlp"]
+        return {"otlp": otlp_cfg}, ["otlp"]
 
     raise ValueError(
         f"Unsupported LOGGING_SINK '{sink}'. Expected stdout, file, datadog, otlp, or none."
