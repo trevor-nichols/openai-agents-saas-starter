@@ -41,78 +41,78 @@ prompts:
   LOGGING_DATADOG_API_KEY:
     section: observability
     when:
-      - key: LOGGING_SINK
-        equals: datadog
+      - key: LOGGING_SINK_HAS_DATADOG
+        truthy: true
   LOGGING_DATADOG_SITE:
     section: observability
     when:
-      - key: LOGGING_SINK
-        equals: datadog
+      - key: LOGGING_SINK_HAS_DATADOG
+        truthy: true
   LOGGING_FILE_PATH:
     section: observability
     when:
-      - key: LOGGING_SINK
-        equals: file
+      - key: LOGGING_SINK_HAS_FILE
+        truthy: true
   LOGGING_FILE_MAX_MB:
     section: observability
     when:
-      - key: LOGGING_SINK
-        equals: file
+      - key: LOGGING_SINK_HAS_FILE
+        truthy: true
   LOGGING_FILE_BACKUPS:
     section: observability
     when:
-      - key: LOGGING_SINK
-        equals: file
+      - key: LOGGING_SINK_HAS_FILE
+        truthy: true
   LOGGING_OTLP_ENDPOINT:
     section: observability
     when:
-      - key: LOGGING_SINK
-        equals: otlp
+      - key: LOGGING_SINK_HAS_OTLP
+        truthy: true
   LOGGING_OTLP_HEADERS:
     section: observability
     when:
-      - key: LOGGING_SINK
-        equals: otlp
+      - key: LOGGING_SINK_HAS_OTLP
+        truthy: true
   ENABLE_OTEL_COLLECTOR:
     section: observability
     when:
-      - key: LOGGING_SINK
-        equals: otlp
+      - key: LOGGING_SINK_HAS_OTLP
+        truthy: true
   OTEL_EXPORTER_SENTRY_ENABLED:
     section: observability
     when:
-      - key: LOGGING_SINK
-        equals: otlp
+      - key: LOGGING_SINK_HAS_OTLP
+        truthy: true
   OTEL_EXPORTER_SENTRY_ENDPOINT:
     section: observability
     when:
-      - key: LOGGING_SINK
-        equals: otlp
+      - key: LOGGING_SINK_HAS_OTLP
+        truthy: true
   OTEL_EXPORTER_SENTRY_AUTH_HEADER:
     section: observability
     when:
-      - key: LOGGING_SINK
-        equals: otlp
+      - key: LOGGING_SINK_HAS_OTLP
+        truthy: true
   OTEL_EXPORTER_SENTRY_HEADERS:
     section: observability
     when:
-      - key: LOGGING_SINK
-        equals: otlp
+      - key: LOGGING_SINK_HAS_OTLP
+        truthy: true
   OTEL_EXPORTER_DATADOG_ENABLED:
     section: observability
     when:
-      - key: LOGGING_SINK
-        equals: otlp
+      - key: LOGGING_SINK_HAS_OTLP
+        truthy: true
   OTEL_EXPORTER_DATADOG_API_KEY:
     section: observability
     when:
-      - key: LOGGING_SINK
-        equals: otlp
+      - key: LOGGING_SINK_HAS_OTLP
+        truthy: true
   OTEL_EXPORTER_DATADOG_SITE:
     section: observability
     when:
-      - key: LOGGING_SINK
-        equals: otlp
+      - key: LOGGING_SINK_HAS_OTLP
+        truthy: true
   GEOIP_IPINFO_TOKEN:
     section: observability
     when:

@@ -240,10 +240,16 @@ def _plan_targets(
 
     # API log file (rotating file sink)
     if "api" in normalized:
-        sink = (env_value("LOGGING_SINK", "stdout") or "stdout").lower()
+        sink_raw = env_value("LOGGING_SINKS") or env_value("LOGGING_SINK", "stdout")
+        sinks = [part.strip().lower() for part in (sink_raw or "stdout").split(",") if part.strip()]
+        sink_primary = sinks[0] if sinks else "stdout"
+        sink_has_file = "file" in sinks
+
+        resolved_sink = "file" if sink_has_file else sink_primary
+
         log_path = _resolve_api_log_path(
             ctx,
-            sink=sink,
+            sink=resolved_sink,
             base_root=base_root,
             preferred_date_root=resolved_root if resolved_root.exists() else date_root,
             explicit_path=env_value("LOGGING_FILE_PATH"),
@@ -256,9 +262,9 @@ def _plan_targets(
                 cmd.insert(2, "-f")
             targets.append(TailTarget(name="api", command=cmd, cwd=ctx.project_root))
         else:
-            if sink == "file":
+            if sink_has_file or resolved_sink == "file":
                 message = (
-                    "LOGGING_SINK=file but no log file found yet; start the API"
+                    "File sink enabled but no log file found yet; start the API"
                     " or check LOG_ROOT/LOGGING_FILE_PATH."
                 )
                 notes.append(("warn", message))
@@ -269,7 +275,7 @@ def _plan_targets(
             else:
                 message = (
                     "API is not writing to a file sink. Run the API in another terminal"
-                    " or set LOGGING_SINK=file to enable tailing."
+                    " or set LOGGING_SINKS to include 'file' to enable tailing."
                 )
                 notes.append(("info", message))
 

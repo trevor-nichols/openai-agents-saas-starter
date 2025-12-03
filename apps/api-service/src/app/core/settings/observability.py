@@ -15,6 +15,12 @@ class ObservabilitySettingsMixin(BaseModel):
         description="Logging sink (stdout, file, datadog, otlp, or none).",
         alias="LOGGING_SINK",
     )
+    logging_sinks: str | None = Field(
+        default=None,
+        description=
+        "Comma-separated logging sinks (stdout, file, datadog, otlp, none). Overrides LOGGING_SINK when set.",
+        alias="LOGGING_SINKS",
+    )
     logging_file_path: str = Field(
         default="var/log/api-service.log",
         description="Filesystem path for file sink when logging_sink=file.",

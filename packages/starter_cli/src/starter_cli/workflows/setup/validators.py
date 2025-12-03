@@ -85,6 +85,25 @@ def normalize_logging_sink(value: str) -> str:
     return normalized
 
 
+def normalize_logging_sinks(value: str) -> list[str]:
+    raw = value.strip()
+    if not raw:
+        raise CLIError("LOGGING_SINKS cannot be blank.")
+    sinks: list[str] = []
+    for part in raw.split(","):
+        candidate = part.strip()
+        if not candidate:
+            continue
+        normalized = normalize_logging_sink(candidate)
+        if normalized == "none" and len(raw.split(",")) > 1:
+            raise CLIError("'none' cannot be combined with other logging sinks.")
+        if normalized not in sinks:
+            sinks.append(normalized)
+    if not sinks:
+        raise CLIError("LOGGING_SINKS must include at least one sink.")
+    return sinks
+
+
 def normalize_geoip_provider(value: str) -> str:
     normalized = value.strip().lower()
     aliases = {

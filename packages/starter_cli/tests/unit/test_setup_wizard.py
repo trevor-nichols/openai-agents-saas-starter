@@ -82,6 +82,7 @@ def _local_headless_answers() -> dict[str, str]:
         "RUN_MIGRATIONS_NOW": "false",
         "TENANT_DEFAULT_SLUG": "local",
         "LOGGING_SINK": "stdout",
+        "LOGGING_SINKS": "stdout",
         "GEOIP_PROVIDER": "none",
         "SIGNUP_ACCESS_POLICY": "public",
         "ALLOW_PUBLIC_SIGNUP": "true",
@@ -145,6 +146,32 @@ def test_wizard_headless_local_generates_env(temp_ctx: CLIContext) -> None:
     _cleanup_env(snapshot)
 
 
+def test_wizard_prompts_all_selected_sinks(temp_ctx: CLIContext) -> None:
+    snapshot = dict(os.environ)
+    answers = _local_headless_answers() | {
+        "LOGGING_SINKS": "stdout,datadog",
+        "LOGGING_SINK": "stdout",
+        "LOGGING_DATADOG_API_KEY": "dd-api-key",
+        "LOGGING_DATADOG_SITE": "datadoghq.eu",
+    }
+
+    wizard = _create_setup_wizard(
+        ctx=temp_ctx,
+        profile="local",
+        output_format="summary",
+        input_provider=HeadlessInputProvider(answers=answers),
+    )
+    wizard.execute()
+
+    from starter_cli.adapters.env.files import EnvFile
+
+    env_file = EnvFile(backend_env_path(temp_ctx))
+    assert env_file.get("LOGGING_SINKS") == "stdout,datadog"
+    assert env_file.get("LOGGING_DATADOG_API_KEY") == "dd-api-key"
+    assert env_file.get("LOGGING_DATADOG_SITE") == "datadoghq.eu"
+    _cleanup_env(snapshot)
+
+
 def test_wizard_configures_slack_section(temp_ctx: CLIContext) -> None:
     snapshot = dict(os.environ)
     answers = _local_headless_answers() | {
@@ -190,6 +217,7 @@ def test_wizard_configures_bundled_collector(temp_ctx: CLIContext) -> None:
     snapshot = dict(os.environ)
     answers = _local_headless_answers() | {
         "LOGGING_SINK": "otlp",
+        "LOGGING_SINKS": "otlp",
         "ENABLE_OTEL_COLLECTOR": "true",
         "LOGGING_OTLP_ENDPOINT": "http://otel-collector:4318/v1/logs",
         "LOGGING_OTLP_HEADERS": "",
@@ -366,6 +394,7 @@ def test_wizard_writes_dedicated_worker_artifacts(temp_ctx: CLIContext) -> None:
         "RUN_MIGRATIONS_NOW": "false",
         "TENANT_DEFAULT_SLUG": "prod",
         "LOGGING_SINK": "stdout",
+        "LOGGING_SINKS": "stdout",
         "GEOIP_PROVIDER": "none",
         "SIGNUP_ACCESS_POLICY": "invite_only",
         "ALLOW_PUBLIC_SIGNUP": "false",
@@ -443,6 +472,7 @@ def test_wizard_refreshes_cached_settings(temp_ctx: CLIContext) -> None:
         "RUN_MIGRATIONS_NOW": "false",
         "TENANT_DEFAULT_SLUG": "local",
         "LOGGING_SINK": "stdout",
+        "LOGGING_SINKS": "stdout",
         "GEOIP_PROVIDER": "none",
         "SIGNUP_ACCESS_POLICY": "public",
         "ALLOW_PUBLIC_SIGNUP": "true",
@@ -515,6 +545,7 @@ def test_wizard_clears_optional_provider_keys(temp_ctx: CLIContext) -> None:
         "RUN_MIGRATIONS_NOW": "false",
         "TENANT_DEFAULT_SLUG": "local",
         "LOGGING_SINK": "stdout",
+        "LOGGING_SINKS": "stdout",
         "GEOIP_PROVIDER": "none",
         "SIGNUP_ACCESS_POLICY": "public",
         "ALLOW_PUBLIC_SIGNUP": "true",
@@ -578,6 +609,7 @@ def test_wizard_does_not_leak_env_values(temp_ctx: CLIContext) -> None:
         "RUN_MIGRATIONS_NOW": "false",
         "TENANT_DEFAULT_SLUG": "local",
         "LOGGING_SINK": "stdout",
+        "LOGGING_SINKS": "stdout",
         "GEOIP_PROVIDER": "none",
         "SIGNUP_ACCESS_POLICY": "public",
         "ALLOW_PUBLIC_SIGNUP": "true",
@@ -654,6 +686,7 @@ def test_wizard_rotates_new_peppers(monkeypatch, temp_ctx: CLIContext) -> None:
         "RUN_MIGRATIONS_NOW": "false",
         "TENANT_DEFAULT_SLUG": "local",
         "LOGGING_SINK": "stdout",
+        "LOGGING_SINKS": "stdout",
         "GEOIP_PROVIDER": "none",
         "SIGNUP_ACCESS_POLICY": "public",
         "ALLOW_PUBLIC_SIGNUP": "true",
@@ -719,6 +752,7 @@ def test_wizard_staging_verifies_vault(
         "RUN_MIGRATIONS_NOW": "false",
         "TENANT_DEFAULT_SLUG": "tenant-staging",
         "LOGGING_SINK": "none",
+        "LOGGING_SINKS": "none",
         "GEOIP_PROVIDER": "none",
         "SIGNUP_ACCESS_POLICY": "invite_only",
         "ALLOW_PUBLIC_SIGNUP": "false",

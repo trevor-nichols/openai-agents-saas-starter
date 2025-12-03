@@ -10,7 +10,7 @@ from ...geoip import download_maxmind_database
 from ...inputs import InputProvider
 from ...validators import (
     normalize_geoip_provider,
-    normalize_logging_sink,
+    normalize_logging_sinks,
     parse_non_negative_int,
     parse_positive_int,
 )
@@ -30,16 +30,29 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     )
     context.set_backend("TENANT_DEFAULT_SLUG", slug)
 
-    sink = normalize_logging_sink(
+    sink_prompt_default = (
+        context.current("LOGGING_SINKS")
+        or context.current("LOGGING_SINK")
+        or "stdout"
+    )
+    sinks = normalize_logging_sinks(
         provider.prompt_string(
-            key="LOGGING_SINK",
-            prompt="Logging sink (stdout/file/datadog/otlp/none)",
-            default=context.current("LOGGING_SINK") or "stdout",
+            key="LOGGING_SINKS",
+            prompt="Logging sinks (comma-separated: stdout/file/datadog/otlp/none)",
+            default=sink_prompt_default,
             required=True,
         )
     )
-    context.set_backend("LOGGING_SINK", sink)
-    if sink == "file":
+
+    # Backward compatibility: still emit LOGGING_SINK for legacy consumers.
+    context.set_backend("LOGGING_SINKS", ",".join(sinks))
+    context.set_backend("LOGGING_SINK", sinks[0])
+
+    sink_set = set(sinks)
+    context.set_backend_bool("LOGGING_SINK_HAS_FILE", "file" in sink_set)
+    context.set_backend_bool("LOGGING_SINK_HAS_DATADOG", "datadog" in sink_set)
+    context.set_backend_bool("LOGGING_SINK_HAS_OTLP", "otlp" in sink_set)
+    if "file" in sink_set:
         log_path = provider.prompt_string(
             key="LOGGING_FILE_PATH",
             prompt="Log file path (rotating)",
@@ -67,7 +80,7 @@ def run(context: WizardContext, provider: InputProvider) -> None:
             "LOGGING_FILE_BACKUPS",
             str(parse_non_negative_int(backups, field="LOGGING_FILE_BACKUPS")),
         )
-    elif sink == "datadog":
+    if "datadog" in sink_set:
         api_key = provider.prompt_secret(
             key="LOGGING_DATADOG_API_KEY",
             prompt="Datadog API key",
@@ -82,7 +95,7 @@ def run(context: WizardContext, provider: InputProvider) -> None:
         )
         context.set_backend("LOGGING_DATADOG_API_KEY", api_key, mask=True)
         context.set_backend("LOGGING_DATADOG_SITE", site)
-    elif sink == "otlp":
+    if "otlp" in sink_set:
         bundled_default = _collector_default(context)
         use_bundled_collector = provider.prompt_bool(
             key="ENABLE_OTEL_COLLECTOR",
@@ -117,7 +130,7 @@ def run(context: WizardContext, provider: InputProvider) -> None:
             _configure_collector_exporters(context, provider)
         else:
             _clear_collector_exporters(context)
-    else:
+    if "otlp" not in sink_set:
         context.set_backend_bool("ENABLE_OTEL_COLLECTOR", False)
         _clear_collector_exporters(context)
 
@@ -202,6 +215,11 @@ def run(context: WizardContext, provider: InputProvider) -> None:
         required=True,
     )
     context.set_backend("GEOIP_CACHE_MAX_ENTRIES", cache_max)
+
+    # Helper flags used for schema gating; avoid persisting them to .env
+    context.unset_backend("LOGGING_SINK_HAS_FILE")
+    context.unset_backend("LOGGING_SINK_HAS_DATADOG")
+    context.unset_backend("LOGGING_SINK_HAS_OTLP")
     http_timeout = provider.prompt_string(
         key="GEOIP_HTTP_TIMEOUT_SECONDS",
         prompt="GeoIP HTTP timeout (seconds)",

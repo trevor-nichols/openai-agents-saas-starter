@@ -107,6 +107,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 
 # Test Environment Contract
 - `conftest.py` at the repository root forces the entire pytest run onto SQLite + fakeredis and disables billing/auto migrations. **Do not** remove or bypass this file; any new package (CLI included) must behave correctly when those overrides are in effect.
+- Run backend tests inside the hatch env (`cd apps/api-service && hatch run pytest …`) or `hatch shell`; invoking `pytest` with the host interpreter can miss dev extras like `fakeredis` even if they’re installed elsewhere.
 - Any test that mutates `os.environ` must snapshot and restore the original values to avoid leaking state into other suites. Use the helpers in `api-service/tests/conftest.py` or mimic their pattern.
 - When adding CLI modules, ensure module import has no side effects (e.g., avoid calling `get_settings()` or hitting the database at import time). If you need settings, fetch them inside the handler after env overrides have loaded.
 - Postgres integration suites (`tests/integration/test_postgres_migrations.py`) remain skipped unless `USE_REAL_POSTGRES=true`; leave this off for local/unit CI runs so we never accidentally hit a developer's Postgres instance.

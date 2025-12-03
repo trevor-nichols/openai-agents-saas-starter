@@ -248,3 +248,63 @@ def test_date_rolling_respects_log_root_even_with_filename_base(tmp_path: Path) 
     handler.emit(logging.LogRecord("t", logging.INFO, "", 0, "two", (), None))
 
     assert (tmp_path / "2025-01-02" / "api" / "all.log").exists()
+
+
+def test_logging_sinks_supports_multiple_and_writes_file(tmp_path: Path) -> None:
+    settings = Settings.model_validate(
+        {
+            "LOGGING_SINKS": "stdout,file",
+            "LOG_ROOT": str(tmp_path),
+            "LOGGING_FILE_MAX_MB": 1,
+        }
+    )
+
+    configure_logging(settings)
+    log_event("unit.multi", message="hello")
+
+    date_dir = tmp_path / date.today().isoformat() / "api"
+    all_log = date_dir / "all.log"
+    assert all_log.exists(), "File sink did not write logs"
+    entries = [json.loads(line) for line in all_log.read_text().splitlines() if line.strip()]
+    assert any(entry["event"] == "unit.multi" for entry in entries)
+
+    handler_types = {type(handler).__name__ for handler in logging.getLogger().handlers}
+    assert "StreamHandler" in handler_types, "stdout handler missing"
+    assert any(isinstance(h, DateRollingFileHandler) for h in logging.getLogger().handlers)
+
+
+def test_logging_sinks_precedence_over_logging_sink(tmp_path: Path) -> None:
+    settings = Settings.model_validate(
+        {
+            "LOGGING_SINK": "stdout",
+            "LOGGING_SINKS": "file",
+            "LOG_ROOT": str(tmp_path),
+            "LOGGING_FILE_MAX_MB": 1,
+        }
+    )
+
+    configure_logging(settings)
+    log_event("unit.precedence", message="hi")
+
+    date_dir = tmp_path / date.today().isoformat() / "api"
+    assert (date_dir / "all.log").exists(), "File sink should win when LOGGING_SINKS is set"
+    handler_types = {type(handler).__name__ for handler in logging.getLogger().handlers}
+    assert "StreamHandler" not in handler_types, "stdout handler should not be configured when only file sink is selected"
+
+
+def test_logging_sinks_none_cannot_be_combined() -> None:
+    settings = Settings.model_validate({"LOGGING_SINKS": "none,file"})
+    with pytest.raises(ValueError):
+        configure_logging(settings)
+
+
+def test_logging_sinks_require_datadog_api_key() -> None:
+    settings = Settings.model_validate({"LOGGING_SINKS": "datadog,file"})
+    with pytest.raises(ValueError):
+        configure_logging(settings)
+
+
+def test_logging_sinks_require_otlp_endpoint() -> None:
+    settings = Settings.model_validate({"LOGGING_SINKS": "otlp"})
+    with pytest.raises(ValueError):
+        configure_logging(settings)

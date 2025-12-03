@@ -23,6 +23,8 @@ from app.core.settings import Settings
 LOGGER = logging.getLogger("api-service.observability")
 _LOG_CONTEXT: ContextVar[dict[str, Any]] = ContextVar("structured_log_context", default={})
 
+_ALLOWED_SINKS = {"stdout", "console", "file", "datadog", "otlp", "none"}
+
 
 @dataclass(slots=True)
 class StructuredLoggingConfig:
@@ -263,6 +265,30 @@ def _otlp_any_value(value: Any) -> dict[str, Any]:
     return {"stringValue": str(value)}
 
 
+def _parse_sinks(settings: Settings) -> list[str]:
+    raw = (settings.logging_sinks or settings.logging_sink or "stdout")
+    if isinstance(raw, str):
+        parts = [part.strip().lower() for part in raw.split(",") if part.strip()]
+    else:
+        parts = [str(raw).strip().lower()]
+
+    if not parts:
+        raise ValueError("At least one logging sink must be specified.")
+
+    deduped: list[str] = []
+    for sink in parts:
+        if sink not in _ALLOWED_SINKS:
+            raise ValueError(
+                f"Unsupported LOGGING_SINK '{sink}'. Expected one of {_ALLOWED_SINKS}."
+            )
+        if sink == "none" and len(parts) > 1:
+            raise ValueError("LOGGING_SINKS cannot include 'none' with other sinks.")
+        if sink not in deduped:
+            deduped.append(sink)
+
+    return deduped
+
+
 def configure_logging(settings: Settings) -> None:
     """Apply JSON logging configuration based on deployment settings."""
 
@@ -272,10 +298,10 @@ def configure_logging(settings: Settings) -> None:
         environment=settings.environment,
     )
 
-    sink = (settings.logging_sink or "stdout").strip().lower()
+    sinks = _parse_sinks(settings)
     log_level = (settings.log_level or "INFO").upper()
 
-    handlers, root_handlers = _resolve_handler_configs(sink, settings, log_level)
+    handlers, root_handlers = _resolve_handler_configs(sinks, settings, log_level)
     logging_config = {
         "version": 1,
         "disable_existing_loggers": False,
@@ -288,7 +314,7 @@ def configure_logging(settings: Settings) -> None:
 
 
 def _resolve_handler_configs(
-    sink: str,
+    sinks: list[str],
     settings: Settings,
     log_level: str,
 ) -> tuple[dict[str, Any], list[str]]:
@@ -296,15 +322,45 @@ def _resolve_handler_configs(
     handlers: dict[str, Any] = {}
     root_handlers: list[str] = []
 
+    file_selected = "file" in sinks
+
+    for sink in sinks:
+        sink_handlers, sink_roots = _handlers_for_sink(
+            sink,
+            settings,
+            log_level,
+            formatter_ref,
+            file_selected=file_selected,
+        )
+        for name, cfg in sink_handlers.items():
+            if name in handlers:
+                raise ValueError(f"Duplicate handler name '{name}' while configuring sinks {sinks}")
+            handlers[name] = cfg
+        root_handlers.extend(sink_roots)
+
+    root_handlers = list(dict.fromkeys(root_handlers))
+    return handlers, root_handlers
+
+
+def _handlers_for_sink(
+    sink: str,
+    settings: Settings,
+    log_level: str,
+    formatter_ref: str,
+    *,
+    file_selected: bool,
+) -> tuple[dict[str, Any], list[str]]:
     if sink in {"stdout", "console"}:
-        handlers["stdout"] = {
-            "class": "logging.StreamHandler",
-            "stream": "ext://sys.stdout",
-            "level": log_level,
-            "formatter": formatter_ref,
+        handlers = {
+            "stdout": {
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stdout",
+                "level": log_level,
+                "formatter": formatter_ref,
+            }
         }
-        root_handlers.append("stdout")
-        if settings.logging_duplex_error_file:
+        root_handlers = ["stdout"]
+        if settings.logging_duplex_error_file and not file_selected:
             paths = _ensure_log_paths(settings, component="api")
             handlers["stderr_file"] = _build_rotating_handler(
                 paths.error_log,
@@ -318,59 +374,63 @@ def _resolve_handler_configs(
         return handlers, root_handlers
 
     if sink == "none":
-        handlers["null"] = {
-            "class": "logging.NullHandler",
-            "level": log_level,
+        handlers = {
+            "null": {
+                "class": "logging.NullHandler",
+                "level": log_level,
+            }
         }
-        root_handlers.append("null")
-        return handlers, root_handlers
+        return handlers, ["null"]
 
     if sink == "file":
         paths = _ensure_log_paths(settings, component="api", ensure_component=True)
-        handlers["file_all"] = _build_rotating_handler(
-            paths.all_log,
-            level=log_level,
-            formatter=formatter_ref,
-            settings=settings,
-            use_custom_path=paths.use_custom_path,
-        )
-        handlers["file_error"] = _build_rotating_handler(
-            paths.error_log,
-            level="ERROR",
-            formatter=formatter_ref,
-            settings=settings,
-            error_only=True,
-            use_custom_path=paths.use_custom_path,
-        )
-        root_handlers.extend(["file_all", "file_error"])
-        return handlers, root_handlers
+        handlers = {
+            "file_all": _build_rotating_handler(
+                paths.all_log,
+                level=log_level,
+                formatter=formatter_ref,
+                settings=settings,
+                use_custom_path=paths.use_custom_path,
+            ),
+            "file_error": _build_rotating_handler(
+                paths.error_log,
+                level="ERROR",
+                formatter=formatter_ref,
+                settings=settings,
+                error_only=True,
+                use_custom_path=paths.use_custom_path,
+            ),
+        }
+        return handlers, ["file_all", "file_error"]
 
     if sink == "datadog":
         if not settings.logging_datadog_api_key:
             raise ValueError("LOGGING_DATADOG_API_KEY is required when LOGGING_SINK=datadog")
-        handlers["datadog"] = {
-            "class": "app.observability.logging.DatadogHTTPLogHandler",
-            "level": log_level,
-            "formatter": formatter_ref,
-            "api_key": settings.logging_datadog_api_key,
-            "site": settings.logging_datadog_site or "datadoghq.com",
+        handlers = {
+            "datadog": {
+                "class": "app.observability.logging.DatadogHTTPLogHandler",
+                "level": log_level,
+                "formatter": formatter_ref,
+                "api_key": settings.logging_datadog_api_key,
+                "site": settings.logging_datadog_site or "datadoghq.com",
+            }
         }
-        root_handlers.append("datadog")
-        return handlers, root_handlers
+        return handlers, ["datadog"]
 
     if sink == "otlp":
         if not settings.logging_otlp_endpoint:
             raise ValueError("LOGGING_OTLP_ENDPOINT is required when LOGGING_SINK=otlp")
         headers = _parse_headers(settings.logging_otlp_headers)
-        handlers["otlp"] = {
-            "class": "app.observability.logging.OTLPHTTPLogHandler",
-            "level": log_level,
-            "formatter": formatter_ref,
-            "endpoint": settings.logging_otlp_endpoint,
-            "headers": headers,
+        handlers = {
+            "otlp": {
+                "class": "app.observability.logging.OTLPHTTPLogHandler",
+                "level": log_level,
+                "formatter": formatter_ref,
+                "endpoint": settings.logging_otlp_endpoint,
+                "headers": headers,
+            }
         }
-        root_handlers.append("otlp")
-        return handlers, root_handlers
+        return handlers, ["otlp"]
 
     raise ValueError(
         f"Unsupported LOGGING_SINK '{sink}'. Expected stdout, file, datadog, otlp, or none."

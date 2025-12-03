@@ -162,6 +162,54 @@
   },
   "description": "Concrete application settings composed from mixins.",
   "properties": {
+    "ACTIVITY_EVENTS_CLEANUP_BATCH": {
+      "default": 10000,
+      "description": "Delete batch size for activity-event cleanup jobs.",
+      "minimum": 1,
+      "title": "Activity Events Cleanup Batch",
+      "type": "integer"
+    },
+    "ACTIVITY_EVENTS_CLEANUP_SLEEP_MS": {
+      "default": 0,
+      "description": "Sleep between cleanup batches in milliseconds (throttle).",
+      "minimum": 0,
+      "title": "Activity Events Cleanup Sleep Ms",
+      "type": "integer"
+    },
+    "ACTIVITY_EVENTS_REDIS_URL": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Redis URL used for activity event streaming (defaults to REDIS_URL).",
+      "title": "Activity Events Redis Url"
+    },
+    "ACTIVITY_EVENTS_TTL_DAYS": {
+      "default": 365,
+      "description": "Number of days to retain activity_events before cleanup.",
+      "minimum": 1,
+      "title": "Activity Events Ttl Days",
+      "type": "integer"
+    },
+    "ACTIVITY_STREAM_MAX_LENGTH": {
+      "default": 2048,
+      "description": "Maximum Redis stream length for activity events per tenant.",
+      "minimum": 128,
+      "title": "Activity Stream Max Length",
+      "type": "integer"
+    },
+    "ACTIVITY_STREAM_TTL_SECONDS": {
+      "default": 86400,
+      "description": "TTL applied to activity stream keys (0 disables TTL).",
+      "minimum": 0,
+      "title": "Activity Stream Ttl Seconds",
+      "type": "integer"
+    },
     "AGENT_MODEL_CODE": {
       "anyOf": [
         {
@@ -206,6 +254,12 @@
       "default": null,
       "description": "Override for the triage agent model; defaults to agent_default_model.",
       "title": "Agent Model Triage"
+    },
+    "ALLOW_ANON_FRONTEND_LOGS": {
+      "default": false,
+      "description": "Allow anonymous frontend log ingest when signature is valid.",
+      "title": "Allow Anon Frontend Logs",
+      "type": "boolean"
     },
     "ALLOW_PUBLIC_SIGNUP": {
       "default": true,
@@ -635,6 +689,12 @@
       "title": "Email Verification Token Ttl Minutes",
       "type": "integer"
     },
+    "ENABLE_ACTIVITY_STREAM": {
+      "default": false,
+      "description": "Enable Redis-backed SSE streaming for activity events.",
+      "title": "Enable Activity Stream",
+      "type": "boolean"
+    },
     "ENABLE_BILLING_RETRY_WORKER": {
       "default": true,
       "description": "Run the Stripe dispatch retry worker inside this process",
@@ -682,6 +742,19 @@
       "description": "Deployment environment label (development, staging, production, etc.)",
       "title": "Environment",
       "type": "string"
+    },
+    "FRONTEND_LOG_SHARED_SECRET": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Shared secret for signed anonymous frontend logs.",
+      "title": "Frontend Log Shared Secret"
     },
     "GEOIP_CACHE_MAX_ENTRIES": {
       "default": 4096,
@@ -891,6 +964,12 @@
       "description": "Datadog site (datadoghq.com, datadoghq.eu, etc.).",
       "title": "Logging Datadog Site"
     },
+    "LOGGING_DUPLEX_ERROR_FILE": {
+      "default": false,
+      "description": "When logging_sink=stdout, also write errors to the dated error file.",
+      "title": "Logging Duplex Error File",
+      "type": "boolean"
+    },
     "LOGGING_FILE_BACKUPS": {
       "default": 5,
       "description": "Rotated backup files to retain when logging_sink=file.",
@@ -910,6 +989,13 @@
       "description": "Filesystem path for file sink when logging_sink=file.",
       "title": "Logging File Path",
       "type": "string"
+    },
+    "LOGGING_MAX_DAYS": {
+      "default": 0,
+      "description": "Prune dated log directories older than N days (0 disables pruning).",
+      "minimum": 0,
+      "title": "Logging Max Days",
+      "type": "integer"
     },
     "LOGGING_OTLP_ENDPOINT": {
       "anyOf": [
@@ -942,6 +1028,32 @@
       "description": "Logging sink (stdout, file, datadog, otlp, or none).",
       "title": "Logging Sink",
       "type": "string"
+    },
+    "LOGGING_SINKS": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Comma-separated logging sinks (stdout, file, datadog, otlp, none). Overrides LOGGING_SINK when set.",
+      "title": "Logging Sinks"
+    },
+    "LOG_ROOT": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Base directory for dated log roots (defaults to var/log).",
+      "title": "Log Root"
     },
     "MCP_TOOLS": {
       "description": "Hosted MCP tool definitions registered into the tool registry.",
@@ -1387,6 +1499,13 @@
       "description": "When true, enforce Vault Transit verification for service-account issuance.",
       "title": "Vault Verify Enabled",
       "type": "boolean"
+    },
+    "WORKFLOW_MIN_PURGE_AGE_HOURS": {
+      "default": 0,
+      "description": "Minimum age in hours before a workflow run can be hard-deleted. Set to 0 to disable the guard.",
+      "minimum": 0,
+      "title": "Workflow Min Purge Age Hours",
+      "type": "integer"
     },
     "access_token_expire_minutes": {
       "default": 30,
