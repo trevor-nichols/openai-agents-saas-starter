@@ -332,7 +332,7 @@ export function ChatInterface({
         <ConversationScrollButton />
       </Conversation>
 
-      <PromptInput onSubmit={handleSubmit} className="border-t border-white/5 bg-white/5">
+      <PromptInput onSubmit={handleSubmit} className="border-t border-white/5 bg-white/5 rounded-none border-x-0 border-b-0">
         <PromptInputTextarea
           value={messageInput}
           onChange={(event) => setMessageInput(event.target.value)}
@@ -341,7 +341,7 @@ export function ChatInterface({
           rows={2}
         />
         <PromptInputToolbar className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
-          <PromptInputTools className="flex flex-col gap-3">
+          <PromptInputTools className="flex flex-col gap-3 [&_button:first-child]:rounded-lg">
             {onClearConversation && currentConversationId ? (
               <PromptInputButton
                 variant="ghost"
@@ -362,7 +362,7 @@ export function ChatInterface({
             />
           </PromptInputTools>
           <div className="flex flex-wrap items-center gap-2">
-            <InlineTag tone="default">{chatStatus ?? 'idle'}</InlineTag>
+            {chatStatus ? <InlineTag tone="default">{chatStatus}</InlineTag> : null}
             {lifecycleStatus ? <InlineTag tone="default">{lifecycleStatus}</InlineTag> : null}
             {activeAgent ? <InlineTag tone="default">Agent: {activeAgent}</InlineTag> : null}
             <PromptInputSubmit
