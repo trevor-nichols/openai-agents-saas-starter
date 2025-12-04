@@ -160,9 +160,7 @@ export type AgentChatResponse = {
   /**
    * Structured Output
    */
-  structured_output?: {
-    [key: string]: unknown;
-  } | null;
+  structured_output?: unknown | null;
   /**
    * Metadata
    */
@@ -2806,7 +2804,12 @@ export type StreamingChatEvent = {
   /**
    * Attachments
    */
-  attachments?: Array<MessageAttachment> | null;
+  attachments?: Array<
+    | MessageAttachment
+    | {
+        [key: string]: unknown;
+      }
+  > | null;
   /**
    * Raw Event
    */
@@ -2953,7 +2956,12 @@ export type StreamingWorkflowEvent = {
   /**
    * Attachments
    */
-  attachments?: Array<MessageAttachment> | null;
+  attachments?: Array<
+    | MessageAttachment
+    | {
+        [key: string]: unknown;
+      }
+  > | null;
   /**
    * Raw Event
    */

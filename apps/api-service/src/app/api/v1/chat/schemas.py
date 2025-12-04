@@ -33,7 +33,7 @@ class AgentChatResponse(BaseModel):
     agent_used: str | None = None
     handoff_occurred: bool | None = None
     attachments: list[MessageAttachment] | None = None
-    structured_output: dict[str, Any] | None = None
+    structured_output: Any | None = None
     metadata: dict[str, Any] | None = None
 
 

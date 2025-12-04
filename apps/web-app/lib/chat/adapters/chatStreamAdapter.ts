@@ -281,8 +281,14 @@ export async function consumeChatStream(
     }
 
     if (event.attachments && event.attachments.length > 0) {
-      streamedAttachments = event.attachments;
-      handlers.onAttachments?.(streamedAttachments ?? null);
+      const attachments = event.attachments.filter(
+        (att): att is MessageAttachment =>
+          !!att && typeof att === 'object' && 'object_id' in att && 'filename' in att,
+      );
+      if (attachments.length > 0) {
+        streamedAttachments = attachments;
+        handlers.onAttachments?.(streamedAttachments ?? null);
+      }
     }
 
     if (event.structured_output !== undefined) {

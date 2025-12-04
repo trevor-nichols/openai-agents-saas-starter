@@ -7221,10 +7221,7 @@
           },
           "structured_output": {
             "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
+              {},
               {
                 "type": "null"
               }
@@ -11642,7 +11639,15 @@
             "anyOf": [
               {
                 "items": {
-                  "$ref": "#/components/schemas/MessageAttachment"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/MessageAttachment"
+                    },
+                    {
+                      "additionalProperties": true,
+                      "type": "object"
+                    }
+                  ]
                 },
                 "type": "array"
               },
@@ -12007,7 +12012,15 @@
             "anyOf": [
               {
                 "items": {
-                  "$ref": "#/components/schemas/MessageAttachment"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/MessageAttachment"
+                    },
+                    {
+                      "additionalProperties": true,
+                      "type": "object"
+                    }
+                  ]
                 },
                 "type": "array"
               },
