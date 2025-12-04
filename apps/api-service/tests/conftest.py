@@ -77,6 +77,12 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     """Register custom CLI flags."""
 
     configure_stripe_replay_option(parser)
+    parser.addoption(
+        "--run-manual",
+        action="store_true",
+        default=False,
+        help="Run manual tests that hit live services (default: skip)",
+    )
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -87,12 +93,19 @@ def pytest_configure(config: pytest.Config) -> None:
         "markers",
         "auto_migrations(enabled=True): toggle AUTO_RUN_MIGRATIONS for a test or module.",
     )
+    config.addinivalue_line("markers", "manual: marks tests that require live services")
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
     """Skip Stripe replay tests unless explicitly enabled."""
 
     skip_stripe_replay_if_disabled(config, items)
+
+    if not config.getoption("--run-manual"):
+        skip_manual = pytest.mark.skip(reason="manual test (use --run-manual to run)")
+        for item in items:
+            if "manual" in item.keywords:
+                item.add_marker(skip_manual)
 
 
 @pytest.fixture(autouse=True)
