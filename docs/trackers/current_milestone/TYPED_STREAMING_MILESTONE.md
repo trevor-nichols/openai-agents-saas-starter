@@ -63,6 +63,7 @@ Expose a strongly-typed streaming surface (tools + citations + handoffs) end-to-
 - Additive Pydantic schema changes (no breaking removals). New fields: `tool_call`, `annotations`, `raw_event`, `handoff` (agent→new_agent).
 - Preserve raw Responses event for audit; expose typed unions for UI.
 - Frontend adapter maps tool events to `ToolState`, citations to `ChatMessage.citations`, handoffs to lifecycle tags; unknown kinds logged, not fatal.
+- Workflows reuse the same streaming envelope as agents. Stage/parallel metadata rides in tags on run items and raw events, but `StreamingChatEvent` (tool_call, annotations, raw_event, is_terminal) is identical across workflow and agent streams, so the frontend adapter stays shared.
 
 ---
 
