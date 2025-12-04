@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { CodeBlock } from '@/components/ui/ai/code-block';
@@ -112,7 +112,6 @@ function mapToolCall(toolCall: ToolCallPayload | Record<string, unknown> | null 
 export function WorkflowStreamLog({ events }: WorkflowStreamLogProps) {
   const grouped = useMemo(() => events, [events]);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [showRawIds] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -212,11 +211,6 @@ export function WorkflowStreamLog({ events }: WorkflowStreamLogProps) {
               })()
             ) : null}
 
-            {evt.payload && showRawIds ? (
-              <div className="mt-2 text-xs text-foreground/70">
-                <CodeBlock code={JSON.stringify(evt.payload, null, 2)} language="json" />
-              </div>
-            ) : null}
           </div>
         );
       })}
