@@ -3,6 +3,9 @@ import type {
   ConversationLifecycleStatus,
   StreamChunk,
   ToolState,
+  Annotation,
+  ToolCallPayload,
+  WebSearchCall,
 } from '../types';
 
 const lifecycleMap: Record<string, ConversationLifecycleStatus> = {
@@ -32,6 +35,7 @@ export interface StreamConsumeResult {
   attachments: MessageAttachment[] | null;
   structuredOutput: unknown | null;
   lifecycleStatus: ConversationLifecycleStatus;
+  citations: Annotation[] | null;
   terminalSeen: boolean;
   errored: boolean;
 }
@@ -50,6 +54,36 @@ export async function consumeChatStream(
   let lastAgentNotice: string | null = null;
   let finalConversationId: string | null = null;
   let lifecycleStatus: ConversationLifecycleStatus = 'idle';
+  const collectedCitations: Annotation[] = [];
+
+  const isWebSearchToolCall = (
+    payload: ToolCallPayload | undefined,
+  ): payload is { tool_type: 'web_search'; web_search_call: WebSearchCall | null } =>
+    Boolean(payload && payload.tool_type === 'web_search' && 'web_search_call' in payload);
+  const isCodeInterpreterToolCall = (
+    payload: ToolCallPayload | undefined,
+  ): payload is {
+    tool_type: 'code_interpreter';
+    code_interpreter_call: {
+      id: string;
+      type: 'code_interpreter_call';
+      status: 'in_progress' | 'interpreting' | 'completed';
+      code?: string | null;
+      outputs?: unknown[] | null;
+    } | null;
+  } => Boolean(payload && payload.tool_type === 'code_interpreter' && 'code_interpreter_call' in payload);
+  const isFileSearchToolCall = (
+    payload: ToolCallPayload | undefined,
+  ): payload is {
+    tool_type: 'file_search';
+    file_search_call: {
+      id: string;
+      type: 'file_search_call';
+      status: 'in_progress' | 'searching' | 'completed';
+      queries?: string[] | null;
+      results?: unknown[] | null;
+    } | null;
+  } => Boolean(payload && payload.tool_type === 'file_search' && 'file_search_call' in payload);
 
   const emitAgentNotice = (agent: string, prefix: 'Switched to' | 'Handed off to') => {
     if (agent === lastAgentNotice) return;
@@ -91,10 +125,78 @@ export async function consumeChatStream(
           lifecycleStatus = nextStatus;
           handlers.onLifecycle?.(nextStatus);
         }
+
       }
 
       if (event.response_text !== undefined && event.response_text !== null) {
         responseTextOverride = event.response_text;
+      }
+
+      // Citations attached directly on the event (additive schema)
+      const annotations = (event as unknown as { annotations?: Annotation[] }).annotations;
+      if (annotations?.length) {
+        collectedCitations.push(...annotations);
+      } else if (event.raw_type === 'response.output_text.annotation.added') {
+        // Fallback for upstreams that do not populate the additive annotations array
+        const annotation = (event.payload as unknown as { annotation?: Annotation })?.annotation;
+        if (annotation?.type === 'url_citation' || annotation?.type === 'container_file_citation') {
+          collectedCitations.push(annotation);
+        }
+      }
+
+      // Tool call payload (additive schema; currently web_search, code_interpreter, file_search)
+      const toolCall = (event as unknown as { tool_call?: ToolCallPayload }).tool_call;
+      if (isWebSearchToolCall(toolCall) && toolCall.web_search_call) {
+        const call = toolCall.web_search_call;
+        const toolId = call.id;
+        const nextState: ToolState = {
+          id: toolId,
+          name: 'web_search',
+          status: call.status === 'completed' ? 'output-available' : 'input-available',
+          input: call.action?.query,
+          output: call.action ? { action: call.action } : undefined,
+        };
+        const prev = toolMap.get(toolId);
+        toolMap.set(toolId, { ...prev, ...nextState });
+        handlers.onToolStates?.(Array.from(toolMap.values()));
+      } else if (isCodeInterpreterToolCall(toolCall) && toolCall.code_interpreter_call) {
+        const call = toolCall.code_interpreter_call;
+        const toolId = call.id || 'code_interpreter';
+        const status =
+          call.status === 'completed'
+            ? 'output-available'
+            : call.status === 'interpreting'
+              ? 'input-available'
+              : 'input-streaming';
+        const nextState: ToolState = {
+          id: toolId,
+          name: 'code_interpreter',
+          status,
+          input: call.code,
+          output: call.outputs ?? undefined,
+        };
+        const prev = toolMap.get(toolId);
+        toolMap.set(toolId, { ...prev, ...nextState });
+        handlers.onToolStates?.(Array.from(toolMap.values()));
+      } else if (isFileSearchToolCall(toolCall) && toolCall.file_search_call) {
+        const call = toolCall.file_search_call;
+        const toolId = call.id || 'file_search';
+        const status =
+          call.status === 'completed'
+            ? 'output-available'
+            : call.status === 'searching'
+              ? 'input-available'
+              : 'input-streaming';
+        const nextState: ToolState = {
+          id: toolId,
+          name: 'file_search',
+          status,
+          input: call.queries,
+          output: call.results ?? undefined,
+        };
+        const prev = toolMap.get(toolId);
+        toolMap.set(toolId, { ...prev, ...nextState });
+        handlers.onToolStates?.(Array.from(toolMap.values()));
       }
     }
 
@@ -119,7 +221,9 @@ export async function consumeChatStream(
       const toolId = event.tool_call_id || event.run_item_name;
       const existing = toolMap.get(toolId) || {
         id: toolId,
-        name: event.tool_name || event.run_item_name,
+        name:
+          event.tool_name ||
+          ((event.tool_call as ToolCallPayload | undefined)?.tool_type ?? event.run_item_name),
         status: 'input-streaming' as const,
       };
 
@@ -128,7 +232,25 @@ export async function consumeChatStream(
         existing.input = event.payload;
       } else if (event.run_item_name === 'tool_output') {
         existing.status = 'output-available';
-        existing.output = event.payload;
+        const toolPayload = event.tool_call as ToolCallPayload | undefined;
+        const hasOutputsField =
+          typeof event.payload === 'object' &&
+          event.payload !== null &&
+          'outputs' in (event.payload as Record<string, unknown>);
+        const hasResultsField =
+          typeof event.payload === 'object' &&
+          event.payload !== null &&
+          'results' in (event.payload as Record<string, unknown>);
+
+        if (toolPayload?.tool_type === 'code_interpreter' && hasOutputsField) {
+          const maybeOutputs = (event.payload as { outputs?: unknown }).outputs;
+          existing.output = maybeOutputs ?? event.payload;
+        } else if (toolPayload?.tool_type === 'file_search' && hasResultsField) {
+          const maybeResults = (event.payload as { results?: unknown }).results;
+          existing.output = maybeResults ?? event.payload;
+        } else {
+          existing.output = event.payload;
+        }
       }
 
       if (
@@ -181,6 +303,7 @@ export async function consumeChatStream(
       attachments: streamedAttachments ?? null,
       structuredOutput: streamedStructuredOutput,
       lifecycleStatus,
+      citations: collectedCitations.length ? collectedCitations : null,
       terminalSeen,
       errored: true,
     };
@@ -208,6 +331,7 @@ export async function consumeChatStream(
     attachments: streamedAttachments ?? null,
     structuredOutput: streamedStructuredOutput ?? null,
     lifecycleStatus,
+    citations: collectedCitations.length ? collectedCitations : null,
     terminalSeen,
     errored: false,
   };

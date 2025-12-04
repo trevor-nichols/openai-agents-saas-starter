@@ -11,6 +11,7 @@ from app.api.v1.contact.router import router as contact_router
 from app.api.v1.containers.router import router as containers_router
 from app.api.v1.conversations.router import router as conversations_router
 from app.api.v1.logs.router import router as logs_router
+from app.api.v1.openai_files.router import router as openai_files_router
 from app.api.v1.status.router import router as status_router
 from app.api.v1.storage.router import router as storage_router
 from app.api.v1.tenants.router import router as tenants_router
@@ -31,6 +32,7 @@ router.include_router(activity_router)
 router.include_router(containers_router)
 router.include_router(vector_stores_router)
 router.include_router(storage_router)
+router.include_router(openai_files_router)
 router.include_router(contact_router)
 router.include_router(status_router)
 router.include_router(tenants_router)

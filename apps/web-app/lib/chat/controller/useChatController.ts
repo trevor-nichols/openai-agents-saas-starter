@@ -273,6 +273,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
             isStreaming: false,
             attachments: streamResult.attachments ?? null,
             structuredOutput: streamResult.structuredOutput ?? null,
+            citations: streamResult.citations ?? null,
           },
         });
         flushQueuedMessages();

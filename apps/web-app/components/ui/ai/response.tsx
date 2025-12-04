@@ -3,6 +3,8 @@
 import { cn } from '@/lib/utils';
 import type { ComponentProps, HTMLAttributes } from 'react';
 import { isValidElement, memo } from 'react';
+import type { Annotation, ContainerFileCitation } from '@/lib/chat/types';
+import { Sources, SourcesContent, SourcesTrigger, Source } from './source';
 import ReactMarkdown, { type Options } from 'react-markdown';
 import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
@@ -168,6 +170,7 @@ export type ResponseProps = HTMLAttributes<HTMLDivElement> & {
     ReturnType<typeof hardenReactMarkdown>
   >['defaultOrigin'];
   parseIncompleteMarkdown?: boolean;
+  citations?: Annotation[] | null;
 };
 
 const components: Options['components'] = {
@@ -343,22 +346,121 @@ const components: Options['components'] = {
   },
 };
 
-export const Response = memo(
-  ({
-    className,
-    options,
-    children,
-    allowedImagePrefixes,
-    allowedLinkPrefixes,
-    defaultOrigin,
-    parseIncompleteMarkdown: shouldParseIncompleteMarkdown = true,
-    ...props
-  }: ResponseProps) => {
-    // Parse the children to remove incomplete markdown tokens if enabled
+type FootnoteInjectionResult = {
+  markdown: string;
+  sources: {
+    label: string;
+    title?: string | null;
+    url?: string | null;
+    filename?: string | null;
+    file_id?: string | null;
+    container_id?: string | null;
+  }[];
+};
+
+function buildDownloadHref(entry: { file_id?: string | null; container_id?: string | null }) {
+  if (entry.file_id && entry.container_id) {
+    return `/api/v1/openai/containers/${entry.container_id}/files/${entry.file_id}/download`;
+  }
+  if (entry.file_id) {
+    return `/api/v1/openai/files/${entry.file_id}/download`;
+  }
+  return null;
+}
+
+function injectFootnotes(text: string, citations: Annotation[]): FootnoteInjectionResult {
+  if (!citations.length) {
+    return { markdown: text, sources: [] };
+  }
+
+  const sorted = [...citations].sort((a, b) => (a.start_index ?? 0) - (b.start_index ?? 0));
+  let output = text;
+  let delta = 0;
+
+  sorted.forEach((cite, idx) => {
+    const label = idx + 1;
+    const marker = `[^${label}]`;
+    const insertAt = (cite.end_index ?? cite.start_index ?? 0) + delta;
+    output = `${output.slice(0, insertAt)}${marker}${output.slice(insertAt)}`;
+    delta += marker.length;
+  });
+
+  const sources = sorted.map((cite, idx) => {
+    if (cite.type === 'url_citation') {
+      return {
+        label: String(idx + 1),
+        title: cite.title,
+        url: cite.url,
+        filename: null,
+        file_id: null,
+        container_id: null,
+      };
+    }
+    if (cite.type === 'container_file_citation') {
+      const cf = cite as ContainerFileCitation;
+      const href = cf.url ?? buildDownloadHref({ file_id: cf.file_id, container_id: cf.container_id });
+      return {
+        label: String(idx + 1),
+        title: cf.filename ?? `container file ${cf.file_id}`,
+        url: href,
+        filename: cf.filename ?? null,
+        file_id: cf.file_id,
+        container_id: cf.container_id,
+      };
+    }
+    // file_citation fallback
+    const href = buildDownloadHref({ file_id: cite.file_id });
+    return {
+      label: String(idx + 1),
+      title: cite.filename ?? `file ${cite.file_id}`,
+      url: href,
+      filename: cite.filename ?? null,
+      file_id: cite.file_id,
+      container_id: null,
+    };
+  });
+
+  const footnotes = sources
+    .map((src) => {
+      const href = src.url ?? buildDownloadHref(src) ?? '';
+      return `[^${src.label}]: ${src.title ? `${src.title} — ` : ''}${href}`;
+    })
+    .join('\n');
+
+  return { markdown: `${output}\n\n${footnotes}`, sources };
+}
+
+export const Response = memo(function Response({
+  className,
+  options,
+  children,
+  allowedImagePrefixes,
+  allowedLinkPrefixes,
+  defaultOrigin,
+  parseIncompleteMarkdown: shouldParseIncompleteMarkdown = true,
+  citations = null,
+  ...props
+}: ResponseProps) {
+    let rawText: string | null = null;
+    if (typeof children === 'string') {
+      rawText = children;
+    } else if (Array.isArray(children)) {
+      const arr = children as unknown[];
+      if (arr.length === 1 && typeof arr[0] === 'string') {
+        rawText = arr[0] as string;
+      }
+    }
+
+    const { markdown: withFootnotes, sources }: FootnoteInjectionResult =
+      rawText && Array.isArray(citations) && citations.length
+        ? injectFootnotes(rawText, citations)
+        : { markdown: rawText ?? '', sources: [] };
+
+    const baseContent = withFootnotes || children;
     const parsedChildren =
-      typeof children === 'string' && shouldParseIncompleteMarkdown
-        ? parseIncompleteMarkdown(children)
-        : children;
+      typeof baseContent === 'string' && shouldParseIncompleteMarkdown
+        ? parseIncompleteMarkdown(baseContent)
+        : baseContent;
 
     return (
       <div
@@ -379,10 +481,41 @@ export const Response = memo(
         >
           {parsedChildren}
         </HardenedMarkdown>
+        {sources.length ? (
+          <Sources className="mt-3" defaultOpen={false}>
+            <SourcesTrigger count={sources.length} />
+            <SourcesContent>
+              {sources.map((src) => {
+                const href = src.url ?? buildDownloadHref(src) ?? undefined;
+                const base = src.title ?? src.filename ?? src.url ?? 'source';
+                const label = (() => {
+                  if (href && src.url) {
+                    try {
+                      const host = new URL(src.url).hostname;
+                      return `[${src.label}] ${base ?? host}`;
+                    } catch {
+                      return `[${src.label}] ${base}`;
+                    }
+                  }
+                  return `[${src.label}] ${base}`;
+                })();
+                return href ? (
+                  <Source key={src.label} href={href} title={label}>
+                    <span className="text-xs font-medium">{label}</span>
+                  </Source>
+                ) : (
+                  <div key={src.label} className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="font-medium">[{src.label}]</span>
+                    <span>{label}</span>
+                  </div>
+                );
+              })}
+            </SourcesContent>
+          </Sources>
+        ) : null}
       </div>
     );
-  },
-  (prevProps, nextProps) => prevProps.children === nextProps.children
+  }
 );
 
 Response.displayName = 'Response';

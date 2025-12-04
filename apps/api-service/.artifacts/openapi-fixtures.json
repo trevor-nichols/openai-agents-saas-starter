@@ -5400,6 +5400,169 @@
         }
       }
     },
+    "/api/v1/openai/files/{file_id}/download": {
+      "get": {
+        "tags": [
+          "openai-files"
+        ],
+        "summary": "Download Openai File",
+        "operationId": "download_openai_file_api_v1_openai_files__file_id__download_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "file_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "File Id"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Tenant-Role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/openai/containers/{container_id}/files/{file_id}/download": {
+      "get": {
+        "tags": [
+          "openai-files"
+        ],
+        "summary": "Download Openai Container File",
+        "operationId": "download_openai_container_file_api_v1_openai_containers__container_id__files__file_id__download_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "container_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Container Id"
+            }
+          },
+          {
+            "name": "file_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "File Id"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Tenant-Role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/contact": {
       "post": {
         "tags": [
@@ -7753,6 +7916,58 @@
         "title": "ChatMessage",
         "description": "Single conversational message."
       },
+      "CodeInterpreterCall": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "type": {
+            "type": "string",
+            "const": "code_interpreter_call",
+            "title": "Type"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "in_progress",
+              "interpreting",
+              "completed"
+            ],
+            "title": "Status"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "outputs": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outputs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "status"
+        ],
+        "title": "CodeInterpreterCall"
+      },
       "ContactSubmissionRequest": {
         "properties": {
           "name": {
@@ -7906,6 +8121,62 @@
           "name"
         ],
         "title": "ContainerCreateRequest"
+      },
+      "ContainerFileCitation": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "container_file_citation",
+            "title": "Type",
+            "default": "container_file_citation"
+          },
+          "start_index": {
+            "type": "integer",
+            "title": "Start Index"
+          },
+          "end_index": {
+            "type": "integer",
+            "title": "End Index"
+          },
+          "container_id": {
+            "type": "string",
+            "title": "Container Id"
+          },
+          "file_id": {
+            "type": "string",
+            "title": "File Id"
+          },
+          "filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filename"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start_index",
+          "end_index",
+          "container_id",
+          "file_id"
+        ],
+        "title": "ContainerFileCitation"
       },
       "ContainerListResponse": {
         "properties": {
@@ -8598,6 +8869,124 @@
           "expires_at"
         ],
         "title": "EmailVerificationTokenResponse"
+      },
+      "FileCitation": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "file_citation",
+            "title": "Type",
+            "default": "file_citation"
+          },
+          "start_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Index"
+          },
+          "end_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Index"
+          },
+          "index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Index"
+          },
+          "file_id": {
+            "type": "string",
+            "title": "File Id"
+          },
+          "filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filename"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file_id"
+        ],
+        "title": "FileCitation"
+      },
+      "FileSearchCall": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "type": {
+            "type": "string",
+            "const": "file_search_call",
+            "title": "Type"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "in_progress",
+              "searching",
+              "completed"
+            ],
+            "title": "Status"
+          },
+          "queries": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queries"
+          },
+          "results": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "status"
+        ],
+        "title": "FileSearchCall"
       },
       "FixtureApplyResult": {
         "properties": {
@@ -11177,6 +11566,60 @@
             ],
             "title": "Attachments",
             "description": "Attachments generated during this event (e.g., stored images)."
+          },
+          "raw_event": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Event",
+            "description": "Original upstream event payload (for audit/forward-compat)."
+          },
+          "tool_call": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ToolCallPayload"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Call",
+            "description": "Typed tool call payload (e.g., web_search_call)."
+          },
+          "annotations": {
+            "anyOf": [
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/UrlCitation"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContainerFileCitation"
+                    },
+                    {
+                      "$ref": "#/components/schemas/FileCitation"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annotations",
+            "description": "Inline annotations such as URL citations emitted with output_text."
           }
         },
         "type": "object",
@@ -11757,6 +12200,50 @@
         ],
         "title": "TenantSubscriptionResponse"
       },
+      "ToolCallPayload": {
+        "properties": {
+          "tool_type": {
+            "type": "string",
+            "title": "Tool Type"
+          },
+          "web_search_call": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WebSearchCall"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "code_interpreter_call": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CodeInterpreterCall"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "file_search_call": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FileSearchCall"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "tool_type"
+        ],
+        "title": "ToolCallPayload"
+      },
       "UpdateSubscriptionRequest": {
         "properties": {
           "auto_renew": {
@@ -11833,6 +12320,46 @@
           "trend_tone"
         ],
         "title": "UptimeMetricSchema"
+      },
+      "UrlCitation": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "url_citation",
+            "title": "Type",
+            "default": "url_citation"
+          },
+          "start_index": {
+            "type": "integer",
+            "title": "Start Index"
+          },
+          "end_index": {
+            "type": "integer",
+            "title": "End Index"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start_index",
+          "end_index",
+          "url"
+        ],
+        "title": "UrlCitation"
       },
       "UsageRecordRequest": {
         "properties": {
@@ -12823,6 +13350,77 @@
           "data"
         ],
         "title": "VectorStoreSearchResponse"
+      },
+      "WebSearchAction": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "search",
+            "title": "Type"
+          },
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "sources": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sources"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "query"
+        ],
+        "title": "WebSearchAction"
+      },
+      "WebSearchCall": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "type": {
+            "type": "string",
+            "const": "web_search_call",
+            "title": "Type"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "in_progress",
+              "completed"
+            ],
+            "title": "Status"
+          },
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WebSearchAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "status"
+        ],
+        "title": "WebSearchCall"
       },
       "WorkflowDescriptorResponse": {
         "properties": {

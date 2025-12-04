@@ -2,7 +2,7 @@
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class LocationHint(BaseModel):
@@ -152,6 +152,22 @@ class StreamingChatEvent(BaseModel):
         default=None,
         description="Attachments generated during this event (e.g., stored images).",
     )
+    raw_event: dict[str, Any] | None = Field(
+        default=None,
+        description="Original upstream event payload (for audit/forward-compat).",
+    )
+
+    # Tool calls (typed surface; currently web_search)
+    tool_call: "ToolCallPayload | dict[str, Any] | None" = Field(
+        default=None,
+        description="Typed tool call payload (e.g., web_search_call).",
+    )
+
+    # Output annotations (e.g., citations)
+    annotations: list["UrlCitation | ContainerFileCitation | FileCitation"] | None = Field(
+        default=None,
+        description="Inline annotations such as URL citations emitted with output_text.",
+    )
 
 
 class MessageAttachment(BaseModel):
@@ -161,6 +177,73 @@ class MessageAttachment(BaseModel):
     size_bytes: int | None = Field(default=None, description="Size in bytes")
     url: str | None = Field(default=None, description="Presigned download URL")
     tool_call_id: str | None = Field(default=None, description="Originating tool call id")
+
+
+# ---------- Tool & annotation payloads ----------
+
+class WebSearchAction(BaseModel):
+    type: Literal["search"]
+    query: str
+    sources: list[str] | None = None
+
+
+class WebSearchCall(BaseModel):
+    id: str
+    type: Literal["web_search_call"]
+    status: Literal["in_progress", "completed"]
+    action: WebSearchAction | None = None
+
+
+class CodeInterpreterCall(BaseModel):
+    id: str
+    type: Literal["code_interpreter_call"]
+    status: Literal["in_progress", "interpreting", "completed"]
+    code: str | None = None
+    outputs: list[Any] | None = None
+
+
+class FileSearchCall(BaseModel):
+    id: str
+    type: Literal["file_search_call"]
+    status: Literal["in_progress", "searching", "completed"]
+    queries: list[str] | None = None
+    results: list[Any] | None = None
+
+
+class ToolCallPayload(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    tool_type: str
+    web_search_call: WebSearchCall | None = None
+    code_interpreter_call: CodeInterpreterCall | None = None
+    file_search_call: FileSearchCall | None = None
+
+
+class UrlCitation(BaseModel):
+    type: Literal["url_citation"] = "url_citation"
+    start_index: int
+    end_index: int
+    title: str | None = None
+    url: str
+
+
+class ContainerFileCitation(BaseModel):
+    type: Literal["container_file_citation"] = "container_file_citation"
+    start_index: int
+    end_index: int
+    container_id: str
+    file_id: str
+    filename: str | None = None
+    url: str | None = None  # optional presigned URL if provided upstream
+
+
+class FileCitation(BaseModel):
+    type: Literal["file_citation"] = "file_citation"
+    start_index: int | None = None
+    end_index: int | None = None
+    index: int | None = None
+    file_id: str
+    filename: str | None = None
 
 
 AgentChatRequest.model_rebuild()

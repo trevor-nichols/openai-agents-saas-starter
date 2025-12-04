@@ -76,6 +76,12 @@ import type {
   DismissActivityApiV1ActivityEventIdDismissPostData,
   DismissActivityApiV1ActivityEventIdDismissPostErrors,
   DismissActivityApiV1ActivityEventIdDismissPostResponses,
+  DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetData,
+  DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetErrors,
+  DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetResponses,
+  DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetData,
+  DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetErrors,
+  DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetResponses,
   GetAgentStatusApiV1AgentsAgentNameStatusGetData,
   GetAgentStatusApiV1AgentsAgentNameStatusGetErrors,
   GetAgentStatusApiV1AgentsAgentNameStatusGetResponses,
@@ -2209,6 +2215,59 @@ export const deleteObjectApiV1StorageObjectsObjectIdDelete = <
     ...options,
   });
 };
+
+/**
+ * Download Openai File
+ */
+export const downloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).get<
+    DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetResponses,
+    DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/openai/files/{file_id}/download",
+    ...options,
+  });
+};
+
+/**
+ * Download Openai Container File
+ */
+export const downloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGet =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).get<
+      DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetResponses,
+      DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/openai/containers/{container_id}/files/{file_id}/download",
+      ...options,
+    });
+  };
 
 /**
  * Submit Contact

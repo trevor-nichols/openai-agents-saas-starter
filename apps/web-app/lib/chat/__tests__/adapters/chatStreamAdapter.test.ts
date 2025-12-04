@@ -1,7 +1,10 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import { consumeChatStream } from '../../adapters/chatStreamAdapter';
-import type { StreamChunk, ToolState } from '../../types';
+import type { StreamChunk, ToolState, UrlCitation } from '../../types';
 
 async function* chunkStream(chunks: StreamChunk[]) {
   for (const chunk of chunks) {
@@ -115,5 +118,248 @@ describe('consumeChatStream', () => {
 
     const result = await consumeChatStream(chunkStream(chunks), {});
     expect(result.errored).toBe(true);
+  });
+
+  it('parses web_search tool calls and citations from SDK fixture', async () => {
+    const fixturePath = path.resolve(
+      __dirname,
+      '../../../../../../docs/integrations/openai-agents-sdk/runner_api_events/tool_events.json',
+    );
+    const log = JSON.parse(readFileSync(fixturePath, 'utf-8')) as {
+      raw_events: Array<Record<string, unknown>>;
+    };
+    const annotationEvent = log.raw_events.find((ev) => ev.type === 'response.output_text.annotation.added');
+    const webSearchCompleted = log.raw_events.find((ev) => ev.type === 'response.web_search_call.completed');
+
+    expect(annotationEvent).toBeTruthy();
+    expect(webSearchCompleted).toBeTruthy();
+
+    const chunks: StreamChunk[] = [
+      {
+        type: 'event',
+        event: {
+          kind: 'raw_response_event',
+          conversation_id: 'fixture',
+          raw_type: annotationEvent?.type as string,
+          payload: annotationEvent,
+          raw_event: annotationEvent,
+          annotations: annotationEvent && 'annotation' in annotationEvent ? [annotationEvent.annotation as UrlCitation] : undefined,
+        },
+      },
+      {
+        type: 'event',
+        event: {
+          kind: 'raw_response_event',
+          conversation_id: 'fixture',
+          raw_type: webSearchCompleted?.type as string,
+          payload: webSearchCompleted,
+          raw_event: webSearchCompleted,
+          tool_call: {
+            tool_type: 'web_search',
+            web_search_call: {
+              id: String((webSearchCompleted as { item_id?: unknown })?.item_id ?? ''),
+              type: 'web_search_call',
+              status: 'completed',
+              action: null,
+            },
+          },
+        },
+      },
+      {
+        type: 'event',
+        event: {
+          kind: 'raw_response_event',
+          conversation_id: 'fixture',
+          raw_type: 'response.completed',
+          is_terminal: true,
+        },
+      },
+    ];
+
+    const toolStates: ToolState[][] = [];
+    const result = await consumeChatStream(chunkStream(chunks), {
+      onToolStates: (tools) => toolStates.push(tools),
+    });
+
+    const lastTool = toolStates.at(-1)?.[0];
+    expect(lastTool?.name).toBe('web_search');
+    expect(lastTool?.status).toBe('output-available');
+    expect(result.citations?.length).toBeGreaterThanOrEqual(1);
+    expect(result.errored).toBe(false);
+  });
+
+  it('does not duplicate citations when both payload.annotation and annotations are present', async () => {
+    const annotation = {
+      type: 'url_citation',
+      start_index: 0,
+      end_index: 4,
+      title: 'Example',
+      url: 'https://example.com',
+    } satisfies UrlCitation;
+
+    const chunks: StreamChunk[] = [
+      {
+        type: 'event',
+        event: {
+          kind: 'raw_response_event',
+          conversation_id: 'dup',
+          raw_type: 'response.output_text.annotation.added',
+          payload: { annotation },
+          annotations: [annotation],
+        },
+      },
+      {
+        type: 'event',
+        event: {
+          kind: 'raw_response_event',
+          conversation_id: 'dup',
+          raw_type: 'response.completed',
+          is_terminal: true,
+        },
+      },
+    ];
+
+    const result = await consumeChatStream(chunkStream(chunks), {});
+    expect(result.citations).toEqual([annotation]);
+  });
+
+  it('parses code_interpreter tool calls and code deltas', async () => {
+    const chunks: StreamChunk[] = [
+      {
+        type: 'event',
+        event: {
+          kind: 'raw_response_event',
+          conversation_id: 'ci',
+          raw_type: 'response.code_interpreter_call.in_progress',
+          payload: { item_id: 'ci_1' },
+          tool_call: {
+            tool_type: 'code_interpreter',
+            code_interpreter_call: {
+              id: 'ci_1',
+              type: 'code_interpreter_call',
+              status: 'in_progress',
+              code: null,
+              outputs: null,
+            },
+          },
+        },
+      },
+      {
+        type: 'event',
+        event: {
+          kind: 'raw_response_event',
+          conversation_id: 'ci',
+          raw_type: 'response.code_interpreter_call_code.delta',
+          payload: { item_id: 'ci_1', delta: 'print(1)' },
+          tool_call: {
+            tool_type: 'code_interpreter',
+            code_interpreter_call: {
+              id: 'ci_1',
+              type: 'code_interpreter_call',
+              status: 'in_progress',
+              code: 'print(1)',
+              outputs: null,
+            },
+          },
+        },
+      },
+      {
+        type: 'event',
+        event: {
+          kind: 'run_item_stream_event',
+          conversation_id: 'ci',
+          run_item_name: 'tool_output',
+          run_item_type: 'tool_call_output_item',
+          tool_call_id: 'ci_1',
+          payload: { outputs: [{ text: '1' }] },
+          tool_call: {
+            tool_type: 'code_interpreter',
+            code_interpreter_call: {
+              id: 'ci_1',
+              type: 'code_interpreter_call',
+              status: 'completed',
+              code: 'print(1)',
+              outputs: [{ text: '1' }],
+            },
+          },
+        },
+      },
+      {
+        type: 'event',
+        event: {
+          kind: 'raw_response_event',
+          conversation_id: 'ci',
+          raw_type: 'response.completed',
+          is_terminal: true,
+        },
+      },
+    ];
+
+    const toolStates: ToolState[][] = [];
+    const result = await consumeChatStream(chunkStream(chunks), {
+      onToolStates: (tools) => toolStates.push(tools),
+    });
+
+    const lastTool = toolStates.at(-1)?.[0];
+    expect(lastTool?.name).toBe('code_interpreter');
+    expect(lastTool?.status).toBe('output-available');
+    expect(lastTool?.output).toEqual([{ text: '1' }]);
+    expect(result.errored).toBe(false);
+  });
+
+  it('parses file_search tool calls', async () => {
+    const chunks: StreamChunk[] = [
+      {
+        type: 'event',
+        event: {
+          kind: 'raw_response_event',
+          conversation_id: 'fs',
+          raw_type: 'response.file_search_call.in_progress',
+          payload: { item_id: 'fs_1' },
+          tool_call: undefined,
+        },
+      },
+      {
+        type: 'event',
+        event: {
+          kind: 'run_item_stream_event',
+          conversation_id: 'fs',
+          run_item_name: 'tool_output',
+          run_item_type: 'tool_call_output_item',
+          tool_call_id: 'fs_1',
+          payload: { results: [{ id: 'doc1' }] },
+          tool_call: {
+            tool_type: 'file_search',
+            file_search_call: {
+              id: 'fs_1',
+              type: 'file_search_call',
+              status: 'completed',
+              queries: ['what is deep research'],
+              results: [{ id: 'doc1' }],
+            },
+          },
+        },
+      },
+      {
+        type: 'event',
+        event: {
+          kind: 'raw_response_event',
+          conversation_id: 'fs',
+          raw_type: 'response.completed',
+          is_terminal: true,
+        },
+      },
+    ];
+
+    const toolStates: ToolState[][] = [];
+    const result = await consumeChatStream(chunkStream(chunks), {
+      onToolStates: (tools) => toolStates.push(tools),
+    });
+
+    const lastToolStateList = toolStates.at(-1);
+    const fileSearch = lastToolStateList?.find((t) => t.name === 'file_search');
+    expect(fileSearch?.status).toBe('output-available');
+    expect(fileSearch?.output).toEqual([{ id: 'doc1' }]);
+    expect(result.errored).toBe(false);
   });
 });

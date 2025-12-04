@@ -603,6 +603,32 @@ export type ChatMessage = {
 };
 
 /**
+ * CodeInterpreterCall
+ */
+export type CodeInterpreterCall = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Type
+   */
+  type: "code_interpreter_call";
+  /**
+   * Status
+   */
+  status: "in_progress" | "interpreting" | "completed";
+  /**
+   * Code
+   */
+  code?: string | null;
+  /**
+   * Outputs
+   */
+  outputs?: Array<unknown> | null;
+};
+
+/**
  * ContactSubmissionRequest
  */
 export type ContactSubmissionRequest = {
@@ -684,6 +710,40 @@ export type ContainerCreateRequest = {
   metadata?: {
     [key: string]: unknown;
   } | null;
+};
+
+/**
+ * ContainerFileCitation
+ */
+export type ContainerFileCitation = {
+  /**
+   * Type
+   */
+  type?: "container_file_citation";
+  /**
+   * Start Index
+   */
+  start_index: number;
+  /**
+   * End Index
+   */
+  end_index: number;
+  /**
+   * Container Id
+   */
+  container_id: string;
+  /**
+   * File Id
+   */
+  file_id: string;
+  /**
+   * Filename
+   */
+  filename?: string | null;
+  /**
+   * Url
+   */
+  url?: string | null;
 };
 
 /**
@@ -1112,6 +1172,62 @@ export type EmailVerificationTokenResponse = {
    * Expires At
    */
   expires_at: string;
+};
+
+/**
+ * FileCitation
+ */
+export type FileCitation = {
+  /**
+   * Type
+   */
+  type?: "file_citation";
+  /**
+   * Start Index
+   */
+  start_index?: number | null;
+  /**
+   * End Index
+   */
+  end_index?: number | null;
+  /**
+   * Index
+   */
+  index?: number | null;
+  /**
+   * File Id
+   */
+  file_id: string;
+  /**
+   * Filename
+   */
+  filename?: string | null;
+};
+
+/**
+ * FileSearchCall
+ */
+export type FileSearchCall = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Type
+   */
+  type: "file_search_call";
+  /**
+   * Status
+   */
+  status: "in_progress" | "searching" | "completed";
+  /**
+   * Queries
+   */
+  queries?: Array<string> | null;
+  /**
+   * Results
+   */
+  results?: Array<unknown> | null;
 };
 
 /**
@@ -2738,6 +2854,33 @@ export type StreamingChatEvent = {
    * Attachments generated during this event (e.g., stored images).
    */
   attachments?: Array<MessageAttachment> | null;
+  /**
+   * Raw Event
+   *
+   * Original upstream event payload (for audit/forward-compat).
+   */
+  raw_event?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Tool Call
+   *
+   * Typed tool call payload (e.g., web_search_call).
+   */
+  tool_call?:
+    | ToolCallPayload
+    | {
+        [key: string]: unknown;
+      }
+    | null;
+  /**
+   * Annotations
+   *
+   * Inline annotations such as URL citations emitted with output_text.
+   */
+  annotations?: Array<
+    UrlCitation | ContainerFileCitation | FileCitation
+  > | null;
 };
 
 /**
@@ -3016,6 +3159,29 @@ export type TenantSubscriptionResponse = {
 };
 
 /**
+ * ToolCallPayload
+ */
+export type ToolCallPayload = {
+  /**
+   * Tool Type
+   */
+  tool_type: string;
+  web_search_call?: WebSearchCall | null;
+  code_interpreter_call?: CodeInterpreterCall | null;
+  file_search_call?: FileSearchCall | null;
+  [key: string]:
+    | unknown
+    | string
+    | WebSearchCall
+    | null
+    | CodeInterpreterCall
+    | null
+    | FileSearchCall
+    | null
+    | undefined;
+};
+
+/**
  * UpdateSubscriptionRequest
  */
 export type UpdateSubscriptionRequest = {
@@ -3063,6 +3229,32 @@ export type UptimeMetricSchema = {
    * Trend Tone
    */
   trend_tone: string;
+};
+
+/**
+ * UrlCitation
+ */
+export type UrlCitation = {
+  /**
+   * Type
+   */
+  type?: "url_citation";
+  /**
+   * Start Index
+   */
+  start_index: number;
+  /**
+   * End Index
+   */
+  end_index: number;
+  /**
+   * Title
+   */
+  title?: string | null;
+  /**
+   * Url
+   */
+  url: string;
 };
 
 /**
@@ -3733,6 +3925,43 @@ export type VectorStoreSearchResponse = {
    * Data
    */
   data: unknown;
+};
+
+/**
+ * WebSearchAction
+ */
+export type WebSearchAction = {
+  /**
+   * Type
+   */
+  type: "search";
+  /**
+   * Query
+   */
+  query: string;
+  /**
+   * Sources
+   */
+  sources?: Array<string> | null;
+};
+
+/**
+ * WebSearchCall
+ */
+export type WebSearchCall = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Type
+   */
+  type: "web_search_call";
+  /**
+   * Status
+   */
+  status: "in_progress" | "completed";
+  action?: WebSearchAction | null;
 };
 
 /**
@@ -6877,6 +7106,91 @@ export type DeleteObjectApiV1StorageObjectsObjectIdDeleteResponses = {
 
 export type DeleteObjectApiV1StorageObjectsObjectIdDeleteResponse =
   DeleteObjectApiV1StorageObjectsObjectIdDeleteResponses[keyof DeleteObjectApiV1StorageObjectsObjectIdDeleteResponses];
+
+export type DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * File Id
+     */
+    file_id: string;
+  };
+  query?: never;
+  url: "/api/v1/openai/files/{file_id}/download";
+};
+
+export type DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetError =
+  DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetErrors[keyof DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetErrors];
+
+export type DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: unknown;
+};
+
+export type DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Container Id
+       */
+      container_id: string;
+      /**
+       * File Id
+       */
+      file_id: string;
+    };
+    query?: never;
+    url: "/api/v1/openai/containers/{container_id}/files/{file_id}/download";
+  };
+
+export type DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetErrors =
+  {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+  };
+
+export type DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetError =
+  DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetErrors[keyof DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetErrors];
+
+export type DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+  };
 
 export type SubmitContactApiV1ContactPostData = {
   body: ContactSubmissionRequest;

@@ -70,7 +70,13 @@ function parseBackendStream(
     const data = JSON.parse(segment.slice(6)) as unknown;
 
     if (typeof data === 'object' && data !== null && 'kind' in data) {
-      const event = data as StreamingChatEvent;
+      const eventData = data as StreamingChatEvent & { raw_event?: Record<string, unknown> | null };
+      const hasRaw = typeof eventData.raw_event === 'object' && eventData.raw_event !== null;
+      const rawEvent: Record<string, unknown> = hasRaw && eventData.raw_event ? eventData.raw_event : (data as Record<string, unknown>);
+      const event: StreamingChatEvent & { raw_event?: Record<string, unknown> } = {
+        ...eventData,
+        raw_event: rawEvent,
+      };
       return {
         chunk: { type: 'event', event },
         done: Boolean(event.is_terminal),

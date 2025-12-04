@@ -123,6 +123,11 @@ class AgentStreamEvent:
     structured_output: Any | None = None
     response_text: str | None = None
 
+    # Typed enrichments for downstream consumers
+    raw_event: Mapping[str, Any] | None = None
+    tool_call: Mapping[str, Any] | None = None
+    annotations: list[Mapping[str, Any]] | None = None
+
     @staticmethod
     def _strip_unserializable(obj: Any) -> Any:
         """Remove or coerce values that JSON encoders can't handle (e.g., callables)."""

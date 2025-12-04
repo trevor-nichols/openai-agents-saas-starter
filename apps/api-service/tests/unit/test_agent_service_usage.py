@@ -11,6 +11,7 @@ from app.domain.ai.ports import AgentStreamingHandle
 from app.services.agent_service import AgentService, ConversationActorContext
 from app.services.agents.provider_registry import AgentProviderRegistry
 from app.services.conversation_service import ConversationService
+from app.services.containers import ContainerService
 from app.services.usage_recorder import UsageEntry, UsageRecorder
 
 
@@ -37,6 +38,14 @@ class FakeConversationService:
 
     async def update_session_state(self, *args, **kwargs):  # pragma: no cover - noop
         return None
+
+    async def record_conversation_created(self, *args, **kwargs):  # pragma: no cover - noop
+        return None
+
+
+class FakeContainerService:
+    async def list_agent_bindings(self, *args, **kwargs):  # pragma: no cover - noop
+        return {}
 
 
 class FakeSessionStore:
@@ -144,6 +153,7 @@ async def test_chat_records_usage():
         conversation_service=cast(ConversationService, FakeConversationService()),
         usage_recorder=cast(UsageRecorder, recorder),
         provider_registry=registry,
+        container_service=cast(ContainerService, FakeContainerService()),
     )
 
     actor = ConversationActorContext(tenant_id="tenant-123", user_id="user" )
@@ -175,6 +185,7 @@ async def test_chat_stream_records_usage():
         conversation_service=cast(ConversationService, FakeConversationService()),
         usage_recorder=cast(UsageRecorder, recorder),
         provider_registry=registry,
+        container_service=cast(ContainerService, FakeContainerService()),
     )
 
     calls: list[dict[str, object]] = []

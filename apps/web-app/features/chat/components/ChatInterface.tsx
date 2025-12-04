@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useState, useCallback, type FormEvent } from 'react';
 import type { ChatStatus } from 'ai';
 
 import { GlassPanel, InlineTag, SectionHeader, type SectionHeaderProps } from '@/components/ui/foundation';
@@ -16,7 +16,10 @@ import {
   ConversationContent,
   ConversationScrollButton,
 } from '@/components/ui/ai/conversation';
+import { Actions, Action } from '@/components/ui/ai/actions';
+import { Loader } from '@/components/ui/ai/loader';
 import { Message, MessageAvatar, MessageContent } from '@/components/ui/ai/message';
+import { Response } from '@/components/ui/ai/response';
 import {
   PromptInput,
   PromptInputButton,
@@ -41,6 +44,7 @@ import {
   useChatSelector,
 } from '@/lib/chat';
 import type { ChatMessage, ToolState, ConversationLifecycleStatus } from '@/lib/chat/types';
+import { CopyIcon } from 'lucide-react';
 
 const log = createLogger('chat-ui');
 
@@ -113,7 +117,7 @@ export function ChatInterface({
   const [attachmentState, setAttachmentState] = useState<
     Record<string, { url?: string; error?: string; loading?: boolean }>
   >({});
-  const { error: showErrorToast } = useToast();
+  const { error: showErrorToast, success: showSuccessToast } = useToast();
   const formatAttachmentSize = (size?: number | null) => {
     if (!size || size <= 0) return '';
     if (size < 1024) return `${size} B`;
@@ -174,6 +178,28 @@ export function ChatInterface({
     await onSendMessage(value);
   };
 
+  const handleCopyMessage = useCallback(
+    async (text: string) => {
+      if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+        showErrorToast({
+          title: 'Copy unavailable',
+          description: 'Clipboard access is not supported in this environment.',
+        });
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        showSuccessToast({ title: 'Copied to clipboard' });
+      } catch (error) {
+        showErrorToast({
+          title: 'Copy failed',
+          description: error instanceof Error ? error.message : 'Unable to copy message.',
+        });
+      }
+    },
+    [showErrorToast, showSuccessToast],
+  );
+
   return (
     <GlassPanel className={cn('flex h-full flex-col overflow-hidden p-0', className)}>
       {headerProps && (
@@ -209,20 +235,41 @@ export function ChatInterface({
                 <Message key={message.id} from={message.role}>
                   <MessageContent>
                     <div className="flex items-center justify-between gap-3">
-                      <InlineTag tone={message.role === 'user' ? 'positive' : 'default'}>
-                        {message.role === 'user' ? 'You' : 'Agent'}
-                      </InlineTag>
-                      {message.timestamp && !message.isStreaming ? (
-                        <span className="text-[11px] uppercase tracking-wide text-foreground/50">
-                          {formatClockTime(message.timestamp)}
-                        </span>
-                      ) : (
-                        <span className="text-[11px] uppercase tracking-wide text-foreground/40">
-                          {message.isStreaming ? 'Streaming…' : 'Pending'}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <InlineTag tone={message.role === 'user' ? 'positive' : 'default'}>
+                          {message.role === 'user' ? 'You' : 'Agent'}
+                        </InlineTag>
+                        {message.isStreaming ? (
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <Loader size={14} />
+                            <span className="text-[11px] uppercase tracking-wide">Streaming</span>
+                          </div>
+                        ) : message.timestamp ? (
+                          <span className="text-[11px] uppercase tracking-wide text-foreground/50">
+                            {formatClockTime(message.timestamp)}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] uppercase tracking-wide text-foreground/40">
+                            Pending
+                          </span>
+                        )}
+                      </div>
+                      <Actions>
+                        <Action
+                          tooltip="Copy message"
+                          label="Copy message"
+                          onClick={() => void handleCopyMessage(message.content)}
+                        >
+                          <CopyIcon size={14} />
+                        </Action>
+                      </Actions>
                     </div>
-                    <p className="mt-2 leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                    <Response
+                      className="mt-2 leading-relaxed"
+                      citations={message.citations ?? undefined}
+                    >
+                      {message.content}
+                    </Response>
                     {message.structuredOutput ? (
                       <div className="mt-3 space-y-2">
                         <p className="text-xs font-semibold uppercase tracking-wide text-foreground/60">
@@ -369,7 +416,14 @@ export function ChatInterface({
             />
           </PromptInputTools>
           <div className="flex flex-wrap items-center gap-2">
-            {chatStatus ? <InlineTag tone="default">{chatStatus}</InlineTag> : null}
+            {chatStatus === 'streaming' ? (
+              <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-muted-foreground">
+                <Loader size={14} />
+                <span className="uppercase tracking-wide">Streaming</span>
+              </div>
+            ) : chatStatus ? (
+              <InlineTag tone="default">{chatStatus}</InlineTag>
+            ) : null}
             {lifecycleStatus ? <InlineTag tone="default">{lifecycleStatus}</InlineTag> : null}
             {activeAgent ? <InlineTag tone="default">Agent: {activeAgent}</InlineTag> : null}
             <PromptInputSubmit

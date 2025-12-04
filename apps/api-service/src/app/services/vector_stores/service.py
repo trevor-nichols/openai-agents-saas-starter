@@ -574,6 +574,30 @@ class VectorStoreService:
             raise RuntimeError("OPENAI_API_KEY is not configured")
         return AsyncOpenAI(api_key=api_key)
 
+    async def get_file_by_openai_id(
+        self, *, tenant_id: uuid.UUID, openai_file_id: str
+    ) -> VectorStoreFile:
+        """Ensure a vector store file belongs to the tenant by OpenAI file id."""
+
+        async with self._session_factory() as session:
+            row = await session.scalar(
+                select(VectorStoreFile)
+                .join(VectorStore, VectorStore.id == VectorStoreFile.vector_store_id)
+                .where(
+                    VectorStoreFile.openai_file_id == openai_file_id,
+                    VectorStoreFile.deleted_at.is_(None),
+                    VectorStore.tenant_id == tenant_id,
+                    VectorStore.deleted_at.is_(None),
+                )
+            )
+
+            if row is None:
+                raise VectorStoreNotFoundError(
+                    f"File {openai_file_id} not found for tenant {tenant_id}"
+                )
+
+            return row
+
     def _observe(self, operation: str, result: str, start_time: float) -> None:
         duration = max(perf_counter() - start_time, 0.0)
         VECTOR_STORE_OPERATIONS_TOTAL.labels(operation=operation, result=result).inc()

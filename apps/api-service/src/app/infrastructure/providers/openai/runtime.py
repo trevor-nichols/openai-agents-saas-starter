@@ -50,6 +50,72 @@ def _coerce_delta(delta: Any) -> str:
         return ""
 
 
+def _build_web_search_tool_call(
+    *,
+    item_id: Any,
+    status: str | None,
+    action: Mapping[str, Any] | None = None,
+) -> Mapping[str, Any]:
+    """Normalize web_search tool call payload into API shape."""
+
+    normalized_status = "in_progress"
+    if status == "completed":
+        normalized_status = "completed"
+    return {
+        "tool_type": "web_search",
+        "web_search_call": {
+            "id": str(item_id) if item_id is not None else "",
+            "type": "web_search_call",
+            "status": normalized_status,
+            "action": action,
+        },
+    }
+
+
+def _build_code_interpreter_tool_call(
+    *,
+    item_id: Any,
+    status: str | None,
+    code: str | None = None,
+    outputs: Any | None = None,
+) -> Mapping[str, Any]:
+    normalized_status = "in_progress"
+    if status in {"completed", "interpreting"}:
+        normalized_status = status
+    return {
+        "tool_type": "code_interpreter",
+        "code_interpreter_call": {
+            "id": str(item_id) if item_id is not None else "",
+            "type": "code_interpreter_call",
+            "status": normalized_status,
+            "code": code,
+            "outputs": outputs,
+        },
+    }
+
+
+def _build_file_search_tool_call(
+    *,
+    item_id: Any,
+    status: str | None,
+    queries: list[str] | None = None,
+    results: Any | None = None,
+) -> Mapping[str, Any]:
+    normalized_status = "in_progress"
+    if status in {"searching", "completed"}:
+        normalized_status = status
+    return {
+        "tool_type": "file_search",
+        "file_search_call": {
+            "id": str(item_id) if item_id is not None else "",
+            "type": "file_search_call",
+            "status": normalized_status,
+            "queries": queries,
+            "results": results,
+        },
+    }
+
+
 def _extract_agent_name(obj: Any) -> str | None:
     """Extract agent name from SDK agent or item structures."""
 
@@ -191,6 +257,8 @@ class OpenAIStreamingHandle(AgentStreamingHandle):
                 raw = event.data
                 raw_type = getattr(raw, "type", None)
                 sequence_number = getattr(raw, "sequence_number", None)
+                raw_mapping = AgentStreamEvent._to_mapping(raw)
+                item_id = getattr(raw, "item_id", None)
 
                 text_delta: str | None = None
                 reasoning_delta: str | None = None
@@ -203,6 +271,62 @@ class OpenAIStreamingHandle(AgentStreamingHandle):
                 }:
                     reasoning_delta = _coerce_delta(getattr(raw, "delta", None))
 
+                annotations = None
+                if raw_type == "response.output_text.annotation.added":
+                    annotation = AgentStreamEvent._to_mapping(getattr(raw, "annotation", None))
+                    if isinstance(annotation, Mapping) and annotation.get("type") in {
+                        "url_citation",
+                        "container_file_citation",
+                        "file_citation",
+                    }:
+                        annotations = [annotation]
+
+                tool_call = None
+                if isinstance(raw_type, str) and raw_type.startswith("response.web_search_call."):
+                    status_fragment = raw_type.rsplit(".", 1)[-1]
+                    status = "completed" if status_fragment == "completed" else "in_progress"
+                    tool_call = _build_web_search_tool_call(
+                        item_id=item_id,
+                        status=status,
+                        action=None,
+                    )
+                elif isinstance(raw_type, str) and raw_type.startswith(
+                    "response.code_interpreter_call."
+                ):
+                    status_fragment = raw_type.rsplit(".", 1)[-1]
+                    status = (
+                        "completed"
+                        if status_fragment == "completed"
+                        else "interpreting"
+                        if status_fragment == "interpreting"
+                        else "in_progress"
+                    )
+                    tool_call = _build_code_interpreter_tool_call(
+                        item_id=item_id,
+                        status=status,
+                        code=None,
+                        outputs=None,
+                    )
+                elif raw_type == "response.code_interpreter_call_code.delta":
+                    code_delta = getattr(raw, "delta", None)
+                    tool_call = _build_code_interpreter_tool_call(
+                        item_id=item_id,
+                        status="in_progress",
+                        code=_coerce_delta(code_delta),
+                        outputs=None,
+                    )
+                elif isinstance(raw_type, str) and raw_type.startswith(
+                    "response.file_search_call."
+                ):
+                    status_fragment = raw_type.rsplit(".", 1)[-1]
+                    status = "completed" if status_fragment == "completed" else "searching"
+                    tool_call = _build_file_search_tool_call(
+                        item_id=item_id,
+                        status=status,
+                        queries=None,
+                        results=None,
+                    )
+
                 yield AgentStreamEvent(
                     kind="raw_response_event",
                     response_id=getattr(self._stream, "last_response_id", None),
@@ -211,14 +335,40 @@ class OpenAIStreamingHandle(AgentStreamingHandle):
                     text_delta=text_delta,
                     reasoning_delta=reasoning_delta,
                     is_terminal=False,  # defer terminal until structured-output flush
-                    payload=AgentStreamEvent._to_mapping(raw),
+                    payload=raw_mapping,
                     metadata=self.metadata,
+                    raw_event=raw_mapping,
+                    tool_call=tool_call,
+                    annotations=annotations,
                 )
 
             elif event.type == "run_item_stream_event":
                 item = getattr(event, "item", None)
                 agent_name = _extract_agent_name(item)
                 tool_call_id, tool_name = _extract_tool_info(item)
+                item_payload = AgentStreamEvent._to_mapping(item)
+
+                tool_call = None
+                if getattr(item, "type", None) == "web_search_call":
+                    tool_call = _build_web_search_tool_call(
+                        item_id=getattr(item, "id", None),
+                        status=getattr(item, "status", None),
+                        action=AgentStreamEvent._to_mapping(getattr(item, "action", None)),
+                    )
+                elif getattr(item, "type", None) == "code_interpreter_call":
+                    tool_call = _build_code_interpreter_tool_call(
+                        item_id=getattr(item, "id", None),
+                        status=getattr(item, "status", None),
+                        code=getattr(item, "code", None),
+                        outputs=AgentStreamEvent._to_mapping(getattr(item, "outputs", None)),
+                    )
+                elif getattr(item, "type", None) == "file_search_call":
+                    tool_call = _build_file_search_tool_call(
+                        item_id=getattr(item, "id", None),
+                        status=getattr(item, "status", None),
+                        queries=getattr(item, "queries", None),
+                        results=AgentStreamEvent._to_mapping(getattr(item, "results", None)),
+                    )
 
                 yield AgentStreamEvent(
                     kind="run_item_stream_event",
@@ -229,8 +379,10 @@ class OpenAIStreamingHandle(AgentStreamingHandle):
                     tool_call_id=tool_call_id,
                     tool_name=tool_name,
                     is_terminal=False,
-                    payload=AgentStreamEvent._to_mapping(item),
+                    payload=item_payload,
                     metadata=self.metadata,
+                    raw_event=item_payload,
+                    tool_call=tool_call,
                 )
 
             elif event.type == "agent_updated_stream_event":

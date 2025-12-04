@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 
 from app.api.v1.chat.schemas import AgentChatRequest
 from app.domain.ai import AgentDescriptor, AgentRunResult
 from app.domain.conversations import ConversationSessionState
 from app.services.agent_service import AgentService, ConversationActorContext
+from app.services.agents.policy import AgentRuntimePolicy
 from app.services.agents.provider_registry import AgentProviderRegistry
 from app.services.conversation_service import ConversationService
+from app.services.containers import ContainerService
 
 
 class FakeConversationService(ConversationService):
@@ -35,6 +39,24 @@ class FakeConversationService(ConversationService):
         self, conversation_id, *, tenant_id, state: ConversationSessionState
     ):
         self.session_states[(tenant_id, conversation_id)] = state
+
+    async def record_conversation_created(  # pragma: no cover - stub to satisfy AgentService
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        agent_entrypoint: str | None = None,
+        existed: bool | None = None,
+    ) -> None:
+        return None
+
+    async def conversation_exists(self, conversation_id: str, *, tenant_id: str) -> bool:
+        return False
+
+
+class FakeContainerService:
+    async def list_agent_bindings(self, *args, **kwargs):  # pragma: no cover - noop
+        return {}
 
 
 class CapturingSessionStore:
@@ -116,6 +138,8 @@ async def test_agent_service_uses_conv_id_when_available(monkeypatch: pytest.Mon
     service = AgentService(
         conversation_service=conv_service,
         provider_registry=registry,
+        container_service=cast(ContainerService, FakeContainerService()),
+        policy=AgentRuntimePolicy(disable_provider_conversation_creation=False),
     )
 
     actor = ConversationActorContext(tenant_id="tenant-1", user_id="user-1")
@@ -123,10 +147,12 @@ async def test_agent_service_uses_conv_id_when_available(monkeypatch: pytest.Mon
 
     await service.chat(request, actor=actor)
 
-    assert runtime.calls == ["conv_abc123"]
-    assert provider.session_store.last_session_id == "conv_abc123"
+    # Provider conversation ids are intentionally not propagated (we rely on SDK session only)
+    assert runtime.calls == ["local-uuid"]
+    assert provider.session_store.last_session_id == "local-uuid"
     state = conv_service.session_states[("tenant-1", "local-uuid")]
-    assert state.provider_conversation_id == "conv_abc123"
+    assert state.provider_conversation_id is None
+    # Provider name is retained even when we skip provider conversation ids
     assert state.provider == "openai"
 
 
@@ -141,6 +167,8 @@ async def test_agent_service_ignores_non_conv_ids(monkeypatch: pytest.MonkeyPatc
     service = AgentService(
         conversation_service=conv_service,
         provider_registry=registry,
+        container_service=cast(ContainerService, FakeContainerService()),
+        policy=AgentRuntimePolicy(disable_provider_conversation_creation=False),
     )
 
     actor = ConversationActorContext(tenant_id="tenant-1", user_id="user-1")

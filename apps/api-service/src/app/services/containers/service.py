@@ -398,6 +398,23 @@ class ContainerService:
             raise RuntimeError("OPENAI_API_KEY is not configured")
         return AsyncOpenAI(api_key=api_key)
 
+    async def get_container_by_openai_id(
+        self, *, openai_container_id: str, tenant_id: uuid.UUID
+    ) -> Container:
+        """Fetch a container by its OpenAI id scoped to a tenant."""
+
+        async with self._session_factory() as session:
+            container = await session.scalar(
+                select(Container).where(
+                    Container.openai_id == openai_container_id,
+                    Container.tenant_id == tenant_id,
+                    Container.deleted_at.is_(None),
+                )
+            )
+            if container is None:
+                raise ContainerNotFoundError("Container not found")
+            return container
+
     def _observe(self, operation: str, result: str, start_time: float) -> None:
         duration = max(perf_counter() - start_time, 0.0)
         CONTAINER_OPERATIONS_TOTAL.labels(operation=operation, result=result).inc()
