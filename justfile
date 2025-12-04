@@ -15,7 +15,7 @@ path = next((str(p) for p in candidates if p.exists()), "")
 sys.stdout.write(path)
 PY`
 repo_root := justfile_directory()
-env_runner := "cd packages/starter_cli && hatch run python -m starter_cli.app --skip-env util run-with-env " + repo_root + "/.env.compose " + repo_root + "/" + env_file
+env_runner := "python -m starter_cli.app --skip-env util run-with-env " + repo_root + "/.env.compose " + repo_root + "/" + env_file
 api_just := "just -f apps/api-service/justfile"
 cli_just := "just -f packages/starter_cli/justfile"
 contracts_just := "just -f packages/starter_contracts/justfile"
@@ -76,6 +76,7 @@ help:
     echo "  just cli-lint|typecheck|test        # Delegates to packages/starter_cli" && \
     echo "  just contracts-lint|typecheck|test  # Delegates to packages/starter_contracts" && \
     echo "  just web-lint|typecheck|dev|test    # Delegates to apps/web-app"
+    @echo "  just dev-install            # Editable installs for CLI + contracts (no PYTHONPATH hacks)"
 
 # -------------------------
 # Package delegation
@@ -134,6 +135,14 @@ web-dev:
 
 web-test:
     {{web_just}} test
+
+# -------------------------
+# Dev environment install
+# -------------------------
+
+dev-install:
+    python -m pip install -e packages/starter_contracts
+    python -m pip install -e packages/starter_cli
 
 # -------------------------
 # Aggregate quality gates

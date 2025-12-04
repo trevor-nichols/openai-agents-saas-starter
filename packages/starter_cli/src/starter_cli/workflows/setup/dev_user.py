@@ -45,8 +45,11 @@ def _ensure_import_paths(project_root: Path) -> None:
     if project_root.as_posix() not in sys.path:
         sys.path.insert(0, project_root.as_posix())
     backend_root = project_root / "apps" / "api-service"
-    if backend_root.as_posix() not in sys.path:
-        sys.path.insert(0, backend_root.as_posix())
+    backend_src = backend_root / "src"
+    # Prefer adding the actual source directory so `import app.*` works when run from packages/.
+    for path in (backend_src, backend_root):
+        if path.exists() and path.as_posix() not in sys.path:
+            sys.path.insert(0, path.as_posix())
 
 
 def _resolve_config(context: WizardContext) -> DevUserConfig:

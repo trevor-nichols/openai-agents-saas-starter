@@ -1,20 +1,19 @@
 [build-system]
-requires = ["hatchling>=1.25.0"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "starter-contracts"
 version = "0.1.1"
 description = "Shared contracts and validation helpers for the OpenAI Agents starter."
-readme = "../../README.md"
+readme = "README.md"
 requires-python = ">=3.11"
-license = { file = "../../LICENSE" }
+license = "MIT"
 authors = [ { name = "OpenAI Agents Starter Team" } ]
 keywords = ["contracts", "agents", "starter"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
 ]
@@ -33,22 +32,15 @@ dev = [
   "ruff>=0.7.0,<0.8.0",
 ]
 
-[tool.hatch.build.sources]
-src = "src"
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/starter_contracts"]
-exclude = ["**/__pycache__", "**/*.pyc"]
-include = ["starter_contracts/py.typed"]
+[tool.setuptools.packages.find]
+where = ["src"]
 
-[tool.hatch.build.targets.sdist]
-include = [
-  "src/**",
-  "README.md",
-  "../LICENSE",
-  "../README.md",
-]
-exclude = ["**/__pycache__", "**/*.pyc"]
+[tool.setuptools.package-data]
+starter_contracts = ["py.typed"]
 
 [tool.hatch.envs.default]
 features = ["dev"]

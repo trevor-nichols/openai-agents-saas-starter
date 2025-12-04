@@ -101,6 +101,9 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 - **Testing contract:** Importing `python -m starter_cli.app` must be side-effect free (no DB/Vault connections). Unit tests stub network calls, and the repo-root `conftest.py` enforces SQLite/fakeredis overrides for all CLI modules.
 - **Ownership & roadmap:** Platform Foundations owns the CLI. Work is tracked in `docs/trackers/CLI_MILESTONE.md` with phases for rebrand, config extraction, adapter rewrites, hermetic testing, and CI guardrails. Any new CLI feature must update that tracker before merge.
 - **Operator guide:** Day-to-day workflows and command references live in `starter_cli/README.md`.
+- **Python install standard (dev vs prod):**
+  - Dev: run `just dev-install` once from repo root (performs `pip install -e packages/starter_contracts` and `pip install -e packages/starter_cli`). Afterwards, use `python -m starter_cli.app …` from repo root—no `PYTHONPATH` or hatch required.
+  - Prod/CI: build wheels and install non-editable (`pip wheel packages/starter_contracts packages/starter_cli -w dist` then `pip install dist/starter_contracts-*.whl dist/starter_cli-*.whl`).
 
 # Development Guidelines
 - You must maintain a professional clean architecture, referring to the documentations of the OpenAI Agents SDK and the `docs/openai-agents-sdk` directory whenever needed in order to ensure you abide by the latest API framework. 

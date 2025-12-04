@@ -30,6 +30,7 @@ class LaunchResult:
     label: str
     command: Sequence[str]
     process: subprocess.Popen[Any] | None
+    pgid: int | None = None
     error: str | None = None
     log_tail: deque[str] = field(default_factory=lambda: deque(maxlen=50))
     log_path: Path | None = None
@@ -232,7 +233,20 @@ class StartRunner:
                 text=not self.detach,
                 **self._subprocess_start_opts(),
             )
-            launch = LaunchResult(label=label, command=command, process=proc, log_path=log_path)
+            pgid = None
+            if hasattr(os, "getpgid"):
+                try:
+                    pgid = os.getpgid(proc.pid)
+                except OSError:
+                    pgid = None
+
+            launch = LaunchResult(
+                label=label,
+                command=command,
+                process=proc,
+                pgid=pgid,
+                log_path=log_path,
+            )
             self._launches.append(launch)
             console.info(f"Started {label} pid={proc.pid} cmd={' '.join(command)}")
             if not self.detach:
@@ -355,18 +369,53 @@ class StartRunner:
     def _cleanup_processes(self) -> None:
         self._stop_event.set()
         for launch in self._launches:
-            proc = launch.process
-            if not proc:
-                continue
-            if proc.poll() is None:
-                self._terminate_process(proc, force=False)
+            self._terminate_launch(launch, force=False)
         # Give them a beat to exit
         time.sleep(0.2)
         for launch in self._launches:
-            proc = launch.process
-            if proc and proc.poll() is None:
-                self._terminate_process(proc, force=True)
+            self._terminate_launch(launch, force=True)
         self._close_logs()
+
+    def _terminate_launch(self, launch: LaunchResult, *, force: bool) -> None:
+        """Best-effort teardown for a spawned process tree.
+
+        Uses the recorded process group first (covers cases where the leader exited
+        before cleanup), then falls back to the live Popen handle.
+        """
+
+        sig = signal.SIGKILL if force else signal.SIGTERM
+
+        if launch.pgid and os.name != "nt":
+            try:
+                os.killpg(launch.pgid, sig)
+                return
+            except ProcessLookupError:
+                # Group already gone; nothing to do.
+                return
+            except PermissionError:
+                # Fallback to per-process termination below.
+                pass
+            except Exception:
+                pass
+
+        proc = launch.process
+        if proc is None:
+            return
+        # If the leader already exited, we may still have live children under the
+        # same pgid. When pgid is missing (Windows or earlier failure), send the
+        # signal to the leader pid as a last resort.
+        if proc.poll() is None:
+            self._terminate_process(proc, force=force)
+            return
+        if os.name != "nt":
+            try:
+                pgid = os.getpgid(proc.pid)
+            except OSError:
+                return
+            try:
+                os.killpg(pgid, sig)
+            except Exception:
+                return
 
     def _install_signal_handlers(self) -> None:
         def _handler(signum, frame):

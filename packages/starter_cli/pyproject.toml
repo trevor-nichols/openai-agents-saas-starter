@@ -1,26 +1,25 @@
 [build-system]
-requires = ["hatchling>=1.25.0"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "starter-cli"
 version = "0.1.1"
 description = "Operator CLI for the OpenAI Agents starter stack."
-readme = "../../README.md"
+readme = "README.md"
 requires-python = ">=3.11"
-license = { file = "../../LICENSE" }
+license = "MIT"
 authors = [ { name = "OpenAI Agents Starter Team" } ]
 keywords = ["cli", "agents", "starter"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
 ]
 
 dependencies = [
-  "starter-contracts @ file:../starter_contracts",
+  "starter-contracts>=0.1.1",
   "httpx>=0.28.1,<0.29.0",
   "pydantic>=2.12.3,<2.13.0",
   "pyyaml>=6.0.2,<7.0.0",
@@ -67,33 +66,20 @@ dev = [
 starter-cli = "starter_cli.app:main"
 aa-cli = "starter_cli.app:main"
 
-[tool.hatch.metadata]
-allow-direct-references = true
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
 
-[tool.hatch.build.sources]
-src = "src"
+[tool.setuptools.packages.find]
+where = ["src"]
 
-[tool.hatch.build.targets.wheel]
-packages = ["starter_cli"]
-exclude = ["**/__pycache__", "**/*.pyc"]
-include = ["starter_cli/py.typed"]
-
-[tool.hatch.build.targets.sdist]
-include = [
-  "src/**",
-  "../starter_contracts/**",
-  "../LICENSE",
-  "../README.md",
-]
-exclude = ["**/__pycache__", "**/*.pyc"]
+[tool.setuptools.package-data]
+starter_cli = ["py.typed"]
 
 [tool.hatch.envs.default]
 features = ["dev"]
 python = "3.11"
 path = ".venv"
-
-[tool.hatch.envs.default.env-vars]
-PYTHONPATH = "src:../starter_contracts/src"
 
 [tool.hatch.envs.default.scripts]
 lint = "ruff check src"
