@@ -23,6 +23,7 @@ from app.api.v1.workflows.schemas import (
     WorkflowStepResultSchema,
     WorkflowSummary,
 )
+from app.api.v1.shared.stream_normalizer import normalize_stream_event
 from app.domain.workflows import WorkflowStatus
 from app.services.agents.context import ConversationActorContext
 from app.services.workflows.service import WorkflowRunRequest, get_workflow_service
@@ -319,35 +320,20 @@ async def run_workflow_stream(
         try:
             async for event in stream:
                 metadata = event.metadata if isinstance(event.metadata, dict) else {}
-                payload = StreamingWorkflowEvent(
-                    kind=event.kind,
-                    workflow_key=metadata.get("workflow_key", workflow_key),
-                    workflow_run_id=metadata.get("workflow_run_id"),
-                    step_name=metadata.get("step_name"),
-                    step_agent=metadata.get("step_agent"),
-                    stage_name=metadata.get("stage_name"),
-                    parallel_group=metadata.get("parallel_group"),
-                    branch_index=metadata.get("branch_index"),
-                    conversation_id=event.conversation_id,
-                    agent_used=event.agent,
-                    response_id=event.response_id,
-                    sequence_number=event.sequence_number,
-                    raw_type=event.raw_type,
-                    run_item_name=event.run_item_name,
-                    run_item_type=event.run_item_type,
-                    tool_call_id=event.tool_call_id,
-                    tool_name=event.tool_name,
-                    agent=event.agent,
-                    new_agent=event.new_agent,
-                    text_delta=event.text_delta,
-                    reasoning_delta=event.reasoning_delta,
-                    response_text=event.response_text,
-                    structured_output=event.structured_output,
-                    is_terminal=event.is_terminal,
-                    event=getattr(event, "event", None),
-                    payload=event.payload if isinstance(event.payload, dict) else None,
-                    attachments=event.attachments,
-                    server_timestamp=datetime.now(tz=UTC).isoformat(),
+                now_iso = datetime.now(tz=UTC).isoformat()
+                payload = normalize_stream_event(
+                    event,
+                    workflow_meta={
+                        "workflow_key": metadata.get("workflow_key", workflow_key),
+                        "workflow_run_id": metadata.get("workflow_run_id"),
+                        "step_name": metadata.get("step_name"),
+                        "step_agent": metadata.get("step_agent"),
+                        "stage_name": metadata.get("stage_name"),
+                        "parallel_group": metadata.get("parallel_group"),
+                        "branch_index": metadata.get("branch_index"),
+                    },
+                    default_conversation_id=event.conversation_id,
+                    server_timestamp=now_iso,
                 )
                 event_id += 1
                 yield f"id: {event_id}\nevent: {event.kind}\ndata: {payload.model_dump_json()}\n\n"

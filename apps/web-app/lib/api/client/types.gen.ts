@@ -102,94 +102,69 @@ export type ActivityListResponse = {
 
 /**
  * AgentChatRequest
- *
- * Request body for initiating or continuing a chat session.
  */
 export type AgentChatRequest = {
   /**
    * Message
-   *
-   * User input message for the agent.
    */
   message: string;
   /**
    * Conversation Id
-   *
-   * Existing conversation identifier to maintain context.
    */
   conversation_id?: string | null;
   /**
    * Agent Type
-   *
-   * Optional explicit agent to handle the message.
    */
   agent_type?: string | null;
   /**
+   * Share Location
+   */
+  share_location?: boolean | null;
+  location?: LocationHint | null;
+  /**
    * Context
-   *
-   * Optional, structured context to pass through.
    */
   context?: {
     [key: string]: unknown;
   } | null;
-  /**
-   * Share Location
-   *
-   * When true, allows the assistant to use provided coarse location for web search.
-   */
-  share_location?: boolean;
-  /**
-   * Optional coarse location (city/region/country/timezone) for location-biased search.
-   */
-  location?: LocationHint | null;
 };
 
 /**
  * AgentChatResponse
- *
- * Response body returned after the agent processes a message.
  */
 export type AgentChatResponse = {
   /**
-   * Response
-   *
-   * Natural language reply from the agent.
-   */
-  response: string;
-  /**
-   * Structured Output
-   *
-   * If the agent used structured outputs, this carries the parsed object.
-   */
-  structured_output?: unknown | null;
-  /**
    * Conversation Id
-   *
-   * Conversation identifier.
    */
   conversation_id: string;
   /**
-   * Agent Used
-   *
-   * Agent instance that handled the request.
+   * Message
    */
-  agent_used: string;
+  message?: string | null;
+  /**
+   * Response
+   */
+  response: string;
+  /**
+   * Agent Used
+   */
+  agent_used?: string | null;
   /**
    * Handoff Occurred
-   *
-   * Indicates whether a handoff happened mid-conversation.
    */
-  handoff_occurred?: boolean;
+  handoff_occurred?: boolean | null;
   /**
    * Attachments
-   *
-   * Attachments created during the response (e.g., generated images).
    */
-  attachments?: Array<MessageAttachment>;
+  attachments?: Array<MessageAttachment> | null;
+  /**
+   * Structured Output
+   */
+  structured_output?: {
+    [key: string]: unknown;
+  } | null;
   /**
    * Metadata
-   *
-   * Arbitrary metadata returned by the agent pipeline.
    */
   metadata?: {
     [key: string]: unknown;
@@ -1510,32 +1485,22 @@ export type IncidentSchema = {
 
 /**
  * LocationHint
- *
- * Optional coarse location provided by the user/tenant for web search biasing.
  */
 export type LocationHint = {
   /**
    * City
-   *
-   * City name (coarse, e.g., 'Austin').
    */
   city?: string | null;
   /**
    * Region
-   *
-   * Region/subdivision (e.g., state/province) for coarse location.
    */
   region?: string | null;
   /**
    * Country
-   *
-   * Country code or name for coarse location.
    */
   country?: string | null;
   /**
    * Timezone
-   *
-   * IANA timezone identifier if relevant to the query.
    */
   timezone?: string | null;
 };
@@ -2724,8 +2689,6 @@ export type StoragePresignUploadResponse = {
 
 /**
  * StreamingChatEvent
- *
- * Rich streaming envelope forwarded over SSE to the frontend.
  */
 export type StreamingChatEvent = {
   /**
@@ -2739,176 +2702,13 @@ export type StreamingChatEvent = {
     | "error"
     | "lifecycle";
   /**
-   * Conversation Id
-   *
-   * Conversation identifier.
-   */
-  conversation_id: string;
-  /**
-   * Agent Used
-   *
-   * Agent that produced the event.
-   */
-  agent_used?: string | null;
-  /**
-   * Response Id
-   *
-   * Upstream response id when available.
-   */
-  response_id?: string | null;
-  /**
-   * Sequence Number
-   *
-   * Sequence number from Responses API.
-   */
-  sequence_number?: number | null;
-  /**
-   * Raw Type
-   *
-   * Underlying Responses API event type.
-   */
-  raw_type?: string | null;
-  /**
-   * Run Item Name
-   *
-   * RunItemStreamEvent name.
-   */
-  run_item_name?: string | null;
-  /**
-   * Run Item Type
-   *
-   * RunItem item.type.
-   */
-  run_item_type?: string | null;
-  /**
-   * Tool Call Id
-   *
-   * Tool call identifier if present.
-   */
-  tool_call_id?: string | null;
-  /**
-   * Tool Name
-   *
-   * Tool name if present.
-   */
-  tool_name?: string | null;
-  /**
-   * Agent
-   *
-   * Agent associated with the event.
-   */
-  agent?: string | null;
-  /**
-   * New Agent
-   *
-   * New agent after a handoff.
-   */
-  new_agent?: string | null;
-  /**
-   * Text Delta
-   *
-   * Streamed text chunk, if any.
-   */
-  text_delta?: string | null;
-  /**
-   * Reasoning Delta
-   *
-   * Streamed reasoning chunk, if any.
-   */
-  reasoning_delta?: string | null;
-  /**
-   * Response Text
-   *
-   * Final rendered response text when no deltas are sent (e.g., structured outputs).
-   */
-  response_text?: unknown | null;
-  /**
-   * Structured Output
-   *
-   * Parsed structured output when provided by the agent.
-   */
-  structured_output?: unknown | null;
-  /**
-   * Is Terminal
-   *
-   * Marks terminal event for the stream.
-   */
-  is_terminal?: boolean;
-  /**
-   * Event
-   *
-   * Lifecycle event label emitted via hooks (e.g., agent_start, handoff).
-   */
-  event?: string | null;
-  /**
-   * Payload
-   *
-   * Full event body for consumers that need raw fidelity.
-   */
-  payload?: {
-    [key: string]: unknown;
-  } | null;
-  /**
-   * Attachments
-   *
-   * Attachments generated during this event (e.g., stored images).
-   */
-  attachments?: Array<MessageAttachment> | null;
-  /**
-   * Raw Event
-   *
-   * Original upstream event payload (for audit/forward-compat).
-   */
-  raw_event?: {
-    [key: string]: unknown;
-  } | null;
-  /**
-   * Tool Call
-   *
-   * Typed tool call payload (e.g., web_search_call).
-   */
-  tool_call?:
-    | ToolCallPayload
-    | {
-        [key: string]: unknown;
-      }
-    | null;
-  /**
-   * Annotations
-   *
-   * Inline annotations such as URL citations emitted with output_text.
-   */
-  annotations?: Array<
-    UrlCitation | ContainerFileCitation | FileCitation
-  > | null;
-};
-
-/**
- * StreamingWorkflowEvent
- */
-export type StreamingWorkflowEvent = {
-  /**
-   * Kind
-   */
-  kind:
-    | "raw_response_event"
-    | "run_item_stream_event"
-    | "agent_updated_stream_event"
-    | "usage"
-    | "error"
-    | "lifecycle";
-  /**
    * Workflow Key
    */
-  workflow_key: string;
+  workflow_key?: string | null;
   /**
    * Workflow Run Id
    */
   workflow_run_id?: string | null;
-  /**
-   * Server Timestamp
-   */
-  server_timestamp?: string | null;
   /**
    * Step Name
    */
@@ -3006,9 +2806,179 @@ export type StreamingWorkflowEvent = {
   /**
    * Attachments
    */
-  attachments?: Array<{
+  attachments?: Array<MessageAttachment> | null;
+  /**
+   * Raw Event
+   */
+  raw_event?: {
     [key: string]: unknown;
-  }> | null;
+  } | null;
+  /**
+   * Tool Call
+   */
+  tool_call?:
+    | ToolCallPayload
+    | {
+        [key: string]: unknown;
+      }
+    | null;
+  /**
+   * Annotations
+   */
+  annotations?: Array<
+    UrlCitation | ContainerFileCitation | FileCitation
+  > | null;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp?: string | null;
+};
+
+/**
+ * StreamingWorkflowEvent
+ */
+export type StreamingWorkflowEvent = {
+  /**
+   * Kind
+   */
+  kind:
+    | "raw_response_event"
+    | "run_item_stream_event"
+    | "agent_updated_stream_event"
+    | "usage"
+    | "error"
+    | "lifecycle";
+  /**
+   * Workflow Key
+   */
+  workflow_key?: string | null;
+  /**
+   * Workflow Run Id
+   */
+  workflow_run_id?: string | null;
+  /**
+   * Step Name
+   */
+  step_name?: string | null;
+  /**
+   * Step Agent
+   */
+  step_agent?: string | null;
+  /**
+   * Stage Name
+   */
+  stage_name?: string | null;
+  /**
+   * Parallel Group
+   */
+  parallel_group?: string | null;
+  /**
+   * Branch Index
+   */
+  branch_index?: number | null;
+  /**
+   * Conversation Id
+   */
+  conversation_id?: string | null;
+  /**
+   * Agent Used
+   */
+  agent_used?: string | null;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Sequence Number
+   */
+  sequence_number?: number | null;
+  /**
+   * Raw Type
+   */
+  raw_type?: string | null;
+  /**
+   * Run Item Name
+   */
+  run_item_name?: string | null;
+  /**
+   * Run Item Type
+   */
+  run_item_type?: string | null;
+  /**
+   * Tool Call Id
+   */
+  tool_call_id?: string | null;
+  /**
+   * Tool Name
+   */
+  tool_name?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  /**
+   * New Agent
+   */
+  new_agent?: string | null;
+  /**
+   * Text Delta
+   */
+  text_delta?: string | null;
+  /**
+   * Reasoning Delta
+   */
+  reasoning_delta?: string | null;
+  /**
+   * Response Text
+   */
+  response_text?: string | null;
+  /**
+   * Structured Output
+   */
+  structured_output?: unknown | null;
+  /**
+   * Is Terminal
+   */
+  is_terminal?: boolean;
+  /**
+   * Event
+   */
+  event?: string | null;
+  /**
+   * Payload
+   */
+  payload?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Attachments
+   */
+  attachments?: Array<MessageAttachment> | null;
+  /**
+   * Raw Event
+   */
+  raw_event?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Tool Call
+   */
+  tool_call?:
+    | ToolCallPayload
+    | {
+        [key: string]: unknown;
+      }
+    | null;
+  /**
+   * Annotations
+   */
+  annotations?: Array<
+    UrlCitation | ContainerFileCitation | FileCitation
+  > | null;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp?: string | null;
 };
 
 /**

@@ -2,8 +2,20 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
+from app.api.v1.shared.streaming import (
+    StreamingEvent,
+    ToolCallPayload,
+    UrlCitation,
+    ContainerFileCitation,
+    FileCitation,
+    MessageAttachment,
+    WebSearchAction,
+    WebSearchCall,
+    CodeInterpreterCall,
+    FileSearchCall,
+)
 from app.domain.workflows import WorkflowStatus
 from app.utils.tools.location import LocationHint
 
@@ -48,44 +60,6 @@ class WorkflowRunResponse(BaseModel):
     steps: list[WorkflowStepResultSchema]
     final_output: Any | None
     output_schema: dict[str, Any] | None = None
-
-
-class StreamingWorkflowEvent(BaseModel):
-    kind: Literal[
-        "raw_response_event",
-        "run_item_stream_event",
-        "agent_updated_stream_event",
-        "usage",
-        "error",
-        "lifecycle",
-    ]
-    workflow_key: str
-    workflow_run_id: str | None = None
-    server_timestamp: str | None = None
-    step_name: str | None = None
-    step_agent: str | None = None
-    stage_name: str | None = None
-    parallel_group: str | None = None
-    branch_index: int | None = None
-    conversation_id: str | None = None
-    agent_used: str | None = None
-    response_id: str | None = None
-    sequence_number: int | None = None
-    raw_type: str | None = None
-    run_item_name: str | None = None
-    run_item_type: str | None = None
-    tool_call_id: str | None = None
-    tool_name: str | None = None
-    agent: str | None = None
-    new_agent: str | None = None
-    text_delta: str | None = None
-    reasoning_delta: str | None = None
-    response_text: str | None = None
-    structured_output: Any | None = None
-    is_terminal: bool = False
-    event: str | None = None
-    payload: dict[str, Any] | None = None
-    attachments: list[dict[str, Any]] | None = None
 
 
 class WorkflowRunDetail(BaseModel):
@@ -149,3 +123,30 @@ class WorkflowDescriptorResponse(BaseModel):
     step_count: int
     stages: list[WorkflowStageDescriptor]
     output_schema: dict[str, Any] | None = None
+
+
+class StreamingWorkflowEvent(StreamingEvent):
+    model_config = ConfigDict(title="StreamingWorkflowEvent")
+
+
+__all__ = [
+    "WorkflowSummary",
+    "WorkflowRunRequestBody",
+    "WorkflowRunResponse",
+    "WorkflowRunDetail",
+    "WorkflowRunListItem",
+    "WorkflowRunListResponse",
+    "WorkflowStepDescriptor",
+    "WorkflowStageDescriptor",
+    "WorkflowDescriptorResponse",
+    "StreamingWorkflowEvent",
+    "ToolCallPayload",
+    "UrlCitation",
+    "ContainerFileCitation",
+    "FileCitation",
+    "MessageAttachment",
+    "WebSearchAction",
+    "WebSearchCall",
+    "CodeInterpreterCall",
+    "FileSearchCall",
+]

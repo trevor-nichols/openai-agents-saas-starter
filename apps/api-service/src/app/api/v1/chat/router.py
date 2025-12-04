@@ -2,25 +2,16 @@
 
 import logging
 from collections.abc import AsyncIterator
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
-from pydantic import ValidationError
+from app.api.v1.shared.stream_normalizer import normalize_stream_event
 
 from app.api.dependencies import raise_rate_limit_http_error
 from app.api.dependencies.auth import CurrentUser, require_verified_scopes
 from app.api.dependencies.tenant import TenantContext, TenantRole, require_tenant_role
 from app.api.dependencies.usage import enforce_usage_guardrails
-from app.api.v1.chat.schemas import (
-    AgentChatRequest,
-    AgentChatResponse,
-    ContainerFileCitation,
-    FileCitation,
-    StreamingChatEvent,
-    ToolCallPayload,
-    UrlCitation,
-)
+from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse, StreamingChatEvent, ToolCallPayload
 from app.core.settings import get_settings
 from app.services.agent_service import ConversationActorContext, agent_service
 from app.services.shared.rate_limit_service import (
@@ -119,60 +110,9 @@ async def stream_chat_with_agent(
         async with stream_lease:
             try:
                 async for event in agent_service.chat_stream(request, actor=actor):
-                    annotations: list[
-                        UrlCitation | ContainerFileCitation | FileCitation
-                    ] | None = None
-                    if isinstance(event.annotations, list):
-                        parsed: list[UrlCitation | ContainerFileCitation | FileCitation] = []
-                        for ann in event.annotations:
-                            if not isinstance(ann, dict):
-                                continue
-                            try:
-                                parsed.append(UrlCitation.model_validate(ann))
-                                continue
-                            except Exception:
-                                pass
-                            try:
-                                parsed.append(ContainerFileCitation.model_validate(ann))
-                                continue
-                            except Exception:
-                                pass
-                            try:
-                                parsed.append(FileCitation.model_validate(ann))
-                            except Exception:
-                                continue
-                        annotations = parsed or None
-
-                    parsed_tool_call: ToolCallPayload | dict[str, Any] | None = None
-                    try:
-                        if isinstance(event.tool_call, dict):
-                            parsed_tool_call = ToolCallPayload.model_validate(event.tool_call)
-                    except ValidationError:
-                        parsed_tool_call = event.tool_call if isinstance(event.tool_call, dict) else None
-
-                    payload = StreamingChatEvent(
-                        kind=event.kind,
-                        conversation_id=event.conversation_id or request.conversation_id or "",
-                        agent_used=event.agent,
-                        response_id=event.response_id,
-                        sequence_number=event.sequence_number,
-                        raw_type=event.raw_type,
-                        run_item_name=event.run_item_name,
-                        run_item_type=event.run_item_type,
-                        tool_call_id=event.tool_call_id,
-                        tool_name=event.tool_name,
-                        agent=event.agent,
-                        new_agent=event.new_agent,
-                        text_delta=event.text_delta,
-                        reasoning_delta=event.reasoning_delta,
-                        response_text=event.response_text,
-                        structured_output=event.structured_output,
-                        is_terminal=event.is_terminal,
-                        payload=event.payload if isinstance(event.payload, dict) else None,
-                        attachments=event.attachments,
-                        raw_event=event.raw_event if isinstance(event.raw_event, dict) else None,
-                        tool_call=parsed_tool_call,
-                        annotations=annotations,
+                    payload = normalize_stream_event(
+                        event,
+                        default_conversation_id=request.conversation_id or "",
                     )
 
                     yield f"data: {payload.model_dump_json()}\n\n"

@@ -7098,8 +7098,7 @@
         "properties": {
           "message": {
             "type": "string",
-            "title": "Message",
-            "description": "User input message for the agent."
+            "title": "Message"
           },
           "conversation_id": {
             "anyOf": [
@@ -7110,8 +7109,7 @@
                 "type": "null"
               }
             ],
-            "title": "Conversation Id",
-            "description": "Existing conversation identifier to maintain context."
+            "title": "Conversation Id"
           },
           "agent_type": {
             "anyOf": [
@@ -7122,9 +7120,28 @@
                 "type": "null"
               }
             ],
-            "title": "Agent Type",
-            "description": "Optional explicit agent to handle the message.",
-            "default": "triage"
+            "title": "Agent Type"
+          },
+          "share_location": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share Location"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LocationHint"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "context": {
             "anyOf": [
@@ -7136,74 +7153,83 @@
                 "type": "null"
               }
             ],
-            "title": "Context",
-            "description": "Optional, structured context to pass through."
-          },
-          "share_location": {
-            "type": "boolean",
-            "title": "Share Location",
-            "description": "When true, allows the assistant to use provided coarse location for web search.",
-            "default": false
-          },
-          "location": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/LocationHint"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Optional coarse location (city/region/country/timezone) for location-biased search."
+            "title": "Context"
           }
         },
         "type": "object",
         "required": [
           "message"
         ],
-        "title": "AgentChatRequest",
-        "description": "Request body for initiating or continuing a chat session."
+        "title": "AgentChatRequest"
       },
       "AgentChatResponse": {
         "properties": {
-          "response": {
+          "conversation_id": {
             "type": "string",
-            "title": "Response",
-            "description": "Natural language reply from the agent."
+            "title": "Conversation Id"
           },
-          "structured_output": {
+          "message": {
             "anyOf": [
-              {},
+              {
+                "type": "string"
+              },
               {
                 "type": "null"
               }
             ],
-            "title": "Structured Output",
-            "description": "If the agent used structured outputs, this carries the parsed object."
+            "title": "Message"
           },
-          "conversation_id": {
+          "response": {
             "type": "string",
-            "title": "Conversation Id",
-            "description": "Conversation identifier."
+            "title": "Response"
           },
           "agent_used": {
-            "type": "string",
-            "title": "Agent Used",
-            "description": "Agent instance that handled the request."
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Used"
           },
           "handoff_occurred": {
-            "type": "boolean",
-            "title": "Handoff Occurred",
-            "description": "Indicates whether a handoff happened mid-conversation.",
-            "default": false
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Handoff Occurred"
           },
           "attachments": {
-            "items": {
-              "$ref": "#/components/schemas/MessageAttachment"
-            },
-            "type": "array",
-            "title": "Attachments",
-            "description": "Attachments created during the response (e.g., generated images)."
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/MessageAttachment"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attachments"
+          },
+          "structured_output": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Structured Output"
           },
           "metadata": {
             "anyOf": [
@@ -7215,18 +7241,15 @@
                 "type": "null"
               }
             ],
-            "title": "Metadata",
-            "description": "Arbitrary metadata returned by the agent pipeline."
+            "title": "Metadata"
           }
         },
         "type": "object",
         "required": [
-          "response",
           "conversation_id",
-          "agent_used"
+          "response"
         ],
-        "title": "AgentChatResponse",
-        "description": "Response body returned after the agent processes a message."
+        "title": "AgentChatResponse"
       },
       "AgentStatus": {
         "properties": {
@@ -9422,8 +9445,7 @@
                 "type": "null"
               }
             ],
-            "title": "City",
-            "description": "City name (coarse, e.g., 'Austin')."
+            "title": "City"
           },
           "region": {
             "anyOf": [
@@ -9434,8 +9456,7 @@
                 "type": "null"
               }
             ],
-            "title": "Region",
-            "description": "Region/subdivision (e.g., state/province) for coarse location."
+            "title": "Region"
           },
           "country": {
             "anyOf": [
@@ -9446,8 +9467,7 @@
                 "type": "null"
               }
             ],
-            "title": "Country",
-            "description": "Country code or name for coarse location."
+            "title": "Country"
           },
           "timezone": {
             "anyOf": [
@@ -9458,13 +9478,11 @@
                 "type": "null"
               }
             ],
-            "title": "Timezone",
-            "description": "IANA timezone identifier if relevant to the query."
+            "title": "Timezone"
           }
         },
         "type": "object",
-        "title": "LocationHint",
-        "description": "Optional coarse location provided by the user/tenant for web search biasing."
+        "title": "LocationHint"
       },
       "MessageAttachment": {
         "properties": {
@@ -11352,300 +11370,15 @@
             ],
             "title": "Kind"
           },
-          "conversation_id": {
-            "type": "string",
-            "title": "Conversation Id",
-            "description": "Conversation identifier."
-          },
-          "agent_used": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Agent Used",
-            "description": "Agent that produced the event."
-          },
-          "response_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Response Id",
-            "description": "Upstream response id when available."
-          },
-          "sequence_number": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sequence Number",
-            "description": "Sequence number from Responses API."
-          },
-          "raw_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Raw Type",
-            "description": "Underlying Responses API event type."
-          },
-          "run_item_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Run Item Name",
-            "description": "RunItemStreamEvent name."
-          },
-          "run_item_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Run Item Type",
-            "description": "RunItem item.type."
-          },
-          "tool_call_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tool Call Id",
-            "description": "Tool call identifier if present."
-          },
-          "tool_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tool Name",
-            "description": "Tool name if present."
-          },
-          "agent": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Agent",
-            "description": "Agent associated with the event."
-          },
-          "new_agent": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "New Agent",
-            "description": "New agent after a handoff."
-          },
-          "text_delta": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Text Delta",
-            "description": "Streamed text chunk, if any."
-          },
-          "reasoning_delta": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reasoning Delta",
-            "description": "Streamed reasoning chunk, if any."
-          },
-          "response_text": {
-            "anyOf": [
-              {},
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Response Text",
-            "description": "Final rendered response text when no deltas are sent (e.g., structured outputs)."
-          },
-          "structured_output": {
-            "anyOf": [
-              {},
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Structured Output",
-            "description": "Parsed structured output when provided by the agent."
-          },
-          "is_terminal": {
-            "type": "boolean",
-            "title": "Is Terminal",
-            "description": "Marks terminal event for the stream.",
-            "default": false
-          },
-          "event": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Event",
-            "description": "Lifecycle event label emitted via hooks (e.g., agent_start, handoff)."
-          },
-          "payload": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Payload",
-            "description": "Full event body for consumers that need raw fidelity."
-          },
-          "attachments": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/MessageAttachment"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Attachments",
-            "description": "Attachments generated during this event (e.g., stored images)."
-          },
-          "raw_event": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Raw Event",
-            "description": "Original upstream event payload (for audit/forward-compat)."
-          },
-          "tool_call": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ToolCallPayload"
-              },
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tool Call",
-            "description": "Typed tool call payload (e.g., web_search_call)."
-          },
-          "annotations": {
-            "anyOf": [
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/components/schemas/UrlCitation"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContainerFileCitation"
-                    },
-                    {
-                      "$ref": "#/components/schemas/FileCitation"
-                    }
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Annotations",
-            "description": "Inline annotations such as URL citations emitted with output_text."
-          }
-        },
-        "type": "object",
-        "required": [
-          "kind",
-          "conversation_id"
-        ],
-        "title": "StreamingChatEvent",
-        "description": "Rich streaming envelope forwarded over SSE to the frontend."
-      },
-      "StreamingWorkflowEvent": {
-        "properties": {
-          "kind": {
-            "type": "string",
-            "enum": [
-              "raw_response_event",
-              "run_item_stream_event",
-              "agent_updated_stream_event",
-              "usage",
-              "error",
-              "lifecycle"
-            ],
-            "title": "Kind"
-          },
           "workflow_key": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Workflow Key"
           },
           "workflow_run_id": {
@@ -11658,17 +11391,6 @@
               }
             ],
             "title": "Workflow Run Id"
-          },
-          "server_timestamp": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Server Timestamp"
           },
           "step_name": {
             "anyOf": [
@@ -11920,8 +11642,7 @@
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": true,
-                  "type": "object"
+                  "$ref": "#/components/schemas/MessageAttachment"
                 },
                 "type": "array"
               },
@@ -11930,12 +11651,438 @@
               }
             ],
             "title": "Attachments"
+          },
+          "raw_event": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Event"
+          },
+          "tool_call": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ToolCallPayload"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Call"
+          },
+          "annotations": {
+            "anyOf": [
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/UrlCitation"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContainerFileCitation"
+                    },
+                    {
+                      "$ref": "#/components/schemas/FileCitation"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annotations"
+          },
+          "server_timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Server Timestamp"
           }
         },
         "type": "object",
         "required": [
-          "kind",
-          "workflow_key"
+          "kind"
+        ],
+        "title": "StreamingChatEvent"
+      },
+      "StreamingWorkflowEvent": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "raw_response_event",
+              "run_item_stream_event",
+              "agent_updated_stream_event",
+              "usage",
+              "error",
+              "lifecycle"
+            ],
+            "title": "Kind"
+          },
+          "workflow_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workflow Key"
+          },
+          "workflow_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workflow Run Id"
+          },
+          "step_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step Name"
+          },
+          "step_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step Agent"
+          },
+          "stage_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage Name"
+          },
+          "parallel_group": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parallel Group"
+          },
+          "branch_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Index"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          },
+          "agent_used": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Used"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
+          "sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sequence Number"
+          },
+          "raw_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Type"
+          },
+          "run_item_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Item Name"
+          },
+          "run_item_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Item Type"
+          },
+          "tool_call_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Call Id"
+          },
+          "tool_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Name"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "new_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Agent"
+          },
+          "text_delta": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text Delta"
+          },
+          "reasoning_delta": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Delta"
+          },
+          "response_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Text"
+          },
+          "structured_output": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Structured Output"
+          },
+          "is_terminal": {
+            "type": "boolean",
+            "title": "Is Terminal",
+            "default": false
+          },
+          "event": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event"
+          },
+          "payload": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payload"
+          },
+          "attachments": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/MessageAttachment"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attachments"
+          },
+          "raw_event": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Event"
+          },
+          "tool_call": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ToolCallPayload"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Call"
+          },
+          "annotations": {
+            "anyOf": [
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/UrlCitation"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContainerFileCitation"
+                    },
+                    {
+                      "$ref": "#/components/schemas/FileCitation"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annotations"
+          },
+          "server_timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Server Timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind"
         ],
         "title": "StreamingWorkflowEvent"
       },
