@@ -14,6 +14,12 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 - Keys are Ed25519 
 - Long-lived secrets such as signing keys live under var/keys/
 
+### Alembic / database hygiene (dev)
+- We carry two migration heads (activity + workflow). Always run `just migrate` or let `AUTO_RUN_MIGRATIONS=true` handle it—both now call `alembic upgrade heads` (plural). Avoid `upgrade head` or targeting a single branch.
+- Never truncate or hand-edit `alembic_version`. If you need to align an existing schema without data loss, use `alembic stamp heads`; if data is disposable, drop + recreate the DB then rerun `just migrate`.
+- Don’t manually create tables; schema drift without matching `alembic_version` rows leads to “relation already exists” / startup hangs.
+- New migrations that depend on other branches must declare `depends_on` to enforce ordering (see `b6dcb157d208` depending on `c3c9b1f4cf29`).
+
 ### Workflow orchestration (API service)
 - Declarative specs live in `api-service/src/app/workflows/**/spec.py`. You can define either a flat `steps` list (legacy) or explicit `stages`.
 - `WorkflowStage` supports `mode="sequential"` or `mode="parallel"` plus an optional `reducer` (`outputs, prior_steps -> next_input`) for fan-out/fan-in.

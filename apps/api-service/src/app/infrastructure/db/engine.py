@@ -157,7 +157,11 @@ async def run_migrations_if_configured(*, force: bool = False) -> None:
     alembic_cfg.set_main_option("script_location", str(_resolve_alembic_scripts()))
 
     logger.info("Running Alembic migrations (database_url=%s)", database_url)
-    await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
+    # Use `heads` to advance all branches; this repo intentionally carries two
+    # head revisions (activity + workflow). Using the singular `head` breaks
+    # fresh databases once a branch diverges, because Alembic can't infer which
+    # branch to pick and errors with "Multiple head revisions are present".
+    await asyncio.to_thread(command.upgrade, alembic_cfg, "heads")
 
 
 def _resolve_alembic_ini() -> Path:

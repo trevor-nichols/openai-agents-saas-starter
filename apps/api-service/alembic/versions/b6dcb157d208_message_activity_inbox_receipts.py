@@ -3,7 +3,8 @@
 revision = 'b6dcb157d208'
 down_revision = '6724700351b6'
 branch_labels = None
-depends_on = None
+# Ensure activity_events exists before we add receipts/checkpoints that FK it.
+depends_on = ('c3c9b1f4cf29',)
 
 from alembic import op  # noqa: E402
 import sqlalchemy as sa  # noqa: E402
