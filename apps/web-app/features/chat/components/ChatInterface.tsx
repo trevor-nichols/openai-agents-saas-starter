@@ -224,11 +224,14 @@ export function ChatInterface({
           {isLoadingHistory ? (
             <SkeletonPanel lines={9} />
           ) : messages.length === 0 ? (
-            <EmptyState
-              title="No messages yet"
-              description="Compose a prompt below to brief your agent."
-              className="border border-white/5 bg-white/5"
-            />
+            <div className="flex min-h-[360px] items-center justify-center py-4">
+              <EmptyState
+                variant="ghost"
+                title="No messages yet"
+                description="Compose a prompt below to brief your agent."
+                className="max-w-lg text-foreground/80"
+              />
+            </div>
           ) : (
             <>
               {messages.map((message) => (
