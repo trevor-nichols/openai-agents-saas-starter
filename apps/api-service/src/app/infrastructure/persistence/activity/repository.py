@@ -60,6 +60,39 @@ class SqlAlchemyActivityEventRepository(ActivityEventRepository):
             session.add(row)
             await session.commit()
 
+    async def get_event(self, tenant_id: str, event_id: str) -> ActivityEvent | None:
+        tenant_uuid = uuid.UUID(tenant_id)
+        event_uuid = uuid.UUID(event_id)
+        stmt: Select[Any] = select(ActivityEventRow).where(
+            ActivityEventRow.tenant_id == tenant_uuid,
+            ActivityEventRow.id == event_uuid,
+        ).limit(1)
+
+        async with self._session_factory() as session:
+            row = await session.scalar(stmt)
+
+        if not row:
+            return None
+
+        return ActivityEvent(
+            id=str(row.id),
+            tenant_id=str(row.tenant_id),
+            action=row.action,
+            created_at=row.created_at,
+            actor_id=str(row.actor_id) if row.actor_id else None,
+            actor_type=row.actor_type,
+            actor_role=row.actor_role,
+            object_type=row.object_type,
+            object_id=row.object_id,
+            object_name=row.object_name,
+            status=row.status,
+            source=row.source,
+            request_id=row.request_id,
+            ip_hash=row.ip_hash,
+            user_agent=row.user_agent,
+            metadata=row.metadata_json,
+        )
+
     async def list_events(
         self,
         tenant_id: str,

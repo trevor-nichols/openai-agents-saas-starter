@@ -15,9 +15,13 @@ export interface ActivityEvent {
   ip_hash?: string | null;
   user_agent?: string | null;
   metadata?: Record<string, unknown> | null;
+  read_state?: ActivityReceiptStatus;
 }
 
 export interface ActivityListPage {
   items: ActivityEvent[];
   next_cursor: string | null;
+  unread_count?: number;
 }
+
+export type ActivityReceiptStatus = 'unread' | 'read' | 'dismissed';

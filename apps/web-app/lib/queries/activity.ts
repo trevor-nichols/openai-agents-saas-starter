@@ -13,6 +13,7 @@ import { useActivityStream } from './useActivityStream';
 
 interface UseActivityFeedReturn {
   activity: ActivityEvent[];
+  unreadCount: number;
   isLoading: boolean;
   error: string | null;
   refresh: () => void;
@@ -33,6 +34,7 @@ export function useActivityFeed(params?: { limit?: number }): UseActivityFeedRet
   });
 
   const activity = useMemo(() => data?.items ?? [], [data?.items]);
+  const unreadCount = data?.unread_count ?? 0;
 
   const refresh = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.activity.list({ limit }) });
@@ -40,6 +42,7 @@ export function useActivityFeed(params?: { limit?: number }): UseActivityFeedRet
 
   return {
     activity,
+    unreadCount,
     isLoading,
     error: error?.message ?? null,
     refresh,
@@ -54,15 +57,18 @@ interface UseRecentActivityReturn {
   streamStatus: 'idle' | 'connecting' | 'open' | 'closed' | 'error';
   isLoading: boolean;
   error: string | null;
+  unreadCount: number;
   refresh: () => void;
 }
 
-export function useRecentActivity(options?: { limit?: number; live?: boolean }): UseRecentActivityReturn {
+export function useRecentActivity(options?: { limit?: number; live?: boolean; includeDismissed?: boolean }): UseRecentActivityReturn {
   const limit = options?.limit ?? 8;
   const liveEnabled = options?.live ?? true;
+  const includeDismissed = options?.includeDismissed ?? false;
 
   const {
     activity,
+    unreadCount: serverUnreadCount,
     isLoading,
     error,
     refresh,
@@ -71,18 +77,27 @@ export function useRecentActivity(options?: { limit?: number; live?: boolean }):
   const { events: liveEvents, status: streamStatus } = useActivityStream({ enabled: liveEnabled });
 
   const merged = useMemo(
-    () => mergeActivityEvents(liveEvents, activity, limit),
-    [activity, liveEvents, limit],
+    () => mergeActivityEvents(liveEvents, activity, limit, { includeDismissed }),
+    [activity, liveEvents, limit, includeDismissed],
   );
 
   const items = useMemo(() => merged.map(toActivityDisplayItem), [merged]);
+  const derivedUnread = useMemo(
+    () =>
+      merged.filter(
+        (event) => event.read_state !== 'read' && event.read_state !== 'dismissed',
+      ).length,
+    [merged],
+  );
+  const unreadCount = Math.max(serverUnreadCount ?? 0, derivedUnread);
 
   return {
     items,
-    badgeCount: merged.length,
+    badgeCount: unreadCount,
     streamStatus,
     isLoading,
     error,
+    unreadCount,
     refresh,
   } satisfies UseRecentActivityReturn;
 }

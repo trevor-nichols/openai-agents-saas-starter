@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Index, String
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -43,4 +43,64 @@ class ActivityEventRow(Base):
     metadata_json: Mapped[dict[str, object] | None] = mapped_column("metadata", JSON, nullable=True)
 
 
-__all__ = ["ActivityEventRow"]
+class ActivityReceiptRow(Base):
+    __tablename__ = "activity_event_receipts"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "user_id", "event_id", name="uq_activity_receipt"),
+        Index("ix_activity_receipts_user_status", "tenant_id", "user_id", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("tenant_accounts.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    event_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("activity_events.id", ondelete="CASCADE"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=UTC_NOW,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=UTC_NOW,
+    )
+
+
+class ActivityLastSeenRow(Base):
+    __tablename__ = "activity_last_seen"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "user_id", name="uq_activity_last_seen_user"),
+        Index("ix_activity_last_seen_user", "tenant_id", "user_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("tenant_accounts.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    last_seen_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=UTC_NOW,
+    )
+    last_seen_event_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        nullable=True,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=UTC_NOW,
+    )
+
+
+__all__ = ["ActivityEventRow", "ActivityReceiptRow", "ActivityLastSeenRow"]

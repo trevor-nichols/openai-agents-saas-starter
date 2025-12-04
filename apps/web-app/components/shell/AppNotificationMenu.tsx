@@ -2,9 +2,11 @@
 
 import Link from 'next/link';
 import { BellIcon } from 'lucide-react';
+import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,10 +21,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { formatRelativeTime } from '@/lib/utils/time';
 import { useRecentActivity } from '@/lib/queries/activity';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { dismissActivity, markActivityRead, markAllActivityRead } from '@/lib/api/activity';
+import { queryKeys } from '@/lib/queries/keys';
 
 const MAX_ITEMS = 8;
 
 export function AppNotificationMenu() {
+  const [showDismissed, setShowDismissed] = useState(false);
   const {
     items,
     badgeCount,
@@ -30,7 +36,38 @@ export function AppNotificationMenu() {
     isLoading,
     error,
     refresh,
-  } = useRecentActivity({ limit: MAX_ITEMS, live: true });
+  } = useRecentActivity({ limit: MAX_ITEMS, live: true, includeDismissed: showDismissed });
+  const queryClient = useQueryClient();
+
+  const invalidateActivity = () =>
+    queryClient.invalidateQueries({ queryKey: queryKeys.activity.list({ limit: MAX_ITEMS * 2 }) });
+
+  const markReadMutation = useMutation({
+    mutationFn: (id: string) => markActivityRead(id),
+    onSettled: () => void invalidateActivity(),
+  });
+
+  const dismissMutation = useMutation({
+    mutationFn: (id: string) => dismissActivity(id),
+    onSettled: () => void invalidateActivity(),
+  });
+
+  const markAllMutation = useMutation({
+    mutationFn: () => markAllActivityRead(),
+    onSettled: () => void invalidateActivity(),
+  });
+
+  const handleMarkRead = (id: string) => {
+    markReadMutation.mutate(id);
+  };
+
+  const handleDismiss = (id: string) => {
+    dismissMutation.mutate(id);
+  };
+
+  const handleMarkAll = () => {
+    markAllMutation.mutate();
+  };
 
   return (
     <DropdownMenu>
@@ -75,7 +112,19 @@ export function AppNotificationMenu() {
                       </Badge>
                       <div className="flex min-w-0 flex-col gap-1">
                         <div className="flex items-start justify-between gap-2">
-                          <p className="text-sm font-medium text-foreground truncate">{item.title}</p>
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {item.title}
+                            {item.readState === 'unread' && (
+                              <span className="ml-2 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-900">
+                                New
+                              </span>
+                            )}
+                            {showDismissed && item.readState === 'dismissed' && (
+                              <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                                Dismissed
+                              </span>
+                            )}
+                          </p>
                           <span className="text-xs text-muted-foreground whitespace-nowrap">
                             {formatRelativeTime(item.timestamp)}
                           </span>
@@ -84,6 +133,28 @@ export function AppNotificationMenu() {
                         {item.metadataSummary ? (
                           <p className="text-[11px] text-muted-foreground/70 line-clamp-1">{item.metadataSummary}</p>
                         ) : null}
+                        <div className="flex flex-wrap items-center gap-2">
+                          {item.readState !== 'read' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-[11px]"
+                              onClick={() => handleMarkRead(item.id)}
+                              disabled={markReadMutation.isPending}
+                            >
+                              Mark read
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-[11px]"
+                            onClick={() => handleDismiss(item.id)}
+                            disabled={dismissMutation.isPending}
+                          >
+                            Dismiss
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </DropdownMenuItem>
@@ -95,9 +166,33 @@ export function AppNotificationMenu() {
         )}
 
         <DropdownMenuSeparator />
+        <div className="flex items-center justify-between px-3 py-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="px-2"
+            onClick={handleMarkAll}
+            disabled={markAllMutation.isPending}
+          >
+            Mark all read
+          </Button>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>Show dismissed</span>
+            <Switch
+              checked={showDismissed}
+              onCheckedChange={(checked) => setShowDismissed(checked)}
+              aria-label="Toggle dismissed activity"
+            />
+          </div>
+          <Button variant="link" size="sm" asChild>
+            <Link href="/dashboard" className="text-sm">
+              View dashboard activity
+            </Link>
+          </Button>
+        </div>
         <DropdownMenuItem asChild>
           <Link href="/dashboard" className="flex w-full items-center justify-between text-sm">
-            View dashboard activity
+            Open dashboard
             <span className="text-xs text-muted-foreground">Open</span>
           </Link>
         </DropdownMenuItem>

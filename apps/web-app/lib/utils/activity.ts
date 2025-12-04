@@ -7,23 +7,38 @@ export type ActivityDisplayItem = {
   status: ActivityEvent['status'];
   timestamp: string;
   metadataSummary?: string | null;
+  readState?: ActivityEvent['read_state'];
 };
 
 /**
  * Merge live + cached activity events, deduping by id and truncating to limit.
- * Live events are preferred when duplicates exist.
+ * Cached events override live copies for the same id so read/dismiss state wins.
  */
 export function mergeActivityEvents(
   live: ActivityEvent[],
   cached: ActivityEvent[],
   limit: number,
+  options?: { includeDismissed?: boolean },
 ): ActivityEvent[] {
-  const seen = new Set<string>();
-  const merged: ActivityEvent[] = [];
+  const includeDismissed = options?.includeDismissed ?? false;
+  const byId = new Map<string, ActivityEvent>();
 
-  for (const event of [...live, ...cached]) {
-    if (seen.has(event.id)) continue;
-    seen.add(event.id);
+  // First, take live events for recency ordering.
+  for (const event of live) {
+    if (!includeDismissed && event.read_state === 'dismissed') continue;
+    if (byId.size >= limit) break;
+    byId.set(event.id, event);
+  }
+
+  // Then overlay cached events so authoritative state (read/dismissed) wins.
+  for (const event of cached) {
+    if (!includeDismissed && event.read_state === 'dismissed') continue;
+    if (byId.size >= limit && !byId.has(event.id)) continue;
+    byId.set(event.id, event);
+  }
+
+  const merged: ActivityEvent[] = [];
+  for (const event of byId.values()) {
     merged.push(event);
     if (merged.length >= limit) break;
   }
@@ -59,6 +74,7 @@ export function toActivityDisplayItem(event: ActivityEvent): ActivityDisplayItem
       : 'General',
     status: event.status,
     timestamp: event.created_at,
+    readState: event.read_state,
     metadataSummary: summarizeMetadata(event.metadata),
   } satisfies ActivityDisplayItem;
 }

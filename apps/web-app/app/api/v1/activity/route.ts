@@ -28,7 +28,8 @@ export async function GET(request: Request) {
       },
     });
 
-    return NextResponse.json(response.data ?? { items: [], next_cursor: null });
+    const payload = response.data ?? { items: [], next_cursor: null, unread_count: 0 };
+    return NextResponse.json(payload);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to load activity events';
     const status = message.toLowerCase().includes('missing access token') ? 401 : 500;

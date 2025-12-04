@@ -33,6 +33,42 @@ describe('activity utils', () => {
     expect(result.map((e) => e.id)).toEqual(['live-1', 'cached-1']);
   });
 
+  it('filters dismissed events client-side by default but keeps others', () => {
+    const live = [
+      { ...baseEvent, id: 'live-keep' },
+      { ...baseEvent, id: 'live-dismiss', read_state: 'dismissed' as const },
+    ];
+    const cached = [{ ...baseEvent, id: 'cached-keep' }];
+
+    const result = mergeActivityEvents(live, cached, 5);
+    expect(result.map((e) => e.id)).toEqual(['live-keep', 'cached-keep']);
+  });
+
+  it('can include dismissed events when requested', () => {
+    const live = [
+      { ...baseEvent, id: 'live-keep' },
+      { ...baseEvent, id: 'live-dismiss', read_state: 'dismissed' as const },
+    ];
+    const cached = [{ ...baseEvent, id: 'cached-keep' }];
+
+    const result = mergeActivityEvents(live, cached, 5, { includeDismissed: true });
+    expect(result.map((e) => e.id)).toEqual(['live-keep', 'live-dismiss', 'cached-keep']);
+  });
+
+  it('uses cached state to override live unread copies', () => {
+    const live = [
+      { ...baseEvent, id: 'evt-1', read_state: 'unread' as const },
+    ];
+    const cached = [
+      { ...baseEvent, id: 'evt-1', read_state: 'read' as const },
+    ];
+
+    const result = mergeActivityEvents(live, cached, 5);
+    expect(result).toHaveLength(1);
+    const [first] = result;
+    expect(first?.read_state).toBe('read');
+  });
+
   it('projects an activity event into display item', () => {
     const item = toActivityDisplayItem({
       ...baseEvent,
@@ -46,4 +82,3 @@ describe('activity utils', () => {
     expect(item.metadataSummary).toBe('trace: xyz');
   });
 });
-

@@ -76,6 +76,10 @@ export type ActivityEventItem = {
   metadata?: {
     [key: string]: unknown;
   } | null;
+  /**
+   * Read State
+   */
+  read_state?: "unread" | "read" | "dismissed";
 };
 
 /**
@@ -90,6 +94,10 @@ export type ActivityListResponse = {
    * Next Cursor
    */
   next_cursor?: string | null;
+  /**
+   * Unread Count
+   */
+  unread_count?: number;
 };
 
 /**
@@ -1595,6 +1603,16 @@ export type PlaywrightFixtureSpec = {
    * Tenants
    */
   tenants?: Array<FixtureTenant>;
+};
+
+/**
+ * ReceiptResponse
+ */
+export type ReceiptResponse = {
+  /**
+   * Unread Count
+   */
+  unread_count?: number;
 };
 
 /**
@@ -5911,6 +5929,127 @@ export type StreamActivityEventsApiV1ActivityStreamGetResponses = {
    */
   200: unknown;
 };
+
+export type MarkActivityReadApiV1ActivityEventIdReadPostData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Event Id
+     */
+    event_id: string;
+  };
+  query?: never;
+  url: "/api/v1/activity/{event_id}/read";
+};
+
+export type MarkActivityReadApiV1ActivityEventIdReadPostErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type MarkActivityReadApiV1ActivityEventIdReadPostError =
+  MarkActivityReadApiV1ActivityEventIdReadPostErrors[keyof MarkActivityReadApiV1ActivityEventIdReadPostErrors];
+
+export type MarkActivityReadApiV1ActivityEventIdReadPostResponses = {
+  /**
+   * Successful Response
+   */
+  200: ReceiptResponse;
+};
+
+export type MarkActivityReadApiV1ActivityEventIdReadPostResponse =
+  MarkActivityReadApiV1ActivityEventIdReadPostResponses[keyof MarkActivityReadApiV1ActivityEventIdReadPostResponses];
+
+export type DismissActivityApiV1ActivityEventIdDismissPostData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Event Id
+     */
+    event_id: string;
+  };
+  query?: never;
+  url: "/api/v1/activity/{event_id}/dismiss";
+};
+
+export type DismissActivityApiV1ActivityEventIdDismissPostErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type DismissActivityApiV1ActivityEventIdDismissPostError =
+  DismissActivityApiV1ActivityEventIdDismissPostErrors[keyof DismissActivityApiV1ActivityEventIdDismissPostErrors];
+
+export type DismissActivityApiV1ActivityEventIdDismissPostResponses = {
+  /**
+   * Successful Response
+   */
+  200: ReceiptResponse;
+};
+
+export type DismissActivityApiV1ActivityEventIdDismissPostResponse =
+  DismissActivityApiV1ActivityEventIdDismissPostResponses[keyof DismissActivityApiV1ActivityEventIdDismissPostResponses];
+
+export type MarkAllActivityReadApiV1ActivityMarkAllReadPostData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path?: never;
+  query?: never;
+  url: "/api/v1/activity/mark-all-read";
+};
+
+export type MarkAllActivityReadApiV1ActivityMarkAllReadPostErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type MarkAllActivityReadApiV1ActivityMarkAllReadPostError =
+  MarkAllActivityReadApiV1ActivityMarkAllReadPostErrors[keyof MarkAllActivityReadApiV1ActivityMarkAllReadPostErrors];
+
+export type MarkAllActivityReadApiV1ActivityMarkAllReadPostResponses = {
+  /**
+   * Successful Response
+   */
+  200: ReceiptResponse;
+};
+
+export type MarkAllActivityReadApiV1ActivityMarkAllReadPostResponse =
+  MarkAllActivityReadApiV1ActivityMarkAllReadPostResponses[keyof MarkAllActivityReadApiV1ActivityMarkAllReadPostResponses];
 
 export type ListContainersApiV1ContainersGetData = {
   body?: never;

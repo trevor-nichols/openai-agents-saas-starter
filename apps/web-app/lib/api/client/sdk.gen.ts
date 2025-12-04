@@ -73,6 +73,9 @@ import type {
   DeleteWorkflowRunApiV1WorkflowsRunsRunIdDeleteData,
   DeleteWorkflowRunApiV1WorkflowsRunsRunIdDeleteErrors,
   DeleteWorkflowRunApiV1WorkflowsRunsRunIdDeleteResponses,
+  DismissActivityApiV1ActivityEventIdDismissPostData,
+  DismissActivityApiV1ActivityEventIdDismissPostErrors,
+  DismissActivityApiV1ActivityEventIdDismissPostResponses,
   GetAgentStatusApiV1AgentsAgentNameStatusGetData,
   GetAgentStatusApiV1AgentsAgentNameStatusGetErrors,
   GetAgentStatusApiV1AgentsAgentNameStatusGetResponses,
@@ -186,6 +189,12 @@ import type {
   LogoutSessionApiV1AuthLogoutPostData,
   LogoutSessionApiV1AuthLogoutPostErrors,
   LogoutSessionApiV1AuthLogoutPostResponses,
+  MarkActivityReadApiV1ActivityEventIdReadPostData,
+  MarkActivityReadApiV1ActivityEventIdReadPostErrors,
+  MarkActivityReadApiV1ActivityEventIdReadPostResponses,
+  MarkAllActivityReadApiV1ActivityMarkAllReadPostData,
+  MarkAllActivityReadApiV1ActivityMarkAllReadPostErrors,
+  MarkAllActivityReadApiV1ActivityMarkAllReadPostResponses,
   ReadinessCheckHealthReadyGetData,
   ReadinessCheckHealthReadyGetResponses,
   RecordUsageApiV1BillingTenantsTenantIdUsagePostData,
@@ -1595,6 +1604,87 @@ export const streamActivityEventsApiV1ActivityStreamGet = <
       },
     ],
     url: "/api/v1/activity/stream",
+    ...options,
+  });
+};
+
+/**
+ * Mark Activity Read
+ */
+export const markActivityReadApiV1ActivityEventIdReadPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    MarkActivityReadApiV1ActivityEventIdReadPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    MarkActivityReadApiV1ActivityEventIdReadPostResponses,
+    MarkActivityReadApiV1ActivityEventIdReadPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/activity/{event_id}/read",
+    ...options,
+  });
+};
+
+/**
+ * Dismiss Activity
+ */
+export const dismissActivityApiV1ActivityEventIdDismissPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    DismissActivityApiV1ActivityEventIdDismissPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    DismissActivityApiV1ActivityEventIdDismissPostResponses,
+    DismissActivityApiV1ActivityEventIdDismissPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/activity/{event_id}/dismiss",
+    ...options,
+  });
+};
+
+/**
+ * Mark All Activity Read
+ */
+export const markAllActivityReadApiV1ActivityMarkAllReadPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<
+    MarkAllActivityReadApiV1ActivityMarkAllReadPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options?.client ?? client).post<
+    MarkAllActivityReadApiV1ActivityMarkAllReadPostResponses,
+    MarkAllActivityReadApiV1ActivityMarkAllReadPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/activity/mark-all-read",
     ...options,
   });
 };

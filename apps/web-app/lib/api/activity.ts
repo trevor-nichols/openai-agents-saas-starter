@@ -33,5 +33,45 @@ export async function fetchActivityPage(params?: {
   return {
     items: result.items ?? [],
     next_cursor: result.next_cursor ?? null,
+    unread_count: result.unread_count ?? 0,
   };
+}
+
+export async function markActivityRead(eventId: string): Promise<number> {
+  const response = await fetch(`${apiV1Path(`/activity/${eventId}/read`)}`, {
+    method: 'POST',
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as { message?: string };
+    throw new Error(payload.message || 'Failed to mark activity as read');
+  }
+  const result = (await response.json()) as { unread_count?: number };
+  return result.unread_count ?? 0;
+}
+
+export async function dismissActivity(eventId: string): Promise<number> {
+  const response = await fetch(`${apiV1Path(`/activity/${eventId}/dismiss`)}`, {
+    method: 'POST',
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as { message?: string };
+    throw new Error(payload.message || 'Failed to dismiss activity');
+  }
+  const result = (await response.json()) as { unread_count?: number };
+  return result.unread_count ?? 0;
+}
+
+export async function markAllActivityRead(): Promise<number> {
+  const response = await fetch(apiV1Path('/activity/mark-all-read'), {
+    method: 'POST',
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as { message?: string };
+    throw new Error(payload.message || 'Failed to mark all activity as read');
+  }
+  const result = (await response.json()) as { unread_count?: number };
+  return result.unread_count ?? 0;
 }

@@ -17,7 +17,7 @@ os.environ.setdefault("ENABLE_ACTIVITY_STREAM", "true")
 pytestmark = pytest.mark.auto_migrations(enabled=True)
 
 from app.api.dependencies.auth import require_current_user  # noqa: E402
-from app.domain.activity import ActivityEvent, ActivityEventPage  # noqa: E402
+from app.domain.activity import ActivityEvent, ActivityEventStatePage, ActivityEventWithState  # noqa: E402
 from main import app  # noqa: E402
 
 
@@ -81,20 +81,31 @@ def test_list_activity_filters_and_pagination(
         ),
     ]
 
-    async def _mock_list(tenant: str, *, limit: int, cursor: str | None = None, filters=None):
+    async def _mock_list(tenant: str, user_id: str, *, limit: int, cursor: str | None = None, filters=None):
         assert tenant == tenant_id
         filtered_events = list(events)
         if filters and getattr(filters, "action", None):
             filtered_events = [ev for ev in events if ev.action == filters.action]
 
         next_cursor = "cursor-1"
-        return ActivityEventPage(items=filtered_events[:limit], next_cursor=next_cursor)
+        state_items = [
+            ActivityEventWithState(
+                **event.__dict__,
+                read_state="unread",
+            )
+            for event in filtered_events[:limit]
+        ]
+        return ActivityEventStatePage(
+            items=state_items,
+            next_cursor=next_cursor,
+            unread_count=len(state_items),
+        )
 
     activity_router_module = importlib.import_module("app.api.v1.activity.router")
 
     monkeypatch.setattr(
         activity_router_module.activity_service,
-        "list_events",
+        "list_events_with_state",
         AsyncMock(side_effect=_mock_list),
     )
 
@@ -103,6 +114,7 @@ def test_list_activity_filters_and_pagination(
     payload = first.json()
     assert len(payload["items"]) == 2
     assert payload["next_cursor"] == "cursor-1"
+    assert payload["unread_count"] == 2
     assert all(item["tenant_id"] == tenant_id for item in payload["items"])
 
     filtered = client.get(

@@ -8,6 +8,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 StatusLiteral = Literal["success", "failure", "pending"]
+ReadStateLiteral = Literal["unread", "read", "dismissed"]
 
 
 class ActivityEventItem(BaseModel):
@@ -27,8 +28,14 @@ class ActivityEventItem(BaseModel):
     ip_hash: str | None = Field(default=None, description="Hashed IP (if supplied)")
     user_agent: str | None = None
     metadata: dict[str, object] | None = None
+    read_state: ReadStateLiteral = "unread"
 
 
 class ActivityListResponse(BaseModel):
     items: list[ActivityEventItem]
     next_cursor: str | None = None
+    unread_count: int = Field(default=0, ge=0)
+
+
+class ReceiptResponse(BaseModel):
+    unread_count: int = Field(default=0, ge=0)

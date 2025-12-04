@@ -30,8 +30,9 @@ from app.infrastructure.db import (
     get_engine,
     init_engine,
 )
-from app.infrastructure.persistence.activity.repository import (
+from app.infrastructure.persistence.activity import (
     SqlAlchemyActivityEventRepository,
+    SqlAlchemyActivityInboxRepository,
 )
 from app.infrastructure.persistence.auth.repository import get_refresh_token_repository
 from app.infrastructure.persistence.auth.session_repository import (
@@ -210,6 +211,8 @@ async def lifespan(app: FastAPI):
     container.activity_service = ActivityService()
     activity_repo = SqlAlchemyActivityEventRepository(session_factory)
     container.activity_service.set_repository(activity_repo)
+    activity_inbox_repo = SqlAlchemyActivityInboxRepository(session_factory)
+    container.activity_service.set_inbox_repository(activity_inbox_repo)
 
     if settings.enable_activity_stream:
         redis_url = settings.resolve_activity_events_redis_url()
