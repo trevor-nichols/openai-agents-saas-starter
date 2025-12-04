@@ -1,9 +1,25 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { CodeBlock } from '@/components/ui/ai/code-block';
+import { Response } from '@/components/ui/ai/response';
+import {
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolInput,
+  ToolOutput,
+} from '@/components/ui/ai/tool';
+import { InlineTag } from '@/components/ui/foundation';
 import { cn } from '@/lib/utils';
-import type { StreamingWorkflowEvent } from '@/lib/api/client/types.gen';
+import type {
+  StreamingWorkflowEvent,
+  ToolCallPayload,
+  UrlCitation as ApiUrlCitation,
+  ContainerFileCitation as ApiContainerFileCitation,
+  FileCitation as ApiFileCitation,
+} from '@/lib/api/client/types.gen';
+import type { Annotation } from '@/lib/chat/types';
 
 interface WorkflowStreamLogProps {
   events: (StreamingWorkflowEvent & { receivedAt?: string })[];
@@ -18,9 +34,85 @@ const KIND_LABEL: Record<StreamingWorkflowEvent['kind'], string> = {
   error: 'Error',
 };
 
+type ToolViewModel =
+  | {
+      label: string;
+      state: 'input-streaming' | 'input-available' | 'output-available' | 'output-error';
+      input?: unknown;
+      output?: unknown;
+      errorText?: string | null;
+    }
+  | null;
+
+function mapAnnotations(
+  anns: (ApiUrlCitation | ApiContainerFileCitation | ApiFileCitation)[] | undefined,
+): Annotation[] | undefined {
+  if (!anns?.length) return undefined;
+  return anns.map((ann) => {
+    if (ann.type === 'url_citation') {
+      return ann as Annotation;
+    }
+    if (ann.type === 'container_file_citation') {
+      return ann as Annotation;
+    }
+    return ann as Annotation;
+  });
+}
+
+function mapToolCall(toolCall: ToolCallPayload | Record<string, unknown> | null | undefined): ToolViewModel {
+  if (!toolCall || typeof toolCall !== 'object') return null;
+  const anyCall = toolCall as ToolCallPayload;
+
+  if (anyCall.web_search_call) {
+    const status = anyCall.web_search_call.status === 'completed' ? 'output-available' : 'input-available';
+    return {
+      label: 'web_search',
+      state: status,
+      input: anyCall.web_search_call.action ?? null,
+      output: anyCall.web_search_call.action ?? null,
+    };
+  }
+  if (anyCall.code_interpreter_call) {
+    const status =
+      anyCall.code_interpreter_call.status === 'completed'
+        ? 'output-available'
+        : anyCall.code_interpreter_call.status === 'interpreting'
+          ? 'input-available'
+          : 'input-streaming';
+    return {
+      label: 'code_interpreter',
+      state: status,
+      input: anyCall.code_interpreter_call.code,
+      output: anyCall.code_interpreter_call.outputs,
+    };
+  }
+  if (anyCall.file_search_call) {
+    const status =
+      anyCall.file_search_call.status === 'completed'
+        ? 'output-available'
+        : anyCall.file_search_call.status === 'searching'
+          ? 'input-available'
+          : 'input-streaming';
+    return {
+      label: 'file_search',
+      state: status,
+      input: anyCall.file_search_call.queries,
+      output: anyCall.file_search_call.results,
+    };
+  }
+
+    const fallbackType = (anyCall as { tool_type?: string }).tool_type ?? 'tool_call';
+  return {
+    label: fallbackType,
+    state: 'input-available',
+    input: anyCall,
+  };
+}
+
 export function WorkflowStreamLog({ events }: WorkflowStreamLogProps) {
   const grouped = useMemo(() => events, [events]);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [showRawIds] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -61,6 +153,13 @@ export function WorkflowStreamLog({ events }: WorkflowStreamLogProps) {
                   {evt.raw_type ? (
                     <span className="text-[11px] uppercase tracking-wide text-foreground/50">{evt.raw_type}</span>
                   ) : null}
+                  {evt.stage_name ? <InlineTag tone="default">Stage: {evt.stage_name}</InlineTag> : null}
+                  {evt.parallel_group ? (
+                    <InlineTag tone="default">Group: {evt.parallel_group}</InlineTag>
+                  ) : null}
+                  {evt.agent_used || evt.agent ? (
+                    <InlineTag tone="default">Agent: {evt.agent_used ?? evt.agent}</InlineTag>
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-2 text-[11px] text-foreground/60">
                   {displayTime ? <span>{displayTime}</span> : null}
@@ -68,13 +167,18 @@ export function WorkflowStreamLog({ events }: WorkflowStreamLogProps) {
                 </div>
               </div>
 
-            {evt.text_delta ? (
-              <p className="mt-2 text-sm text-foreground">{evt.text_delta}</p>
-            ) : null}
-
-            {evt.response_text ? (
-              <p className="mt-2 text-sm text-foreground">{String(evt.response_text)}</p>
-            ) : null}
+            {(() => {
+              const content = evt.response_text ?? evt.text_delta;
+              if (!content) return null;
+              const annotations = mapAnnotations(
+                evt.annotations as (ApiUrlCitation | ApiContainerFileCitation | ApiFileCitation)[] | undefined
+              );
+              return (
+                <div className="mt-3">
+                  <Response citations={annotations}>{content}</Response>
+                </div>
+              );
+            })()}
 
             {evt.structured_output !== undefined && evt.structured_output !== null ? (
               <div className="mt-2">
@@ -85,7 +189,30 @@ export function WorkflowStreamLog({ events }: WorkflowStreamLogProps) {
               </div>
             ) : null}
 
-            {evt.payload ? (
+            {evt.tool_call ? (
+              (() => {
+                const tool = mapToolCall(evt.tool_call as ToolCallPayload);
+                if (!tool) return null;
+                return (
+                    <Tool>
+                      <ToolHeader type={`tool-${tool.label}` as const} state={tool.state} />
+                    <ToolContent>
+                      {tool.input !== undefined ? <ToolInput input={tool.input} /> : null}
+                      <ToolOutput
+                        output={
+                          tool.output !== undefined && tool.output !== null ? (
+                            <CodeBlock code={JSON.stringify(tool.output, null, 2)} language="json" />
+                          ) : null
+                        }
+                        errorText={tool.errorText ?? undefined}
+                      />
+                    </ToolContent>
+                  </Tool>
+                );
+              })()
+            ) : null}
+
+            {evt.payload && showRawIds ? (
               <div className="mt-2 text-xs text-foreground/70">
                 <CodeBlock code={JSON.stringify(evt.payload, null, 2)} language="json" />
               </div>

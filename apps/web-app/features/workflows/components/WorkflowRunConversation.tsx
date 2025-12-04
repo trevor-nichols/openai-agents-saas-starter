@@ -4,7 +4,9 @@ import { Conversation, ConversationContent } from '@/components/ui/ai/conversati
 import { Message, MessageContent } from '@/components/ui/ai/message';
 import { InlineTag } from '@/components/ui/foundation';
 import { CodeBlock } from '@/components/ui/ai/code-block';
+import { Response } from '@/components/ui/ai/response';
 import type { WorkflowRunDetailView } from '@/lib/workflows/types';
+import type { Annotation } from '@/lib/chat/types';
 import type { ConversationEvents } from '@/types/conversations';
 import { SkeletonPanel, EmptyState } from '@/components/ui/states';
 
@@ -21,6 +23,7 @@ type ConversationEntry = {
   content: string;
   meta?: string[];
   structured?: unknown;
+  citations?: Annotation[] | null;
 };
 
 export function WorkflowRunConversation({
@@ -105,9 +108,9 @@ export function WorkflowRunConversation({
                     </InlineTag>
                   ))}
                 </div>
-                <p className="mt-2 leading-relaxed whitespace-pre-wrap text-sm text-foreground">
-                  {entry.content}
-                </p>
+                <div className="mt-2">
+                  <Response citations={entry.citations}>{entry.content}</Response>
+                </div>
                 {entry.structured ? (
                   <div className="mt-2">
                     <CodeBlock code={JSON.stringify(entry.structured, null, 2)} language="json" />

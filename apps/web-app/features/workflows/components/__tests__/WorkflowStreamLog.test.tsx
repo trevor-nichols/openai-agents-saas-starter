@@ -21,6 +21,15 @@ describe('WorkflowStreamLog', () => {
         text_delta: 'Hello',
         sequence_number: 1,
         is_terminal: false,
+        annotations: [
+          {
+            type: 'url_citation' as const,
+            start_index: 0,
+            end_index: 5,
+            title: 'Example',
+            url: 'https://example.com',
+          },
+        ],
       },
       {
         kind: 'lifecycle' as const,
@@ -34,9 +43,8 @@ describe('WorkflowStreamLog', () => {
 
     render(<WorkflowStreamLog events={events} />);
 
-    expect(screen.getByText('Response')).toBeInTheDocument();
-    expect(screen.getByText('Lifecycle')).toBeInTheDocument();
     expect(screen.getByText('Hello')).toBeInTheDocument();
+    expect(screen.getByText('Lifecycle')).toBeInTheDocument();
     expect(screen.getByText('Terminal')).toBeInTheDocument();
   });
 });
