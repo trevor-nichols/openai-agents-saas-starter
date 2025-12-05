@@ -56,7 +56,8 @@ async def _login_dev_user(base_url: str, timeout: float, *, email: str, password
 @pytest.mark.asyncio
 async def test_image_generation_streaming_manual() -> None:
     base_url = _default_base_url()
-    timeout = float(os.getenv("MANUAL_TIMEOUT", "75"))
+    # Image gen can be slower; default to 3 minutes unless overridden.
+    timeout = float(os.getenv("MANUAL_TIMEOUT", "180"))
 
     token = os.getenv("MANUAL_ACCESS_TOKEN")
     tenant_id = os.getenv("MANUAL_TENANT_ID")
@@ -76,7 +77,7 @@ async def test_image_generation_streaming_manual() -> None:
     payload = {
         "agent_type": "researcher",
         "message": (
-            "Generate an image of a small sailboat in a golden-hour harbor. "
+            "Generate a simple line-drawn stick figure, standing upright. "
             "Use the image generation tool, include a brief textual description, and keep text concise."
         ),
         "share_location": False,

@@ -27,8 +27,14 @@ def _sanitize(obj):
     if isinstance(obj, dict):
         sanitized = {}
         for k, v in obj.items():
-            if k.lower() == "url" and isinstance(v, str):
+            key_lower = k.lower()
+            if key_lower == "url" and isinstance(v, str):
                 sanitized[k] = _strip_query(v)
+            # Normalize vector store identifiers so goldens remain stable across re-recordings.
+            # OpenAI assigns random IDs (e.g., vs_xxx) when creating stores; we rewrite them to a
+            # deterministic placeholder that our contract tests assert against.
+            elif key_lower == "vector_store_id" and isinstance(v, str):
+                sanitized[k] = "vs_primary"
             else:
                 sanitized[k] = _sanitize(v)
         return sanitized
