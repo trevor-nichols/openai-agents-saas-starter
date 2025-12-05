@@ -69,10 +69,10 @@ async def test_code_interpreter_streaming_manual() -> None:
     }
 
     payload = {
-        "agent_type": "code_assistant",
+        "agent_type": "researcher",
         "message": (
             "Use the code interpreter to compute the square root of 2, rounded to 3 decimals. "
-            "You must execute Python code before responding. Show the numeric result and cite it." 
+            "You must execute Python code before responding. Show the numeric result and cite it."
         ),
         "share_location": False,
     }

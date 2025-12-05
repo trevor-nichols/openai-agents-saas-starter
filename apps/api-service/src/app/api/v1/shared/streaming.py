@@ -43,7 +43,7 @@ class FileSearchCall(BaseModel):
     type: Literal["file_search_call"]
     status: Literal["in_progress", "searching", "completed"]
     queries: list[str] | None = None
-    results: list[Any] | None = None
+    results: list[FileSearchResult] | None = None
 
 
 class ToolCallPayload(BaseModel):
@@ -80,6 +80,15 @@ class FileCitation(BaseModel):
     index: int | None = None
     file_id: str
     filename: str | None = None
+
+
+class FileSearchResult(BaseModel):
+    file_id: str
+    filename: str | None = None
+    score: float | None = None
+    vector_store_id: str | None = None
+    attributes: dict[str, Any] | None = None
+    text: str | None = None
 
 
 class StreamingEvent(BaseModel):
@@ -139,4 +148,5 @@ __all__ = [
     "UrlCitation",
     "ContainerFileCitation",
     "FileCitation",
+    "FileSearchResult",
 ]

@@ -131,7 +131,7 @@ def test_tools_endpoint_returns_per_agent_tooling(client: TestClient) -> None:
     assert per_agent == {
         "triage": ["get_current_time", "search_conversations"],
         "code_assistant": ["code_interpreter"],
-        "researcher": ["web_search"],
+        "researcher": ["web_search", "file_search", "code_interpreter"],
     }
 
 

@@ -280,6 +280,20 @@ class OpenAIStreamingHandle(AgentStreamingHandle):
                         "file_citation",
                     }:
                         annotations = [annotation]
+                # Some Responses events (e.g., file_search outputs) include annotations inline
+                # on the message delta instead of the dedicated annotation event; surface them.
+                if annotations is None and isinstance(raw_mapping, Mapping):
+                    inline_annotations = raw_mapping.get("annotations")
+                    if isinstance(inline_annotations, list):
+                        filtered = [
+                            ann
+                            for ann in inline_annotations
+                            if isinstance(ann, Mapping)
+                            and ann.get("type")
+                            in {"url_citation", "container_file_citation", "file_citation"}
+                        ]
+                        if filtered:
+                            annotations = filtered
 
                 tool_call = None
                 if isinstance(raw_type, str) and raw_type.startswith("response.web_search_call."):
@@ -325,6 +339,20 @@ class OpenAIStreamingHandle(AgentStreamingHandle):
                         status=status,
                         queries=None,
                         results=None,
+                    )
+                elif (
+                    raw_type == "response.output_item.done"
+                    and isinstance(raw_mapping, Mapping)
+                    and raw_mapping.get("item", {}).get("type") == "file_search_call"
+                ):
+                    item = raw_mapping.get("item", {}) or {}
+                    results = item.get("results")
+                    queries = item.get("queries")
+                    tool_call = _build_file_search_tool_call(
+                        item_id=item.get("id"),
+                        status=item.get("status") or "completed",
+                        queries=queries,
+                        results=results,
                     )
 
                 yield AgentStreamEvent(
