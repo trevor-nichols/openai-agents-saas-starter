@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   cancelWorkflowRun,
@@ -43,6 +43,16 @@ export function useWorkflowRunsQuery(filters: WorkflowRunListFilters) {
     queryKey: queryKeys.workflows.runs(filters as Record<string, unknown>),
     queryFn: () => listWorkflowRuns(filters),
     enabled: Boolean(filters.workflowKey),
+  });
+}
+
+export function useWorkflowRunsInfiniteQuery(filters: WorkflowRunListFilters) {
+  return useInfiniteQuery({
+    queryKey: queryKeys.workflows.runs(filters as Record<string, unknown>),
+    queryFn: ({ pageParam }) => listWorkflowRuns({ ...filters, cursor: (pageParam as string | undefined) ?? undefined }),
+    getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+    enabled: Boolean(filters.workflowKey),
+    initialPageParam: null as string | null,
   });
 }
 
