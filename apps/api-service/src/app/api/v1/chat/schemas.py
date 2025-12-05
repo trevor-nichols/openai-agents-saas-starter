@@ -9,6 +9,7 @@ from app.api.v1.shared.streaming import (
     ContainerFileCitation,
     FileCitation,
     FileSearchCall,
+    ImageGenerationCall,
     MessageAttachment,
     StreamingEvent,
     ToolCallPayload,
@@ -62,5 +63,6 @@ __all__ = [
     "WebSearchCall",
     "CodeInterpreterCall",
     "FileSearchCall",
+    "ImageGenerationCall",
     "LocationHint",
 ]

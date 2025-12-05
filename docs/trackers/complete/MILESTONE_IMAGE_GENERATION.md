@@ -29,8 +29,14 @@ Status: Completed (backend + CLI) 2025-11-26
 
 ### Phase 5 — DX, Tests, Ops
 - Update CLI/.env guidance to set image defaults + storage provider; add tracker note. **Status: Not Started**
-- Tests: unit (ImageIngestor guards, tool_config validation), repo round-trip with attachments, service chat + chat_stream happy paths, SSE payload assertions. **Status: Not Started**
+- Tests: unit (ImageIngestor guards, tool_config validation), repo round-trip with attachments, service chat + chat_stream happy paths, SSE payload assertions. **Status: In Progress** (manual streaming test added: `tests/manual/test_image_generation_manual.py`; unit gaps remain)
 - Observability: log key events (tool_call_id, object_id), ensure presigned URLs redacted; metrics hook TBD (out of scope unless quick). **Status: Not Started**
+
+## Notes — 2025-12-05
+- Backend now normalizes `image_generation` tool calls (including partials) into `tool_call.image_generation_call` with typed schema; ingestion stores partial/final images from both payload and tool_call surfaces.
+- Updated tool config keys to match Responses API (`output_format`, `output_compression`); legacy `format`/`compression` still accepted via normalization.
+- Manual streaming test passes against live OpenAI (`tests/manual/test_image_generation_manual.py`); Responses sometimes terminates at `status="generating"` despite `response.completed`, so test allows generating-or-completed.
+- Remaining gaps: unit coverage for `_iter_image_generation_calls` and runtime normalization; DX docs/CLI guidance still pending.
 
 ## Definition of Done
 - ImageGenerationTool registered; agents can opt in via `tool_keys` with validated configs.

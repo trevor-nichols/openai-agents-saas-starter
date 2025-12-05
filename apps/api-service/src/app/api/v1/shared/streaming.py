@@ -36,6 +36,9 @@ class CodeInterpreterCall(BaseModel):
     status: Literal["in_progress", "interpreting", "completed"]
     code: str | None = None
     outputs: list[Any] | None = None
+    container_id: str | None = None
+    container_mode: Literal["auto", "explicit"] | None = None
+    annotations: list[ContainerFileCitation] | None = None
 
 
 class FileSearchCall(BaseModel):
@@ -46,6 +49,24 @@ class FileSearchCall(BaseModel):
     results: list[FileSearchResult] | None = None
 
 
+class ImageGenerationCall(BaseModel):
+    id: str
+    type: Literal["image_generation_call"]
+    status: Literal["in_progress", "generating", "partial_image", "completed"]
+    # Final outputs
+    result: str | None = None  # base64 image (final)
+    revised_prompt: str | None = None
+    format: str | None = None
+    size: str | None = None
+    quality: str | None = None
+    background: str | None = None
+    output_index: int | None = None
+    # Partial outputs
+    partial_image_index: int | None = None
+    partial_image_b64: str | None = None
+    b64_json: str | None = None  # alias used by Responses API for partials
+
+
 class ToolCallPayload(BaseModel):
     model_config = ConfigDict(extra="allow")
 
@@ -53,6 +74,7 @@ class ToolCallPayload(BaseModel):
     web_search_call: WebSearchCall | None = None
     code_interpreter_call: CodeInterpreterCall | None = None
     file_search_call: FileSearchCall | None = None
+    image_generation_call: ImageGenerationCall | None = None
 
 
 class UrlCitation(BaseModel):
@@ -144,6 +166,7 @@ __all__ = [
     "WebSearchCall",
     "CodeInterpreterCall",
     "FileSearchCall",
+    "ImageGenerationCall",
     "ToolCallPayload",
     "UrlCitation",
     "ContainerFileCitation",

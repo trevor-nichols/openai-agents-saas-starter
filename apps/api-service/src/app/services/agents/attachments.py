@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from typing import Any
 
 from app.domain.conversations import ConversationAttachment, ConversationMessage
@@ -40,59 +40,56 @@ class AttachmentService:
             if not isinstance(output, Mapping):
                 continue
 
-            candidate = output
-            if candidate.get("type") != "image_generation_call":
-                raw = candidate.get("raw_item")
-                if isinstance(raw, Mapping) and raw.get("type") == "image_generation_call":
-                    candidate = raw
-                else:
+            for candidate in _iter_image_generation_calls(output):
+                tool_call_id = candidate.get("id") or candidate.get("tool_call_id")
+                if seen_tool_calls is not None and tool_call_id and tool_call_id in seen_tool_calls:
                     continue
-
-            tool_call_id = candidate.get("id") or candidate.get("tool_call_id")
-            if seen_tool_calls is not None and tool_call_id and tool_call_id in seen_tool_calls:
-                continue
-            image_b64 = candidate.get("result") or candidate.get("b64_json")
-            if not image_b64:
-                continue
-            quality = candidate.get("quality")
-            background = candidate.get("background")
-            image_format = candidate.get("format") or candidate.get("output_format")
-
-            try:
-                ingested = await ingest_image_output(
-                    image_b64=image_b64,
-                    tenant_id=actor.tenant_id,
-                    user_id=actor.user_id,
-                    conversation_id=conversation_id,
-                    agent_key=agent_key,
-                    tool_call_id=tool_call_id,
-                    response_id=response_id,
-                    image_format=image_format,
-                    quality=quality,
-                    background=background,
-                    storage_service=storage,
+                image_b64 = (
+                    candidate.get("result")
+                    or candidate.get("b64_json")
+                    or candidate.get("partial_image_b64")
                 )
+                if not image_b64:
+                    continue
+                quality = candidate.get("quality")
+                background = candidate.get("background")
+                image_format = candidate.get("format") or candidate.get("output_format")
 
-                presigned, _ = await storage.get_presigned_download(
-                    tenant_id=uuid.UUID(actor.tenant_id),
-                    object_id=ingested.storage_object_id,
-                )
-                ingested.attachment.presigned_url = presigned.url
-                if seen_tool_calls is not None and tool_call_id:
-                    seen_tool_calls.add(tool_call_id)
-                attachments.append(ingested.attachment)
-            except Exception as exc:  # pragma: no cover
-                logger.warning(
-                    "image.ingest_failed",
-                    extra={
-                        "tenant_id": actor.tenant_id,
-                        "conversation_id": conversation_id,
-                        "agent_key": agent_key,
-                        "tool_call_id": tool_call_id,
-                    },
-                    exc_info=exc,
-                )
-                continue
+                try:
+                    ingested = await ingest_image_output(
+                        image_b64=image_b64,
+                        tenant_id=actor.tenant_id,
+                        user_id=actor.user_id,
+                        conversation_id=conversation_id,
+                        agent_key=agent_key,
+                        tool_call_id=tool_call_id,
+                        response_id=response_id,
+                        image_format=image_format,
+                        quality=quality,
+                        background=background,
+                        storage_service=storage,
+                    )
+
+                    presigned, _ = await storage.get_presigned_download(
+                        tenant_id=uuid.UUID(actor.tenant_id),
+                        object_id=ingested.storage_object_id,
+                    )
+                    ingested.attachment.presigned_url = presigned.url
+                    if seen_tool_calls is not None and tool_call_id:
+                        seen_tool_calls.add(tool_call_id)
+                    attachments.append(ingested.attachment)
+                except Exception as exc:  # pragma: no cover
+                    logger.warning(
+                        "image.ingest_failed",
+                        extra={
+                            "tenant_id": actor.tenant_id,
+                            "conversation_id": conversation_id,
+                            "agent_key": agent_key,
+                            "tool_call_id": tool_call_id,
+                        },
+                        exc_info=exc,
+                    )
+                    continue
 
         return attachments
 
@@ -140,3 +137,23 @@ class AttachmentService:
 
 
 __all__ = ["AttachmentService"]
+
+
+def _iter_image_generation_calls(candidate: Mapping[str, Any]) -> Iterable[Mapping[str, Any]]:
+    """Yield any image_generation_call mappings contained in a payload or tool_call."""
+
+    # Direct
+    if candidate.get("type") == "image_generation_call":
+        yield candidate
+
+    # Tool-call wrapper
+    ig = candidate.get("image_generation_call")
+    if isinstance(ig, Mapping):
+        yield ig
+
+    # Nested outputs list (e.g., response.completed payload)
+    outputs = candidate.get("output") or candidate.get("outputs")
+    if isinstance(outputs, list):
+        for item in outputs:
+            if isinstance(item, Mapping) and item.get("type") == "image_generation_call":
+                yield item

@@ -78,6 +78,9 @@ def _build_code_interpreter_tool_call(
     status: str | None,
     code: str | None = None,
     outputs: Any | None = None,
+    container_id: str | None = None,
+    container_mode: str | None = None,
+    annotations: list[Mapping[str, Any]] | None = None,
 ) -> Mapping[str, Any]:
     normalized_status = "in_progress"
     if status in {"completed", "interpreting"}:
@@ -90,6 +93,9 @@ def _build_code_interpreter_tool_call(
             "status": normalized_status,
             "code": code,
             "outputs": outputs,
+            "container_id": container_id,
+            "container_mode": container_mode,
+            "annotations": annotations,
         },
     }
 
@@ -112,6 +118,46 @@ def _build_file_search_tool_call(
             "status": normalized_status,
             "queries": queries,
             "results": results,
+        },
+    }
+
+
+def _build_image_generation_tool_call(
+    *,
+    item_id: Any,
+    status: str | None,
+    result: Any | None = None,
+    revised_prompt: str | None = None,
+    image_format: str | None = None,
+    size: str | None = None,
+    quality: str | None = None,
+    background: str | None = None,
+    output_index: int | None = None,
+    partial_image_index: int | None = None,
+    partial_image_b64: str | None = None,
+) -> Mapping[str, Any]:
+    normalized_status = (
+        status
+        if status in {"in_progress", "generating", "partial_image", "completed"}
+        else "in_progress"
+    )
+    return {
+        "tool_type": "image_generation",
+        "image_generation_call": {
+            "id": str(item_id) if item_id is not None else "",
+            "type": "image_generation_call",
+            "status": normalized_status,
+            "result": result,
+            "revised_prompt": revised_prompt,
+            "format": image_format,
+            "size": size,
+            "quality": quality,
+            "background": background,
+            "output_index": output_index,
+            "partial_image_index": partial_image_index,
+            "partial_image_b64": partial_image_b64,
+            # Some Responses events surface partials as b64_json; keep alias for clients.
+            "b64_json": partial_image_b64 if partial_image_b64 else None,
         },
     }
 
@@ -294,6 +340,14 @@ class OpenAIStreamingHandle(AgentStreamingHandle):
                         ]
                         if filtered:
                             annotations = filtered
+                container_id = None
+                if isinstance(raw_mapping, Mapping):
+                    item_map = raw_mapping.get("item") if "item" in raw_mapping else raw_mapping
+                    if isinstance(item_map, Mapping):
+                        container_id = item_map.get("container_id") or item_map.get("container")
+                container_mode = (
+                    self.metadata.get("code_interpreter_mode") if self.metadata else None
+                )
 
                 tool_call = None
                 if isinstance(raw_type, str) and raw_type.startswith("response.web_search_call."):
@@ -303,6 +357,41 @@ class OpenAIStreamingHandle(AgentStreamingHandle):
                         item_id=item_id,
                         status=status,
                         action=None,
+                    )
+                elif isinstance(raw_type, str) and raw_type.startswith(
+                    "response.image_generation_call."
+                ):
+                    status_fragment = raw_type.rsplit(".", 1)[-1]
+                    status_map = {
+                        "in_progress": "in_progress",
+                        "generating": "generating",
+                        "partial_image": "partial_image",
+                        "completed": "completed",
+                    }
+                    status = status_map.get(status_fragment, "in_progress")
+
+                    raw_map = raw_mapping if isinstance(raw_mapping, Mapping) else None
+
+                    def _get(key: str, *, source: Mapping[str, Any] | None = raw_map):
+                        if source and key in source:
+                            return source.get(key)
+                        item_obj = source.get("item") if source else None
+                        if isinstance(item_obj, Mapping):
+                            return item_obj.get(key)
+                        return None
+
+                    tool_call = _build_image_generation_tool_call(
+                        item_id=item_id,
+                        status=status,
+                        result=_get("result") or _get("b64_json"),
+                        revised_prompt=_get("revised_prompt"),
+                        image_format=_get("format") or _get("output_format"),
+                        size=_get("size"),
+                        quality=_get("quality"),
+                        background=_get("background"),
+                        output_index=_get("output_index"),
+                        partial_image_index=_get("partial_image_index"),
+                        partial_image_b64=_get("partial_image_b64") or _get("b64_json"),
                     )
                 elif isinstance(raw_type, str) and raw_type.startswith(
                     "response.code_interpreter_call."
@@ -320,6 +409,9 @@ class OpenAIStreamingHandle(AgentStreamingHandle):
                         status=status,
                         code=None,
                         outputs=None,
+                        container_id=container_id,
+                        container_mode=container_mode,
+                        annotations=annotations,
                     )
                 elif raw_type == "response.code_interpreter_call_code.delta":
                     code_delta = getattr(raw, "delta", None)
@@ -328,6 +420,9 @@ class OpenAIStreamingHandle(AgentStreamingHandle):
                         status="in_progress",
                         code=_coerce_delta(code_delta),
                         outputs=None,
+                        container_id=container_id,
+                        container_mode=container_mode,
+                        annotations=annotations,
                     )
                 elif isinstance(raw_type, str) and raw_type.startswith(
                     "response.file_search_call."
@@ -354,6 +449,40 @@ class OpenAIStreamingHandle(AgentStreamingHandle):
                         queries=queries,
                         results=results,
                     )
+                elif (
+                    raw_type == "response.output_item.done"
+                    and isinstance(raw_mapping, Mapping)
+                    and raw_mapping.get("item", {}).get("type") == "image_generation_call"
+                ):
+                    item = raw_mapping.get("item", {}) or {}
+                    tool_call = _build_image_generation_tool_call(
+                        item_id=item.get("id"),
+                        status=item.get("status") or "completed",
+                        result=item.get("result") or item.get("b64_json"),
+                        revised_prompt=item.get("revised_prompt"),
+                        image_format=item.get("format") or item.get("output_format"),
+                        size=item.get("size"),
+                        quality=item.get("quality"),
+                        background=item.get("background"),
+                        output_index=item.get("output_index"),
+                        partial_image_index=item.get("partial_image_index"),
+                        partial_image_b64=item.get("partial_image_b64") or item.get("b64_json"),
+                    )
+                elif (
+                    raw_type in {"response.output_item.added", "response.output_item.done"}
+                    and isinstance(raw_mapping, Mapping)
+                    and raw_mapping.get("item", {}).get("type") == "code_interpreter_call"
+                ):
+                    item = raw_mapping.get("item", {}) or {}
+                    tool_call = _build_code_interpreter_tool_call(
+                        item_id=item.get("id"),
+                        status=item.get("status"),
+                        code=item.get("code"),
+                        outputs=item.get("outputs"),
+                        container_id=item.get("container_id") or item.get("container"),
+                        container_mode=container_mode,
+                        annotations=annotations,
+                    )
 
                 yield AgentStreamEvent(
                     kind="raw_response_event",
@@ -375,6 +504,21 @@ class OpenAIStreamingHandle(AgentStreamingHandle):
                 agent_name = _extract_agent_name(item)
                 tool_call_id, tool_name = _extract_tool_info(item)
                 item_payload = AgentStreamEvent._to_mapping(item)
+                annotations = None
+                raw_ann = getattr(event, "annotations", None) or getattr(item, "annotations", None)
+                if isinstance(raw_ann, list):
+                    filtered = [
+                        ann
+                        for ann in raw_ann
+                        if isinstance(ann, Mapping)
+                        and ann.get("type")
+                        in {"url_citation", "container_file_citation", "file_citation"}
+                    ]
+                    if filtered:
+                        annotations = filtered
+                container_mode = (
+                    self.metadata.get("code_interpreter_mode") if self.metadata else None
+                )
 
                 tool_call = None
                 if getattr(item, "type", None) == "web_search_call":
@@ -384,11 +528,18 @@ class OpenAIStreamingHandle(AgentStreamingHandle):
                         action=AgentStreamEvent._to_mapping(getattr(item, "action", None)),
                     )
                 elif getattr(item, "type", None) == "code_interpreter_call":
+                    container_map = AgentStreamEvent._to_mapping(getattr(item, "container", None))
+                    container_id_for_item = getattr(item, "container_id", None)
+                    if container_id_for_item is None and isinstance(container_map, Mapping):
+                        container_id_for_item = container_map.get("id")
                     tool_call = _build_code_interpreter_tool_call(
                         item_id=getattr(item, "id", None),
                         status=getattr(item, "status", None),
                         code=getattr(item, "code", None),
                         outputs=AgentStreamEvent._to_mapping(getattr(item, "outputs", None)),
+                        container_id=container_id_for_item,
+                        container_mode=container_mode,
+                        annotations=annotations,
                     )
                 elif getattr(item, "type", None) == "file_search_call":
                     tool_call = _build_file_search_tool_call(
@@ -396,6 +547,23 @@ class OpenAIStreamingHandle(AgentStreamingHandle):
                         status=getattr(item, "status", None),
                         queries=getattr(item, "queries", None),
                         results=AgentStreamEvent._to_mapping(getattr(item, "results", None)),
+                    )
+                elif getattr(item, "type", None) == "image_generation_call":
+                    tool_call = _build_image_generation_tool_call(
+                        item_id=getattr(item, "id", None),
+                        status=getattr(item, "status", None),
+                        result=getattr(item, "result", None)
+                        or getattr(item, "b64_json", None),
+                        revised_prompt=getattr(item, "revised_prompt", None),
+                        image_format=getattr(item, "format", None)
+                        or getattr(item, "output_format", None),
+                        size=getattr(item, "size", None),
+                        quality=getattr(item, "quality", None),
+                        background=getattr(item, "background", None),
+                        output_index=getattr(item, "output_index", None),
+                        partial_image_index=getattr(item, "partial_image_index", None),
+                        partial_image_b64=getattr(item, "partial_image_b64", None)
+                        or getattr(item, "b64_json", None),
                     )
 
                 yield AgentStreamEvent(
@@ -568,6 +736,9 @@ class OpenAIAgentRuntime(AgentRuntime):
                         mapped.append(mapping)
                 tool_outputs = mapped or None
         base_metadata: dict[str, Any] = {"agent_key": agent_key, "model": str(agent.model)}
+        mode = self._registry.get_code_interpreter_mode(agent_key)
+        if mode:
+            base_metadata["code_interpreter_mode"] = mode
         metadata_payload: Mapping[str, Any]
         if safe_metadata:
             metadata_payload = {**base_metadata, **safe_metadata}
@@ -642,6 +813,9 @@ class OpenAIAgentRuntime(AgentRuntime):
             **run_kwargs,
         )
         base_metadata: dict[str, Any] = {"agent_key": agent_key, "model": str(agent.model)}
+        mode = self._registry.get_code_interpreter_mode(agent_key)
+        if mode:
+            base_metadata["code_interpreter_mode"] = mode
         metadata_payload = {**base_metadata, **safe_metadata}
         return OpenAIStreamingHandle(
             stream=stream,

@@ -26,7 +26,11 @@ from typing import Any
 import httpx
 import pytest
 
-from app.api.v1.shared.streaming import FileCitation, FileSearchCall, StreamingEvent
+from app.api.v1.shared.streaming import StreamingEvent
+from tests.utils.stream_assertions import (
+    assert_file_search_expectations,
+    maybe_record_stream,
+)
 
 
 def _default_base_url() -> str:
@@ -232,9 +236,6 @@ async def test_file_search_streaming_manual() -> None:
             assert resp.status_code == 200, f"status {resp.status_code}: {body}"
 
             events: list[StreamingEvent] = []
-            assembled_text_parts: list[str] = []
-            fs_statuses: list[str] = []
-            results_seen: list[dict[str, Any]] = []
 
             async for line in resp.aiter_lines():
                 if not line or not line.startswith("data:"):
@@ -247,50 +248,10 @@ async def test_file_search_streaming_manual() -> None:
                 parsed = StreamingEvent.model_validate(event)
                 events.append(parsed)
 
-                if parsed.tool_call:
-                    fs = None
-                    if isinstance(parsed.tool_call, dict):
-                        fs = parsed.tool_call.get("file_search_call")
-                    else:
-                        fs = getattr(parsed.tool_call, "file_search_call", None)
-                    if fs:
-                        status = fs.get("status") if isinstance(fs, dict) else getattr(fs, "status", None)
-                        if status:
-                            fs_statuses.append(status)
-                        results = fs.get("results") if isinstance(fs, dict) else getattr(fs, "results", None)
-                        if results:
-                            results_seen.extend(results)
-
-                if parsed.text_delta:
-                    assembled_text_parts.append(parsed.text_delta)
-
                 if event.get("is_terminal"):
                     break
 
-    # Structural assertions
-    assert events, "Expected at least one streaming event"
-    assert events[-1].is_terminal, "Stream must end with a terminal event"
+    assert_file_search_expectations(events, expected_store_id=store_openai_id)
 
-    seqs = [e.sequence_number for e in events if e.sequence_number is not None]
-    assert seqs == sorted(seqs), "sequence_number should be monotonically increasing"
-
-    resp_ids = {e.response_id for e in events if e.response_id}
-    assert len(resp_ids) <= 1, "response_id changed mid-stream"
-
-    # file_search_call must complete
-    assert fs_statuses, "No file_search_call status events seen"
-    assert fs_statuses[-1] == "completed", "file_search_call did not complete"
-
-    # Results should reference the selected file
-    assert results_seen, "Expected file_search_call results"
-
-    def _vector_store_id(result: Any) -> str | None:
-        if isinstance(result, dict):
-            return result.get("vector_store_id")
-        return getattr(result, "vector_store_id", None)
-
-    assert any(_vector_store_id(r) == store_openai_id for r in results_seen), "Results did not reference the selected store"
-
-    # Assistant text is non-empty
-    full_text = "".join(assembled_text_parts).strip()
-    assert full_text, "No assistant text returned"
+    default_path = Path(__file__).resolve().parent.parent / "fixtures" / "streams" / "file_search.ndjson"
+    maybe_record_stream(events, env_var="MANUAL_RECORD_STREAM_TO", default_path=default_path)

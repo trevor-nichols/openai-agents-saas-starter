@@ -222,6 +222,7 @@ markers = [
   "stripe_replay: fixture-driven Stripe webhook replay tests",
   "integration: long-running integration tests (docker, external services)",
   "smoke: fast HTTP smoke tests against a running api-service",
+  "contract: deterministic contract/playback tests (no live network calls)",
 ]
 
 [tool.coverage.run]

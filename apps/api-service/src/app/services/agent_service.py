@@ -10,7 +10,7 @@ from __future__ import annotations
 import inspect
 import logging
 import uuid
-from collections.abc import AsyncGenerator, Iterable
+from collections.abc import AsyncGenerator, Iterable, Mapping
 from datetime import datetime
 from typing import Any
 
@@ -361,8 +361,14 @@ class AgentService:
                     elif event.response_text and not complete_response:
                         complete_response = event.response_text
 
+                    attachment_sources: list[Mapping[str, Any]] = []
+                    if event.payload and isinstance(event.payload, Mapping):
+                        attachment_sources.append(event.payload)
+                    if isinstance(event.tool_call, Mapping):
+                        attachment_sources.append(event.tool_call)
+
                     new_attachments = await self._attachment_service.ingest_image_outputs(
-                        [event.payload] if event.payload else None,
+                        attachment_sources or None,
                         actor=actor,
                         conversation_id=conversation_id,
                         agent_key=descriptor.key,

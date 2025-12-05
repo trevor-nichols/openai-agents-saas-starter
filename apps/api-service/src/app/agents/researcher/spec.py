@@ -14,7 +14,7 @@ def get_agent_spec() -> AgentSpec:
         model_key="data",
         capabilities=("research", "search"),
         # Uses web search, file search, and code interpreter for richer tests/flows.
-        tool_keys=("web_search", "file_search", "code_interpreter"),
+        tool_keys=("web_search", "file_search", "code_interpreter", "image_generation"),
         # Bind to the tenant's primary store by default; callers can override via
         # context.vector_store_id(s).
         vector_store_binding="tenant_default",

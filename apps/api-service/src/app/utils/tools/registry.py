@@ -196,11 +196,11 @@ def initialize_tools() -> ToolRegistry:
             "type": "image_generation",
             "size": settings.image_default_size,
             "quality": settings.image_default_quality,
-            "format": settings.image_default_format,
+            "output_format": settings.image_default_format,
             "background": settings.image_default_background,
         }
         if settings.image_default_compression is not None:
-            image_config["compression"] = settings.image_default_compression
+            image_config["output_compression"] = settings.image_default_compression
         if settings.image_max_partial_images:
             image_config["partial_images"] = settings.image_max_partial_images
 

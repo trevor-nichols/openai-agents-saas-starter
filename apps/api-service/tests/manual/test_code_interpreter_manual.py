@@ -21,11 +21,16 @@ from __future__ import annotations
 import json
 import os
 from getpass import getpass
+from pathlib import Path
 
 import httpx
 import pytest
 
-from app.api.v1.shared.streaming import CodeInterpreterCall, StreamingEvent
+from app.api.v1.shared.streaming import ContainerFileCitation, StreamingEvent
+from tests.utils.stream_assertions import (
+    assert_code_interpreter_expectations,
+    maybe_record_stream,
+)
 
 
 def _default_base_url() -> str:
@@ -71,8 +76,8 @@ async def test_code_interpreter_streaming_manual() -> None:
     payload = {
         "agent_type": "researcher",
         "message": (
-            "Use the code interpreter to compute the square root of 2, rounded to 3 decimals. "
-            "You must execute Python code before responding. Show the numeric result and cite it."
+            "Use the code interpreter to calculate the square root of 2 (or 2.0) using Python, "
+            "show the numeric result, and ensure you run code before responding."
         ),
         "share_location": False,
     }
@@ -84,8 +89,6 @@ async def test_code_interpreter_streaming_manual() -> None:
             assert resp.status_code == 200, f"status {resp.status_code}: {body}"
 
             events: list[StreamingEvent] = []
-            assembled_text_parts: list[str] = []
-            outputs_seen: list[CodeInterpreterCall] = []
 
             async for line in resp.aiter_lines():
                 if not line or not line.startswith("data:"):
@@ -98,39 +101,13 @@ async def test_code_interpreter_streaming_manual() -> None:
                 parsed = StreamingEvent.model_validate(event)
                 events.append(parsed)
 
-                # Collect code interpreter status/outputs
-                ci = None
-                if isinstance(parsed.tool_call, dict):
-                    ci = parsed.tool_call.get("code_interpreter_call")
-                elif parsed.tool_call:
-                    ci = getattr(parsed.tool_call, "code_interpreter_call", None)
-
-                if ci:
-                    status = ci.get("status") if isinstance(ci, dict) else getattr(ci, "status", None)
-                    outputs = ci.get("outputs") if isinstance(ci, dict) else getattr(ci, "outputs", None)
-                    if status == "completed":
-                        outputs_seen.append(ci if isinstance(ci, CodeInterpreterCall) else CodeInterpreterCall(**ci))
-                    if outputs:
-                        outputs_seen.append(ci if isinstance(ci, CodeInterpreterCall) else CodeInterpreterCall(**ci))
-
-                if parsed.text_delta:
-                    assembled_text_parts.append(parsed.text_delta)
-
                 if event.get("is_terminal"):
                     break
 
-    # Structural assertions
-    assert events, "Expected at least one streaming event"
-    assert events[-1].is_terminal, "Stream must end with a terminal event"
+    assert_code_interpreter_expectations(events)
 
-    seqs = [e.sequence_number for e in events if e.sequence_number is not None]
-    assert seqs == sorted(seqs), "sequence_number should be monotonically increasing"
-
-    resp_ids = {e.response_id for e in events if e.response_id}
-    assert len(resp_ids) <= 1, "response_id changed mid-stream"
-
-    # Code interpreter must complete
-    statuses = []
+    # Extra manual guards for container metadata & annotations on code interpreter calls.
+    ci_calls = []
     for e in events:
         ci = None
         if isinstance(e.tool_call, dict):
@@ -138,17 +115,28 @@ async def test_code_interpreter_streaming_manual() -> None:
         elif e.tool_call:
             ci = getattr(e.tool_call, "code_interpreter_call", None)
         if ci:
-            status = ci.get("status") if isinstance(ci, dict) else getattr(ci, "status", None)
-            if status:
-                statuses.append(status)
+            ci_calls.append(ci)
 
-    assert statuses, "No code_interpreter_call status events seen"
-    assert statuses[-1] == "completed", "code_interpreter_call did not complete"
+    assert ci_calls, "Expected at least one code_interpreter_call in stream"
+    assert any(getattr(ci, "container_id", None) or (ci.get("container_id") if isinstance(ci, dict) else None) for ci in ci_calls), "Missing container_id on code_interpreter_call"
+    assert all(
+        (getattr(ci, "container_mode", None) or (ci.get("container_mode") if isinstance(ci, dict) else None))
+        in {"auto", "explicit"}
+        for ci in ci_calls
+        if getattr(ci, "container_mode", None) or (ci.get("container_mode") if isinstance(ci, dict) else None)
+    ), "container_mode should be auto or explicit"
 
-    # Outputs captured
-    assert outputs_seen, "No code interpreter outputs captured"
+    # If annotations were emitted, ensure we surface container_file_citation correctly.
+    annotations_present = []
+    for ci in ci_calls:
+        anns = getattr(ci, "annotations", None) if not isinstance(ci, dict) else ci.get("annotations")
+        if anns:
+            annotations_present.extend(anns)
+    if annotations_present:
+        assert any(
+            isinstance(a, ContainerFileCitation) or (isinstance(a, dict) and a.get("type") == "container_file_citation")
+            for a in annotations_present
+        ), "Expected container_file_citation in code_interpreter_call.annotations"
 
-    # Assistant text references numeric result
-    full_text = "".join(assembled_text_parts).strip()
-    assert full_text, "No assistant text returned"
-    assert any(token in full_text for token in ["1.414", "1.41", "1.415", "1.4142"]), "Result not mentioned"
+    default_path = Path(__file__).resolve().parent.parent / "fixtures" / "streams" / "code_interpreter.ndjson"
+    maybe_record_stream(events, env_var="MANUAL_RECORD_STREAM_TO", default_path=default_path)

@@ -20,6 +20,7 @@ from agents import (
 )
 from agents.agent_output import AgentOutputSchema, AgentOutputSchemaBase
 from agents.extensions.handoff_prompt import prompt_with_handoff_instructions
+from agents.model_settings import ModelSettings
 
 from app.agents._shared.handoff_filters import get_filter as get_handoff_filter
 from app.agents._shared.loaders import (
@@ -65,6 +66,7 @@ class OpenAIAgentRegistry:
         self._validated_static_agents: dict[str, Agent] | None = None
         self._specs: list[AgentSpec] = list(specs) if specs is not None else load_agent_specs()
         self._default_agent_key = default_agent_key(self._specs)
+        self._code_interpreter_modes: dict[str, str] = {}
         self._static_ctx = PromptRuntimeContext(
             actor=ConversationActorContext(
                 tenant_id="bootstrap-tenant",
@@ -119,6 +121,11 @@ class OpenAIAgentRegistry:
 
     def get_descriptor(self, agent_key: str) -> AgentDescriptor | None:
         return self._descriptors.get(agent_key)
+
+    def get_code_interpreter_mode(self, agent_key: str) -> str | None:
+        """Return the resolved mode ('auto' or 'explicit') for an agent if present."""
+
+        return self._code_interpreter_modes.get(agent_key)
 
     def list_descriptors(self) -> Sequence[AgentDescriptor]:
         return [self._descriptors[name] for name in sorted(self._descriptors.keys())]
@@ -259,10 +266,17 @@ class OpenAIAgentRegistry:
 
         tools_with_agents = tools + agent_tools
 
+        # Always request useful tool outputs when present (no user config required).
+        response_include: list[str] = []
+        if "code_interpreter" in spec.tool_keys:
+            response_include.append("code_interpreter_call.outputs")
+        model_settings = ModelSettings(response_include=response_include or None)
+
         return Agent(
             name=spec.display_name,
             instructions=instructions,
             model=self._resolve_agent_model(settings, spec),
+            model_settings=model_settings,
             tools=tools_with_agents,
             handoffs=cast(list[Any], handoff_targets),
             handoff_description=spec.description if handoff_targets else None,
@@ -428,6 +442,7 @@ class OpenAIAgentRegistry:
                         {"type": "code_interpreter", "container": container_id},
                     )
                     tools.append(CodeInterpreterTool(tool_config=tool_config))
+                    self._code_interpreter_modes[spec.key] = "explicit"
                 else:
                     auto_container = cast(
                         CodeInterpreterContainerCodeInterpreterToolAuto,
@@ -443,6 +458,7 @@ class OpenAIAgentRegistry:
                         {"type": "code_interpreter", "container": auto_container},
                     )
                     tools.append(CodeInterpreterTool(tool_config=tool_config))
+                    self._code_interpreter_modes[spec.key] = "auto"
             elif isinstance(tool, FileSearchTool):
                 resolved = self._resolve_file_search_config(
                     spec=spec,
@@ -496,10 +512,16 @@ class OpenAIAgentRegistry:
         allowed_formats = set(settings.image_allowed_formats)
 
         cfg = dict(config or {})
+        # Backward compat: normalize legacy keys
+        if "format" in cfg and "output_format" not in cfg:
+            cfg["output_format"] = cfg.pop("format")
+        if "compression" in cfg and "output_compression" not in cfg:
+            cfg["output_compression"] = cfg.pop("compression")
+
         cfg.setdefault("type", "image_generation")
         cfg.setdefault("size", settings.image_default_size)
         cfg.setdefault("quality", settings.image_default_quality)
-        cfg.setdefault("format", settings.image_default_format)
+        cfg.setdefault("output_format", settings.image_default_format)
         cfg.setdefault("background", settings.image_default_background)
 
         if cfg.get("size") not in allowed_sizes:
@@ -508,12 +530,12 @@ class OpenAIAgentRegistry:
             raise ValueError(f"Unsupported image quality '{cfg.get('quality')}'")
         if cfg.get("background") not in allowed_background:
             raise ValueError(f"Unsupported image background '{cfg.get('background')}'")
-        if cfg.get("format") not in allowed_formats:
-            raise ValueError(f"Unsupported image format '{cfg.get('format')}'")
-        compression = cfg.get("compression")
+        if cfg.get("output_format") not in allowed_formats:
+            raise ValueError(f"Unsupported image format '{cfg.get('output_format')}'")
+        compression = cfg.get("output_compression")
         if compression is not None:
             if not isinstance(compression, int) or compression < 0 or compression > 100:
-                raise ValueError("image_generation compression must be 0-100 or omitted")
+                raise ValueError("image_generation output_compression must be 0-100 or omitted")
         partial_images = cfg.get("partial_images")
         if partial_images is not None:
             if not isinstance(partial_images, int) or partial_images < 0:
