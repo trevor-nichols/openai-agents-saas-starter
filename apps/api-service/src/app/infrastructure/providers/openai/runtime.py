@@ -2,633 +2,28 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
-from collections.abc import AsyncIterable, AsyncIterator, Mapping
-from typing import Any, Protocol, cast, runtime_checkable
+from collections.abc import Mapping
+from typing import Any, cast
 
 from agents import Agent, Runner
 from agents.lifecycle import RunHooksBase
-from agents.run import RunConfig
-from agents.usage import Usage
 
-from app.agents._shared.handoff_filters import get_filter as get_handoff_filter
 from app.agents._shared.prompt_context import PromptRuntimeContext
 from app.core.settings import get_settings
-from app.domain.ai import AgentRunResult, AgentRunUsage, AgentStreamEvent, RunOptions
-from app.domain.ai.ports import (
-    AgentRuntime,
-    AgentSessionHandle,
-    AgentStreamingHandle,
-)
+from app.domain.ai import AgentRunResult, RunOptions
+from app.domain.ai.models import AgentStreamEvent
+from app.domain.ai.ports import AgentRuntime, AgentSessionHandle, AgentStreamingHandle
 from app.services.agents.context import ConversationActorContext
-from openai.types.responses import ResponseTextDeltaEvent
+
+from .context import resolve_runtime_context
+from .lifecycle import HookRelay, LifecycleEventBus, LifecycleEventSink
+from .run_config import build_run_config
+from .streaming import OpenAIStreamingHandle
+from .usage import convert_usage
 
 logger = logging.getLogger(__name__)
-
-
-def _convert_usage(usage: Usage | None) -> AgentRunUsage | None:
-    if usage is None:
-        return None
-    return AgentRunUsage(
-        input_tokens=int(usage.input_tokens) if usage.input_tokens is not None else None,
-        output_tokens=int(usage.output_tokens) if usage.output_tokens is not None else None,
-    )
-
-
-def _coerce_delta(delta: Any) -> str:
-    """Coerce SDK delta payloads into a string for streaming clients."""
-
-    if delta is None:
-        return ""
-    if isinstance(delta, str):
-        return delta
-    try:
-        return str(delta)
-    except Exception:  # pragma: no cover - extremely defensive
-        return ""
-
-
-def _build_web_search_tool_call(
-    *,
-    item_id: Any,
-    status: str | None,
-    action: Mapping[str, Any] | None = None,
-) -> Mapping[str, Any]:
-    """Normalize web_search tool call payload into API shape."""
-
-    normalized_status = "in_progress"
-    if status == "completed":
-        normalized_status = "completed"
-    return {
-        "tool_type": "web_search",
-        "web_search_call": {
-            "id": str(item_id) if item_id is not None else "",
-            "type": "web_search_call",
-            "status": normalized_status,
-            "action": action,
-        },
-    }
-
-
-def _build_code_interpreter_tool_call(
-    *,
-    item_id: Any,
-    status: str | None,
-    code: str | None = None,
-    outputs: Any | None = None,
-    container_id: str | None = None,
-    container_mode: str | None = None,
-    annotations: list[Mapping[str, Any]] | None = None,
-) -> Mapping[str, Any]:
-    normalized_status = "in_progress"
-    if status in {"completed", "interpreting"}:
-        normalized_status = status
-    return {
-        "tool_type": "code_interpreter",
-        "code_interpreter_call": {
-            "id": str(item_id) if item_id is not None else "",
-            "type": "code_interpreter_call",
-            "status": normalized_status,
-            "code": code,
-            "outputs": outputs,
-            "container_id": container_id,
-            "container_mode": container_mode,
-            "annotations": annotations,
-        },
-    }
-
-
-def _build_file_search_tool_call(
-    *,
-    item_id: Any,
-    status: str | None,
-    queries: list[str] | None = None,
-    results: Any | None = None,
-) -> Mapping[str, Any]:
-    normalized_status = "in_progress"
-    if status in {"searching", "completed"}:
-        normalized_status = status
-    return {
-        "tool_type": "file_search",
-        "file_search_call": {
-            "id": str(item_id) if item_id is not None else "",
-            "type": "file_search_call",
-            "status": normalized_status,
-            "queries": queries,
-            "results": results,
-        },
-    }
-
-
-def _build_image_generation_tool_call(
-    *,
-    item_id: Any,
-    status: str | None,
-    result: Any | None = None,
-    revised_prompt: str | None = None,
-    image_format: str | None = None,
-    size: str | None = None,
-    quality: str | None = None,
-    background: str | None = None,
-    output_index: int | None = None,
-    partial_image_index: int | None = None,
-    partial_image_b64: str | None = None,
-) -> Mapping[str, Any]:
-    normalized_status = (
-        status
-        if status in {"in_progress", "generating", "partial_image", "completed"}
-        else "in_progress"
-    )
-    return {
-        "tool_type": "image_generation",
-        "image_generation_call": {
-            "id": str(item_id) if item_id is not None else "",
-            "type": "image_generation_call",
-            "status": normalized_status,
-            "result": result,
-            "revised_prompt": revised_prompt,
-            "format": image_format,
-            "size": size,
-            "quality": quality,
-            "background": background,
-            "output_index": output_index,
-            "partial_image_index": partial_image_index,
-            "partial_image_b64": partial_image_b64,
-            # Some Responses events surface partials as b64_json; keep alias for clients.
-            "b64_json": partial_image_b64 if partial_image_b64 else None,
-        },
-    }
-
-
-def _extract_agent_name(obj: Any) -> str | None:
-    """Extract agent name from SDK agent or item structures."""
-
-    if obj is None:
-        return None
-    name = getattr(obj, "name", None)
-    if isinstance(name, str):
-        return name
-    # Some items carry agent on .agent
-    agent = getattr(obj, "agent", None)
-    agent_name = getattr(agent, "name", None)
-    return agent_name if isinstance(agent_name, str) else None
-
-
-def _extract_tool_info(item: Any) -> tuple[str | None, str | None]:
-    """Best-effort extraction of tool call id/name from run items."""
-
-    if item is None:
-        return None, None
-    raw_item = getattr(item, "raw_item", None)
-    tool_call_id = getattr(raw_item, "id", None) or getattr(item, "id", None)
-    tool_name = getattr(raw_item, "name", None) or getattr(item, "name", None)
-    if tool_call_id is not None:
-        tool_call_id = str(tool_call_id)
-    if tool_name is not None:
-        tool_name = str(tool_name)
-    return tool_call_id, tool_name
-
-
-@runtime_checkable
-class LifecycleEventSink(Protocol):
-    async def emit(self, event: AgentStreamEvent) -> None: ...
-
-    def drain(self) -> AsyncIterable[AgentStreamEvent]: ...
-
-
-class LifecycleEventBus:
-    """Lightweight async queue for lifecycle events emitted by hooks."""
-
-    def __init__(self) -> None:
-        self._queue: asyncio.Queue[AgentStreamEvent] = asyncio.Queue()
-
-    async def emit(self, event: AgentStreamEvent) -> None:
-        await self._queue.put(event)
-
-    def drain(self) -> AsyncIterable[AgentStreamEvent]:
-        """Async generator to drain queued events without blocking."""
-
-        async def _gen():
-            while not self._queue.empty():
-                yield await self._queue.get()
-
-        return _gen()
-
-
-class _HookRelay(RunHooksBase[Any, Agent[Any]]):
-    """Bridges SDK RunHooks events into AgentStreamEvent lifecycle messages."""
-
-    def __init__(self, bus: LifecycleEventSink) -> None:
-        self._bus = bus
-
-    async def on_agent_start(self, context, agent):
-        await self._bus.emit(
-            AgentStreamEvent(
-                kind="lifecycle",
-                event="agent_start",
-                agent=_extract_agent_name(agent),
-            )
-        )
-
-    async def on_agent_end(self, context, agent, output):
-        await self._bus.emit(
-            AgentStreamEvent(kind="lifecycle", event="agent_end", agent=_extract_agent_name(agent))
-        )
-
-    async def on_handoff(self, context, from_agent, to_agent):
-        await self._bus.emit(
-            AgentStreamEvent(
-                kind="lifecycle",
-                event="handoff",
-                agent=_extract_agent_name(from_agent),
-                new_agent=_extract_agent_name(to_agent),
-            )
-        )
-
-    async def on_tool_start(self, context, agent, tool):
-        await self._bus.emit(
-            AgentStreamEvent(
-                kind="lifecycle",
-                event="tool_start",
-                agent=_extract_agent_name(agent),
-                tool_name=getattr(tool, "name", None),
-            )
-        )
-
-    async def on_tool_end(self, context, agent, tool, result):
-        await self._bus.emit(
-            AgentStreamEvent(
-                kind="lifecycle",
-                event="tool_end",
-                agent=_extract_agent_name(agent),
-                tool_name=getattr(tool, "name", None),
-            )
-        )
-
-    async def on_llm_start(self, context, agent, system_prompt, input_items):
-        await self._bus.emit(
-            AgentStreamEvent(kind="lifecycle", event="llm_start", agent=_extract_agent_name(agent))
-        )
-
-    async def on_llm_end(self, context, agent, response):
-        await self._bus.emit(
-            AgentStreamEvent(kind="lifecycle", event="llm_end", agent=_extract_agent_name(agent))
-        )
-
-
-class OpenAIStreamingHandle(AgentStreamingHandle):
-    """Wraps the SDK streaming iterator to emit normalized events."""
-
-    def __init__(
-        self,
-        *,
-        stream,
-        agent_key: str,
-        metadata: Mapping[str, Any],
-        lifecycle_bus: LifecycleEventSink | None = None,
-    ) -> None:
-        self._stream = stream
-        self._agent_key = agent_key
-        self.metadata = metadata
-        self._lifecycle_bus = lifecycle_bus
-
-    async def events(self) -> AsyncIterator[AgentStreamEvent]:
-        if self._lifecycle_bus:
-            async for ev in self._lifecycle_bus.drain():
-                yield ev
-        async for event in self._stream.stream_events():
-            if event.type == "raw_response_event":
-                raw = event.data
-                raw_type = getattr(raw, "type", None)
-                sequence_number = getattr(raw, "sequence_number", None)
-                raw_mapping = AgentStreamEvent._to_mapping(raw)
-                item_id = getattr(raw, "item_id", None)
-
-                text_delta: str | None = None
-                reasoning_delta: str | None = None
-
-                if isinstance(raw, ResponseTextDeltaEvent):
-                    text_delta = _coerce_delta(getattr(raw, "delta", None))
-                elif raw_type in {
-                    "response.reasoning_text.delta",
-                    "response.reasoning_summary_text.delta",
-                }:
-                    reasoning_delta = _coerce_delta(getattr(raw, "delta", None))
-
-                annotations = None
-                if raw_type == "response.output_text.annotation.added":
-                    annotation = AgentStreamEvent._to_mapping(getattr(raw, "annotation", None))
-                    if isinstance(annotation, Mapping) and annotation.get("type") in {
-                        "url_citation",
-                        "container_file_citation",
-                        "file_citation",
-                    }:
-                        annotations = [annotation]
-                # Some Responses events (e.g., file_search outputs) include annotations inline
-                # on the message delta instead of the dedicated annotation event; surface them.
-                if annotations is None and isinstance(raw_mapping, Mapping):
-                    inline_annotations = raw_mapping.get("annotations")
-                    if isinstance(inline_annotations, list):
-                        filtered = [
-                            ann
-                            for ann in inline_annotations
-                            if isinstance(ann, Mapping)
-                            and ann.get("type")
-                            in {"url_citation", "container_file_citation", "file_citation"}
-                        ]
-                        if filtered:
-                            annotations = filtered
-                container_id = None
-                if isinstance(raw_mapping, Mapping):
-                    item_map = raw_mapping.get("item") if "item" in raw_mapping else raw_mapping
-                    if isinstance(item_map, Mapping):
-                        container_id = item_map.get("container_id") or item_map.get("container")
-                container_mode = (
-                    self.metadata.get("code_interpreter_mode") if self.metadata else None
-                )
-
-                tool_call = None
-                if isinstance(raw_type, str) and raw_type.startswith("response.web_search_call."):
-                    status_fragment = raw_type.rsplit(".", 1)[-1]
-                    status = "completed" if status_fragment == "completed" else "in_progress"
-                    tool_call = _build_web_search_tool_call(
-                        item_id=item_id,
-                        status=status,
-                        action=None,
-                    )
-                elif isinstance(raw_type, str) and raw_type.startswith(
-                    "response.image_generation_call."
-                ):
-                    status_fragment = raw_type.rsplit(".", 1)[-1]
-                    status_map = {
-                        "in_progress": "in_progress",
-                        "generating": "generating",
-                        "partial_image": "partial_image",
-                        "completed": "completed",
-                    }
-                    status = status_map.get(status_fragment, "in_progress")
-
-                    raw_map = raw_mapping if isinstance(raw_mapping, Mapping) else None
-
-                    def _get(key: str, *, source: Mapping[str, Any] | None = raw_map):
-                        if source and key in source:
-                            return source.get(key)
-                        item_obj = source.get("item") if source else None
-                        if isinstance(item_obj, Mapping):
-                            return item_obj.get(key)
-                        return None
-
-                    tool_call = _build_image_generation_tool_call(
-                        item_id=item_id,
-                        status=status,
-                        result=_get("result") or _get("b64_json"),
-                        revised_prompt=_get("revised_prompt"),
-                        image_format=_get("format") or _get("output_format"),
-                        size=_get("size"),
-                        quality=_get("quality"),
-                        background=_get("background"),
-                        output_index=_get("output_index"),
-                        partial_image_index=_get("partial_image_index"),
-                        partial_image_b64=_get("partial_image_b64") or _get("b64_json"),
-                    )
-                elif isinstance(raw_type, str) and raw_type.startswith(
-                    "response.code_interpreter_call."
-                ):
-                    status_fragment = raw_type.rsplit(".", 1)[-1]
-                    status = (
-                        "completed"
-                        if status_fragment == "completed"
-                        else "interpreting"
-                        if status_fragment == "interpreting"
-                        else "in_progress"
-                    )
-                    tool_call = _build_code_interpreter_tool_call(
-                        item_id=item_id,
-                        status=status,
-                        code=None,
-                        outputs=None,
-                        container_id=container_id,
-                        container_mode=container_mode,
-                        annotations=annotations,
-                    )
-                elif raw_type == "response.code_interpreter_call_code.delta":
-                    code_delta = getattr(raw, "delta", None)
-                    tool_call = _build_code_interpreter_tool_call(
-                        item_id=item_id,
-                        status="in_progress",
-                        code=_coerce_delta(code_delta),
-                        outputs=None,
-                        container_id=container_id,
-                        container_mode=container_mode,
-                        annotations=annotations,
-                    )
-                elif isinstance(raw_type, str) and raw_type.startswith(
-                    "response.file_search_call."
-                ):
-                    status_fragment = raw_type.rsplit(".", 1)[-1]
-                    status = "completed" if status_fragment == "completed" else "searching"
-                    tool_call = _build_file_search_tool_call(
-                        item_id=item_id,
-                        status=status,
-                        queries=None,
-                        results=None,
-                    )
-                elif (
-                    raw_type == "response.output_item.done"
-                    and isinstance(raw_mapping, Mapping)
-                    and raw_mapping.get("item", {}).get("type") == "file_search_call"
-                ):
-                    item = raw_mapping.get("item", {}) or {}
-                    results = item.get("results")
-                    queries = item.get("queries")
-                    tool_call = _build_file_search_tool_call(
-                        item_id=item.get("id"),
-                        status=item.get("status") or "completed",
-                        queries=queries,
-                        results=results,
-                    )
-                elif (
-                    raw_type == "response.output_item.done"
-                    and isinstance(raw_mapping, Mapping)
-                    and raw_mapping.get("item", {}).get("type") == "image_generation_call"
-                ):
-                    item = raw_mapping.get("item", {}) or {}
-                    tool_call = _build_image_generation_tool_call(
-                        item_id=item.get("id"),
-                        status=item.get("status") or "completed",
-                        result=item.get("result") or item.get("b64_json"),
-                        revised_prompt=item.get("revised_prompt"),
-                        image_format=item.get("format") or item.get("output_format"),
-                        size=item.get("size"),
-                        quality=item.get("quality"),
-                        background=item.get("background"),
-                        output_index=item.get("output_index"),
-                        partial_image_index=item.get("partial_image_index"),
-                        partial_image_b64=item.get("partial_image_b64") or item.get("b64_json"),
-                    )
-                elif (
-                    raw_type in {"response.output_item.added", "response.output_item.done"}
-                    and isinstance(raw_mapping, Mapping)
-                    and raw_mapping.get("item", {}).get("type") == "code_interpreter_call"
-                ):
-                    item = raw_mapping.get("item", {}) or {}
-                    tool_call = _build_code_interpreter_tool_call(
-                        item_id=item.get("id"),
-                        status=item.get("status"),
-                        code=item.get("code"),
-                        outputs=item.get("outputs"),
-                        container_id=item.get("container_id") or item.get("container"),
-                        container_mode=container_mode,
-                        annotations=annotations,
-                    )
-
-                yield AgentStreamEvent(
-                    kind="raw_response_event",
-                    response_id=getattr(self._stream, "last_response_id", None),
-                    sequence_number=sequence_number,
-                    raw_type=raw_type,
-                    text_delta=text_delta,
-                    reasoning_delta=reasoning_delta,
-                    is_terminal=False,  # defer terminal until structured-output flush
-                    payload=raw_mapping,
-                    metadata=self.metadata,
-                    raw_event=raw_mapping,
-                    tool_call=tool_call,
-                    annotations=annotations,
-                )
-
-            elif event.type == "run_item_stream_event":
-                item = getattr(event, "item", None)
-                agent_name = _extract_agent_name(item)
-                tool_call_id, tool_name = _extract_tool_info(item)
-                item_payload = AgentStreamEvent._to_mapping(item)
-                annotations = None
-                raw_ann = getattr(event, "annotations", None) or getattr(item, "annotations", None)
-                if isinstance(raw_ann, list):
-                    filtered = [
-                        ann
-                        for ann in raw_ann
-                        if isinstance(ann, Mapping)
-                        and ann.get("type")
-                        in {"url_citation", "container_file_citation", "file_citation"}
-                    ]
-                    if filtered:
-                        annotations = filtered
-                container_mode = (
-                    self.metadata.get("code_interpreter_mode") if self.metadata else None
-                )
-
-                tool_call = None
-                if getattr(item, "type", None) == "web_search_call":
-                    tool_call = _build_web_search_tool_call(
-                        item_id=getattr(item, "id", None),
-                        status=getattr(item, "status", None),
-                        action=AgentStreamEvent._to_mapping(getattr(item, "action", None)),
-                    )
-                elif getattr(item, "type", None) == "code_interpreter_call":
-                    container_map = AgentStreamEvent._to_mapping(getattr(item, "container", None))
-                    container_id_for_item = getattr(item, "container_id", None)
-                    if container_id_for_item is None and isinstance(container_map, Mapping):
-                        container_id_for_item = container_map.get("id")
-                    tool_call = _build_code_interpreter_tool_call(
-                        item_id=getattr(item, "id", None),
-                        status=getattr(item, "status", None),
-                        code=getattr(item, "code", None),
-                        outputs=AgentStreamEvent._to_mapping(getattr(item, "outputs", None)),
-                        container_id=container_id_for_item,
-                        container_mode=container_mode,
-                        annotations=annotations,
-                    )
-                elif getattr(item, "type", None) == "file_search_call":
-                    tool_call = _build_file_search_tool_call(
-                        item_id=getattr(item, "id", None),
-                        status=getattr(item, "status", None),
-                        queries=getattr(item, "queries", None),
-                        results=AgentStreamEvent._to_mapping(getattr(item, "results", None)),
-                    )
-                elif getattr(item, "type", None) == "image_generation_call":
-                    tool_call = _build_image_generation_tool_call(
-                        item_id=getattr(item, "id", None),
-                        status=getattr(item, "status", None),
-                        result=getattr(item, "result", None)
-                        or getattr(item, "b64_json", None),
-                        revised_prompt=getattr(item, "revised_prompt", None),
-                        image_format=getattr(item, "format", None)
-                        or getattr(item, "output_format", None),
-                        size=getattr(item, "size", None),
-                        quality=getattr(item, "quality", None),
-                        background=getattr(item, "background", None),
-                        output_index=getattr(item, "output_index", None),
-                        partial_image_index=getattr(item, "partial_image_index", None),
-                        partial_image_b64=getattr(item, "partial_image_b64", None)
-                        or getattr(item, "b64_json", None),
-                    )
-
-                yield AgentStreamEvent(
-                    kind="run_item_stream_event",
-                    response_id=getattr(self._stream, "last_response_id", None),
-                    run_item_name=getattr(event, "name", None),
-                    run_item_type=getattr(item, "type", None),
-                    agent=agent_name,
-                    tool_call_id=tool_call_id,
-                    tool_name=tool_name,
-                    is_terminal=False,
-                    payload=item_payload,
-                    metadata=self.metadata,
-                    raw_event=item_payload,
-                    tool_call=tool_call,
-                )
-
-            elif event.type == "agent_updated_stream_event":
-                new_agent = getattr(event, "new_agent", None)
-                yield AgentStreamEvent(
-                    kind="agent_updated_stream_event",
-                    response_id=getattr(self._stream, "last_response_id", None),
-                    new_agent=_extract_agent_name(new_agent),
-                    payload=AgentStreamEvent._to_mapping(new_agent),
-                    metadata=self.metadata,
-                )
-            if self._lifecycle_bus:
-                async for ev in self._lifecycle_bus.drain():
-                    yield ev
-
-        # Emit a final structured-output event once the stream is complete.
-        final_output = getattr(self._stream, "final_output", None)
-        response_id = getattr(self._stream, "last_response_id", None)
-        structured_output = None
-        response_text = None
-        if final_output is not None:
-            if isinstance(final_output, str):
-                response_text = final_output
-            else:
-                structured_output = final_output
-                try:
-                    response_text = json.dumps(final_output, ensure_ascii=False)
-                except Exception:  # pragma: no cover
-                    response_text = str(final_output)
-            yield AgentStreamEvent(
-                kind="run_item_stream_event",
-                response_id=response_id,
-                is_terminal=True,
-                payload={"structured_output": structured_output, "response_text": response_text},
-                structured_output=structured_output,
-                response_text=response_text,
-                metadata=self.metadata,
-                agent=self._agent_key,
-            )
-
-    @property
-    def last_response_id(self) -> str | None:  # pragma: no cover - passthrough
-        return getattr(self._stream, "last_response_id", None)
-
-    @property
-    def usage(self) -> AgentRunUsage | None:  # pragma: no cover - passthrough
-        context = getattr(self._stream, "context_wrapper", None)
-        if not context:
-            return None
-        return _convert_usage(getattr(context, "usage", None))
 
 
 class OpenAIAgentRuntime(AgentRuntime):
@@ -659,39 +54,12 @@ class OpenAIAgentRuntime(AgentRuntime):
         metadata: Mapping[str, Any] | None = None,
         options: RunOptions | None = None,
     ) -> AgentRunResult:
-        runtime_ctx = None
-        safe_metadata: dict[str, Any] = {}
-        if metadata and isinstance(metadata, Mapping):
-            runtime_ctx = metadata.get("prompt_runtime_ctx")
-            safe_metadata = {k: v for k, v in metadata.items() if k != "prompt_runtime_ctx"}
-        if runtime_ctx is None:
-            runtime_ctx = self._bootstrap_ctx
-        elif not isinstance(runtime_ctx, PromptRuntimeContext):
-            raise TypeError("prompt_runtime_ctx must be a PromptRuntimeContext")
-        agent = self._registry.get_agent_handle(
+        agent, safe_metadata, hooks, _bus = self._prepare_run(  # bus unused in sync path
             agent_key,
-            runtime_ctx=runtime_ctx,
-            validate_prompts=True,
+            metadata=metadata,
+            options=options,
         )
-        if agent is None:
-            raise ValueError(f"Agent '{agent_key}' is not registered for OpenAI provider")
-        bus: LifecycleEventSink | None = LifecycleEventBus()
-        if options and options.hook_sink:
-            candidate = options.hook_sink
-            if isinstance(candidate, LifecycleEventSink):
-                bus = candidate
-            elif hasattr(candidate, "emit") and hasattr(candidate, "drain"):
-                bus = candidate  # best-effort duck typing
-        hooks = _HookRelay(bus) if bus else None
-        run_kwargs: dict[str, Any] = {}
-        if options:
-            if options.max_turns is not None:
-                run_kwargs["max_turns"] = options.max_turns
-            if options.previous_response_id:
-                run_kwargs["previous_response_id"] = options.previous_response_id
-            run_config = self._build_run_config(options)
-            if run_config is not None:
-                run_kwargs["run_config"] = run_config
+        run_kwargs = self._prepare_run_kwargs(options)
 
         result = await Runner.run(
             agent,
@@ -701,49 +69,12 @@ class OpenAIAgentRuntime(AgentRuntime):
             hooks=cast(RunHooksBase[Any, Agent[Any]] | None, hooks),
             **run_kwargs,
         )
-        # Tests often mock Runner.run to return our domain AgentRunResult directly;
-        # support both the SDK response shape and the domain model to keep the
-        # runtime resilient to test doubles.
-        if isinstance(result, AgentRunResult):
-            usage = result.usage
-            response_id = result.response_id
-            final_output = result.final_output
-            structured_output = result.structured_output
-            response_text = result.response_text
-            tool_outputs = result.tool_outputs
-        else:
-            context = getattr(result, "context_wrapper", None)
-            usage = _convert_usage(getattr(context, "usage", None) if context else None)
-            response_id = getattr(result, "last_response_id", None)
-            final_output = getattr(result, "final_output", "")
-            structured_output = None
-            response_text = None
-            tool_outputs = None
-            if isinstance(final_output, str):
-                response_text = final_output
-            else:
-                structured_output = final_output
-                try:
-                    response_text = json.dumps(final_output, ensure_ascii=False)
-                except Exception:  # pragma: no cover - fallback serialization
-                    response_text = str(final_output)
-            raw_items = getattr(result, "new_items", None)
-            if raw_items:
-                mapped: list[Mapping[str, Any]] = []
-                for item in raw_items:
-                    mapping = AgentStreamEvent._to_mapping(item)
-                    if mapping is not None:
-                        mapped.append(mapping)
-                tool_outputs = mapped or None
-        base_metadata: dict[str, Any] = {"agent_key": agent_key, "model": str(agent.model)}
-        mode = self._registry.get_code_interpreter_mode(agent_key)
-        if mode:
-            base_metadata["code_interpreter_mode"] = mode
-        metadata_payload: Mapping[str, Any]
-        if safe_metadata:
-            metadata_payload = {**base_metadata, **safe_metadata}
-        else:
-            metadata_payload = base_metadata
+
+        usage, response_id, final_output, structured_output, response_text, tool_outputs = (
+            self._normalize_run_result(result)
+        )
+        metadata_payload = self._build_metadata(agent_key, agent.model, safe_metadata)
+
         return AgentRunResult(
             final_output=final_output,
             response_id=response_id,
@@ -764,45 +95,10 @@ class OpenAIAgentRuntime(AgentRuntime):
         metadata: Mapping[str, Any] | None = None,
         options: RunOptions | None = None,
     ) -> AgentStreamingHandle:
-        runtime_ctx = None
-        safe_metadata: dict[str, Any] = {}
-        if isinstance(metadata, Mapping):
-            runtime_ctx = metadata.get("prompt_runtime_ctx")
-            safe_metadata = {k: v for k, v in metadata.items() if k != "prompt_runtime_ctx"}
-        elif metadata is not None:
-            logger.warning(
-                "run_stream metadata ignored because it is not a mapping",
-                extra={"type": type(metadata).__name__},
-            )
-        if runtime_ctx is None:
-            runtime_ctx = self._bootstrap_ctx
-        elif not isinstance(runtime_ctx, PromptRuntimeContext):
-            raise TypeError("prompt_runtime_ctx must be a PromptRuntimeContext")
-        agent = self._registry.get_agent_handle(
-            agent_key,
-            runtime_ctx=runtime_ctx,
-            validate_prompts=True,
+        agent, safe_metadata, hooks, bus = self._prepare_run(
+            agent_key, metadata=metadata, options=options
         )
-        if agent is None:
-            raise ValueError(f"Agent '{agent_key}' is not registered for OpenAI provider")
-        bus: LifecycleEventSink | None = LifecycleEventBus()
-        if options and options.hook_sink:
-            candidate = options.hook_sink
-            if isinstance(candidate, LifecycleEventSink):
-                bus = candidate
-            elif hasattr(candidate, "emit") and hasattr(candidate, "drain"):
-                bus = candidate  # best-effort duck typing
-        hooks = _HookRelay(bus) if bus else None
-
-        run_kwargs: dict[str, Any] = {}
-        if options:
-            if options.max_turns is not None:
-                run_kwargs["max_turns"] = options.max_turns
-            if options.previous_response_id:
-                run_kwargs["previous_response_id"] = options.previous_response_id
-            run_config = self._build_run_config(options)
-            if run_config is not None:
-                run_kwargs["run_config"] = run_config
+        run_kwargs = self._prepare_run_kwargs(options)
 
         stream = Runner.run_streamed(
             agent,
@@ -812,11 +108,8 @@ class OpenAIAgentRuntime(AgentRuntime):
             hooks=cast(RunHooksBase[Any, Agent[Any]] | None, hooks),
             **run_kwargs,
         )
-        base_metadata: dict[str, Any] = {"agent_key": agent_key, "model": str(agent.model)}
-        mode = self._registry.get_code_interpreter_mode(agent_key)
-        if mode:
-            base_metadata["code_interpreter_mode"] = mode
-        metadata_payload = {**base_metadata, **safe_metadata}
+
+        metadata_payload = self._build_metadata(agent_key, agent.model, safe_metadata)
         return OpenAIStreamingHandle(
             stream=stream,
             agent_key=agent_key,
@@ -824,29 +117,99 @@ class OpenAIAgentRuntime(AgentRuntime):
             lifecycle_bus=bus,
         )
 
-    def _build_run_config(self, options: RunOptions | None) -> RunConfig | None:
+    # internal helpers -----------------------------------------------------
+
+    def _prepare_run(
+        self,
+        agent_key: str,
+        *,
+        metadata: Mapping[str, Any] | None,
+        options: RunOptions | None,
+    ) -> tuple[Agent, dict[str, Any], HookRelay | None, LifecycleEventSink | None]:
+        runtime_ctx, safe_metadata = resolve_runtime_context(
+            metadata,
+            bootstrap_ctx=self._bootstrap_ctx,
+        )
+        agent = self._registry.get_agent_handle(
+            agent_key,
+            runtime_ctx=runtime_ctx,
+            validate_prompts=True,
+        )
+        if agent is None:
+            raise ValueError(f"Agent '{agent_key}' is not registered for OpenAI provider")
+
+        bus: LifecycleEventSink | None = LifecycleEventBus()
+        if options and options.hook_sink:
+            candidate = options.hook_sink
+            if isinstance(candidate, LifecycleEventSink):
+                bus = candidate
+            elif hasattr(candidate, "emit") and hasattr(candidate, "drain"):
+                bus = candidate  # best-effort duck typing
+        hooks = HookRelay(bus) if bus else None
+        return agent, safe_metadata, hooks, bus
+
+    def _prepare_run_kwargs(self, options: RunOptions | None) -> dict[str, Any]:
+        run_kwargs: dict[str, Any] = {}
         if not options:
-            return None
-        kwargs: dict[str, Any] = {}
-        if options.handoff_input_filter:
-            kwargs["handoff_input_filter"] = get_handoff_filter(options.handoff_input_filter)
-        allowed = {
-            "input_guardrails",
-            "output_guardrails",
-            "model",
-            "model_settings",
-            "tracing_disabled",
-            "trace_include_sensitive_data",
-            "workflow_name",
-            "tool_resources",
-        }
-        if options.run_config:
-            for key, value in options.run_config.items():
-                if key in allowed:
-                    kwargs[key] = value
-        if not kwargs:
-            return None
-        return RunConfig(**kwargs)
+            return run_kwargs
+        if options.max_turns is not None:
+            run_kwargs["max_turns"] = options.max_turns
+        if options.previous_response_id:
+            run_kwargs["previous_response_id"] = options.previous_response_id
+        run_config = build_run_config(options)
+        if run_config is not None:
+            run_kwargs["run_config"] = run_config
+        return run_kwargs
+
+    def _normalize_run_result(self, result) -> tuple[Any, Any, Any, Any, Any, Any]:
+        if isinstance(result, AgentRunResult):
+            return (
+                result.usage,
+                result.response_id,
+                result.final_output,
+                result.structured_output,
+                result.response_text,
+                result.tool_outputs,
+            )
+
+        context = getattr(result, "context_wrapper", None)
+        usage = convert_usage(getattr(context, "usage", None) if context else None)
+        response_id = getattr(result, "last_response_id", None)
+        final_output = getattr(result, "final_output", "")
+        structured_output = None
+        response_text = None
+        tool_outputs = None
+
+        if isinstance(final_output, str):
+            response_text = final_output
+        else:
+            structured_output = final_output
+            try:
+                response_text = json.dumps(final_output, ensure_ascii=False)
+            except Exception:  # pragma: no cover - fallback serialization
+                response_text = str(final_output)
+
+        raw_items = getattr(result, "new_items", None)
+        if raw_items:
+            mapped = [
+                AgentStreamEvent._to_mapping(item)
+                for item in raw_items
+                if AgentStreamEvent._to_mapping(item) is not None
+            ]
+            tool_outputs = mapped or None
+
+        return usage, response_id, final_output, structured_output, response_text, tool_outputs
+
+    def _build_metadata(
+        self, agent_key: str, model: Any, safe_metadata: Mapping[str, Any]
+    ) -> Mapping[str, Any]:
+        base_metadata: dict[str, Any] = {"agent_key": agent_key, "model": str(model)}
+        mode = self._registry.get_code_interpreter_mode(agent_key)
+        if mode:
+            base_metadata["code_interpreter_mode"] = mode
+        if safe_metadata:
+            return {**base_metadata, **safe_metadata}
+        return base_metadata
 
 
 __all__ = ["OpenAIAgentRuntime", "OpenAIStreamingHandle"]
