@@ -42,13 +42,17 @@ class AttachmentService:
 
             for candidate in _iter_image_generation_calls(output):
                 tool_call_id = candidate.get("id") or candidate.get("tool_call_id")
+                # Ignore partial frames; only persist finals so the conversation
+                # history stores the finished asset once per tool call.
+                status = (candidate.get("status") or "").lower()
+                partial_idx = candidate.get("partial_image_index")
+                if status == "partial_image" or partial_idx is not None:
+                    continue
+
                 if seen_tool_calls is not None and tool_call_id and tool_call_id in seen_tool_calls:
                     continue
-                image_b64 = (
-                    candidate.get("result")
-                    or candidate.get("b64_json")
-                    or candidate.get("partial_image_b64")
-                )
+
+                image_b64 = candidate.get("result") or candidate.get("b64_json")
                 if not image_b64:
                     continue
                 quality = candidate.get("quality")

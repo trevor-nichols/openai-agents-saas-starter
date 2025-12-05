@@ -172,7 +172,7 @@ class AIProviderSettingsMixin(BaseModel):
         description="Whitelisted output formats accepted from the image tool.",
     )
     image_max_partial_images: int = Field(
-        default=2,
+        default=3,
         ge=0,
         le=3,
         description="Maximum partial images to stream when enabled (0-3).",
