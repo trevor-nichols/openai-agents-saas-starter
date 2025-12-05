@@ -309,6 +309,14 @@ def _build_openai_registry(monkeypatch, registry: ToolRegistry):
         agent_code_model: str | None = None
         agent_data_model: str | None = None
         container_default_auto_memory: str | None = "1g"
+        container_fallback_to_auto_on_missing_binding: bool = True
+        image_default_size: str = "1024x1024"
+        image_default_quality: str = "high"
+        image_default_format: str = "png"
+        image_default_background: str = "auto"
+        image_default_compression: int | None = None
+        image_max_partial_images: int = 0
+        image_allowed_formats: list[str] = ["png", "jpeg", "webp"]
         mcp_tools: list[Any] = []
 
     settings = _StubSettings()
