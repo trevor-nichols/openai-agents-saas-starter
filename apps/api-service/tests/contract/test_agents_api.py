@@ -154,27 +154,18 @@ def test_chat_falls_back_to_triage(mock_run: AsyncMock, client: TestClient) -> N
     assert payload["agent_used"] == "triage"
 
 
-@patch("app.infrastructure.providers.openai.runtime.Runner.run_stream")
+@patch("app.infrastructure.providers.openai.runtime.Runner.run_streamed")
 def test_chat_stream_persists_assistant_message(
     mock_run_stream, client: TestClient
 ) -> None:
     class _MockStream:
         last_response_id = "resp_stream"
         usage = None
+        final_output = "Hello world"
 
-        async def events(self):
-            yield AgentStreamEvent(
-                kind="run_item_stream_event",
-                text_delta="Hello ",
-                response_id=self.last_response_id,
-                is_terminal=False,
-            )
-            yield AgentStreamEvent(
-                kind="run_item_stream_event",
-                response_text="Hello world",
-                response_id=self.last_response_id,
-                is_terminal=True,
-            )
+        async def stream_events(self):
+            if False:
+                yield AgentStreamEvent(kind="lifecycle")
 
     mock_run_stream.return_value = _MockStream()
 

@@ -92,10 +92,13 @@ class VectorStoreFile(Base):
 
 
 class AgentVectorStore(Base):
-    """Explicit binding of an agent key to a vector store within a tenant."""
+    """Explicit binding of an agent key to a single vector store within a tenant."""
 
     __tablename__ = "agent_vector_stores"
-    __table_args__ = (sa.PrimaryKeyConstraint("agent_key", "vector_store_id", "tenant_id"),)
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("agent_key", "vector_store_id", "tenant_id"),
+        sa.UniqueConstraint("tenant_id", "agent_key", name="uq_agent_vector_store_per_agent"),
+    )
 
     agent_key: Mapped[str] = mapped_column(String(64), nullable=False)
     vector_store_id: Mapped[uuid.UUID] = mapped_column(

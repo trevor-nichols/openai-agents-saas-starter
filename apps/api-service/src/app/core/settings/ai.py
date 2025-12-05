@@ -104,6 +104,12 @@ class AIProviderSettingsMixin(BaseModel):
             "When true, expired vector stores are deleted remotely and soft-deleted locally."
         ),
     )
+    auto_create_vector_store_for_file_search: bool = Field(
+        default=True,
+        description=(
+            "Automatically create a primary vector store for tenants when file_search is used."
+        ),
+    )
 
     # Containers / Code Interpreter defaults
     container_default_auto_memory: str = Field(

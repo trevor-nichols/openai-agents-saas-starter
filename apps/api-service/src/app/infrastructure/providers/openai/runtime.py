@@ -448,6 +448,9 @@ class OpenAIAgentRuntime(AgentRuntime):
             conversation_id="bootstrap",
             request_message="",
             settings=get_settings(),
+            file_search=None,
+            client_overrides=None,
+            container_bindings=None,
         )
 
     async def run(
@@ -633,6 +636,7 @@ class OpenAIAgentRuntime(AgentRuntime):
             "tracing_disabled",
             "trace_include_sensitive_data",
             "workflow_name",
+            "tool_resources",
         }
         if options.run_config:
             for key, value in options.run_config.items():

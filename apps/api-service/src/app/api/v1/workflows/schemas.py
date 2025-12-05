@@ -2,19 +2,19 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.api.v1.shared.streaming import (
+    CodeInterpreterCall,
+    ContainerFileCitation,
+    FileCitation,
+    FileSearchCall,
+    MessageAttachment,
     StreamingEvent,
     ToolCallPayload,
     UrlCitation,
-    ContainerFileCitation,
-    FileCitation,
-    MessageAttachment,
     WebSearchAction,
     WebSearchCall,
-    CodeInterpreterCall,
-    FileSearchCall,
 )
 from app.domain.workflows import WorkflowStatus
 from app.utils.tools.location import LocationHint

@@ -78,7 +78,8 @@ async def test_web_search_streaming_manual() -> None:
     url = f"{base_url.rstrip('/')}/api/v1/chat/stream"
     async with httpx.AsyncClient(timeout=timeout) as client:
         async with client.stream("POST", url, json=payload, headers=headers) as resp:
-            assert resp.status_code == 200, f"status {resp.status_code}: {await resp.aread()}"
+            body = (await resp.aread()).decode("utf-8", "ignore")
+            assert resp.status_code == 200, f"status {resp.status_code}: {body}"
 
             tool_seen = False
             citation_seen = False

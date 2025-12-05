@@ -11,6 +11,7 @@ from typing import Any, cast
 from agents import (
     Agent,
     CodeInterpreterTool,
+    FileSearchTool,
     ImageGenerationTool,
     RunConfig,
     WebSearchTool,
@@ -72,6 +73,8 @@ class OpenAIAgentRegistry:
             conversation_id="bootstrap",
             request_message="",
             settings=self._settings_factory(),
+            file_search=None,
+            client_overrides=None,
         )
         self._register_builtin_tools()
         # Build cached agents without strict validation; per-request rendering
@@ -80,6 +83,7 @@ class OpenAIAgentRegistry:
             runtime_ctx=self._static_ctx,
             validate_prompts=False,
             register_static=True,
+            allow_unresolved_file_search=True,
         )
 
     @property
@@ -100,11 +104,16 @@ class OpenAIAgentRegistry:
                         runtime_ctx=self._static_ctx,
                         validate_prompts=True,
                         register_static=False,
+                        allow_unresolved_file_search=True,
                     )
                 return self._validated_static_agents.get(agent_key)
             return self._agents.get(agent_key)
         contextual_agents = self._build_agents_from_specs(
-            runtime_ctx=runtime_ctx, validate_prompts=validate_prompts, register_static=False
+            runtime_ctx=runtime_ctx,
+            validate_prompts=validate_prompts,
+            register_static=False,
+            # Runtime requests should fail fast if file_search isn't resolved
+            allow_unresolved_file_search=False,
         )
         return contextual_agents.get(agent_key)
 
@@ -160,6 +169,7 @@ class OpenAIAgentRegistry:
         runtime_ctx: PromptRuntimeContext | None,
         validate_prompts: bool,
         register_static: bool,
+        allow_unresolved_file_search: bool = False,
     ) -> dict[str, Agent]:
         settings = self._settings_factory()
         spec_map = {spec.key: spec for spec in self._specs}
@@ -175,6 +185,7 @@ class OpenAIAgentRegistry:
                 agents=agents,
                 spec_map=spec_map,
                 validate_prompts=validate_prompts,
+                allow_unresolved_file_search=allow_unresolved_file_search,
             )
             if register_static:
                 self._register_agent(spec, agent)
@@ -191,8 +202,13 @@ class OpenAIAgentRegistry:
         agents: dict[str, Agent],
         spec_map: dict[str, AgentSpec],
         validate_prompts: bool,
+        allow_unresolved_file_search: bool = False,
     ) -> Agent:
-        tools = self._select_tools(spec, runtime_ctx=runtime_ctx)
+        tools = self._select_tools(
+            spec,
+            runtime_ctx=runtime_ctx,
+            allow_unresolved_file_search=allow_unresolved_file_search,
+        )
         raw_prompt = resolve_prompt(spec)
         prompt_ctx = (
             {} if runtime_ctx is None else self._build_prompt_context(spec, runtime_ctx=runtime_ctx)
@@ -368,7 +384,11 @@ class OpenAIAgentRegistry:
         )
 
     def _select_tools(
-        self, spec: AgentSpec, *, runtime_ctx: PromptRuntimeContext | None
+        self,
+        spec: AgentSpec,
+        *,
+        runtime_ctx: PromptRuntimeContext | None,
+        allow_unresolved_file_search: bool = False,
     ) -> list[Any]:
         settings = self._settings_factory()
         tool_keys = getattr(spec, "tool_keys", ()) or ()
@@ -423,6 +443,14 @@ class OpenAIAgentRegistry:
                         {"type": "code_interpreter", "container": auto_container},
                     )
                     tools.append(CodeInterpreterTool(tool_config=tool_config))
+            elif isinstance(tool, FileSearchTool):
+                resolved = self._resolve_file_search_config(
+                    spec=spec,
+                    runtime_ctx=runtime_ctx,
+                    settings=settings,
+                    allow_unresolved=allow_unresolved_file_search,
+                )
+                tools.append(FileSearchTool(**resolved))
             elif isinstance(tool, ImageGenerationTool):
                 base_cfg = dict(getattr(tool, "tool_config", {}) or {})
                 override = tool_configs.get("image_generation", {})
@@ -494,6 +522,55 @@ class OpenAIAgentRegistry:
                 raise ValueError(
                     f"partial_images must be between 0 and {settings.image_max_partial_images}"
                 )
+        return cfg
+
+    def _resolve_file_search_config(
+        self,
+        *,
+        spec: AgentSpec,
+        runtime_ctx: PromptRuntimeContext | None,
+        settings: Settings,
+        allow_unresolved: bool = False,
+    ) -> dict[str, Any]:
+        """Build kwargs for FileSearchTool based on runtime resolution."""
+
+        if runtime_ctx is None or runtime_ctx.file_search is None:
+            if allow_unresolved:
+                logger.warning(
+                    "file_search runtime_ctx_missing during bootstrap; deferring vector_store_ids",
+                    extra={"agent": spec.key},
+                )
+                return {"vector_store_ids": []}
+            raise ValueError(
+                "Agent '"
+                + spec.key
+                + "' requires file_search context but no vector_store_ids were provided"
+            )
+
+        mapping = runtime_ctx.file_search or {}
+        resolved = mapping.get(spec.key)
+        if not resolved:
+            if allow_unresolved:
+                logger.warning(
+                    "file_search context missing for agent; skipping file_search tool",
+                    extra={"agent": spec.key},
+                )
+                return {"vector_store_ids": []}
+            raise ValueError(
+                f"Agent '{spec.key}' requires file_search resolution but no "
+                "vector_store_ids were provided"
+            )
+
+        vector_store_ids = resolved.get("vector_store_ids") or []
+        if not vector_store_ids:
+            raise ValueError(
+                f"Agent '{spec.key}' file_search tool has no vector_store_ids for tenant context"
+            )
+
+        options = resolved.get("options") or {}
+        allowed_keys = {"max_num_results", "filters", "ranking_options", "include_search_results"}
+        cfg = {k: v for k, v in options.items() if k in allowed_keys}
+        cfg["vector_store_ids"] = list(vector_store_ids)
         return cfg
 
     def _register_builtin_tools(self) -> None:

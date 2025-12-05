@@ -8,7 +8,7 @@ Last updated: November 25, 2025
 - Minimal code changes for a new agent spec.
 
 ## TL;DR
-1) Ensure a vector store exists for the tenant (we auto-provision a "primary" store via `ensure_primary_store`).
+1) Ensure a vector store exists for the tenant (we auto-provision a "primary" store via `ensure_primary_store`; disable with `AUTO_CREATE_VECTOR_STORE_FOR_FILE_SEARCH=false`).
 2) Add the `file_search` tool to your agent's `tool_keys`.
 3) In the AgentSpec, declare how to bind vector stores:
    - Tenant default (recommended): resolved at request-time to the tenant's primary store.

@@ -10,7 +10,13 @@ from collections.abc import Callable, Iterable
 from functools import lru_cache
 from typing import Any, cast
 
-from agents import CodeInterpreterTool, HostedMCPTool, ImageGenerationTool, WebSearchTool
+from agents import (
+    CodeInterpreterTool,
+    FileSearchTool,
+    HostedMCPTool,
+    ImageGenerationTool,
+    WebSearchTool,
+)
 from openai.types.responses.tool_param import (
     CodeInterpreter,
     CodeInterpreterContainerCodeInterpreterToolAuto,
@@ -205,6 +211,14 @@ def initialize_tools() -> ToolRegistry:
                 "description": "Generate or edit images using OpenAI hosted image generation.",
                 "provider": "openai",
                 "defaults": image_config,
+            },
+        )
+        registry.register_tool(
+            FileSearchTool(vector_store_ids=[]),
+            category="search",
+            metadata={
+                "description": "Search tenant vector stores (OpenAI hosted file_search).",
+                "provider": "openai",
             },
         )
     else:

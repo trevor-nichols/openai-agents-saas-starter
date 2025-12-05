@@ -149,3 +149,105 @@ Expose a strongly-typed streaming surface (tools + citations + handoffs) end-to-
 ## Changelog
 
 - 2025-12-04 — Milestone created; scope & plan recorded.
+
+---
+
+<!-- SECTION: Metadata -->
+# Milestone: File Search Tool & Vector Store Autowiring
+
+_Last updated: 2025-12-04_  
+**Status:** Planned  
+**Owner:** @tan (platform foundations)  
+**Domain:** Agents / Retrieval  
+**ID / Links:** RAG tools — see `docs/integrations/openai-agents-sdk/tools/rag`
+
+---
+
+<!-- SECTION: Objective -->
+## Objective
+
+Make the OpenAI `file_search` tool turnkey: agents can opt in with zero config (auto primary vector store per tenant) while still allowing explicit bindings/overrides for advanced setups.
+
+---
+
+<!-- SECTION: Definition of Done -->
+## Definition of Done
+
+- `FileSearchTool` registered in ToolRegistry; visible via `/api/v1/tools`.
+- Agent runs that include `file_search` get `vector_store_ids` injected via run_config using per-tenant resolution (primary store fallback) and optional agent/request overrides.
+- Auto-provision: first `file_search` use creates/ensures tenant primary vector store; feature can be disabled via setting.
+- Agent specs support `tool_keys=("file_search",)` plus optional `tool_configs.file_search` (binding mode + max_num_results/filters/ranking_options pass-through).
+- New admin binding path to map `agent_key` → `vector_store_id` per tenant (backed by existing `agent_vector_stores` table).
+- Tests cover resolution order, auto-create, binding override, and run_config payload correctness; streaming schema remains additive.
+- OpenAPI artifact + frontend SDK regenerated; docs updated.
+- `hatch run lint` + `hatch run typecheck` (api-service) and targeted pytest suite green.
+
+---
+
+<!-- SECTION: Scope -->
+## Scope
+
+### In Scope
+- ToolRegistry registration of `file_search` (OpenAI hosted).
+- Run-config injection for vector_store_ids and optional tool params.
+- Auto primary-store creation + per-agent binding resolution.
+- Minimal admin API/handler to bind/unbind agent→vector store per tenant.
+- Tests + docs + OpenAPI/SDK regen.
+
+### Out of Scope
+- Frontend UX for uploading/attaching files (already handled by vector store CRUD).
+- Cross-provider retrieval abstraction; only OpenAI.
+- Complex multi-store routing policies (future).
+
+---
+
+<!-- SECTION: Workstreams & Tasks -->
+## Workstreams & Tasks
+
+### Workstream A – Backend tooling & run config
+| ID | Area | Description | Owner | Status |
+|----|------|-------------|-------|--------|
+| A1 | Tools | Register `FileSearchTool` in `app/utils/tools/registry.py`; expose metadata. | @tan | ☐ |
+| A2 | Runtime | Inject `tool_resources.file_search.vector_store_ids` (and optional params) in OpenAI run_config when tool present. | @tan | ☐ |
+| A3 | Auto-store | Use `ensure_primary_store` on first use per tenant; guard with setting `auto_create_vector_store_for_file_search`. | @tan | ☐ |
+
+### Workstream B – Agent bindings & config surface
+| ID | Area | Description | Owner | Status |
+|----|------|-------------|-------|--------|
+| B1 | Specs | Allow `tool_keys=("file_search",)` and `tool_configs.file_search` (binding mode: primary/required/named:<name>; plus max_num_results/filters/ranking_options pass-through). | @tan | ☐ |
+| B2 | Binding | Add service helper + small API handler to bind/unbind `agent_key` → `vector_store_id` per tenant using `agent_vector_stores` table. | @tan | ☐ |
+
+### Workstream C – Tests, docs, regen
+| ID | Area | Description | Owner | Status |
+|----|------|-------------|-------|--------|
+| C1 | Tests | Unit tests: (a) tool registration list, (b) resolution order (request override → agent binding → primary auto-create), (c) run_config payload matches selected store ids, (d) auto-create disabled => 400. | @tan | ☐ |
+| C2 | Docs | Update RAG/tool docs + tracker; note defaults/overrides and setting name. | @tan | ☐ |
+| C3 | Regen | Export OpenAPI + regenerate frontend SDK after schema changes. | @tan | ☐ |
+
+---
+
+<!-- SECTION: Validation / QA Plan -->
+## Validation / QA Plan
+
+- Backend: `cd apps/api-service && hatch run lint && hatch run typecheck && hatch run pytest tests/unit/services/vector_stores tests/unit/test_tools.py`.
+- Targeted new tests for resolution and run_config payloads.
+- Manual: enable `file_search` on an agent, start chat with/without pre-existing store; verify tool_call shows `file_search_call` and citations; confirm `/api/v1/tools` lists file_search.
+- Post-change: Export OpenAPI + regenerate SDK; run `pnpm lint && pnpm type-check` in web-app.
+
+---
+
+<!-- SECTION: Risks -->
+## Risks & Mitigations
+
+| Risk | Impact | Mitigation |
+| --- | --- | --- |
+| Missing OPENAI_API_KEY or vector store quota → runtime error | High | Guarded registration; clear 400 when auto-create disabled or quota hit. |
+| Multi-tenant leakage via wrong store id | High | Resolve store ids scoped by tenant; tests cover binding resolution; enforce tenant checks in service. |
+| Run_config shape drift in OpenAI API | Med | Keep additive; include raw passthrough; small end-to-end smoke with live key before release. |
+
+---
+
+<!-- SECTION: Changelog -->
+## Changelog
+
+- 2025-12-04 — Milestone drafted; awaiting implementation.

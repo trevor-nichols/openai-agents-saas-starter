@@ -277,17 +277,24 @@ def build_workflow_service(
     *,
     run_repository: WorkflowRunRepository | None = None,
     container_service=None,
+    vector_store_service=None,
 ) -> WorkflowService:
     return WorkflowService(
         registry=get_workflow_registry(),
         provider_registry=get_provider_registry(),
-        interaction_builder=InteractionContextBuilder(container_service=container_service),
+        interaction_builder=InteractionContextBuilder(
+            container_service=container_service, vector_store_service=vector_store_service
+        ),
         run_repository=run_repository,
     )
 
 
 def get_workflow_service() -> WorkflowService:
-    from app.bootstrap.container import get_container, wire_container_service
+    from app.bootstrap.container import (
+        get_container,
+        wire_container_service,
+        wire_vector_store_service,
+    )
     from app.infrastructure.persistence.workflows.repository import (
         SqlAlchemyWorkflowRunRepository,
     )
@@ -303,10 +310,14 @@ def get_workflow_service() -> WorkflowService:
     if container.container_service is None:
         wire_container_service(container)
 
+    if container.vector_store_service is None:
+        wire_vector_store_service(container)
+
     if container.workflow_service is None:
         container.workflow_service = build_workflow_service(
             run_repository=container.workflow_run_repository,
             container_service=container.container_service,
+            vector_store_service=container.vector_store_service,
         )
     return container.workflow_service
 

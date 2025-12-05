@@ -161,6 +161,7 @@ class WorkflowRunner:
                 share_location=share_location,
             ),
             conversation_id=conversation_id,
+            agent_keys=_workflow_agent_keys(workflow),
         )
 
         async def session_getter():
@@ -317,6 +318,7 @@ class WorkflowRunner:
                 share_location=share_location,
             ),
             conversation_id=conversation_id,
+            agent_keys=_workflow_agent_keys(workflow),
         )
 
         async def session_getter():
@@ -463,6 +465,14 @@ def _first_agent_key(workflow: WorkflowSpec) -> str | None:
         for step in stage.steps:
             return step.agent_key
     return None
+
+
+def _workflow_agent_keys(workflow: WorkflowSpec) -> list[str]:
+    seen: set[str] = set()
+    for stage in workflow.resolved_stages():
+        for step in stage.steps:
+            seen.add(step.agent_key)
+    return list(seen)
 
 
 __all__ = [

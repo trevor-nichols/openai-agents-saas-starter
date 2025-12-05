@@ -10,6 +10,7 @@ from fastapi.responses import StreamingResponse
 
 from app.api.dependencies.auth import CurrentUser, require_verified_scopes
 from app.api.dependencies.tenant import TenantContext, TenantRole, require_tenant_role
+from app.api.v1.shared.stream_normalizer import normalize_stream_event
 from app.api.v1.workflows.schemas import (
     StreamingWorkflowEvent,
     WorkflowDescriptorResponse,
@@ -23,7 +24,6 @@ from app.api.v1.workflows.schemas import (
     WorkflowStepResultSchema,
     WorkflowSummary,
 )
-from app.api.v1.shared.stream_normalizer import normalize_stream_event
 from app.domain.workflows import WorkflowStatus
 from app.services.agents.context import ConversationActorContext
 from app.services.workflows.service import WorkflowRunRequest, get_workflow_service

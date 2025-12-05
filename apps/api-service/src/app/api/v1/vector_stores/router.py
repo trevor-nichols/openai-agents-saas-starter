@@ -295,3 +295,46 @@ async def search_vector_store(
             status_code=status.HTTP_404_NOT_FOUND, detail="Vector store not found"
         ) from None
     return VectorStoreSearchResponse(data=result)
+
+
+@router.post(
+    "/{vector_store_id}/bindings/{agent_key}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def bind_agent_to_vector_store(
+    vector_store_id: uuid.UUID,
+    agent_key: str,
+    current_user: CurrentUser = Depends(require_verified_user()),
+    tenant_context=Depends(tenant_admin),
+    service: VectorStoreService = Depends(_svc),
+):
+    try:
+        await service.bind_agent_to_store(
+            tenant_id=_uuid(tenant_context.tenant_id),
+            agent_key=agent_key,
+            vector_store_id=vector_store_id,
+        )
+    except VectorStoreNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Vector store not found"
+        ) from None
+    return None
+
+
+@router.delete(
+    "/{vector_store_id}/bindings/{agent_key}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def unbind_agent_from_vector_store(
+    vector_store_id: uuid.UUID,
+    agent_key: str,
+    current_user: CurrentUser = Depends(require_verified_user()),
+    tenant_context=Depends(tenant_admin),
+    service: VectorStoreService = Depends(_svc),
+):
+    await service.unbind_agent_from_store(
+        tenant_id=_uuid(tenant_context.tenant_id),
+        agent_key=agent_key,
+        vector_store_id=vector_store_id,
+    )
+    return None

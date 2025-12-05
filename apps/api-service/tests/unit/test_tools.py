@@ -5,13 +5,14 @@ from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
-from agents import Agent, HostedMCPTool, WebSearchTool
+from agents import Agent, CodeInterpreterTool, FileSearchTool, HostedMCPTool, WebSearchTool
 from agents.handoffs import HandoffInputData
 from openai.types.responses.web_search_tool_param import UserLocation
 
 from app.agents._shared.loaders import topological_agent_order
 from app.agents._shared.prompt_context import PromptRuntimeContext
 from app.agents._shared.registry_loader import load_agent_specs
+from app.agents._shared.specs import AgentSpec
 from app.core.settings import Settings
 from app.infrastructure.providers.openai.registry import OpenAIAgentRegistry
 from app.utils.tools import ToolRegistry, get_tool_registry, initialize_tools
@@ -34,6 +35,10 @@ def _web_search_settings(monkeypatch):
 
     settings = SimpleNamespace(
         openai_api_key="test-key",
+        agent_default_model="gpt-5.1",
+        agent_triage_model=None,
+        agent_code_model=None,
+        agent_data_model=None,
         container_default_auto_memory="1g",
         image_default_size="1024x1024",
         image_default_quality="high",
@@ -41,7 +46,9 @@ def _web_search_settings(monkeypatch):
         image_default_background="auto",
         image_default_compression=None,
         image_max_partial_images=0,
+        image_allowed_formats=["png", "jpeg", "webp"],
         mcp_tools=[],
+        auto_create_vector_store_for_file_search=True,
     )
     monkeypatch.setattr("app.utils.tools.registry.get_settings", lambda: settings)
     yield
@@ -68,6 +75,14 @@ def test_initialize_tools_registers_web_search():
 
     categories = registry.list_categories()
     assert "web_search" in categories
+
+
+def test_initialize_tools_registers_file_search():
+    registry = initialize_tools()
+    tool_names = registry.list_tool_names()
+    assert "file_search" in tool_names
+    tool = registry.get_tool("file_search")
+    assert tool is not None
 
 
 def test_initialize_tools_registers_mcp_tool(monkeypatch):
@@ -315,7 +330,7 @@ def test_tool_registry_provides_tools_for_agents(monkeypatch):
     assert agent is not None
 
     tool_names = [tool.name for tool in agent.tools]
-    assert tool_names == ["web_search", "get_current_time", "search_conversations"]
+    assert set(tool_names) == {"get_current_time", "search_conversations"}
 
 
 def test_resolve_tools_order_and_missing():
@@ -342,6 +357,11 @@ def test_resolve_tools_order_and_missing():
 
 def test_handoff_fresh_policy_preserves_payload(monkeypatch):
     registry = ToolRegistry()
+    registry.register_tool(
+        CodeInterpreterTool(
+            tool_config={"type": "code_interpreter", "container": {"type": "auto", "memory_limit": "1g"}}
+        )
+    )
     openai_registry = _build_openai_registry(monkeypatch, registry)
     input_filter = openai_registry._make_handoff_input_filter("fresh")
     assert input_filter is not None
@@ -377,6 +397,11 @@ def test_select_tools_missing_required_raises(monkeypatch):
 def test_select_tools_missing_optional_web_search(monkeypatch):
     registry = ToolRegistry()
 
+    registry.register_tool(
+        CodeInterpreterTool(
+            tool_config={"type": "code_interpreter", "container": {"type": "auto", "memory_limit": "1g"}}
+        )
+    )
     # Only register built-ins (added by _register_builtin_tools), skip web_search
     monkeypatch.setattr(
         "app.infrastructure.providers.openai.registry.initialize_tools", lambda: registry
@@ -404,12 +429,117 @@ def test_web_search_tool_applies_request_location(monkeypatch):
     )
 
     agent = openai_registry.get_agent_handle(
-        "triage", runtime_ctx=runtime_ctx, validate_prompts=False
+        "researcher", runtime_ctx=runtime_ctx, validate_prompts=False
     )
     assert agent is not None
 
     web_tool = next(tool for tool in agent.tools if isinstance(tool, WebSearchTool))
     assert web_tool.user_location == {"type": "approximate", "city": "Austin"}
+
+
+def test_file_search_tool_uses_runtime_resolution(monkeypatch):
+    settings = SimpleNamespace(
+        openai_api_key="test-key",
+        agent_default_model="gpt-5.1",
+        agent_triage_model=None,
+        agent_code_model=None,
+        agent_data_model=None,
+        container_default_auto_memory="1g",
+        image_default_size="1024x1024",
+        image_default_quality="high",
+        image_default_format="png",
+        image_default_background="auto",
+        image_default_compression=None,
+        image_max_partial_images=0,
+        image_allowed_formats=["png", "jpeg", "webp"],
+        mcp_tools=[],
+        auto_create_vector_store_for_file_search=True,
+    )
+
+    monkeypatch.setattr("app.utils.tools.registry.get_settings", lambda: settings)
+
+    spec = AgentSpec(
+        key="fs_agent",
+        display_name="File Searcher",
+        description="Searches files",
+        instructions="hi",
+        tool_keys=("file_search",),
+        default=True,
+    )
+    registry = OpenAIAgentRegistry(
+        settings_factory=lambda: settings,
+        conversation_searcher=lambda tenant_id, query: [],
+        specs=[spec],
+    )
+
+    runtime_ctx = PromptRuntimeContext(
+        actor=SimpleNamespace(tenant_id="t1", user_id="u1"),
+        conversation_id="c1",
+        request_message="hello",
+        settings=settings,
+        user_location=None,
+        container_bindings=None,
+        file_search={"fs_agent": {"vector_store_ids": ["vs_ctx"], "options": {"max_num_results": 2}}},
+        client_overrides=None,
+    )
+
+    agent = registry.get_agent_handle("fs_agent", runtime_ctx=runtime_ctx, validate_prompts=False)
+    assert agent is not None
+    fs_tools = [t for t in agent.tools if isinstance(t, FileSearchTool)]
+    assert len(fs_tools) == 1
+    tool = fs_tools[0]
+    assert tool.vector_store_ids == ["vs_ctx"]
+    assert getattr(tool, "max_num_results", None) == 2
+
+
+def test_file_search_tool_missing_runtime_context_raises(monkeypatch):
+    settings = SimpleNamespace(
+        openai_api_key="test-key",
+        agent_default_model="gpt-5.1",
+        agent_triage_model=None,
+        agent_code_model=None,
+        agent_data_model=None,
+        container_default_auto_memory="1g",
+        image_default_size="1024x1024",
+        image_default_quality="high",
+        image_default_format="png",
+        image_default_background="auto",
+        image_default_compression=None,
+        image_max_partial_images=0,
+        image_allowed_formats=["png", "jpeg", "webp"],
+        mcp_tools=[],
+        auto_create_vector_store_for_file_search=True,
+    )
+
+    monkeypatch.setattr("app.utils.tools.registry.get_settings", lambda: settings)
+
+    spec = AgentSpec(
+        key="fs_agent",
+        display_name="File Searcher",
+        description="Searches files",
+        instructions="hi",
+        tool_keys=("file_search",),
+        default=True,
+    )
+    registry = OpenAIAgentRegistry(
+        settings_factory=lambda: settings,
+        conversation_searcher=lambda tenant_id, query: [],
+        specs=[spec],
+    )
+
+    runtime_ctx = PromptRuntimeContext(
+        actor=SimpleNamespace(tenant_id="t1", user_id="u1"),
+        conversation_id="c1",
+        request_message="hello",
+        settings=settings,
+        user_location=None,
+        container_bindings=None,
+        file_search=None,
+        client_overrides=None,
+    )
+
+    with pytest.raises(ValueError):
+        registry.get_agent_handle("fs_agent", runtime_ctx=runtime_ctx, validate_prompts=False)
 
 
 def test_agent_specs_are_sorted_topologically():

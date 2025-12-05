@@ -80,7 +80,8 @@ async def test_code_interpreter_streaming_manual() -> None:
     url = f"{base_url.rstrip('/')}/api/v1/chat/stream"
     async with httpx.AsyncClient(timeout=timeout) as client:
         async with client.stream("POST", url, json=payload, headers=headers) as resp:
-            assert resp.status_code == 200, f"status {resp.status_code}: {await resp.aread()}"
+            body = (await resp.aread()).decode("utf-8", "ignore")
+            assert resp.status_code == 200, f"status {resp.status_code}: {body}"
 
             events: list[StreamingEvent] = []
             assembled_text_parts: list[str] = []
@@ -151,4 +152,3 @@ async def test_code_interpreter_streaming_manual() -> None:
     full_text = "".join(assembled_text_parts).strip()
     assert full_text, "No assistant text returned"
     assert any(token in full_text for token in ["1.414", "1.41", "1.415", "1.4142"]), "Result not mentioned"
-

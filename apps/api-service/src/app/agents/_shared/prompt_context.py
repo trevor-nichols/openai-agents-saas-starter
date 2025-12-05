@@ -22,6 +22,8 @@ class PromptRuntimeContext:
     - request_message: latest user message (optional)
     - settings: application settings (to expose env, limits, etc.)
     - user_location: optional coarse location for hosted web search tools
+    - file_search: optional per-agent resolution data (vector store ids, options)
+    - client_overrides: arbitrary client-provided context (from request)
     """
 
     actor: ConversationActorContext | None
@@ -30,6 +32,8 @@ class PromptRuntimeContext:
     settings: Any
     user_location: UserLocation | None = None
     container_bindings: dict[str, str] | None = None
+    file_search: dict[str, Any] | None = None
+    client_overrides: dict[str, Any] | None = None
 
 
 _PROVIDER_REGISTRY: dict[str, ContextProvider] = {}

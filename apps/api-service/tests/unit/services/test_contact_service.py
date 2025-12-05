@@ -26,7 +26,9 @@ class StubResendAdapter:
 @pytest.mark.anyio()
 async def test_contact_service_delivers_via_resend() -> None:
     settings = Settings(
-        enable_resend_email_delivery=True,
+        RESEND_EMAIL_ENABLED=True,
+        resend_api_key="test-key",
+        resend_default_from="noreply@example.com",
         contact_email_recipients=["support@example.com"],
         contact_email_subject_prefix="[Contact]",
     )
@@ -56,7 +58,9 @@ async def test_contact_service_delivers_via_resend() -> None:
 @pytest.mark.anyio()
 async def test_contact_service_honors_honeypot() -> None:
     settings = Settings(
-        enable_resend_email_delivery=True,
+        RESEND_EMAIL_ENABLED=True,
+        resend_api_key="test-key",
+        resend_default_from="noreply@example.com",
         contact_email_recipients=["support@example.com"],
     )
     adapter = StubResendAdapter()
@@ -81,7 +85,8 @@ async def test_contact_service_honors_honeypot() -> None:
 @pytest.mark.anyio()
 async def test_contact_service_bypasses_delivery_when_disabled() -> None:
     settings = Settings(
-        enable_resend_email_delivery=False,
+        RESEND_EMAIL_ENABLED=False,
+        resend_default_from="noreply@example.com",
         contact_email_recipients=["support@example.com"],
     )
     adapter = StubResendAdapter()

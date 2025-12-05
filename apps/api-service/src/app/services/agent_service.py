@@ -50,6 +50,7 @@ from app.services.conversation_service import (
 )
 from app.services.storage.service import StorageService
 from app.services.usage_recorder import UsageRecorder
+from app.services.vector_stores.service import VectorStoreService
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +69,7 @@ class AgentService:
         storage_service: StorageService | None = None,
         policy: AgentRuntimePolicy | None = None,
         interaction_builder: InteractionContextBuilder | None = None,
+        vector_store_service: VectorStoreService | None = None,
         session_manager: SessionManager | None = None,
         attachment_service: AttachmentService | None = None,
         history_service: ConversationHistoryService | None = None,
@@ -78,7 +80,12 @@ class AgentService:
             self._conversation_service.set_repository(conversation_repo)
 
         self._provider_registry = provider_registry or get_provider_registry()
-        self._container_service = container_service or get_container_service()
+        self._container_service = container_service
+        if self._container_service is None:
+            try:
+                self._container_service = get_container_service()
+            except RuntimeError:
+                self._container_service = None
         self._storage_service = storage_service
         self._policy = policy or AgentRuntimePolicy.from_env()
 
@@ -90,6 +97,7 @@ class AgentService:
         )
         self._interaction_builder = interaction_builder or InteractionContextBuilder(
             container_service=self._container_service,
+            vector_store_service=vector_store_service,
         )
         self._history_service = history_service or ConversationHistoryService(
             self._conversation_service,
@@ -106,7 +114,10 @@ class AgentService:
         conversation_id = request.conversation_id or str(uuid.uuid4())
 
         runtime_ctx = await self._interaction_builder.build(
-            actor=actor, request=request, conversation_id=conversation_id
+            actor=actor,
+            request=request,
+            conversation_id=conversation_id,
+            agent_keys=[descriptor.key],
         )
         existing_state = await self._conversation_service.get_session_state(
             conversation_id, tenant_id=actor.tenant_id
@@ -139,12 +150,13 @@ class AgentService:
                 user_id=actor.user_id,
             ),
         )
-        await self._conversation_service.record_conversation_created(
-            conversation_id,
-            tenant_id=actor.tenant_id,
-            agent_entrypoint=request.agent_type or descriptor.key,
-            existed=existing_state is not None,
-        )
+        if hasattr(self._conversation_service, "record_conversation_created"):
+            await self._conversation_service.record_conversation_created(
+                conversation_id,
+                tenant_id=actor.tenant_id,
+                agent_entrypoint=request.agent_type or descriptor.key,
+                existed=existing_state is not None,
+            )
 
         token = set_current_actor(actor)
         try:
@@ -265,7 +277,10 @@ class AgentService:
         conversation_id = request.conversation_id or str(uuid.uuid4())
 
         runtime_ctx = await self._interaction_builder.build(
-            actor=actor, request=request, conversation_id=conversation_id
+            actor=actor,
+            request=request,
+            conversation_id=conversation_id,
+            agent_keys=[descriptor.key],
         )
         existing_state = await self._conversation_service.get_session_state(
             conversation_id, tenant_id=actor.tenant_id
@@ -297,12 +312,13 @@ class AgentService:
                 user_id=actor.user_id,
             ),
         )
-        await self._conversation_service.record_conversation_created(
-            conversation_id,
-            tenant_id=actor.tenant_id,
-            agent_entrypoint=request.agent_type or descriptor.key,
-            existed=existing_state is not None,
-        )
+        if hasattr(self._conversation_service, "record_conversation_created"):
+            await self._conversation_service.record_conversation_created(
+                conversation_id,
+                tenant_id=actor.tenant_id,
+                agent_entrypoint=request.agent_type or descriptor.key,
+                existed=existing_state is not None,
+            )
 
         complete_response = ""
         attachments: list[ConversationAttachment] = []
@@ -681,6 +697,7 @@ def build_agent_service(
     container_service: ContainerService | None = None,
     storage_service: StorageService | None = None,
     policy: AgentRuntimePolicy | None = None,
+    vector_store_service: VectorStoreService | None = None,
 ) -> AgentService:
     return AgentService(
         conversation_repo=conversation_repository,
@@ -690,6 +707,7 @@ def build_agent_service(
         container_service=container_service,
         storage_service=storage_service,
         policy=policy,
+        vector_store_service=vector_store_service,
     )
 
 
@@ -705,6 +723,7 @@ def get_agent_service() -> AgentService:
             provider_registry=get_provider_registry(),
             container_service=container.container_service,
             storage_service=container.storage_service,
+            vector_store_service=container.vector_store_service,
         )
     return container.agent_service
 

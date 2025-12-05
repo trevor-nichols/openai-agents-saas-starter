@@ -302,12 +302,6 @@ async def lifespan(app: FastAPI):
         repository=user_repository,
     )
 
-    container.agent_service = build_agent_service(
-        conversation_service=container.conversation_service,
-        usage_recorder=container.usage_recorder,
-        provider_registry=provider_registry,
-    )
-
     invite_repository = PostgresSignupInviteRepository(session_factory)
     request_repository = PostgresSignupRequestRepository(session_factory)
     container.invite_service = build_invite_service(
@@ -417,6 +411,15 @@ async def lifespan(app: FastAPI):
         session_factory,
         get_settings,
         limit_resolver=container.vector_limit_resolver,
+    )
+
+    # Agent service (after vector store is finalized)
+    container.agent_service = build_agent_service(
+        conversation_service=container.conversation_service,
+        usage_recorder=container.usage_recorder,
+        provider_registry=provider_registry,
+        container_service=container.container_service,
+        vector_store_service=container.vector_store_service,
     )
 
     # Optional background sync worker

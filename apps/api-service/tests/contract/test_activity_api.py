@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 import json
 import os
+from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock
 from uuid import uuid4
@@ -90,7 +91,7 @@ def test_list_activity_filters_and_pagination(
         next_cursor = "cursor-1"
         state_items = [
             ActivityEventWithState(
-                **event.__dict__,
+                **asdict(event),
                 read_state="unread",
             )
             for event in filtered_events[:limit]

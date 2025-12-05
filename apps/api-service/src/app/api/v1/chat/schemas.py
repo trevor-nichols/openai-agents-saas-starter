@@ -2,19 +2,20 @@ from __future__ import annotations
 
 from typing import Any
 
+from pydantic import BaseModel, ConfigDict
+
 from app.api.v1.shared.streaming import (
+    CodeInterpreterCall,
+    ContainerFileCitation,
+    FileCitation,
+    FileSearchCall,
+    MessageAttachment,
     StreamingEvent,
     ToolCallPayload,
     UrlCitation,
-    ContainerFileCitation,
-    FileCitation,
-    MessageAttachment,
     WebSearchAction,
     WebSearchCall,
-    CodeInterpreterCall,
-    FileSearchCall,
 )
-from pydantic import BaseModel, ConfigDict
 
 
 class AgentChatRequest(BaseModel):

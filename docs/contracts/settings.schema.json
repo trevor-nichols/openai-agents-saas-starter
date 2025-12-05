@@ -1607,6 +1607,12 @@
       "title": "Auth Key Storage Path",
       "type": "string"
     },
+    "auto_create_vector_store_for_file_search": {
+      "default": true,
+      "description": "Automatically create a primary vector store for tenants when file_search is used.",
+      "title": "Auto Create Vector Store For File Search",
+      "type": "boolean"
+    },
     "auto_purge_expired_vector_stores": {
       "default": false,
       "description": "When true, expired vector stores are deleted remotely and soft-deleted locally.",

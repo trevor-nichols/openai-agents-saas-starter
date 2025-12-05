@@ -6,12 +6,13 @@ from typing import Any
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.settings import Settings
 from app.domain.billing import PlanFeature, BillingPlan, TenantSubscription
 from app.infrastructure.persistence.conversations.models import TenantAccount
-from app.infrastructure.persistence.vector_stores.models import VectorStore, VectorStoreFile
+from app.infrastructure.persistence.vector_stores.models import AgentVectorStore, VectorStore, VectorStoreFile
 from app.services.vector_stores import (
     VectorLimitResolver,
     VectorStoreFileConflictError,
@@ -27,7 +28,10 @@ from tests.utils.sqlalchemy import create_tables
 async def session_factory():
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
     async with engine.begin() as conn:
-        await conn.run_sync(create_tables, (TenantAccount.__table__, VectorStore.__table__, VectorStoreFile.__table__))
+        await conn.run_sync(
+            create_tables,
+            (TenantAccount.__table__, VectorStore.__table__, VectorStoreFile.__table__, AgentVectorStore.__table__),
+        )
     try:
         yield async_sessionmaker(engine, expire_on_commit=False)
     finally:
@@ -298,3 +302,70 @@ async def test_delete_file_frees_usage(session_factory, settings):
     async with session_factory() as session:
         refreshed = await session.get(VectorStore, store.id)
         assert refreshed.usage_bytes == 500
+
+
+@pytest.mark.asyncio
+async def test_bind_and_unbind_agent_store(session_factory, settings):
+    settings.vector_max_files_per_store = 5
+    meta = _FakeFile("file-bind")
+    svc = _service(session_factory, settings, meta)
+    tenant_id = uuid4()
+    store = await svc.create_store(tenant_id=tenant_id, owner_user_id=None, name="primary")
+
+    binding = await svc.bind_agent_to_store(
+        tenant_id=tenant_id, agent_key="fs_agent", vector_store_id=store.id
+    )
+    assert binding.agent_key == "fs_agent"
+    assert binding.vector_store_id == store.id
+
+    # idempotent
+    again = await svc.bind_agent_to_store(
+        tenant_id=tenant_id, agent_key="fs_agent", vector_store_id=store.id
+    )
+    assert again.vector_store_id == store.id
+
+    fetched = await svc.get_agent_binding(tenant_id=tenant_id, agent_key="fs_agent")
+    assert fetched is not None
+    assert fetched.id == store.id
+
+    await svc.unbind_agent_from_store(
+        tenant_id=tenant_id, agent_key="fs_agent", vector_store_id=store.id
+    )
+    assert await svc.get_agent_binding(tenant_id=tenant_id, agent_key="fs_agent") is None
+
+
+@pytest.mark.asyncio
+async def test_bind_agent_replaces_existing(session_factory, settings):
+    settings.vector_max_files_per_store = 5
+    meta = _FakeFile("file-bind")
+    svc = _service(session_factory, settings, meta)
+    tenant_id = uuid4()
+    first = await svc.create_store(tenant_id=tenant_id, owner_user_id=None, name="primary")
+    second = await svc.create_store(tenant_id=tenant_id, owner_user_id=None, name="secondary")
+
+    await svc.bind_agent_to_store(tenant_id=tenant_id, agent_key="fs_agent", vector_store_id=first.id)
+    await svc.bind_agent_to_store(tenant_id=tenant_id, agent_key="fs_agent", vector_store_id=second.id)
+
+    # Should point to the latest store
+    binding = await svc.get_agent_binding(tenant_id=tenant_id, agent_key="fs_agent")
+    assert binding is not None
+    assert binding.id == second.id
+
+    # Ensure only one row exists
+    async with session_factory() as session:
+        count = await session.scalar(
+            select(func.count()).select_from(AgentVectorStore).where(AgentVectorStore.agent_key == "fs_agent")
+        )
+        assert int(count or 0) == 1
+
+
+@pytest.mark.asyncio
+async def test_get_store_by_openai_id(session_factory, settings):
+    meta = _FakeFile("file-meta")
+    svc = _service(session_factory, settings, meta)
+    tenant_id = uuid4()
+    store = await svc.create_store(tenant_id=tenant_id, owner_user_id=None, name="primary")
+
+    fetched = await svc.get_store_by_openai_id(tenant_id=tenant_id, openai_id=store.openai_id)
+    assert fetched is not None
+    assert fetched.id == store.id

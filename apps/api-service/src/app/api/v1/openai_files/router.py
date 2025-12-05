@@ -43,7 +43,7 @@ async def download_openai_file(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="File not found",
-        )
+        ) from None
 
     try:
         resp = await cast(Any, client).files.content(file_id)
@@ -85,7 +85,7 @@ async def download_openai_container_file(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Container not found",
-        )
+        ) from None
 
     try:
         resp = await cast(Any, client).containers.files.content(

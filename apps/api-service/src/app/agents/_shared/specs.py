@@ -40,6 +40,10 @@ class AgentSpec:
     - `agent_tool_keys` lists agent keys that should be exposed as tools on this
       agent (caller retains control; different from handoffs which transfer control).
     - `agent_tool_overrides` allows per-agent-tool metadata (see AgentToolConfig).
+    - `vector_store_binding` and `vector_store_ids` control how file_search resolves
+      vector stores (tenant_default vs static ids).
+    - `file_search_options` are passed through to the FileSearchTool (e.g.,
+      max_num_results, filters, ranking_options, include_search_results).
     """
 
     key: str
@@ -73,6 +77,10 @@ class AgentSpec:
     agent_tool_overrides: dict[str, AgentToolConfig] = field(default_factory=dict)
     # Optional structured output configuration (maps to Agents SDK output_type).
     output: OutputSpec | None = None
+    # File search / retrieval binding
+    vector_store_binding: Literal["tenant_default", "static", "required"] = "tenant_default"
+    vector_store_ids: tuple[str, ...] = ()
+    file_search_options: dict[str, Any] = field(default_factory=dict)
 
     def prompt_source(self) -> str:
         if self.instructions:

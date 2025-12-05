@@ -217,6 +217,9 @@ def wire_workflow_services(container: ApplicationContainer) -> None:
     if container.session_factory is None:
         raise RuntimeError("Session factory must be configured before workflow services")
 
+    if container.vector_store_service is None:
+        wire_vector_store_service(container)
+
     if container.workflow_run_repository is None:
         container.workflow_run_repository = SqlAlchemyWorkflowRunRepository(
             container.session_factory
@@ -227,7 +230,8 @@ def wire_workflow_services(container: ApplicationContainer) -> None:
             registry=None,
             provider_registry=None,
             interaction_builder=InteractionContextBuilder(
-                container_service=container.container_service
+                container_service=container.container_service,
+                vector_store_service=container.vector_store_service,
             ),
             run_repository=container.workflow_run_repository,
         )

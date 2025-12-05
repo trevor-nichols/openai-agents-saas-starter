@@ -18,7 +18,11 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.settings import Settings, get_settings
 from app.infrastructure.db import get_async_sessionmaker
-from app.infrastructure.persistence.vector_stores.models import VectorStore, VectorStoreFile
+from app.infrastructure.persistence.vector_stores.models import (
+    AgentVectorStore,
+    VectorStore,
+    VectorStoreFile,
+)
 from app.observability.metrics import (
     VECTOR_STORE_OPERATION_DURATION_SECONDS,
     VECTOR_STORE_OPERATIONS_TOTAL,
@@ -48,6 +52,23 @@ class VectorStoreFileConflictError(RuntimeError):
     pass
 
 
+def _coerce_uuid(value: uuid.UUID | str | None) -> uuid.UUID:
+    if value is None:
+        raise ValueError("UUID value is required")
+    if isinstance(value, uuid.UUID):
+        return value
+    try:
+        return uuid.UUID(str(value))
+    except Exception as exc:
+        raise ValueError(f"Invalid UUID value: {value}") from exc
+
+
+def _coerce_uuid_optional(value: uuid.UUID | str | None) -> uuid.UUID | None:
+    if value is None:
+        return None
+    return _coerce_uuid(value)
+
+
 class VectorStoreService:
     """Coordinates OpenAI vector store API calls with local persistence."""
 
@@ -68,17 +89,20 @@ class VectorStoreService:
     async def create_store(
         self,
         *,
-        tenant_id: uuid.UUID,
-        owner_user_id: uuid.UUID | None,
+        tenant_id: uuid.UUID | str,
+        owner_user_id: uuid.UUID | str | None,
         name: str,
         description: str | None = None,
         expires_after: dict[str, Any] | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> VectorStore:
-        limits = await self._resolve_limits(tenant_id)
-        await self._enforce_store_limit(tenant_id, limits)
-        await self._ensure_unique_name(tenant_id, name)
-        client = self._openai_client(tenant_id)
+        tenant_uuid = _coerce_uuid(tenant_id)
+        owner_uuid = _coerce_uuid_optional(owner_user_id)
+
+        limits = await self._resolve_limits(tenant_uuid)
+        await self._enforce_store_limit(tenant_uuid, limits)
+        await self._ensure_unique_name(tenant_uuid, name)
+        client = self._openai_client(tenant_uuid)
         t0 = perf_counter()
         payload: dict[str, Any] = {"name": name}
         if description is not None:
@@ -90,7 +114,7 @@ class VectorStoreService:
         try:
             with trace(
                 workflow_name="vector_store.create",
-                metadata={"tenant_id": str(tenant_id)},
+                metadata={"tenant_id": str(tenant_uuid)},
             ):
                 remote = await client.vector_stores.create(**payload)
             self._observe("create_store", "success", t0)
@@ -110,8 +134,8 @@ class VectorStoreService:
             store = VectorStore(
                 id=uuid.uuid4(),
                 openai_id=remote.id,
-                tenant_id=tenant_id,
-                owner_user_id=owner_user_id,
+                tenant_id=tenant_uuid,
+                owner_user_id=owner_uuid,
                 name=name,
                 description=description,
                 status=status,
@@ -143,20 +167,21 @@ class VectorStoreService:
             return store
 
     async def list_stores(
-        self, *, tenant_id: uuid.UUID, limit: int = 50, offset: int = 0
+        self, *, tenant_id: uuid.UUID | str, limit: int = 50, offset: int = 0
     ) -> tuple[list[VectorStore], int]:
+        tenant_uuid = _coerce_uuid(tenant_id)
         async with self._session_factory() as session:
             total = await session.scalar(
                 select(func.count())
                 .select_from(VectorStore)
                 .where(
-                    VectorStore.tenant_id == tenant_id,
+                    VectorStore.tenant_id == tenant_uuid,
                     VectorStore.deleted_at.is_(None),
                 )
             )
             result = await session.scalars(
                 select(VectorStore)
-                .where(VectorStore.tenant_id == tenant_id, VectorStore.deleted_at.is_(None))
+                .where(VectorStore.tenant_id == tenant_uuid, VectorStore.deleted_at.is_(None))
                 .order_by(VectorStore.created_at.desc())
                 .limit(limit)
                 .offset(offset)
@@ -164,14 +189,17 @@ class VectorStoreService:
             return list(result), int(total or 0)
 
     async def ensure_primary_store(
-        self, *, tenant_id: uuid.UUID, owner_user_id: uuid.UUID | None = None
+        self, *, tenant_id: uuid.UUID | str, owner_user_id: uuid.UUID | str | None = None
     ) -> VectorStore:
         """Idempotently ensure a default 'primary' store exists for the tenant."""
+
+        tenant_uuid = _coerce_uuid(tenant_id)
+        owner_uuid = _coerce_uuid_optional(owner_user_id)
 
         async with self._session_factory() as session:
             existing = await session.scalar(
                 select(VectorStore).where(
-                    VectorStore.tenant_id == tenant_id,
+                    VectorStore.tenant_id == tenant_uuid,
                     VectorStore.name == "primary",
                     VectorStore.deleted_at.is_(None),
                 )
@@ -180,20 +208,135 @@ class VectorStoreService:
                 return existing
 
         return await self.create_store(
-            tenant_id=tenant_id,
-            owner_user_id=owner_user_id,
+            tenant_id=tenant_uuid,
+            owner_user_id=owner_uuid,
             name="primary",
             description="Default tenant vector store",
         )
 
-    async def get_store(self, *, vector_store_id: uuid.UUID, tenant_id: uuid.UUID) -> VectorStore:
+    async def get_store_by_name(
+        self, *, tenant_id: uuid.UUID | str, name: str
+    ) -> VectorStore | None:
+        tenant_uuid = _coerce_uuid(tenant_id)
+        async with self._session_factory() as session:
+            return await session.scalar(
+                select(VectorStore).where(
+                    VectorStore.tenant_id == tenant_uuid,
+                    VectorStore.name == name,
+                    VectorStore.deleted_at.is_(None),
+                )
+            )
+
+    async def get_store_by_openai_id(
+        self, *, tenant_id: uuid.UUID | str, openai_id: str
+    ) -> VectorStore | None:
+        tenant_uuid = _coerce_uuid(tenant_id)
+        async with self._session_factory() as session:
+            return await session.scalar(
+                select(VectorStore)
+                .where(
+                    VectorStore.openai_id == openai_id,
+                    VectorStore.tenant_id == tenant_uuid,
+                    VectorStore.deleted_at.is_(None),
+                )
+                .limit(1)
+            )
+
+    async def get_agent_binding(
+        self, *, tenant_id: uuid.UUID | str, agent_key: str
+    ) -> VectorStore | None:
+        tenant_uuid = _coerce_uuid(tenant_id)
+        async with self._session_factory() as session:
+            binding = await session.scalar(
+                select(AgentVectorStore)
+                .where(
+                    AgentVectorStore.tenant_id == tenant_uuid,
+                    AgentVectorStore.agent_key == agent_key,
+                )
+                .limit(1)
+            )
+            if binding is None:
+                return None
+            store = await session.get(VectorStore, binding.vector_store_id)
+            if store is None or store.deleted_at is not None:
+                return None
+            return store
+
+    async def bind_agent_to_store(
+        self,
+        *,
+        tenant_id: uuid.UUID | str,
+        agent_key: str,
+        vector_store_id: uuid.UUID | str,
+    ) -> AgentVectorStore:
+        tenant_uuid = _coerce_uuid(tenant_id)
+        store = await self._get_store(vector_store_id, tenant_id=tenant_uuid)
+        async with self._session_factory() as session:
+            existing = await session.scalar(
+                select(AgentVectorStore).where(
+                    AgentVectorStore.tenant_id == tenant_uuid,
+                    AgentVectorStore.agent_key == agent_key,
+                )
+            )
+
+            if existing:
+                if existing.vector_store_id != store.id:
+                    existing.vector_store_id = store.id
+                    try:
+                        await session.commit()
+                    except IntegrityError as exc:
+                        await session.rollback()
+                        raise VectorStoreValidationError(
+                            "Failed to rebind agent to vector store"
+                        ) from exc
+                return existing
+
+            binding = AgentVectorStore(
+                agent_key=agent_key,
+                vector_store_id=store.id,
+                tenant_id=tenant_uuid,
+            )
+            session.add(binding)
+            try:
+                await session.commit()
+            except IntegrityError as exc:
+                await session.rollback()
+                raise VectorStoreValidationError("Failed to bind agent to vector store") from exc
+            await session.refresh(binding)
+            return binding
+
+    async def unbind_agent_from_store(
+        self,
+        *,
+        tenant_id: uuid.UUID | str,
+        agent_key: str,
+        vector_store_id: uuid.UUID | str,
+    ) -> None:
+        tenant_uuid = _coerce_uuid(tenant_id)
+        store_uuid = _coerce_uuid(vector_store_id)
+        async with self._session_factory() as session:
+            binding = await session.scalar(
+                select(AgentVectorStore).where(
+                    AgentVectorStore.tenant_id == tenant_uuid,
+                    AgentVectorStore.agent_key == agent_key,
+                    AgentVectorStore.vector_store_id == store_uuid,
+                )
+            )
+            if binding is None:
+                return
+            await session.delete(binding)
+            await session.commit()
+
+    async def get_store(
+        self, *, vector_store_id: uuid.UUID | str, tenant_id: uuid.UUID | str
+    ) -> VectorStore:
         return await self._get_store(vector_store_id, tenant_id=tenant_id)
 
     async def attach_file(
         self,
         *,
-        vector_store_id: uuid.UUID,
-        tenant_id: uuid.UUID,
+        vector_store_id: uuid.UUID | str,
+        tenant_id: uuid.UUID | str,
         file_id: str,
         attributes: dict[str, Any] | None = None,
         chunking_strategy: dict[str, Any] | None = None,
@@ -302,8 +445,8 @@ class VectorStoreService:
     async def list_files(
         self,
         *,
-        vector_store_id: uuid.UUID,
-        tenant_id: uuid.UUID,
+        vector_store_id: uuid.UUID | str,
+        tenant_id: uuid.UUID | str,
         status: str | None = None,
         limit: int = 50,
         offset: int = 0,
@@ -329,7 +472,7 @@ class VectorStoreService:
             return list(rows), int(total or 0)
 
     async def get_file(
-        self, *, vector_store_id: uuid.UUID, tenant_id: uuid.UUID, openai_file_id: str
+        self, *, vector_store_id: uuid.UUID | str, tenant_id: uuid.UUID | str, openai_file_id: str
     ) -> VectorStoreFile:
         store = await self._get_store(vector_store_id, tenant_id=tenant_id)
         async with self._session_factory() as session:
@@ -349,8 +492,8 @@ class VectorStoreService:
     async def search(
         self,
         *,
-        vector_store_id: uuid.UUID,
-        tenant_id: uuid.UUID,
+        vector_store_id: uuid.UUID | str,
+        tenant_id: uuid.UUID | str,
         query: str,
         filters: dict[str, Any] | None = None,
         max_num_results: int | None = None,
@@ -386,7 +529,9 @@ class VectorStoreService:
             )
             raise
 
-    async def delete_store(self, *, vector_store_id: uuid.UUID, tenant_id: uuid.UUID) -> None:
+    async def delete_store(
+        self, *, vector_store_id: uuid.UUID | str, tenant_id: uuid.UUID | str
+    ) -> None:
         store = await self._get_store(vector_store_id, tenant_id=tenant_id)
         client = self._openai_client(store.tenant_id)
         t0 = perf_counter()
@@ -417,7 +562,7 @@ class VectorStoreService:
                 await session.commit()
 
     async def delete_file(
-        self, *, vector_store_id: uuid.UUID, tenant_id: uuid.UUID, file_id: str
+        self, *, vector_store_id: uuid.UUID | str, tenant_id: uuid.UUID | str, file_id: str
     ) -> None:
         store = await self._get_store(vector_store_id, tenant_id=tenant_id)
         client = self._openai_client(store.tenant_id)
@@ -465,13 +610,15 @@ class VectorStoreService:
 
     # -------- Internal helpers --------
     async def _get_store(
-        self, vector_store_id: uuid.UUID, *, tenant_id: uuid.UUID | None = None
+        self, vector_store_id: uuid.UUID | str, *, tenant_id: uuid.UUID | str | None = None
     ) -> VectorStore:
+        vector_store_uuid = _coerce_uuid(vector_store_id)
+        tenant_uuid = _coerce_uuid_optional(tenant_id)
         async with self._session_factory() as session:
-            store = await session.get(VectorStore, vector_store_id)
+            store = await session.get(VectorStore, vector_store_uuid)
             if store is None or store.deleted_at is not None:
                 raise VectorStoreNotFoundError(f"Vector store {vector_store_id} not found")
-            if tenant_id and store.tenant_id != tenant_id:
+            if tenant_uuid and store.tenant_id != tenant_uuid:
                 raise VectorStoreNotFoundError(f"Vector store {vector_store_id} not found")
             return store
 
@@ -563,10 +710,11 @@ class VectorStoreService:
                 if projected > limits.max_total_bytes:
                     raise VectorStoreQuotaError("Tenant vector store byte cap exceeded")
 
-    def _openai_client(self, tenant_id: uuid.UUID) -> AsyncOpenAI:
+    def _openai_client(self, tenant_id: uuid.UUID | str) -> AsyncOpenAI:
+        tenant_uuid = _coerce_uuid(tenant_id)
         settings = self._settings_factory()
         api_key = (
-            self._get_tenant_api_key(tenant_id, settings)
+            self._get_tenant_api_key(tenant_uuid, settings)
             if self._get_tenant_api_key
             else settings.openai_api_key
         )
@@ -575,10 +723,11 @@ class VectorStoreService:
         return AsyncOpenAI(api_key=api_key)
 
     async def get_file_by_openai_id(
-        self, *, tenant_id: uuid.UUID, openai_file_id: str
+        self, *, tenant_id: uuid.UUID | str, openai_file_id: str
     ) -> VectorStoreFile:
         """Ensure a vector store file belongs to the tenant by OpenAI file id."""
 
+        tenant_uuid = _coerce_uuid(tenant_id)
         async with self._session_factory() as session:
             row = await session.scalar(
                 select(VectorStoreFile)
@@ -586,7 +735,7 @@ class VectorStoreService:
                 .where(
                     VectorStoreFile.openai_file_id == openai_file_id,
                     VectorStoreFile.deleted_at.is_(None),
-                    VectorStore.tenant_id == tenant_id,
+                    VectorStore.tenant_id == tenant_uuid,
                     VectorStore.deleted_at.is_(None),
                 )
             )
