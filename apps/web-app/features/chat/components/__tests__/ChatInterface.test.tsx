@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
-import { renderToolOutput } from '../ChatInterface';
+import { renderToolOutput } from '@/components/ui/ai/renderToolOutput';
 import type { ImageGenerationCall } from '@/lib/api/client/types.gen';
 import type { FileSearchResult } from '@/lib/api/client/types.gen';
 
