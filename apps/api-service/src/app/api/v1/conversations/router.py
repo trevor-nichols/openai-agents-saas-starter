@@ -14,7 +14,8 @@ from app.api.v1.conversations.schemas import (
     ConversationSearchResult,
 )
 from app.domain.conversations import ConversationNotFoundError
-from app.services.agent_service import ConversationActorContext, agent_service
+from app.services.agents.context import ConversationActorContext
+from app.services.agents.query import get_conversation_query_service
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
@@ -38,7 +39,7 @@ async def list_conversations(
     )
     actor = _conversation_actor(current_user, tenant_context)
     try:
-        summaries, next_cursor = await agent_service.list_conversations(
+        summaries, next_cursor = await get_conversation_query_service().list_summaries(
             actor=actor,
             limit=limit,
             cursor=cursor,
@@ -73,7 +74,7 @@ async def search_conversations(
     actor = _conversation_actor(current_user, tenant_context)
 
     try:
-        results, next_cursor = await agent_service.search_conversations(
+        results, next_cursor = await get_conversation_query_service().search(
             actor=actor,
             query=q,
             limit=limit,
@@ -122,7 +123,7 @@ async def get_conversation(
     )
     actor = _conversation_actor(current_user, tenant_context)
     try:
-        return await agent_service.get_conversation_history(conversation_id, actor=actor)
+        return await get_conversation_query_service().get_history(conversation_id, actor=actor)
     except ConversationNotFoundError as exc:  # pragma: no cover - mapped to HTTP below
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -154,7 +155,7 @@ async def get_conversation_events(
     )
     actor = _conversation_actor(current_user, tenant_context)
     try:
-        events = await agent_service.get_conversation_events(
+        events = await get_conversation_query_service().get_events(
             conversation_id,
             actor=actor,
             workflow_run_id=workflow_run_id,
@@ -224,7 +225,7 @@ async def delete_conversation(
         min_role=TenantRole.ADMIN,
     )
     actor = _conversation_actor(current_user, tenant_context)
-    await agent_service.clear_conversation(conversation_id, actor=actor)
+    await get_conversation_query_service().clear(conversation_id, actor=actor)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

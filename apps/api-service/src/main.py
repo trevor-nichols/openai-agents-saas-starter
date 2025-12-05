@@ -10,7 +10,11 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.errors import register_exception_handlers
 from app.api.router import api_router
-from app.bootstrap import get_container, shutdown_container
+from app.bootstrap import (
+    get_container,
+    shutdown_container,
+    wire_conversation_query_service,
+)
 from app.core.provider_validation import (
     ProviderViolation,
     ensure_provider_parity,
@@ -421,6 +425,9 @@ async def lifespan(app: FastAPI):
         container_service=container.container_service,
         vector_store_service=container.vector_store_service,
     )
+
+    # Conversation query service (history + search) wired once at startup
+    wire_conversation_query_service(container)
 
     # Optional background sync worker
     if settings.enable_vector_store_sync_worker:

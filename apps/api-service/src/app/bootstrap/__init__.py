@@ -6,6 +6,7 @@ from .container import (
     reset_container,
     set_container,
     shutdown_container,
+    wire_conversation_query_service,
 )
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "reset_container",
     "set_container",
     "shutdown_container",
+    "wire_conversation_query_service",
 ]

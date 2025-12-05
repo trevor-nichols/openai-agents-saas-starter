@@ -1,16 +1,13 @@
 """Core façade for agent interactions.
 
-This module now delegates discrete responsibilities to specialized helpers to
-keep the public API stable while making the orchestration testable and
-maintainable.
+The heavy lifting now lives in per-concern helpers under services/agents/* so
+the surface here stays lean and testable.
 """
 
 from __future__ import annotations
 
-import inspect
 import logging
-import uuid
-from collections.abc import AsyncGenerator, Iterable, Mapping
+from collections.abc import AsyncGenerator, Mapping
 from datetime import datetime
 from typing import Any
 
@@ -18,36 +15,36 @@ from agents import trace
 
 from app.api.v1.agents.schemas import AgentStatus, AgentSummary
 from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse, MessageAttachment
-from app.api.v1.conversations.schemas import ConversationHistory, ConversationSummary
-from app.bootstrap.container import get_container, wire_storage_service
+from app.bootstrap.container import wire_storage_service
 from app.domain.ai.models import AgentStreamEvent
 from app.domain.conversations import (
     ConversationAttachment,
-    ConversationEvent,
     ConversationMessage,
-    ConversationMetadata,
     ConversationRepository,
 )
 from app.infrastructure.providers.openai.runtime import LifecycleEventBus
 from app.services.agents.attachments import AttachmentService
+from app.services.agents.catalog import AgentCatalogService
 from app.services.agents.context import (
     ConversationActorContext,
     reset_current_actor,
     set_current_actor,
 )
 from app.services.agents.event_log import EventProjector
-from app.services.agents.history import ConversationHistoryService
 from app.services.agents.interaction_context import InteractionContextBuilder
 from app.services.agents.policy import AgentRuntimePolicy
 from app.services.agents.provider_registry import AgentProviderRegistry, get_provider_registry
+from app.services.agents.run_pipeline import (
+    build_metadata,
+    persist_assistant_message,
+    prepare_run_context,
+    project_new_session_items,
+    record_user_message,
+)
 from app.services.agents.session_manager import SessionManager
 from app.services.agents.usage import UsageService
-from app.services.containers import ContainerService, get_container_service
-from app.services.conversation_service import (
-    ConversationService,
-    SearchResult,
-    get_conversation_service,
-)
+from app.services.containers import ContainerService
+from app.services.conversation_service import ConversationService, get_conversation_service
 from app.services.storage.service import StorageService
 from app.services.usage_recorder import UsageRecorder
 from app.services.vector_stores.service import VectorStoreService
@@ -72,8 +69,8 @@ class AgentService:
         vector_store_service: VectorStoreService | None = None,
         session_manager: SessionManager | None = None,
         attachment_service: AttachmentService | None = None,
-        history_service: ConversationHistoryService | None = None,
         usage_service: UsageService | None = None,
+        catalog_service: AgentCatalogService | None = None,
     ) -> None:
         self._conversation_service = conversation_service or get_conversation_service()
         if conversation_repo is not None:
@@ -81,11 +78,6 @@ class AgentService:
 
         self._provider_registry = provider_registry or get_provider_registry()
         self._container_service = container_service
-        if self._container_service is None:
-            try:
-                self._container_service = get_container_service()
-            except RuntimeError:
-                self._container_service = None
         self._storage_service = storage_service
         self._policy = policy or AgentRuntimePolicy.from_env()
 
@@ -99,64 +91,27 @@ class AgentService:
             container_service=self._container_service,
             vector_store_service=vector_store_service,
         )
-        self._history_service = history_service or ConversationHistoryService(
-            self._conversation_service,
-            self._attachment_service,
-        )
         self._event_projector = EventProjector(self._conversation_service)
         self._usage_service = usage_service or UsageService(usage_recorder)
+        self._catalog_service = catalog_service or AgentCatalogService(self._provider_registry)
 
     async def chat(
         self, request: AgentChatRequest, *, actor: ConversationActorContext
     ) -> AgentChatResponse:
-        provider = self._get_provider()
-        descriptor = provider.resolve_agent(request.agent_type)
-        conversation_id = request.conversation_id or str(uuid.uuid4())
-
-        runtime_ctx = await self._interaction_builder.build(
+        ctx = await prepare_run_context(
             actor=actor,
             request=request,
-            conversation_id=conversation_id,
-            agent_keys=[descriptor.key],
-        )
-        existing_state = await self._conversation_service.get_session_state(
-            conversation_id, tenant_id=actor.tenant_id
-        )
-        # When using SDK sessions, do not also send provider conversation_id to avoid
-        # double-feeding history (Responses API would see duplicates). Keep server
-        # state off and rely on session_store only.
-        provider_conversation_id = None
-        session_id, session_handle = await self._session_manager.acquire_session(
-            provider,
-            actor.tenant_id,
-            conversation_id,
-            provider_conversation_id,
+            provider_registry=self._provider_registry,
+            interaction_builder=self._interaction_builder,
+            conversation_service=self._conversation_service,
+            session_manager=self._session_manager,
         )
 
-        pre_session_items = await self._get_session_items(session_handle)
-
-        user_message = ConversationMessage(role="user", content=request.message)
-        await self._conversation_service.append_message(
-            conversation_id,
-            user_message,
-            tenant_id=actor.tenant_id,
-            metadata=self._build_metadata(
-                tenant_id=actor.tenant_id,
-                provider=provider.name,
-                provider_conversation_id=None,
-                agent_entrypoint=request.agent_type or descriptor.key,
-                active_agent=descriptor.key,
-                session_id=session_id,
-                user_id=actor.user_id,
-            ),
+        await record_user_message(
+            ctx=ctx,
+            request=request,
+            conversation_service=self._conversation_service,
         )
-        if hasattr(self._conversation_service, "record_conversation_created"):
-            await self._conversation_service.record_conversation_created(
-                conversation_id,
-                tenant_id=actor.tenant_id,
-                agent_entrypoint=request.agent_type or descriptor.key,
-                existed=existing_state is not None,
-            )
 
         token = set_current_actor(actor)
         try:
@@ -164,23 +119,19 @@ class AgentService:
                 "agent.chat.start",
                 extra={
                     "tenant_id": actor.tenant_id,
-                    "conversation_id": conversation_id,
-                    "provider_conversation_id": provider_conversation_id,
-                    "agent": descriptor.key,
+                    "conversation_id": ctx.conversation_id,
+                    "provider_conversation_id": ctx.provider_conversation_id,
+                    "agent": ctx.descriptor.key,
                 },
             )
-            runtime_conversation_id = (
-                provider_conversation_id if provider_conversation_id else conversation_id
-            )
-            run_options = None
-            with trace(workflow_name="Agent Chat", group_id=conversation_id):
-                result = await provider.runtime.run(
-                    descriptor.key,
+            runtime_conversation_id = ctx.provider_conversation_id or ctx.conversation_id
+            with trace(workflow_name="Agent Chat", group_id=ctx.conversation_id):
+                result = await ctx.provider.runtime.run(
+                    ctx.descriptor.key,
                     request.message,
-                    session=session_handle,
+                    session=ctx.session_handle,
                     conversation_id=runtime_conversation_id,
-                    metadata={"prompt_runtime_ctx": runtime_ctx},
-                    options=run_options,
+                    metadata={"prompt_runtime_ctx": ctx.runtime_ctx},
                 )
         finally:
             reset_current_actor(token)
@@ -189,78 +140,66 @@ class AgentService:
         attachments = await self._attachment_service.ingest_image_outputs(
             result.tool_outputs,
             actor=actor,
-            conversation_id=conversation_id,
-            agent_key=descriptor.key,
+            conversation_id=ctx.conversation_id,
+            agent_key=ctx.descriptor.key,
             response_id=result.response_id,
         )
-        assistant_message = ConversationMessage(
-            role="assistant",
-            content=response_text,
+        await persist_assistant_message(
+            ctx=ctx,
+            conversation_service=self._conversation_service,
+            response_text=response_text,
             attachments=attachments,
-        )
-        await self._conversation_service.append_message(
-            conversation_id,
-            assistant_message,
-            tenant_id=actor.tenant_id,
-            metadata=self._build_metadata(
-                tenant_id=actor.tenant_id,
-                provider=provider.name,
-                provider_conversation_id=None,
-                agent_entrypoint=request.agent_type or descriptor.key,
-                active_agent=descriptor.key,
-                session_id=session_id,
-                user_id=actor.user_id,
-            ),
         )
         logger.info(
             "agent.chat.end",
             extra={
                 "tenant_id": actor.tenant_id,
-                "conversation_id": conversation_id,
-                "provider_conversation_id": provider_conversation_id,
-                "agent": descriptor.key,
+                "conversation_id": ctx.conversation_id,
+                "provider_conversation_id": ctx.provider_conversation_id,
+                "agent": ctx.descriptor.key,
                 "response_id": result.response_id,
             },
         )
         await self._sync_session_state(
             tenant_id=actor.tenant_id,
-            conversation_id=conversation_id,
-            session_id=session_id,
-            provider_name=provider.name,
-            provider_conversation_id=None,
+            conversation_id=ctx.conversation_id,
+            session_id=ctx.session_id,
+            provider_name=ctx.provider.name,
+            provider_conversation_id=ctx.provider_conversation_id,
         )
         await self._record_usage_metrics(
             tenant_id=actor.tenant_id,
-            conversation_id=conversation_id,
+            conversation_id=ctx.conversation_id,
             response_id=result.response_id,
             usage=result.usage,
         )
 
-        provider.mark_seen(descriptor.key, datetime.utcnow())
-
-        await self._ingest_new_session_items(
-            session_handle=session_handle,
-            pre_items=pre_session_items,
-            conversation_id=conversation_id,
+        await project_new_session_items(
+            event_projector=self._event_projector,
+            session_handle=ctx.session_handle,
+            pre_items=ctx.pre_session_items,
+            conversation_id=ctx.conversation_id,
             tenant_id=actor.tenant_id,
-            agent=descriptor.key,
-            model=descriptor.model,
+            agent=ctx.descriptor.key,
+            model=ctx.descriptor.model,
             response_id=result.response_id,
         )
 
-        tool_overview = provider.tool_overview()
+        ctx.provider.mark_seen(ctx.descriptor.key, datetime.utcnow())
+
+        tool_overview = ctx.provider.tool_overview()
         return AgentChatResponse(
             response=response_text,
             structured_output=AgentStreamEvent._strip_unserializable(result.structured_output),
-            conversation_id=conversation_id,
-            agent_used=descriptor.key,
+            conversation_id=ctx.conversation_id,
+            agent_used=ctx.descriptor.key,
             handoff_occurred=False,
             attachments=[
                 MessageAttachment(**self._attachment_service.to_attachment_schema(att))
                 for att in attachments
             ],
             metadata={
-                "model_used": descriptor.model,
+                "model_used": ctx.descriptor.model,
                 "tools_available": tool_overview.get("tool_names", []),
                 **self._attachment_service.attachment_metadata_note(attachments),
             },
@@ -272,53 +211,20 @@ class AgentService:
         *,
         actor: ConversationActorContext,
     ) -> AsyncGenerator[AgentStreamEvent, None]:
-        provider = self._get_provider()
-        descriptor = provider.resolve_agent(request.agent_type)
-        conversation_id = request.conversation_id or str(uuid.uuid4())
-
-        runtime_ctx = await self._interaction_builder.build(
+        ctx = await prepare_run_context(
             actor=actor,
             request=request,
-            conversation_id=conversation_id,
-            agent_keys=[descriptor.key],
-        )
-        existing_state = await self._conversation_service.get_session_state(
-            conversation_id, tenant_id=actor.tenant_id
-        )
-        # Use SDK session memory only; avoid provider-side conversation ids to prevent
-        # duplicate item errors from the Responses API.
-        provider_conversation_id = None
-        session_id, session_handle = await self._session_manager.acquire_session(
-            provider,
-            actor.tenant_id,
-            conversation_id,
-            provider_conversation_id,
+            provider_registry=self._provider_registry,
+            interaction_builder=self._interaction_builder,
+            conversation_service=self._conversation_service,
+            session_manager=self._session_manager,
         )
 
-        pre_session_items = await self._get_session_items(session_handle)
-
-        user_message = ConversationMessage(role="user", content=request.message)
-        await self._conversation_service.append_message(
-            conversation_id,
-            user_message,
-            tenant_id=actor.tenant_id,
-            metadata=self._build_metadata(
-                tenant_id=actor.tenant_id,
-                provider=provider.name,
-                provider_conversation_id=None,
-                agent_entrypoint=request.agent_type or descriptor.key,
-                active_agent=descriptor.key,
-                session_id=session_id,
-                user_id=actor.user_id,
-            ),
+        await record_user_message(
+            ctx=ctx,
+            request=request,
+            conversation_service=self._conversation_service,
         )
-        if hasattr(self._conversation_service, "record_conversation_created"):
-            await self._conversation_service.record_conversation_created(
-                conversation_id,
-                tenant_id=actor.tenant_id,
-                agent_entrypoint=request.agent_type or descriptor.key,
-                existed=existing_state is not None,
-            )
 
         complete_response = ""
         attachments: list[ConversationAttachment] = []
@@ -330,31 +236,28 @@ class AgentService:
                 "agent.chat_stream.start",
                 extra={
                     "tenant_id": actor.tenant_id,
-                    "conversation_id": conversation_id,
-                    "provider_conversation_id": provider_conversation_id,
-                    "agent": descriptor.key,
+                    "conversation_id": ctx.conversation_id,
+                    "provider_conversation_id": ctx.provider_conversation_id,
+                    "agent": ctx.descriptor.key,
                 },
             )
-            runtime_conversation_id = provider_conversation_id if provider_conversation_id else None
             # Disable provider-side conversation state when sessions are in use to
             # prevent duplicate items being sent (Responses API 400 on duplicate ids).
             runtime_conversation_id = None
 
             lifecycle_bus = LifecycleEventBus()
-            run_options = None
-            with trace(workflow_name="Agent Chat Stream", group_id=conversation_id):
-                stream_handle = provider.runtime.run_stream(
-                    descriptor.key,
+            with trace(workflow_name="Agent Chat Stream", group_id=ctx.conversation_id):
+                stream_handle = ctx.provider.runtime.run_stream(
+                    ctx.descriptor.key,
                     request.message,
-                    session=session_handle,
+                    session=ctx.session_handle,
                     conversation_id=runtime_conversation_id,
-                    metadata={"prompt_runtime_ctx": runtime_ctx},
-                    options=run_options,
+                    metadata={"prompt_runtime_ctx": ctx.runtime_ctx},
                 )
                 async for event in stream_handle.events():
-                    event.conversation_id = conversation_id
+                    event.conversation_id = ctx.conversation_id
                     if event.agent is None:
-                        event.agent = descriptor.key
+                        event.agent = ctx.descriptor.key
 
                     if event.text_delta:
                         complete_response += event.text_delta
@@ -370,8 +273,8 @@ class AgentService:
                     new_attachments = await self._attachment_service.ingest_image_outputs(
                         attachment_sources or None,
                         actor=actor,
-                        conversation_id=conversation_id,
-                        agent_key=descriptor.key,
+                        conversation_id=ctx.conversation_id,
+                        agent_key=ctx.descriptor.key,
                         response_id=event.response_id,
                         seen_tool_calls=seen_tool_calls,
                     )
@@ -400,7 +303,7 @@ class AgentService:
                     if event.is_terminal:
                         break
                 async for leftover in lifecycle_bus.drain():
-                    leftover.conversation_id = conversation_id
+                    leftover.conversation_id = ctx.conversation_id
                     yield leftover
         finally:
             reset_current_actor(token)
@@ -411,16 +314,16 @@ class AgentService:
             attachments=attachments,
         )
         await self._conversation_service.append_message(
-            conversation_id,
+            ctx.conversation_id,
             assistant_message,
             tenant_id=actor.tenant_id,
-            metadata=self._build_metadata(
+            metadata=build_metadata(
                 tenant_id=actor.tenant_id,
-                provider=provider.name,
-                provider_conversation_id=provider_conversation_id,
-                agent_entrypoint=request.agent_type or descriptor.key,
-                active_agent=descriptor.key,
-                session_id=session_id,
+                provider=ctx.provider.name,
+                provider_conversation_id=ctx.provider_conversation_id,
+                agent_entrypoint=request.agent_type or ctx.descriptor.key,
+                active_agent=ctx.descriptor.key,
+                session_id=ctx.session_id,
                 user_id=actor.user_id,
             ),
         )
@@ -428,98 +331,38 @@ class AgentService:
             "agent.chat_stream.end",
             extra={
                 "tenant_id": actor.tenant_id,
-                "conversation_id": conversation_id,
-                "provider_conversation_id": provider_conversation_id,
-                "agent": descriptor.key,
+                "conversation_id": ctx.conversation_id,
+                "provider_conversation_id": ctx.provider_conversation_id,
+                "agent": ctx.descriptor.key,
                 "response_id": getattr(stream_handle, "last_response_id", None),
             },
         )
         await self._sync_session_state(
             tenant_id=actor.tenant_id,
-            conversation_id=conversation_id,
-            session_id=session_id,
-            provider_name=provider.name,
-            provider_conversation_id=None,
+            conversation_id=ctx.conversation_id,
+            session_id=ctx.session_id,
+            provider_name=ctx.provider.name,
+            provider_conversation_id=ctx.provider_conversation_id,
         )
         await self._record_usage_metrics(
             tenant_id=actor.tenant_id,
-            conversation_id=conversation_id,
+            conversation_id=ctx.conversation_id,
             response_id=getattr(stream_handle, "last_response_id", None),
             usage=getattr(stream_handle, "usage", None),
         )
 
-        await self._ingest_new_session_items(
-            session_handle=session_handle,
-            pre_items=pre_session_items,
-            conversation_id=conversation_id,
+        await project_new_session_items(
+            event_projector=self._event_projector,
+            session_handle=ctx.session_handle,
+            pre_items=ctx.pre_session_items,
+            conversation_id=ctx.conversation_id,
             tenant_id=actor.tenant_id,
-            agent=descriptor.key,
-            model=descriptor.model,
+            agent=ctx.descriptor.key,
+            model=ctx.descriptor.model,
             response_id=getattr(stream_handle, "last_response_id", None),
         )
 
-        provider.mark_seen(descriptor.key, datetime.utcnow())
-
-    async def get_conversation_history(
-        self, conversation_id: str, *, actor: ConversationActorContext
-    ) -> ConversationHistory:
-        return await self._history_service.get_history(conversation_id, actor=actor)
-
-    async def get_conversation_events(
-        self,
-        conversation_id: str,
-        *,
-        actor: ConversationActorContext,
-        workflow_run_id: str | None = None,
-    ) -> list[ConversationEvent]:
-        events = await self._conversation_service.get_run_events(
-            conversation_id,
-            tenant_id=actor.tenant_id,
-            workflow_run_id=workflow_run_id,
-        )
-        return events
-
-    async def list_conversations(
-        self,
-        *,
-        actor: ConversationActorContext,
-        limit: int = 50,
-        cursor: str | None = None,
-        agent_entrypoint: str | None = None,
-        updated_after: Any | None = None,
-    ) -> tuple[list[ConversationSummary], str | None]:
-        return await self._history_service.list_summaries(
-            actor=actor,
-            limit=limit,
-            cursor=cursor,
-            agent_entrypoint=agent_entrypoint,
-            updated_after=updated_after,
-        )
-
-    async def search_conversations(
-        self,
-        *,
-        actor: ConversationActorContext,
-        query: str,
-        limit: int = 20,
-        cursor: str | None = None,
-        agent_entrypoint: str | None = None,
-    ) -> tuple[list[SearchResult], str | None]:
-        return await self._history_service.search(
-            actor=actor,
-            query=query,
-            limit=limit,
-            cursor=cursor,
-            agent_entrypoint=agent_entrypoint,
-        )
-
-    async def clear_conversation(
-        self,
-        conversation_id: str,
-        *,
-        actor: ConversationActorContext,
-    ) -> None:
-        await self._history_service.clear(conversation_id, actor=actor)
+        ctx.provider.mark_seen(ctx.descriptor.key, datetime.utcnow())
 
     @property
     def conversation_repository(self):
@@ -577,11 +420,6 @@ class AgentService:
 
     def _get_storage_service(self) -> StorageService:
         if self._storage_service is None:
-            container = get_container()
-            if container.storage_service is None:
-                wire_storage_service(container)
-            self._storage_service = container.storage_service
-        if self._storage_service is None:
             raise RuntimeError("Storage service is not configured")
         return self._storage_service
 
@@ -617,80 +455,6 @@ class AgentService:
             usage=usage,
         )
 
-    async def _get_session_items(self, session_handle: Any) -> list[dict[str, Any]]:
-        getter = getattr(session_handle, "get_items", None)
-        if getter is None or not callable(getter):
-            return []
-        try:
-            result = getter()
-            items = await result if inspect.isawaitable(result) else result
-            if items is None or not isinstance(items, Iterable):
-                return []
-            return list(items)
-        except Exception:
-            logger.exception("Failed to fetch session items; continuing without projection")
-            return []
-
-    async def _ingest_new_session_items(
-        self,
-        *,
-        session_handle: Any,
-        pre_items: list[dict[str, Any]],
-        conversation_id: str,
-        tenant_id: str,
-        agent: str | None,
-        model: str | None,
-        response_id: str | None,
-        workflow_run_id: str | None = None,
-    ) -> None:
-        post_items = await self._get_session_items(session_handle)
-        if not post_items:
-            return
-        delta = post_items[len(pre_items) :]
-        if not delta:
-            return
-        try:
-            await self._event_projector.ingest_session_items(
-                conversation_id=conversation_id,
-                tenant_id=tenant_id,
-                session_items=delta,
-                agent=agent,
-                model=model,
-                response_id=response_id,
-                workflow_run_id=workflow_run_id,
-            )
-        except Exception:
-            logger.exception(
-                "event_projection_failed",
-                extra={
-                    "conversation_id": conversation_id,
-                    "tenant_id": tenant_id,
-                    "agent": agent,
-                },
-            )
-            # Best-effort: do not fail the chat flow if telemetry ingestion breaks.
-
-    @staticmethod
-    def _build_metadata(
-        *,
-        tenant_id: str,
-        provider: str | None,
-        provider_conversation_id: str | None,
-        agent_entrypoint: str,
-        active_agent: str,
-        session_id: str,
-        user_id: str,
-    ) -> ConversationMetadata:
-        return ConversationMetadata(
-            tenant_id=tenant_id,
-            provider=provider,
-            provider_conversation_id=provider_conversation_id,
-            agent_entrypoint=agent_entrypoint,
-            active_agent=active_agent,
-            sdk_session_id=session_id,
-            user_id=user_id,
-        )
-
 
 # Factory helpers -----------------------------------------------------------
 
@@ -704,6 +468,7 @@ def build_agent_service(
     storage_service: StorageService | None = None,
     policy: AgentRuntimePolicy | None = None,
     vector_store_service: VectorStoreService | None = None,
+    catalog_service: AgentCatalogService | None = None,
 ) -> AgentService:
     return AgentService(
         conversation_repo=conversation_repository,
@@ -714,6 +479,7 @@ def build_agent_service(
         storage_service=storage_service,
         policy=policy,
         vector_store_service=vector_store_service,
+        catalog_service=catalog_service,
     )
 
 
@@ -722,6 +488,8 @@ def get_agent_service() -> AgentService:
 
     container = get_container()
     if container.agent_service is None:
+        if container.storage_service is None:
+            wire_storage_service(container)
         container.agent_service = build_agent_service(
             conversation_service=container.conversation_service,
             conversation_repository=None,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from app.core.settings import get_settings
 from app.infrastructure.persistence.workflows.repository import (
@@ -46,6 +46,7 @@ if TYPE_CHECKING:  # pragma: no cover - type hints only
 
     from app.infrastructure.persistence.stripe.repository import StripeEventRepository
     from app.services.agent_service import AgentService
+    from app.services.agents.query import ConversationQueryService
     from app.services.auth_service import AuthService
     from app.services.signup.invite_service import InviteService
     from app.services.signup.signup_request_service import SignupRequestService
@@ -87,6 +88,7 @@ class ApplicationContainer:
     tenant_settings_service: TenantSettingsService = field(
         default_factory=TenantSettingsService
     )
+    conversation_query_service: ConversationQueryService | None = None
     vector_limit_resolver: VectorLimitResolver | None = None
     vector_store_service: VectorStoreService | None = None
     vector_store_sync_worker: VectorStoreSyncWorker | None = None
@@ -123,6 +125,7 @@ class ApplicationContainer:
         self.service_account_token_service = None
         self.contact_service = None
         self.agent_service = None
+        self.conversation_query_service = None
         self.signup_service = None
         self.invite_service = None
         self.signup_request_service = None
@@ -213,6 +216,31 @@ def wire_storage_service(container: ApplicationContainer) -> None:
         )
 
 
+def wire_conversation_query_service(container: ApplicationContainer) -> None:
+    """Initialize the conversation query service with history + attachments."""
+
+    if container.conversation_query_service is not None:
+        return
+    if container.storage_service is None:
+        wire_storage_service(container)
+    if container.storage_service is None:
+        raise RuntimeError("Storage service must be configured before conversation query service")
+
+    from app.services.agents.attachments import AttachmentService
+    from app.services.agents.history import ConversationHistoryService
+    from app.services.agents.query import ConversationQueryService
+
+    storage_service = cast(StorageService, container.storage_service)
+    history_service = ConversationHistoryService(
+        container.conversation_service,
+        AttachmentService(lambda: storage_service),
+    )
+    container.conversation_query_service = ConversationQueryService(
+        conversation_service=container.conversation_service,
+        history_service=history_service,
+    )
+
+
 def wire_workflow_services(container: ApplicationContainer) -> None:
     if container.session_factory is None:
         raise RuntimeError("Session factory must be configured before workflow services")
@@ -246,6 +274,7 @@ __all__ = [
     "wire_vector_store_service",
     "wire_container_service",
     "wire_storage_service",
+    "wire_conversation_query_service",
     "wire_workflow_services",
     "VectorLimitResolver",
     "VectorStoreSyncWorker",

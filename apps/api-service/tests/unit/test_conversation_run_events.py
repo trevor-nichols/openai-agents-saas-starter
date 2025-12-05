@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock
 import pytest
 from app.services.agent_service import AgentService, ConversationActorContext
 from app.services.agents.event_log import EventProjector
+from app.services.agents.run_pipeline import project_new_session_items
 from app.services.conversation_service import ConversationService
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from typing import Any, cast
@@ -73,12 +74,8 @@ async def test_get_run_events_returns_empty_for_existing_conversation(monkeypatc
 
 @pytest.mark.asyncio
 async def test_event_projection_failure_does_not_bubble(monkeypatch: pytest.MonkeyPatch):
-    # Minimal harness to exercise _ingest_new_session_items
-    service = AgentService(conversation_service=ConversationService(repository=None))
-
     failing_projector = AsyncMock(spec=EventProjector)
     failing_projector.ingest_session_items.side_effect = RuntimeError("boom")
-    monkeypatch.setattr(service, "_event_projector", failing_projector)
 
     class DummyHandle:
         def get_items(self):
@@ -88,7 +85,8 @@ async def test_event_projection_failure_does_not_bubble(monkeypatch: pytest.Monk
             ]
 
     # Should not raise even though projector blows up
-    await service._ingest_new_session_items(
+    await project_new_session_items(
+        event_projector=failing_projector,
         session_handle=DummyHandle(),
         pre_items=[{"id": "pre"}],
         conversation_id="conv-1",

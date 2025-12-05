@@ -150,7 +150,7 @@ class SqlAlchemyVectorStoreRepository(VectorStoreRepository):
             row = await session.get(models.VectorStore, store_id)
             if row is None:
                 return
-            row.deleted_at = datetime.now(timezone.utc)
+            row.deleted_at = datetime.now(timezone.utc)  # noqa: UP017
             row.status = "deleted"
             await session.commit()
 
@@ -262,7 +262,7 @@ class SqlAlchemyVectorStoreFileRepository(VectorStoreFileRepository):
             )
             if row is None:
                 return None
-            row.deleted_at = datetime.now(timezone.utc)
+            row.deleted_at = datetime.now(timezone.utc)  # noqa: UP017
             row.status = "deleted"
             await session.commit()
             await session.refresh(row)
