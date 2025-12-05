@@ -49,8 +49,8 @@ export function useWorkflowRunsQuery(filters: WorkflowRunListFilters) {
 export function useWorkflowRunsInfiniteQuery(filters: WorkflowRunListFilters) {
   return useInfiniteQuery({
     queryKey: queryKeys.workflows.runs(filters as Record<string, unknown>),
-    queryFn: ({ pageParam }) => listWorkflowRuns({ ...filters, cursor: (pageParam as string | undefined) ?? undefined }),
-    getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+    queryFn: ({ pageParam }) => listWorkflowRuns({ ...filters, cursor: (pageParam as string | null | undefined) ?? null }),
+    getNextPageParam: (lastPage) => lastPage.next_cursor ?? null,
     enabled: Boolean(filters.workflowKey),
     initialPageParam: null as string | null,
   });
