@@ -5,6 +5,8 @@ import {
   createVectorStore,
   deleteVectorStore,
   deleteVectorStoreFile,
+  bindAgentToVectorStore,
+  unbindAgentFromVectorStore,
   listVectorStoreFiles,
   listVectorStores,
   searchVectorStore,
@@ -71,5 +73,25 @@ export function useDeleteVectorStoreFile(vectorStoreId: string) {
 export function useSearchVectorStore(vectorStoreId: string) {
   return useMutation({
     mutationFn: (body: VectorStoreSearchRequest) => searchVectorStore(vectorStoreId, body),
+  });
+}
+
+export function useBindAgentToVectorStore(vectorStoreId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (agentKey: string) => bindAgentToVectorStore(vectorStoreId, agentKey),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.vectorStores.list() }).catch(() => {});
+    },
+  });
+}
+
+export function useUnbindAgentFromVectorStore(vectorStoreId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (agentKey: string) => unbindAgentFromVectorStore(vectorStoreId, agentKey),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.vectorStores.list() }).catch(() => {});
+    },
   });
 }

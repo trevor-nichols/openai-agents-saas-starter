@@ -10,6 +10,8 @@ import {
   ToolInput,
   ToolOutput,
 } from '@/components/ui/ai/tool';
+import { FileSearchResults } from '@/components/ui/ai/file-search-results';
+import { Image } from '@/components/ui/ai/image';
 import { InlineTag } from '@/components/ui/foundation';
 import { cn } from '@/lib/utils';
 import type {
@@ -20,6 +22,7 @@ import type {
   FileCitation as ApiFileCitation,
 } from '@/lib/api/client/types.gen';
 import type { Annotation } from '@/lib/chat/types';
+import type { FileSearchResult, ImageGenerationCall } from '@/lib/api/client/types.gen';
 
 interface WorkflowStreamLogProps {
   events: (StreamingWorkflowEvent & { receivedAt?: string })[];
@@ -83,7 +86,12 @@ function mapToolCall(toolCall: ToolCallPayload | Record<string, unknown> | null 
       label: 'code_interpreter',
       state: status,
       input: anyCall.code_interpreter_call.code,
-      output: anyCall.code_interpreter_call.outputs,
+      output: {
+        outputs: anyCall.code_interpreter_call.outputs,
+        container_id: anyCall.code_interpreter_call.container_id,
+        container_mode: anyCall.code_interpreter_call.container_mode,
+        annotations: anyCall.code_interpreter_call.annotations,
+      },
     };
   }
   if (anyCall.file_search_call) {
@@ -98,6 +106,20 @@ function mapToolCall(toolCall: ToolCallPayload | Record<string, unknown> | null 
       state: status,
       input: anyCall.file_search_call.queries,
       output: anyCall.file_search_call.results,
+    };
+  }
+  if (anyCall.image_generation_call) {
+    const status =
+      anyCall.image_generation_call.status === 'completed'
+        ? 'output-available'
+        : anyCall.image_generation_call.status === 'partial_image'
+          ? 'input-available'
+          : 'input-streaming';
+    return {
+      label: 'image_generation',
+      state: status,
+      input: anyCall.image_generation_call.revised_prompt ?? null,
+      output: [anyCall.image_generation_call],
     };
   }
 
@@ -195,14 +217,10 @@ export function WorkflowStreamLog({ events }: WorkflowStreamLogProps) {
                 return (
                     <Tool>
                       <ToolHeader type={`tool-${tool.label}` as const} state={tool.state} />
-                    <ToolContent>
+                      <ToolContent>
                       {tool.input !== undefined ? <ToolInput input={tool.input} /> : null}
                       <ToolOutput
-                        output={
-                          tool.output !== undefined && tool.output !== null ? (
-                            <CodeBlock code={JSON.stringify(tool.output, null, 2)} language="json" />
-                          ) : null
-                        }
+                        output={renderToolOutput(tool)}
                         errorText={tool.errorText ?? undefined}
                       />
                     </ToolContent>
@@ -217,3 +235,64 @@ export function WorkflowStreamLog({ events }: WorkflowStreamLogProps) {
     </div>
   );
 }
+
+const isFileSearchResults = (output: unknown): output is FileSearchResult[] =>
+  Array.isArray(output) &&
+  output.every(
+    (item) =>
+      typeof item === 'object' &&
+      item !== null &&
+      'file_id' in (item as Record<string, unknown>),
+  );
+
+const isImageGenerationCall = (value: unknown): value is ImageGenerationCall =>
+  typeof value === 'object' &&
+  value !== null &&
+  'type' in value &&
+  (value as { type?: string }).type === 'image_generation_call';
+
+const renderToolOutput = (tool: NonNullable<ToolViewModel>) => {
+  if (!tool.output) return undefined;
+
+  if (isFileSearchResults(tool.output)) {
+    return <FileSearchResults results={tool.output} />;
+  }
+
+  if (Array.isArray(tool.output) && tool.output.length && isImageGenerationCall(tool.output[0])) {
+    return <Image frames={tool.output as ImageGenerationCall[]} className="max-w-xl" alt="Generated image" />;
+  }
+
+  if (isImageGenerationCall(tool.output)) {
+    return <Image frames={[tool.output]} className="max-w-xl" alt="Generated image" />;
+  }
+
+  if (
+    typeof tool.output === 'object' &&
+    tool.output !== null &&
+    'outputs' in (tool.output as Record<string, unknown>)
+  ) {
+    const { outputs, container_id, container_mode, annotations, ...rest } = tool.output as {
+      outputs?: unknown;
+      container_id?: string | null;
+      container_mode?: string | null;
+      annotations?: unknown;
+    };
+
+    return (
+      <div className="space-y-2">
+        {(container_id || container_mode) && (
+          <div className="flex items-center gap-2 text-xs text-foreground/70">
+            {container_id ? <span>Container: {container_id}</span> : null}
+            {container_mode ? <span>• Mode: {container_mode}</span> : null}
+          </div>
+        )}
+        {annotations ? (
+          <div className="text-[11px] text-foreground/60">Annotations: {JSON.stringify(annotations)}</div>
+        ) : null}
+        <CodeBlock code={JSON.stringify({ outputs, ...rest }, null, 2)} language="json" />
+      </div>
+    );
+  }
+
+  return <CodeBlock code={JSON.stringify(tool.output, null, 2)} language="json" />;
+};

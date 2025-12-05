@@ -30,6 +30,8 @@ import {
 } from '@/components/ui/ai/prompt-input';
 import { Reasoning, ReasoningContent, ReasoningTrigger } from '@/components/ui/ai/reasoning';
 import { Tool, ToolContent, ToolHeader, ToolInput, ToolOutput } from '@/components/ui/ai/tool';
+import { FileSearchResults } from '@/components/ui/ai/file-search-results';
+import { Image } from '@/components/ui/ai/image';
 import type { ToolUIPart } from 'ai';
 import { CodeBlock } from '@/components/ui/ai/code-block';
 import { LocationOptIn } from '@/components/ui/location';
@@ -45,6 +47,7 @@ import {
 } from '@/lib/chat';
 import type { ChatMessage, ToolState, ConversationLifecycleStatus } from '@/lib/chat/types';
 import { CopyIcon } from 'lucide-react';
+import type { FileSearchResult, ImageGenerationCall } from '@/lib/api/client/types.gen';
 
 const log = createLogger('chat-ui');
 
@@ -371,11 +374,7 @@ export function ChatInterface({
                       <ToolContent>
                         {tool.input ? <ToolInput input={tool.input} /> : null}
                         <ToolOutput
-                          output={
-                            tool.output ? (
-                              <CodeBlock code={JSON.stringify(tool.output, null, 2)} language="json" />
-                            ) : undefined
-                          }
+                          output={renderToolOutput(tool)}
                           errorText={tool.errorText ?? undefined}
                         />
                       </ToolContent>
@@ -439,3 +438,41 @@ export function ChatInterface({
     </GlassPanel>
   );
 }
+
+type ToolLike = {
+  name?: string;
+  output?: unknown;
+};
+
+const isFileSearchResults = (output: unknown): output is FileSearchResult[] =>
+  Array.isArray(output) &&
+  output.every(
+    (item) =>
+      typeof item === 'object' &&
+      item !== null &&
+      'file_id' in (item as Record<string, unknown>),
+  );
+
+const isImageGenerationCall = (value: unknown): value is ImageGenerationCall =>
+  typeof value === 'object' &&
+  value !== null &&
+  'type' in value &&
+  (value as { type?: string }).type === 'image_generation_call';
+
+export const renderToolOutput = (tool: ToolLike) => {
+  if (!tool.output) return undefined;
+
+  if (isFileSearchResults(tool.output)) {
+    return <FileSearchResults results={tool.output} />;
+  }
+
+  if (Array.isArray(tool.output) && tool.output.length && isImageGenerationCall(tool.output[0])) {
+    return <Image frames={tool.output as ImageGenerationCall[]} className="max-w-xl" alt="Generated image" />;
+  }
+
+  if (isImageGenerationCall(tool.output)) {
+    return <Image frames={[tool.output]} className="max-w-xl" alt="Generated image" />;
+  }
+
+  return <CodeBlock code={JSON.stringify(tool.output, null, 2)} language="json" />;
+};

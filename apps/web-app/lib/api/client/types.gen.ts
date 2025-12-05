@@ -599,6 +599,18 @@ export type CodeInterpreterCall = {
    * Outputs
    */
   outputs?: Array<unknown> | null;
+  /**
+   * Container Id
+   */
+  container_id?: string | null;
+  /**
+   * Container Mode
+   */
+  container_mode?: "auto" | "explicit" | null;
+  /**
+   * Annotations
+   */
+  annotations?: Array<ContainerFileCitation> | null;
 };
 
 /**
@@ -1200,7 +1212,39 @@ export type FileSearchCall = {
   /**
    * Results
    */
-  results?: Array<unknown> | null;
+  results?: Array<FileSearchResult> | null;
+};
+
+/**
+ * FileSearchResult
+ */
+export type FileSearchResult = {
+  /**
+   * File Id
+   */
+  file_id: string;
+  /**
+   * Filename
+   */
+  filename?: string | null;
+  /**
+   * Score
+   */
+  score?: number | null;
+  /**
+   * Vector Store Id
+   */
+  vector_store_id?: string | null;
+  /**
+   * Attributes
+   */
+  attributes?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Text
+   */
+  text?: string | null;
 };
 
 /**
@@ -1443,6 +1487,64 @@ export type HealthResponse = {
    * Process uptime in seconds when available.
    */
   uptime?: number | null;
+};
+
+/**
+ * ImageGenerationCall
+ */
+export type ImageGenerationCall = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Type
+   */
+  type: "image_generation_call";
+  /**
+   * Status
+   */
+  status: "in_progress" | "generating" | "partial_image" | "completed";
+  /**
+   * Result
+   */
+  result?: string | null;
+  /**
+   * Revised Prompt
+   */
+  revised_prompt?: string | null;
+  /**
+   * Format
+   */
+  format?: string | null;
+  /**
+   * Size
+   */
+  size?: string | null;
+  /**
+   * Quality
+   */
+  quality?: string | null;
+  /**
+   * Background
+   */
+  background?: string | null;
+  /**
+   * Output Index
+   */
+  output_index?: number | null;
+  /**
+   * Partial Image Index
+   */
+  partial_image_index?: number | null;
+  /**
+   * Partial Image B64
+   */
+  partial_image_b64?: string | null;
+  /**
+   * B64 Json
+   */
+  b64_json?: string | null;
 };
 
 /**
@@ -3147,6 +3249,7 @@ export type ToolCallPayload = {
   web_search_call?: WebSearchCall | null;
   code_interpreter_call?: CodeInterpreterCall | null;
   file_search_call?: FileSearchCall | null;
+  image_generation_call?: ImageGenerationCall | null;
   [key: string]:
     | unknown
     | string
@@ -3155,6 +3258,8 @@ export type ToolCallPayload = {
     | CodeInterpreterCall
     | null
     | FileSearchCall
+    | null
+    | ImageGenerationCall
     | null
     | undefined;
 };
@@ -6913,6 +7018,104 @@ export type SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostResponses =
 
 export type SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostResponse =
   SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostResponses[keyof SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostResponses];
+
+export type UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDeleteData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Vector Store Id
+       */
+      vector_store_id: string;
+      /**
+       * Agent Key
+       */
+      agent_key: string;
+    };
+    query?: never;
+    url: "/api/v1/vector-stores/{vector_store_id}/bindings/{agent_key}";
+  };
+
+export type UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDeleteErrors =
+  {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+  };
+
+export type UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDeleteError =
+  UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDeleteErrors[keyof UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDeleteErrors];
+
+export type UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDeleteResponses =
+  {
+    /**
+     * Successful Response
+     */
+    204: void;
+  };
+
+export type UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDeleteResponse =
+  UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDeleteResponses[keyof UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDeleteResponses];
+
+export type BindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPostData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Vector Store Id
+       */
+      vector_store_id: string;
+      /**
+       * Agent Key
+       */
+      agent_key: string;
+    };
+    query?: never;
+    url: "/api/v1/vector-stores/{vector_store_id}/bindings/{agent_key}";
+  };
+
+export type BindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPostErrors =
+  {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+  };
+
+export type BindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPostError =
+  BindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPostErrors[keyof BindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPostErrors];
+
+export type BindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    204: void;
+  };
+
+export type BindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPostResponse =
+  BindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPostResponses[keyof BindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPostResponses];
 
 export type CreatePresignedUploadApiV1StorageObjectsUploadUrlPostData = {
   body: StoragePresignUploadRequest;

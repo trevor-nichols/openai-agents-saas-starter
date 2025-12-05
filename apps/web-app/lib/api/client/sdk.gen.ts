@@ -25,6 +25,9 @@ import type {
   BindAgentContainerApiV1ContainersAgentsAgentKeyContainerPostData,
   BindAgentContainerApiV1ContainersAgentsAgentKeyContainerPostErrors,
   BindAgentContainerApiV1ContainersAgentsAgentKeyContainerPostResponses,
+  BindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPostData,
+  BindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPostErrors,
+  BindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPostResponses,
   CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostData,
   CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostErrors,
   CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostResponses,
@@ -267,6 +270,9 @@ import type {
   UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteData,
   UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteErrors,
   UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteResponses,
+  UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDeleteData,
+  UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDeleteErrors,
+  UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDeleteResponses,
   UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchData,
   UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchErrors,
   UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchResponses,
@@ -2106,6 +2112,58 @@ export const searchVectorStoreApiV1VectorStoresVectorStoreIdSearchPost = <
     },
   });
 };
+
+/**
+ * Unbind Agent From Vector Store
+ */
+export const unbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDelete =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDeleteData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).delete<
+      UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDeleteResponses,
+      UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDeleteErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/vector-stores/{vector_store_id}/bindings/{agent_key}",
+      ...options,
+    });
+  };
+
+/**
+ * Bind Agent To Vector Store
+ */
+export const bindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPost =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      BindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPostData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).post<
+      BindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPostResponses,
+      BindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPostErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/vector-stores/{vector_store_id}/bindings/{agent_key}",
+      ...options,
+    });
+  };
 
 /**
  * Create Presigned Upload

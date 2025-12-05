@@ -73,3 +73,25 @@ export async function searchVectorStore(vectorStoreId: string, body: VectorStore
   if (!res.ok) throw new Error(`Failed to search vector store (${res.status})`);
   return (await res.json()) as VectorStoreSearchResponse;
 }
+
+export async function bindAgentToVectorStore(vectorStoreId: string, agentKey: string) {
+  if (USE_API_MOCK) return;
+  const res = await fetch(
+    apiV1Path(
+      `/vector-stores/${encodeURIComponent(vectorStoreId)}/bindings/${encodeURIComponent(agentKey)}`,
+    ),
+    { method: 'POST' },
+  );
+  if (!res.ok) throw new Error(`Failed to bind agent to vector store (${res.status})`);
+}
+
+export async function unbindAgentFromVectorStore(vectorStoreId: string, agentKey: string) {
+  if (USE_API_MOCK) return;
+  const res = await fetch(
+    apiV1Path(
+      `/vector-stores/${encodeURIComponent(vectorStoreId)}/bindings/${encodeURIComponent(agentKey)}`,
+    ),
+    { method: 'DELETE' },
+  );
+  if (!res.ok) throw new Error(`Failed to unbind agent from vector store (${res.status})`);
+}

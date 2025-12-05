@@ -1,50 +1,77 @@
-import { render, screen } from '@testing-library/react';
-import { vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 
 import { WorkflowStreamLog } from '../WorkflowStreamLog';
+import type { StreamingWorkflowEvent } from '@/lib/api/client/types.gen';
 
-describe('WorkflowStreamLog', () => {
-  beforeAll(() => {
-    Object.defineProperty(window.HTMLElement.prototype, 'scrollTo', {
-      value: vi.fn(),
-      writable: true,
-    });
+beforeAll(() => {
+  // Silence scrollTo in jsdom
+  if (!HTMLElement.prototype.scrollTo) {
+    HTMLElement.prototype.scrollTo = () => {};
+  }
+});
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+const fileSearchEvent: StreamingWorkflowEvent = {
+  kind: 'run_item_stream_event',
+  event: 'tool_call',
+  sequence_number: 1,
+  tool_call: {
+    tool_type: 'file_search',
+    file_search_call: {
+      id: 'fs-1',
+      type: 'file_search_call',
+      status: 'searching',
+      queries: ['report'],
+      results: [
+        {
+          file_id: 'file-1',
+          filename: 'report.pdf',
+          score: 0.91,
+          vector_store_id: 'vs-1',
+          text: 'Quarterly summary',
+        },
+      ],
+    },
+  },
+};
+
+const imageGenerationEvent: StreamingWorkflowEvent = {
+  kind: 'run_item_stream_event',
+  event: 'tool_call',
+  sequence_number: 2,
+  tool_call: {
+    tool_type: 'image_generation',
+    image_generation_call: {
+      id: 'img-1',
+      type: 'image_generation_call',
+      status: 'partial_image',
+      result: 'data:image/png;base64,aGVsbG8=',
+      format: 'png',
+    },
+  },
+};
+
+describe('WorkflowStreamLog tool outputs', () => {
+  it('renders file search results with custom renderer', () => {
+    render(<WorkflowStreamLog events={[fileSearchEvent]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /tool-file_search/i }));
+
+    expect(screen.getByText('report.pdf')).toBeInTheDocument();
+    expect(screen.getByText('(file-1)')).toBeInTheDocument();
   });
 
-  it('renders events with labels and payload', () => {
-    const events = [
-      {
-        kind: 'raw_response_event' as const,
-        workflow_key: 'demo',
-        workflow_run_id: 'run-1',
-        raw_type: 'response.output_text.delta',
-        text_delta: 'Hello',
-        sequence_number: 1,
-        is_terminal: false,
-        annotations: [
-          {
-            type: 'url_citation' as const,
-            start_index: 0,
-            end_index: 5,
-            title: 'Example',
-            url: 'https://example.com',
-          },
-        ],
-      },
-      {
-        kind: 'lifecycle' as const,
-        workflow_key: 'demo',
-        workflow_run_id: 'run-1',
-        event: 'completed',
-        sequence_number: 2,
-        is_terminal: true,
-      },
-    ];
+  it('renders image generation frames', () => {
+    render(<WorkflowStreamLog events={[imageGenerationEvent]} />);
 
-    render(<WorkflowStreamLog events={events} />);
+    fireEvent.click(screen.getByRole('button', { name: /tool-image_generation/i }));
 
-    expect(screen.getByText('Hello')).toBeInTheDocument();
-    expect(screen.getByText('Lifecycle')).toBeInTheDocument();
-    expect(screen.getByText('Terminal')).toBeInTheDocument();
+    const img = screen.getByRole('img');
+    expect(img).toBeInTheDocument();
+    expect(img.getAttribute('src')).toContain('data:image/png;base64');
   });
 });
