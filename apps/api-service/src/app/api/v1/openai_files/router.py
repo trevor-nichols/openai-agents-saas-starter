@@ -11,9 +11,10 @@ from openai import AsyncOpenAI
 
 from app.api.dependencies.auth import CurrentUser, require_verified_user
 from app.api.dependencies.tenant import TenantContext, TenantRole, require_tenant_role
+from app.bootstrap.container import get_container, wire_vector_store_service
 from app.core.settings import get_settings
 from app.services.containers import ContainerNotFoundError, container_service
-from app.services.vector_stores import VectorStoreNotFoundError, vector_store_service
+from app.services.vector_stores import VectorStoreNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,15 @@ def _client() -> AsyncOpenAI:
     return AsyncOpenAI(api_key=settings.openai_api_key)
 
 
+def _vector_store_service():
+    container = get_container()
+    if container.vector_store_service is None:
+        wire_vector_store_service(container)
+    if container.vector_store_service is None:
+        raise RuntimeError("Vector store service is not configured")
+    return container.vector_store_service
+
+
 @router.get("/files/{file_id}/download")
 async def download_openai_file(
     file_id: str,
@@ -33,6 +43,7 @@ async def download_openai_file(
         require_tenant_role(TenantRole.VIEWER, TenantRole.ADMIN, TenantRole.OWNER)
     ),
     client: AsyncOpenAI = Depends(_client),
+    vector_store_service=Depends(_vector_store_service),
 ):
     try:
         await vector_store_service.get_file_by_openai_id(

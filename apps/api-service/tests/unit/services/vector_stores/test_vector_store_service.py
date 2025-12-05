@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 from uuid import uuid4
 
 import pytest
+from openai import AsyncOpenAI
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -132,9 +133,11 @@ def _service(session_factory: async_sessionmaker[AsyncSession], settings: Settin
     remote_store = type("RemoteStore", (), {"id": "vs_123", "usage_bytes": 0, "status": "ready"})
     fake_client = _FakeOpenAI(remote_store, file_meta)
 
-    svc = VectorStoreService(session_factory, lambda: settings)
-    svc._openai_client = lambda _tenant_id: fake_client  # type: ignore[assignment,return-value]
-    return svc
+    return VectorStoreService(
+        session_factory,
+        lambda: settings,
+        client_factory=lambda _tenant_id: cast(AsyncOpenAI, fake_client),
+    )
 
 
 @pytest.mark.asyncio

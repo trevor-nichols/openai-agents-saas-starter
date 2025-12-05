@@ -429,7 +429,7 @@ async def lifespan(app: FastAPI):
         container.vector_store_sync_worker = build_vector_store_sync_worker(
             session_factory=session_factory,
             settings_factory=lambda: settings,
-            client_factory=container.vector_store_service._openai_client,
+            client_factory=container.vector_store_service.openai_client,
         )
         await container.vector_store_sync_worker.start()
     try:
