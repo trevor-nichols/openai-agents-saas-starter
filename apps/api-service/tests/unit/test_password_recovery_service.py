@@ -16,7 +16,7 @@ from app.services.signup.password_recovery_service import (
     InvalidPasswordResetTokenError,
     PasswordRecoveryService,
 )
-from app.services.users.user_service import (
+from app.services.users import (
     InvalidCredentialsError,
     PasswordPolicyViolationError,
     PasswordReuseError,

@@ -24,7 +24,7 @@ from app.infrastructure.security.password_reset_store import get_password_reset_
 from app.observability.logging import log_event
 from app.presentation.emails import render_password_reset_email
 from app.services.auth_service import auth_service
-from app.services.users.user_service import (
+from app.services.users import (
     InvalidCredentialsError,
     PasswordPolicyViolationError,
     PasswordReuseError,

@@ -31,7 +31,7 @@ from app.infrastructure.persistence.auth.user_repository import (
     RedisLockoutStore,
 )
 from app.infrastructure.persistence.conversations.models import TenantAccount
-from app.services.users.user_service import (
+from app.services.users import (
     InvalidCredentialsError,
     IpThrottledError,
     MembershipNotFoundError,

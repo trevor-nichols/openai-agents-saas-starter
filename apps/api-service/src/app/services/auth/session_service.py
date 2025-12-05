@@ -13,7 +13,7 @@ from app.domain.auth import UserSessionListResult, UserSessionTokens
 from app.domain.users import AuthenticatedUser
 from app.observability.logging import log_event
 from app.services.activity import activity_service
-from app.services.users.user_service import (
+from app.services.users import (
     InvalidCredentialsError,
     IpThrottledError,
     MembershipNotFoundError,

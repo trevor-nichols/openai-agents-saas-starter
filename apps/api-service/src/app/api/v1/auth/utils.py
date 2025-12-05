@@ -15,7 +15,7 @@ from app.api.models.auth import (
 )
 from app.domain.auth import UserSession, UserSessionTokens
 from app.services.auth_service import UserAuthenticationError
-from app.services.users.user_service import (
+from app.services.users import (
     InvalidCredentialsError,
     IpThrottledError,
     TenantContextRequiredError,

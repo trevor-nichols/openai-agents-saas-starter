@@ -48,7 +48,7 @@ BANNED_IMPORTS: dict[str, str] = {
     "app.services.tenant_settings_service": (
         "Use app.services.tenant.tenant_settings_service instead."
     ),
-    "app.services.user_service": "Use app.services.users.user_service instead.",
+    "app.services.user_service": "Use app.services.users.service instead.",
     "app.services.rate_limit_service": (
         "Use app.services.shared.rate_limit_service instead."
     ),

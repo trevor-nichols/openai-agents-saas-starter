@@ -179,7 +179,7 @@ ban-relative-imports = "parents"
 "app.services.status_alert_dispatcher" = { msg = "Import via app.services.status.status_alert_dispatcher" }
 "app.services.status_subscription_service" = { msg = "Import via app.services.status.status_subscription_service" }
 "app.services.tenant_settings_service" = { msg = "Import via app.services.tenant.tenant_settings_service" }
-"app.services.user_service" = { msg = "Import via app.services.users.user_service" }
+"app.services.user_service" = { msg = "Import via app.services.users.service" }
 "app.services.rate_limit_service" = { msg = "Import via app.services.shared.rate_limit_service" }
 
 [tool.ruff.format]

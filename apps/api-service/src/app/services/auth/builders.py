@@ -10,7 +10,7 @@ from app.services.auth import RefreshTokenManager, SessionStore
 from app.services.auth.service_account_service import ServiceAccountTokenService
 from app.services.auth.session_service import UserSessionService
 from app.services.geoip_service import GeoIPService, NullGeoIPService
-from app.services.users.user_service import UserService
+from app.services.users import UserService
 
 
 def build_session_service(

@@ -86,7 +86,7 @@ from app.services.signup.signup_service import build_signup_service
 from app.services.status.status_alert_dispatcher import build_status_alert_dispatcher
 from app.services.status.status_subscription_service import build_status_subscription_service
 from app.services.usage_policy_service import build_usage_policy_service
-from app.services.users.user_service import build_user_service
+from app.services.users import build_user_service
 from app.services.vector_stores import (
     VectorLimitResolver,
     VectorStoreService,

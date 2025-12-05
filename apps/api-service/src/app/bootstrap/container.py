@@ -33,7 +33,7 @@ from app.services.storage.service import StorageService
 from app.services.tenant.tenant_settings_service import TenantSettingsService
 from app.services.usage_policy_service import UsagePolicyService
 from app.services.usage_recorder import UsageRecorder
-from app.services.users.user_service import UserService
+from app.services.users import UserService
 from app.services.vector_stores import (
     VectorLimitResolver,
     VectorStoreService,

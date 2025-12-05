@@ -2,23 +2,21 @@
 
 from __future__ import annotations
 
-from .user_service import (
+from app.domain.users import PasswordReuseError
+
+from .errors import (
     InvalidCredentialsError,
     IpThrottledError,
-    LoginThrottle,
     MembershipNotFoundError,
-    NullLoginThrottle,
     PasswordPolicyViolationError,
-    RedisLoginThrottle,
     TenantContextRequiredError,
     UserDisabledError,
     UserLockedError,
-    UserService,
     UserServiceError,
-    build_ip_throttler,
-    build_user_service,
-    get_user_service,
 )
+from .factory import build_user_service, get_user_service
+from .service import UserService
+from .throttling import LoginThrottle, NullLoginThrottle, RedisLoginThrottle, build_ip_throttler
 
 __all__ = [
     "build_ip_throttler",
@@ -29,6 +27,7 @@ __all__ = [
     "LoginThrottle",
     "MembershipNotFoundError",
     "NullLoginThrottle",
+    "PasswordReuseError",
     "PasswordPolicyViolationError",
     "RedisLoginThrottle",
     "TenantContextRequiredError",

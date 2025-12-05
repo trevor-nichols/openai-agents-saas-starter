@@ -23,7 +23,7 @@ from app.services.signup.password_recovery_service import (
     PasswordResetDeliveryError,
     get_password_recovery_service,
 )
-from app.services.users.user_service import (
+from app.services.users import (
     InvalidCredentialsError,
     MembershipNotFoundError,
     PasswordPolicyViolationError,
