@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 import { ProfilePanel } from './components/ProfilePanel';
 import { SecurityPanel } from './components/SecurityPanel';
-import { ServiceAccountsPanel } from './components/ServiceAccountsPanel';
+import { ServiceAccountsPanel } from './service-accounts';
 import { SessionsPanel } from './components/SessionsPanel';
 import { ACCOUNT_COPY, ACCOUNT_TABS } from './constants';
 import { useAccountTabs } from './hooks/useAccountTabs';

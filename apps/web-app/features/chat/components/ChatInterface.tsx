@@ -440,7 +440,7 @@ export function ChatInterface({
 }
 
 type ToolLike = {
-  name?: string;
+  name?: string | null;
   output?: unknown;
 };
 

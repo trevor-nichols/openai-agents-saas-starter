@@ -5,7 +5,7 @@ import {
   createDefaultIssueForm,
   parseScopesInput,
   type ServiceAccountIssueFormValues,
-} from '../utils/serviceAccountIssueHelpers';
+} from '../utils/issueForm';
 
 describe('createDefaultIssueForm', () => {
   it('prefills tenant id when provided', () => {

@@ -15,6 +15,15 @@ export type ImageProps = BaseImageProps & {
   frames?: ImageGenerationCall[];
 };
 
+type EnrichedFrame = {
+  key: string;
+  src: string;
+  status: ImageGenerationCall['status'];
+  label: string;
+  outputIndex: number | undefined;
+  revisedPrompt: string | undefined;
+};
+
 const statusLabel: Record<ImageGenerationCall['status'], string> = {
   in_progress: 'Starting',
   generating: 'Generating',
@@ -55,7 +64,7 @@ export const Image = ({
   uint8Array: _uint8Array,
   ...rest
 }: ImageProps) => {
-  const enrichedFrames =
+  const enrichedFrames: EnrichedFrame[] =
     frames
       ?.map((frame, index) => {
         const src = toDataUrl(frame);
@@ -70,7 +79,7 @@ export const Image = ({
             }
           : null;
       })
-      .filter(Boolean) ?? [];
+      .filter((frame): frame is EnrichedFrame => Boolean(frame)) ?? [];
 
   const primaryFrame =
     enrichedFrames.find((frame) => frame.status === 'completed') ??
