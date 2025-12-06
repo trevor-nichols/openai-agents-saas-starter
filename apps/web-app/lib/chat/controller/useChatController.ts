@@ -450,6 +450,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       resetTurnState,
       selectedAgent,
       sendChatMutation,
+      invalidateMessagesCache,
     ],
   );
 

@@ -91,6 +91,8 @@ export function ChatInterface({
   const isSendingFromStore = useChatSelector((s) => s.isSending);
   const isClearingFromStore = useChatSelector((s) => s.isClearingConversation);
   const isLoadingHistoryFromStore = useChatSelector((s) => s.isLoadingHistory);
+  const hasOlderMessagesFromStore = useChatSelector((s) => s.hasOlderMessages);
+  const isLoadingOlderMessagesFromStore = useChatSelector((s) => s.isFetchingOlderMessages);
 
   const messages = messagesProp ?? messagesFromStore;
   const toolEvents = toolsProp ?? toolEventsFromStore;
@@ -101,10 +103,8 @@ export function ChatInterface({
   const isSending = isSendingProp ?? isSendingFromStore;
   const isClearingConversation = isClearingConversationProp ?? isClearingFromStore;
   const isLoadingHistory = isLoadingHistoryProp ?? isLoadingHistoryFromStore;
-  const hasOlderMessages =
-    hasOlderMessagesProp ?? useChatSelector((s) => s.hasOlderMessages);
-  const isLoadingOlderMessages =
-    isLoadingOlderMessagesProp ?? useChatSelector((s) => s.isFetchingOlderMessages);
+  const hasOlderMessages = hasOlderMessagesProp ?? hasOlderMessagesFromStore;
+  const isLoadingOlderMessages = isLoadingOlderMessagesProp ?? isLoadingOlderMessagesFromStore;
   const historyErrorFromStore = useChatSelector((s) => s.historyError);
   const errorMessageFromStore = useChatSelector((s) => s.errorMessage);
   const loadOlderMessagesFromStore = useChatSelector((s) => s.loadOlderMessages);

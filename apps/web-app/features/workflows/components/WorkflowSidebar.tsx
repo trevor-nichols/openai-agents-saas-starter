@@ -2,6 +2,7 @@ import { GlassPanel, SectionHeader } from '@/components/ui/foundation';
 import type { WorkflowDescriptorResponse, WorkflowSummary } from '@/lib/api/client/types.gen';
 import { WorkflowDescriptorCard } from './WorkflowDescriptorCard';
 import { WorkflowList } from './WorkflowList';
+import { WorkflowGraph } from './WorkflowGraph';
 
 interface Props {
   workflows: WorkflowSummary[];
@@ -10,6 +11,12 @@ interface Props {
   onSelect: (workflowKey: string) => void;
   descriptor: WorkflowDescriptorResponse | null;
   isLoadingDescriptor: boolean;
+  activeStep?: {
+    stepName?: string | null;
+    stageName?: string | null;
+    parallelGroup?: string | null;
+    branchIndex?: number | null;
+  } | null;
 }
 
 export function WorkflowSidebar({
@@ -19,6 +26,7 @@ export function WorkflowSidebar({
   onSelect,
   descriptor,
   isLoadingDescriptor,
+  activeStep,
 }: Props) {
   return (
     <div className="space-y-3">
@@ -28,6 +36,7 @@ export function WorkflowSidebar({
         <div className="border-t border-white/5 pt-3">
           <WorkflowDescriptorCard descriptor={descriptor} isLoading={isLoadingDescriptor} />
         </div>
+        <WorkflowGraph descriptor={descriptor} activeStep={activeStep} />
       </GlassPanel>
     </div>
   );

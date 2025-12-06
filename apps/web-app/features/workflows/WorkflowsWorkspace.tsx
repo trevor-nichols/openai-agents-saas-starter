@@ -62,6 +62,22 @@ export function WorkflowsWorkspace() {
     onRunCreated: (runId, workflowKey) => setRun(runId, workflowKey ?? selectedWorkflowKey),
   });
 
+  const activeStreamStep = useMemo(() => {
+    // Pick the latest event that carries step metadata
+    for (let i = streamEvents.length - 1; i >= 0; i -= 1) {
+      const evt = streamEvents[i];
+      if (evt?.step_name || evt?.stage_name || evt?.parallel_group) {
+        return {
+          stepName: evt.step_name ?? null,
+          stageName: evt.stage_name ?? null,
+          parallelGroup: evt.parallel_group ?? null,
+          branchIndex: typeof evt.branch_index === 'number' ? evt.branch_index : null,
+        } as const;
+      }
+    }
+    return null;
+  }, [streamEvents]);
+
   const { cancelRun, deleteRun, deletingRunId, cancelPending } = useWorkflowRunActions({
     selectedRunId,
     onRunDeselected: () => {
@@ -97,6 +113,7 @@ export function WorkflowsWorkspace() {
         onSelect={setWorkflow}
         descriptor={descriptorQuery.data ?? null}
         isLoadingDescriptor={descriptorQuery.isLoading}
+        activeStep={activeStreamStep}
       />
 
       <div className="space-y-4">

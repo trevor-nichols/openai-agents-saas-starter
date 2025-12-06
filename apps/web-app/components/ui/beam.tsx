@@ -23,6 +23,7 @@ export interface AnimatedBeamProps {
   startYOffset?: number;
   endXOffset?: number;
   endYOffset?: number;
+  animated?: boolean;
 }
 
 export const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
@@ -43,6 +44,7 @@ export const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
   startYOffset = 0,
   endXOffset = 0,
   endYOffset = 0,
+  animated = true,
 }) => {
   const id = useId();
   const [pathD, setPathD] = useState("");
@@ -120,6 +122,31 @@ export const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
     endYOffset,
   ]);
 
+  const Gradient = animated ? motion.linearGradient : "linearGradient";
+
+  const gradientProps = animated
+    ? {
+        initial: {
+          x1: "0%",
+          x2: "0%",
+          y1: "0%",
+          y2: "0%",
+        },
+        animate: {
+          x1: gradientCoordinates.x1,
+          x2: gradientCoordinates.x2,
+          y1: gradientCoordinates.y1,
+          y2: gradientCoordinates.y2,
+        },
+        transition: {
+          delay,
+          duration,
+          repeat: Infinity,
+          repeatDelay: 0,
+        },
+      }
+    : {};
+
   return (
     <svg
       fill="none"
@@ -147,29 +174,11 @@ export const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
         strokeLinecap="round"
       />
       <defs>
-        <motion.linearGradient
+        <Gradient
           className="transform-gpu"
           id={id}
           gradientUnits={"userSpaceOnUse"}
-          initial={{
-            x1: "0%",
-            x2: "0%",
-            y1: "0%",
-            y2: "0%",
-          }}
-          animate={{
-            x1: gradientCoordinates.x1,
-            x2: gradientCoordinates.x2,
-            y1: gradientCoordinates.y1,
-            y2: gradientCoordinates.y2,
-          }}
-          transition={{
-            delay,
-            duration,
-            ease: [0.16, 1, 0.3, 1], // https://easings.net/#easeOutExpo
-            repeat: Infinity,
-            repeatDelay: 0,
-          }}
+          {...gradientProps}
         >
           <stop stopColor={gradientStartColor} stopOpacity="0"></stop>
           <stop stopColor={gradientStartColor}></stop>
@@ -179,7 +188,7 @@ export const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
             stopColor={gradientStopColor}
             stopOpacity="0"
           ></stop>
-        </motion.linearGradient>
+        </Gradient>
       </defs>
     </svg>
   );

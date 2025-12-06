@@ -7,6 +7,8 @@ import type {
   WorkflowDescriptorResponse,
   WorkflowRunListItem,
   WorkflowRunListResponse,
+  WorkflowStageDescriptor,
+  WorkflowStepDescriptor,
 } from '@/lib/api/client/types.gen';
 
 export type WorkflowSummaryView = WorkflowSummary;
@@ -15,6 +17,9 @@ export type WorkflowRun = WorkflowRunResponse;
 export type WorkflowRunDetailView = WorkflowRunDetail;
 export type WorkflowStreamEvent = StreamingWorkflowEvent;
 export type WorkflowDescriptor = WorkflowDescriptorResponse;
+export type WorkflowStageView = WorkflowStageDescriptor;
+export type WorkflowStepView = WorkflowStepDescriptor;
+export type { WorkflowStageDescriptor, WorkflowStepDescriptor };
 export type WorkflowRunListItemView = WorkflowRunListItem;
 export type WorkflowRunListView = WorkflowRunListResponse;
 
