@@ -10,6 +10,7 @@ import { GlassPanel, InlineTag, KeyValueList, SectionHeader } from '@/components
 import { EmptyState, ErrorState, SkeletonPanel } from '@/components/ui/states';
 import { useToast } from '@/components/ui/use-toast';
 import { useAccountProfileQuery, useResendVerificationMutation } from '@/lib/queries/account';
+import { formatDateTime } from '../utils/dates';
 
 export function ProfilePanel() {
   const { profile, tenantError, isLoadingProfile, profileError, refetchProfile } =
@@ -43,14 +44,6 @@ export function ProfilePanel() {
         description: error instanceof Error ? error.message : 'Please try again shortly.',
       });
     }
-  };
-
-  const formatDateTime = (value: string | null | undefined) => {
-    if (!value) return '—';
-    return new Date(value).toLocaleString(undefined, {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    });
   };
 
   if (profileError) {

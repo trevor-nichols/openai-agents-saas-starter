@@ -14,6 +14,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAccountProfileQuery } from '@/lib/queries/account';
 import { useLogoutAllSessionsMutation, useRevokeSessionMutation, useUserSessionsQuery, type SessionRow } from '@/lib/queries/accountSessions';
+import { formatDateTime } from '../utils/dates';
 
 const DEFAULT_LIMIT = 50;
 
@@ -246,13 +247,4 @@ function formatLocation(location?: SessionRow['location'] | null): string {
   }
   const parts = [location.city, location.region, location.country].filter(Boolean);
   return parts.length ? parts.join(', ') : 'Unknown location';
-}
-
-function formatDateTime(value: string | null): string {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '—';
-  }
-  return date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
