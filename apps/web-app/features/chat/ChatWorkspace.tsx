@@ -18,7 +18,7 @@ import { ConversationDetailDrawer } from '@/components/shared/conversations/Conv
 import { AgentSwitcher } from './components/AgentSwitcher';
 import { BillingEventsPanel } from './components/BillingEventsPanel';
 import { ChatInterface } from './components/ChatInterface';
-import { ConversationSidebar } from './components/ConversationSidebar';
+import { ConversationSidebar } from './components/conversation-sidebar';
 import { ToolMetadataPanel } from './components/ToolMetadataPanel';
 import { CHAT_COPY } from './constants';
 import { useChatWorkspace } from './hooks/useChatWorkspace';
