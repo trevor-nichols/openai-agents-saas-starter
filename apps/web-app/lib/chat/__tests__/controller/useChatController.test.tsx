@@ -10,6 +10,7 @@ import {
 
 vi.mock('@/lib/api/conversations', () => ({
   fetchConversationHistory: vi.fn(),
+  fetchConversationMessages: vi.fn(),
   deleteConversationById: vi.fn(),
 }));
 
@@ -21,7 +22,7 @@ vi.mock('@/lib/queries/chat', () => ({
   useSendChatMutation: vi.fn(),
 }));
 
-const { fetchConversationHistory, deleteConversationById } = vi.mocked(
+const { fetchConversationHistory, fetchConversationMessages, deleteConversationById } = vi.mocked(
   await import('@/lib/api/conversations'),
 );
 const { streamChat } = vi.mocked(await import('@/lib/api/chat'));
@@ -42,23 +43,21 @@ describe('useChatController', () => {
 
   beforeEach(() => {
     fetchConversationHistory.mockImplementation(async (id: string) => makeHistory(id));
+    fetchConversationMessages.mockResolvedValue({ items: [], next_cursor: null, prev_cursor: null });
   });
 
   it('loads conversation history via selectConversation', async () => {
-    const messages: ConversationHistory = {
-      conversation_id: 'conv-1',
-      created_at: '2025-01-01T00:00:00.000Z',
-      updated_at: '2025-01-01T00:05:00.000Z',
-      messages: [
+    fetchConversationMessages.mockResolvedValue({
+      items: [
         {
           role: 'user',
           content: 'Hello there',
           timestamp: '2025-01-01T00:00:00.000Z',
         },
       ],
-    };
-
-    fetchConversationHistory.mockResolvedValue(messages);
+      next_cursor: null,
+      prev_cursor: null,
+    });
     useSendChatMutation.mockReturnValue(createMutationMock());
 
     const { Wrapper } = createQueryWrapper();
@@ -71,14 +70,34 @@ describe('useChatController', () => {
       await result.current.selectConversation('conv-1');
     });
 
-    expect(fetchConversationHistory).toHaveBeenCalledWith('conv-1');
     await waitFor(() => {
       expect(result.current.currentConversationId).toBe('conv-1');
+      expect(fetchConversationMessages).toHaveBeenCalled();
+      expect(result.current.messages).toHaveLength(1);
     });
-    expect(result.current.messages).toHaveLength(1);
     expect(result.current.messages[0]).toMatchObject({
       role: 'user',
       content: 'Hello there',
+    });
+  });
+
+  it('surfaces errors when initial message fetch fails', async () => {
+    fetchConversationMessages.mockRejectedValue(new Error('boom'));
+    useSendChatMutation.mockReturnValue(createMutationMock());
+
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useChatController(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.selectConversation('conv-err');
+    });
+
+    await waitFor(() => {
+      expect(fetchConversationMessages).toHaveBeenCalled();
+    });
+
+    await waitFor(() => {
+      expect(result.current.historyError ?? '').toMatch(/boom/);
     });
   });
 
@@ -329,7 +348,9 @@ describe('useChatController', () => {
       await result.current.sendMessage('second');
     });
 
-    expect(result.current.reasoningText).toBe('');
+    await waitFor(() => {
+      expect(result.current.reasoningText).toBe('');
+    });
   });
 
   it('clears tool events between sends', async () => {
@@ -419,6 +440,8 @@ describe('useChatController', () => {
       await result.current.sendMessage('second no tool');
     });
 
-    expect(result.current.toolEvents.length).toBe(0);
+    await waitFor(() => {
+      expect(result.current.toolEvents.length).toBe(0);
+    });
   });
 });

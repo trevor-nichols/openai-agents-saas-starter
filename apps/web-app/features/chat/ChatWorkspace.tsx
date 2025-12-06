@@ -7,7 +7,6 @@ import { useEffect, useState } from 'react';
 import { PanelRightOpen, PanelRightClose } from 'lucide-react';
 
 import { GlassPanel, InlineTag } from '@/components/ui/foundation';
-import { ErrorState } from '@/components/ui/states';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -40,6 +39,10 @@ export function ChatWorkspace() {
     isLoadingAgents,
     agentsError,
     errorMessage,
+    historyError,
+    clearHistoryError,
+    clearError,
+    retryMessages,
     currentConversationId,
     selectedAgent,
     selectedAgentLabel,
@@ -52,6 +55,9 @@ export function ChatWorkspace() {
     toolsError,
     refetchTools,
     activeAgents,
+    hasOlderMessages,
+    isFetchingOlderMessages,
+    loadOlderMessages,
     handleSelectConversation,
     handleNewConversation,
     handleDeleteConversation,
@@ -109,8 +115,6 @@ export function ChatWorkspace() {
         
         {/* Chat Interface (Flex Grow) */}
         <div className="flex-1 min-w-0 flex flex-col gap-4 transition-all duration-300 ease-in-out">
-          {errorMessage ? <ErrorState message={errorMessage} /> : null}
-
           <ChatControllerProvider value={chatController}>
             <ChatInterface
               onSendMessage={sendMessage}
@@ -127,6 +131,14 @@ export function ChatWorkspace() {
               locationHint={locationHint}
               onLocationHintChange={updateLocationField}
               className="h-full min-h-[600px]"
+              hasOlderMessages={hasOlderMessages}
+              isLoadingOlderMessages={isFetchingOlderMessages}
+              onLoadOlderMessages={loadOlderMessages}
+              onRetryMessages={retryMessages}
+              historyError={historyError}
+              errorMessage={errorMessage}
+              onClearHistory={clearHistoryError}
+              onClearError={clearError}
               headerProps={{
                 eyebrow: CHAT_COPY.header.eyebrow,
                 title: CHAT_COPY.header.title,

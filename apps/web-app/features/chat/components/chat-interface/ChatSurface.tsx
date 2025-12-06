@@ -5,6 +5,7 @@ import { GlassPanel, InlineTag, SectionHeader, type SectionHeaderProps } from '@
 import { Banner, BannerClose, BannerTitle } from '@/components/ui/banner';
 import { Conversation, ConversationContent, ConversationScrollButton } from '@/components/ui/ai/conversation';
 import { EmptyState, SkeletonPanel } from '@/components/ui/states';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 import { MessageList } from './MessageList';
@@ -28,6 +29,14 @@ interface ChatSurfaceProps {
   isSending: boolean;
   isClearingConversation: boolean;
   currentConversationId: string | null;
+  hasOlderMessages: boolean;
+  isLoadingOlderMessages: boolean;
+  onLoadOlderMessages?: () => void | Promise<void>;
+  onRetryMessages?: () => void;
+  historyError?: string | null;
+  errorMessage?: string | null;
+  onClearError?: () => void;
+  onClearHistory?: () => void;
   messageInput: string;
   onMessageInputChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void> | void;
@@ -60,6 +69,14 @@ export function ChatSurface({
   isSending,
   isClearingConversation,
   currentConversationId,
+  hasOlderMessages,
+  isLoadingOlderMessages,
+  onLoadOlderMessages,
+  onRetryMessages,
+  historyError,
+  errorMessage,
+  onClearError,
+  onClearHistory,
   messageInput,
   onMessageInputChange,
   onSubmit,
@@ -99,6 +116,28 @@ export function ChatSurface({
 
           {isLoadingHistory ? (
             <SkeletonPanel lines={9} />
+          ) : historyError ? (
+            <Banner inset className="gap-3">
+              <BannerTitle>{historyError}</BannerTitle>
+              <InlineTag tone="warning">History</InlineTag>
+              {onRetryMessages ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onRetryMessages()}
+                  className="ml-auto"
+                >
+                  Retry
+                </Button>
+              ) : null}
+              <BannerClose
+                aria-label="Dismiss history error"
+                onClick={() => {
+                  onClearHistory?.();
+                  onRetryMessages?.();
+                }}
+              />
+            </Banner>
           ) : showEmpty ? (
             <div className="flex min-h-[360px] items-center justify-center py-4">
               <EmptyState
@@ -110,6 +149,33 @@ export function ChatSurface({
             </div>
           ) : (
             <>
+              {errorMessage ? (
+                <Banner inset variant="muted" className="gap-3">
+                  <BannerTitle>{errorMessage}</BannerTitle>
+                  <InlineTag tone="warning">Chat</InlineTag>
+                  <BannerClose
+                    aria-label="Dismiss chat error"
+                    onClick={() => {
+                      onClearError?.();
+                    }}
+                  />
+                </Banner>
+              ) : null}
+              {hasOlderMessages ? (
+                <div className="flex justify-center pb-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={isLoadingOlderMessages}
+                    onClick={() => {
+                      void onLoadOlderMessages?.();
+                    }}
+                  >
+                    {isLoadingOlderMessages ? 'Loading messages…' : 'Load earlier messages'}
+                  </Button>
+                </div>
+              ) : null}
+
               <MessageList
                 messages={messages}
                 attachmentState={attachmentState}

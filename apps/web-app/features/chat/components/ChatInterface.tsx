@@ -33,6 +33,14 @@ interface ChatInterfaceProps {
   isSending?: boolean;
   isClearingConversation?: boolean;
   isLoadingHistory?: boolean;
+  hasOlderMessages?: boolean;
+  isLoadingOlderMessages?: boolean;
+  onLoadOlderMessages?: () => void | Promise<void>;
+  onRetryMessages?: () => void;
+  historyError?: string | null;
+  errorMessage?: string | null;
+  onClearError?: () => void;
+  onClearHistory?: () => void;
   shareLocation: boolean;
   onShareLocationChange: (value: boolean) => void;
   locationHint: {
@@ -59,6 +67,14 @@ export function ChatInterface({
   isSending: isSendingProp,
   isClearingConversation: isClearingConversationProp,
   isLoadingHistory: isLoadingHistoryProp,
+  hasOlderMessages: hasOlderMessagesProp,
+  isLoadingOlderMessages: isLoadingOlderMessagesProp,
+  onLoadOlderMessages,
+  onRetryMessages,
+  historyError,
+  errorMessage,
+  onClearError,
+  onClearHistory,
   shareLocation,
   onShareLocationChange,
   locationHint,
@@ -85,6 +101,20 @@ export function ChatInterface({
   const isSending = isSendingProp ?? isSendingFromStore;
   const isClearingConversation = isClearingConversationProp ?? isClearingFromStore;
   const isLoadingHistory = isLoadingHistoryProp ?? isLoadingHistoryFromStore;
+  const hasOlderMessages =
+    hasOlderMessagesProp ?? useChatSelector((s) => s.hasOlderMessages);
+  const isLoadingOlderMessages =
+    isLoadingOlderMessagesProp ?? useChatSelector((s) => s.isFetchingOlderMessages);
+  const historyErrorFromStore = useChatSelector((s) => s.historyError);
+  const errorMessageFromStore = useChatSelector((s) => s.errorMessage);
+  const loadOlderMessagesFromStore = useChatSelector((s) => s.loadOlderMessages);
+  const retryMessagesFromStore = useChatSelector((s) => s.retryMessages);
+  const clearHistoryErrorFromStore = useChatSelector((s) => s.clearHistoryError);
+  const resolvedHistoryError = historyError ?? historyErrorFromStore ?? null;
+  const resolvedErrorMessage = errorMessage ?? errorMessageFromStore ?? null;
+  const resolvedLoadOlderMessages = onLoadOlderMessages ?? loadOlderMessagesFromStore;
+  const resolvedRetryMessages = onRetryMessages ?? retryMessagesFromStore;
+  const resolvedClearHistory = onClearHistory ?? clearHistoryErrorFromStore;
 
   const [messageInput, setMessageInput] = useState('');
   const { attachmentState, resolveAttachment } = useAttachmentResolver();
@@ -140,7 +170,15 @@ export function ChatInterface({
       activeAgent={activeAgent}
       isSending={isSending}
       isClearingConversation={isClearingConversation}
+      historyError={resolvedHistoryError}
+      errorMessage={resolvedErrorMessage}
+      onClearError={onClearError}
+      onClearHistory={resolvedClearHistory}
       currentConversationId={currentConversationId}
+      hasOlderMessages={hasOlderMessages}
+      isLoadingOlderMessages={isLoadingOlderMessages}
+      onLoadOlderMessages={resolvedLoadOlderMessages}
+      onRetryMessages={resolvedRetryMessages}
       messageInput={messageInput}
       onMessageInputChange={setMessageInput}
       onSubmit={handleSubmit}

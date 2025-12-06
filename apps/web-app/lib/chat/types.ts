@@ -1,4 +1,5 @@
 import type {
+  AgentRunOptions,
   MessageAttachment,
   StreamingChatEvent,
 } from '@/lib/api/client/types.gen';
@@ -14,6 +15,7 @@ export interface StreamChatParams {
     country?: string | null;
     timezone?: string | null;
   } | null;
+  runOptions?: AgentRunOptions | null;
 }
 
 export type StreamChunk =

@@ -28,8 +28,10 @@ export function useSendChatMutation() {
         queryClient.invalidateQueries({
           queryKey: queryKeys.conversations.lists(),
         });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.conversations.messages(response.conversation_id),
+        });
       }
     },
   });
 }
-

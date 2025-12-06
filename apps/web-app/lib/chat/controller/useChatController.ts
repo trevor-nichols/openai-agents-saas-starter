@@ -7,21 +7,23 @@ import {
   useState,
   type Dispatch,
 } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 
-import { deleteConversationById, fetchConversationHistory } from '@/lib/api/conversations';
+import { deleteConversationById, fetchConversationMessages } from '@/lib/api/conversations';
 import { streamChat } from '@/lib/api/chat';
 import { useSendChatMutation } from '@/lib/queries/chat';
 import { queryKeys } from '@/lib/queries/keys';
 import type { ConversationListItem } from '@/types/conversations';
 import type { ChatMessage, ConversationLifecycleStatus, ToolState } from '../types';
+import type { ConversationMessagesPage } from '@/types/conversations';
 import type { LocationHint } from '@/lib/api/client/types.gen';
 
 import { createLogger } from '@/lib/logging';
 import { consumeChatStream } from '../adapters/chatStreamAdapter';
 import {
   createConversationListEntry,
-  mapHistoryToChatMessages,
+  dedupeAndSortMessages,
+  mapMessagesToChatMessages,
   normalizeLocationPayload,
 } from '../mappers/chatRequestMappers';
 import { upsertConversationCaches } from '../cache/conversationCache';
@@ -44,6 +46,7 @@ export interface UseChatControllerReturn {
   isLoadingHistory: boolean;
   isClearingConversation: boolean;
   errorMessage: string | null;
+  historyError: string | null;
   currentConversationId: string | null;
   selectedAgent: string;
   setSelectedAgent: (agentName: string) => void;
@@ -52,6 +55,11 @@ export interface UseChatControllerReturn {
   toolEvents: ToolState[];
   reasoningText: string;
   lifecycleStatus: ConversationLifecycleStatus;
+  hasOlderMessages: boolean;
+  isFetchingOlderMessages: boolean;
+  loadOlderMessages: () => Promise<void> | void;
+  retryMessages: () => void;
+  clearHistoryError: () => void;
   sendMessage: (messageText: string, options?: SendMessageOptions) => Promise<void>;
   selectConversation: (conversationId: string) => Promise<void>;
   startNewConversation: () => void;
@@ -79,9 +87,9 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
 
   const [messages, dispatchMessages] = useReducer(messagesReducer, []);
   const [isSending, setIsSending] = useState(false);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isClearingConversation, setIsClearingConversation] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [selectedAgent, setSelectedAgentState] = useState<string>('triage');
   const [activeAgent, setActiveAgent] = useState<string>('triage');
@@ -90,23 +98,96 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
   const [reasoningText, setReasoningText] = useState('');
   const [lifecycleStatus, setLifecycleStatus] = useState<ConversationLifecycleStatus>('idle');
   const lastActiveAgentRef = useRef<string>('triage');
+  const lastResponseIdRef = useRef<string | null>(null);
 
-      const { enqueueMessageAction, flushQueuedMessages } = useMessageDispatchQueue(dispatchMessages);
-
-  const resetViewState = useCallback(
-    () => {
-      dispatchMessages({ type: 'reset' });
-      setIsLoadingHistory(false);
-      setErrorMessage(null);
-      setToolEvents([]);
-      setReasoningText('');
-      setAgentNotices([]);
-      setLifecycleStatus('idle');
-      setActiveAgent(selectedAgent);
-      lastActiveAgentRef.current = selectedAgent;
+  const invalidateMessagesCache = useCallback(
+    async (conversationId: string | null) => {
+      if (!conversationId) return;
+      try {
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.conversations.messages(conversationId),
+        });
+      } catch (error) {
+        console.warn('[useChatController] Failed to invalidate messages cache', error);
+      }
     },
-    [selectedAgent],
+    [queryClient],
   );
+
+  const messagesQueryKey = useMemo(
+    () => queryKeys.conversations.messages(currentConversationId ?? 'preview'),
+    [currentConversationId],
+  );
+
+  const {
+    data: messagesPages,
+    isLoading: isLoadingMessages,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    error: messagesError,
+    refetch: refetchMessages,
+  } = useInfiniteQuery<ConversationMessagesPage>({
+    queryKey: messagesQueryKey,
+    enabled: Boolean(currentConversationId),
+    queryFn: ({ pageParam }) =>
+      fetchConversationMessages({
+        conversationId: currentConversationId as string,
+        limit: 50,
+        cursor: (pageParam as string | null) ?? null,
+        direction: 'desc',
+      }),
+    getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+    initialPageParam: null as string | null,
+    staleTime: 30 * 1000,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (messagesError) {
+      const message =
+        messagesError instanceof Error
+          ? messagesError.message
+          : 'Failed to load conversation messages.';
+      setHistoryError(message);
+    }
+  }, [messagesError, setHistoryError]);
+
+  useEffect(() => {
+    if (messagesPages) {
+      setHistoryError(null);
+    }
+  }, [messagesPages, setHistoryError]);
+
+  const historyMessages = useMemo(() => {
+    if (!messagesPages?.pages) return [] as ChatMessage[];
+    const flattened = messagesPages.pages.flatMap((page: ConversationMessagesPage) => page.items ?? []);
+    return dedupeAndSortMessages(
+      mapMessagesToChatMessages(flattened, currentConversationId ?? undefined),
+    );
+  }, [messagesPages?.pages, currentConversationId]);
+
+  const mergedMessages = useMemo(
+    () => dedupeAndSortMessages([...historyMessages, ...messages]),
+    [historyMessages, messages],
+  );
+
+  const isLoadingHistory = Boolean(currentConversationId) && isLoadingMessages && !messagesPages;
+
+  const { enqueueMessageAction, flushQueuedMessages } = useMessageDispatchQueue(dispatchMessages);
+
+  const resetViewState = useCallback(() => {
+    dispatchMessages({ type: 'reset' });
+    setErrorMessage(null);
+    setHistoryError(null);
+    setToolEvents([]);
+    setReasoningText('');
+    setAgentNotices([]);
+    setLifecycleStatus('idle');
+    setActiveAgent(selectedAgent);
+    lastActiveAgentRef.current = selectedAgent;
+    lastResponseIdRef.current = null;
+  }, [selectedAgent]);
 
   const resetTurnState = useCallback(() => {
     setReasoningText('');
@@ -125,38 +206,17 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       }
 
       log.debug('Selecting conversation', { conversationId });
-      setIsLoadingHistory(true);
       dispatchMessages({ type: 'reset' });
       setErrorMessage(null);
+      setHistoryError(null);
       resetTurnState();
       setAgentNotices([]);
       setActiveAgent(selectedAgent);
+      lastResponseIdRef.current = null;
 
-      try {
-        const history = await queryClient.fetchQuery({
-          queryKey: queryKeys.conversations.detail(conversationId),
-          queryFn: () => fetchConversationHistory(conversationId),
-        });
-        setCurrentConversationId(history.conversation_id);
-        dispatchMessages({ type: 'setAll', messages: mapHistoryToChatMessages(history) });
-        log.debug('Conversation history loaded', {
-          conversationId: history.conversation_id,
-          messageCount: history.messages.length,
-        });
-      } catch (error) {
-        console.error('[useChatController] Failed to load conversation history:', error);
-        const message =
-          error instanceof Error ? error.message : 'Unable to load conversation history.';
-        setErrorMessage(message);
-        log.debug('Conversation history failed', {
-          conversationId,
-          error,
-        });
-      } finally {
-        setIsLoadingHistory(false);
-      }
+      setCurrentConversationId(conversationId);
     },
-    [currentConversationId, queryClient, resetTurnState, selectedAgent],
+    [currentConversationId, resetTurnState, selectedAgent],
   );
 
   const setSelectedAgent = useCallback((agentName: string) => {
@@ -173,7 +233,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
 
   const sendMessage = useCallback(
     async (messageText: string, options?: SendMessageOptions) => {
-      if (!messageText.trim() || isSending || isLoadingHistory) {
+      if (!messageText.trim() || isSending) {
         return;
       }
 
@@ -189,6 +249,10 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
         currentConversationId,
         length: messageText.length,
       });
+
+      const runOptions = lastResponseIdRef.current
+        ? { previous_response_id: lastResponseIdRef.current }
+        : undefined;
 
       const userMessage: ChatMessage = {
         id: `user-${Date.now()}`,
@@ -217,6 +281,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
           agentType: selectedAgent,
           shareLocation,
           location: locationPayload,
+          runOptions,
         });
 
         const streamResult = await consumeChatStream(stream, {
@@ -280,6 +345,10 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
 
         setLifecycleStatus(streamResult.lifecycleStatus);
 
+        if (streamResult.responseId) {
+          lastResponseIdRef.current = streamResult.responseId;
+        }
+
         if (streamResult.conversationId) {
           const resolvedConversationId = streamResult.conversationId;
           log.debug('Stream completed', {
@@ -297,6 +366,8 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
             onConversationAdded,
             onConversationUpdated,
           });
+          // Ensure paginated messages refresh picks up the new turn
+          void invalidateMessagesCache(resolvedConversationId);
         }
       } catch (error) {
         console.error('[useChatController] Streaming failed, falling back to mutation:', error);
@@ -312,7 +383,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
             context: null,
             share_location: shareLocation,
             location: locationPayload,
-            // Advanced run options are disallowed server-side; omit from payload.
+            run_options: runOptions,
           });
 
           dispatchMessages({
@@ -328,6 +399,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
 
           const fallbackConversationId = fallbackResponse.conversation_id;
           if (fallbackConversationId) {
+            lastResponseIdRef.current = null;
             const resolvedConversationId = fallbackConversationId;
             log.debug('Fallback succeeded', {
               conversationId: resolvedConversationId,
@@ -345,6 +417,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
               onConversationAdded,
               onConversationUpdated,
             });
+            void invalidateMessagesCache(resolvedConversationId);
           }
         } catch (fallbackError) {
           console.error('[useChatController] Fallback send failed:', fallbackError);
@@ -367,7 +440,6 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
     },
     [
       currentConversationId,
-      isLoadingHistory,
       isSending,
       appendAgentNotice,
       enqueueMessageAction,
@@ -427,14 +499,33 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
   );
 
   const clearError = useCallback(() => setErrorMessage(null), []);
+  const clearHistoryError = useCallback(() => setHistoryError(null), []);
+
+  const loadOlderMessages = useCallback(async () => {
+    if (!hasNextPage) return;
+    try {
+      await fetchNextPage();
+    } catch (error) {
+      console.error('[useChatController] Failed to load older messages:', error);
+      setHistoryError(
+        error instanceof Error ? error.message : 'Failed to load older messages.',
+      );
+    }
+  }, [fetchNextPage, hasNextPage]);
+
+  const retryMessages = useCallback(() => {
+    setHistoryError(null);
+    void refetchMessages();
+  }, [refetchMessages]);
 
   return useMemo(
     () => ({
-      messages,
+      messages: mergedMessages,
       isSending,
       isLoadingHistory,
       isClearingConversation,
       errorMessage,
+      historyError,
       currentConversationId,
       selectedAgent,
       setSelectedAgent,
@@ -443,6 +534,11 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       toolEvents,
       reasoningText,
       lifecycleStatus,
+      hasOlderMessages: Boolean(hasNextPage),
+      isFetchingOlderMessages: isFetchingNextPage,
+      loadOlderMessages,
+      retryMessages,
+      clearHistoryError,
       sendMessage,
       selectConversation,
       startNewConversation,
@@ -450,11 +546,12 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       clearError,
     }),
     [
-      messages,
+      mergedMessages,
       isSending,
       isLoadingHistory,
       isClearingConversation,
       errorMessage,
+      historyError,
       currentConversationId,
       selectedAgent,
       setSelectedAgent,
@@ -468,6 +565,11 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       toolEvents,
       reasoningText,
       lifecycleStatus,
+      hasNextPage,
+      isFetchingNextPage,
+      loadOlderMessages,
+      retryMessages,
+      clearHistoryError,
     ],
   );
 

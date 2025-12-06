@@ -32,6 +32,7 @@ export interface StreamConsumeHandlers {
 export interface StreamConsumeResult {
   finalContent: string;
   conversationId: string | null;
+  responseId: string | null;
   attachments: MessageAttachment[] | null;
   structuredOutput: unknown | null;
   lifecycleStatus: ConversationLifecycleStatus;
@@ -53,6 +54,7 @@ export async function consumeChatStream(
   let responseTextOverride: unknown | null = null;
   let lastAgentNotice: string | null = null;
   let finalConversationId: string | null = null;
+  let finalResponseId: string | null = null;
   let lifecycleStatus: ConversationLifecycleStatus = 'idle';
   const collectedCitations: Annotation[] = [];
 
@@ -109,6 +111,10 @@ export async function consumeChatStream(
       if (event.raw_type === 'response.output_text.delta' && event.text_delta) {
         accumulatedContent += event.text_delta;
         handlers.onTextDelta?.(`${accumulatedContent}▋`, accumulatedContent);
+      }
+
+      if (event.response_id) {
+        finalResponseId = event.response_id;
       }
 
       if (
@@ -306,6 +312,7 @@ export async function consumeChatStream(
     return {
       finalContent: '',
       conversationId: finalConversationId,
+      responseId: finalResponseId,
       attachments: streamedAttachments ?? null,
       structuredOutput: streamedStructuredOutput,
       lifecycleStatus,
@@ -334,6 +341,7 @@ export async function consumeChatStream(
   return {
     finalContent,
     conversationId: finalConversationId,
+    responseId: finalResponseId,
     attachments: streamedAttachments ?? null,
     structuredOutput: streamedStructuredOutput ?? null,
     lifecycleStatus,

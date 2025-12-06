@@ -97,6 +97,9 @@ import type {
   GetConversationEventsApiV1ConversationsConversationIdEventsGetData,
   GetConversationEventsApiV1ConversationsConversationIdEventsGetErrors,
   GetConversationEventsApiV1ConversationsConversationIdEventsGetResponses,
+  GetConversationMessagesApiV1ConversationsConversationIdMessagesGetData,
+  GetConversationMessagesApiV1ConversationsConversationIdMessagesGetErrors,
+  GetConversationMessagesApiV1ConversationsConversationIdMessagesGetResponses,
   GetCurrentUserInfoApiV1AuthMeGetData,
   GetCurrentUserInfoApiV1AuthMeGetResponses,
   GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetData,
@@ -1515,6 +1518,34 @@ export const getConversationApiV1ConversationsConversationIdGet = <
     ...options,
   });
 };
+
+/**
+ * Get Conversation Messages
+ *
+ * Return a paginated slice of messages for a conversation.
+ */
+export const getConversationMessagesApiV1ConversationsConversationIdMessagesGet =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      GetConversationMessagesApiV1ConversationsConversationIdMessagesGetData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).get<
+      GetConversationMessagesApiV1ConversationsConversationIdMessagesGetResponses,
+      GetConversationMessagesApiV1ConversationsConversationIdMessagesGetErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/conversations/{conversation_id}/messages",
+      ...options,
+    });
+  };
 
 /**
  * Get Conversation Events

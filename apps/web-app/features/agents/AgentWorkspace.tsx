@@ -52,7 +52,6 @@ export function AgentWorkspace() {
   });
 
   const {
-    errorMessage,
     currentConversationId,
     selectedAgent,
     setSelectedAgent,
@@ -151,7 +150,6 @@ export function AgentWorkspace() {
           selectedAgent={selectedAgent}
           onSelectAgent={handleSelectAgent}
           currentConversationId={currentConversationId}
-          errorMessage={errorMessage}
           onClearError={clearError}
           onSendMessage={sendMessage}
           onStartNewConversation={startNewConversation}

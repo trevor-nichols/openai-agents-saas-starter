@@ -127,6 +127,7 @@ export type AgentChatRequest = {
   context?: {
     [key: string]: unknown;
   } | null;
+  run_options?: AgentRunOptions | null;
 };
 
 /**
@@ -165,6 +166,36 @@ export type AgentChatResponse = {
    * Metadata
    */
   metadata?: {
+    [key: string]: unknown;
+  } | null;
+};
+
+/**
+ * AgentRunOptions
+ *
+ * Optional per-request runtime knobs forwarded to the Agents SDK.
+ */
+export type AgentRunOptions = {
+  /**
+   * Max Turns
+   */
+  max_turns?: number | null;
+  /**
+   * Previous Response Id
+   */
+  previous_response_id?: string | null;
+  /**
+   * Handoff Input Filter
+   */
+  handoff_input_filter?: string | null;
+  /**
+   * Handoff Context Policy
+   */
+  handoff_context_policy?: "full" | "fresh" | "last_turn" | null;
+  /**
+   * Run Config
+   */
+  run_config?: {
     [key: string]: unknown;
   } | null;
 };
@@ -1645,6 +1676,30 @@ export type MessageAttachment = {
    * Originating tool call id
    */
   tool_call_id?: string | null;
+};
+
+/**
+ * PaginatedMessagesResponse
+ *
+ * Paginated slice of messages for a conversation.
+ */
+export type PaginatedMessagesResponse = {
+  /**
+   * Items
+   */
+  items: Array<ChatMessage>;
+  /**
+   * Next Cursor
+   *
+   * Opaque cursor for fetching the next page.
+   */
+  next_cursor?: string | null;
+  /**
+   * Prev Cursor
+   *
+   * Opaque cursor for the previous page (not currently emitted).
+   */
+  prev_cursor?: string | null;
 };
 
 /**
@@ -6042,6 +6097,68 @@ export type GetConversationApiV1ConversationsConversationIdGetResponses = {
 
 export type GetConversationApiV1ConversationsConversationIdGetResponse =
   GetConversationApiV1ConversationsConversationIdGetResponses[keyof GetConversationApiV1ConversationsConversationIdGetResponses];
+
+export type GetConversationMessagesApiV1ConversationsConversationIdMessagesGetData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Conversation Id
+       */
+      conversation_id: string;
+    };
+    query?: {
+      /**
+       * Limit
+       */
+      limit?: number;
+      /**
+       * Cursor
+       *
+       * Opaque pagination cursor.
+       */
+      cursor?: string | null;
+      /**
+       * Direction
+       *
+       * Sort order for messages; defaults to newest first.
+       */
+      direction?: "asc" | "desc";
+    };
+    url: "/api/v1/conversations/{conversation_id}/messages";
+  };
+
+export type GetConversationMessagesApiV1ConversationsConversationIdMessagesGetErrors =
+  {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+  };
+
+export type GetConversationMessagesApiV1ConversationsConversationIdMessagesGetError =
+  GetConversationMessagesApiV1ConversationsConversationIdMessagesGetErrors[keyof GetConversationMessagesApiV1ConversationsConversationIdMessagesGetErrors];
+
+export type GetConversationMessagesApiV1ConversationsConversationIdMessagesGetResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: PaginatedMessagesResponse;
+  };
+
+export type GetConversationMessagesApiV1ConversationsConversationIdMessagesGetResponse =
+  GetConversationMessagesApiV1ConversationsConversationIdMessagesGetResponses[keyof GetConversationMessagesApiV1ConversationsConversationIdMessagesGetResponses];
 
 export type GetConversationEventsApiV1ConversationsConversationIdEventsGetData =
   {

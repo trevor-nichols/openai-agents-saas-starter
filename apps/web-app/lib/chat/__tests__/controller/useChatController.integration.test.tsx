@@ -12,6 +12,7 @@ const originalFetch = global.fetch;
 
 vi.mock('@/lib/api/conversations', () => ({
   fetchConversationHistory: vi.fn(),
+  fetchConversationMessages: vi.fn(),
   deleteConversationById: vi.fn(),
 }));
 
@@ -19,7 +20,7 @@ vi.mock('@/lib/queries/chat', () => ({
   useSendChatMutation: vi.fn(),
 }));
 
-const { fetchConversationHistory } = vi.mocked(
+const { fetchConversationHistory, fetchConversationMessages } = vi.mocked(
   await import('@/lib/api/conversations'),
 );
 const { useSendChatMutation } = vi.mocked(
@@ -45,6 +46,11 @@ describe('useChatController (integration)', () => {
       updated_at: '2025-01-01T00:00:05.000Z',
       messages: [],
     }));
+    fetchConversationMessages.mockResolvedValue({
+      items: [],
+      next_cursor: null,
+      prev_cursor: null,
+    });
 
     const encoder = new TextEncoder();
     const stream = new ReadableStream<Uint8Array>({

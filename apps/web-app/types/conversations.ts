@@ -3,6 +3,7 @@ import type {
   ConversationHistory as BackendConversationHistory,
   ConversationEventItem as BackendConversationEventItem,
   ConversationEventsResponse as BackendConversationEventsResponse,
+  PaginatedMessagesResponse,
 } from '@/lib/api/client/types.gen';
 
 export interface ConversationListItem {
@@ -50,6 +51,8 @@ export interface ConversationSearchPage {
 export type ConversationHistory = BackendConversationHistory;
 
 export type ConversationMessage = BackendChatMessage;
+
+export type ConversationMessagesPage = PaginatedMessagesResponse;
 
 export type ConversationEvent = BackendConversationEventItem;
 

@@ -4,6 +4,7 @@ import {
   deleteConversationApiV1ConversationsConversationIdDelete,
   getConversationApiV1ConversationsConversationIdGet,
   getConversationEventsApiV1ConversationsConversationIdEventsGet,
+  getConversationMessagesApiV1ConversationsConversationIdMessagesGet,
   listConversationsApiV1ConversationsGet,
   searchConversationsApiV1ConversationsSearchGet,
 } from '@/lib/api/client/sdk.gen';
@@ -12,12 +13,14 @@ import type {
   ConversationEventsResponse,
   ConversationListResponse as BackendConversationListResponse,
   ConversationSearchResponse as BackendConversationSearchResponse,
+  PaginatedMessagesResponse,
 } from '@/lib/api/client/types.gen';
 import type {
   ConversationEvents,
   ConversationListItem,
   ConversationListPage,
   ConversationSearchPage,
+  ConversationMessagesPage,
 } from '@/types/conversations';
 
 import { getServerApiClient } from '../apiClient';
@@ -175,6 +178,47 @@ export async function getConversationEvents(
   }
 
   return events;
+}
+
+/**
+ * Retrieve a paginated slice of messages for a conversation.
+ */
+export async function getConversationMessagesPage(
+  conversationId: string,
+  options?: { cursor?: string | null; limit?: number; direction?: 'asc' | 'desc' },
+): Promise<ConversationMessagesPage> {
+  if (!conversationId) {
+    throw new Error('Conversation id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+
+  const response = await getConversationMessagesApiV1ConversationsConversationIdMessagesGet({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    path: {
+      conversation_id: conversationId,
+    },
+    query: {
+      cursor: options?.cursor ?? undefined,
+      limit: options?.limit,
+      direction: options?.direction,
+    },
+  });
+
+  const payload = response.data as PaginatedMessagesResponse | null;
+
+  if (!payload) {
+    return { items: [], next_cursor: null, prev_cursor: null };
+  }
+
+  return {
+    items: payload.items ?? [],
+    next_cursor: payload.next_cursor ?? null,
+    prev_cursor: payload.prev_cursor ?? null,
+  };
 }
 
 /**

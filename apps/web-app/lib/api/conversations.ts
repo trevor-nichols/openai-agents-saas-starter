@@ -14,6 +14,7 @@ import type {
   ConversationListPage,
   ConversationSearchPage,
   ConversationEvents,
+  ConversationMessagesPage,
 } from '@/types/conversations';
 import { apiV1Path } from '@/lib/apiPaths';
 
@@ -120,6 +121,40 @@ export async function fetchConversationHistory(
   }
 
   return (await response.json()) as ConversationHistory;
+}
+
+export async function fetchConversationMessages(params: {
+  conversationId: string;
+  limit?: number;
+  cursor?: string | null;
+  direction?: 'asc' | 'desc';
+}): Promise<ConversationMessagesPage> {
+  const searchParams = new URLSearchParams();
+  if (params.limit) searchParams.set('limit', String(params.limit));
+  if (params.cursor) searchParams.set('cursor', params.cursor);
+  if (params.direction) searchParams.set('direction', params.direction);
+
+  const response = await fetch(
+    `${apiV1Path(`/conversations/${encodeURIComponent(params.conversationId)}/messages`)}${
+      searchParams.toString() ? `?${searchParams.toString()}` : ''
+    }`,
+    {
+      method: 'GET',
+      cache: 'no-store',
+    },
+  );
+
+  if (!response.ok) {
+    const errorPayload = (await response.json().catch(() => ({}))) as { message?: string };
+    throw new Error(errorPayload.message || 'Failed to load conversation messages');
+  }
+
+  const page = (await response.json()) as ConversationMessagesPage;
+  return {
+    items: page.items ?? [],
+    next_cursor: page.next_cursor ?? null,
+    prev_cursor: page.prev_cursor ?? null,
+  };
 }
 
 export async function fetchConversationEvents(params: {

@@ -3,9 +3,7 @@
 
 'use client';
 
-import React from 'react';
 import { Button } from '@/components/ui/button';
-import { ErrorState } from '@/components/ui/states';
 import type { AgentSummary } from '@/types/agents';
 import { ChatControllerProvider } from '@/lib/chat';
 import type { UseChatControllerReturn } from '@/lib/chat';
@@ -18,7 +16,6 @@ interface AgentWorkspaceChatPanelProps {
   selectedAgent: string;
   onSelectAgent: (agentName: string) => void;
   currentConversationId: string | null;
-  errorMessage: string | null;
   onClearError: () => void;
   onSendMessage: (message: string) => Promise<void>;
   onStartNewConversation: () => void;
@@ -35,7 +32,7 @@ interface AgentWorkspaceChatPanelProps {
     field: 'city' | 'region' | 'country' | 'timezone',
     value: string,
   ) => void;
-  chatController?: UseChatControllerReturn;
+  chatController: UseChatControllerReturn;
 }
 
 export function AgentWorkspaceChatPanel({
@@ -45,7 +42,6 @@ export function AgentWorkspaceChatPanel({
   selectedAgent,
   onSelectAgent,
   currentConversationId,
-  errorMessage,
   onClearError,
   onSendMessage,
   onStartNewConversation,
@@ -56,13 +52,6 @@ export function AgentWorkspaceChatPanel({
   onLocationHintChange,
   chatController,
 }: AgentWorkspaceChatPanelProps) {
-  const chatWrapper = (content: React.ReactNode) =>
-    chatController ? (
-      <ChatControllerProvider value={chatController}>{content}</ChatControllerProvider>
-    ) : (
-      content
-    );
-
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -89,26 +78,19 @@ export function AgentWorkspaceChatPanel({
         </div>
       </div>
 
-      {errorMessage ? (
-        <ErrorState
-          title="Chat workspace error"
-          message={errorMessage}
-          onRetry={onClearError}
-        />
-      ) : null}
-
-      {chatWrapper(
+      <ChatControllerProvider value={chatController}>
         <ChatInterface
           onSendMessage={onSendMessage}
           currentConversationId={currentConversationId}
           onClearConversation={onStartNewConversation}
+          onClearError={onClearError}
           shareLocation={shareLocation}
           onShareLocationChange={onShareLocationChange ?? (() => {})}
           locationHint={locationHint}
           onLocationHintChange={onLocationHintChange ?? (() => {})}
           className="min-h-[520px]"
-        />,
-      )}
+        />
+      </ChatControllerProvider>
     </div>
   );
 }
