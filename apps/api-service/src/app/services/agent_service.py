@@ -34,6 +34,7 @@ from app.services.agents.event_log import EventProjector
 from app.services.agents.interaction_context import InteractionContextBuilder
 from app.services.agents.policy import AgentRuntimePolicy
 from app.services.agents.provider_registry import AgentProviderRegistry, get_provider_registry
+from app.services.agents.run_options import build_run_options
 from app.services.agents.run_pipeline import (
     build_metadata,
     persist_assistant_message,
@@ -132,6 +133,7 @@ class AgentService:
                     session=ctx.session_handle,
                     conversation_id=runtime_conversation_id,
                     metadata={"prompt_runtime_ctx": ctx.runtime_ctx},
+                    options=build_run_options(request.run_options),
                 )
         finally:
             reset_current_actor(token)
@@ -149,6 +151,8 @@ class AgentService:
             conversation_service=self._conversation_service,
             response_text=response_text,
             attachments=attachments,
+            active_agent=result.final_agent,
+            handoff_count=result.handoff_count,
         )
         logger.info(
             "agent.chat.end",
@@ -192,8 +196,8 @@ class AgentService:
             response=response_text,
             structured_output=AgentStreamEvent._strip_unserializable(result.structured_output),
             conversation_id=ctx.conversation_id,
-            agent_used=ctx.descriptor.key,
-            handoff_occurred=False,
+            agent_used=result.final_agent or ctx.descriptor.key,
+            handoff_occurred=bool(result.handoff_count),
             attachments=[
                 MessageAttachment(**self._attachment_service.to_attachment_schema(att))
                 for att in attachments
@@ -229,6 +233,8 @@ class AgentService:
         complete_response = ""
         attachments: list[ConversationAttachment] = []
         seen_tool_calls: set[str] = set()
+        current_agent = ctx.descriptor.key
+        handoff_count = 0
         token = set_current_actor(actor)
         stream_handle = None
         try:
@@ -253,6 +259,7 @@ class AgentService:
                     session=ctx.session_handle,
                     conversation_id=runtime_conversation_id,
                     metadata={"prompt_runtime_ctx": ctx.runtime_ctx},
+                    options=build_run_options(request.run_options, hook_sink=lifecycle_bus),
                 )
                 async for event in stream_handle.events():
                     event.conversation_id = ctx.conversation_id
@@ -298,6 +305,11 @@ class AgentService:
                         None if event.response_text is None else str(event.response_text)
                     )
 
+                    if event.kind == "agent_updated_stream_event":
+                        if event.new_agent:
+                            current_agent = event.new_agent
+                        handoff_count += 1
+
                     yield event
 
                     if event.is_terminal:
@@ -322,9 +334,10 @@ class AgentService:
                 provider=ctx.provider.name,
                 provider_conversation_id=ctx.provider_conversation_id,
                 agent_entrypoint=request.agent_type or ctx.descriptor.key,
-                active_agent=ctx.descriptor.key,
+                active_agent=current_agent,
                 session_id=ctx.session_id,
                 user_id=actor.user_id,
+                handoff_count=handoff_count or None,
             ),
         )
         logger.info(

@@ -17,10 +17,15 @@ def build_run_options(payload: Any, *, hook_sink: Any | None = None) -> RunOptio
     if not payload:
         return RunOptions(hook_sink=hook_sink) if hook_sink else None
 
+    # Prefer explicit handoff_input_filter, else allow the higher-level policy alias.
+    handoff_filter = getattr(payload, "handoff_input_filter", None) or getattr(
+        payload, "handoff_context_policy", None
+    )
+
     return RunOptions(
         max_turns=getattr(payload, "max_turns", None),
         previous_response_id=getattr(payload, "previous_response_id", None),
-        handoff_input_filter=getattr(payload, "handoff_input_filter", None),
+        handoff_input_filter=handoff_filter,
         run_config=getattr(payload, "run_config", None),
         hook_sink=hook_sink,
     )

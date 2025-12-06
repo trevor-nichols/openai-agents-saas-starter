@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -19,6 +19,18 @@ from app.api.v1.shared.streaming import (
 )
 
 
+class AgentRunOptions(BaseModel):
+    """Optional per-request runtime knobs forwarded to the Agents SDK."""
+
+    max_turns: int | None = None
+    previous_response_id: str | None = None
+    # Name of the handoff filter (see app/agents/_shared/handoff_filters.py).
+    handoff_input_filter: str | None = None
+    # Convenience alias for common policies; maps to handoff_input_filter.
+    handoff_context_policy: Literal["full", "fresh", "last_turn"] | None = None
+    run_config: dict[str, Any] | None = None
+
+
 class AgentChatRequest(BaseModel):
     message: str
     conversation_id: str | None = None
@@ -26,6 +38,7 @@ class AgentChatRequest(BaseModel):
     share_location: bool | None = None
     location: LocationHint | None = None
     context: dict[str, Any] | None = None
+    run_options: AgentRunOptions | None = None
 
 
 class AgentChatResponse(BaseModel):
@@ -65,4 +78,5 @@ __all__ = [
     "FileSearchCall",
     "ImageGenerationCall",
     "LocationHint",
+    "AgentRunOptions",
 ]

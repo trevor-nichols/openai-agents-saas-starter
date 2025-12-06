@@ -142,6 +142,7 @@ return AgentSpec(
   - `max_turns`, `previous_response_id`
   - `run_config` keys: `model`, `model_settings`, `input_guardrails`, `output_guardrails`, `tracing_disabled`, `trace_include_sensitive_data`, `workflow_name`
   - `handoff_input_filter` (global, name resolved via `_shared/handoff_filters`)
+  - `handoff_context_policy` (alias for the common filters: `full`/`fresh`/`last_turn`)
 - Streaming vs sync: `chat_stream` uses `run_stream` and emits `AgentStreamEvent` (raw deltas, run items, lifecycle); `chat` uses `run`.
 
 ## Adding a new agent (checklist)

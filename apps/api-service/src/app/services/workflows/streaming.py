@@ -52,7 +52,8 @@ async def stream_sequential_stage(
         stream_handle = provider.runtime.run_stream(
             step.agent_key,
             step_input,
-            conversation_id=conversation_id,
+            # Avoid passing internal UUIDs to provider; session carries continuity.
+            conversation_id=None,
             metadata=metadata,
             options=options,
             session=session_handle,
@@ -66,6 +67,11 @@ async def stream_sequential_stage(
             check_cancel()
             event.conversation_id = conversation_id
             event.agent = event.agent or step.agent_key
+            event.step_name = step.display_name()
+            event.step_agent = step.agent_key
+            event.stage_name = stage.name
+            event.parallel_group = None
+            event.branch_index = None
             event.metadata = {
                 **(event.metadata or {}),
                 "workflow_key": workflow.key,
@@ -199,7 +205,7 @@ async def stream_parallel_stage(
             stream_handle = provider.runtime.run_stream(
                 step.agent_key,
                 step_input,
-                conversation_id=conversation_id,
+                conversation_id=None,
                 metadata=metadata,
                 options=options,
                 session=session_handle,
@@ -212,6 +218,11 @@ async def stream_parallel_stage(
                 check_cancel()
                 event.conversation_id = conversation_id
                 event.agent = event.agent or step.agent_key
+                event.step_name = step.display_name()
+                event.step_agent = step.agent_key
+                event.stage_name = stage.name
+                event.parallel_group = stage.name
+                event.branch_index = idx
                 event.metadata = {
                     **(event.metadata or {}),
                     "workflow_key": workflow.key,

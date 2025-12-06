@@ -7,6 +7,7 @@ Current coverage
 - `test_code_interpreter_manual.py`: streams with `code_assistant`; checks HTTP 200, structured SSE, `code_interpreter_call` completion, outputs captured, and assistant text mentions the numeric result.
 - `test_file_search_manual.py`: streams with `researcher` + file search. By default it uploads `apps/api-service/tests/utils/test.pdf` to OpenAI, ensures/creates the primary vector store, attaches the file (polling to completed), then runs. You can override the file via `FILE_SEARCH_LOCAL_FILE`. Checks HTTP 200, structured SSE, `file_search_call` completion, file citations present, and citation references the selected file.
 - `test_image_generation_manual.py`: streams with `researcher` to generate an image; asserts streaming structure, `image_generation_call` completion, attachment presence, and non-empty assistant text. Uses a fast/stable prompt (“stick figure line drawing”) and defaults `MANUAL_TIMEOUT` to 180s to avoid slow-generation flakes.
+- `test_workflow_manual.py`: streams `/api/v1/workflows/analysis_code/run-stream`; asserts HTTP 200, workflow metadata present, both steps (`analysis`, `code`) observed, terminal event, and non-empty assistant text.
 
 Why manual: Requires live OpenAI web search and your local auth setup; we keep it outside CI to avoid network/external dependencies.
 
@@ -33,6 +34,7 @@ Recording fixtures for CI playback
   - `code_interpreter.ndjson`
   - `file_search.ndjson`
   - `image_generation.ndjson`
+  - `workflow_analysis_code.ndjson`
 - After recording, the contract playback tests (`tests/contract/streams/test_stream_goldens.py`) validate the fixture deterministically in CI (no external network calls).
 
 Current fixtures: all four NDJSONs are refreshed and validated (web_search, code_interpreter, file_search, image_generation).

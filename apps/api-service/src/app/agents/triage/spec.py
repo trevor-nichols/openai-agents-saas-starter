@@ -20,4 +20,6 @@ def get_agent_spec() -> AgentSpec:
         wrap_with_handoff_prompt=True,
         prompt_context_keys=("user", "tenant", "agent", "run", "env"),
         prompt_defaults={"user": {"name": "there"}},
+        # Context policies per target: keep last turn for code work; fresh start for research.
+        handoff_context={"code_assistant": "last_turn", "researcher": "fresh"},
     )

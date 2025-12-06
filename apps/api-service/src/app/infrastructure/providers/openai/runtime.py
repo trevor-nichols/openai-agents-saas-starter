@@ -54,12 +54,15 @@ class OpenAIAgentRuntime(AgentRuntime):
         metadata: Mapping[str, Any] | None = None,
         options: RunOptions | None = None,
     ) -> AgentRunResult:
-        agent, safe_metadata, hooks, _bus = self._prepare_run(  # bus unused in sync path
+        agent, safe_metadata, hooks, bus = self._prepare_run(
             agent_key,
             metadata=metadata,
             options=options,
         )
         run_kwargs = self._prepare_run_kwargs(options)
+
+        handoff_count = 0
+        final_agent: str | None = agent_key
 
         result = await Runner.run(
             agent,
@@ -69,6 +72,13 @@ class OpenAIAgentRuntime(AgentRuntime):
             hooks=cast(RunHooksBase[Any, Agent[Any]] | None, hooks),
             **run_kwargs,
         )
+
+        if bus is not None:
+            async for ev in bus.drain():
+                if getattr(ev, "event", None) == "handoff":
+                    handoff_count += 1
+                    if getattr(ev, "new_agent", None):
+                        final_agent = ev.new_agent
 
         usage, response_id, final_output, structured_output, response_text, tool_outputs = (
             self._normalize_run_result(result)
@@ -83,6 +93,8 @@ class OpenAIAgentRuntime(AgentRuntime):
             structured_output=structured_output,
             response_text=response_text if response_text is not None else str(final_output),
             tool_outputs=tool_outputs,
+            handoff_count=handoff_count or None,
+            final_agent=final_agent,
         )
 
     def run_stream(

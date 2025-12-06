@@ -100,7 +100,7 @@ class OpenAIAgentRegistry:
             runtime_ctx=runtime_ctx,
             validate_prompts=validate_prompts,
             register_static=False,
-            allow_unresolved_file_search=False,
+            allow_unresolved_file_search=runtime_ctx.file_search is None,
         )
         return contextual_agents.get(agent_key)
 

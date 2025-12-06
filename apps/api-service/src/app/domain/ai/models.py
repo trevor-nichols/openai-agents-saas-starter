@@ -43,6 +43,9 @@ class AgentRunResult:
     response_text: str | None = None
     # Raw tool outputs (e.g., image_generation_call) when available.
     tool_outputs: list[Mapping[str, Any]] | None = None
+    # Handoff metadata (best effort; may be None if provider doesn't expose).
+    handoff_count: int | None = None
+    final_agent: str | None = None
 
 
 @dataclass(slots=True)
@@ -95,6 +98,15 @@ class AgentStreamEvent:
     run_item_type: str | None = None
     tool_call_id: str | None = None
     tool_name: str | None = None
+
+    # Workflow metadata (optional)
+    workflow_key: str | None = None
+    workflow_run_id: str | None = None
+    step_name: str | None = None
+    step_agent: str | None = None
+    stage_name: str | None = None
+    parallel_group: str | None = None
+    branch_index: int | None = None
 
     # Agent routing
     agent: str | None = None

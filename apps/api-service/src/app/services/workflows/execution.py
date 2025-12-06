@@ -22,7 +22,9 @@ async def execute_agent_step(
     result = await provider.runtime.run(
         step.agent_key,
         step_input,
-        conversation_id=conversation_id,
+        # Avoid passing our internal conversation UUID to the provider; OpenAI
+        # Responses API expects `conv_*` ids. Session handles keep continuity.
+        conversation_id=None,
         metadata=metadata,
         options=options,
         session=session_handle,

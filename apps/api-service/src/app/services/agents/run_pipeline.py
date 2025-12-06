@@ -129,9 +129,12 @@ async def persist_assistant_message(
     conversation_service: ConversationService,
     response_text: str,
     attachments,
+    active_agent: str | None = None,
+    handoff_count: int | None = None,
 ) -> None:
     """Store assistant response with aligned metadata."""
 
+    agent_name = active_agent or ctx.descriptor.key
     assistant_message = ConversationMessage(
         role="assistant",
         content=response_text,
@@ -146,9 +149,10 @@ async def persist_assistant_message(
             provider=ctx.provider.name,
             provider_conversation_id=ctx.provider_conversation_id,
             agent_entrypoint=ctx.descriptor.key,
-            active_agent=ctx.descriptor.key,
+            active_agent=agent_name,
             session_id=ctx.session_id,
             user_id=ctx.actor.user_id,
+            handoff_count=handoff_count,
         ),
     )
 
@@ -205,6 +209,7 @@ def build_metadata(
     active_agent: str,
     session_id: str,
     user_id: str,
+    handoff_count: int | None = None,
 ) -> ConversationMetadata:
     return ConversationMetadata(
         tenant_id=tenant_id,
@@ -212,6 +217,7 @@ def build_metadata(
         provider_conversation_id=provider_conversation_id,
         agent_entrypoint=agent_entrypoint,
         active_agent=active_agent,
+        handoff_count=handoff_count,
         sdk_session_id=session_id,
         user_id=user_id,
     )
