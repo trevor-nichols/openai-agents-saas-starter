@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Literal
 
 from app.domain.conversations import (
     ConversationEvent,
@@ -14,6 +15,7 @@ from app.domain.conversations import (
     ConversationRecord,
     ConversationRepository,
     ConversationSessionState,
+    MessagePage,
 )
 from app.services.activity import activity_service
 
@@ -168,6 +170,27 @@ class ConversationService:
             cursor=cursor,
             agent_entrypoint=agent_entrypoint,
             updated_after=updated_after,
+        )
+
+    async def paginate_messages(
+        self,
+        *,
+        conversation_id: str,
+        tenant_id: str,
+        limit: int,
+        cursor: str | None = None,
+        direction: Literal["asc", "desc"] = "desc",
+    ) -> MessagePage:
+        normalized_tenant = _require_tenant_id(tenant_id)
+        direction_normalized: Literal["asc", "desc"] = (
+            "asc" if (direction or "desc").lower() == "asc" else "desc"
+        )
+        return await self._require_repository().paginate_messages(
+            conversation_id=conversation_id,
+            tenant_id=normalized_tenant,
+            limit=limit,
+            cursor=cursor,
+            direction=direction_normalized,
         )
 
     async def clear_conversation(self, conversation_id: str, *, tenant_id: str) -> None:

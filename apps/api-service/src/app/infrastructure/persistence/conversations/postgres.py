@@ -75,6 +75,23 @@ class PostgresConversationRepository(ConversationRepository):
             updated_after=updated_after,
         )
 
+    async def paginate_messages(
+        self,
+        *,
+        conversation_id: str,
+        tenant_id: str,
+        limit: int,
+        cursor: str | None = None,
+        direction: str = "desc",
+    ):
+        return await self._messages.paginate_messages(
+            conversation_id=conversation_id,
+            tenant_id=tenant_id,
+            limit=limit,
+            cursor=cursor,
+            direction=direction,
+        )
+
     async def clear_conversation(self, conversation_id: str, *, tenant_id: str) -> None:
         await self._messages.clear_conversation(conversation_id, tenant_id=tenant_id)
 

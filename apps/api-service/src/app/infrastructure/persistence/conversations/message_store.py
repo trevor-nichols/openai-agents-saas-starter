@@ -17,10 +17,13 @@ from app.domain.conversations import (
     ConversationPage,
     ConversationRecord,
     ConversationSessionState,
+    MessagePage,
 )
 from app.infrastructure.persistence.conversations.cursors import (
     decode_list_cursor,
+    decode_message_cursor,
     encode_list_cursor,
+    encode_message_cursor,
 )
 from app.infrastructure.persistence.conversations.ids import (
     coerce_conversation_uuid,
@@ -260,6 +263,98 @@ class ConversationMessageStore:
             ]
             return ConversationPage(items=records, next_cursor=next_cursor)
 
+    async def paginate_messages(
+        self,
+        *,
+        conversation_id: str,
+        tenant_id: str,
+        limit: int,
+        cursor: str | None = None,
+        direction: str = "desc",
+    ) -> MessagePage:
+        conversation_uuid = coerce_conversation_uuid(conversation_id)
+        tenant_uuid = parse_tenant_id(tenant_id)
+        limit = max(1, min(limit, 100))
+        direction_normalized = (direction or "desc").lower()
+        if direction_normalized not in ("asc", "desc"):
+            raise ValueError("direction must be 'asc' or 'desc'")
+
+        cursor_ts: datetime | None = None
+        cursor_id: int | None = None
+        if cursor:
+            cursor_ts, cursor_id = decode_message_cursor(cursor)
+            cursor_ts = to_utc(cursor_ts)
+
+        async with self._session_factory() as session:
+            conversation = await self._get_conversation(
+                session,
+                conversation_uuid,
+                tenant_id=tenant_uuid,
+                strict=True,
+            )
+            if conversation is None:
+                raise ConversationNotFoundError(f"Conversation {conversation_id} does not exist")
+
+            stmt = select(AgentMessage).where(AgentMessage.conversation_id == conversation_uuid)
+
+            if cursor_ts and cursor_id is not None:
+                if direction_normalized == "desc":
+                    stmt = stmt.where(
+                        or_(
+                            AgentMessage.created_at < cursor_ts,
+                            and_(
+                                AgentMessage.created_at == cursor_ts,
+                                AgentMessage.id < cursor_id,
+                            ),
+                        )
+                    )
+                else:
+                    stmt = stmt.where(
+                        or_(
+                            AgentMessage.created_at > cursor_ts,
+                            and_(
+                                AgentMessage.created_at == cursor_ts,
+                                AgentMessage.id > cursor_id,
+                            ),
+                        )
+                    )
+
+            if direction_normalized == "desc":
+                stmt = stmt.order_by(
+                    AgentMessage.created_at.desc(),
+                    AgentMessage.id.desc(),
+                )
+            else:
+                stmt = stmt.order_by(
+                    AgentMessage.created_at.asc(),
+                    AgentMessage.id.asc(),
+                )
+
+            stmt = stmt.limit(limit + 1)
+
+            result = await session.execute(stmt)
+            rows: Sequence[AgentMessage] = result.scalars().all()
+
+            has_extra = len(rows) > limit
+            rows = rows[:limit]
+
+            messages = [
+                ConversationMessage(
+                    role=coerce_role(row.role),
+                    content=extract_message_content(row.content),
+                    attachments=extract_attachments(row.attachments),
+                    timestamp=row.created_at,
+                )
+                for row in rows
+            ]
+
+            next_cursor = None
+            if has_extra and rows:
+                tail = rows[-1]
+                next_cursor = encode_message_cursor(tail.created_at, tail.id)
+
+            return MessagePage(items=messages, next_cursor=next_cursor)
+
     async def clear_conversation(self, conversation_id: str, *, tenant_id: str) -> None:
         conversation_uuid = coerce_conversation_uuid(conversation_id)
         tenant_uuid = parse_tenant_id(tenant_id)
@@ -410,8 +505,8 @@ class ConversationMessageStore:
                 conversation.tenant_id,
             )
             if strict:
-                raise ValueError(
-                    "Conversation belongs to a different tenant; refusing to continue."
+                raise ConversationNotFoundError(
+                    f"Conversation {conversation_id} does not exist"
                 )
             return None
         return conversation

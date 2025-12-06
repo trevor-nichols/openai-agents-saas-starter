@@ -91,6 +91,14 @@ class ConversationPage:
 
 
 @dataclass(slots=True)
+class MessagePage:
+    """Page of messages within a conversation plus a cursor."""
+
+    items: list[ConversationMessage]
+    next_cursor: str | None
+
+
+@dataclass(slots=True)
 class ConversationSearchHit:
     """Search hit with relevance score."""
 
@@ -175,6 +183,16 @@ class ConversationRepository(Protocol):
         agent_entrypoint: str | None = None,
         updated_after: datetime | None = None,
     ) -> ConversationPage: ...
+
+    async def paginate_messages(
+        self,
+        *,
+        conversation_id: str,
+        tenant_id: str,
+        limit: int,
+        cursor: str | None = None,
+        direction: Literal["asc", "desc"] = "desc",
+    ) -> MessagePage: ...
 
     async def search_conversations(
         self,

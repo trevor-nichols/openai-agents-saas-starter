@@ -51,6 +51,7 @@ from app.domain.conversations import (
     ConversationSearchHit,
     ConversationSearchPage,
     ConversationSessionState,
+    MessagePage,
 )
 from app.infrastructure.persistence.models.base import Base
 from app.infrastructure.persistence.workflows import models as _workflow_models  # noqa: F401
@@ -310,6 +311,34 @@ class EphemeralConversationRepository(ConversationRepository):
             slice_items = slice_items[:limit]
 
         return ConversationPage(items=slice_items, next_cursor=next_cursor)
+
+    async def paginate_messages(
+        self,
+        *,
+        conversation_id: str,
+        tenant_id: str,
+        limit: int,
+        cursor: str | None = None,
+        direction: str = "desc",
+    ) -> MessagePage:
+        tenant = self._require_tenant(tenant_id)
+        key = (tenant, conversation_id)
+        direction_normalized = (direction or "desc").lower()
+        if direction_normalized not in ("asc", "desc"):
+            raise ValueError("direction must be 'asc' or 'desc'")
+
+        messages = list(self._messages.get(key, []))
+        reverse = direction_normalized == "desc"
+        messages.sort(key=lambda m: (m.timestamp, m.content), reverse=reverse)
+
+        start = int(cursor) if cursor else 0
+        slice_items = messages[start : start + limit + 1]
+        next_cursor = None
+        if len(slice_items) > limit:
+            next_cursor = str(start + limit)
+            slice_items = slice_items[:limit]
+
+        return MessagePage(items=slice_items, next_cursor=next_cursor)
 
     async def search_conversations(
         self,

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from app.bootstrap.container import wire_storage_service
 from app.domain.conversations import ConversationRepository
@@ -78,6 +78,23 @@ class ConversationQueryService:
 
     async def clear(self, conversation_id: str, *, actor: ConversationActorContext) -> None:
         await self._history_service.clear(conversation_id, actor=actor)
+
+    async def get_messages_page(
+        self,
+        conversation_id: str,
+        *,
+        actor: ConversationActorContext,
+        limit: int,
+        cursor: str | None,
+        direction: Literal["asc", "desc"],
+    ) -> tuple[list[Any], str | None]:
+        return await self._history_service.get_messages_page(
+            conversation_id,
+            actor=actor,
+            limit=limit,
+            cursor=cursor,
+            direction=direction,
+        )
 
     @property
     def repository(self) -> ConversationRepository:

@@ -1,5 +1,7 @@
 """Conversation management endpoints."""
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 
 from app.api.dependencies.auth import CurrentUser, require_verified_scopes
@@ -12,6 +14,7 @@ from app.api.v1.conversations.schemas import (
     ConversationListResponse,
     ConversationSearchResponse,
     ConversationSearchResult,
+    PaginatedMessagesResponse,
 )
 from app.domain.conversations import ConversationNotFoundError
 from app.services.agents.context import ConversationActorContext
@@ -134,6 +137,50 @@ async def get_conversation(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
+
+
+@router.get("/{conversation_id}/messages", response_model=PaginatedMessagesResponse)
+async def get_conversation_messages(
+    conversation_id: str,
+    current_user: CurrentUser = Depends(require_verified_scopes("conversations:read")),
+    tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
+    tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
+    limit: int = Query(50, ge=1, le=100),
+    cursor: str | None = Query(None, description="Opaque pagination cursor."),
+    direction: Literal["asc", "desc"] = Query(
+        "desc",
+        description="Sort order for messages; defaults to newest first.",
+    ),
+) -> PaginatedMessagesResponse:
+    """Return a paginated slice of messages for a conversation."""
+
+    tenant_context = await _resolve_tenant_context(
+        current_user,
+        tenant_id_header,
+        tenant_role_header,
+        min_role=TenantRole.VIEWER,
+    )
+    actor = _conversation_actor(current_user, tenant_context)
+    try:
+        messages, next_cursor = await get_conversation_query_service().get_messages_page(
+            conversation_id,
+            actor=actor,
+            limit=limit,
+            cursor=cursor,
+            direction=direction,
+        )
+    except ConversationNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    return PaginatedMessagesResponse(items=messages, next_cursor=next_cursor, prev_cursor=None)
 
 
 @router.get("/{conversation_id}/events", response_model=ConversationEventsResponse)

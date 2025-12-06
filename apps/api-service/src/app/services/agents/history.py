@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from app.api.v1.chat.schemas import MessageAttachment
 from app.api.v1.conversations.schemas import ChatMessage, ConversationHistory, ConversationSummary
@@ -86,9 +87,33 @@ class ConversationHistoryService:
                     created_at=record.created_at.isoformat(),
                     updated_at=record.updated_at.isoformat(),
                 )
-            )
+        )
 
         return summaries, page.next_cursor
+
+    async def get_messages_page(
+        self,
+        conversation_id: str,
+        *,
+        actor,
+        limit: int,
+        cursor: str | None,
+        direction: Literal["asc", "desc"],
+    ) -> tuple[list[ChatMessage], str | None]:
+        direction_normalized: Literal["asc", "desc"] = (
+            "asc" if (direction or "desc").lower() == "asc" else "desc"
+        )
+        page = await self._conversation_service.paginate_messages(
+            conversation_id=conversation_id,
+            tenant_id=actor.tenant_id,
+            limit=limit,
+            cursor=cursor,
+            direction=direction_normalized,
+        )
+
+        await self._attachments.presign_message_attachments(page.items, tenant_id=actor.tenant_id)
+
+        return [self._to_chat_message(msg) for msg in page.items], page.next_cursor
 
     async def search(
         self,

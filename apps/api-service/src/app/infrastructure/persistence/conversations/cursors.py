@@ -41,9 +41,27 @@ def decode_search_cursor(cursor: str) -> tuple[float, datetime, uuid.UUID]:
         raise ValueError("Invalid search pagination cursor") from exc
 
 
+def encode_message_cursor(ts: datetime, message_id: int) -> str:
+    payload = {"ts": ts.isoformat(), "id": message_id}
+    raw = json.dumps(payload).encode("utf-8")
+    return base64.urlsafe_b64encode(raw).decode("utf-8")
+
+
+def decode_message_cursor(cursor: str) -> tuple[datetime, int]:
+    try:
+        data = json.loads(base64.urlsafe_b64decode(cursor.encode("utf-8")).decode("utf-8"))
+        ts = datetime.fromisoformat(data["ts"])
+        message_id = int(data["id"])
+        return ts, message_id
+    except Exception as exc:  # pragma: no cover - invalid cursor input
+        raise ValueError("Invalid messages pagination cursor") from exc
+
+
 __all__ = [
     "encode_list_cursor",
     "decode_list_cursor",
     "encode_search_cursor",
     "decode_search_cursor",
+    "encode_message_cursor",
+    "decode_message_cursor",
 ]

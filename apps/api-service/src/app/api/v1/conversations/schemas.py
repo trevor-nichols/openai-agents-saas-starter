@@ -37,6 +37,20 @@ class ConversationHistory(BaseModel):
     )
 
 
+class PaginatedMessagesResponse(BaseModel):
+    """Paginated slice of messages for a conversation."""
+
+    items: list[ChatMessage]
+    next_cursor: str | None = Field(
+        default=None,
+        description="Opaque cursor for fetching the next page.",
+    )
+    prev_cursor: str | None = Field(
+        default=None,
+        description="Opaque cursor for the previous page (not currently emitted).",
+    )
+
+
 class ConversationSummary(BaseModel):
     """Lightweight summary used when listing conversations."""
 

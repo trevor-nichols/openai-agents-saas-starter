@@ -58,6 +58,14 @@ def test_search_cursor_round_trip() -> None:
     assert decoded_ts == ts
 
 
+def test_message_cursor_round_trip() -> None:
+    ts = datetime.now(UTC)
+    cursor = cursors.encode_message_cursor(ts, 123)
+    decoded_ts, msg_id = cursors.decode_message_cursor(cursor)
+    assert msg_id == 123
+    assert decoded_ts == ts
+
+
 def test_decode_cursor_invalid_payload() -> None:
     bogus = base64.urlsafe_b64encode(json.dumps({"foo": "bar"}).encode()).decode()
     with pytest.raises(ValueError):
