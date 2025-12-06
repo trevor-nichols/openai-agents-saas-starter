@@ -123,6 +123,14 @@ class OpenAPIExporter:
         destination = self.output
         if not destination.is_absolute():
             destination = (repo_root / destination).resolve()
+        try:
+            destination.relative_to(repo_root)
+        except ValueError:
+            console.warn(
+                f"Output path {destination} is outside the repository root ({repo_root}). "
+                "Paths are repo-root relative; drop any leading '../' when running this command.",
+                topic="api",
+            )
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(json.dumps(schema, indent=2), encoding="utf-8")
         console.success(f"OpenAPI schema written to {destination}", topic="api")
