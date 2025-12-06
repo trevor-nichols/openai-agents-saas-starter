@@ -1,10 +1,22 @@
 {
     "files.associations": {
-        "*.cursorrules": "markdown"
+        "*.cursorrules": "markdown",
+        "*.md.j2": "jinja"
     },
     "workbench.activityBar.orientation": "horizontal",
     "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
     "python.pythonPath": "${workspaceFolder}/.venv/bin/python",
     "python.terminal.activateEnvironment": true,
-    "basedpyright.analysis.configFilePath": "${workspaceFolder}"
+    "python.analysis.typeCheckingMode": "basic",
+    "basedpyright.analysis.typeCheckingMode": "basic",
+    "basedpyright.analysis.configFilePath": "${workspaceFolder}",
+    "basedpyright.analysis.exclude": [
+        "docs/**"
+    ],
+    "python.analysis.exclude": [
+        "docs/**"
+    ],
+    "evenBetterToml.schema.associations": {
+        "pyproject.toml": false
+    }
 }

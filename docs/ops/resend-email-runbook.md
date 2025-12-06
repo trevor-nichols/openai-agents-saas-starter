@@ -17,7 +17,7 @@ This runbook explains how to operate the Resend-backed email delivery path for v
 
 ## Enabling Resend
 
-1. Populate the env vars above in `.env.local` (dev) or deployment secrets.
+1. Populate the env vars above in `apps/api-service/.env.local` (dev) or deployment secrets.
 2. Deploy. The service builders automatically switch to the Resend notifier when `RESEND_EMAIL_ENABLED=true`.
 3. Watch metrics/alerts (see Monitoring below) for the first few sends.
 
@@ -36,7 +36,7 @@ Use pytest snapshots or run this helper snippet in a shell:
 ```bash
 python - <<'PY'
 from datetime import UTC, datetime
-from app.core.config import Settings
+from app.core.settings import Settings
 from app.presentation.emails import render_verification_email
 settings = Settings(app_public_url="https://app.dev")
 content = render_verification_email(settings, token="demo123", expires_at=datetime.now(UTC))

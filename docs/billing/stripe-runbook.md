@@ -153,7 +153,7 @@ This standard operating procedure covers the two long-lived Stripe credentials u
 ### Rotation steps – API key (`STRIPE_SECRET_KEY`)
 
 1. In the Stripe Dashboard, create a **new restricted secret key** with the same permissions as the current one.
-2. Update the key in your secret manager (`.env.local`, Vault, Kubernetes secret, etc.) **without deleting** the previous value yet.
+2. Update the key in your secret manager (`apps/api-service/.env.local`, Vault, Kubernetes secret, etc.) **without deleting** the previous value yet.
 3. Deploy/restart the FastAPI app so the new key is loaded; verify startup logs show the masked key prefix/suffix you expect.
 4. Run `just test-stripe` against a staging environment to exercise subscription creation and usage recording with the new key.
 5. Once satisfied, delete or revoke the old key in Stripe to prevent reuse.
@@ -202,7 +202,7 @@ The Starter CLI setup wizard now records these decisions automatically:
 
 Implementation checklist:
 
-1. During `starter_cli.app setup wizard` answer **No** to “Run the Stripe retry worker inside this deployment?” for customer-facing pods and **Yes** for the worker pod. This keeps env files honest (`starter_cli/workflows/setup/_wizard/sections/signup.py`).
+1. During `cd packages/starter_cli && python -m starter_cli.app setup wizard` answer **No** to “Run the Stripe retry worker inside this deployment?” for customer-facing pods and **Yes** for the worker pod. This keeps env files honest (`starter_cli/workflows/setup/_wizard/sections/signup.py`).
 2. In Kubernetes/Compose, create a dedicated deployment/statefulset for the worker with `replicas: 1`, `ENABLE_BILLING=true`, `ENABLE_BILLING_RETRY_WORKER=true`, and `ENABLE_BILLING_STREAM_REPLAY=true`. All other API deployments set the flags to `false`.
 3. Gate rollouts with metrics: alert on `stripe_dispatch_retry_total{result!="success"}` and watch for duplicate “stripe.dispatch.retry_success” log streams—two pods emitting those logs concurrently means the worker flag is misconfigured.
 4. Document the worker pod in your ops runbooks. During incidents, confirm logs show **one** pod starting the worker (“Stripe dispatch retry worker disabled” should appear on all others). If you ever need multiple replicas, add a Redis-backed lease before scaling out to avoid duplicate replays.
@@ -215,7 +215,7 @@ Implementation checklist:
 
 ## Rate Limiting & Abuse Controls
 
-- `/api/v1/billing/stream` enforces Redis-backed quotas. Each tenant may initiate at most `BILLING_STREAM_RATE_LIMIT_PER_MINUTE` new subscriptions per minute and hold `BILLING_STREAM_CONCURRENT_LIMIT` simultaneous connections. Defaults ship in `.env.local.example` and can be tuned per environment.
+- `/api/v1/billing/stream` enforces Redis-backed quotas. Each tenant may initiate at most `BILLING_STREAM_RATE_LIMIT_PER_MINUTE` new subscriptions per minute and hold `BILLING_STREAM_CONCURRENT_LIMIT` simultaneous connections. Defaults ship in `apps/api-service/.env.local.example` and can be tuned per environment.
 - Exceeding either threshold results in HTTP 429 + `Retry-After` along with structured `rate_limit.block` logs and the Prometheus counter `rate_limit_hits_total{quota="billing_stream_*"}`. Tenants can self-retry after the indicated back-off; operators should avoid manual resets unless absolutely necessary.
 - To unblock a tenant manually, remove Redis keys prefixed with `${RATE_LIMIT_KEY_PREFIX}:quota:billing_stream_*:<tenant_id>` (for bursts) or `${RATE_LIMIT_KEY_PREFIX}:concurrency:billing_stream_concurrency:<tenant_id>` (for stuck sockets). Capture the key name, tenant id, and rationale in the incident log before clearing counters.
 

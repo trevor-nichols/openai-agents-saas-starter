@@ -33,7 +33,7 @@ Our SaaS starter currently hardcodes Vault as the only secrets/signing backend. 
 ### Phase 2 — CLI Onboarding UX (ETA: 4 days)
 - Add `starter_cli secrets onboard` with interactive + non-interactive flags.
 - Menu covers Vault Dev, HCP Vault, Infisical Cloud, Infisical Self-Host (others stubbed as “coming soon”).
-- Each path emits `.env`/`.env.local` snippets and runs a post-setup health check.
+- Each path emits `apps/api-service/.env`/`apps/api-service/.env.local` snippets and runs a post-setup health check.
 - Integration tests mock external APIs (Vault sys/health, HCP, Infisical) to keep CI hermetic.
 
 ### Phase 3 — Infisical Integration (ETA: 6 days)
@@ -66,12 +66,12 @@ Our SaaS starter currently hardcodes Vault as the only secrets/signing backend. 
 ## 6. Phase 0 Findings (2025-11-15)
 
 ### 6.1 Current Vault Touchpoints
-- **Backend:** `app/infrastructure/security/vault.py` exposes `VaultTransitClient` used by `app/services/service_account_bridge.py` and auth routers for signature verification. Settings live under `app/core/config.Settings` (`vault_addr`, `vault_token`, `vault_transit_key`, `vault_verify_enabled`). KV helpers for signing-key storage proxy through `starter_contracts.vault_kv`.
+- **Backend:** `app/infrastructure/security/vault.py` exposes `VaultTransitClient` used by `app/services/service_account_bridge.py` and auth routers for signature verification. Settings live under `app/core/settings/__init__.py` (`vault_addr`, `vault_token`, `vault_transit_key`, `vault_verify_enabled`). KV helpers for signing-key storage proxy through `starter_contracts.vault_kv`.
 - **CLI:** `starter_cli/services/security/signing.py` builds Vault envelopes + signatures; `starter_cli/commands/auth.py` depends on Vault headers; setup wizard validators probe the Transit key; `starter_cli/commands/infra.py` shells into Make targets for dev Vault.
 - **Shared:** `starter_contracts/config.py` exposes only the Vault-centric settings to the CLI; `starter_contracts/vault_kv.py` registers the KV client when `auth_key_storage_backend=secret-manager`.
 
 ### 6.2 SecretProvider Protocol (backend + CLI)
-Located in new module `api-service/app/domain/secrets.py` (mirrored under `starter_contracts/secrets/models.py`):
+Located in new module `api-service/src/app/domain/secrets.py` (mirrored under `starter_contracts/secrets/models.py`):
 ```python
 class SecretProviderProtocol(Protocol):
     async def get_secret(self, key: str, *, scope: SecretScope | None = None) -> str: ...
@@ -101,7 +101,7 @@ class SecretProviderProtocol(Protocol):
 ### 6.5 CLI Onboarding Command
 - New command: `starter_cli secrets onboard [--provider ...] [--non-interactive --answers-file path]`.
 - Supported choices in Phase 1: `vault_dev` (runs `just vault-up`, captures printed envs), `hcp_vault` (prompts for HCP org/project + service principal, optionally hits HCP API), `infisical_cloud` (runs `infisical login/init`, captures workspace/env IDs), `infisical_self_host` (downloads Infisical compose bundle, runs docker compose up, collects admin token).
-- Output artifacts: `.env.local` snippets for backend/frontend, optional CI secret checklist, post-setup validation summary.
+- Output artifacts: `apps/api-service/.env.local` snippets for backend/frontend, optional CI secret checklist, post-setup validation summary.
 
 ### 6.6 Next Steps (Phase 1 Prep)
 1. Scaffold `app/domain/secrets.py` + `starter_contracts/secrets/models.py` with the Protocol/types above.

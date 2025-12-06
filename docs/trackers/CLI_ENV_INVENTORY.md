@@ -1,7 +1,7 @@
 # Starter CLI Environment Inventory
 
 This file is generated via `python -m starter_cli.app config write-inventory`.
-Last updated: 2025-11-20 00:00:00 UTC
+Last updated: 2025-11-29 00:37:04 UTC
 
 Legend: `✅` = wizard prompts for it, blank = requires manual population.
 
@@ -45,6 +45,7 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | AUTH_REFRESH_TOKEN_TTL_MINUTES | int | 43200 |  | ✅ | Default refresh token lifetime for human users (minutes). |
 | AUTH_SESSION_ENCRYPTION_KEY | str \| NoneType | — |  | ✅ | Base64-compatible secret used to encrypt stored IP metadata for user sessions. |
 | AUTH_SESSION_IP_HASH_SALT | str \| NoneType | — |  | ✅ | Salt blended into session IP hash derivation (defaults to SECRET_KEY). |
+| AUTO_PURGE_EXPIRED_VECTOR_STORES | bool | False |  |  | When true, expired vector stores are deleted remotely and soft-deleted locally. |
 | AUTO_RUN_MIGRATIONS | bool | False |  | ✅ | Automatically run Alembic migrations on startup (dev convenience) |
 | AWS_ACCESS_KEY_ID | str \| NoneType | — |  | ✅ | AWS access key ID (overrides profile/IMDS when set). |
 | AWS_PROFILE | str \| NoneType | — |  | ✅ | Named AWS profile to use when loading credentials. |
@@ -67,6 +68,10 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | CHAT_RATE_LIMIT_PER_MINUTE | int | 60 |  | ✅ | Maximum chat completions allowed per user per minute. |
 | CHAT_STREAM_CONCURRENT_LIMIT | int | 5 |  | ✅ | Simultaneous streaming chat sessions allowed per user. |
 | CHAT_STREAM_RATE_LIMIT_PER_MINUTE | int | 30 |  | ✅ | Maximum streaming chat sessions started per user per minute. |
+| CONTAINER_ALLOWED_MEMORY_TIERS | list[str] | — |  |  | Allowed memory tiers for explicit containers. |
+| CONTAINER_DEFAULT_AUTO_MEMORY | str | 1g |  |  | Default memory tier for auto containers when not specified (1g,4g,16g,64g). |
+| CONTAINER_FALLBACK_TO_AUTO_ON_MISSING_BINDING | bool | True |  |  | When True, agent runs fall back to auto container if an explicit binding is missing or expired; when False, runs will error. |
+| CONTAINER_MAX_CONTAINERS_PER_TENANT | int | 10 |  |  | Maximum explicit containers a tenant may create. |
 | DATABASE_ECHO | bool | False |  | ✅ | Enable SQLAlchemy engine echo for debugging |
 | DATABASE_HEALTH_TIMEOUT | float | 5.0 |  | ✅ | Timeout for database health checks (seconds) |
 | DATABASE_MAX_OVERFLOW | int | 10 |  | ✅ | Maximum overflow connections for the SQLAlchemy pool |
@@ -86,7 +91,14 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | ENABLE_SECRETS_PROVIDER_TELEMETRY | bool | False |  | ✅ | Emit structured metrics/logs about secrets provider selection (no payloads). |
 | ENABLE_SLACK_STATUS_NOTIFICATIONS | bool | False |  | ✅ | Toggle Slack fan-out for status incidents. |
 | ENABLE_USAGE_GUARDRAILS | bool | False |  | ✅ | If true, enforce plan usage limits before servicing chat requests. Requires billing to be enabled. |
+| ENABLE_VECTOR_STORE_SYNC_WORKER | bool | True |  |  | Run background sync worker to refresh vector store/file status and expiry. Set false only for constrained/local dev. |
 | ENVIRONMENT | str | development |  | ✅ | Deployment environment label (development, staging, production, etc.) |
+| GCS_BUCKET | str \| NoneType | — |  |  | Default bucket name when using GCS provider. |
+| GCS_CREDENTIALS_JSON | str \| NoneType | — |  |  | Inline JSON credentials for GCS (service account). Optional if using ADC or credentials path. |
+| GCS_CREDENTIALS_PATH | str \| NoneType | — |  |  | Path to GCS credentials JSON file. |
+| GCS_PROJECT_ID | str \| NoneType | — |  |  | GCP project ID for GCS operations. |
+| GCS_SIGNING_EMAIL | str \| NoneType | — |  |  | Service account email used for V4 signed URLs (GCS). |
+| GCS_UNIFORM_ACCESS | bool | True |  |  | Assume uniform bucket-level access (UBLA) is enabled. |
 | GEMINI_API_KEY | str \| NoneType | — |  | ✅ | Google Gemini API key |
 | GEOIP_CACHE_MAX_ENTRIES | int | 4096 |  |  | Maximum cached GeoIP lookups to retain in memory. |
 | GEOIP_CACHE_TTL_SECONDS | float | 900.0 |  |  | TTL (seconds) for GeoIP lookup cache entries. |
@@ -97,6 +109,14 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | GEOIP_MAXMIND_DB_PATH | str \| NoneType | — |  |  | Filesystem path to the MaxMind GeoIP2/GeoLite2 database. |
 | GEOIP_MAXMIND_LICENSE_KEY | str \| NoneType | — |  | ✅ | MaxMind license key when geoip_provider=maxmind. |
 | GEOIP_PROVIDER | str | none |  | ✅ | GeoIP provider selection (none, ipinfo, ip2location, maxmind_db, ip2location_db). |
+| IMAGE_ALLOWED_FORMATS | list[str] | — |  |  | Whitelisted output formats accepted from the image tool. |
+| IMAGE_DEFAULT_BACKGROUND | str | auto |  | ✅ | Default background mode (auto, opaque, transparent). |
+| IMAGE_DEFAULT_COMPRESSION | int \| NoneType | — |  | ✅ | Optional default compression level (0-100) for jpeg/webp; None lets provider choose. |
+| IMAGE_DEFAULT_FORMAT | str | png |  | ✅ | Default image format (png, jpeg, webp). |
+| IMAGE_DEFAULT_QUALITY | str | high |  | ✅ | Default quality for image generation (auto, low, medium, high). |
+| IMAGE_DEFAULT_SIZE | str | 1024x1024 |  | ✅ | Default output size for image generation tool (supports auto, 1024x1024, 1024x1536, 1536x1024). |
+| IMAGE_MAX_PARTIAL_IMAGES | int | 2 |  | ✅ | Maximum partial images to stream when enabled (0-3). |
+| IMAGE_OUTPUT_MAX_MB | int | 6 |  | ✅ | Hard cap on decoded image size in megabytes to avoid large inline payloads. |
 | INFISICAL_BASE_URL | str \| NoneType | — |  | ✅ | Base URL for Infisical API (set when using Infisical providers). |
 | INFISICAL_CACHE_TTL_SECONDS | int | 60 |  | ✅ | TTL (seconds) for Infisical secret cache entries. |
 | INFISICAL_CA_BUNDLE_PATH | str \| NoneType | — |  | ✅ | Optional CA bundle path for self-hosted Infisical instances. |
@@ -115,6 +135,11 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | LOGGING_OTLP_HEADERS | str \| NoneType | — |  | ✅ | Optional OTLP headers JSON when logging_sink=otlp. |
 | LOGGING_SINK | str | stdout |  | ✅ | Logging sink (stdout, file, datadog, otlp, or none). |
 | LOG_LEVEL | str | INFO |  | ✅ | Logging level |
+| MINIO_ACCESS_KEY | str \| NoneType | — |  |  | MinIO access key. |
+| MINIO_ENDPOINT | str \| NoneType | — |  |  | MinIO endpoint (http(s)://host:port). Required when storage_provider=minio. |
+| MINIO_REGION | str \| NoneType | — |  |  | MinIO region (optional). |
+| MINIO_SECRET_KEY | str \| NoneType | — |  |  | MinIO secret key. |
+| MINIO_SECURE | bool | True |  |  | Use HTTPS when connecting to MinIO. |
 | OPENAI_API_KEY | str \| NoneType | — |  | ✅ | OpenAI API key |
 | PASSWORD_RESET_EMAIL_RATE_LIMIT_PER_HOUR | int | 5 |  | ✅ | Password reset requests allowed per email per hour. |
 | PASSWORD_RESET_IP_RATE_LIMIT_PER_HOUR | int | 20 |  | ✅ | Password reset requests allowed per IP per hour. |
@@ -155,19 +180,30 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | STATUS_SUBSCRIPTION_TOKEN_PEPPER | str | status-subscription-token-pepper |  | ✅ | Pepper used to hash status subscription verification tokens. |
 | STATUS_SUBSCRIPTION_TOKEN_TTL_MINUTES | int | 60 |  | ✅ | Status subscription email verification token lifetime in minutes. |
 | STATUS_SUBSCRIPTION_WEBHOOK_TIMEOUT_SECONDS | int | 5 |  | ✅ | HTTP timeout applied when delivering webhook challenges (seconds). |
+| STORAGE_ALLOWED_MIME_TYPES | list[str] | — |  |  | Allowed MIME types for uploaded objects. |
+| STORAGE_BUCKET_PREFIX | str \| NoneType | agent-data |  |  | Prefix used when creating tenant buckets/prefixes. |
+| STORAGE_MAX_FILE_MB | int | 512 |  |  | Maximum upload size enforced by the service (MB). |
+| STORAGE_PROVIDER | StorageProviderLiteral | memory |  |  | Which storage provider implementation to use (minio, gcs, memory). |
+| STORAGE_SIGNED_URL_TTL_SECONDS | int | 900 |  |  | TTL (seconds) for presigned URLs returned to clients. |
 | STRIPE_PRODUCT_PRICE_MAP | dict[str, str] | — |  | ✅ | Mapping of billing plan codes to Stripe price IDs. Provide as JSON or comma-delimited entries such as 'starter=price_123,pro=price_456'. |
 | STRIPE_SECRET_KEY | str \| NoneType | — |  | ✅ | Stripe secret API key (sk_live_*/sk_test_*). |
 | STRIPE_WEBHOOK_SECRET | str \| NoneType | — |  | ✅ | Stripe webhook signing secret (whsec_*). |
-| TAVILY_API_KEY | str \| NoneType | — |  | ✅ | Tavily web search API key |
 | TENANT_DEFAULT_SLUG | str | default |  | ✅ | Tenant slug recorded by the CLI when seeding the initial org. |
 | USAGE_GUARDRAIL_CACHE_BACKEND | memory \| redis | redis |  | ✅ | Cache backend for usage totals (`redis` or `memory`). |
 | USAGE_GUARDRAIL_CACHE_TTL_SECONDS | int | 30 |  | ✅ | TTL for cached usage rollups (seconds). Set to 0 to disable caching. |
 | USAGE_GUARDRAIL_REDIS_URL | str \| NoneType | — |  | ✅ | Redis URL dedicated to usage guardrail caches (defaults to REDIS_URL). |
 | USAGE_GUARDRAIL_SOFT_LIMIT_MODE | warn \| block | warn |  | ✅ | How to react when soft limits are exceeded: 'warn' logs a warning but allows the request, while 'block' treats soft limits like hard caps. |
-| USE_TEST_FIXTURES | bool | False |  |  | Enable fixture overrides for tests/local runs. |
+| USE_TEST_FIXTURES | bool | False |  |  | Expose deterministic seeding endpoints for local and CI test environments. Never enable in production. |
 | VAULT_ADDR | str \| NoneType | — |  | ✅ | HashiCorp Vault address for Transit verification. |
 | VAULT_NAMESPACE | str \| NoneType | — |  | ✅ | Optional Vault namespace for HCP or multi-tenant clusters. |
 | VAULT_TOKEN | str \| NoneType | — |  | ✅ | Vault token/AppRole secret with transit:verify capability. |
 | VAULT_TRANSIT_KEY | str | auth-service |  | ✅ | Transit key name used for signing/verification. |
 | VAULT_VERIFY_ENABLED | bool | False |  | ✅ | When true, enforce Vault Transit verification for service-account issuance. |
+| VECTOR_ALLOWED_MIME_TYPES | list[str] | — |  |  | Allowed MIME types for vector store file attachments (mirrors OpenAI docs). |
+| VECTOR_MAX_FILES_PER_STORE | int | 5000 |  |  | Max number of files per vector store. |
+| VECTOR_MAX_FILE_MB | int | 512 |  |  | Max file size (MB) allowed when attaching to a vector store. |
+| VECTOR_MAX_STORES_PER_TENANT | int | 10 |  |  | Max number of vector stores per tenant. |
+| VECTOR_MAX_TOTAL_BYTES | int \| NoneType | — |  |  | Optional per-tenant hard cap on total bytes across vector stores. None disables. |
+| VECTOR_STORE_SYNC_BATCH_SIZE | int | 20 |  |  | Maximum stores refreshed per sync iteration. |
+| VECTOR_STORE_SYNC_POLL_SECONDS | float | 60.0 |  |  | Polling interval for vector store sync worker. |
 | XAI_API_KEY | str \| NoneType | — |  | ✅ | xAI API key |

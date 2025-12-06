@@ -1,0 +1,90 @@
+set shell := ["bash", "-uc"]
+
+env_runner := "cd ../../packages/starter_cli && hatch run python -m starter_cli.app --skip-env util run-with-env"
+project_dir := justfile_directory()
+repo_root := `cd ../.. && pwd`
+env_compose := repo_root + "/.env.compose"
+env_local := repo_root + "/apps/api-service/.env.local"
+env_default := repo_root + "/apps/api-service/.env"
+
+_check_env:
+    @if [ ! -f "{{env_local}}" ] && [ ! -f "{{env_default}}" ]; then \
+        echo "Error: No apps/api-service/.env.local or apps/api-service/.env file found. Create one before running tasks."; \
+        exit 1; \
+    fi
+
+default:
+    @just --list
+
+bootstrap:
+    @echo "Creating/refreshing the Hatch environment for api-service"
+    cd {{project_dir}} && hatch env create
+
+serve: _check_env
+    @echo "Starting FastAPI via hatch run serve"
+    {{env_runner}} {{env_compose}} {{env_local}} {{env_default}} -- bash -lc 'cd {{project_dir}} && hatch run serve'
+
+migrate: _check_env
+    @echo "Running Alembic migrations"
+    {{env_runner}} {{env_compose}} {{env_local}} {{env_default}} -- bash -lc 'cd {{project_dir}} && hatch run migrate'
+
+migration-revision message: _check_env
+    @echo "Creating Alembic revision: {{message}}"
+    {{env_runner}} {{env_compose}} {{env_local}} {{env_default}} -- bash -lc 'cd {{project_dir}} && hatch run migration-revision "{{message}}"'
+
+lint:
+    cd {{project_dir}} && hatch run lint
+
+typecheck:
+    cd {{project_dir}} && hatch run typecheck
+
+test:
+    cd {{project_dir}} && hatch run test
+
+smoke-http:
+	# Run HTTP smoke suite against a locally started api-service (sqlite + redis).
+	# Respects SMOKE_* flags for optional surfaces; defaults keep AI/Billing off.
+	set -euo pipefail
+	export USE_TEST_FIXTURES="${USE_TEST_FIXTURES:-true}"
+	export AUTO_RUN_MIGRATIONS="${AUTO_RUN_MIGRATIONS:-true}"
+	export DATABASE_URL="${DATABASE_URL:-sqlite+aiosqlite:///./smoke.db}"
+	export REDIS_URL="${REDIS_URL:-redis://localhost:6379/0}"
+	export RATE_LIMIT_REDIS_URL="${RATE_LIMIT_REDIS_URL:-$REDIS_URL}"
+	export AUTH_CACHE_REDIS_URL="${AUTH_CACHE_REDIS_URL:-$REDIS_URL}"
+	export SECURITY_TOKEN_REDIS_URL="${SECURITY_TOKEN_REDIS_URL:-$REDIS_URL}"
+	export USAGE_GUARDRAIL_REDIS_URL="${USAGE_GUARDRAIL_REDIS_URL:-$REDIS_URL}"
+	export ENABLE_BILLING="${ENABLE_BILLING:-false}"
+	export ENABLE_BILLING_RETRY_WORKER="${ENABLE_BILLING_RETRY_WORKER:-false}"
+	export ENABLE_RESEND_EMAIL_DELIVERY="${ENABLE_RESEND_EMAIL_DELIVERY:-false}"
+	export ALLOW_PUBLIC_SIGNUP="${ALLOW_PUBLIC_SIGNUP:-true}"
+	export SMOKE_BASE_URL="${SMOKE_BASE_URL:-http://localhost:8000}"
+	export SMOKE_ENABLE_BILLING="${SMOKE_ENABLE_BILLING:-0}"
+	export SMOKE_ENABLE_AI="${SMOKE_ENABLE_AI:-0}"
+	export SMOKE_ENABLE_VECTOR="${SMOKE_ENABLE_VECTOR:-0}"
+	export SMOKE_ENABLE_CONTAINERS="${SMOKE_ENABLE_CONTAINERS:-0}"
+	cd {{project_dir}}
+	hatch run serve >/tmp/api-smoke.log 2>&1 &
+	api_pid=$!
+	trap "kill $api_pid" EXIT
+	# Wait for health endpoint (fail fast if it never comes up)
+	health_ok=false
+	for i in {1..30}; do
+	if curl -fsS "${SMOKE_BASE_URL}/health" >/dev/null 2>&1; then
+	health_ok=true
+	break
+	fi
+	sleep 1
+	done
+	if [ "$health_ok" != "true" ]; then
+	echo "api-service never became healthy; see /tmp/api-smoke.log" >&2
+	exit 1
+	fi
+	hatch run pytest -m smoke tests/smoke/http --maxfail=1 -q
+
+cleanup-run-events days="" batch="" sleep_ms="" dry_run="false": _check_env
+    @echo "Cleaning up agent_run_events"
+    {{env_runner}} {{env_compose}} {{env_local}} {{env_default}} -- bash -lc 'cd {{project_dir}} && hatch run python scripts/cleanup_run_events.py {{ if days != "" { "--days " + days } else { "" } }} {{ if batch != "" { "--batch " + batch } else { "" } }} {{ if sleep_ms != "" { "--sleep-ms " + sleep_ms } else { "" } }} {{ if dry_run == "true" { "--dry-run" } else { "" } }}'
+
+cleanup-activity-events days="" batch="" sleep_ms="" dry_run="false": _check_env
+    @echo "Cleaning up activity_events"
+    {{env_runner}} {{env_compose}} {{env_local}} {{env_default}} -- bash -lc 'cd {{project_dir}} && hatch run python scripts/cleanup_activity_events.py {{ if days != "" { "--days " + days } else { "" } }} {{ if batch != "" { "--batch " + batch } else { "" } }} {{ if sleep_ms != "" { "--sleep-ms " + sleep_ms } else { "" } }} {{ if dry_run == "true" { "--dry-run" } else { "" } }}'

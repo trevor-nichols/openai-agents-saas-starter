@@ -3,7 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 node_modules/
-
+.next/
+apps/web-app/.next/
+GEMINI.md
 # Scratch CLI runs
 tmp-cli-test*
 docs/environments/*.answers.json
@@ -27,6 +29,7 @@ lib64/
 parts/
 sdist/
 var/
+!var/README.md
 wheels/
 share/python-wheels/
 *.egg-info/
@@ -57,6 +60,7 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+.ruff_cache/
 cover/
 
 # Translations
@@ -68,6 +72,8 @@ cover/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+apps/api-service/test.db
+apps/api-service/smoke.db
 
 # Flask stuff:
 instance/
@@ -143,9 +149,10 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.direnv/
 # allow env adapter package to be tracked
-!starter_cli/adapters/env/
-!starter_cli/adapters/env/**
+!packages/starter_cli/adapters/env/
+!packages/starter_cli/adapters/env/**
 
 # Spyder project settings
 .spyderproject

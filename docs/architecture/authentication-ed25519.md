@@ -19,7 +19,7 @@
 
 ## 2. Current Context
 
-- `api-service/app/core/security.py` currently issues HS256 tokens with static `secret_key` and bcrypt password helpers.
+- `api-service/src/app/core/security.py` currently issues HS256 tokens with static `secret_key` and bcrypt password helpers.
 - No dedicated key lifecycle, no JWKS publication, and no revocation/rotation support.
 - Tests live under `api-service/tests` with mixed unit/integration coverage, minimal fixtures for auth.
 - Milestone tracker `MILESTONE_AUTH_EDDSA_TRACKER.md` defines high-level work items AUTH-001…AUTH-006 that this document elaborates.
@@ -74,7 +74,7 @@
 - `jti` (uuid) — unique token id for revocation.
 - `iat`, `exp`, `nbf` — standard temporal claims.
 
-### Settings Additions (`app/core/config.py`)
+### Settings Additions (`app/core/settings/__init__.py`)
 - `auth_audience: list[str]` — defaults to `["agent-api", "analytics-service", "billing-worker", "support-console", "synthetic-monitor"]`; override with a JSON array via `AUTH_AUDIENCE` (comma-separated strings remain backward compatible) and keep ordering stable across services.
 - `auth_key_storage_backend: str` — `file` (default) or `secret-manager`.
 - `auth_key_storage_path: str` — filesystem location for keyset JSON when using the file backend.

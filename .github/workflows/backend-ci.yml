@@ -26,48 +26,17 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Install pnpm
-        run: npm install -g pnpm
-
-      - name: Install backend dependencies
+      - name: Install CLI dependencies
         run: |
           python -m pip install --upgrade pip
           pip install hatch
-          hatch env create
+          cd packages/starter_cli && hatch env create
 
-      - name: CLI smoke test
-        run: hatch run python -m starter_cli.app --help
+      - name: CLI smoke help
+        run: cd packages/starter_cli && hatch run python -m starter_cli.app --help
 
-      - name: Verify CLI environment inventory
-        run: hatch run python -m scripts.cli.verify_env_inventory
-
-      - name: Check infra dependencies (JSON)
-        run: |
-          hatch run python -m starter_cli.app infra deps --format json > deps-status.json || echo "[]" > deps-status.json
-          if [ ! -s deps-status.json ]; then echo "[]">deps-status.json; fi
-          hatch run python - <<'PY'
-          import json, sys
-          with open("deps-status.json", "r", encoding="utf-8") as fh:
-              statuses = json.load(fh)
-          missing = [entry for entry in statuses if entry["status"] != "ok"]
-          if missing:
-              print("Missing dependencies detected:")
-              for entry in missing:
-                  print(f" - {entry['name']}: {entry['hint']}")
-              sys.exit(1)
-          print("All CLI prerequisites are present.")
-          PY
-      - name: Upload deps status
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cli-deps-status
-          path: deps-status.json
+      - name: CLI typecheck (fast)
+        run: cd packages/starter_cli && hatch run typecheck
 
   quality:
     runs-on: ubuntu-latest
@@ -84,7 +53,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: anything_agents_ci
+          POSTGRES_DB: saas_strarter_db_ci
         ports:
           - 5432:5432
         options: >-
@@ -112,26 +81,23 @@ jobs:
           python -m pip install --upgrade pip
           pip install hatch
 
-      - name: Create Hatch environment
-        run: hatch env create
+      - name: Bootstrap backend env
+        run: just bootstrap
 
       - name: Lint (ruff)
-        run: hatch run lint
-
-      - name: CLI unit tests
-        run: hatch run pytest starter_cli/tests
+        run: just backend-lint
 
       - name: Static typing (Pyright + Mypy)
-        run: hatch run typecheck
+        run: just backend-typecheck
 
       - name: Run backend tests
-        run: hatch run test
+        run: just backend-test
 
       - name: Postgres integration smoke tests
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/anything_agents_ci
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/saas_strarter_db_ci
         run: |
-          hatch run pytest api-service/tests/integration --maxfail=1 -m postgres
+          cd apps/api-service && hatch run pytest tests/integration --maxfail=1 -m postgres
 
   sbom-audit:
     runs-on: ubuntu-latest
@@ -166,13 +132,18 @@ jobs:
           python -m pip install --upgrade pip
           pip install hatch
 
-      - name: Create Hatch environment
+      - name: Root env (for scripts only)
+        run: |
+          hatch env create
+
+      - name: Backend env
+        working-directory: api-service
         run: hatch env create
 
       - name: Python dependency audit (pip-audit)
         run: |
           hatch run python -m pip install pip-audit
-          pip freeze | grep -v "^api-service==" > /tmp/pip-audit-req.txt
+          pip freeze > /tmp/pip-audit-req.txt
           hatch run pip-audit --progress-spinner off -r /tmp/pip-audit-req.txt
 
       - name: Python SBOM (CycloneDX)
@@ -255,4 +226,59 @@ jobs:
         run: hatch env create
 
       - name: Platform smoke (health + JWKS + stub agent)
-        run: hatch run python scripts/smoke/platform_smoke.py
+        run: hatch run python tools/smoke/platform_smoke.py
+
+  http-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: "sqlite+aiosqlite:///./smoke.db"
+      REDIS_URL: "redis://localhost:6379/0"
+      RATE_LIMIT_REDIS_URL: "redis://localhost:6379/0"
+      AUTH_CACHE_REDIS_URL: "redis://localhost:6379/0"
+      SECURITY_TOKEN_REDIS_URL: "redis://localhost:6379/0"
+      USAGE_GUARDRAIL_REDIS_URL: "redis://localhost:6379/0"
+      USE_TEST_FIXTURES: "true"
+      AUTO_RUN_MIGRATIONS: "true"
+      ENABLE_BILLING: "false"
+      ENABLE_BILLING_RETRY_WORKER: "false"
+      ENABLE_RESEND_EMAIL_DELIVERY: "false"
+      ALLOW_PUBLIC_SIGNUP: "true"
+      SMOKE_ENABLE_BILLING: "0"
+      SMOKE_ENABLE_AI: "0"
+      SMOKE_ENABLE_VECTOR: "0"
+      SMOKE_ENABLE_CONTAINERS: "0"
+      STARTER_CLI_SKIP_ENV: "true"
+      STARTER_CLI_SKIP_VAULT_PROBE: "true"
+    services:
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install just
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y just curl
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Hatch
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch
+
+      - name: Run HTTP smoke suite
+        run: just smoke-http

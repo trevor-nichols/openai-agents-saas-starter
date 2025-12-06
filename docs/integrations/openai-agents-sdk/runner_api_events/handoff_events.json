@@ -1,0 +1,677 @@
+{
+  "timestamp": "2025-11-23T12:12:59.244775",
+  "description": "Handoff demonstration - Assistant hands off to Spanish Assistant",
+  "steps": {
+    "step_4_handoff": {
+      "description": "Spanish language request triggers handoff",
+      "raw_events": [
+        {
+          "response": {
+            "id": "resp_08430a6cdb283aeb00692340a6701c8191bd5daaa131bdc74b",
+            "created_at": 1763917990.0,
+            "error": null,
+            "incomplete_details": null,
+            "instructions": "Be a helpful assistant. If the user speaks Spanish, handoff to the Spanish assistant.",
+            "metadata": {},
+            "model": "gpt-4.1-2025-04-14",
+            "object": "response",
+            "output": [],
+            "parallel_tool_calls": true,
+            "temperature": 1.0,
+            "tool_choice": "auto",
+            "tools": [
+              {
+                "name": "transfer_to_spanish_assistant",
+                "parameters": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "properties": {},
+                  "required": []
+                },
+                "strict": true,
+                "type": "function",
+                "description": "Handoff to the Spanish Assistant agent to handle the request. A Spanish-speaking assistant."
+              }
+            ],
+            "top_p": 1.0,
+            "background": false,
+            "conversation": null,
+            "max_output_tokens": null,
+            "max_tool_calls": null,
+            "previous_response_id": null,
+            "prompt": null,
+            "prompt_cache_key": null,
+            "reasoning": {
+              "effort": null,
+              "generate_summary": null,
+              "summary": null
+            },
+            "safety_identifier": null,
+            "service_tier": "auto",
+            "status": "in_progress",
+            "text": {
+              "format": {
+                "type": "text"
+              },
+              "verbosity": "medium"
+            },
+            "top_logprobs": 0,
+            "truncation": "disabled",
+            "usage": null,
+            "user": null,
+            "prompt_cache_retention": null,
+            "store": true
+          },
+          "sequence_number": 0,
+          "type": "response.created"
+        },
+        {
+          "response": {
+            "id": "resp_08430a6cdb283aeb00692340a6701c8191bd5daaa131bdc74b",
+            "created_at": 1763917990.0,
+            "error": null,
+            "incomplete_details": null,
+            "instructions": "Be a helpful assistant. If the user speaks Spanish, handoff to the Spanish assistant.",
+            "metadata": {},
+            "model": "gpt-4.1-2025-04-14",
+            "object": "response",
+            "output": [],
+            "parallel_tool_calls": true,
+            "temperature": 1.0,
+            "tool_choice": "auto",
+            "tools": [
+              {
+                "name": "transfer_to_spanish_assistant",
+                "parameters": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "properties": {},
+                  "required": []
+                },
+                "strict": true,
+                "type": "function",
+                "description": "Handoff to the Spanish Assistant agent to handle the request. A Spanish-speaking assistant."
+              }
+            ],
+            "top_p": 1.0,
+            "background": false,
+            "conversation": null,
+            "max_output_tokens": null,
+            "max_tool_calls": null,
+            "previous_response_id": null,
+            "prompt": null,
+            "prompt_cache_key": null,
+            "reasoning": {
+              "effort": null,
+              "generate_summary": null,
+              "summary": null
+            },
+            "safety_identifier": null,
+            "service_tier": "auto",
+            "status": "in_progress",
+            "text": {
+              "format": {
+                "type": "text"
+              },
+              "verbosity": "medium"
+            },
+            "top_logprobs": 0,
+            "truncation": "disabled",
+            "usage": null,
+            "user": null,
+            "prompt_cache_retention": null,
+            "store": true
+          },
+          "sequence_number": 1,
+          "type": "response.in_progress"
+        },
+        {
+          "item": {
+            "arguments": "",
+            "call_id": "call_TloiVKwVDexVZbMIEr6TVPcY",
+            "name": "transfer_to_spanish_assistant",
+            "type": "function_call",
+            "id": "fc_08430a6cdb283aeb00692340a6f2508191bc4b6edf8eddc346",
+            "status": "in_progress"
+          },
+          "output_index": 0,
+          "sequence_number": 2,
+          "type": "response.output_item.added"
+        },
+        {
+          "delta": "{}",
+          "item_id": "fc_08430a6cdb283aeb00692340a6f2508191bc4b6edf8eddc346",
+          "output_index": 0,
+          "sequence_number": 3,
+          "type": "response.function_call_arguments.delta",
+          "obfuscation": "8sISLjdggN9TOW"
+        },
+        {
+          "arguments": "{}",
+          "item_id": "fc_08430a6cdb283aeb00692340a6f2508191bc4b6edf8eddc346",
+          "name": null,
+          "output_index": 0,
+          "sequence_number": 4,
+          "type": "response.function_call_arguments.done"
+        },
+        {
+          "item": {
+            "arguments": "{}",
+            "call_id": "call_TloiVKwVDexVZbMIEr6TVPcY",
+            "name": "transfer_to_spanish_assistant",
+            "type": "function_call",
+            "id": "fc_08430a6cdb283aeb00692340a6f2508191bc4b6edf8eddc346",
+            "status": "completed"
+          },
+          "output_index": 0,
+          "sequence_number": 5,
+          "type": "response.output_item.done"
+        },
+        {
+          "response": {
+            "id": "resp_08430a6cdb283aeb00692340a6701c8191bd5daaa131bdc74b",
+            "created_at": 1763917990.0,
+            "error": null,
+            "incomplete_details": null,
+            "instructions": "Be a helpful assistant. If the user speaks Spanish, handoff to the Spanish assistant.",
+            "metadata": {},
+            "model": "gpt-4.1-2025-04-14",
+            "object": "response",
+            "output": [
+              {
+                "arguments": "{}",
+                "call_id": "call_TloiVKwVDexVZbMIEr6TVPcY",
+                "name": "transfer_to_spanish_assistant",
+                "type": "function_call",
+                "id": "fc_08430a6cdb283aeb00692340a6f2508191bc4b6edf8eddc346",
+                "status": "completed"
+              }
+            ],
+            "parallel_tool_calls": true,
+            "temperature": 1.0,
+            "tool_choice": "auto",
+            "tools": [
+              {
+                "name": "transfer_to_spanish_assistant",
+                "parameters": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "properties": {},
+                  "required": []
+                },
+                "strict": true,
+                "type": "function",
+                "description": "Handoff to the Spanish Assistant agent to handle the request. A Spanish-speaking assistant."
+              }
+            ],
+            "top_p": 1.0,
+            "background": false,
+            "conversation": null,
+            "max_output_tokens": null,
+            "max_tool_calls": null,
+            "previous_response_id": null,
+            "prompt": null,
+            "prompt_cache_key": null,
+            "reasoning": {
+              "effort": null,
+              "generate_summary": null,
+              "summary": null
+            },
+            "safety_identifier": null,
+            "service_tier": "default",
+            "status": "completed",
+            "text": {
+              "format": {
+                "type": "text"
+              },
+              "verbosity": "medium"
+            },
+            "top_logprobs": 0,
+            "truncation": "disabled",
+            "usage": {
+              "input_tokens": 244,
+              "input_tokens_details": {
+                "cached_tokens": 0
+              },
+              "output_tokens": 15,
+              "output_tokens_details": {
+                "reasoning_tokens": 0
+              },
+              "total_tokens": 259
+            },
+            "user": null,
+            "prompt_cache_retention": null,
+            "store": true
+          },
+          "sequence_number": 6,
+          "type": "response.completed"
+        },
+        {
+          "response": {
+            "id": "resp_08430a6cdb283aeb00692340a91c688191980c8b8c8e84cad4",
+            "created_at": 1763917993.0,
+            "error": null,
+            "incomplete_details": null,
+            "instructions": "You only speak Spanish and are extremely concise.",
+            "metadata": {},
+            "model": "gpt-4.1-2025-04-14",
+            "object": "response",
+            "output": [],
+            "parallel_tool_calls": true,
+            "temperature": 1.0,
+            "tool_choice": "auto",
+            "tools": [],
+            "top_p": 1.0,
+            "background": false,
+            "conversation": null,
+            "max_output_tokens": null,
+            "max_tool_calls": null,
+            "previous_response_id": null,
+            "prompt": null,
+            "prompt_cache_key": null,
+            "reasoning": {
+              "effort": null,
+              "generate_summary": null,
+              "summary": null
+            },
+            "safety_identifier": null,
+            "service_tier": "auto",
+            "status": "in_progress",
+            "text": {
+              "format": {
+                "type": "text"
+              },
+              "verbosity": "medium"
+            },
+            "top_logprobs": 0,
+            "truncation": "disabled",
+            "usage": null,
+            "user": null,
+            "prompt_cache_retention": null,
+            "store": true
+          },
+          "sequence_number": 0,
+          "type": "response.created"
+        },
+        {
+          "response": {
+            "id": "resp_08430a6cdb283aeb00692340a91c688191980c8b8c8e84cad4",
+            "created_at": 1763917993.0,
+            "error": null,
+            "incomplete_details": null,
+            "instructions": "You only speak Spanish and are extremely concise.",
+            "metadata": {},
+            "model": "gpt-4.1-2025-04-14",
+            "object": "response",
+            "output": [],
+            "parallel_tool_calls": true,
+            "temperature": 1.0,
+            "tool_choice": "auto",
+            "tools": [],
+            "top_p": 1.0,
+            "background": false,
+            "conversation": null,
+            "max_output_tokens": null,
+            "max_tool_calls": null,
+            "previous_response_id": null,
+            "prompt": null,
+            "prompt_cache_key": null,
+            "reasoning": {
+              "effort": null,
+              "generate_summary": null,
+              "summary": null
+            },
+            "safety_identifier": null,
+            "service_tier": "auto",
+            "status": "in_progress",
+            "text": {
+              "format": {
+                "type": "text"
+              },
+              "verbosity": "medium"
+            },
+            "top_logprobs": 0,
+            "truncation": "disabled",
+            "usage": null,
+            "user": null,
+            "prompt_cache_retention": null,
+            "store": true
+          },
+          "sequence_number": 1,
+          "type": "response.in_progress"
+        },
+        {
+          "item": {
+            "id": "msg_08430a6cdb283aeb00692340a9982881918ff62afc050178ff",
+            "content": [],
+            "role": "assistant",
+            "status": "in_progress",
+            "type": "message"
+          },
+          "output_index": 0,
+          "sequence_number": 2,
+          "type": "response.output_item.added"
+        },
+        {
+          "content_index": 0,
+          "item_id": "msg_08430a6cdb283aeb00692340a9982881918ff62afc050178ff",
+          "output_index": 0,
+          "part": {
+            "annotations": [],
+            "text": "",
+            "type": "output_text",
+            "logprobs": []
+          },
+          "sequence_number": 3,
+          "type": "response.content_part.added"
+        },
+        {
+          "content_index": 0,
+          "delta": "Tu",
+          "item_id": "msg_08430a6cdb283aeb00692340a9982881918ff62afc050178ff",
+          "logprobs": [],
+          "output_index": 0,
+          "sequence_number": 4,
+          "type": "response.output_text.delta",
+          "obfuscation": "eoBCdajghkng7o"
+        },
+        {
+          "content_index": 0,
+          "delta": " nombre",
+          "item_id": "msg_08430a6cdb283aeb00692340a9982881918ff62afc050178ff",
+          "logprobs": [],
+          "output_index": 0,
+          "sequence_number": 5,
+          "type": "response.output_text.delta",
+          "obfuscation": "AMElWu4Hv"
+        },
+        {
+          "content_index": 0,
+          "delta": " no",
+          "item_id": "msg_08430a6cdb283aeb00692340a9982881918ff62afc050178ff",
+          "logprobs": [],
+          "output_index": 0,
+          "sequence_number": 6,
+          "type": "response.output_text.delta",
+          "obfuscation": "d7M48v0ChrUWb"
+        },
+        {
+          "content_index": 0,
+          "delta": " lo",
+          "item_id": "msg_08430a6cdb283aeb00692340a9982881918ff62afc050178ff",
+          "logprobs": [],
+          "output_index": 0,
+          "sequence_number": 7,
+          "type": "response.output_text.delta",
+          "obfuscation": "FjMpQjctugwNq"
+        },
+        {
+          "content_index": 0,
+          "delta": " has",
+          "item_id": "msg_08430a6cdb283aeb00692340a9982881918ff62afc050178ff",
+          "logprobs": [],
+          "output_index": 0,
+          "sequence_number": 8,
+          "type": "response.output_text.delta",
+          "obfuscation": "IwghI2VjXgWa"
+        },
+        {
+          "content_index": 0,
+          "delta": " mencionado",
+          "item_id": "msg_08430a6cdb283aeb00692340a9982881918ff62afc050178ff",
+          "logprobs": [],
+          "output_index": 0,
+          "sequence_number": 9,
+          "type": "response.output_text.delta",
+          "obfuscation": "P8oYF"
+        },
+        {
+          "content_index": 0,
+          "delta": ".",
+          "item_id": "msg_08430a6cdb283aeb00692340a9982881918ff62afc050178ff",
+          "logprobs": [],
+          "output_index": 0,
+          "sequence_number": 10,
+          "type": "response.output_text.delta",
+          "obfuscation": "7XKezI6mVYr6qzM"
+        },
+        {
+          "content_index": 0,
+          "delta": " V",
+          "item_id": "msg_08430a6cdb283aeb00692340a9982881918ff62afc050178ff",
+          "logprobs": [],
+          "output_index": 0,
+          "sequence_number": 11,
+          "type": "response.output_text.delta",
+          "obfuscation": "M9NQPSDirN2LwK"
+        },
+        {
+          "content_index": 0,
+          "delta": "ives",
+          "item_id": "msg_08430a6cdb283aeb00692340a9982881918ff62afc050178ff",
+          "logprobs": [],
+          "output_index": 0,
+          "sequence_number": 12,
+          "type": "response.output_text.delta",
+          "obfuscation": "eryBoy04CWTM"
+        },
+        {
+          "content_index": 0,
+          "delta": " en",
+          "item_id": "msg_08430a6cdb283aeb00692340a9982881918ff62afc050178ff",
+          "logprobs": [],
+          "output_index": 0,
+          "sequence_number": 13,
+          "type": "response.output_text.delta",
+          "obfuscation": "EWcMco5c9RngU"
+        },
+        {
+          "content_index": 0,
+          "delta": " la",
+          "item_id": "msg_08430a6cdb283aeb00692340a9982881918ff62afc050178ff",
+          "logprobs": [],
+          "output_index": 0,
+          "sequence_number": 14,
+          "type": "response.output_text.delta",
+          "obfuscation": "NsNuDzAeA4g9Q"
+        },
+        {
+          "content_index": 0,
+          "delta": " ciudad",
+          "item_id": "msg_08430a6cdb283aeb00692340a9982881918ff62afc050178ff",
+          "logprobs": [],
+          "output_index": 0,
+          "sequence_number": 15,
+          "type": "response.output_text.delta",
+          "obfuscation": "TWfPTHgY3"
+        },
+        {
+          "content_index": 0,
+          "delta": " de",
+          "item_id": "msg_08430a6cdb283aeb00692340a9982881918ff62afc050178ff",
+          "logprobs": [],
+          "output_index": 0,
+          "sequence_number": 16,
+          "type": "response.output_text.delta",
+          "obfuscation": "jWiwNSh3a6PqB"
+        },
+        {
+          "content_index": 0,
+          "delta": " Nueva",
+          "item_id": "msg_08430a6cdb283aeb00692340a9982881918ff62afc050178ff",
+          "logprobs": [],
+          "output_index": 0,
+          "sequence_number": 17,
+          "type": "response.output_text.delta",
+          "obfuscation": "OW0LlrZ4LO"
+        },
+        {
+          "content_index": 0,
+          "delta": " York",
+          "item_id": "msg_08430a6cdb283aeb00692340a9982881918ff62afc050178ff",
+          "logprobs": [],
+          "output_index": 0,
+          "sequence_number": 18,
+          "type": "response.output_text.delta",
+          "obfuscation": "W8YO0R5oYhI"
+        },
+        {
+          "content_index": 0,
+          "delta": ".",
+          "item_id": "msg_08430a6cdb283aeb00692340a9982881918ff62afc050178ff",
+          "logprobs": [],
+          "output_index": 0,
+          "sequence_number": 19,
+          "type": "response.output_text.delta",
+          "obfuscation": "roHDofWYWrWLCrH"
+        },
+        {
+          "content_index": 0,
+          "item_id": "msg_08430a6cdb283aeb00692340a9982881918ff62afc050178ff",
+          "logprobs": [],
+          "output_index": 0,
+          "sequence_number": 20,
+          "text": "Tu nombre no lo has mencionado. Vives en la ciudad de Nueva York.",
+          "type": "response.output_text.done"
+        },
+        {
+          "content_index": 0,
+          "item_id": "msg_08430a6cdb283aeb00692340a9982881918ff62afc050178ff",
+          "output_index": 0,
+          "part": {
+            "annotations": [],
+            "text": "Tu nombre no lo has mencionado. Vives en la ciudad de Nueva York.",
+            "type": "output_text",
+            "logprobs": []
+          },
+          "sequence_number": 21,
+          "type": "response.content_part.done"
+        },
+        {
+          "item": {
+            "id": "msg_08430a6cdb283aeb00692340a9982881918ff62afc050178ff",
+            "content": [
+              {
+                "annotations": [],
+                "text": "Tu nombre no lo has mencionado. Vives en la ciudad de Nueva York.",
+                "type": "output_text",
+                "logprobs": []
+              }
+            ],
+            "role": "assistant",
+            "status": "completed",
+            "type": "message"
+          },
+          "output_index": 0,
+          "sequence_number": 22,
+          "type": "response.output_item.done"
+        },
+        {
+          "response": {
+            "id": "resp_08430a6cdb283aeb00692340a91c688191980c8b8c8e84cad4",
+            "created_at": 1763917993.0,
+            "error": null,
+            "incomplete_details": null,
+            "instructions": "You only speak Spanish and are extremely concise.",
+            "metadata": {},
+            "model": "gpt-4.1-2025-04-14",
+            "object": "response",
+            "output": [
+              {
+                "id": "msg_08430a6cdb283aeb00692340a9982881918ff62afc050178ff",
+                "content": [
+                  {
+                    "annotations": [],
+                    "text": "Tu nombre no lo has mencionado. Vives en la ciudad de Nueva York.",
+                    "type": "output_text",
+                    "logprobs": []
+                  }
+                ],
+                "role": "assistant",
+                "status": "completed",
+                "type": "message"
+              }
+            ],
+            "parallel_tool_calls": true,
+            "temperature": 1.0,
+            "tool_choice": "auto",
+            "tools": [],
+            "top_p": 1.0,
+            "background": false,
+            "conversation": null,
+            "max_output_tokens": null,
+            "max_tool_calls": null,
+            "previous_response_id": null,
+            "prompt": null,
+            "prompt_cache_key": null,
+            "reasoning": {
+              "effort": null,
+              "generate_summary": null,
+              "summary": null
+            },
+            "safety_identifier": null,
+            "service_tier": "default",
+            "status": "completed",
+            "text": {
+              "format": {
+                "type": "text"
+              },
+              "verbosity": "medium"
+            },
+            "top_logprobs": 0,
+            "truncation": "disabled",
+            "usage": {
+              "input_tokens": 143,
+              "input_tokens_details": {
+                "cached_tokens": 0
+              },
+              "output_tokens": 17,
+              "output_tokens_details": {
+                "reasoning_tokens": 0
+              },
+              "total_tokens": 160
+            },
+            "user": null,
+            "prompt_cache_retention": null,
+            "store": true
+          },
+          "sequence_number": 23,
+          "type": "response.completed"
+        }
+      ],
+      "run_items": [
+        {
+          "event_type": "run_item_stream_event",
+          "item_type": "tool_call_item",
+          "name": "tool_called",
+          "item": "ToolCallItem(agent=Agent(name='Assistant', handoff_description=None, tools=[], mcp_servers=[], mcp_config={}, instructions='Be a helpful assistant. If the user speaks Spanish, handoff to the Spanish assistant.', prompt=None, handoffs=[Handoff(tool_name='transfer_to_spanish_assistant', tool_description='Handoff to the Spanish Assistant agent to handle the request. A Spanish-speaking assistant.', input_json_schema={'additionalProperties': False, 'type': 'object', 'properties': {}, 'required': []}, on_invoke_handoff=<function handoff.<locals>._invoke_handoff at 0x10f148a40>, agent_name='Spanish Assistant', input_filter=<function spanish_handoff_message_filter at 0x10f148400>, strict_json_schema=True, is_enabled=True)], model=None, model_settings=ModelSettings(temperature=None, top_p=None, frequency_penalty=None, presence_penalty=None, tool_choice=None, parallel_tool_calls=None, truncation=None, max_tokens=None, reasoning=None, verbosity=None, metadata=None, store=None, include_usage=None, response_include=None, top_logprobs=None, extra_query=None, extra_body=None, extra_headers=None, extra_args=None), input_guardrails=[], output_guardrails=[], output_type=None, hooks=None, tool_use_behavior='run_llm_again', reset_tool_choice=True), raw_item=ResponseFunctionToolCall(arguments='{}', call_id='call_TloiVKwVDexVZbMIEr6TVPcY', name='transfer_to_spanish_assistant', type='function_call', id='fc_08430a6cdb283aeb00692340a6f2508191bc4b6edf8eddc346', status='completed'), type='tool_call_item')"
+        },
+        {
+          "event_type": "run_item_stream_event",
+          "item_type": "handoff_call_item",
+          "name": "handoff_requested",
+          "item": "HandoffCallItem(agent=Agent(name='Assistant', handoff_description=None, tools=[], mcp_servers=[], mcp_config={}, instructions='Be a helpful assistant. If the user speaks Spanish, handoff to the Spanish assistant.', prompt=None, handoffs=[Handoff(tool_name='transfer_to_spanish_assistant', tool_description='Handoff to the Spanish Assistant agent to handle the request. A Spanish-speaking assistant.', input_json_schema={'additionalProperties': False, 'type': 'object', 'properties': {}, 'required': []}, on_invoke_handoff=<function handoff.<locals>._invoke_handoff at 0x10f148a40>, agent_name='Spanish Assistant', input_filter=<function spanish_handoff_message_filter at 0x10f148400>, strict_json_schema=True, is_enabled=True)], model=None, model_settings=ModelSettings(temperature=None, top_p=None, frequency_penalty=None, presence_penalty=None, tool_choice=None, parallel_tool_calls=None, truncation=None, max_tokens=None, reasoning=None, verbosity=None, metadata=None, store=None, include_usage=None, response_include=None, top_logprobs=None, extra_query=None, extra_body=None, extra_headers=None, extra_args=None), input_guardrails=[], output_guardrails=[], output_type=None, hooks=None, tool_use_behavior='run_llm_again', reset_tool_choice=True), raw_item=ResponseFunctionToolCall(arguments='{}', call_id='call_TloiVKwVDexVZbMIEr6TVPcY', name='transfer_to_spanish_assistant', type='function_call', id='fc_08430a6cdb283aeb00692340a6f2508191bc4b6edf8eddc346', status='completed'), type='handoff_call_item')"
+        },
+        {
+          "event_type": "run_item_stream_event",
+          "item_type": "message_output_item",
+          "name": "message_output_created",
+          "item": "MessageOutputItem(agent=Agent(name='Spanish Assistant', handoff_description='A Spanish-speaking assistant.', tools=[], mcp_servers=[], mcp_config={}, instructions='You only speak Spanish and are extremely concise.', prompt=None, handoffs=[], model=None, model_settings=ModelSettings(temperature=None, top_p=None, frequency_penalty=None, presence_penalty=None, tool_choice=None, parallel_tool_calls=None, truncation=None, max_tokens=None, reasoning=None, verbosity=None, metadata=None, store=None, include_usage=None, response_include=None, top_logprobs=None, extra_query=None, extra_body=None, extra_headers=None, extra_args=None), input_guardrails=[], output_guardrails=[], output_type=None, hooks=None, tool_use_behavior='run_llm_again', reset_tool_choice=True), raw_item=ResponseOutputMessage(id='msg_08430a6cdb283aeb00692340a9982881918ff62afc050178ff', content=[ResponseOutputText(annotations=[], text='Tu nombre no lo has mencionado. Vives en la ciudad de Nueva York.', type='output_text', logprobs=[])], role='assistant', status='completed', type='message'), type='message_output_item')"
+        }
+      ],
+      "agent_updates": [
+        {
+          "event_type": "agent_updated_stream_event",
+          "agent_name": "Assistant",
+          "event": "AgentUpdatedStreamEvent(new_agent=Agent(name='Assistant', handoff_description=None, tools=[], mcp_servers=[], mcp_config={}, instructions='Be a helpful assistant. If the user speaks Spanish, handoff to the Spanish assistant.', prompt=None, handoffs=[Handoff(tool_name='transfer_to_spanish_assistant', tool_description='Handoff to the Spanish Assistant agent to handle the request. A Spanish-speaking assistant.', input_json_schema={'additionalProperties': False, 'type': 'object', 'properties': {}, 'required': []}, on_invoke_handoff=<function handoff.<locals>._invoke_handoff at 0x10f148a40>, agent_name='Spanish Assistant', input_filter=<function spanish_handoff_message_filter at 0x10f148400>, strict_json_schema=True, is_enabled=True)], model=None, model_settings=ModelSettings(temperature=None, top_p=None, frequency_penalty=None, presence_penalty=None, tool_choice=None, parallel_tool_calls=None, truncation=None, max_tokens=None, reasoning=None, verbosity=None, metadata=None, store=None, include_usage=None, response_include=None, top_logprobs=None, extra_query=None, extra_body=None, extra_headers=None, extra_args=None), input_guardrails=[], output_guardrails=[], output_type=None, hooks=None, tool_use_behavior='run_llm_again', reset_tool_choice=True), type='agent_updated_stream_event')"
+        },
+        {
+          "event_type": "agent_updated_stream_event",
+          "agent_name": "Spanish Assistant",
+          "event": "AgentUpdatedStreamEvent(new_agent=Agent(name='Spanish Assistant', handoff_description='A Spanish-speaking assistant.', tools=[], mcp_servers=[], mcp_config={}, instructions='You only speak Spanish and are extremely concise.', prompt=None, handoffs=[], model=None, model_settings=ModelSettings(temperature=None, top_p=None, frequency_penalty=None, presence_penalty=None, tool_choice=None, parallel_tool_calls=None, truncation=None, max_tokens=None, reasoning=None, verbosity=None, metadata=None, store=None, include_usage=None, response_include=None, top_logprobs=None, extra_query=None, extra_body=None, extra_headers=None, extra_args=None), input_guardrails=[], output_guardrails=[], output_type=None, hooks=None, tool_use_behavior='run_llm_again', reset_tool_choice=True), type='agent_updated_stream_event')"
+        }
+      ],
+      "final_output": "Tu nombre no lo has mencionado. Vives en la ciudad de Nueva York."
+    }
+  }
+}

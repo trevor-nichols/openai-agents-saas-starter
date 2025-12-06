@@ -7,7 +7,7 @@ This document codifies how the Next.js frontend talks to the FastAPI backend. Ev
 ## Layered Architecture
 
 1. **Generated SDK (`web-app/lib/api/client`)**  
-   - Auto-generated via HeyAPI against the committed billing-on spec `../api-service/.artifacts/openapi-billing.json` (see `openapi-ts.config.ts`).  
+  - Auto-generated via HeyAPI against the committed billing-on spec `../api-service/.artifacts/openapi.json` (see `openapi-ts.config.ts`).  
    - Never imported directly from React components.  
    - Only server-side services may create SDK clients, typically via `lib/server/apiClient.ts`.
 
@@ -57,6 +57,12 @@ This document codifies how the Next.js frontend talks to the FastAPI backend. Ev
 - Add any domain-specific notes here or in `docs/<domain>/`.  
 - Cover fetch helpers with unit tests or integration tests where it adds value.
 
+## Contact form
+
+- Flow: client form ➜ `/app/api/contact` ➜ `lib/server/services/marketing.submitContact` ➜ FastAPI `POST /api/v1/contact`.
+- UI calls `useSubmitContactMutation` (TanStack Query) which wraps `lib/api/contact.submitContactRequest`.
+- The backend endpoint is unauthenticated; we still gate spam with a honeypot field.
+
 ### Choosing Between Server Services and `/api` Fetchers
 
 - **Server components/actions** call domain services directly. Example: server actions in the chat workspace invoke `lib/server/services/chat.ts` so the SDK never leaks to the browser.  
@@ -65,7 +71,7 @@ This document codifies how the Next.js frontend talks to the FastAPI backend. Ev
   - Keep the domain service for server-side orchestration.
   - Add a lightweight API route + fetch helper for browser access.  
 - Example: billing subscription flows now share `lib/api/billingSubscriptions.ts`, and `lib/queries/billingSubscriptions.ts` exclusively calls those helpers. Server components that need the same data can still import `lib/server/services/billing.ts`.  
-- Billing visibility: `NEXT_PUBLIC_ENABLE_BILLING` (default `false`) controls nav/pages/API routes/query `enabled` flags. The Starter CLI writes it to `.env.local` alongside backend `ENABLE_BILLING`.
+- Billing visibility: `NEXT_PUBLIC_ENABLE_BILLING` (default `false`) controls nav/pages/API routes/query `enabled` flags. The Starter CLI writes it to `apps/web-app/.env.local` alongside backend `ENABLE_BILLING` in `apps/api-service/.env.local`.
 - If a hook only ever runs in a server component, prefer a server action instead of creating a redundant `/api` route.
 
 ## Streaming Guidance
@@ -88,7 +94,7 @@ The chat experience combines TanStack Query with an orchestrator hook so UI comp
    - `lib/queries/conversations.ts` owns list/detail keys; detail queries are prefetched any time a conversation is opened or messages stream.
 
 3. **Controller hook**  
-   - `lib/chat/useChatController.ts` handles message streaming, fallback to mutation, deletion, and agent selection state.  
+   - `lib/chat/controller/useChatController.ts` handles message streaming, fallback to mutation, deletion, and agent selection state.  
    - Consumers (e.g., `app/(agent)/page.tsx`) only read the controller output, keeping UI files <200 lines.
 
 4. **Testing**  
@@ -100,6 +106,39 @@ The chat experience combines TanStack Query with an orchestrator hook so UI comp
 
 When extending the chat domain, follow the same pattern: update helpers/hooks, keep controller logic pure, and document cache impacts in this section.
 
+## Workflows
+
+- API wrappers: `lib/api/workflows.ts` (list, run, run-stream, run detail, list runs, descriptor, cancel) with `USE_API_MOCK` support and streaming parser.
+- Queries: `lib/queries/workflows.ts`:
+  - `useWorkflowsQuery()` — list available workflows.
+  - `useWorkflowDescriptorQuery(workflowKey)` — fetch descriptor (stages/steps/handoffs).
+  - `useWorkflowRunsQuery(filters)` — list runs with cursor pagination and filters.
+  - `useWorkflowRunQuery(runId)` — run detail.
+  - `useRunWorkflowMutation()` — start a run.
+  - `useWorkflowStream(...)` — async generator yielding streaming events.
+  - `useCancelWorkflowRunMutation()` — cancel a running workflow.
+- Feature UI: `features/workflows/WorkflowsWorkspace.tsx` with list + descriptor summary, run form, run history table, run detail (with cancel), and streaming log (`WorkflowStreamLog`).
+- Mock stream trigger remains available when `USE_API_MOCK` to exercise the UI without backend SSE.
+
+## Storage
+
+- Storage objects: `lib/api/storageObjects.ts`; presign download proxy in `app/api/storage/objects/[objectId]/download-url/`.
+- Queries: `lib/queries/storageObjects.ts`.
+- UI: `features/storage/StorageAdmin.tsx` (admin surface; mock-friendly).
+- Chat attachments resolve download URLs via the proxy; UI shows errors and allows manual fetch if presign is missing/expired.
+
+## Vector Stores
+
+- API wrappers: `lib/api/vectorStores.ts` (list/create/delete, file attach/list/delete, search) with `USE_API_MOCK` scaffolds.
+- Queries: `lib/queries/vectorStores.ts`.
+- UI: managed from `features/storage/StorageAdmin.tsx` for now (admin-facing).
+
+## Containers
+
+- API wrappers: `lib/api/containers.ts` (list/create/delete, bind/unbind agent→container) with mock support.
+- Queries: `lib/queries/containers.ts`.
+- UI: Agents workspace containers tab (`features/agents/AgentWorkspace.tsx` + `ContainerBindingsPanel`) for binding the selected agent to a container.
+
 ## Conversations Archive Flow
 
 1. **List view** – `features/conversations/ConversationsHub.tsx` consumes `useConversations()` (TanStack Query) to fetch `/api/conversations`. Local search filters the cached list client-side, and each row prefetches its detail query for snappy drawers.
@@ -108,6 +147,12 @@ When extending the chat domain, follow the same pattern: update helpers/hooks, k
 4. **Exports** – Until the backend delivers CSV/PDF, the drawer generates a JSON blob for quick downloads; once servers are ready we can swap the handler to call `/api/conversations/{id}/export` without touching UI code.
 
 This layering keeps the archive UX responsive and predictable, and the same hooks can be reused by upcoming admin/audit surfaces.
+
+### Conversation Events
+
+- Flow: `fetchConversationEvents` → `/app/api/conversations/[conversationId]/events` → `getConversationEvents` service → FastAPI `GET /api/v1/conversations/{id}/events`.
+- Default `mode` is `transcript`; pass `mode=full` plus optional `workflow_run_id` for audit-grade detail (tool calls, reasoning, outputs).
+- Hook: `useConversationEvents(conversationId, { mode, workflowRunId })` returns cached event logs; history remains available as a fallback while UI migrates to events.
 
 ## Agent Catalog Flow
 

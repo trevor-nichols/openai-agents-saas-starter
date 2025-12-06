@@ -1,0 +1,538 @@
+"""Core façade for agent interactions.
+
+The heavy lifting now lives in per-concern helpers under services/agents/* so
+the surface here stays lean and testable.
+"""
+
+from __future__ import annotations
+
+import logging
+from collections.abc import AsyncGenerator, Mapping
+from datetime import datetime
+from typing import Any
+
+from agents import trace
+
+from app.api.v1.agents.schemas import AgentStatus, AgentSummary
+from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse, MessageAttachment
+from app.bootstrap.container import wire_storage_service
+from app.domain.ai.models import AgentStreamEvent
+from app.domain.conversations import (
+    ConversationAttachment,
+    ConversationMessage,
+    ConversationRepository,
+)
+from app.infrastructure.providers.openai.runtime import LifecycleEventBus
+from app.services.agents.attachments import AttachmentService
+from app.services.agents.catalog import AgentCatalogService
+from app.services.agents.context import (
+    ConversationActorContext,
+    reset_current_actor,
+    set_current_actor,
+)
+from app.services.agents.event_log import EventProjector
+from app.services.agents.interaction_context import InteractionContextBuilder
+from app.services.agents.policy import AgentRuntimePolicy
+from app.services.agents.provider_registry import AgentProviderRegistry, get_provider_registry
+from app.services.agents.run_options import build_run_options
+from app.services.agents.run_pipeline import (
+    build_metadata,
+    persist_assistant_message,
+    prepare_run_context,
+    project_new_session_items,
+    record_user_message,
+)
+from app.services.agents.session_manager import SessionManager
+from app.services.agents.usage import UsageService
+from app.services.containers import ContainerService
+from app.services.conversation_service import ConversationService, get_conversation_service
+from app.services.storage.service import StorageService
+from app.services.usage_recorder import UsageRecorder
+from app.services.vector_stores.service import VectorStoreService
+
+logger = logging.getLogger(__name__)
+
+
+class AgentService:
+    """High-level façade that orchestrates agent interactions."""
+
+    def __init__(
+        self,
+        *,
+        conversation_repo: ConversationRepository | None = None,
+        conversation_service: ConversationService | None = None,
+        usage_recorder: UsageRecorder | None = None,
+        provider_registry: AgentProviderRegistry | None = None,
+        container_service: ContainerService | None = None,
+        storage_service: StorageService | None = None,
+        policy: AgentRuntimePolicy | None = None,
+        interaction_builder: InteractionContextBuilder | None = None,
+        vector_store_service: VectorStoreService | None = None,
+        session_manager: SessionManager | None = None,
+        attachment_service: AttachmentService | None = None,
+        usage_service: UsageService | None = None,
+        catalog_service: AgentCatalogService | None = None,
+    ) -> None:
+        self._conversation_service = conversation_service or get_conversation_service()
+        if conversation_repo is not None:
+            self._conversation_service.set_repository(conversation_repo)
+
+        self._provider_registry = provider_registry or get_provider_registry()
+        self._container_service = container_service
+        self._storage_service = storage_service
+        self._policy = policy or AgentRuntimePolicy.from_env()
+
+        self._session_manager = session_manager or SessionManager(
+            self._conversation_service, self._policy
+        )
+        self._attachment_service = attachment_service or AttachmentService(
+            self._get_storage_service
+        )
+        self._interaction_builder = interaction_builder or InteractionContextBuilder(
+            container_service=self._container_service,
+            vector_store_service=vector_store_service,
+        )
+        self._event_projector = EventProjector(self._conversation_service)
+        self._usage_service = usage_service or UsageService(usage_recorder)
+        self._catalog_service = catalog_service or AgentCatalogService(self._provider_registry)
+
+    async def chat(
+        self, request: AgentChatRequest, *, actor: ConversationActorContext
+    ) -> AgentChatResponse:
+        ctx = await prepare_run_context(
+            actor=actor,
+            request=request,
+            provider_registry=self._provider_registry,
+            interaction_builder=self._interaction_builder,
+            conversation_service=self._conversation_service,
+            session_manager=self._session_manager,
+        )
+
+        await record_user_message(
+            ctx=ctx,
+            request=request,
+            conversation_service=self._conversation_service,
+        )
+
+        token = set_current_actor(actor)
+        try:
+            logger.info(
+                "agent.chat.start",
+                extra={
+                    "tenant_id": actor.tenant_id,
+                    "conversation_id": ctx.conversation_id,
+                    "provider_conversation_id": ctx.provider_conversation_id,
+                    "agent": ctx.descriptor.key,
+                },
+            )
+            runtime_conversation_id = ctx.provider_conversation_id or ctx.conversation_id
+            with trace(workflow_name="Agent Chat", group_id=ctx.conversation_id):
+                result = await ctx.provider.runtime.run(
+                    ctx.descriptor.key,
+                    request.message,
+                    session=ctx.session_handle,
+                    conversation_id=runtime_conversation_id,
+                    metadata={"prompt_runtime_ctx": ctx.runtime_ctx},
+                    options=build_run_options(request.run_options),
+                )
+        finally:
+            reset_current_actor(token)
+
+        response_text = result.response_text or str(result.final_output)
+        attachments = await self._attachment_service.ingest_image_outputs(
+            result.tool_outputs,
+            actor=actor,
+            conversation_id=ctx.conversation_id,
+            agent_key=ctx.descriptor.key,
+            response_id=result.response_id,
+        )
+        await persist_assistant_message(
+            ctx=ctx,
+            conversation_service=self._conversation_service,
+            response_text=response_text,
+            attachments=attachments,
+            active_agent=result.final_agent,
+            handoff_count=result.handoff_count,
+        )
+        logger.info(
+            "agent.chat.end",
+            extra={
+                "tenant_id": actor.tenant_id,
+                "conversation_id": ctx.conversation_id,
+                "provider_conversation_id": ctx.provider_conversation_id,
+                "agent": ctx.descriptor.key,
+                "response_id": result.response_id,
+            },
+        )
+        await self._sync_session_state(
+            tenant_id=actor.tenant_id,
+            conversation_id=ctx.conversation_id,
+            session_id=ctx.session_id,
+            provider_name=ctx.provider.name,
+            provider_conversation_id=ctx.provider_conversation_id,
+        )
+        await self._record_usage_metrics(
+            tenant_id=actor.tenant_id,
+            conversation_id=ctx.conversation_id,
+            response_id=result.response_id,
+            usage=result.usage,
+        )
+
+        await project_new_session_items(
+            event_projector=self._event_projector,
+            session_handle=ctx.session_handle,
+            pre_items=ctx.pre_session_items,
+            conversation_id=ctx.conversation_id,
+            tenant_id=actor.tenant_id,
+            agent=ctx.descriptor.key,
+            model=ctx.descriptor.model,
+            response_id=result.response_id,
+        )
+
+        ctx.provider.mark_seen(ctx.descriptor.key, datetime.utcnow())
+
+        tool_overview = ctx.provider.tool_overview()
+        return AgentChatResponse(
+            response=response_text,
+            structured_output=AgentStreamEvent._strip_unserializable(result.structured_output),
+            conversation_id=ctx.conversation_id,
+            agent_used=result.final_agent or ctx.descriptor.key,
+            handoff_occurred=bool(result.handoff_count),
+            attachments=[
+                MessageAttachment(**self._attachment_service.to_attachment_schema(att))
+                for att in attachments
+            ],
+            metadata={
+                "model_used": ctx.descriptor.model,
+                "tools_available": tool_overview.get("tool_names", []),
+                **self._attachment_service.attachment_metadata_note(attachments),
+            },
+        )
+
+    async def chat_stream(
+        self,
+        request: AgentChatRequest,
+        *,
+        actor: ConversationActorContext,
+    ) -> AsyncGenerator[AgentStreamEvent, None]:
+        ctx = await prepare_run_context(
+            actor=actor,
+            request=request,
+            provider_registry=self._provider_registry,
+            interaction_builder=self._interaction_builder,
+            conversation_service=self._conversation_service,
+            session_manager=self._session_manager,
+        )
+
+        await record_user_message(
+            ctx=ctx,
+            request=request,
+            conversation_service=self._conversation_service,
+        )
+
+        complete_response = ""
+        attachments: list[ConversationAttachment] = []
+        seen_tool_calls: set[str] = set()
+        current_agent = ctx.descriptor.key
+        handoff_count = 0
+        token = set_current_actor(actor)
+        stream_handle = None
+        try:
+            logger.info(
+                "agent.chat_stream.start",
+                extra={
+                    "tenant_id": actor.tenant_id,
+                    "conversation_id": ctx.conversation_id,
+                    "provider_conversation_id": ctx.provider_conversation_id,
+                    "agent": ctx.descriptor.key,
+                },
+            )
+            # Disable provider-side conversation state when sessions are in use to
+            # prevent duplicate items being sent (Responses API 400 on duplicate ids).
+            runtime_conversation_id = None
+
+            lifecycle_bus = LifecycleEventBus()
+            with trace(workflow_name="Agent Chat Stream", group_id=ctx.conversation_id):
+                stream_handle = ctx.provider.runtime.run_stream(
+                    ctx.descriptor.key,
+                    request.message,
+                    session=ctx.session_handle,
+                    conversation_id=runtime_conversation_id,
+                    metadata={"prompt_runtime_ctx": ctx.runtime_ctx},
+                    options=build_run_options(request.run_options, hook_sink=lifecycle_bus),
+                )
+                async for event in stream_handle.events():
+                    event.conversation_id = ctx.conversation_id
+                    if event.agent is None:
+                        event.agent = ctx.descriptor.key
+
+                    if event.text_delta:
+                        complete_response += event.text_delta
+                    elif event.response_text and not complete_response:
+                        complete_response = event.response_text
+
+                    attachment_sources: list[Mapping[str, Any]] = []
+                    if event.payload and isinstance(event.payload, Mapping):
+                        attachment_sources.append(event.payload)
+                    if isinstance(event.tool_call, Mapping):
+                        attachment_sources.append(event.tool_call)
+
+                    new_attachments = await self._attachment_service.ingest_image_outputs(
+                        attachment_sources or None,
+                        actor=actor,
+                        conversation_id=ctx.conversation_id,
+                        agent_key=ctx.descriptor.key,
+                        response_id=event.response_id,
+                        seen_tool_calls=seen_tool_calls,
+                    )
+                    if new_attachments:
+                        attachments.extend(new_attachments)
+                        event.attachments = [
+                            self._attachment_service.to_attachment_payload(att)
+                            for att in new_attachments
+                        ]
+                        if event.payload is None:
+                            event.payload = {}
+                        if isinstance(event.payload, dict):
+                            event.payload.setdefault("_attachment_note", "stored")
+
+                    # Ensure stream payloads are JSON-serializable for SSE.
+                    event.payload = AgentStreamEvent._strip_unserializable(event.payload)
+                    event.structured_output = AgentStreamEvent._strip_unserializable(
+                        event.structured_output
+                    )
+                    event.response_text = (
+                        None if event.response_text is None else str(event.response_text)
+                    )
+
+                    if event.kind == "agent_updated_stream_event":
+                        if event.new_agent:
+                            current_agent = event.new_agent
+                        handoff_count += 1
+
+                    yield event
+
+                    if event.is_terminal:
+                        break
+                async for leftover in lifecycle_bus.drain():
+                    leftover.conversation_id = ctx.conversation_id
+                    yield leftover
+        finally:
+            reset_current_actor(token)
+
+        assistant_message = ConversationMessage(
+            role="assistant",
+            content=complete_response,
+            attachments=attachments,
+        )
+        await self._conversation_service.append_message(
+            ctx.conversation_id,
+            assistant_message,
+            tenant_id=actor.tenant_id,
+            metadata=build_metadata(
+                tenant_id=actor.tenant_id,
+                provider=ctx.provider.name,
+                provider_conversation_id=ctx.provider_conversation_id,
+                agent_entrypoint=request.agent_type or ctx.descriptor.key,
+                active_agent=current_agent,
+                session_id=ctx.session_id,
+                user_id=actor.user_id,
+                handoff_count=handoff_count or None,
+            ),
+        )
+        logger.info(
+            "agent.chat_stream.end",
+            extra={
+                "tenant_id": actor.tenant_id,
+                "conversation_id": ctx.conversation_id,
+                "provider_conversation_id": ctx.provider_conversation_id,
+                "agent": ctx.descriptor.key,
+                "response_id": getattr(stream_handle, "last_response_id", None),
+            },
+        )
+        await self._sync_session_state(
+            tenant_id=actor.tenant_id,
+            conversation_id=ctx.conversation_id,
+            session_id=ctx.session_id,
+            provider_name=ctx.provider.name,
+            provider_conversation_id=ctx.provider_conversation_id,
+        )
+        await self._record_usage_metrics(
+            tenant_id=actor.tenant_id,
+            conversation_id=ctx.conversation_id,
+            response_id=getattr(stream_handle, "last_response_id", None),
+            usage=getattr(stream_handle, "usage", None),
+        )
+
+        await project_new_session_items(
+            event_projector=self._event_projector,
+            session_handle=ctx.session_handle,
+            pre_items=ctx.pre_session_items,
+            conversation_id=ctx.conversation_id,
+            tenant_id=actor.tenant_id,
+            agent=ctx.descriptor.key,
+            model=ctx.descriptor.model,
+            response_id=getattr(stream_handle, "last_response_id", None),
+        )
+
+        ctx.provider.mark_seen(ctx.descriptor.key, datetime.utcnow())
+
+    @property
+    def conversation_repository(self):
+        """Expose the underlying repository for integration/testing scenarios."""
+
+        return self._conversation_service.repository
+
+    def list_available_agents(self) -> list[AgentSummary]:
+        provider = self._get_provider()
+        def _serialize_ts(dt):
+            if dt is None:
+                return None
+            return dt.replace(microsecond=0).isoformat() + "Z"
+
+        return [
+            AgentSummary(
+                name=descriptor.key,
+                status=descriptor.status,
+                description=descriptor.description,
+                display_name=descriptor.display_name,
+                model=descriptor.model,
+                last_seen_at=_serialize_ts(getattr(descriptor, "last_seen_at", None)),
+            )
+            for descriptor in provider.list_agents()
+        ]
+
+    def get_agent_status(self, agent_name: str) -> AgentStatus:
+        provider = self._get_provider()
+        descriptor = provider.get_agent(agent_name)
+        if not descriptor:
+            raise ValueError(f"Agent '{agent_name}' not found")
+        last_used = getattr(descriptor, "last_seen_at", None)
+        if last_used:
+            last_used = last_used.replace(microsecond=0).isoformat() + "Z"
+        return AgentStatus(
+            name=descriptor.key,
+            status="active",
+            last_used=last_used,
+            total_conversations=0,
+        )
+
+    def get_tool_information(self) -> dict[str, Any]:
+        provider = self._get_provider()
+        return dict(provider.tool_overview())
+
+    def _get_provider(self):
+        try:
+            return self._provider_registry.get_default()
+        except RuntimeError as exc:
+            raise RuntimeError(
+                "No agent providers registered. Register a provider (e.g., build_openai_provider)"
+                " before invoking AgentService, or use the test fixture that populates the"
+                " AgentProviderRegistry."
+            ) from exc
+
+    def _get_storage_service(self) -> StorageService:
+        if self._storage_service is None:
+            raise RuntimeError("Storage service is not configured")
+        return self._storage_service
+
+    async def _sync_session_state(
+        self,
+        *,
+        tenant_id: str,
+        conversation_id: str,
+        session_id: str,
+        provider_name: str | None,
+        provider_conversation_id: str | None,
+    ) -> None:
+        await self._session_manager.sync_session_state(
+            tenant_id=tenant_id,
+            conversation_id=conversation_id,
+            session_id=session_id,
+            provider_name=provider_name,
+            provider_conversation_id=provider_conversation_id,
+        )
+
+    async def _record_usage_metrics(
+        self,
+        *,
+        tenant_id: str,
+        conversation_id: str,
+        response_id: str | None,
+        usage: Any,
+    ) -> None:
+        await self._usage_service.record(
+            tenant_id=tenant_id,
+            conversation_id=conversation_id,
+            response_id=response_id,
+            usage=usage,
+        )
+
+
+# Factory helpers -----------------------------------------------------------
+
+def build_agent_service(
+    *,
+    conversation_service: ConversationService | None = None,
+    conversation_repository: ConversationRepository | None = None,
+    usage_recorder: UsageRecorder | None = None,
+    provider_registry: AgentProviderRegistry | None = None,
+    container_service: ContainerService | None = None,
+    storage_service: StorageService | None = None,
+    policy: AgentRuntimePolicy | None = None,
+    vector_store_service: VectorStoreService | None = None,
+    catalog_service: AgentCatalogService | None = None,
+) -> AgentService:
+    return AgentService(
+        conversation_repo=conversation_repository,
+        conversation_service=conversation_service,
+        usage_recorder=usage_recorder,
+        provider_registry=provider_registry,
+        container_service=container_service,
+        storage_service=storage_service,
+        policy=policy,
+        vector_store_service=vector_store_service,
+        catalog_service=catalog_service,
+    )
+
+
+def get_agent_service() -> AgentService:
+    from app.bootstrap.container import get_container
+
+    container = get_container()
+    if container.agent_service is None:
+        if container.storage_service is None:
+            wire_storage_service(container)
+        container.agent_service = build_agent_service(
+            conversation_service=container.conversation_service,
+            conversation_repository=None,
+            usage_recorder=container.usage_recorder,
+            provider_registry=get_provider_registry(),
+            container_service=container.container_service,
+            storage_service=container.storage_service,
+            vector_store_service=container.vector_store_service,
+        )
+    return container.agent_service
+
+
+class _AgentServiceHandle:
+    def __getattr__(self, name: str):
+        return getattr(get_agent_service(), name)
+
+    def __setattr__(self, name: str, value):
+        setattr(get_agent_service(), name, value)
+
+    def __delattr__(self, name: str):
+        delattr(get_agent_service(), name)
+
+
+agent_service = _AgentServiceHandle()
+
+
+__all__ = [
+    "AgentService",
+    "ConversationActorContext",
+    "agent_service",
+    "build_agent_service",
+    "get_agent_service",
+]

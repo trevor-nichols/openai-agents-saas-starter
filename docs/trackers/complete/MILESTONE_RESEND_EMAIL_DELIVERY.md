@@ -10,8 +10,8 @@ We need to replace the placeholder logging notifiers with a production-ready Res
 
 ## Task List
 1. **Configuration surface** ✅
-   - Extended `app/core/config.py` with Resend settings (API key, base url, from address, optional template IDs, enable toggle).
-   - Documented new env vars in `.env.local.example`, `.env.local`, and `README.md`.
+   - Extended `app/core/settings/security.py` with Resend settings (API key, base url, from address, optional template IDs, enable toggle).
+   - Documented new env vars in `apps/api-service/.env.local.example`, `apps/api-service/.env.local`, and `README.md`.
 2. **Resend client adapter** ✅
    - Introduced `app/infrastructure/notifications/resend.py` with an async-friendly wrapper over the Resend SDK, payload helpers, and logging hooks.
    - Added a cached `get_resend_email_adapter` factory for reuse and normalized recipient/tag handling.

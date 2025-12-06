@@ -8,7 +8,7 @@ This runbook explains how to enable, monitor, and troubleshoot the plan-aware us
 ## Enablement Checklist
 
 1. **Billable environment** – Guardrails require billing to be enabled (`ENABLE_BILLING=true`) so `BillingService` can read subscriptions + plans.
-2. **Starter CLI wizard** – Run `python -m starter_cli.app setup wizard` and complete the new **Usage & Entitlements** section, or re-run just that section with `--sections usage`. Provide:
+2. **Starter CLI wizard** – Run `cd packages/starter_cli && python -m starter_cli.app setup wizard` (or `just cli cmd="setup wizard"`) and complete the new **Usage & Entitlements** section, or re-run just that section with `--sections usage`. Provide:
    - `ENABLE_USAGE_GUARDRAILS=true`
    - `USAGE_GUARDRAIL_CACHE_TTL_SECONDS` (default `30`)
    - `USAGE_GUARDRAIL_SOFT_LIMIT_MODE` (`warn` or `block`)
@@ -22,7 +22,7 @@ This runbook explains how to enable, monitor, and troubleshoot the plan-aware us
 ### Seeding plan entitlements
 
 ```
-python -m starter_cli.app usage sync-entitlements \
+cd packages/starter_cli && python -m starter_cli.app usage sync-entitlements \
   --plan starter --plan pro \
   --prune-missing
 ```
@@ -37,7 +37,7 @@ python -m starter_cli.app usage sync-entitlements \
 Run the CLI exporter whenever operators need an audit-friendly snapshot of usage vs. plan limits:
 
 ```
-python -m starter_cli.app usage export-report \
+cd packages/starter_cli && python -m starter_cli.app usage export-report \
   --tenant acme \
   --plan starter \
   --period-start 2025-11-01T00:00:00Z \
@@ -95,7 +95,7 @@ Ingestion tips:
 - [ ] `ENABLE_USAGE_GUARDRAILS=true` and cache/soft-limit env vars managed via the CLI wizard or secrets store.
 - [ ] `usage_guardrail_decisions_total` present on the Prometheus `/metrics` output and ingested into dashboards.
 - [ ] Alerts configured for hard-limit spikes and policy configuration errors.
-- [ ] `python -m starter_cli.app usage sync-entitlements` has been run after every plan limit change (use `--dry-run` first in CI).
-- [ ] `python -m starter_cli.app usage export-report` captured the current billing period snapshot and artifacts stored under `var/reports/`.
+- [ ] `cd packages/starter_cli && python -m starter_cli.app usage sync-entitlements` has been run after every plan limit change (use `--dry-run` first in CI).
+- [ ] `cd packages/starter_cli && python -m starter_cli.app usage export-report` captured the current billing period snapshot and artifacts stored under `var/reports/`.
 - [ ] Runbook + plan entitlements reviewed whenever pricing/plan tiers change.
 - [ ] `var/reports/usage-entitlements.json` stored with the rest of the operator artifacts for auditability.

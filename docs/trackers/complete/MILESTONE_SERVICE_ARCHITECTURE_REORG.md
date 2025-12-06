@@ -4,7 +4,7 @@
 _Last updated: November 17, 2025_
 
 ## Objective
-Establish a documented, phased plan to restructure `api-service/app/services` into domain-scoped modules that mirror API routers and repository boundaries. The milestone completes when every service lives in a clearly owned domain package, imports remain ergonomic, and the reorg is backed by automated checks plus rollout guardrails.
+Establish a documented, phased plan to restructure `api-service/src/app/services` into domain-scoped modules that mirror API routers and repository boundaries. The milestone completes when every service lives in a clearly owned domain package, imports remain ergonomic, and the reorg is backed by automated checks plus rollout guardrails.
 
 ## Success Criteria
 - Directory structure expresses bounded contexts (Auth, Billing, Conversations, Signup, Status, Tenant, Shared) with ≤5 files per leaf folder.
@@ -26,7 +26,7 @@ Establish a documented, phased plan to restructure `api-service/app/services` in
 The end-state structure groups orchestration logic by domain and separates integration façades. Each folder gets an `__init__.py` that exports the stable API and an optional `README.md` for context.
 
 ```text
-api-service/app/services/
+api-service/src/app/services/
   __init__.py                    # Barrel file exporting domain façades
   shared/
     __init__.py
@@ -86,7 +86,7 @@ api-service/app/services/
 ## Phased Plan
 | Phase | Scope | Deliverables | Owner | Target |
 | --- | --- | --- | --- | --- |
-| 0. Baseline | Capture current imports, add module ownership doc, set up tracker. | This tracker, dependency graph via `scripts/moduleviz.py`. | Platform Foundations | Nov 19 |
+| 0. Baseline | Capture current imports, add module ownership doc, set up tracker. | This tracker, dependency graph via `tools/moduleviz.py`. | Platform Foundations | Nov 19 |
 | 1. Domain Scaffolding | Create domain folders (`billing`, `signup`, etc.), add README + `__init__` barrels, wire `ruff` `per-file-ignores` for temporary mixing. | Empty folders + docs committed, no code moves yet. | Platform Foundations | Nov 21 |
 | 2. Low-Risk Moves | Relocate purely internal modules (status, tenant, user, shared) with import re-exports; run `hatch run lint`/`typecheck`. | PR with path moves + updated imports + docs. | Platform Foundations | Nov 26 |
 | 3. High-Risk Moves | Split billing/Stripe and signup/auth flows; ensure async workers + background tasks updated. | PR with billing/signup migrations, new architectural tests. | Platform Foundations | Dec 3 |

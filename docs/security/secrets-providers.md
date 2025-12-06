@@ -55,7 +55,7 @@
 ### 3.1 Vault Dev
 
 1. Run `just vault-up`. Script enables Transit and prints env exports.  
-2. Update `.env.local`/`.env.compose` with printed values.  
+2. Update `apps/api-service/.env.local`/`.env.compose` with printed values.  
 3. Boot FastAPI (`just api`) and run `just verify-vault` to smoke test CLI issuance.  
 4. Tear down with `just vault-down`. Remember storage is memory-only and root token is static.
 
@@ -84,7 +84,7 @@
 2. Store a high-entropy HMAC secret (e.g., 32+ bytes) in Secrets Manager; note its ARN.
 3. Run `starter_cli secrets onboard --provider aws_sm` to capture region, secret ARN, cache TTL, and auth method (profile, static keys, or default credentials). The CLI probes AWS immediately to validate access.
 4. CLI onboarding sets `VAULT_VERIFY_ENABLED=true` automatically so FastAPI enforces signatures.
-5. Add the emitted env vars to `.env` / `.env.local` and redeploy FastAPI plus any CLI shells.
+5. Add the emitted env vars to `apps/api-service/.env` / `apps/api-service/.env.local` and redeploy FastAPI plus any CLI shells.
 6. For compute environments with instance profiles/ECS task roles, omit profile/keys and rely on IMDS automatically.
 7. Rotate the signing secret via Secrets Manager; FastAPI will pick up the new value once the cache TTL expires (default 60s).
 

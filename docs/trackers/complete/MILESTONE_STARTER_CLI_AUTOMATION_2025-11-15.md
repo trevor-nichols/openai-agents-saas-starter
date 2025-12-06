@@ -50,7 +50,7 @@ This section captures every prerequisite a new operator must satisfy today. Each
 | Area | Manual Steps Today | Auto? | Notes/Dependencies |
 | --- | --- | --- | --- |
 | Python tooling | Install Python 3.11+, Hatch, project deps (`pip install 'api-service[dev]'`, `hatch env create`). | ⚠️ Assist | CLI can confirm Hatch + deps (via `infra deps`). Full install remains manual but add guidance/remediation text. |
-| Env file | Copy `.env.local.example` → `.env.local`, fill every secret (peppers, keys, Vault vars). | ✅ Target | Wizard already collects values; automation ensures file creation plus diff logging. |
+| Env file | Copy `apps/api-service/.env.local.example` → `apps/api-service/.env.local`, fill every secret (peppers, keys, Vault vars). | ✅ Target | Wizard already collects values; automation ensures file creation plus diff logging. |
 | Secrets & peppers | Generate `SECRET_KEY`, `AUTH_*` peppers, session salts. | ✅ Target | Wizard milestone M1 covers; ensure outputs flagged in summary with “generated” markers. |
 | Persistence config | Supply `DATABASE_URL`, `REDIS_URL`, `BILLING_EVENTS_REDIS_URL`, `AUTO_RUN_MIGRATIONS`. | ✅ Target | Wizard M2 collects; automation should validate connectivity post-compose. |
 | Providers (AI/Email) | Populate `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `RESEND_*`, etc. | ⚠️ Assist | Wizard prompts; automation limited to validation (ping key endpoints when safe). |
@@ -61,7 +61,7 @@ This section captures every prerequisite a new operator must satisfy today. Each
 ### Frontend (Next.js) – from `web-app/README.md`
 | Area | Manual Steps Today | Auto? | Notes/Dependencies |
 | --- | --- | --- | --- |
-| Node toolchain | Install Node 20+, pnpm; run `pnpm install`. | ⚠️ Assist | CLI can verify versions via `infra deps` and prompt to run `pnpm install`, but not install automatically. |
+| Node toolchain | Install Node 22+, pnpm; run `pnpm install`. | ⚠️ Assist | CLI can verify versions via `infra deps` and prompt to run `pnpm install`, but not install automatically. |
 | Env file | `web-app/.env.local` with API URL, cookies, Playwright base URL. | ✅ Target | Wizard already writes; ensure automation regenerates file when backend URL changes. |
 | API client | Run `pnpm generate` (HeyAPI). | ⚠️ Assist | Document reminder post-wizard; optional future hook but not in current milestone scope. |
 | Dev server | `pnpm dev` once backend is reachable. | ℹ️ Inform | Out of scope to auto-launch UI, but summary should list command. |
@@ -81,7 +81,7 @@ This section captures every prerequisite a new operator must satisfy today. Each
 | Vault (dev/HCP) | Choose runner via `secrets onboard vault-*`, manually export env updates. | ✅ Target | CLI to store verification metadata + optionally run `infra vault` helpers. |
 | AWS Secrets Manager / Azure Key Vault / Infisical | Run `secrets onboard <provider>`, paste outputs into env files. | ⚠️ Assist | Automation limited to capturing outputs + validation evidence; actual provisioning remains manual. |
 | Stripe | `stripe setup` interactive prompts. | ✅ Target | Embed inside wizard with resume support. |
-| Resend / Email | Manual API key creation, update `.env.local`. | ⚠️ Assist | CLI can validate API key but not create provider accounts. |
+| Resend / Email | Manual API key creation, update `apps/api-service/.env.local`. | ⚠️ Assist | CLI can validate API key but not create provider accounts. |
 
 > This inventory should stay in sync with root `README.md`, `api-service/README.md`, and `web-app/README.md`. Any new requirement uncovered during implementation must be added here first, then reflected in the relevant docs.
 

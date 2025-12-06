@@ -1,0 +1,41 @@
+name: Contracts CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Hatch
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch
+
+      - name: Install just
+        uses: taiki-e/install-action@v2
+        with:
+          tool: just
+
+      - name: Bootstrap contracts env
+        run: just -f starter_contracts/justfile bootstrap
+
+      - name: Lint
+        run: just contracts-lint
+
+      - name: Type check
+        run: just contracts-typecheck
+
+      - name: Tests
+        run: just contracts-test

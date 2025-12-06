@@ -1,5 +1,141 @@
 {
   "$defs": {
+    "MCPToolSettings": {
+      "additionalProperties": false,
+      "description": "Single hosted MCP tool definition.",
+      "properties": {
+        "allowed_tools": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional allow-list of tool names to import from the server.",
+          "title": "Allowed Tools"
+        },
+        "authorization": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Bearer/OAuth token used when calling the MCP server or connector.",
+          "title": "Authorization"
+        },
+        "auto_approve_tools": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Tools that should be auto-approved without escalation.",
+          "title": "Auto Approve Tools"
+        },
+        "connector_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "OpenAI connector id.",
+          "title": "Connector Id"
+        },
+        "deny_tools": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Tools that should always be denied (wins over auto_approve_tools).",
+          "title": "Deny Tools"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional server description shown to the model.",
+          "title": "Description"
+        },
+        "name": {
+          "description": "Registry key; referenced in agent tool_keys.",
+          "title": "Name",
+          "type": "string"
+        },
+        "require_approval": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "additionalProperties": true,
+              "type": "object"
+            }
+          ],
+          "default": "always",
+          "description": "Approval policy for the MCP tool (always, never or per-tool mapping). Defaults to 'always' for safer posture.",
+          "title": "Require Approval"
+        },
+        "server_label": {
+          "description": "Label forwarded to the MCP tool surface.",
+          "title": "Server Label",
+          "type": "string"
+        },
+        "server_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Public MCP server URL.",
+          "title": "Server Url"
+        }
+      },
+      "required": [
+        "name",
+        "server_label"
+      ],
+      "title": "MCPToolSettings",
+      "type": "object"
+    },
     "SecretsProviderLiteral": {
       "description": "Enumerates supported secrets providers.",
       "enum": [
@@ -12,10 +148,68 @@
       ],
       "title": "SecretsProviderLiteral",
       "type": "string"
+    },
+    "StorageProviderLiteral": {
+      "description": "Enumerates supported object storage providers.",
+      "enum": [
+        "minio",
+        "gcs",
+        "memory"
+      ],
+      "title": "StorageProviderLiteral",
+      "type": "string"
     }
   },
   "description": "Concrete application settings composed from mixins.",
   "properties": {
+    "ACTIVITY_EVENTS_CLEANUP_BATCH": {
+      "default": 10000,
+      "description": "Delete batch size for activity-event cleanup jobs.",
+      "minimum": 1,
+      "title": "Activity Events Cleanup Batch",
+      "type": "integer"
+    },
+    "ACTIVITY_EVENTS_CLEANUP_SLEEP_MS": {
+      "default": 0,
+      "description": "Sleep between cleanup batches in milliseconds (throttle).",
+      "minimum": 0,
+      "title": "Activity Events Cleanup Sleep Ms",
+      "type": "integer"
+    },
+    "ACTIVITY_EVENTS_REDIS_URL": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Redis URL used for activity event streaming (defaults to REDIS_URL).",
+      "title": "Activity Events Redis Url"
+    },
+    "ACTIVITY_EVENTS_TTL_DAYS": {
+      "default": 365,
+      "description": "Number of days to retain activity_events before cleanup.",
+      "minimum": 1,
+      "title": "Activity Events Ttl Days",
+      "type": "integer"
+    },
+    "ACTIVITY_STREAM_MAX_LENGTH": {
+      "default": 2048,
+      "description": "Maximum Redis stream length for activity events per tenant.",
+      "minimum": 128,
+      "title": "Activity Stream Max Length",
+      "type": "integer"
+    },
+    "ACTIVITY_STREAM_TTL_SECONDS": {
+      "default": 86400,
+      "description": "TTL applied to activity stream keys (0 disables TTL).",
+      "minimum": 0,
+      "title": "Activity Stream Ttl Seconds",
+      "type": "integer"
+    },
     "AGENT_MODEL_CODE": {
       "anyOf": [
         {
@@ -60,6 +254,12 @@
       "default": null,
       "description": "Override for the triage agent model; defaults to agent_default_model.",
       "title": "Agent Model Triage"
+    },
+    "ALLOW_ANON_FRONTEND_LOGS": {
+      "default": false,
+      "description": "Allow anonymous frontend log ingest when signature is valid.",
+      "title": "Allow Anon Frontend Logs",
+      "type": "boolean"
     },
     "ALLOW_PUBLIC_SIGNUP": {
       "default": true,
@@ -419,6 +619,45 @@
       "title": "Chat Stream Rate Limit Per Minute",
       "type": "integer"
     },
+    "CONTACT_EMAIL_EMAIL_RATE_LIMIT_PER_HOUR": {
+      "default": 3,
+      "description": "Contact form submissions allowed per email per hour.",
+      "title": "Contact Email Email Rate Limit Per Hour",
+      "type": "integer"
+    },
+    "CONTACT_EMAIL_IP_RATE_LIMIT_PER_HOUR": {
+      "default": 20,
+      "description": "Contact form submissions allowed per IP per hour.",
+      "title": "Contact Email Ip Rate Limit Per Hour",
+      "type": "integer"
+    },
+    "CONTACT_EMAIL_SUBJECT_PREFIX": {
+      "default": "[Contact]",
+      "description": "Subject prefix prepended to contact form emails.",
+      "title": "Contact Email Subject Prefix",
+      "type": "string"
+    },
+    "CONTACT_EMAIL_TEMPLATE_ID": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional Resend template ID for contact form deliveries.",
+      "title": "Contact Email Template Id"
+    },
+    "CONTACT_EMAIL_TO": {
+      "description": "Comma-separated or JSON list of recipients for contact form submissions (e.g., support@example.com,security@example.com).",
+      "items": {
+        "type": "string"
+      },
+      "title": "Contact Email To",
+      "type": "array"
+    },
     "DATABASE_URL": {
       "anyOf": [
         {
@@ -449,6 +688,12 @@
       "description": "Email verification token lifetime in minutes.",
       "title": "Email Verification Token Ttl Minutes",
       "type": "integer"
+    },
+    "ENABLE_ACTIVITY_STREAM": {
+      "default": false,
+      "description": "Enable Redis-backed SSE streaming for activity events.",
+      "title": "Enable Activity Stream",
+      "type": "boolean"
     },
     "ENABLE_BILLING_RETRY_WORKER": {
       "default": true,
@@ -497,6 +742,19 @@
       "description": "Deployment environment label (development, staging, production, etc.)",
       "title": "Environment",
       "type": "string"
+    },
+    "FRONTEND_LOG_SHARED_SECRET": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Shared secret for signed anonymous frontend logs.",
+      "title": "Frontend Log Shared Secret"
     },
     "GEOIP_CACHE_MAX_ENTRIES": {
       "default": 4096,
@@ -706,6 +964,12 @@
       "description": "Datadog site (datadoghq.com, datadoghq.eu, etc.).",
       "title": "Logging Datadog Site"
     },
+    "LOGGING_DUPLEX_ERROR_FILE": {
+      "default": false,
+      "description": "When logging_sink=stdout, also write errors to the dated error file.",
+      "title": "Logging Duplex Error File",
+      "type": "boolean"
+    },
     "LOGGING_FILE_BACKUPS": {
       "default": 5,
       "description": "Rotated backup files to retain when logging_sink=file.",
@@ -725,6 +989,13 @@
       "description": "Filesystem path for file sink when logging_sink=file.",
       "title": "Logging File Path",
       "type": "string"
+    },
+    "LOGGING_MAX_DAYS": {
+      "default": 0,
+      "description": "Prune dated log directories older than N days (0 disables pruning).",
+      "minimum": 0,
+      "title": "Logging Max Days",
+      "type": "integer"
     },
     "LOGGING_OTLP_ENDPOINT": {
       "anyOf": [
@@ -757,6 +1028,40 @@
       "description": "Logging sink (stdout, file, datadog, otlp, or none).",
       "title": "Logging Sink",
       "type": "string"
+    },
+    "LOGGING_SINKS": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Comma-separated logging sinks (stdout, file, datadog, otlp, none). Overrides LOGGING_SINK when set.",
+      "title": "Logging Sinks"
+    },
+    "LOG_ROOT": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Base directory for dated log roots (defaults to var/log).",
+      "title": "Log Root"
+    },
+    "MCP_TOOLS": {
+      "description": "Hosted MCP tool definitions registered into the tool registry.",
+      "items": {
+        "$ref": "#/$defs/MCPToolSettings"
+      },
+      "title": "Mcp Tools",
+      "type": "array"
     },
     "PASSWORD_RESET_EMAIL_RATE_LIMIT_PER_HOUR": {
       "default": 5,
@@ -864,6 +1169,27 @@
       "default": null,
       "description": "Optional Resend template ID for password reset messages.",
       "title": "Resend Password Reset Template Id"
+    },
+    "RUN_EVENTS_CLEANUP_BATCH": {
+      "default": 10000,
+      "description": "Delete batch size for run-event cleanup jobs.",
+      "minimum": 1,
+      "title": "Run Events Cleanup Batch",
+      "type": "integer"
+    },
+    "RUN_EVENTS_CLEANUP_SLEEP_MS": {
+      "default": 0,
+      "description": "Sleep between cleanup batches in milliseconds (throttle).",
+      "minimum": 0,
+      "title": "Run Events Cleanup Sleep Ms",
+      "type": "integer"
+    },
+    "RUN_EVENTS_TTL_DAYS": {
+      "default": 180,
+      "description": "Number of days to retain agent_run_events before cleanup.",
+      "minimum": 1,
+      "title": "Run Events Ttl Days",
+      "type": "integer"
     },
     "SECRETS_PROVIDER": {
       "$ref": "#/$defs/SecretsProviderLiteral",
@@ -1032,6 +1358,11 @@
       "title": "Status Subscription Webhook Timeout Seconds",
       "type": "integer"
     },
+    "STORAGE_PROVIDER": {
+      "$ref": "#/$defs/StorageProviderLiteral",
+      "default": "memory",
+      "description": "Which storage provider implementation to use (minio, gcs, memory)."
+    },
     "STRIPE_PRODUCT_PRICE_MAP": {
       "additionalProperties": {
         "type": "string"
@@ -1169,6 +1500,13 @@
       "title": "Vault Verify Enabled",
       "type": "boolean"
     },
+    "WORKFLOW_MIN_PURGE_AGE_HOURS": {
+      "default": 0,
+      "description": "Minimum age in hours before a workflow run can be hard-deleted. Set to 0 to disable the guard.",
+      "minimum": 0,
+      "title": "Workflow Min Purge Age Hours",
+      "type": "integer"
+    },
     "access_token_expire_minutes": {
       "default": 30,
       "description": "Access token expiration time in minutes",
@@ -1269,11 +1607,50 @@
       "title": "Auth Key Storage Path",
       "type": "string"
     },
+    "auto_create_vector_store_for_file_search": {
+      "default": true,
+      "description": "Automatically create a primary vector store for tenants when file_search is used.",
+      "title": "Auto Create Vector Store For File Search",
+      "type": "boolean"
+    },
+    "auto_purge_expired_vector_stores": {
+      "default": false,
+      "description": "When true, expired vector stores are deleted remotely and soft-deleted locally.",
+      "title": "Auto Purge Expired Vector Stores",
+      "type": "boolean"
+    },
     "auto_run_migrations": {
       "default": false,
       "description": "Automatically run Alembic migrations on startup (dev convenience)",
       "title": "Auto Run Migrations",
       "type": "boolean"
+    },
+    "container_allowed_memory_tiers": {
+      "description": "Allowed memory tiers for explicit containers.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Container Allowed Memory Tiers",
+      "type": "array"
+    },
+    "container_default_auto_memory": {
+      "default": "1g",
+      "description": "Default memory tier for auto containers when not specified (1g,4g,16g,64g).",
+      "title": "Container Default Auto Memory",
+      "type": "string"
+    },
+    "container_fallback_to_auto_on_missing_binding": {
+      "default": true,
+      "description": "When True, agent runs fall back to auto container if an explicit binding is missing or expired; when False, runs will error.",
+      "title": "Container Fallback To Auto On Missing Binding",
+      "type": "boolean"
+    },
+    "container_max_containers_per_tenant": {
+      "default": 10,
+      "description": "Maximum explicit containers a tenant may create.",
+      "minimum": 1,
+      "title": "Container Max Containers Per Tenant",
+      "type": "integer"
     },
     "database_echo": {
       "default": false,
@@ -1323,6 +1700,83 @@
       "title": "Enable Billing",
       "type": "boolean"
     },
+    "enable_vector_store_sync_worker": {
+      "default": true,
+      "description": "Run background sync worker to refresh vector store/file status and expiry. Set false only for constrained/local dev.",
+      "title": "Enable Vector Store Sync Worker",
+      "type": "boolean"
+    },
+    "gcs_bucket": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Default bucket name when using GCS provider.",
+      "title": "Gcs Bucket"
+    },
+    "gcs_credentials_json": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Inline JSON credentials for GCS (service account). Optional if using ADC or credentials path.",
+      "title": "Gcs Credentials Json"
+    },
+    "gcs_credentials_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Path to GCS credentials JSON file.",
+      "title": "Gcs Credentials Path"
+    },
+    "gcs_project_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "GCP project ID for GCS operations.",
+      "title": "Gcs Project Id"
+    },
+    "gcs_signing_email": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Service account email used for V4 signed URLs (GCS).",
+      "title": "Gcs Signing Email"
+    },
+    "gcs_uniform_access": {
+      "default": true,
+      "description": "Assume uniform bucket-level access (UBLA) is enabled.",
+      "title": "Gcs Uniform Access",
+      "type": "boolean"
+    },
     "gemini_api_key": {
       "anyOf": [
         {
@@ -1336,6 +1790,68 @@
       "description": "Google Gemini API key",
       "title": "Gemini Api Key"
     },
+    "image_allowed_formats": {
+      "description": "Whitelisted output formats accepted from the image tool.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Image Allowed Formats",
+      "type": "array"
+    },
+    "image_default_background": {
+      "default": "auto",
+      "description": "Default background mode (auto, opaque, transparent).",
+      "title": "Image Default Background",
+      "type": "string"
+    },
+    "image_default_compression": {
+      "anyOf": [
+        {
+          "maximum": 100,
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional default compression level (0-100) for jpeg/webp; None lets provider choose.",
+      "title": "Image Default Compression"
+    },
+    "image_default_format": {
+      "default": "png",
+      "description": "Default image format (png, jpeg, webp).",
+      "title": "Image Default Format",
+      "type": "string"
+    },
+    "image_default_quality": {
+      "default": "high",
+      "description": "Default quality for image generation (auto, low, medium, high).",
+      "title": "Image Default Quality",
+      "type": "string"
+    },
+    "image_default_size": {
+      "default": "1024x1024",
+      "description": "Default output size for image generation tool (supports auto, 1024x1024, 1024x1536, 1536x1024).",
+      "title": "Image Default Size",
+      "type": "string"
+    },
+    "image_max_partial_images": {
+      "default": 2,
+      "description": "Maximum partial images to stream when enabled (0-3).",
+      "maximum": 3,
+      "minimum": 0,
+      "title": "Image Max Partial Images",
+      "type": "integer"
+    },
+    "image_output_max_mb": {
+      "default": 6,
+      "description": "Hard cap on decoded image size in megabytes to avoid large inline payloads.",
+      "minimum": 1,
+      "title": "Image Output Max Mb",
+      "type": "integer"
+    },
     "jwt_algorithm": {
       "default": "HS256",
       "description": "JWT algorithm",
@@ -1347,6 +1863,64 @@
       "description": "Logging level",
       "title": "Log Level",
       "type": "string"
+    },
+    "minio_access_key": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "MinIO access key.",
+      "title": "Minio Access Key"
+    },
+    "minio_endpoint": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "MinIO endpoint (http(s)://host:port). Required when storage_provider=minio.",
+      "title": "Minio Endpoint"
+    },
+    "minio_region": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "MinIO region (optional).",
+      "title": "Minio Region"
+    },
+    "minio_secret_key": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "MinIO secret key.",
+      "title": "Minio Secret Key"
+    },
+    "minio_secure": {
+      "default": true,
+      "description": "Use HTTPS when connecting to MinIO.",
+      "title": "Minio Secure",
+      "type": "boolean"
     },
     "openai_api_key": {
       "anyOf": [
@@ -1398,7 +1972,15 @@
       "title": "Signup Default Trial Days",
       "type": "integer"
     },
-    "tavily_api_key": {
+    "storage_allowed_mime_types": {
+      "description": "Allowed MIME types for uploaded objects.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Storage Allowed Mime Types",
+      "type": "array"
+    },
+    "storage_bucket_prefix": {
       "anyOf": [
         {
           "type": "string"
@@ -1407,9 +1989,79 @@
           "type": "null"
         }
       ],
+      "default": "agent-data",
+      "description": "Prefix used when creating tenant buckets/prefixes.",
+      "title": "Storage Bucket Prefix"
+    },
+    "storage_max_file_mb": {
+      "default": 512,
+      "description": "Maximum upload size enforced by the service (MB).",
+      "minimum": 1,
+      "title": "Storage Max File Mb",
+      "type": "integer"
+    },
+    "storage_signed_url_ttl_seconds": {
+      "default": 900,
+      "description": "TTL (seconds) for presigned URLs returned to clients.",
+      "minimum": 60,
+      "title": "Storage Signed Url Ttl Seconds",
+      "type": "integer"
+    },
+    "vector_allowed_mime_types": {
+      "description": "Allowed MIME types for vector store file attachments (mirrors OpenAI docs).",
+      "items": {
+        "type": "string"
+      },
+      "title": "Vector Allowed Mime Types",
+      "type": "array"
+    },
+    "vector_max_file_mb": {
+      "default": 512,
+      "description": "Max file size (MB) allowed when attaching to a vector store.",
+      "minimum": 1,
+      "title": "Vector Max File Mb",
+      "type": "integer"
+    },
+    "vector_max_files_per_store": {
+      "default": 5000,
+      "description": "Max number of files per vector store.",
+      "minimum": 1,
+      "title": "Vector Max Files Per Store",
+      "type": "integer"
+    },
+    "vector_max_stores_per_tenant": {
+      "default": 10,
+      "description": "Max number of vector stores per tenant.",
+      "minimum": 1,
+      "title": "Vector Max Stores Per Tenant",
+      "type": "integer"
+    },
+    "vector_max_total_bytes": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "default": null,
-      "description": "Tavily web search API key",
-      "title": "Tavily Api Key"
+      "description": "Optional per-tenant hard cap on total bytes across vector stores. None disables.",
+      "title": "Vector Max Total Bytes"
+    },
+    "vector_store_sync_batch_size": {
+      "default": 20,
+      "description": "Maximum stores refreshed per sync iteration.",
+      "minimum": 1,
+      "title": "Vector Store Sync Batch Size",
+      "type": "integer"
+    },
+    "vector_store_sync_poll_seconds": {
+      "default": 60.0,
+      "description": "Polling interval for vector store sync worker.",
+      "minimum": 5.0,
+      "title": "Vector Store Sync Poll Seconds",
+      "type": "number"
     },
     "xai_api_key": {
       "anyOf": [

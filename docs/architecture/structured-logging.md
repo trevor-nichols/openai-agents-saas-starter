@@ -37,6 +37,11 @@
 
 Context + event-specific keys are flattened at the top level except for `fields`, which groups mutable data that changes per event. This keeps indexes predictable while still allowing rich metadata.
 
+### Agent chat event fields (new)
+- `event`: `agent.chat.start` / `agent.chat.end` / `agent.chat_stream.start` / `agent.chat_stream.end`
+- Keys: `conversation_id` (our UUID), `provider_conversation_id` (`conv_*` when present), `tenant_id`, `agent`, `response_id` (end events only)
+- Purpose: correlate provider-hosted OpenAI Conversation state with our durable conversation threads and trace usage/latency per tenant.
+
 ## 3. Context Propagation Contract
 
 - Introduce `log_context` helpers backed by a `contextvars.ContextVar` to store `correlation_id`, `tenant_id`, `provider`, `worker_id`, etc.
@@ -46,12 +51,14 @@ Context + event-specific keys are flattened at the top level except for `fields`
 
 ## 4. Sink Configuration Strategy
 
-- `configure_logging(settings)` centralizes `logging.config.dictConfig` so both FastAPI (`api-service/main.py`) and worker entry points can initialize logging consistently.
+- `configure_logging(settings)` centralizes `logging.config.dictConfig` so both FastAPI (`api-service/src/main.py`) and worker entry points can initialize logging consistently.
+- Multiple sinks are allowed. Use `LOGGING_SINKS` as a comma-separated list (e.g., `stdout,file`, `file,datadog`, `stdout,file,otlp`). If unset, the legacy `LOGGING_SINK` single value is honored for backward compatibility.
 - Supported sinks for OBS-006:
   - `stdout` (default): single `StreamHandler` → JSON formatter.
+  - `file`: rotating JSON logs under `var/log/<YYYY-MM-DD>/api/{all,error}.log` (or `LOGGING_FILE_PATH` / `LOG_ROOT`).
   - `datadog`: custom HTTP handler posts batches to `https://http-intake.logs.<site>/api/v2/logs` using `LOGGING_DATADOG_API_KEY`.
   - `otlp`: OTLP/HTTP handler posts JSON payloads to `LOGGING_OTLP_ENDPOINT` with optional headers JSON.
-  - `none`: attaches a `NullHandler` (tests/benchmarks).
+  - `none`: attaches a `NullHandler` (mutually exclusive; cannot be combined with other sinks).
 - Future sinks (Kafka, S3) would plug into the same factory without changing callers.
 
 ## 5. Failure Handling
@@ -63,7 +70,7 @@ Context + event-specific keys are flattened at the top level except for `fields`
 ## 6. Implementation Checklist
 
 1. Add context helpers + JSON formatter + sink factory in `app/observability/logging.py`.
-2. Wire `configure_logging(settings)` inside `api-service/main.py` before the FastAPI app instantiates middleware; expose the same helper for worker entry points.
+2. Wire `configure_logging(settings)` inside `api-service/src/main.py` before the FastAPI app instantiates middleware; expose the same helper for worker entry points.
 3. Update `app/middleware/logging.py` to rely on `log_event` and scoped log context rather than string formatting.
 4. Expand rate-limit + Stripe worker instrumentation to include `correlation_id`, `tenant_id`, and worker metadata (covered by follow-up tests once sinks are live).
 5. Document operational guidance here and reference it from `docs/trackers/ISSUE_TRACKER.md`.

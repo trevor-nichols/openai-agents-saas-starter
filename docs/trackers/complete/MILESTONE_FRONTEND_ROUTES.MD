@@ -13,7 +13,7 @@ tags:
 
 ## Goal
 
-Bridge every backend HTTP endpoint documented in `api-service/app/api/ENDPOINTS.md` with a production-ready entry point in the Next.js frontend so web clients and server actions never need to bypass the App Router layer.
+Bridge every backend HTTP endpoint documented in `api-service/src/app/api/ENDPOINTS.md` with a production-ready entry point in the Next.js frontend so web clients and server actions never need to bypass the App Router layer.
 
 ## Scope
 
@@ -58,7 +58,7 @@ Bridge every backend HTTP endpoint documented in `api-service/app/api/ENDPOINTS.
 | `POST /api/v1/auth/password/forgot` | `app/api/auth/password/forgot/route.ts` | Password reset request proxy; Vitest coverage added. |
 | `POST /api/v1/auth/password/confirm` | `app/api/auth/password/confirm/route.ts` | Password reset confirmation proxy; Vitest coverage added. |
 | `POST /api/v1/auth/password/change` | `app/api/auth/password/change/route.ts` | Password change proxy; Vitest coverage added. |
-| `POST /api/v1/auth/password/reset` | `app/api/auth/password/admin-reset/route.ts` | Admin password reset proxy; scope-guarded with Vitest coverage. |
+| `POST /api/v1/auth/password/reset` | `app/api/v1/auth/password/reset/route.ts` | Admin password reset proxy; scope-guarded with Vitest coverage. |
 | `POST /api/v1/auth/service-accounts/issue` | `app/api/auth/service-accounts/issue/route.ts` | Service-account issuance proxy; Vitest coverage added. |
 | `POST /api/v1/auth/register` | `app/api/auth/register/route.ts` | Tenant registration proxy that persists session cookies; Vitest coverage added. |
 
