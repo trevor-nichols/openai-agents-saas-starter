@@ -1,7 +1,7 @@
 """add agent_run_usage table and cached token aggregates
 
-Revision ID: 20251207_230000_add_agent_run_usage
-Revises: 20251207_213000_make_memory_flags_nullable
+Revision ID: 20251207_230000
+Revises: 20251207_203000
 Create Date: 2025-12-07 23:00:00.000000
 """
 
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = "20251207_230000_add_agent_run_usage"
-down_revision = "20251207_213000_make_memory_flags_nullable"
+revision = "20251207_230000"
+down_revision = "20251207_203000"
 branch_labels = None
 depends_on = None
 
