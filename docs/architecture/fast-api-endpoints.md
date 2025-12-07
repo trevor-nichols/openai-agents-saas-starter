@@ -374,6 +374,9 @@
 - `StoragePresignUploadResponse` (object)
 - `StreamingChatEvent` (object)
 - `StreamingWorkflowEvent` (object)
+
+Streaming event notes:
+- `run_item_type` is the semantic classification (`user_message`, `assistant_message`, `tool_call`, `tool_result`, etc.). We also emit lifecycle `memory_compaction` events (`kind=response.memory.compacted`, `run_item_type=memory_compaction`) when a compact strategy rewrites the SDK session. Payload keys include `compacted_count`, `compacted_call_ids`, `compacted_tool_names`, `keep_turns`, `trigger_turns`, `clear_tool_inputs`, `excluded_tools`, `total_items_before/after`, `turns_before/after`. Clients may safely ignore unknown kinds.
 - `StripeEventStatus` (string)
 - `SuccessResponse` (object)
 - `TenantSettingsResponse` (object)

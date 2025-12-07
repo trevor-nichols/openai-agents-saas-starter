@@ -238,6 +238,26 @@ class AgentService:
             usage=result.usage,
         )
 
+        if ctx.compaction_events:
+            try:
+                await self._event_projector.ingest_session_items(
+                    conversation_id=ctx.conversation_id,
+                    tenant_id=actor.tenant_id,
+                    session_items=
+                    [AgentStreamEvent._to_mapping(ev) or {} for ev in ctx.compaction_events],
+                    agent=ctx.descriptor.key,
+                    model=ctx.descriptor.model,
+                    response_id=result.response_id,
+                )
+            except Exception:  # pragma: no cover - defensive
+                logger.exception(
+                    "compaction_event_projection_failed",
+                    extra={
+                        "conversation_id": ctx.conversation_id,
+                        "tenant_id": actor.tenant_id,
+                    },
+                )
+
         await project_new_session_items(
             event_projector=self._event_projector,
             session_handle=ctx.session_handle,
@@ -275,6 +295,13 @@ class AgentService:
         *,
         actor: ConversationActorContext,
     ) -> AsyncGenerator[AgentStreamEvent, None]:
+        lifecycle_bus = LifecycleEventBus()
+        compaction_events: list[AgentStreamEvent] = []
+
+        async def _emit_compaction(event: AgentStreamEvent) -> None:
+            await lifecycle_bus.emit(event)
+            compaction_events.append(event)
+
         ctx = await prepare_run_context(
             actor=actor,
             request=request,
@@ -287,6 +314,7 @@ class AgentService:
             )
             if request.conversation_id
             else None,
+            compaction_emitter=_emit_compaction,
         )
 
         await record_user_message(
@@ -329,7 +357,6 @@ class AgentService:
             # prevent duplicate items being sent (Responses API 400 on duplicate ids).
             runtime_conversation_id = None
 
-            lifecycle_bus = LifecycleEventBus()
             with trace(workflow_name="Agent Chat Stream", group_id=ctx.conversation_id):
                 stream_handle = ctx.provider.runtime.run_stream(
                     ctx.descriptor.key,
@@ -441,6 +468,26 @@ class AgentService:
             response_id=getattr(stream_handle, "last_response_id", None),
             usage=getattr(stream_handle, "usage", None),
         )
+
+        if ctx.compaction_events:
+            try:
+                await self._event_projector.ingest_session_items(
+                    conversation_id=ctx.conversation_id,
+                    tenant_id=actor.tenant_id,
+                    session_items=
+                    [AgentStreamEvent._to_mapping(ev) or {} for ev in ctx.compaction_events],
+                    agent=ctx.descriptor.key,
+                    model=ctx.descriptor.model,
+                    response_id=getattr(stream_handle, "last_response_id", None),
+                )
+            except Exception:  # pragma: no cover - defensive
+                logger.exception(
+                    "compaction_event_projection_failed",
+                    extra={
+                        "conversation_id": ctx.conversation_id,
+                        "tenant_id": actor.tenant_id,
+                    },
+                )
 
         await project_new_session_items(
             event_projector=self._event_projector,

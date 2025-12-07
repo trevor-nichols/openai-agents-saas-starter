@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Awaitable, Callable, Mapping
 from datetime import UTC, datetime
 from typing import Any
 
@@ -80,6 +81,7 @@ class SessionManager:
         provider_conversation_id: str | None,
         memory_strategy: MemoryStrategyConfig | None = None,
         agent_key: str | None = None,
+        on_compaction: Callable[[Mapping[str, Any]], Awaitable[None]] | None = None,
     ) -> tuple[str, Any]:
         state = await self._conversation_service.get_session_state(
             conversation_id, tenant_id=tenant_id
@@ -111,6 +113,7 @@ class SessionManager:
                 session_handle,
                 memory_strategy,
                 on_summary=on_summary,
+                on_compaction=on_compaction,
             )
             logger.info(
                 "session.memory_strategy_applied",

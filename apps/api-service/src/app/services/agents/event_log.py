@@ -56,10 +56,15 @@ class EventProjector:
         response_id: str | None,
         workflow_run_id: str | None,
     ) -> ConversationEvent | None:
-        item_type = str(item.get("type") or "unknown")
+        explicit_run_item_type = item.get("run_item_type")
+        item_type = str(item.get("type") or explicit_run_item_type or "unknown")
         role = item.get("role")
         role_literal = role if role in {"user", "assistant", "system"} else None
-        run_item_type = _classify_item_type(item_type, role_literal)
+        run_item_type = (
+            str(explicit_run_item_type)
+            if explicit_run_item_type
+            else _classify_item_type(item_type, role_literal)
+        )
 
         tool_call_id = item.get("tool_call_id") or item.get("id") or None
         tool_name = item.get("tool_name") or item.get("name") or None

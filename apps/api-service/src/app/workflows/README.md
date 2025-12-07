@@ -13,6 +13,7 @@ Runtime behavior (see `services/workflows/runner.py`):
 - Entire workflow runs inside `agents.trace` for unified observability.
 - Sequential stages behave like the prior implementation.
 - Parallel stages use `asyncio.gather` (sync) or multiplexed streams (streaming) and tag results with `stage_name`, `parallel_group`, `branch_index`.
+- Memory strategies: Workflows do **not** declare memory settings. Each step inherits the agent's resolved memory configuration (request → conversation → agent spec defaults). If a step calls an agent with trim/summarize/compact enabled, that run uses the strategy automatically; other agents in the same workflow keep their own defaults. Prompt summaries are injected per agent run when enabled; there is no cross-agent handoff-based summarizer.
 
 Example (fan-out + synthesis):
 

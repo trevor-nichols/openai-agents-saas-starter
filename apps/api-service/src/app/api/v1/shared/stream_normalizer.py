@@ -88,6 +88,7 @@ def normalize_stream_event(
 
     return StreamingEvent(
         kind=event.kind,
+        run_item_type=event.run_item_type,
         workflow_key=workflow_meta.get("workflow_key"),
         workflow_run_id=workflow_meta.get("workflow_run_id"),
         step_name=workflow_meta.get("step_name"),
@@ -101,7 +102,6 @@ def normalize_stream_event(
         sequence_number=event.sequence_number,
         raw_type=event.raw_type,
         run_item_name=event.run_item_name,
-        run_item_type=event.run_item_type,
         tool_call_id=event.tool_call_id,
         tool_name=event.tool_name,
         agent=event.agent,

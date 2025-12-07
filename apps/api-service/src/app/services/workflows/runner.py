@@ -18,6 +18,7 @@ from app.services.agents.context import ConversationActorContext
 from app.services.agents.event_log import EventProjector
 from app.services.agents.interaction_context import InteractionContextBuilder
 from app.services.agents.provider_registry import AgentProviderRegistry, get_provider_registry
+from app.services.agents.run_pipeline import _compute_session_delta
 from app.services.conversation_service import ConversationService, get_conversation_service
 from app.services.workflows.recording import WorkflowRunRecorder
 from app.services.workflows.stages import run_parallel_stage, run_sequential_stage
@@ -88,7 +89,11 @@ class WorkflowRunner:
         )
         if not post_items:
             return
-        delta = post_items if session_items is not None else post_items[len(pre_items) :]
+        delta = (
+            post_items
+            if session_items is not None
+            else _compute_session_delta(pre_items, post_items)
+        )
         if not delta:
             return
         try:

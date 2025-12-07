@@ -14,11 +14,12 @@ import json
 import logging
 import uuid
 from collections import Counter
-from collections.abc import Iterable, Mapping
+from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
 from app.api.v1.chat.schemas import AgentChatRequest
+from app.domain.ai.models import AgentStreamEvent
 from app.domain.conversations import ConversationMessage, ConversationMetadata
 from app.infrastructure.providers.openai.memory import MemoryStrategy, MemoryStrategyConfig
 from app.services.agents.context import ConversationActorContext
@@ -41,6 +42,7 @@ class RunContext:
     runtime_ctx: Any
     pre_session_items: list[dict[str, Any]]
     existing_state: Any
+    compaction_events: list[AgentStreamEvent]
 
 
 async def prepare_run_context(
@@ -53,6 +55,7 @@ async def prepare_run_context(
     session_manager: SessionManager,
     provider_conversation_id: str | None = None,
     conversation_memory: Any | None = None,
+    compaction_emitter: Callable[[AgentStreamEvent], Awaitable[None]] | None = None,
 ) -> RunContext:
     """Resolve provider + session state used by both sync and streaming flows."""
 
@@ -66,6 +69,7 @@ async def prepare_run_context(
         conversation_id=conversation_id,
         agent_keys=[descriptor.key],
     )
+    compaction_events: list[AgentStreamEvent] = []
     # Cross-session memory injection (prompt-level)
     inject_memory = resolve_memory_injection(
         request,
@@ -90,6 +94,19 @@ async def prepare_run_context(
         agent_defaults=getattr(descriptor, "memory_strategy_defaults", None),
     )
 
+    async def _on_compaction(payload: Mapping[str, Any]) -> None:
+        event = AgentStreamEvent(
+            kind="lifecycle",
+            event="memory_compaction",
+            run_item_type="memory_compaction",
+            agent=descriptor.key,
+            conversation_id=conversation_id,
+            payload=dict(payload),
+        )
+        if compaction_emitter:
+            await compaction_emitter(event)
+        compaction_events.append(event)
+
     session_id, session_handle = await session_manager.acquire_session(
         provider,
         actor.tenant_id,
@@ -97,6 +114,9 @@ async def prepare_run_context(
         provider_conversation_id,
         memory_strategy=memory_cfg,
         agent_key=descriptor.key,
+        on_compaction=(
+            _on_compaction if memory_cfg and memory_cfg.mode == MemoryStrategy.COMPACT else None
+        ),
     )
 
     pre_session_items = await get_session_items(session_handle)
@@ -112,6 +132,7 @@ async def prepare_run_context(
         runtime_ctx=runtime_ctx,
         pre_session_items=pre_session_items,
         existing_state=existing_state,
+        compaction_events=compaction_events,
     )
 
 

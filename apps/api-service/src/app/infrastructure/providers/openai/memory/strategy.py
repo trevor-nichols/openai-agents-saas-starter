@@ -11,7 +11,7 @@ import math
 from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, cast
+from typing import Any, Literal, cast, overload
 
 from agents.memory.session import SessionABC
 
@@ -66,11 +66,13 @@ class StrategySession(SessionABC):
         config: MemoryStrategyConfig,
         *,
         on_summary: Callable[[str], Awaitable[None]] | None = None,
+        on_compaction: Callable[[Mapping[str, Any]], Awaitable[None]] | None = None,
     ) -> None:
         self._base = base
         self._config = config
         self._summarizer: Summarizer = config.summarizer or NoopSummarizer()
         self._on_summary = on_summary
+        self._on_compaction = on_compaction
 
     # SessionABC API -------------------------------------------------
     async def get_items(self, limit: int | None = None):
@@ -111,13 +113,17 @@ class StrategySession(SessionABC):
                 on_summary=self._on_summary,
             )
         if mode == MemoryStrategy.COMPACT:
-            return _compact_items(
+            compacted, details = _compact_items(
                 items,
                 trigger_turns=self._config.compact_trigger_turns,
                 keep=self._config.compact_keep,
                 clear_tool_inputs=self._config.compact_clear_tool_inputs,
                 exclude_tools=self._config.compact_exclude_tools,
+                return_details=True,
             )
+            if details and self._on_compaction:
+                await self._on_compaction(details)
+            return compacted
         return items
 
 
@@ -255,6 +261,7 @@ def _tool_name(item: Mapping[str, Any]) -> str | None:
     return name if isinstance(name, str) else None
 
 
+@overload
 def _compact_items(
     items: list[dict[str, Any]],
     *,
@@ -262,17 +269,45 @@ def _compact_items(
     keep: int,
     clear_tool_inputs: bool,
     exclude_tools: Iterable[str],
+    return_details: Literal[True],
+) -> tuple[list[dict[str, Any]], Mapping[str, Any] | None]:
+    ...
+
+
+@overload
+def _compact_items(
+    items: list[dict[str, Any]],
+    *,
+    trigger_turns: int | None,
+    keep: int,
+    clear_tool_inputs: bool,
+    exclude_tools: Iterable[str],
+    return_details: Literal[False] = False,
 ) -> list[dict[str, Any]]:
+    ...
+
+
+def _compact_items(
+    items: list[dict[str, Any]],
+    *,
+    trigger_turns: int | None,
+    keep: int,
+    clear_tool_inputs: bool,
+    exclude_tools: Iterable[str],
+    return_details: bool = False,
+) -> tuple[list[dict[str, Any]], Mapping[str, Any] | None] | list[dict[str, Any]]:
     if trigger_turns is None or trigger_turns <= 0:
-        return items
+        return (items, None) if return_details else items
 
     turns = _group_by_turns(items)
     if len(turns) <= trigger_turns:
-        return items
+        return (items, None) if return_details else items
 
     exclude = {t.lower() for t in exclude_tools}
     protected_turns = {tuple(t) for t in turns[-max(1, keep) :]} if keep > 0 else set()
     indices_to_compact: set[int] = set()
+    compacted_call_ids: list[str] = []
+    compacted_tool_names: list[str] = []
 
     for turn in turns:
         if tuple(turn) in protected_turns:
@@ -284,9 +319,15 @@ def _compact_items(
                 continue
             if _is_tool_result(item) or (clear_tool_inputs and _is_tool_call(item)):
                 indices_to_compact.add(idx)
+                call_id = _call_id(item)
+                if call_id:
+                    compacted_call_ids.append(str(call_id))
+                tool_name = name or "tool"
+                if tool_name:
+                    compacted_tool_names.append(str(tool_name))
 
     if not indices_to_compact:
-        return items
+        return (items, None) if return_details else items
 
     new_items: list[dict[str, Any]] = []
     for idx, item in enumerate(items):
@@ -302,7 +343,24 @@ def _compact_items(
         new_item["type"] = "function_call_output"
         new_item["compacted"] = True
         new_items.append(new_item)
-    return new_items
+    if not return_details:
+        return new_items
+
+    details = {
+        "strategy": "compact",
+        "compacted_count": len(indices_to_compact),
+        "compacted_call_ids": compacted_call_ids,
+        "compacted_tool_names": compacted_tool_names,
+        "keep_turns": keep,
+        "trigger_turns": trigger_turns,
+        "clear_tool_inputs": clear_tool_inputs,
+        "excluded_tools": sorted(exclude) if exclude else [],
+        "total_items_before": len(items),
+        "total_items_after": len(new_items),
+        "turns_before": len(turns),
+        "turns_after": len(_group_by_turns(new_items)),
+    }
+    return new_items, details
 
 
 def _placeholder(*, kind: str, name: str, call_id: str) -> str:
