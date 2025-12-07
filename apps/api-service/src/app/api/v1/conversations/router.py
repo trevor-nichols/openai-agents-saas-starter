@@ -14,6 +14,7 @@ from app.api.v1.conversations.schemas import (
     ConversationEventsResponse,
     ConversationHistory,
     ConversationListResponse,
+    ConversationMetaEvent,
     ConversationSearchResponse,
     ConversationSearchResult,
     PaginatedMessagesResponse,
@@ -269,7 +270,11 @@ async def get_conversation_events(
     )
 
 
-@router.get("/{conversation_id}/stream", responses={200: META_STREAM_RESPONSE})
+@router.get(
+    "/{conversation_id}/stream",
+    response_model=ConversationMetaEvent,
+    responses={200: META_STREAM_RESPONSE},
+)
 async def stream_conversation_metadata(
     conversation_id: str,
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:read")),

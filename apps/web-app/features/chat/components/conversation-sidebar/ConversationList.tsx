@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import type { ConversationListItem } from '@/types/conversations';
 import { cn } from '@/lib/utils';
+import { formatConversationFallbackTitle } from '../../utils/formatters';
 
 import type { DateGroup } from '../../utils/conversationGrouping';
 
@@ -15,7 +16,10 @@ interface ConversationItemProps {
 }
 
 export function ConversationItem({ conversation, isActive, onSelect, onDelete }: ConversationItemProps) {
-  const title = conversation.title?.trim() || conversation.topic_hint?.trim() || 'New Conversation';
+  const title =
+    conversation.title?.trim() ||
+    conversation.topic_hint?.trim() ||
+    formatConversationFallbackTitle(conversation.updated_at ?? conversation.created_at);
 
   return (
     <li className="group relative w-full min-w-0">

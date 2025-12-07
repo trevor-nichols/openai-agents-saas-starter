@@ -40,7 +40,13 @@ export async function fetchConversationsPage(params?: {
 
   const result = (await response.json()) as ConversationListPage;
   return {
-    items: result.items ?? [],
+    items:
+      result.items?.map((item) => ({
+        ...item,
+        display_name: item.display_name ?? null,
+        display_name_pending: item.display_name_pending ?? false,
+        title: item.display_name ?? item.topic_hint ?? item.last_message_preview ?? null,
+      })) ?? [],
     next_cursor: result.next_cursor ?? null,
   };
 }
@@ -76,6 +82,8 @@ export async function searchConversations(params: {
   const result = (await response.json()) as {
     items?: Array<{
       conversation_id: string;
+      display_name?: string | null;
+      display_name_pending?: boolean;
       agent_entrypoint?: string | null;
       active_agent?: string | null;
       topic_hint?: string | null;
@@ -91,6 +99,8 @@ export async function searchConversations(params: {
   return {
     items: (result.items ?? []).map((item) => ({
       conversation_id: item.conversation_id,
+      display_name: item.display_name ?? null,
+      display_name_pending: item.display_name_pending ?? false,
       agent_entrypoint: item.agent_entrypoint ?? null,
       active_agent: item.active_agent ?? null,
       topic_hint: item.topic_hint ?? null,

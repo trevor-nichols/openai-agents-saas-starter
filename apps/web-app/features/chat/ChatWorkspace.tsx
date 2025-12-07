@@ -44,6 +44,7 @@ export function ChatWorkspace() {
     clearError,
     retryMessages,
     currentConversationId,
+    currentConversationTitle,
     selectedAgent,
     selectedAgentLabel,
     toolDrawerOpen,
@@ -142,7 +143,7 @@ export function ChatWorkspace() {
               headerProps={{
                 eyebrow: CHAT_COPY.header.eyebrow,
                 title: CHAT_COPY.header.title,
-                description: formatConversationLabel(currentConversationId),
+                description: formatConversationLabel(currentConversationId, currentConversationTitle),
                 actions: (
                   <div className="flex items-center gap-2">
                     <InlineTag tone={agentsError ? 'warning' : activeAgents ? 'positive' : 'default'}>

@@ -993,6 +993,12 @@ export type ConversationHistory = {
    */
   conversation_id: string;
   /**
+   * Display Name
+   *
+   * Generated or assigned title.
+   */
+  display_name?: string | null;
+  /**
    * Messages
    *
    * Complete message history.
@@ -1039,6 +1045,38 @@ export type ConversationListResponse = {
 };
 
 /**
+ * ConversationMetaEvent
+ *
+ * Metadata stream event for a conversation.
+ */
+export type ConversationMetaEvent = {
+  /**
+   * Kind
+   *
+   * Event type, e.g., conversation.title.generated
+   */
+  kind: string;
+  /**
+   * Conversation Id
+   *
+   * Conversation identifier.
+   */
+  conversation_id: string;
+  /**
+   * Display Name
+   *
+   * Generated conversation title.
+   */
+  display_name?: string | null;
+  /**
+   * Timestamp
+   *
+   * Server timestamp.
+   */
+  timestamp?: string | null;
+};
+
+/**
  * ConversationSearchResponse
  *
  * Paginated search results.
@@ -1068,6 +1106,12 @@ export type ConversationSearchResult = {
    * Conversation identifier.
    */
   conversation_id: string;
+  /**
+   * Display Name
+   *
+   * Generated conversation title.
+   */
+  display_name?: string | null;
   /**
    * Agent Entrypoint
    *
@@ -1130,6 +1174,12 @@ export type ConversationSummary = {
    * Conversation identifier.
    */
   conversation_id: string;
+  /**
+   * Display Name
+   *
+   * Generated conversation title.
+   */
+  display_name?: string | null;
   /**
    * Agent Entrypoint
    *
@@ -3093,6 +3143,10 @@ export type StreamingChatEvent = {
    */
   new_agent?: string | null;
   /**
+   * Display Name
+   */
+  display_name?: string | null;
+  /**
    * Text Delta
    */
   text_delta?: string | null;
@@ -3244,6 +3298,10 @@ export type StreamingWorkflowEvent = {
    * New Agent
    */
   new_agent?: string | null;
+  /**
+   * Display Name
+   */
+  display_name?: string | null;
   /**
    * Text Delta
    */
@@ -6610,6 +6668,51 @@ export type GetConversationEventsApiV1ConversationsConversationIdEventsGetRespon
 
 export type GetConversationEventsApiV1ConversationsConversationIdEventsGetResponse =
   GetConversationEventsApiV1ConversationsConversationIdEventsGetResponses[keyof GetConversationEventsApiV1ConversationsConversationIdEventsGetResponses];
+
+export type StreamConversationMetadataApiV1ConversationsConversationIdStreamGetData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Conversation Id
+       */
+      conversation_id: string;
+    };
+    query?: never;
+    url: "/api/v1/conversations/{conversation_id}/stream";
+  };
+
+export type StreamConversationMetadataApiV1ConversationsConversationIdStreamGetErrors =
+  {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+  };
+
+export type StreamConversationMetadataApiV1ConversationsConversationIdStreamGetError =
+  StreamConversationMetadataApiV1ConversationsConversationIdStreamGetErrors[keyof StreamConversationMetadataApiV1ConversationsConversationIdStreamGetErrors];
+
+export type StreamConversationMetadataApiV1ConversationsConversationIdStreamGetResponses =
+  {
+    /**
+     * Server-sent events stream for conversation metadata updates.
+     */
+    200: ConversationMetaEvent;
+  };
+
+export type StreamConversationMetadataApiV1ConversationsConversationIdStreamGetResponse =
+  StreamConversationMetadataApiV1ConversationsConversationIdStreamGetResponses[keyof StreamConversationMetadataApiV1ConversationsConversationIdStreamGetResponses];
 
 export type ListAvailableToolsApiV1ToolsGetData = {
   body?: never;

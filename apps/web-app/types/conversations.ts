@@ -8,6 +8,8 @@ import type {
 
 export interface ConversationListItem {
   id: string;
+  display_name?: string | null;
+  display_name_pending?: boolean;
   agent_entrypoint?: string | null;
   active_agent?: string | null;
   title?: string | null;
@@ -33,6 +35,8 @@ export interface ConversationListPage {
 
 export interface ConversationSearchResultItem {
   conversation_id: string;
+  display_name?: string | null;
+  display_name_pending?: boolean;
   agent_entrypoint?: string | null;
   active_agent?: string | null;
   topic_hint?: string | null;

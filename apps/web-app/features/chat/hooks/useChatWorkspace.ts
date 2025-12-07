@@ -12,6 +12,7 @@ import { useTools } from '@/lib/queries/tools';
 
 import { CHAT_COPY } from '../constants';
 import { normalizeAgentLabel } from '../utils/formatters';
+import { useConversationMetadata } from './useConversationMetadata';
 
 export function useChatWorkspace() {
   const {
@@ -91,6 +92,15 @@ export function useChatWorkspace() {
 
   const activeAgents = useMemo(() => agents.filter((agent) => agent.status === 'active').length, [agents]);
   const selectedAgentLabel = useMemo(() => normalizeAgentLabel(selectedAgent), [selectedAgent]);
+  const currentConversation = useMemo(
+    () => conversationList.find((c) => c.id === currentConversationId) ?? null,
+    [conversationList, currentConversationId],
+  );
+  const currentConversationTitle = useMemo(
+    () => currentConversation?.display_name ?? currentConversation?.title ?? null,
+    [currentConversation],
+  );
+  const titlePending = currentConversation?.display_name_pending ?? false;
 
   const handleSelectConversation = useCallback(
     (conversationId: string) => {
@@ -120,7 +130,56 @@ export function useChatWorkspace() {
     [deleteConversation],
   );
 
+  const setPending = useCallback(
+    (pending: boolean) => {
+      if (!currentConversationId) return;
+      const base = currentConversation ?? {
+        id: currentConversationId,
+        updated_at: new Date().toISOString(),
+        topic_hint: null,
+        agent_entrypoint: null,
+        active_agent: null,
+        status: null,
+        message_count: 0,
+        last_message_preview: undefined,
+      };
+      updateConversationInList({
+        ...base,
+        display_name_pending: pending,
+      });
+    },
+    [currentConversation, currentConversationId, updateConversationInList],
+  );
 
+  const handleTitle = useCallback(
+    (title: string) => {
+      if (!currentConversationId) return;
+      const base = currentConversation ?? {
+        id: currentConversationId,
+        updated_at: new Date().toISOString(),
+        topic_hint: null,
+        agent_entrypoint: null,
+        active_agent: null,
+        status: null,
+        message_count: 0,
+        last_message_preview: undefined,
+      };
+      updateConversationInList({
+        ...base,
+        display_name: title,
+        display_name_pending: false,
+        title,
+      });
+    },
+    [currentConversation, currentConversationId, updateConversationInList],
+  );
+
+  useConversationMetadata({
+    conversationId: currentConversationId,
+    onTitle: handleTitle,
+    onPendingStart: () => setPending(true),
+    onPendingResolve: () => setPending(false),
+  });
 
   const handleWorkspaceError = useCallback(() => {
     if (!errorMessage) {
@@ -161,6 +220,7 @@ export function useChatWorkspace() {
   return {
     conversationList,
     isLoadingConversations,
+    titlePending,
     billingEvents,
     billingStreamStatus,
     agents,
@@ -177,6 +237,7 @@ export function useChatWorkspace() {
     retryMessages,
     clearHistoryError,
     currentConversationId,
+    currentConversationTitle,
     selectedAgent,
     selectedAgentLabel,
     activeAgent,

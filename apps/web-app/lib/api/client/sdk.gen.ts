@@ -288,6 +288,9 @@ import type {
   StreamChatWithAgentApiV1ChatStreamPostData,
   StreamChatWithAgentApiV1ChatStreamPostErrors,
   StreamChatWithAgentApiV1ChatStreamPostResponses,
+  StreamConversationMetadataApiV1ConversationsConversationIdStreamGetData,
+  StreamConversationMetadataApiV1ConversationsConversationIdStreamGetErrors,
+  StreamConversationMetadataApiV1ConversationsConversationIdStreamGetResponses,
   SubmitAccessRequestApiV1AuthRequestAccessPostData,
   SubmitAccessRequestApiV1AuthRequestAccessPostErrors,
   SubmitAccessRequestApiV1AuthRequestAccessPostResponses,
@@ -1758,6 +1761,34 @@ export const getConversationEventsApiV1ConversationsConversationIdEventsGet = <
     ...options,
   });
 };
+
+/**
+ * Stream Conversation Metadata
+ *
+ * SSE stream of conversation metadata events (e.g., generated titles).
+ */
+export const streamConversationMetadataApiV1ConversationsConversationIdStreamGet =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      StreamConversationMetadataApiV1ConversationsConversationIdStreamGetData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).get<
+      StreamConversationMetadataApiV1ConversationsConversationIdStreamGetResponses,
+      StreamConversationMetadataApiV1ConversationsConversationIdStreamGetErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/conversations/{conversation_id}/stream",
+      ...options,
+    });
+  };
 
 /**
  * List Available Tools

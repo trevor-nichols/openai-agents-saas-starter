@@ -7,6 +7,7 @@ import {
   getConversationMessagesApiV1ConversationsConversationIdMessagesGet,
   listConversationsApiV1ConversationsGet,
   searchConversationsApiV1ConversationsSearchGet,
+  streamConversationMetadataApiV1ConversationsConversationIdStreamGet,
 } from '@/lib/api/client/sdk.gen';
 import type {
   ConversationHistory,
@@ -24,6 +25,12 @@ import type {
 } from '@/types/conversations';
 
 import { getServerApiClient } from '../apiClient';
+
+const STREAM_HEADERS = {
+  'Content-Type': 'text/event-stream',
+  'Cache-Control': 'no-cache',
+  Connection: 'keep-alive',
+} as const;
 
 /**
  * Fetch the authenticated user's conversation summaries (paginated).
@@ -106,6 +113,8 @@ export async function searchConversationsPage(params: {
     items:
       data.items?.map((item) => ({
         conversation_id: item.conversation_id,
+        display_name: item.display_name ?? null,
+        display_name_pending: false,
         agent_entrypoint: item.agent_entrypoint ?? null,
         active_agent: item.active_agent ?? null,
         topic_hint: item.topic_hint ?? null,
@@ -242,8 +251,64 @@ export async function deleteConversation(conversationId: string): Promise<void> 
   });
 }
 
+export interface ConversationMetadataStreamOptions {
+  conversationId: string;
+  signal: AbortSignal;
+  tenantRole?: string | null;
+}
+
+/**
+  * Open the SSE stream for conversation metadata (e.g., generated titles).
+  */
+export async function openConversationMetadataStream(
+  options: ConversationMetadataStreamOptions,
+): Promise<Response> {
+  if (!options.conversationId) {
+    throw new Error('Conversation id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+
+  const headers = new Headers({
+    Accept: 'text/event-stream',
+    ...(options.tenantRole ? { 'X-Tenant-Role': options.tenantRole } : {}),
+  });
+
+  const upstream = await streamConversationMetadataApiV1ConversationsConversationIdStreamGet({
+    client,
+    auth,
+    signal: options.signal,
+    cache: 'no-store',
+    headers,
+    path: { conversation_id: options.conversationId },
+    parseAs: 'stream',
+    responseStyle: 'fields',
+    throwOnError: true,
+  });
+
+  const stream = upstream.data;
+  if (!stream || !upstream.response) {
+    throw new Error('Conversation metadata stream returned no data.');
+  }
+
+  const responseHeaders = new Headers(STREAM_HEADERS);
+  const contentType = upstream.response.headers.get('Content-Type');
+  if (contentType) {
+    responseHeaders.set('Content-Type', contentType);
+  }
+
+  // Upstream is typed loosely by the generated SDK; treat it as a standard SSE body.
+  return new Response(stream as unknown as BodyInit, {
+    status: upstream.response.status,
+    statusText: upstream.response.statusText,
+    headers: responseHeaders,
+  });
+}
+
 function mapSummaryToListItem(summary: {
   conversation_id: string;
+  display_name?: string | null;
+  display_name_pending?: boolean;
   agent_entrypoint?: string | null;
   active_agent?: string | null;
   topic_hint?: string | null;
@@ -253,12 +318,15 @@ function mapSummaryToListItem(summary: {
   updated_at: string;
   created_at?: string;
 }): ConversationListItem {
+  const title = summary.display_name ?? summary.topic_hint ?? summary.last_message_preview ?? null;
   return {
     id: summary.conversation_id,
+    display_name: summary.display_name ?? null,
+    display_name_pending: summary.display_name_pending ?? false,
     agent_entrypoint: summary.agent_entrypoint ?? null,
     active_agent: summary.active_agent ?? null,
     topic_hint: summary.topic_hint ?? null,
-    title: summary.topic_hint ?? null,
+    title,
     status: summary.status ?? null,
     message_count: summary.message_count ?? 0,
     last_message_preview: summary.last_message_preview ?? undefined,

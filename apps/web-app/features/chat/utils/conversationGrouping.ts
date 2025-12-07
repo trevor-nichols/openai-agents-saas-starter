@@ -37,7 +37,9 @@ export function groupConversationsByDate(
 export function mapSearchResultsToListItems(results: ConversationSearchResultItem[]): ConversationListItem[] {
   return results.map((hit) => ({
     id: hit.conversation_id,
-    title: hit.topic_hint ?? hit.preview,
+    display_name: hit.display_name ?? null,
+    display_name_pending: hit.display_name_pending ?? false,
+    title: hit.display_name ?? hit.topic_hint ?? hit.preview,
     topic_hint: hit.topic_hint ?? undefined,
     agent_entrypoint: hit.agent_entrypoint,
     active_agent: hit.active_agent,
