@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 from collections.abc import Awaitable, Callable, Mapping
 from datetime import UTC, datetime
 from typing import Any
@@ -99,12 +100,19 @@ class SessionManager:
         if memory_strategy and _is_session_handle(session_handle):
             on_summary = None
             if memory_strategy.mode == MemoryStrategy.SUMMARIZE:
+
                 async def _persist(summary_text: str) -> None:
+                    length_tokens = (
+                        max(1, math.ceil(len(summary_text) / 4)) if summary_text else None
+                    )
                     await self._conversation_service.persist_summary(
                         conversation_id,
                         tenant_id=tenant_id,
                         agent_key=agent_key,
                         summary_text=summary_text,
+                        summary_model=memory_strategy.summarizer_model,
+                        version="v1",
+                        summary_length_tokens=length_tokens,
                     )
 
                 on_summary = _persist

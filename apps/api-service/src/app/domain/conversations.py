@@ -174,6 +174,8 @@ class ConversationSummary:
     agent_key: str | None
     summary_text: str
     summary_model: str | None = None
+    summary_length_tokens: int | None = None
+    version: str | None = None
     created_at: datetime | None = None
 
 
@@ -318,6 +320,8 @@ class ConversationRepository(Protocol):
         agent_key: str | None,
         summary_text: str,
         summary_model: str | None = None,
+        summary_length_tokens: int | None = None,
+        version: str | None = None,
     ) -> None: ...
 
     async def get_latest_summary(
@@ -326,6 +330,7 @@ class ConversationRepository(Protocol):
         *,
         tenant_id: str,
         agent_key: str | None,
+        max_age_seconds: int | None = None,
     ) -> ConversationSummary | None: ...
 
     async def add_run_usage(

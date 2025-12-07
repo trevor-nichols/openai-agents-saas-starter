@@ -13,7 +13,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = "20251207_230000"
-down_revision = "20251207_203000"
+down_revision = "20251207_213000"
 branch_labels = None
 depends_on = None
 
@@ -70,8 +70,18 @@ def upgrade() -> None:
     )
 
     # Drop server defaults to keep runtime semantics unchanged after backfill
-    op.alter_column("agent_conversations", "total_cached_input_tokens", server_default=None)
-    op.alter_column("agent_conversations", "total_requests", server_default=None)
+    op.alter_column(
+        "agent_conversations",
+        "total_cached_input_tokens",
+        server_default=None,
+        existing_type=sa.Integer(),
+    )
+    op.alter_column(
+        "agent_conversations",
+        "total_requests",
+        server_default=None,
+        existing_type=sa.Integer(),
+    )
 
 
 def downgrade() -> None:

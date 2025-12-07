@@ -206,6 +206,7 @@ class ConversationSummary(Base):
     agent_key: Mapped[str | None] = mapped_column(String(64))
     summary_text: Mapped[str] = mapped_column(String)
     summary_model: Mapped[str | None] = mapped_column(String(64))
+    summary_length_tokens: Mapped[int | None] = mapped_column(Integer)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     version: Mapped[str | None] = mapped_column(String(32))
     created_at: Mapped[datetime] = mapped_column(

@@ -28,3 +28,11 @@ def test_convert_usage_maps_extended_fields():
     assert result.reasoning_output_tokens == 3
     assert result.requests == 2
     assert result.request_usage_entries == [{"input_tokens": 5}]
+
+
+def test_convert_usage_defaults_requests_to_one():
+    usage = _usage()
+
+    result = convert_usage(usage)
+
+    assert result.requests == 1

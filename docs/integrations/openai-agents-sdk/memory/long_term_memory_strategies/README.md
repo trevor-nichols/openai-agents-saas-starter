@@ -64,6 +64,48 @@ These can be tuned per agent or per conversation type:
 
 ---
 
+## 4. Agent spec configuration (one-liner friendly)
+
+Add a `memory_strategy` block to any agent spec; `mode` is the only required key. Everything else is optional and defaults to safe values.
+
+```yaml
+memory_strategy:
+  mode: summarize            # or compact | trim | none
+  # optional overrides:
+  token_remaining_pct: 0.20          # hard trigger (default 20% remaining of 400k window)
+  token_soft_remaining_pct: 0.30     # soft trigger (optional)
+  context_window_tokens: 400000
+  max_user_turns: null               # turn-based trigger for trim/summarize (optional)
+  keep_last_user_turns: 3            # tail to keep for trim/summarize
+  summarizer_model: gpt-5.1
+  summary_max_tokens: 300
+  summary_max_chars: 4000
+  compact_trigger_turns: null        # optional turn trigger for compaction
+  compact_keep: 2                    # protect last N turns
+  compact_clear_tool_inputs: false   # also compact tool call inputs?
+  compact_exclude_tools: []          # tools to skip compacting
+  compact_include_tools: []          # if set, only these tools are compacted
+memory_injection: true                # optional; defaults per conversation/agent/request
+```
+
+Minimal examples:
+- Summarize with defaults: `memory_strategy: { mode: summarize }`
+- Compact with defaults: `memory_strategy: { mode: compact }`
+- Trim with defaults: `memory_strategy: { mode: trim }`
+- Disable: `memory_strategy: { mode: none }`
+
+Precedence (already wired): request > conversation > agent spec > none. Memory injection follows the same precedence.
+
+Defaults when fields are omitted:
+- Mode: `none`
+- Token trigger: hard 20% remaining, context window 400k
+- Summarizer: `gpt-5.1`, 300 tokens, 4k-char guard
+- Compact: keep last 2 turns; compact outputs only; no include/exclude list
+- Trim/Summarize turns: no max unless set; `keep_last_user_turns` defaults to 0
+- Memory injection: uses conversation/agent defaults if request is unset
+
+---
+
 ## 4. Conceptual strategy: token-based, model-native compaction
 
 We also consider a **token-based compaction primitive** as a future or model-native strategy. This is not implemented in our current code, but is useful to understand and design towards.

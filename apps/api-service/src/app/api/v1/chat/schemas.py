@@ -71,10 +71,17 @@ class MemoryStrategyRequest(BaseModel):
     keep_last_user_turns: int | None = None
     token_budget: int | None = None
     token_soft_budget: int | None = None
+    token_remaining_pct: float | None = None
+    token_soft_remaining_pct: float | None = None
+    context_window_tokens: int | None = None
     compact_trigger_turns: int | None = None
     compact_keep: int | None = None
     compact_clear_tool_inputs: bool | None = None
     compact_exclude_tools: list[str] | None = None
+    compact_include_tools: list[str] | None = None
+    summarizer_model: str | None = None
+    summary_max_tokens: int | None = None
+    summary_max_chars: int | None = None
 
 
 __all__ = [

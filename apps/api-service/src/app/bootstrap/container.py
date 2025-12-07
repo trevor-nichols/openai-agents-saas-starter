@@ -139,6 +139,11 @@ class ApplicationContainer:
         self.agent_service = None
         self.title_service = None
         self.conversation_query_service = None
+        self.mfa_service = None
+        self.security_event_service = None
+        self.consent_service = None
+        self.notification_preference_service = None
+        self.usage_counter_service = None
         self.signup_service = None
         self.invite_service = None
         self.signup_request_service = None

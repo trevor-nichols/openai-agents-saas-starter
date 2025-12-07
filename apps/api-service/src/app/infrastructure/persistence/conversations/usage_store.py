@@ -67,6 +67,7 @@ class RunUsageStore:
         tenant_uuid,
         usage: ConversationRunUsage,
     ) -> None:
+        requests = _normalize_requests(usage.requests)
         model = AgentRunUsageModel(
             tenant_id=tenant_uuid,
             conversation_id=conversation_uuid,
@@ -74,7 +75,7 @@ class RunUsageStore:
             run_id=usage.run_id,
             agent_key=usage.agent_key,
             provider=usage.provider,
-            requests=usage.requests,
+            requests=requests,
             input_tokens=usage.input_tokens,
             output_tokens=usage.output_tokens,
             total_tokens=usage.total_tokens,
@@ -98,7 +99,7 @@ class RunUsageStore:
                 AgentConversation.reasoning_tokens + (usage.reasoning_output_tokens or 0),
                 total_cached_input_tokens=
                 AgentConversation.total_cached_input_tokens + (usage.cached_input_tokens or 0),
-                total_requests=AgentConversation.total_requests + (usage.requests or 1),
+                total_requests=AgentConversation.total_requests + requests,
                 updated_at=datetime.utcnow(),
             )
         )
@@ -121,6 +122,12 @@ class RunUsageStore:
             else None,
             created_at=row.created_at,
         )
+
+
+def _normalize_requests(value: int | None) -> int:
+    if value is None:
+        return 1
+    return max(0, value)
 
 
 __all__ = ["RunUsageStore"]

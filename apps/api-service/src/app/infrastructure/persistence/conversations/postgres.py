@@ -132,6 +132,8 @@ class PostgresConversationRepository(ConversationRepository):
         agent_key: str | None,
         summary_text: str,
         summary_model: str | None = None,
+        summary_length_tokens: int | None = None,
+        version: str | None = None,
     ) -> None:
         await self._summaries.persist_summary(
             conversation_id=conversation_id,
@@ -139,6 +141,8 @@ class PostgresConversationRepository(ConversationRepository):
             agent_key=agent_key,
             summary_text=summary_text,
             summary_model=summary_model,
+            summary_length_tokens=summary_length_tokens,
+            version=version,
         )
 
     async def get_latest_summary(
@@ -147,11 +151,13 @@ class PostgresConversationRepository(ConversationRepository):
         *,
         tenant_id: str,
         agent_key: str | None,
+        max_age_seconds: int | None = None,
     ):
         return await self._summaries.get_latest_summary(
             conversation_id=conversation_id,
             tenant_id=tenant_id,
             agent_key=agent_key,
+            max_age_seconds=max_age_seconds,
         )
 
     async def upsert_session_state(

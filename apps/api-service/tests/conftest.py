@@ -6,7 +6,7 @@ import asyncio
 import os
 from collections import defaultdict
 from collections.abc import AsyncGenerator, Generator
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -468,6 +468,8 @@ class EphemeralConversationRepository(ConversationRepository):
         agent_key: str | None,
         summary_text: str,
         summary_model: str | None = None,
+        summary_length_tokens: int | None = None,
+        version: str | None = None,
     ) -> None:
         key = self._key(tenant_id, conversation_id)
         self._summaries[key].append(
@@ -476,6 +478,8 @@ class EphemeralConversationRepository(ConversationRepository):
                 agent_key=agent_key,
                 summary_text=summary_text,
                 summary_model=summary_model,
+                summary_length_tokens=summary_length_tokens,
+                version=version,
                 created_at=datetime.utcnow(),
             )
         )
@@ -486,9 +490,17 @@ class EphemeralConversationRepository(ConversationRepository):
         *,
         tenant_id: str,
         agent_key: str | None,
+        max_age_seconds: int | None = None,
     ) -> ConversationSummary | None:
         key = self._key(tenant_id, conversation_id)
-        summaries = [s for s in self._summaries.get(key, []) if not agent_key or s.agent_key == agent_key]
+        summaries = [
+            s
+            for s in self._summaries.get(key, [])
+            if (not agent_key or s.agent_key == agent_key)
+        ]
+        if max_age_seconds is not None:
+            cutoff = datetime.utcnow() - timedelta(seconds=max_age_seconds)
+            summaries = [s for s in summaries if (s.created_at or datetime.min) >= cutoff]
         if not summaries:
             return None
         return sorted(summaries, key=lambda s: s.created_at or datetime.min, reverse=True)[0]

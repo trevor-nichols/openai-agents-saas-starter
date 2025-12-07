@@ -7,6 +7,7 @@ triggers can be layered later without changing callers.
 
 from __future__ import annotations
 
+import logging
 import math
 from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
@@ -14,6 +15,8 @@ from enum import Enum
 from typing import Any, Literal, cast, overload
 
 from agents.memory.session import SessionABC
+
+from app.observability.metrics import MEMORY_TOKENS_BEFORE_AFTER, MEMORY_TRIGGER_TOTAL
 
 
 class MemoryStrategy(str, Enum):
@@ -29,6 +32,10 @@ class MemoryStrategyConfig:
     # Shared knobs
     max_user_turns: int | None = None  # trim/summarize trigger (user turns)
     keep_last_user_turns: int = 0
+    # Token/window knobs
+    context_window_tokens: int = 400_000
+    token_remaining_pct: float | None = None  # triggers when remaining <= pct
+    token_soft_remaining_pct: float | None = None
     # Optional token budgets (logical tokens, not billed tokens)
     token_budget: int | None = None
     token_soft_budget: int | None = None
@@ -37,9 +44,16 @@ class MemoryStrategyConfig:
     compact_keep: int = 2
     compact_clear_tool_inputs: bool = False
     compact_exclude_tools: frozenset[str] = frozenset()
+    compact_include_tools: frozenset[str] = frozenset()
     # Summarization specifics
     summarizer: Summarizer | None = None
     summary_prefix: str = "[summary]"
+    summarizer_model: str | None = None
+    summary_max_tokens: int = 300
+    summary_max_chars: int = 4000
+
+
+logger = logging.getLogger(__name__)
 
 
 class Summarizer:
@@ -102,23 +116,42 @@ class StrategySession(SessionABC):
         token_budget = self._config.token_budget
         token_soft_budget = self._config.token_soft_budget
         triggered_by_tokens = token_budget is not None and total_tokens_est >= token_budget
+        triggered_by_tokens_soft = (
+            token_soft_budget is not None and total_tokens_est >= token_soft_budget
+        )
+        force_by_tokens = triggered_by_tokens or triggered_by_tokens_soft
+        trigger_reason = None
+        if triggered_by_tokens:
+            trigger_reason = "token_budget"
+        elif triggered_by_tokens_soft:
+            trigger_reason = "token_soft_budget"
         if mode == MemoryStrategy.NONE:
             return items
         if mode == MemoryStrategy.TRIM:
-            return _trim_items(
+            trimmed = _trim_items(
                 items,
                 max_turns=self._config.max_user_turns,
                 keep_last=self._config.keep_last_user_turns,
+                force=force_by_tokens,
             )
+            if trimmed is not items:
+                _record_trigger(mode, trigger_reason or "turns")
+                _record_tokens(mode, trigger_reason or "turns", total_tokens_est, trimmed)
+            return trimmed
         if mode == MemoryStrategy.SUMMARIZE:
-            return await _summarize_items(
+            summarized = await _summarize_items(
                 items,
                 max_turns=self._config.max_user_turns,
                 keep_last=self._config.keep_last_user_turns,
                 summarizer=self._summarizer,
                 summary_prefix=self._config.summary_prefix,
                 on_summary=self._on_summary,
+                force=force_by_tokens,
             )
+            if summarized is not items:
+                _record_trigger(mode, trigger_reason or "turns")
+                _record_tokens(mode, trigger_reason or "turns", total_tokens_est, summarized)
+            return summarized
         if mode == MemoryStrategy.COMPACT:
             compacted, details = _compact_items(
                 items,
@@ -126,11 +159,13 @@ class StrategySession(SessionABC):
                 keep=self._config.compact_keep,
                 clear_tool_inputs=self._config.compact_clear_tool_inputs,
                 exclude_tools=self._config.compact_exclude_tools,
-                force=triggered_by_tokens,
+                include_tools=self._config.compact_include_tools,
+                force=force_by_tokens,
                 return_details=True,
             )
-            if details is None:
-                details = {}
+            if details is None or compacted is items:
+                return compacted
+
             details = dict(details)
             details.setdefault("strategy", "compact")
             details.update(
@@ -139,11 +174,38 @@ class StrategySession(SessionABC):
                     "token_soft_budget": token_soft_budget,
                     "tokens_before": total_tokens_est,
                     "tokens_after": _estimate_total_tokens(compacted),
-                    "trigger_reason": "token_budget" if triggered_by_tokens else "turns",
+                    "trigger_reason": (
+                        "token_budget"
+                        if triggered_by_tokens
+                        else "token_soft_budget"
+                        if triggered_by_tokens_soft
+                        else "turns"
+                    ),
                 }
             )
-            if details and self._on_compaction:
+            _record_trigger(mode, details.get("trigger_reason", "turns"))
+            if self._on_compaction:
                 await self._on_compaction(details)
+            try:
+                logger.info(
+                    "memory.compaction_applied",
+                    extra={
+                        "strategy": "compact",
+                        "trigger_reason": details.get("trigger_reason"),
+                        "tokens_before": details.get("tokens_before"),
+                        "tokens_after": details.get("tokens_after"),
+                        "compacted_inputs": details.get("compacted_inputs"),
+                        "compacted_outputs": details.get("compacted_outputs"),
+                    },
+                )
+            except Exception:
+                pass
+            _record_tokens(
+                mode,
+                details.get("trigger_reason", "turns"),
+                details.get("tokens_before", total_tokens_est),
+                compacted,
+            )
             return compacted
         return items
 
@@ -185,16 +247,21 @@ def _trim_items(
     *,
     max_turns: int | None,
     keep_last: int,
+    force: bool = False,
 ) -> list[dict[str, Any]]:
-    if max_turns is None or max_turns <= 0:
+    if (max_turns is None or max_turns <= 0) and not force:
         return items
 
     turns = _group_by_turns(items)
-    if len(turns) <= max_turns:
+    if len(turns) <= (max_turns or 0) and not force:
         return items
 
     keep_tail = turns[-max(1, keep_last) :] if keep_last > 0 else []
-    trimmed_turns = keep_tail if keep_tail else turns[-max_turns:]
+    if keep_tail:
+        trimmed_turns = keep_tail
+    else:
+        limit = max_turns if max_turns and max_turns > 0 else len(turns)
+        trimmed_turns = turns[-limit:]
     indices = [i for t in trimmed_turns for i in t]
     return [items[i] for i in sorted(indices)]
 
@@ -207,12 +274,13 @@ async def _summarize_items(
     summarizer: Summarizer,
     summary_prefix: str,
     on_summary: Callable[[str], Awaitable[None]] | None = None,
+    force: bool = False,
 ) -> list[dict[str, Any]]:
-    if max_turns is None or max_turns <= 0:
+    if (max_turns is None or max_turns <= 0) and not force:
         return items
 
     turns = _group_by_turns(items)
-    if len(turns) <= max_turns:
+    if len(turns) <= (max_turns or 0) and not force:
         return items
 
     tail_turns = turns[-max(1, keep_last) :] if keep_last > 0 else turns[-1:]
@@ -290,6 +358,7 @@ def _compact_items(
     keep: int,
     clear_tool_inputs: bool,
     exclude_tools: Iterable[str],
+    include_tools: Iterable[str] | None,
     force: bool = False,
     return_details: Literal[True],
 ) -> tuple[list[dict[str, Any]], Mapping[str, Any] | None]:
@@ -304,6 +373,7 @@ def _compact_items(
     keep: int,
     clear_tool_inputs: bool,
     exclude_tools: Iterable[str],
+    include_tools: Iterable[str] | None,
     force: bool = False,
     return_details: Literal[False] = False,
 ) -> list[dict[str, Any]]:
@@ -317,6 +387,7 @@ def _compact_items(
     keep: int,
     clear_tool_inputs: bool,
     exclude_tools: Iterable[str],
+    include_tools: Iterable[str] | None,
     force: bool = False,
     return_details: bool = False,
 ) -> tuple[list[dict[str, Any]], Mapping[str, Any] | None] | list[dict[str, Any]]:
@@ -328,10 +399,13 @@ def _compact_items(
         return (items, None) if return_details else items
 
     exclude = {t.lower() for t in exclude_tools}
+    include = {t.lower() for t in include_tools} if include_tools else None
     protected_turns = {tuple(t) for t in turns[-max(1, keep) :]} if keep > 0 else set()
     indices_to_compact: set[int] = set()
     compacted_call_ids: list[str] = []
     compacted_tool_names: list[str] = []
+    compacted_inputs = 0
+    compacted_outputs = 0
 
     for turn in turns:
         if tuple(turn) in protected_turns:
@@ -341,7 +415,11 @@ def _compact_items(
             name = _tool_name(item)
             if name and name.lower() in exclude:
                 continue
-            if _is_tool_result(item) or (clear_tool_inputs and _is_tool_call(item)):
+            if include is not None and name and name.lower() not in include:
+                continue
+            is_result = _is_tool_result(item)
+            is_call = _is_tool_call(item)
+            if is_result or (clear_tool_inputs and is_call):
                 indices_to_compact.add(idx)
                 call_id = _call_id(item)
                 if call_id:
@@ -349,6 +427,10 @@ def _compact_items(
                 tool_name = name or "tool"
                 if tool_name:
                     compacted_tool_names.append(str(tool_name))
+                if is_result:
+                    compacted_outputs += 1
+                elif is_call:
+                    compacted_inputs += 1
 
     if not indices_to_compact:
         return (items, None) if return_details else items
@@ -360,7 +442,8 @@ def _compact_items(
             continue
         call_id = _call_id(item) or "unknown"
         name = _tool_name(item) or "tool"
-        placeholder = _placeholder(kind="result", name=name, call_id=call_id)
+        kind = "input" if _is_tool_call(item) and clear_tool_inputs else "output"
+        placeholder = _placeholder(kind=kind, name=name, call_id=call_id)
         new_item = dict(item)
         new_item["content"] = placeholder
         new_item["output"] = placeholder
@@ -375,10 +458,13 @@ def _compact_items(
         "compacted_count": len(indices_to_compact),
         "compacted_call_ids": compacted_call_ids,
         "compacted_tool_names": compacted_tool_names,
+        "compacted_inputs": compacted_inputs,
+        "compacted_outputs": compacted_outputs,
         "keep_turns": keep,
         "trigger_turns": trigger_turns,
         "clear_tool_inputs": clear_tool_inputs,
         "excluded_tools": sorted(exclude) if exclude else [],
+        "included_tools": sorted(include) if include else [],
         "total_items_before": len(items),
         "total_items_after": len(new_items),
         "turns_before": len(turns),
@@ -402,6 +488,33 @@ def estimate_tokens(item: Mapping[str, Any]) -> int:
 
 def _estimate_total_tokens(items: Iterable[Mapping[str, Any]]) -> int:
     return sum(estimate_tokens(it) for it in items)
+
+
+def _record_trigger(mode: MemoryStrategy, trigger: str) -> None:
+    try:
+        MEMORY_TRIGGER_TOTAL.labels(strategy=mode.value, trigger=trigger).inc()
+    except Exception:
+        # Best-effort metrics; never block runtime.
+        pass
+
+
+def _record_tokens(
+    mode: MemoryStrategy,
+    trigger: str | None,
+    tokens_before: int,
+    items_after: Sequence[Mapping[str, Any]],
+) -> None:
+    try:
+        MEMORY_TOKENS_BEFORE_AFTER.labels(
+            strategy=mode.value,
+            trigger=trigger or "turns",
+        ).observe(tokens_before)
+        MEMORY_TOKENS_BEFORE_AFTER.labels(
+            strategy=mode.value,
+            trigger=trigger or "turns",
+        ).observe(_estimate_total_tokens(items_after))
+    except Exception:
+        pass
 
 
 __all__ = [

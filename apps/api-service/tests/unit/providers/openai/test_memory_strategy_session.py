@@ -149,3 +149,41 @@ async def test_compact_token_budget_forces_compaction(engine: AsyncEngine):
 
     # Despite trigger_turns not being reached, token budget should compact the tool output
     assert any(it.get("compacted") for it in stored)
+
+
+@pytest.mark.asyncio
+async def test_compact_replaces_inputs_and_outputs(engine: AsyncEngine):
+    base = _session(engine, "compact_io")
+    session = StrategySession(
+        base,
+        MemoryStrategyConfig(
+            mode=MemoryStrategy.COMPACT,
+            compact_trigger_turns=1,
+            compact_keep=1,
+            compact_clear_tool_inputs=True,
+            compact_include_tools=frozenset({"weather"}),
+        ),
+    )
+
+    items = [
+        {"role": "user", "content": "u1"},
+        {"type": "function_call", "name": "weather", "call_id": "c1"},
+        {"type": "function_call_output", "call_id": "c1", "content": "sunny"},
+        {"role": "user", "content": "u2"},
+        {"type": "function_call_output", "call_id": "c2", "content": "cloudy"},
+        {"role": "assistant", "content": "done"},
+    ]
+
+    await session.add_items(items)
+    stored = await session.get_items()
+
+    # First turn tool call should be compacted as input; output too
+    first_call = stored[1]
+    first_out = stored[2]
+    assert first_call.get("compacted") is True
+    assert "input" in first_call.get("content", "")
+    assert first_out.get("compacted") is True
+    assert "output" in first_out.get("content", "")
+
+    # Second tool output (not included) stays intact
+    assert stored[4].get("content") == "cloudy"

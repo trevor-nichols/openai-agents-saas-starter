@@ -30,6 +30,7 @@ class ConversationSummaryStore:
         agent_key: str | None,
         summary_text: str,
         summary_model: str | None = None,
+        summary_length_tokens: int | None = None,
         expires_at: datetime | None = None,
         version: str | None = None,
     ) -> None:
@@ -47,6 +48,7 @@ class ConversationSummaryStore:
                 agent_key=agent_key,
                 summary_text=summary_text,
                 summary_model=summary_model,
+                summary_length_tokens=summary_length_tokens,
                 expires_at=expires_at,
                 version=version,
                 created_at=datetime.now(UTC),

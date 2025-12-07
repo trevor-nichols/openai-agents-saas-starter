@@ -24,6 +24,11 @@ def convert_usage(usage: Usage | None) -> AgentRunUsage | None:
             return int(value)
         return None
 
+    def _normalize_requests(value: int | None) -> int:
+        if value is None:
+            return 1
+        return max(0, value)
+
     return AgentRunUsage(
         input_tokens=_to_int(getattr(usage, "input_tokens", None)),
         output_tokens=_to_int(getattr(usage, "output_tokens", None)),
@@ -32,7 +37,7 @@ def convert_usage(usage: Usage | None) -> AgentRunUsage | None:
         reasoning_output_tokens=_to_int(
             _get(usage, "output_tokens_details", "reasoning_tokens")
         ),
-        requests=_to_int(getattr(usage, "requests", None)),
+        requests=_normalize_requests(_to_int(getattr(usage, "requests", None))),
         request_usage_entries=getattr(usage, "request_usage_entries", None),
     )
 

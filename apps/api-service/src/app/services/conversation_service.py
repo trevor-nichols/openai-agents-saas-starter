@@ -297,6 +297,8 @@ class ConversationService:
         agent_key: str | None,
         summary_text: str,
         summary_model: str | None = None,
+        summary_length_tokens: int | None = None,
+        version: str | None = None,
     ) -> None:
         normalized_tenant = _require_tenant_id(tenant_id)
         await self._require_repository().persist_summary(
@@ -305,6 +307,8 @@ class ConversationService:
             agent_key=agent_key,
             summary_text=summary_text,
             summary_model=summary_model,
+            summary_length_tokens=summary_length_tokens,
+            version=version,
         )
 
     async def get_latest_summary(
@@ -313,12 +317,14 @@ class ConversationService:
         *,
         tenant_id: str,
         agent_key: str | None,
+        max_age_seconds: int | None = None,
     ):
         normalized_tenant = _require_tenant_id(tenant_id)
         return await self._require_repository().get_latest_summary(
             conversation_id,
             tenant_id=normalized_tenant,
             agent_key=agent_key,
+            max_age_seconds=max_age_seconds,
         )
 
     async def persist_run_usage(
