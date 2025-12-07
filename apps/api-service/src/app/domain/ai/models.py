@@ -28,6 +28,12 @@ class AgentRunUsage:
 
     input_tokens: int | None = None
     output_tokens: int | None = None
+    total_tokens: int | None = None
+    cached_input_tokens: int | None = None
+    reasoning_output_tokens: int | None = None
+    requests: int | None = None
+    # Optional per-request usage entries as returned by the Agents SDK
+    request_usage_entries: list[Mapping[str, Any]] | None = None
 
 
 @dataclass(slots=True)

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
 
 class ConversationNotFoundError(RuntimeError):
@@ -177,6 +177,25 @@ class ConversationSummary:
     created_at: datetime | None = None
 
 
+@dataclass(slots=True)
+class ConversationRunUsage:
+    """Per-run usage record for audit/analytics."""
+
+    conversation_id: str
+    response_id: str | None
+    run_id: str | None
+    agent_key: str | None
+    provider: str | None
+    requests: int | None
+    input_tokens: int | None
+    output_tokens: int | None
+    total_tokens: int | None
+    cached_input_tokens: int | None
+    reasoning_output_tokens: int | None
+    request_usage_entries: list[Mapping[str, Any]] | None
+    created_at: datetime
+
+
 class ConversationRepository(Protocol):
     """Persistence contract for storing conversation histories."""
 
@@ -309,6 +328,22 @@ class ConversationRepository(Protocol):
         agent_key: str | None,
     ) -> ConversationSummary | None: ...
 
+    async def add_run_usage(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        usage: ConversationRunUsage,
+    ) -> None: ...
+
+    async def list_run_usage(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        limit: int = 20,
+    ) -> list[ConversationRunUsage]: ...
+
     async def set_display_name(
         self,
         conversation_id: str,
@@ -333,5 +368,6 @@ __all__ = [
     "ConversationSessionState",
     "ConversationMemoryConfig",
     "ConversationSummary",
+    "ConversationRunUsage",
     "MessagePage",
 ]

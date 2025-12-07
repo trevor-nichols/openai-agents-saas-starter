@@ -102,6 +102,8 @@ class AgentConversation(Base):
     total_tokens_prompt: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     total_tokens_completion: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     reasoning_tokens: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    total_cached_input_tokens: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    total_requests: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     provider: Mapped[str | None] = mapped_column(String(32))
     provider_conversation_id: Mapped[str | None] = mapped_column(String(128), unique=True)
     handoff_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -262,11 +264,45 @@ class AgentRunEvent(Base):
     )
 
 
+class AgentRunUsageModel(Base):
+    """Per-run usage snapshot for audit and analytics."""
+
+    __tablename__ = "agent_run_usage"
+    __table_args__ = (
+        Index("ix_agent_run_usage_conversation_created", "conversation_id", "created_at"),
+        Index("ix_agent_run_usage_tenant_created", "tenant_id", "created_at"),
+        Index("ix_agent_run_usage_response", "response_id"),
+        UniqueConstraint("response_id", name="uq_agent_run_usage_response_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("agent_conversations.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    response_id: Mapped[str | None] = mapped_column(String(128))
+    run_id: Mapped[str | None] = mapped_column(String(64))
+    agent_key: Mapped[str | None] = mapped_column(String(64))
+    provider: Mapped[str | None] = mapped_column(String(32))
+    requests: Mapped[int | None] = mapped_column(Integer)
+    input_tokens: Mapped[int | None] = mapped_column(Integer)
+    output_tokens: Mapped[int | None] = mapped_column(Integer)
+    total_tokens: Mapped[int | None] = mapped_column(Integer)
+    cached_input_tokens: Mapped[int | None] = mapped_column(Integer)
+    reasoning_output_tokens: Mapped[int | None] = mapped_column(Integer)
+    request_usage_entries: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONBCompat)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=UTC_NOW, nullable=False
+    )
+
 __all__ = [
     "Base",
     "TenantAccount",
     "AgentConversation",
     "AgentMessage",
     "AgentRunEvent",
+    "AgentRunUsageModel",
     "ConversationSummary",
 ]

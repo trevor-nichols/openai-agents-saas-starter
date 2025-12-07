@@ -15,6 +15,7 @@ from app.domain.conversations import (
     ConversationPage,
     ConversationRecord,
     ConversationRepository,
+    ConversationRunUsage,
     ConversationSessionState,
     MessagePage,
 )
@@ -318,6 +319,30 @@ class ConversationService:
             conversation_id,
             tenant_id=normalized_tenant,
             agent_key=agent_key,
+        )
+
+    async def persist_run_usage(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        usage: ConversationRunUsage,
+    ) -> None:
+        normalized_tenant = _require_tenant_id(tenant_id)
+        await self._require_repository().add_run_usage(
+            conversation_id, tenant_id=normalized_tenant, usage=usage
+        )
+
+    async def list_run_usage(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        limit: int = 20,
+    ) -> list[ConversationRunUsage]:
+        normalized_tenant = _require_tenant_id(tenant_id)
+        return await self._require_repository().list_run_usage(
+            conversation_id, tenant_id=normalized_tenant, limit=limit
         )
 
     async def update_session_state(

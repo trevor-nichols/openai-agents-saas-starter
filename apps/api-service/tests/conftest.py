@@ -52,6 +52,7 @@ from app.domain.conversations import (
     ConversationSearchHit,
     ConversationSearchPage,
     ConversationSessionState,
+    ConversationRunUsage,
     ConversationSummary,
     MessagePage,
 )
@@ -223,6 +224,7 @@ class EphemeralConversationRepository(ConversationRepository):
         self._display_names: dict[tuple[str, str], tuple[str, datetime | None]] = {}
         self._memory: dict[tuple[str, str], ConversationMemoryConfig] = {}
         self._summaries: dict[tuple[str, str], list[ConversationSummary]] = defaultdict(list)
+        self._usage: dict[tuple[str, str], list[ConversationRunUsage]] = defaultdict(list)
 
     async def add_message(
         self,
@@ -523,6 +525,26 @@ class EphemeralConversationRepository(ConversationRepository):
         if workflow_run_id:
             events = [ev for ev in events if ev.workflow_run_id == workflow_run_id]
         return events
+
+    async def add_run_usage(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        usage: ConversationRunUsage,
+    ) -> None:
+        key = self._key(tenant_id, conversation_id)
+        self._usage[key].append(usage)
+
+    async def list_run_usage(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        limit: int = 20,
+    ) -> list[ConversationRunUsage]:
+        key = self._key(tenant_id, conversation_id)
+        return list(reversed(self._usage.get(key, [])))[:limit]
 
     async def set_display_name(
         self,

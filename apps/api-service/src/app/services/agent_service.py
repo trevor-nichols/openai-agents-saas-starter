@@ -99,7 +99,9 @@ class AgentService:
         )
         self._event_projector = EventProjector(self._conversation_service)
         self._usage_service = usage_service or UsageService(
-            usage_recorder, usage_counter_service or get_usage_counter_service()
+            usage_recorder,
+            usage_counter_service or get_usage_counter_service(),
+            self._conversation_service,
         )
         self._catalog_service = catalog_service or AgentCatalogService(self._provider_registry)
         self._title_service = title_service
@@ -236,6 +238,8 @@ class AgentService:
             conversation_id=ctx.conversation_id,
             response_id=result.response_id,
             usage=result.usage,
+            agent_key=ctx.descriptor.key,
+            provider_name=ctx.provider.name,
         )
 
         if ctx.compaction_events:
@@ -467,6 +471,8 @@ class AgentService:
             conversation_id=ctx.conversation_id,
             response_id=getattr(stream_handle, "last_response_id", None),
             usage=getattr(stream_handle, "usage", None),
+            agent_key=ctx.descriptor.key,
+            provider_name=ctx.provider.name,
         )
 
         if ctx.compaction_events:
@@ -585,12 +591,16 @@ class AgentService:
         conversation_id: str,
         response_id: str | None,
         usage: Any,
+        agent_key: str | None,
+        provider_name: str | None,
     ) -> None:
         await self._usage_service.record(
             tenant_id=tenant_id,
             conversation_id=conversation_id,
             response_id=response_id,
             usage=usage,
+            agent_key=agent_key,
+            provider=provider_name,
         )
 
 

@@ -123,3 +123,29 @@ async def test_summarize_injects_summary_and_keeps_tail(engine: AsyncEngine):
     assert stored[1]["content"].startswith("summary:")
     assert [it["content"] for it in stored if it["role"] == "user"][-1] == "u3"
     assert len([it for it in stored if it.get("role") == "user"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_compact_token_budget_forces_compaction(engine: AsyncEngine):
+    base = _session(engine, "compact_tokens")
+    session = StrategySession(
+        base,
+        MemoryStrategyConfig(
+            mode=MemoryStrategy.COMPACT,
+            compact_trigger_turns=10,  # high on purpose
+            compact_keep=1,
+            token_budget=5,  # low budget to force compaction by tokens
+        ),
+    )
+
+    items = [
+        {"role": "user", "content": "u1"},
+        {"type": "function_call_output", "call_id": "c1", "content": "A" * 200},
+        {"role": "assistant", "content": "done"},
+    ]
+
+    await session.add_items(items)
+    stored = await session.get_items()
+
+    # Despite trigger_turns not being reached, token budget should compact the tool output
+    assert any(it.get("compacted") for it in stored)

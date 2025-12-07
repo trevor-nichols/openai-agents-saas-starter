@@ -29,6 +29,9 @@ class MemoryStrategyConfig:
     # Shared knobs
     max_user_turns: int | None = None  # trim/summarize trigger (user turns)
     keep_last_user_turns: int = 0
+    # Optional token budgets (logical tokens, not billed tokens)
+    token_budget: int | None = None
+    token_soft_budget: int | None = None
     # Compacting specifics
     compact_trigger_turns: int | None = None
     compact_keep: int = 2
@@ -95,6 +98,10 @@ class StrategySession(SessionABC):
     # Strategy driver -----------------------------------------------
     async def _apply_strategy(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         mode = self._config.mode
+        total_tokens_est = _estimate_total_tokens(items)
+        token_budget = self._config.token_budget
+        token_soft_budget = self._config.token_soft_budget
+        triggered_by_tokens = token_budget is not None and total_tokens_est >= token_budget
         if mode == MemoryStrategy.NONE:
             return items
         if mode == MemoryStrategy.TRIM:
@@ -119,7 +126,21 @@ class StrategySession(SessionABC):
                 keep=self._config.compact_keep,
                 clear_tool_inputs=self._config.compact_clear_tool_inputs,
                 exclude_tools=self._config.compact_exclude_tools,
+                force=triggered_by_tokens,
                 return_details=True,
+            )
+            if details is None:
+                details = {}
+            details = dict(details)
+            details.setdefault("strategy", "compact")
+            details.update(
+                {
+                    "token_budget": token_budget,
+                    "token_soft_budget": token_soft_budget,
+                    "tokens_before": total_tokens_est,
+                    "tokens_after": _estimate_total_tokens(compacted),
+                    "trigger_reason": "token_budget" if triggered_by_tokens else "turns",
+                }
             )
             if details and self._on_compaction:
                 await self._on_compaction(details)
@@ -269,6 +290,7 @@ def _compact_items(
     keep: int,
     clear_tool_inputs: bool,
     exclude_tools: Iterable[str],
+    force: bool = False,
     return_details: Literal[True],
 ) -> tuple[list[dict[str, Any]], Mapping[str, Any] | None]:
     ...
@@ -282,6 +304,7 @@ def _compact_items(
     keep: int,
     clear_tool_inputs: bool,
     exclude_tools: Iterable[str],
+    force: bool = False,
     return_details: Literal[False] = False,
 ) -> list[dict[str, Any]]:
     ...
@@ -294,13 +317,14 @@ def _compact_items(
     keep: int,
     clear_tool_inputs: bool,
     exclude_tools: Iterable[str],
+    force: bool = False,
     return_details: bool = False,
 ) -> tuple[list[dict[str, Any]], Mapping[str, Any] | None] | list[dict[str, Any]]:
-    if trigger_turns is None or trigger_turns <= 0:
+    if not force and (trigger_turns is None or trigger_turns <= 0):
         return (items, None) if return_details else items
 
     turns = _group_by_turns(items)
-    if len(turns) <= trigger_turns:
+    if not force and trigger_turns is not None and len(turns) <= trigger_turns:
         return (items, None) if return_details else items
 
     exclude = {t.lower() for t in exclude_tools}
@@ -367,12 +391,17 @@ def _placeholder(*, kind: str, name: str, call_id: str) -> str:
     return f"⟦removed: tool {kind} for {name} (call_id={call_id}); reason=context_compaction⟧"
 
 
-# Simple estimator kept for potential metrics; not currently used for triggering.
+# Simple estimator used for telemetry and optional token budgets. This remains
+# an approximation (chars/4) to avoid introducing a tokenizer dependency.
 def estimate_tokens(item: Mapping[str, Any]) -> int:
     content = _collect_text([item])
     if not content:
         return 1
     return max(1, math.ceil(len(content) / 4))
+
+
+def _estimate_total_tokens(items: Iterable[Mapping[str, Any]]) -> int:
+    return sum(estimate_tokens(it) for it in items)
 
 
 __all__ = [

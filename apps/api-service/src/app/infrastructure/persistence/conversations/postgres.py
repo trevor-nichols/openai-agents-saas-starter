@@ -14,6 +14,7 @@ from app.domain.conversations import (
     ConversationPage,
     ConversationRecord,
     ConversationRepository,
+    ConversationRunUsage,
     ConversationSearchPage,
     ConversationSessionState,
 )
@@ -21,6 +22,7 @@ from app.infrastructure.persistence.conversations.message_store import Conversat
 from app.infrastructure.persistence.conversations.run_event_store import RunEventStore
 from app.infrastructure.persistence.conversations.search_store import ConversationSearchStore
 from app.infrastructure.persistence.conversations.summary_store import ConversationSummaryStore
+from app.infrastructure.persistence.conversations.usage_store import RunUsageStore
 
 
 class PostgresConversationRepository(ConversationRepository):
@@ -31,6 +33,7 @@ class PostgresConversationRepository(ConversationRepository):
         self._search = ConversationSearchStore(session_factory)
         self._run_events = RunEventStore(session_factory)
         self._summaries = ConversationSummaryStore(session_factory)
+        self._run_usage = RunUsageStore(session_factory)
 
     # --- messages / conversations ------------------------------------
     async def add_message(
@@ -159,6 +162,26 @@ class PostgresConversationRepository(ConversationRepository):
         state: ConversationSessionState,
     ) -> None:
         await self._messages.upsert_session_state(conversation_id, tenant_id=tenant_id, state=state)
+
+    async def add_run_usage(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        usage: ConversationRunUsage,
+    ) -> None:
+        await self._run_usage.add_run_usage(conversation_id, tenant_id=tenant_id, usage=usage)
+
+    async def list_run_usage(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        limit: int = 20,
+    ) -> list[ConversationRunUsage]:
+        return await self._run_usage.list_run_usage(
+            conversation_id, tenant_id=tenant_id, limit=limit
+        )
 
     # --- search -------------------------------------------------------
     async def search_conversations(

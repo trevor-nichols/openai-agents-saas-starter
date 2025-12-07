@@ -357,6 +357,8 @@ def _config_from_request(ms: Any) -> MemoryStrategyConfig:
     mode = MemoryStrategy(ms.mode)
     keep_last = ms.keep_last_user_turns if ms.keep_last_user_turns is not None else 0
     config = MemoryStrategyConfig(mode=mode)
+    config.token_budget = ms.token_budget
+    config.token_soft_budget = ms.token_soft_budget
     if mode in {MemoryStrategy.TRIM, MemoryStrategy.SUMMARIZE}:
         config.max_user_turns = ms.max_user_turns
         config.keep_last_user_turns = keep_last
@@ -379,6 +381,8 @@ def _config_from_mapping(data: Mapping[str, Any]) -> MemoryStrategyConfig | None
         return None
 
     config = MemoryStrategyConfig(mode=mode)
+    config.token_budget = _maybe_int(data.get("token_budget"))
+    config.token_soft_budget = _maybe_int(data.get("token_soft_budget"))
     config.max_user_turns = _maybe_int(data.get("max_user_turns"))
     keep_val = _maybe_int(data.get("keep_last_user_turns"))
     if keep_val is None:
@@ -410,6 +414,8 @@ def _memory_cfg_to_mapping(cfg: Any) -> dict[str, Any] | None:
         "compact_trigger_turns",
         "compact_keep",
         "clear_tool_inputs",
+        "token_budget",
+        "token_soft_budget",
         "memory_injection",
     )
     result: dict[str, Any] = {}

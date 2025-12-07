@@ -69,6 +69,8 @@ class MemoryStrategyRequest(BaseModel):
     mode: Literal["none", "trim", "summarize", "compact"] = "none"
     max_user_turns: int | None = None
     keep_last_user_turns: int | None = None
+    token_budget: int | None = None
+    token_soft_budget: int | None = None
     compact_trigger_turns: int | None = None
     compact_keep: int | None = None
     compact_clear_tool_inputs: bool | None = None

@@ -53,6 +53,12 @@ class FakeConversationService(ConversationService):
     async def conversation_exists(self, conversation_id: str, *, tenant_id: str) -> bool:
         return False
 
+    async def persist_run_usage(self, conversation_id, *, tenant_id, usage):  # pragma: no cover
+        return None
+
+    async def list_run_usage(self, *args, **kwargs):  # pragma: no cover
+        return []
+
 
 class FakeContainerService:
     async def list_agent_bindings(self, *args, **kwargs):  # pragma: no cover - noop
