@@ -24,6 +24,7 @@ from app.services.consent_service import ConsentService
 from app.services.contact_service import ContactService
 from app.services.containers import ContainerService
 from app.services.conversation_service import ConversationService
+from app.services.conversations.title_service import TitleService
 from app.services.geoip_service import GeoIPService, NullGeoIPService, shutdown_geoip_service
 from app.services.integrations.slack_notifier import SlackNotifier
 from app.services.notification_preferences import NotificationPreferenceService
@@ -100,6 +101,7 @@ class ApplicationContainer:
     vector_store_service: VectorStoreService | None = None
     vector_store_sync_worker: VectorStoreSyncWorker | None = None
     container_service: ContainerService | None = None
+    title_service: TitleService | None = None
     usage_recorder: UsageRecorder = field(default_factory=UsageRecorder)
     usage_policy_service: UsagePolicyService | None = None
     storage_service: StorageService | None = None
@@ -135,6 +137,7 @@ class ApplicationContainer:
         self.service_account_token_service = None
         self.contact_service = None
         self.agent_service = None
+        self.title_service = None
         self.conversation_query_service = None
         self.signup_service = None
         self.invite_service = None
@@ -224,6 +227,13 @@ def wire_storage_service(container: ApplicationContainer) -> None:
             container.session_factory,
             lambda: settings,
         )
+
+
+def wire_title_service(container: ApplicationContainer) -> None:
+    """Initialize the internal title generation service."""
+
+    if container.title_service is None:
+        container.title_service = TitleService(container.conversation_service)
 
 
 def wire_conversation_query_service(container: ApplicationContainer) -> None:

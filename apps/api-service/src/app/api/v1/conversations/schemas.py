@@ -28,6 +28,7 @@ class ConversationHistory(BaseModel):
     """Full detail view of a conversation."""
 
     conversation_id: str = Field(description="Conversation identifier.")
+    display_name: str | None = Field(default=None, description="Generated or assigned title.")
     messages: list[ChatMessage] = Field(description="Complete message history.")
     created_at: str = Field(description="Conversation creation timestamp.")
     updated_at: str = Field(description="Last update timestamp.")
@@ -55,6 +56,7 @@ class ConversationSummary(BaseModel):
     """Lightweight summary used when listing conversations."""
 
     conversation_id: str = Field(description="Conversation identifier.")
+    display_name: str | None = Field(default=None, description="Generated conversation title.")
     agent_entrypoint: str | None = Field(
         default=None, description="Agent entrypoint configured for this thread."
     )
@@ -83,6 +85,7 @@ class ConversationSearchResult(BaseModel):
     """Search hit with preview and relevance score."""
 
     conversation_id: str = Field(description="Conversation identifier.")
+    display_name: str | None = Field(default=None, description="Generated conversation title.")
     agent_entrypoint: str | None = Field(
         default=None, description="Agent entrypoint configured for this thread."
     )
@@ -97,6 +100,15 @@ class ConversationSearchResult(BaseModel):
     )
     score: float | None = Field(default=None, description="Backend relevance score.")
     updated_at: str | None = Field(default=None, description="Last update timestamp.")
+
+
+class ConversationMetaEvent(BaseModel):
+    """Metadata stream event for a conversation."""
+
+    kind: str = Field(description="Event type, e.g., conversation.title.generated")
+    conversation_id: str = Field(description="Conversation identifier.")
+    display_name: str | None = Field(default=None, description="Generated conversation title.")
+    timestamp: str | None = Field(default=None, description="Server timestamp.")
 
 
 class ConversationSearchResponse(BaseModel):
@@ -139,3 +151,17 @@ class ConversationEventsResponse(BaseModel):
 
     conversation_id: str = Field(description="Conversation identifier.")
     items: list[ConversationEventItem]
+
+
+__all__ = [
+    "ChatMessage",
+    "ConversationHistory",
+    "PaginatedMessagesResponse",
+    "ConversationSummary",
+    "ConversationListResponse",
+    "ConversationSearchResult",
+    "ConversationSearchResponse",
+    "ConversationEventItem",
+    "ConversationEventsResponse",
+    "ConversationMetaEvent",
+]

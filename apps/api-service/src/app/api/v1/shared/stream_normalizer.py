@@ -106,6 +106,7 @@ def normalize_stream_event(
         tool_name=event.tool_name,
         agent=event.agent,
         new_agent=event.new_agent,
+        display_name=getattr(event, "display_name", None),
         text_delta=event.text_delta,
         reasoning_delta=event.reasoning_delta,
         response_text=event.response_text,

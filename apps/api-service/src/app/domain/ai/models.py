@@ -171,7 +171,6 @@ class AgentStreamEvent:
 
         # Conservative fallback: string representation to keep streaming resilient.
         return repr(obj)
-        return obj
 
     @staticmethod
     def _to_mapping(obj: Any) -> Mapping[str, Any] | None:

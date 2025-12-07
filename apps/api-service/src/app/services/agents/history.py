@@ -43,6 +43,7 @@ class ConversationHistoryService:
         api_messages = [self._to_chat_message(msg) for msg in messages]
         return ConversationHistory(
             conversation_id=conversation_id,
+            display_name=record.display_name,
             messages=api_messages,
             created_at=record.created_at.isoformat(),
             updated_at=record.updated_at.isoformat(),
@@ -76,6 +77,7 @@ class ConversationHistoryService:
             summaries.append(
                 ConversationSummary(
                     conversation_id=record.conversation_id,
+                    display_name=record.display_name,
                     agent_entrypoint=record.agent_entrypoint,
                     active_agent=record.active_agent,
                     topic_hint=record.topic_hint,

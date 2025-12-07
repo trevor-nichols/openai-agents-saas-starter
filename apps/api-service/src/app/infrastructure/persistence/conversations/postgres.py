@@ -150,5 +150,20 @@ class PostgresConversationRepository(ConversationRepository):
             workflow_run_id=workflow_run_id,
         )
 
+    async def set_display_name(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        display_name: str,
+        generated_at: datetime | None = None,
+    ) -> bool:
+        return await self._messages.set_display_name(
+            conversation_id,
+            tenant_id=tenant_id,
+            display_name=display_name,
+            generated_at=generated_at,
+        )
+
 
 __all__ = ["PostgresConversationRepository"]

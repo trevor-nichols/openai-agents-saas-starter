@@ -218,6 +218,7 @@ class EphemeralConversationRepository(ConversationRepository):
         self._metadata: dict[tuple[str, str], ConversationMetadata] = {}
         self._session_state: dict[tuple[str, str], ConversationSessionState] = {}
         self._events: dict[tuple[str, str], list[ConversationEvent]] = defaultdict(list)
+        self._display_names: dict[tuple[str, str], tuple[str, datetime | None]] = {}
 
     async def add_message(
         self,
@@ -257,7 +258,15 @@ class EphemeralConversationRepository(ConversationRepository):
         for (current_tenant, cid), messages in self._messages.items():
             if current_tenant != tenant:
                 continue
-            records.append(ConversationRecord(conversation_id=cid, messages=list(messages)))
+            display_name, generated_at = self._display_names.get((tenant, cid), (None, None))
+            records.append(
+                ConversationRecord(
+                    conversation_id=cid,
+                    messages=list(messages),
+                    display_name=display_name,
+                    title_generated_at=generated_at,
+                )
+            )
         return records
 
     async def get_conversation(
@@ -271,7 +280,13 @@ class EphemeralConversationRepository(ConversationRepository):
         messages = self._messages.get(key, [])
         if not messages:
             return None
-        return ConversationRecord(conversation_id=conversation_id, messages=list(messages))
+        display_name, generated_at = self._display_names.get(key, (None, None))
+        return ConversationRecord(
+            conversation_id=conversation_id,
+            messages=list(messages),
+            display_name=display_name,
+            title_generated_at=generated_at,
+        )
 
     async def paginate_conversations(
         self,
@@ -439,6 +454,20 @@ class EphemeralConversationRepository(ConversationRepository):
         if workflow_run_id:
             events = [ev for ev in events if ev.workflow_run_id == workflow_run_id]
         return events
+
+    async def set_display_name(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        display_name: str,
+        generated_at: datetime | None = None,
+    ) -> bool:
+        key = self._key(tenant_id, conversation_id)
+        if key in self._display_names:
+            return False
+        self._display_names[key] = (display_name, generated_at)
+        return True
 
     def _key(self, tenant_id: str, conversation_id: str) -> tuple[str, str]:
         tenant = self._require_tenant(tenant_id)

@@ -422,6 +422,35 @@ class ConversationMessageStore:
 
             await session.commit()
 
+    async def set_display_name(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        display_name: str,
+        generated_at: datetime | None = None,
+    ) -> bool:
+        conversation_uuid = coerce_conversation_uuid(conversation_id)
+        tenant_uuid = parse_tenant_id(tenant_id)
+        async with self._session_factory() as session:
+            conversation = await self._get_conversation(
+                session,
+                conversation_uuid,
+                tenant_id=tenant_uuid,
+                for_update=True,
+                strict=True,
+            )
+            if conversation is None:
+                raise ConversationNotFoundError(f"Conversation {conversation_id} does not exist")
+            if conversation.display_name:
+                return False
+
+            conversation.display_name = display_name[:128]
+            conversation.title_generated_at = generated_at or datetime.now(UTC)
+            conversation.updated_at = datetime.now(UTC)
+            await session.commit()
+            return True
+
     # --- internals -----------------------------------------------------
     async def _get_or_create_conversation(
         self,

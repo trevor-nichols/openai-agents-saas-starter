@@ -1,8 +1,10 @@
 """Conversation management endpoints."""
 
+from collections.abc import AsyncIterator
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
+from fastapi.responses import StreamingResponse
 
 from app.api.dependencies.auth import CurrentUser, require_verified_scopes
 from app.api.dependencies.tenant import TenantContext, TenantRole, get_tenant_context
@@ -19,8 +21,18 @@ from app.api.v1.conversations.schemas import (
 from app.domain.conversations import ConversationNotFoundError
 from app.services.agents.context import ConversationActorContext
 from app.services.agents.query import get_conversation_query_service
+from app.services.conversations import metadata_stream
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
+
+META_STREAM_RESPONSE = {
+    "description": "Server-sent events stream for conversation metadata updates.",
+    "content": {
+        "text/event-stream": {
+            "schema": {"$ref": "#/components/schemas/ConversationMetaEvent"}
+        }
+    },
+}
 
 
 @router.get("", response_model=ConversationListResponse)
@@ -95,6 +107,7 @@ async def search_conversations(
         response_items.append(
             ConversationSearchResult(
                 conversation_id=result.conversation_id,
+                display_name=result.display_name,
                 agent_entrypoint=result.agent_entrypoint,
                 active_agent=result.active_agent,
                 topic_hint=result.topic_hint,
@@ -253,6 +266,44 @@ async def get_conversation_events(
     return ConversationEventsResponse(
         conversation_id=conversation_id,
         items=response_items,
+    )
+
+
+@router.get("/{conversation_id}/stream", responses={200: META_STREAM_RESPONSE})
+async def stream_conversation_metadata(
+    conversation_id: str,
+    current_user: CurrentUser = Depends(require_verified_scopes("conversations:read")),
+    tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
+    tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
+) -> StreamingResponse:
+    """SSE stream of conversation metadata events (e.g., generated titles)."""
+
+    tenant_context = await _resolve_tenant_context(
+        current_user,
+        tenant_id_header,
+        tenant_role_header,
+        min_role=TenantRole.VIEWER,
+    )
+
+    async def _event_stream() -> AsyncIterator[str]:
+        async for payload in metadata_stream.subscribe(
+            tenant_id=tenant_context.tenant_id,
+            conversation_id=conversation_id,
+        ):
+            yield f"data: {payload}\n\n"
+
+    headers = {
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "Content-Type": "text/event-stream",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "*",
+    }
+
+    return StreamingResponse(
+        _event_stream(),
+        media_type="text/event-stream",
+        headers=headers,
     )
 
 

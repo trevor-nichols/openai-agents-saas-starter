@@ -62,10 +62,12 @@ class ConversationRecord:
 
     conversation_id: str
     messages: list[ConversationMessage]
+    display_name: str | None = None
     agent_entrypoint: str | None = None
     active_agent: str | None = None
     topic_hint: str | None = None
     status: str | None = None
+    title_generated_at: datetime | None = None
     created_at_value: datetime | None = None
     updated_at_value: datetime | None = None
 
@@ -248,3 +250,12 @@ class ConversationRepository(Protocol):
         tenant_id: str,
         workflow_run_id: str | None = None,
     ) -> list[ConversationEvent]: ...
+
+    async def set_display_name(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        display_name: str,
+        generated_at: datetime | None = None,
+    ) -> bool: ...

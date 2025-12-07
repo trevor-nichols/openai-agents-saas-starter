@@ -143,6 +143,7 @@ class StreamingEvent(BaseModel):
     tool_name: str | None = None
     agent: str | None = None
     new_agent: str | None = None
+    display_name: str | None = None
 
     # Content
     text_delta: str | None = None

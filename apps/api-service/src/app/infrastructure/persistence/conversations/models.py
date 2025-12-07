@@ -107,6 +107,8 @@ class AgentConversation(Base):
     handoff_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     source_channel: Mapped[str | None] = mapped_column(String(32))
     topic_hint: Mapped[str | None] = mapped_column(String(256))
+    display_name: Mapped[str | None] = mapped_column(String(128))
+    title_generated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_run_id: Mapped[str | None] = mapped_column(String(64))
     client_version: Mapped[str | None] = mapped_column(String(32))

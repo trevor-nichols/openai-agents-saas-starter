@@ -26,6 +26,7 @@ class SearchResult:
     preview: str
     score: float | None = None
     updated_at: datetime | None = None
+    display_name: str | None = None
     agent_entrypoint: str | None = None
     active_agent: str | None = None
     topic_hint: str | None = None
@@ -238,6 +239,7 @@ class ConversationService:
             items.append(
                 SearchResult(
                     conversation_id=hit.record.conversation_id,
+                    display_name=hit.record.display_name,
                     preview=preview,
                     score=hit.score,
                     updated_at=hit.record.updated_at,
@@ -303,6 +305,22 @@ class ConversationService:
             conversation_id,
             tenant_id=normalized_tenant,
             workflow_run_id=workflow_run_id,
+        )
+
+    async def set_display_name(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        display_name: str,
+        generated_at: datetime | None = None,
+    ) -> bool:
+        normalized_tenant = _require_tenant_id(tenant_id)
+        return await self._require_repository().set_display_name(
+            conversation_id,
+            tenant_id=normalized_tenant,
+            display_name=display_name,
+            generated_at=generated_at,
         )
 
 

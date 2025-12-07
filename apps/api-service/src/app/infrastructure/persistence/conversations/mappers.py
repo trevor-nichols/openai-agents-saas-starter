@@ -94,10 +94,12 @@ def record_from_model(
     return ConversationRecord(
         conversation_id=conversation.conversation_key,
         messages=message_objs,
+        display_name=conversation.display_name,
         agent_entrypoint=conversation.agent_entrypoint,
         active_agent=conversation.active_agent,
         topic_hint=conversation.topic_hint,
         status=conversation.status,
+        title_generated_at=conversation.title_generated_at,
         created_at_value=conversation.created_at,
         updated_at_value=conversation.updated_at,
     )
