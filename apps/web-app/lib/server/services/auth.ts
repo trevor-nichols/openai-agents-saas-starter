@@ -6,6 +6,7 @@ import {
   refreshAccessTokenApiV1AuthRefreshPost,
 } from '@/lib/api/client/sdk.gen';
 import type {
+  MfaChallengeResponse,
   SuccessResponse,
   UserLoginRequest,
   UserRefreshRequest,
@@ -16,6 +17,12 @@ import type { UserSessionTokens } from '@/lib/types/auth';
 import { createApiClient, getServerApiClient } from '../apiClient';
 
 export type CurrentUserProfile = Record<string, unknown>;
+
+export class MfaRequiredError extends Error {
+  constructor(public readonly payload: MfaChallengeResponse) {
+    super('Multi-factor authentication required');
+  }
+}
 
 /**
  * Exchange credentials for a session token pair using the backend auth API.
@@ -37,7 +44,11 @@ export async function loginWithCredentials(
     throw new Error('Auth service returned an empty response.');
   }
 
-  return mapSessionResponse(response.data);
+  if ('mfa_required' in response.data) {
+    throw new MfaRequiredError(response.data as MfaChallengeResponse);
+  }
+
+  return mapSessionResponse(response.data as UserSessionResponse);
 }
 
 /**

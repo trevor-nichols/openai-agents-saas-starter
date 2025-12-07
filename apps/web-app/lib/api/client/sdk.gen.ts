@@ -40,6 +40,9 @@ import type {
   ChatWithAgentApiV1ChatPostData,
   ChatWithAgentApiV1ChatPostErrors,
   ChatWithAgentApiV1ChatPostResponses,
+  CompleteMfaChallengeApiV1AuthMfaCompletePostData,
+  CompleteMfaChallengeApiV1AuthMfaCompletePostErrors,
+  CompleteMfaChallengeApiV1AuthMfaCompletePostResponses,
   ConfirmPasswordResetApiV1AuthPasswordConfirmPostData,
   ConfirmPasswordResetApiV1AuthPasswordConfirmPostErrors,
   ConfirmPasswordResetApiV1AuthPasswordConfirmPostResponses,
@@ -157,6 +160,8 @@ import type {
   ListBillingEventsApiV1BillingTenantsTenantIdEventsGetResponses,
   ListBillingPlansApiV1BillingPlansGetData,
   ListBillingPlansApiV1BillingPlansGetResponses,
+  ListConsentsApiV1UsersConsentsGetData,
+  ListConsentsApiV1UsersConsentsGetResponses,
   ListContainersApiV1ContainersGetData,
   ListContainersApiV1ContainersGetErrors,
   ListContainersApiV1ContainersGetResponses,
@@ -169,6 +174,11 @@ import type {
   ListInvitesApiV1AuthInvitesGetData,
   ListInvitesApiV1AuthInvitesGetErrors,
   ListInvitesApiV1AuthInvitesGetResponses,
+  ListMfaMethodsApiV1AuthMfaGetData,
+  ListMfaMethodsApiV1AuthMfaGetResponses,
+  ListNotificationPreferencesApiV1UsersNotificationPreferencesGetData,
+  ListNotificationPreferencesApiV1UsersNotificationPreferencesGetErrors,
+  ListNotificationPreferencesApiV1UsersNotificationPreferencesGetResponses,
   ListObjectsApiV1StorageObjectsGetData,
   ListObjectsApiV1StorageObjectsGetErrors,
   ListObjectsApiV1StorageObjectsGetResponses,
@@ -181,6 +191,9 @@ import type {
   ListStatusSubscriptionsApiV1StatusSubscriptionsGetData,
   ListStatusSubscriptionsApiV1StatusSubscriptionsGetErrors,
   ListStatusSubscriptionsApiV1StatusSubscriptionsGetResponses,
+  ListUsageApiV1UsageGetData,
+  ListUsageApiV1UsageGetErrors,
+  ListUsageApiV1UsageGetResponses,
   ListUserSessionsApiV1AuthSessionsGetData,
   ListUserSessionsApiV1AuthSessionsGetErrors,
   ListUserSessionsApiV1AuthSessionsGetResponses,
@@ -209,12 +222,17 @@ import type {
   MarkAllActivityReadApiV1ActivityMarkAllReadPostResponses,
   ReadinessCheckHealthReadyGetData,
   ReadinessCheckHealthReadyGetResponses,
+  RecordConsentApiV1UsersConsentsPostData,
+  RecordConsentApiV1UsersConsentsPostErrors,
+  RecordConsentApiV1UsersConsentsPostResponses,
   RecordUsageApiV1BillingTenantsTenantIdUsagePostData,
   RecordUsageApiV1BillingTenantsTenantIdUsagePostErrors,
   RecordUsageApiV1BillingTenantsTenantIdUsagePostResponses,
   RefreshAccessTokenApiV1AuthRefreshPostData,
   RefreshAccessTokenApiV1AuthRefreshPostErrors,
   RefreshAccessTokenApiV1AuthRefreshPostResponses,
+  RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostData,
+  RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostResponses,
   RegisterTenantApiV1AuthRegisterPostData,
   RegisterTenantApiV1AuthRegisterPostErrors,
   RegisterTenantApiV1AuthRegisterPostResponses,
@@ -230,6 +248,9 @@ import type {
   RevokeInviteApiV1AuthInvitesInviteIdRevokePostData,
   RevokeInviteApiV1AuthInvitesInviteIdRevokePostErrors,
   RevokeInviteApiV1AuthInvitesInviteIdRevokePostResponses,
+  RevokeMfaMethodApiV1AuthMfaMethodIdDeleteData,
+  RevokeMfaMethodApiV1AuthMfaMethodIdDeleteErrors,
+  RevokeMfaMethodApiV1AuthMfaMethodIdDeleteResponses,
   RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostData,
   RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostErrors,
   RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostResponses,
@@ -256,6 +277,9 @@ import type {
   StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostData,
   StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostErrors,
   StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponses,
+  StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostData,
+  StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostErrors,
+  StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostResponses,
   StorageHealthHealthStorageGetData,
   StorageHealthHealthStorageGetResponses,
   StreamActivityEventsApiV1ActivityStreamGetData,
@@ -282,12 +306,18 @@ import type {
   UpdateTenantSettingsApiV1TenantsSettingsPutData,
   UpdateTenantSettingsApiV1TenantsSettingsPutErrors,
   UpdateTenantSettingsApiV1TenantsSettingsPutResponses,
+  UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutData,
+  UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutErrors,
+  UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutResponses,
   VerifyEmailTokenApiV1AuthEmailVerifyPostData,
   VerifyEmailTokenApiV1AuthEmailVerifyPostErrors,
   VerifyEmailTokenApiV1AuthEmailVerifyPostResponses,
   VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostData,
   VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostErrors,
   VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostResponses,
+  VerifyTotpApiV1AuthMfaTotpVerifyPostData,
+  VerifyTotpApiV1AuthMfaTotpVerifyPostErrors,
+  VerifyTotpApiV1AuthMfaTotpVerifyPostResponses,
 } from "./types.gen.ts";
 
 export type Options<
@@ -1073,6 +1103,161 @@ export const revokeInviteApiV1AuthInvitesInviteIdRevokePost = <
     ],
     url: "/api/v1/auth/invites/{invite_id}/revoke",
     ...options,
+  });
+};
+
+/**
+ * List Mfa Methods
+ */
+export const listMfaMethodsApiV1AuthMfaGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<ListMfaMethodsApiV1AuthMfaGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    ListMfaMethodsApiV1AuthMfaGetResponses,
+    unknown,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/auth/mfa",
+    ...options,
+  });
+};
+
+/**
+ * Start Totp Enrollment
+ */
+export const startTotpEnrollmentApiV1AuthMfaTotpEnrollPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<
+    StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options?.client ?? client).post<
+    StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostResponses,
+    StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/auth/mfa/totp/enroll",
+    ...options,
+  });
+};
+
+/**
+ * Verify Totp
+ */
+export const verifyTotpApiV1AuthMfaTotpVerifyPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<VerifyTotpApiV1AuthMfaTotpVerifyPostData, ThrowOnError>,
+) => {
+  return (options.client ?? client).post<
+    VerifyTotpApiV1AuthMfaTotpVerifyPostResponses,
+    VerifyTotpApiV1AuthMfaTotpVerifyPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/auth/mfa/totp/verify",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Revoke Mfa Method
+ */
+export const revokeMfaMethodApiV1AuthMfaMethodIdDelete = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<RevokeMfaMethodApiV1AuthMfaMethodIdDeleteData, ThrowOnError>,
+) => {
+  return (options.client ?? client).delete<
+    RevokeMfaMethodApiV1AuthMfaMethodIdDeleteResponses,
+    RevokeMfaMethodApiV1AuthMfaMethodIdDeleteErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/auth/mfa/{method_id}",
+    ...options,
+  });
+};
+
+/**
+ * Regenerate Recovery Codes
+ */
+export const regenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePost = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<
+    RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostData,
+    ThrowOnError
+  >,
+) => {
+  return (options?.client ?? client).post<
+    RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostResponses,
+    unknown,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/auth/mfa/recovery/regenerate",
+    ...options,
+  });
+};
+
+/**
+ * Complete Mfa Challenge
+ */
+export const completeMfaChallengeApiV1AuthMfaCompletePost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    CompleteMfaChallengeApiV1AuthMfaCompletePostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    CompleteMfaChallengeApiV1AuthMfaCompletePostResponses,
+    CompleteMfaChallengeApiV1AuthMfaCompletePostErrors,
+    ThrowOnError
+  >({
+    url: "/api/v1/auth/mfa/complete",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
   });
 };
 
@@ -2637,6 +2822,137 @@ export const updateTenantSettingsApiV1TenantsSettingsPut = <
       "Content-Type": "application/json",
       ...options.headers,
     },
+  });
+};
+
+/**
+ * List Consents
+ */
+export const listConsentsApiV1UsersConsentsGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<ListConsentsApiV1UsersConsentsGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    ListConsentsApiV1UsersConsentsGetResponses,
+    unknown,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/users/consents",
+    ...options,
+  });
+};
+
+/**
+ * Record Consent
+ */
+export const recordConsentApiV1UsersConsentsPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<RecordConsentApiV1UsersConsentsPostData, ThrowOnError>,
+) => {
+  return (options.client ?? client).post<
+    RecordConsentApiV1UsersConsentsPostResponses,
+    RecordConsentApiV1UsersConsentsPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/users/consents",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * List Notification Preferences
+ */
+export const listNotificationPreferencesApiV1UsersNotificationPreferencesGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<
+    ListNotificationPreferencesApiV1UsersNotificationPreferencesGetData,
+    ThrowOnError
+  >,
+) => {
+  return (options?.client ?? client).get<
+    ListNotificationPreferencesApiV1UsersNotificationPreferencesGetResponses,
+    ListNotificationPreferencesApiV1UsersNotificationPreferencesGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/users/notification-preferences",
+    ...options,
+  });
+};
+
+/**
+ * Upsert Notification Preference
+ */
+export const upsertNotificationPreferenceApiV1UsersNotificationPreferencesPut =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).put<
+      UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutResponses,
+      UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/users/notification-preferences",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
+  };
+
+/**
+ * List Usage
+ */
+export const listUsageApiV1UsageGet = <ThrowOnError extends boolean = false>(
+  options?: Options<ListUsageApiV1UsageGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    ListUsageApiV1UsageGetResponses,
+    ListUsageApiV1UsageGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/usage",
+    ...options,
   });
 };
 

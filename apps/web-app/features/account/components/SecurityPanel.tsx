@@ -7,9 +7,11 @@ import { ErrorState, SkeletonPanel } from '@/components/ui/states';
 import { useAccountProfileQuery } from '@/lib/queries/account';
 
 import { AdminResetGate } from '../security/components/AdminResetGate';
-import { MfaPreviewCard } from '../security/components/MfaPreviewCard';
+import { MfaManagerCard } from '../security/components/MfaManagerCard';
 import { PasswordChangeCard } from '../security/components/PasswordChangeCard';
 import { RecentActivityCard } from '../security/components/RecentActivityCard';
+import { NotificationPreferencesCard } from './NotificationPreferencesCard';
+import { ConsentsCard } from './ConsentsCard';
 import { SUPPORT_SCOPE } from '../security/constants';
 import { usePasswordChangeForm } from '../security/hooks/usePasswordChangeForm';
 import { extractDateField } from '../utils/dates';
@@ -78,7 +80,12 @@ export function SecurityPanel() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <PasswordChangeCard form={form} onSubmit={onSubmit} isSaving={isSaving} rootError={rootError} />
-        <MfaPreviewCard />
+        <MfaManagerCard />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <NotificationPreferencesCard />
+        <ConsentsCard />
       </div>
 
       <AdminResetGate

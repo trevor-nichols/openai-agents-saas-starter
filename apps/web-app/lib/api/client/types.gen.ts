@@ -645,6 +645,46 @@ export type CodeInterpreterCall = {
 };
 
 /**
+ * ConsentRequest
+ */
+export type ConsentRequest = {
+  /**
+   * Policy Key
+   */
+  policy_key: string;
+  /**
+   * Version
+   */
+  version: string;
+  /**
+   * Ip Hash
+   */
+  ip_hash?: string | null;
+  /**
+   * User Agent Hash
+   */
+  user_agent_hash?: string | null;
+};
+
+/**
+ * ConsentView
+ */
+export type ConsentView = {
+  /**
+   * Policy Key
+   */
+  policy_key: string;
+  /**
+   * Version
+   */
+  version: string;
+  /**
+   * Accepted At
+   */
+  accepted_at: string;
+};
+
+/**
  * ContactSubmissionRequest
  */
 export type ContactSubmissionRequest = {
@@ -1679,6 +1719,120 @@ export type MessageAttachment = {
 };
 
 /**
+ * MfaChallengeCompleteRequest
+ */
+export type MfaChallengeCompleteRequest = {
+  /**
+   * Challenge Token
+   */
+  challenge_token: string;
+  /**
+   * Method Id
+   */
+  method_id: string;
+  /**
+   * Code
+   */
+  code: string;
+};
+
+/**
+ * MfaChallengeResponse
+ */
+export type MfaChallengeResponse = {
+  /**
+   * Mfa Required
+   */
+  mfa_required?: boolean;
+  /**
+   * Challenge Token
+   */
+  challenge_token: string;
+  /**
+   * Methods
+   */
+  methods: Array<MfaMethodView>;
+};
+
+/**
+ * MfaMethodView
+ */
+export type MfaMethodView = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Method Type
+   */
+  method_type: string;
+  /**
+   * Label
+   */
+  label?: string | null;
+  /**
+   * Verified At
+   */
+  verified_at?: string | null;
+  /**
+   * Last Used At
+   */
+  last_used_at?: string | null;
+  /**
+   * Revoked At
+   */
+  revoked_at?: string | null;
+};
+
+/**
+ * NotificationPreferenceRequest
+ */
+export type NotificationPreferenceRequest = {
+  /**
+   * Channel
+   */
+  channel: string;
+  /**
+   * Category
+   */
+  category: string;
+  /**
+   * Enabled
+   */
+  enabled?: boolean;
+  /**
+   * Tenant Id
+   */
+  tenant_id?: string | null;
+};
+
+/**
+ * NotificationPreferenceView
+ */
+export type NotificationPreferenceView = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Channel
+   */
+  channel: string;
+  /**
+   * Category
+   */
+  category: string;
+  /**
+   * Enabled
+   */
+  enabled: boolean;
+  /**
+   * Tenant Id
+   */
+  tenant_id?: string | null;
+};
+
+/**
  * PaginatedMessagesResponse
  *
  * Paginated slice of messages for a conversation.
@@ -1849,6 +2003,16 @@ export type ReceiptResponse = {
    * Unread Count
    */
   unread_count?: number;
+};
+
+/**
+ * RecoveryCodesResponse
+ */
+export type RecoveryCodesResponse = {
+  /**
+   * Codes
+   */
+  codes: Array<string>;
 };
 
 /**
@@ -3320,6 +3484,38 @@ export type ToolCallPayload = {
 };
 
 /**
+ * TotpEnrollResponse
+ */
+export type TotpEnrollResponse = {
+  /**
+   * Secret
+   */
+  secret: string;
+  /**
+   * Method Id
+   */
+  method_id: string;
+  /**
+   * Otpauth Url
+   */
+  otpauth_url?: string | null;
+};
+
+/**
+ * TotpVerifyRequest
+ */
+export type TotpVerifyRequest = {
+  /**
+   * Method Id
+   */
+  method_id: string;
+  /**
+   * Code
+   */
+  code: string;
+};
+
+/**
  * UpdateSubscriptionRequest
  */
 export type UpdateSubscriptionRequest = {
@@ -3393,6 +3589,52 @@ export type UrlCitation = {
    * Url
    */
   url: string;
+};
+
+/**
+ * UsageCounterView
+ */
+export type UsageCounterView = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Tenant Id
+   */
+  tenant_id: string;
+  /**
+   * User Id
+   */
+  user_id?: string | null;
+  /**
+   * Period Start
+   */
+  period_start: string;
+  /**
+   * Granularity
+   */
+  granularity: string;
+  /**
+   * Input Tokens
+   */
+  input_tokens: number;
+  /**
+   * Output Tokens
+   */
+  output_tokens: number;
+  /**
+   * Requests
+   */
+  requests: number;
+  /**
+   * Storage Bytes
+   */
+  storage_bytes: number;
+  /**
+   * Updated At
+   */
+  updated_at: string;
 };
 
 /**
@@ -4545,9 +4787,11 @@ export type LoginForAccessTokenApiV1AuthTokenPostError =
 
 export type LoginForAccessTokenApiV1AuthTokenPostResponses = {
   /**
+   * Response Login For Access Token Api V1 Auth Token Post
+   *
    * Successful Response
    */
-  200: UserSessionResponse;
+  200: UserSessionResponse | MfaChallengeResponse;
 };
 
 export type LoginForAccessTokenApiV1AuthTokenPostResponse =
@@ -5392,6 +5636,161 @@ export type RevokeInviteApiV1AuthInvitesInviteIdRevokePostResponses = {
 
 export type RevokeInviteApiV1AuthInvitesInviteIdRevokePostResponse =
   RevokeInviteApiV1AuthInvitesInviteIdRevokePostResponses[keyof RevokeInviteApiV1AuthInvitesInviteIdRevokePostResponses];
+
+export type ListMfaMethodsApiV1AuthMfaGetData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/v1/auth/mfa";
+};
+
+export type ListMfaMethodsApiV1AuthMfaGetResponses = {
+  /**
+   * Response List Mfa Methods Api V1 Auth Mfa Get
+   *
+   * Successful Response
+   */
+  200: Array<MfaMethodView>;
+};
+
+export type ListMfaMethodsApiV1AuthMfaGetResponse =
+  ListMfaMethodsApiV1AuthMfaGetResponses[keyof ListMfaMethodsApiV1AuthMfaGetResponses];
+
+export type StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostData = {
+  body?: never;
+  path?: never;
+  query?: {
+    /**
+     * Label
+     */
+    label?: string | null;
+  };
+  url: "/api/v1/auth/mfa/totp/enroll";
+};
+
+export type StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostError =
+  StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostErrors[keyof StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostErrors];
+
+export type StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostResponses = {
+  /**
+   * Successful Response
+   */
+  201: TotpEnrollResponse;
+};
+
+export type StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostResponse =
+  StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostResponses[keyof StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostResponses];
+
+export type VerifyTotpApiV1AuthMfaTotpVerifyPostData = {
+  body: TotpVerifyRequest;
+  path?: never;
+  query?: never;
+  url: "/api/v1/auth/mfa/totp/verify";
+};
+
+export type VerifyTotpApiV1AuthMfaTotpVerifyPostErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type VerifyTotpApiV1AuthMfaTotpVerifyPostError =
+  VerifyTotpApiV1AuthMfaTotpVerifyPostErrors[keyof VerifyTotpApiV1AuthMfaTotpVerifyPostErrors];
+
+export type VerifyTotpApiV1AuthMfaTotpVerifyPostResponses = {
+  /**
+   * Successful Response
+   */
+  200: SuccessResponse;
+};
+
+export type VerifyTotpApiV1AuthMfaTotpVerifyPostResponse =
+  VerifyTotpApiV1AuthMfaTotpVerifyPostResponses[keyof VerifyTotpApiV1AuthMfaTotpVerifyPostResponses];
+
+export type RevokeMfaMethodApiV1AuthMfaMethodIdDeleteData = {
+  body?: never;
+  path: {
+    /**
+     * Method Id
+     */
+    method_id: string;
+  };
+  query?: never;
+  url: "/api/v1/auth/mfa/{method_id}";
+};
+
+export type RevokeMfaMethodApiV1AuthMfaMethodIdDeleteErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type RevokeMfaMethodApiV1AuthMfaMethodIdDeleteError =
+  RevokeMfaMethodApiV1AuthMfaMethodIdDeleteErrors[keyof RevokeMfaMethodApiV1AuthMfaMethodIdDeleteErrors];
+
+export type RevokeMfaMethodApiV1AuthMfaMethodIdDeleteResponses = {
+  /**
+   * Successful Response
+   */
+  200: SuccessResponse;
+};
+
+export type RevokeMfaMethodApiV1AuthMfaMethodIdDeleteResponse =
+  RevokeMfaMethodApiV1AuthMfaMethodIdDeleteResponses[keyof RevokeMfaMethodApiV1AuthMfaMethodIdDeleteResponses];
+
+export type RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/v1/auth/mfa/recovery/regenerate";
+};
+
+export type RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: RecoveryCodesResponse;
+  };
+
+export type RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostResponse =
+  RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostResponses[keyof RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostResponses];
+
+export type CompleteMfaChallengeApiV1AuthMfaCompletePostData = {
+  body: MfaChallengeCompleteRequest;
+  path?: never;
+  query?: never;
+  url: "/api/v1/auth/mfa/complete";
+};
+
+export type CompleteMfaChallengeApiV1AuthMfaCompletePostErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type CompleteMfaChallengeApiV1AuthMfaCompletePostError =
+  CompleteMfaChallengeApiV1AuthMfaCompletePostErrors[keyof CompleteMfaChallengeApiV1AuthMfaCompletePostErrors];
+
+export type CompleteMfaChallengeApiV1AuthMfaCompletePostResponses = {
+  /**
+   * Successful Response
+   */
+  200: UserSessionResponse;
+};
+
+export type CompleteMfaChallengeApiV1AuthMfaCompletePostResponse =
+  CompleteMfaChallengeApiV1AuthMfaCompletePostResponses[keyof CompleteMfaChallengeApiV1AuthMfaCompletePostResponses];
 
 export type ChatWithAgentApiV1ChatPostData = {
   body: AgentChatRequest;
@@ -7829,6 +8228,173 @@ export type UpdateTenantSettingsApiV1TenantsSettingsPutResponses = {
 
 export type UpdateTenantSettingsApiV1TenantsSettingsPutResponse =
   UpdateTenantSettingsApiV1TenantsSettingsPutResponses[keyof UpdateTenantSettingsApiV1TenantsSettingsPutResponses];
+
+export type ListConsentsApiV1UsersConsentsGetData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/v1/users/consents";
+};
+
+export type ListConsentsApiV1UsersConsentsGetResponses = {
+  /**
+   * Response List Consents Api V1 Users Consents Get
+   *
+   * Successful Response
+   */
+  200: Array<ConsentView>;
+};
+
+export type ListConsentsApiV1UsersConsentsGetResponse =
+  ListConsentsApiV1UsersConsentsGetResponses[keyof ListConsentsApiV1UsersConsentsGetResponses];
+
+export type RecordConsentApiV1UsersConsentsPostData = {
+  body: ConsentRequest;
+  path?: never;
+  query?: never;
+  url: "/api/v1/users/consents";
+};
+
+export type RecordConsentApiV1UsersConsentsPostErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type RecordConsentApiV1UsersConsentsPostError =
+  RecordConsentApiV1UsersConsentsPostErrors[keyof RecordConsentApiV1UsersConsentsPostErrors];
+
+export type RecordConsentApiV1UsersConsentsPostResponses = {
+  /**
+   * Successful Response
+   */
+  201: SuccessResponse;
+};
+
+export type RecordConsentApiV1UsersConsentsPostResponse =
+  RecordConsentApiV1UsersConsentsPostResponses[keyof RecordConsentApiV1UsersConsentsPostResponses];
+
+export type ListNotificationPreferencesApiV1UsersNotificationPreferencesGetData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: "/api/v1/users/notification-preferences";
+  };
+
+export type ListNotificationPreferencesApiV1UsersNotificationPreferencesGetErrors =
+  {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+  };
+
+export type ListNotificationPreferencesApiV1UsersNotificationPreferencesGetError =
+  ListNotificationPreferencesApiV1UsersNotificationPreferencesGetErrors[keyof ListNotificationPreferencesApiV1UsersNotificationPreferencesGetErrors];
+
+export type ListNotificationPreferencesApiV1UsersNotificationPreferencesGetResponses =
+  {
+    /**
+     * Response List Notification Preferences Api V1 Users Notification Preferences Get
+     *
+     * Successful Response
+     */
+    200: Array<NotificationPreferenceView>;
+  };
+
+export type ListNotificationPreferencesApiV1UsersNotificationPreferencesGetResponse =
+  ListNotificationPreferencesApiV1UsersNotificationPreferencesGetResponses[keyof ListNotificationPreferencesApiV1UsersNotificationPreferencesGetResponses];
+
+export type UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutData =
+  {
+    body: NotificationPreferenceRequest;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: "/api/v1/users/notification-preferences";
+  };
+
+export type UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutErrors =
+  {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+  };
+
+export type UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutError =
+  UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutErrors[keyof UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutErrors];
+
+export type UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: NotificationPreferenceView;
+  };
+
+export type UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutResponse =
+  UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutResponses[keyof UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutResponses];
+
+export type ListUsageApiV1UsageGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path?: never;
+  query?: never;
+  url: "/api/v1/usage";
+};
+
+export type ListUsageApiV1UsageGetErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type ListUsageApiV1UsageGetError =
+  ListUsageApiV1UsageGetErrors[keyof ListUsageApiV1UsageGetErrors];
+
+export type ListUsageApiV1UsageGetResponses = {
+  /**
+   * Response List Usage Api V1 Usage Get
+   *
+   * Successful Response
+   */
+  200: Array<UsageCounterView>;
+};
+
+export type ListUsageApiV1UsageGetResponse =
+  ListUsageApiV1UsageGetResponses[keyof ListUsageApiV1UsageGetResponses];
 
 export type ListBillingPlansApiV1BillingPlansGetData = {
   body?: never;
