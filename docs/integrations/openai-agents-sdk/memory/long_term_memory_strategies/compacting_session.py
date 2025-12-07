@@ -1,4 +1,4 @@
-"""Compacting session implementation for OpenAI Agents SDK demo."""
+"""Compacting session implementation for OpenAI Agents SDK demo"""
 
 # CompactingSession for OpenAI Agents SDK
 # ---------------------------------------

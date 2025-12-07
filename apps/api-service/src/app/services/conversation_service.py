@@ -9,6 +9,7 @@ from typing import Literal
 
 from app.domain.conversations import (
     ConversationEvent,
+    ConversationMemoryConfig,
     ConversationMessage,
     ConversationMetadata,
     ConversationPage,
@@ -261,6 +262,62 @@ class ConversationService:
         normalized_tenant = _require_tenant_id(tenant_id)
         return await self._require_repository().get_session_state(
             conversation_id, tenant_id=normalized_tenant
+        )
+
+    async def get_memory_config(
+        self, conversation_id: str, *, tenant_id: str
+    ) -> ConversationMemoryConfig | None:
+        normalized_tenant = _require_tenant_id(tenant_id)
+        return await self._require_repository().get_memory_config(
+            conversation_id, tenant_id=normalized_tenant
+        )
+
+    async def set_memory_config(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        config: ConversationMemoryConfig,
+        provided_fields: set[str] | None = None,
+    ) -> None:
+        normalized_tenant = _require_tenant_id(tenant_id)
+        await self._require_repository().set_memory_config(
+            conversation_id,
+            tenant_id=normalized_tenant,
+            config=config,
+            provided_fields=provided_fields,
+        )
+
+    async def persist_summary(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        agent_key: str | None,
+        summary_text: str,
+        summary_model: str | None = None,
+    ) -> None:
+        normalized_tenant = _require_tenant_id(tenant_id)
+        await self._require_repository().persist_summary(
+            conversation_id,
+            tenant_id=normalized_tenant,
+            agent_key=agent_key,
+            summary_text=summary_text,
+            summary_model=summary_model,
+        )
+
+    async def get_latest_summary(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        agent_key: str | None,
+    ):
+        normalized_tenant = _require_tenant_id(tenant_id)
+        return await self._require_repository().get_latest_summary(
+            conversation_id,
+            tenant_id=normalized_tenant,
+            agent_key=agent_key,
         )
 
     async def update_session_state(

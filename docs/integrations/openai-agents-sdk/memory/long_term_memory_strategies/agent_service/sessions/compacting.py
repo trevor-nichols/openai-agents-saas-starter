@@ -17,7 +17,7 @@ from ..deps import TResponseInputItem
 
 
 class TrackingCompactingSession(CompactingSession):
-    """Extend CompactingSession with delta tracking for the demo UI."""
+    """Extend CompactingSession with delta tracking for the demo UI"""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)

@@ -23,6 +23,7 @@ class DescriptorStore:
             model=str(agent.model),
             capabilities=spec.capabilities,
             last_seen_at=None,
+            memory_strategy_defaults=spec.memory_strategy,
         )
         self._descriptors[spec.key] = descriptor
         return descriptor

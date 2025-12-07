@@ -24,6 +24,7 @@ class PromptRuntimeContext:
     - user_location: optional coarse location for hosted web search tools
     - file_search: optional per-agent resolution data (vector store ids, options)
     - client_overrides: arbitrary client-provided context (from request)
+    - memory_summary: optional cross-session summary text to inject into prompts
     """
 
     actor: ConversationActorContext | None
@@ -34,6 +35,7 @@ class PromptRuntimeContext:
     container_bindings: dict[str, str] | None = None
     file_search: dict[str, Any] | None = None
     client_overrides: dict[str, Any] | None = None
+    memory_summary: str | None = None
 
 
 _PROVIDER_REGISTRY: dict[str, ContextProvider] = {}
@@ -95,6 +97,9 @@ def build_prompt_context(
         ctx.setdefault("agent", {})
         ctx["agent"].setdefault("key", spec.key)
         ctx["agent"].setdefault("display_name", spec.display_name)
+        if runtime_ctx.memory_summary:
+            ctx.setdefault("memory", {})
+            ctx["memory"].setdefault("summary", runtime_ctx.memory_summary)
 
     # Merge prompt defaults from spec (if any)
     if getattr(spec, "prompt_defaults", None):

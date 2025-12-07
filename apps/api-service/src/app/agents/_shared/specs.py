@@ -81,6 +81,9 @@ class AgentSpec:
     vector_store_binding: Literal["tenant_default", "static", "required"] = "tenant_default"
     vector_store_ids: tuple[str, ...] = ()
     file_search_options: dict[str, Any] = field(default_factory=dict)
+    # Optional memory strategy defaults applied at agent level (resolved after per-request
+    # and conversation overrides).
+    memory_strategy: dict[str, Any] | None = None
 
     def prompt_source(self) -> str:
         if self.instructions:

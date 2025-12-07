@@ -37,7 +37,7 @@ def _count_user_turns(items: Iterable[TResponseInputItem]) -> int:
 
 
 class _InternalTurnCounterMixin:
-    """Shared helper to track per-session turns independent of global counts."""
+    """Shared helper to track per-session turns independent of global counts"""
 
     def __init__(self) -> None:
         self._internal_turn_counter: int = 0

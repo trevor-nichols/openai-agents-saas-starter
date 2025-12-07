@@ -34,7 +34,9 @@ class _ProviderRegistry:
 
 @pytest.mark.asyncio
 async def test_prepare_and_record_user_message_happy_path():
-    descriptor = SimpleNamespace(key="triage", model="gpt", status="active")
+    descriptor = SimpleNamespace(
+        key="triage", model="gpt", status="active", memory_strategy_defaults=None
+    )
     provider = _FakeProvider(name="openai", descriptor=descriptor)
     registry = _ProviderRegistry(provider)
 
@@ -51,7 +53,13 @@ async def test_prepare_and_record_user_message_happy_path():
     session_manager = AsyncMock()
     session_manager.acquire_session.return_value = ("sess-1", _Handle())
 
-    request = SimpleNamespace(message="hello", agent_type=None, conversation_id=None)
+    request = SimpleNamespace(
+        message="hello",
+        agent_type=None,
+        conversation_id=None,
+        memory_injection=None,
+        memory_strategy=None,
+    )
     actor = SimpleNamespace(tenant_id="t1", user_id="u1")
 
     ctx = await prepare_run_context(
@@ -124,3 +132,67 @@ async def test_project_new_session_items_best_effort_on_failure():
     )
 
     failing_projector.ingest_session_items.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_project_new_session_items_handles_strategy_rewrite():
+    pre_items = [
+        {"id": "u1", "type": "message", "role": "user"},
+        {"id": "a1", "type": "message", "role": "assistant"},
+        {"id": "a2", "type": "message", "role": "assistant"},
+    ]
+    post_items = [
+        {"id": "a2", "type": "message", "role": "assistant"},  # kept
+        {"id": "n1", "type": "message", "role": "assistant", "content": "new"},
+    ]
+
+    class DummyHandle:
+        def get_items(self):
+            return post_items
+
+    projector = AsyncMock()
+
+    await project_new_session_items(
+        event_projector=projector,
+        session_handle=DummyHandle(),
+        pre_items=pre_items,
+        conversation_id="conv-1",
+        tenant_id="tenant-1",
+        agent="triage",
+        model="gpt-5.1",
+        response_id="resp-1",
+    )
+
+    projector.ingest_session_items.assert_called_once()
+    _, _, kwargs = projector.ingest_session_items.mock_calls[0]
+    assert kwargs["session_items"] == [post_items[1]]
+
+
+@pytest.mark.asyncio
+async def test_project_new_session_items_detects_rewritten_item_content():
+    pre_items = [{"id": "x1", "type": "message", "content": "old"}]
+    post_items = [
+        {"id": "x1", "type": "message", "content": "new"},  # rewritten
+        {"id": "n2", "type": "message", "content": "newer"},
+    ]
+
+    class DummyHandle:
+        def get_items(self):
+            return post_items
+
+    projector = AsyncMock()
+
+    await project_new_session_items(
+        event_projector=projector,
+        session_handle=DummyHandle(),
+        pre_items=pre_items,
+        conversation_id="conv-1",
+        tenant_id="tenant-1",
+        agent="triage",
+        model="gpt-5.1",
+        response_id="resp-1",
+    )
+
+    projector.ingest_session_items.assert_called_once()
+    _, _, kwargs = projector.ingest_session_items.mock_calls[0]
+    assert kwargs["session_items"] == post_items

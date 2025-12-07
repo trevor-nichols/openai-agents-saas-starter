@@ -43,6 +43,7 @@ from app.bootstrap import get_container, reset_container
 from app.core import settings as config_module
 from app.domain.conversations import (
     ConversationEvent,
+    ConversationMemoryConfig,
     ConversationMessage,
     ConversationMetadata,
     ConversationPage,
@@ -51,6 +52,7 @@ from app.domain.conversations import (
     ConversationSearchHit,
     ConversationSearchPage,
     ConversationSessionState,
+    ConversationSummary,
     MessagePage,
 )
 from app.infrastructure.persistence.models.base import Base
@@ -219,6 +221,8 @@ class EphemeralConversationRepository(ConversationRepository):
         self._session_state: dict[tuple[str, str], ConversationSessionState] = {}
         self._events: dict[tuple[str, str], list[ConversationEvent]] = defaultdict(list)
         self._display_names: dict[tuple[str, str], tuple[str, datetime | None]] = {}
+        self._memory: dict[tuple[str, str], ConversationMemoryConfig] = {}
+        self._summaries: dict[tuple[str, str], list[ConversationSummary]] = defaultdict(list)
 
     async def add_message(
         self,
@@ -421,6 +425,71 @@ class EphemeralConversationRepository(ConversationRepository):
     ) -> ConversationSessionState | None:
         key = self._key(tenant_id, conversation_id)
         return self._session_state.get(key)
+
+    async def get_memory_config(
+        self, conversation_id: str, *, tenant_id: str
+    ) -> ConversationMemoryConfig | None:
+        return self._memory.get(self._key(tenant_id, conversation_id))
+
+    async def set_memory_config(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        config: ConversationMemoryConfig,
+        provided_fields: set[str] | None = None,
+    ) -> None:
+        key = self._key(tenant_id, conversation_id)
+        current = self._memory.get(key, ConversationMemoryConfig())
+        fields = provided_fields or set()
+        if "mode" in fields:
+            current.strategy = config.strategy
+        if "max_user_turns" in fields:
+            current.max_user_turns = config.max_user_turns
+        if "keep_last_turns" in fields:
+            current.keep_last_turns = config.keep_last_turns
+        if "compact_trigger_turns" in fields:
+            current.compact_trigger_turns = config.compact_trigger_turns
+        if "compact_keep" in fields:
+            current.compact_keep = config.compact_keep
+        if "clear_tool_inputs" in fields:
+            current.clear_tool_inputs = config.clear_tool_inputs
+        if "memory_injection" in fields:
+            current.memory_injection = config.memory_injection
+        self._memory[key] = current
+
+    async def persist_summary(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        agent_key: str | None,
+        summary_text: str,
+        summary_model: str | None = None,
+    ) -> None:
+        key = self._key(tenant_id, conversation_id)
+        self._summaries[key].append(
+            ConversationSummary(
+                conversation_id=conversation_id,
+                agent_key=agent_key,
+                summary_text=summary_text,
+                summary_model=summary_model,
+                created_at=datetime.utcnow(),
+            )
+        )
+
+    async def get_latest_summary(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        agent_key: str | None,
+    ) -> ConversationSummary | None:
+        key = self._key(tenant_id, conversation_id)
+        summaries = [s for s in self._summaries.get(key, []) if not agent_key or s.agent_key == agent_key]
+        if not summaries:
+            return None
+        return sorted(summaries, key=lambda s: s.created_at or datetime.min, reverse=True)[0]
 
     async def upsert_session_state(
         self,

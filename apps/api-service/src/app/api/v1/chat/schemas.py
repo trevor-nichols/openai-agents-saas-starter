@@ -39,6 +39,8 @@ class AgentChatRequest(BaseModel):
     location: LocationHint | None = None
     context: dict[str, Any] | None = None
     run_options: AgentRunOptions | None = None
+    memory_strategy: MemoryStrategyRequest | None = None
+    memory_injection: bool | None = None
 
 
 class AgentChatResponse(BaseModel):
@@ -63,6 +65,16 @@ class StreamingChatEvent(StreamingEvent):
     model_config = ConfigDict(title="StreamingChatEvent")
 
 
+class MemoryStrategyRequest(BaseModel):
+    mode: Literal["none", "trim", "summarize", "compact"] = "none"
+    max_user_turns: int | None = None
+    keep_last_user_turns: int | None = None
+    compact_trigger_turns: int | None = None
+    compact_keep: int | None = None
+    compact_clear_tool_inputs: bool | None = None
+    compact_exclude_tools: list[str] | None = None
+
+
 __all__ = [
     "AgentChatRequest",
     "AgentChatResponse",
@@ -79,4 +91,5 @@ __all__ = [
     "ImageGenerationCall",
     "LocationHint",
     "AgentRunOptions",
+    "MemoryStrategyRequest",
 ]

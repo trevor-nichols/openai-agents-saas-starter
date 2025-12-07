@@ -148,6 +148,11 @@ class AgentService:
             interaction_builder=self._interaction_builder,
             conversation_service=self._conversation_service,
             session_manager=self._session_manager,
+            conversation_memory=await self._conversation_service.get_memory_config(
+                request.conversation_id, tenant_id=actor.tenant_id
+            )
+            if request.conversation_id
+            else None,
         )
 
         await record_user_message(
@@ -277,6 +282,11 @@ class AgentService:
             interaction_builder=self._interaction_builder,
             conversation_service=self._conversation_service,
             session_manager=self._session_manager,
+            conversation_memory=await self._conversation_service.get_memory_config(
+                request.conversation_id, tenant_id=actor.tenant_id
+            )
+            if request.conversation_id
+            else None,
         )
 
         await record_user_message(

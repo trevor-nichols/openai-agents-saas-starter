@@ -162,3 +162,9 @@ For now, strategies 1–3 (None, Trimming, Summarization) and 4 (Compacting) plu
 - `agent_service/text_extract.py` — extract text from SDK output objects
 - `agent_service/sessions/*` — session implementations (default/trimming/summarizing/compacting)
 - `agent_service/deps.py` — centralized OpenAI Agents SDK imports with a helpful error message
+
+## Backend wiring in this starter
+
+- Strategies are configurable via API: per-request (`memory_strategy`, `memory_injection`), per-conversation defaults (stored on `agent_conversations`), and per-agent defaults (`AgentSpec.memory_strategy`). Precedence: request > conversation > agent > none.
+- SDK session view is modified; durable audit history (`agent_messages`, `agent_run_events`) remains intact.
+- Cross-session memory injection stores summaries in `conversation_summaries` and injects them into prompt context when enabled; SDK history is not mutated.

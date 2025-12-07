@@ -109,6 +109,13 @@ class AgentConversation(Base):
     topic_hint: Mapped[str | None] = mapped_column(String(256))
     display_name: Mapped[str | None] = mapped_column(String(128))
     title_generated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    memory_strategy: Mapped[str | None] = mapped_column(String(16))
+    memory_max_turns: Mapped[int | None] = mapped_column(Integer)
+    memory_keep_last_turns: Mapped[int | None] = mapped_column(Integer)
+    memory_compact_trigger_turns: Mapped[int | None] = mapped_column(Integer)
+    memory_compact_keep: Mapped[int | None] = mapped_column(Integer)
+    memory_clear_tool_inputs: Mapped[bool | None] = mapped_column(nullable=True)
+    memory_injection: Mapped[bool | None] = mapped_column(nullable=True)
     last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_run_id: Mapped[str | None] = mapped_column(String(64))
     client_version: Mapped[str | None] = mapped_column(String(32))
@@ -182,6 +189,28 @@ class AgentMessage(Base):
     conversation: Mapped[AgentConversation] = relationship(back_populates="messages")
 
 
+class ConversationSummary(Base):
+    """Cross-session summaries used for memory injection."""
+
+    __tablename__ = "conversation_summaries"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("agent_conversations.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    agent_key: Mapped[str | None] = mapped_column(String(64))
+    summary_text: Mapped[str] = mapped_column(String)
+    summary_model: Mapped[str | None] = mapped_column(String(64))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    version: Mapped[str | None] = mapped_column(String(32))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=UTC_NOW, nullable=False
+    )
+
+
 class AgentRunEvent(Base):
     """Structured event log entry mirroring SDK run items."""
 
@@ -239,4 +268,5 @@ __all__ = [
     "AgentConversation",
     "AgentMessage",
     "AgentRunEvent",
+    "ConversationSummary",
 ]

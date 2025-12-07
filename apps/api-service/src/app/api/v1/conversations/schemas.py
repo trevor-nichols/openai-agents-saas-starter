@@ -102,6 +102,20 @@ class ConversationSearchResult(BaseModel):
     updated_at: str | None = Field(default=None, description="Last update timestamp.")
 
 
+class ConversationMemoryConfigRequest(BaseModel):
+    mode: Literal["none", "trim", "summarize", "compact"] | None = None
+    max_user_turns: int | None = None
+    keep_last_turns: int | None = None
+    compact_trigger_turns: int | None = None
+    compact_keep: int | None = None
+    clear_tool_inputs: bool | None = None
+    memory_injection: bool | None = None
+
+
+class ConversationMemoryConfigResponse(ConversationMemoryConfigRequest):
+    pass
+
+
 class ConversationMetaEvent(BaseModel):
     """Metadata stream event for a conversation."""
 

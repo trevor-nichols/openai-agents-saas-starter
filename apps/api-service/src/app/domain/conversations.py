@@ -153,6 +153,30 @@ class ConversationSessionState:
     last_session_sync_at: datetime | None = None
 
 
+@dataclass(slots=True)
+class ConversationMemoryConfig:
+    """Persisted memory strategy defaults for a conversation."""
+
+    strategy: str | None = None
+    max_user_turns: int | None = None
+    keep_last_turns: int | None = None
+    compact_trigger_turns: int | None = None
+    compact_keep: int | None = None
+    clear_tool_inputs: bool | None = None
+    memory_injection: bool | None = None
+
+
+@dataclass(slots=True)
+class ConversationSummary:
+    """Cross-session summary snapshot."""
+
+    conversation_id: str
+    agent_key: str | None
+    summary_text: str
+    summary_model: str | None = None
+    created_at: datetime | None = None
+
+
 class ConversationRepository(Protocol):
     """Persistence contract for storing conversation histories."""
 
@@ -251,6 +275,40 @@ class ConversationRepository(Protocol):
         workflow_run_id: str | None = None,
     ) -> list[ConversationEvent]: ...
 
+    async def get_memory_config(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+    ) -> ConversationMemoryConfig | None: ...
+
+    async def set_memory_config(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        config: ConversationMemoryConfig,
+        provided_fields: set[str] | None = None,
+    ) -> None: ...
+
+    async def persist_summary(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        agent_key: str | None,
+        summary_text: str,
+        summary_model: str | None = None,
+    ) -> None: ...
+
+    async def get_latest_summary(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        agent_key: str | None,
+    ) -> ConversationSummary | None: ...
+
     async def set_display_name(
         self,
         conversation_id: str,
@@ -259,3 +317,21 @@ class ConversationRepository(Protocol):
         display_name: str,
         generated_at: datetime | None = None,
     ) -> bool: ...
+
+
+__all__ = [
+    "ConversationAttachment",
+    "ConversationEvent",
+    "ConversationMessage",
+    "ConversationMetadata",
+    "ConversationNotFoundError",
+    "ConversationPage",
+    "ConversationRecord",
+    "ConversationRepository",
+    "ConversationSearchHit",
+    "ConversationSearchPage",
+    "ConversationSessionState",
+    "ConversationMemoryConfig",
+    "ConversationSummary",
+    "MessagePage",
+]

@@ -11,6 +11,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.domain.conversations import (
+    ConversationMemoryConfig,
     ConversationMessage,
     ConversationMetadata,
     ConversationNotFoundError,
@@ -389,6 +390,77 @@ class ConversationMessageStore:
                 session_cursor=conversation.session_cursor,
                 last_session_sync_at=conversation.last_session_sync_at,
             )
+
+    async def get_memory_config(
+        self, conversation_id: str, *, tenant_id: str
+    ) -> ConversationMemoryConfig | None:
+        conversation_uuid = coerce_conversation_uuid(conversation_id)
+        tenant_uuid = parse_tenant_id(tenant_id)
+        async with self._session_factory() as session:
+            conversation = await self._get_conversation(
+                session,
+                conversation_uuid,
+                tenant_id=tenant_uuid,
+            )
+            if conversation is None:
+                return None
+            return ConversationMemoryConfig(
+                strategy=conversation.memory_strategy,
+                max_user_turns=conversation.memory_max_turns,
+                keep_last_turns=conversation.memory_keep_last_turns,
+                compact_trigger_turns=conversation.memory_compact_trigger_turns,
+                compact_keep=conversation.memory_compact_keep,
+                clear_tool_inputs=conversation.memory_clear_tool_inputs,
+                memory_injection=conversation.memory_injection,
+            )
+
+    async def set_memory_config(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        config: ConversationMemoryConfig,
+        provided_fields: set[str] | None = None,
+    ) -> None:
+        conversation_uuid = coerce_conversation_uuid(conversation_id)
+        tenant_uuid = parse_tenant_id(tenant_id)
+        async with self._session_factory() as session:
+            conversation = await self._get_conversation(
+                session,
+                conversation_uuid,
+                tenant_id=tenant_uuid,
+                for_update=True,
+                strict=True,
+            )
+            if conversation is None:
+                raise ConversationNotFoundError(f"Conversation {conversation_id} does not exist")
+
+            fields = provided_fields or set()
+
+            if "mode" in fields:
+                conversation.memory_strategy = (config.strategy[:16] if config.strategy else None)
+            if "max_user_turns" in fields:
+                conversation.memory_max_turns = config.max_user_turns
+            if "keep_last_turns" in fields:
+                conversation.memory_keep_last_turns = config.keep_last_turns
+            if "compact_trigger_turns" in fields:
+                conversation.memory_compact_trigger_turns = config.compact_trigger_turns
+            if "compact_keep" in fields:
+                conversation.memory_compact_keep = config.compact_keep
+            if "clear_tool_inputs" in fields:
+                conversation.memory_clear_tool_inputs = (
+                    bool(config.clear_tool_inputs)
+                    if config.clear_tool_inputs is not None
+                    else None
+                )
+            if "memory_injection" in fields:
+                conversation.memory_injection = (
+                    bool(config.memory_injection)
+                    if config.memory_injection is not None
+                    else None
+                )
+            conversation.updated_at = datetime.now(UTC)
+            await session.commit()
 
     async def upsert_session_state(
         self,

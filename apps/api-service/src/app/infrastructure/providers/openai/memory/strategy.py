@@ -1,0 +1,327 @@
+"""Strategy-aware session wrappers atop SQLAlchemySession.
+
+The goal is to keep mutations scoped to the SDK session view while leaving our
+durable audit history untouched. Strategies are turn-based for now; token-based
+triggers can be layered later without changing callers.
+"""
+
+from __future__ import annotations
+
+import math
+from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any, cast
+
+from agents.memory.session import SessionABC
+
+
+class MemoryStrategy(str, Enum):
+    NONE = "none"
+    TRIM = "trim"
+    SUMMARIZE = "summarize"
+    COMPACT = "compact"
+
+
+@dataclass(slots=True)
+class MemoryStrategyConfig:
+    mode: MemoryStrategy = MemoryStrategy.NONE
+    # Shared knobs
+    max_user_turns: int | None = None  # trim/summarize trigger (user turns)
+    keep_last_user_turns: int = 0
+    # Compacting specifics
+    compact_trigger_turns: int | None = None
+    compact_keep: int = 2
+    compact_clear_tool_inputs: bool = False
+    compact_exclude_tools: frozenset[str] = frozenset()
+    # Summarization specifics
+    summarizer: Summarizer | None = None
+    summary_prefix: str = "[summary]"
+
+
+class Summarizer:
+    """Lightweight interface so callers can plug real LLM summarizers later."""
+
+    async def summarize(self, text: str) -> str:  # pragma: no cover - interface
+        raise NotImplementedError
+
+
+class NoopSummarizer(Summarizer):
+    async def summarize(self, text: str) -> str:  # pragma: no cover - trivial
+        return text
+
+
+class StrategySession(SessionABC):
+    """Delegates storage to an underlying SessionABC and applies a strategy.
+
+    The wrapper is intentionally minimal: it fetches the current items,
+    applies the strategy in-memory, clears the underlying store, then writes
+    the transformed list back. This keeps the logic deterministic and easy to
+    reason about while avoiding provider-specific side effects.
+    """
+
+    def __init__(
+        self,
+        base: SessionABC,
+        config: MemoryStrategyConfig,
+        *,
+        on_summary: Callable[[str], Awaitable[None]] | None = None,
+    ) -> None:
+        self._base = base
+        self._config = config
+        self._summarizer: Summarizer = config.summarizer or NoopSummarizer()
+        self._on_summary = on_summary
+
+    # SessionABC API -------------------------------------------------
+    async def get_items(self, limit: int | None = None):
+        return await self._base.get_items(limit=limit)
+
+    async def add_items(self, items: list[dict[str, Any]]) -> None:  # type: ignore[override]
+        # Pull existing, apply strategy to combined list, then replace
+        existing = await self._base.get_items()
+        combined: list[dict[str, Any]] = [dict(it) for it in existing] + [dict(it) for it in items]
+        updated = await self._apply_strategy(combined)
+        await self._base.clear_session()
+        await self._base.add_items(cast(list[dict[str, Any]], updated))  # type: ignore[arg-type]
+
+    async def pop_item(self):
+        return await self._base.pop_item()
+
+    async def clear_session(self) -> None:
+        await self._base.clear_session()
+
+    # Strategy driver -----------------------------------------------
+    async def _apply_strategy(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        mode = self._config.mode
+        if mode == MemoryStrategy.NONE:
+            return items
+        if mode == MemoryStrategy.TRIM:
+            return _trim_items(
+                items,
+                max_turns=self._config.max_user_turns,
+                keep_last=self._config.keep_last_user_turns,
+            )
+        if mode == MemoryStrategy.SUMMARIZE:
+            return await _summarize_items(
+                items,
+                max_turns=self._config.max_user_turns,
+                keep_last=self._config.keep_last_user_turns,
+                summarizer=self._summarizer,
+                summary_prefix=self._config.summary_prefix,
+                on_summary=self._on_summary,
+            )
+        if mode == MemoryStrategy.COMPACT:
+            return _compact_items(
+                items,
+                trigger_turns=self._config.compact_trigger_turns,
+                keep=self._config.compact_keep,
+                clear_tool_inputs=self._config.compact_clear_tool_inputs,
+                exclude_tools=self._config.compact_exclude_tools,
+            )
+        return items
+
+
+# Utilities ---------------------------------------------------------------
+
+
+def _is_user(item: Mapping[str, Any]) -> bool:
+    role = (item.get("role") or "").lower()
+    if role == "user":
+        return True
+    message_type = (item.get("messageType") or item.get("type") or "").lower()
+    return message_type == "user"
+
+
+def _count_user_turns(items: Iterable[Mapping[str, Any]]) -> int:
+    return sum(1 for it in items if _is_user(it))
+
+
+def _group_by_turns(items: Sequence[Mapping[str, Any]]) -> list[list[int]]:
+    """Return list of index lists, one per user-anchored turn."""
+
+    turns: list[list[int]] = []
+    current: list[int] = []
+    for idx, item in enumerate(items):
+        if _is_user(item):
+            if current:
+                turns.append(current)
+            current = [idx]
+        else:
+            current.append(idx)
+    if current:
+        turns.append(current)
+    return turns
+
+
+def _trim_items(
+    items: list[dict[str, Any]],
+    *,
+    max_turns: int | None,
+    keep_last: int,
+) -> list[dict[str, Any]]:
+    if max_turns is None or max_turns <= 0:
+        return items
+
+    turns = _group_by_turns(items)
+    if len(turns) <= max_turns:
+        return items
+
+    keep_tail = turns[-max(1, keep_last) :] if keep_last > 0 else []
+    trimmed_turns = keep_tail if keep_tail else turns[-max_turns:]
+    indices = [i for t in trimmed_turns for i in t]
+    return [items[i] for i in sorted(indices)]
+
+
+async def _summarize_items(
+    items: list[dict[str, Any]],
+    *,
+    max_turns: int | None,
+    keep_last: int,
+    summarizer: Summarizer,
+    summary_prefix: str,
+    on_summary: Callable[[str], Awaitable[None]] | None = None,
+) -> list[dict[str, Any]]:
+    if max_turns is None or max_turns <= 0:
+        return items
+
+    turns = _group_by_turns(items)
+    if len(turns) <= max_turns:
+        return items
+
+    tail_turns = turns[-max(1, keep_last) :] if keep_last > 0 else turns[-1:]
+    tail_indices = [i for t in tail_turns for i in t]
+    prefix_indices = [i for t in turns[:-len(tail_turns)] for i in t]
+    prefix_text = _collect_text([items[i] for i in prefix_indices])
+    summary = await summarizer.summarize(prefix_text)
+    if on_summary is not None:
+        try:
+            await on_summary(summary)
+        except Exception:  # pragma: no cover - best effort
+            pass
+
+    summary_items = [
+        {
+            "role": "user",
+            "content": f"{summary_prefix} prior context",
+            "type": "message",
+        },
+        {
+            "role": "assistant",
+            "content": summary,
+            "type": "message",
+        },
+    ]
+
+    tail_items = [items[i] for i in sorted(tail_indices)]
+    return summary_items + tail_items
+
+
+def _collect_text(items: Iterable[Mapping[str, Any]]) -> str:
+    parts: list[str] = []
+    for item in items:
+        content = item.get("content")
+        if isinstance(content, str):
+            parts.append(content)
+        elif isinstance(content, list):
+            for c in content:
+                if isinstance(c, Mapping):
+                    text = c.get("text")
+                    if isinstance(text, str):
+                        parts.append(text)
+    return "\n".join(parts)
+
+
+def _is_tool_call(item: Mapping[str, Any]) -> bool:
+    t = (item.get("type") or item.get("messageType") or "").lower()
+    return t in {"function_call", "tool_call"}
+
+
+def _is_tool_result(item: Mapping[str, Any]) -> bool:
+    t = (item.get("type") or item.get("messageType") or "").lower()
+    return t in {"function_call_output", "tool_result", "tool_output"}
+
+
+def _call_id(item: Mapping[str, Any]) -> str | None:
+    return item.get("call_id") or item.get("id") or item.get("tool_call_id")
+
+
+def _tool_name(item: Mapping[str, Any]) -> str | None:
+    raw = item.get("raw") or {}
+    if isinstance(raw, Mapping):
+        name = raw.get("name") or raw.get("tool_name")
+        if isinstance(name, str):
+            return name
+    name = item.get("name") or item.get("tool_name")
+    return name if isinstance(name, str) else None
+
+
+def _compact_items(
+    items: list[dict[str, Any]],
+    *,
+    trigger_turns: int | None,
+    keep: int,
+    clear_tool_inputs: bool,
+    exclude_tools: Iterable[str],
+) -> list[dict[str, Any]]:
+    if trigger_turns is None or trigger_turns <= 0:
+        return items
+
+    turns = _group_by_turns(items)
+    if len(turns) <= trigger_turns:
+        return items
+
+    exclude = {t.lower() for t in exclude_tools}
+    protected_turns = {tuple(t) for t in turns[-max(1, keep) :]} if keep > 0 else set()
+    indices_to_compact: set[int] = set()
+
+    for turn in turns:
+        if tuple(turn) in protected_turns:
+            continue
+        for idx in turn:
+            item = items[idx]
+            name = _tool_name(item)
+            if name and name.lower() in exclude:
+                continue
+            if _is_tool_result(item) or (clear_tool_inputs and _is_tool_call(item)):
+                indices_to_compact.add(idx)
+
+    if not indices_to_compact:
+        return items
+
+    new_items: list[dict[str, Any]] = []
+    for idx, item in enumerate(items):
+        if idx not in indices_to_compact:
+            new_items.append(item)
+            continue
+        call_id = _call_id(item) or "unknown"
+        name = _tool_name(item) or "tool"
+        placeholder = _placeholder(kind="result", name=name, call_id=call_id)
+        new_item = dict(item)
+        new_item["content"] = placeholder
+        new_item["output"] = placeholder
+        new_item["type"] = "function_call_output"
+        new_item["compacted"] = True
+        new_items.append(new_item)
+    return new_items
+
+
+def _placeholder(*, kind: str, name: str, call_id: str) -> str:
+    return f"⟦removed: tool {kind} for {name} (call_id={call_id}); reason=context_compaction⟧"
+
+
+# Simple estimator kept for potential metrics; not currently used for triggering.
+def estimate_tokens(item: Mapping[str, Any]) -> int:
+    content = _collect_text([item])
+    if not content:
+        return 1
+    return max(1, math.ceil(len(content) / 4))
+
+
+__all__ = [
+    "MemoryStrategy",
+    "MemoryStrategyConfig",
+    "StrategySession",
+    "Summarizer",
+    "NoopSummarizer",
+    "estimate_tokens",
+]

@@ -19,6 +19,7 @@ class AgentDescriptor:
     capabilities: tuple[str, ...] = ()
     status: Literal["active", "inactive", "error"] = "active"
     last_seen_at: datetime | None = None
+    memory_strategy_defaults: dict[str, Any] | None = None
 
 
 @dataclass(slots=True)

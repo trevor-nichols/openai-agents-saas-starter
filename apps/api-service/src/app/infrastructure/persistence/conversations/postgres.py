@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.domain.conversations import (
     ConversationEvent,
+    ConversationMemoryConfig,
     ConversationMessage,
     ConversationMetadata,
     ConversationPage,
@@ -19,6 +20,7 @@ from app.domain.conversations import (
 from app.infrastructure.persistence.conversations.message_store import ConversationMessageStore
 from app.infrastructure.persistence.conversations.run_event_store import RunEventStore
 from app.infrastructure.persistence.conversations.search_store import ConversationSearchStore
+from app.infrastructure.persistence.conversations.summary_store import ConversationSummaryStore
 
 
 class PostgresConversationRepository(ConversationRepository):
@@ -28,6 +30,7 @@ class PostgresConversationRepository(ConversationRepository):
         self._messages = ConversationMessageStore(session_factory)
         self._search = ConversationSearchStore(session_factory)
         self._run_events = RunEventStore(session_factory)
+        self._summaries = ConversationSummaryStore(session_factory)
 
     # --- messages / conversations ------------------------------------
     async def add_message(
@@ -99,6 +102,54 @@ class PostgresConversationRepository(ConversationRepository):
         self, conversation_id: str, *, tenant_id: str
     ) -> ConversationSessionState | None:
         return await self._messages.get_session_state(conversation_id, tenant_id=tenant_id)
+
+    async def get_memory_config(
+        self, conversation_id: str, *, tenant_id: str
+    ) -> ConversationMemoryConfig | None:
+        return await self._messages.get_memory_config(conversation_id, tenant_id=tenant_id)
+
+    async def set_memory_config(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        config: ConversationMemoryConfig,
+        provided_fields: set[str] | None = None,
+    ) -> None:
+        await self._messages.set_memory_config(
+            conversation_id, tenant_id=tenant_id, config=config, provided_fields=provided_fields
+        )
+
+    # --- summaries -------------------------------------------------------
+    async def persist_summary(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        agent_key: str | None,
+        summary_text: str,
+        summary_model: str | None = None,
+    ) -> None:
+        await self._summaries.persist_summary(
+            conversation_id=conversation_id,
+            tenant_id=tenant_id,
+            agent_key=agent_key,
+            summary_text=summary_text,
+            summary_model=summary_model,
+        )
+
+    async def get_latest_summary(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        agent_key: str | None,
+    ):
+        return await self._summaries.get_latest_summary(
+            conversation_id=conversation_id,
+            tenant_id=tenant_id,
+            agent_key=agent_key,
+        )
 
     async def upsert_session_state(
         self,

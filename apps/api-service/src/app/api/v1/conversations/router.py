@@ -14,14 +14,17 @@ from app.api.v1.conversations.schemas import (
     ConversationEventsResponse,
     ConversationHistory,
     ConversationListResponse,
+    ConversationMemoryConfigRequest,
+    ConversationMemoryConfigResponse,
     ConversationMetaEvent,
     ConversationSearchResponse,
     ConversationSearchResult,
     PaginatedMessagesResponse,
 )
-from app.domain.conversations import ConversationNotFoundError
+from app.domain.conversations import ConversationMemoryConfig, ConversationNotFoundError
 from app.services.agents.context import ConversationActorContext
 from app.services.agents.query import get_conversation_query_service
+from app.services.conversation_service import get_conversation_service
 from app.services.conversations import metadata_stream
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
@@ -195,6 +198,46 @@ async def get_conversation_messages(
         ) from exc
 
     return PaginatedMessagesResponse(items=messages, next_cursor=next_cursor, prev_cursor=None)
+
+
+@router.patch("/{conversation_id}/memory", response_model=ConversationMemoryConfigResponse)
+async def update_conversation_memory(
+    conversation_id: str,
+    payload: ConversationMemoryConfigRequest,
+    current_user: CurrentUser = Depends(require_verified_scopes("conversations:write")),
+    tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
+    tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
+):
+    """Set or clear memory strategy defaults for a conversation."""
+
+    tenant_context = await _resolve_tenant_context(
+        current_user,
+        tenant_id_header,
+        tenant_role_header,
+        min_role=TenantRole.ADMIN,
+    )
+    svc = get_conversation_service()
+    payload_dict = payload.model_dump(exclude_unset=True)
+    config = ConversationMemoryConfig(
+        strategy=payload_dict.get("mode"),
+        max_user_turns=payload_dict.get("max_user_turns"),
+        keep_last_turns=payload_dict.get("keep_last_turns"),
+        compact_trigger_turns=payload_dict.get("compact_trigger_turns"),
+        compact_keep=payload_dict.get("compact_keep"),
+        clear_tool_inputs=payload_dict.get("clear_tool_inputs"),
+        memory_injection=payload_dict.get("memory_injection"),
+    )
+    try:
+        await svc.set_memory_config(
+            conversation_id,
+            tenant_id=tenant_context.tenant_id,
+            config=config,
+            provided_fields=set(payload_dict.keys()),
+        )
+    except ConversationNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    return ConversationMemoryConfigResponse(**payload.model_dump())
 
 
 @router.get("/{conversation_id}/events", response_model=ConversationEventsResponse)
