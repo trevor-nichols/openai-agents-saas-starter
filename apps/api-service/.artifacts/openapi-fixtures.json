@@ -3613,6 +3613,91 @@
         }
       }
     },
+    "/api/v1/conversations/{conversation_id}/stream": {
+      "get": {
+        "tags": [
+          "conversations"
+        ],
+        "summary": "Stream Conversation Metadata",
+        "description": "SSE stream of conversation metadata events (e.g., generated titles).",
+        "operationId": "stream_conversation_metadata_api_v1_conversations__conversation_id__stream_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Tenant-Role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Server-sent events stream for conversation metadata updates.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationMetaEvent"
+                }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationMetaEvent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/tools": {
       "get": {
         "tags": [
@@ -9555,6 +9640,18 @@
             "title": "Conversation Id",
             "description": "Conversation identifier."
           },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name",
+            "description": "Generated or assigned title."
+          },
           "messages": {
             "items": {
               "$ref": "#/components/schemas/ChatMessage"
@@ -9626,6 +9723,51 @@
         "title": "ConversationListResponse",
         "description": "Paginated list of conversation summaries."
       },
+      "ConversationMetaEvent": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "title": "Kind",
+            "description": "Event type, e.g., conversation.title.generated"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id",
+            "description": "Conversation identifier."
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name",
+            "description": "Generated conversation title."
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp",
+            "description": "Server timestamp."
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "conversation_id"
+        ],
+        "title": "ConversationMetaEvent",
+        "description": "Metadata stream event for a conversation."
+      },
       "ConversationSearchResponse": {
         "properties": {
           "items": {
@@ -9661,6 +9803,18 @@
             "type": "string",
             "title": "Conversation Id",
             "description": "Conversation identifier."
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name",
+            "description": "Generated conversation title."
           },
           "agent_entrypoint": {
             "anyOf": [
@@ -9766,6 +9920,18 @@
             "type": "string",
             "title": "Conversation Id",
             "description": "Conversation identifier."
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name",
+            "description": "Generated conversation title."
           },
           "agent_entrypoint": {
             "anyOf": [
@@ -13060,6 +13226,17 @@
             ],
             "title": "New Agent"
           },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
           "text_delta": {
             "anyOf": [
               {
@@ -13432,6 +13609,17 @@
               }
             ],
             "title": "New Agent"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
           },
           "text_delta": {
             "anyOf": [
