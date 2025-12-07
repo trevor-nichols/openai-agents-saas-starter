@@ -4,16 +4,24 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from uuid import UUID
 
 from app.domain.ai import AgentRunUsage
+from app.infrastructure.persistence.auth.models import UsageCounterGranularity
+from app.services.usage_counters import UsageCounterService, get_usage_counter_service
 from app.services.usage_recorder import UsageEntry, UsageRecorder
 
 
 class UsageService:
     """Translates agent run usage into billable usage entries."""
 
-    def __init__(self, recorder: UsageRecorder | None) -> None:
+    def __init__(
+        self,
+        recorder: UsageRecorder | None,
+        usage_counters: UsageCounterService | None = None,
+    ) -> None:
         self._recorder = recorder
+        self._usage_counters = usage_counters or get_usage_counter_service()
 
     async def record(
         self,
@@ -60,6 +68,16 @@ class UsageService:
                 )
 
         await self._recorder.record_batch(tenant_id, entries)
+        if self._usage_counters:
+            await self._usage_counters.increment(
+                tenant_id=UUID(tenant_id),
+                user_id=None,
+                period_start=timestamp.date(),
+                granularity=UsageCounterGranularity.DAY,
+                input_tokens=int(usage.input_tokens) if usage and usage.input_tokens else 0,
+                output_tokens=int(usage.output_tokens) if usage and usage.output_tokens else 0,
+                requests=1,
+            )
 
 
 __all__ = ["UsageService"]

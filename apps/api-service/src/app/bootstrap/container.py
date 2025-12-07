@@ -13,17 +13,21 @@ from app.infrastructure.persistence.workflows.repository import (
 from app.infrastructure.redis.factory import reset_redis_factory, shutdown_redis_factory
 from app.services.activity import ActivityService
 from app.services.agents.interaction_context import InteractionContextBuilder
+from app.services.auth.mfa_service import MfaService
 from app.services.auth.service_account_service import ServiceAccountTokenService
 from app.services.auth.session_service import UserSessionService
 from app.services.billing.billing_events import BillingEventsService
 from app.services.billing.billing_service import BillingService
 from app.services.billing.stripe.dispatcher import StripeEventDispatcher
 from app.services.billing.stripe.retry_worker import StripeDispatchRetryWorker
+from app.services.consent_service import ConsentService
 from app.services.contact_service import ContactService
 from app.services.containers import ContainerService
 from app.services.conversation_service import ConversationService
 from app.services.geoip_service import GeoIPService, NullGeoIPService, shutdown_geoip_service
 from app.services.integrations.slack_notifier import SlackNotifier
+from app.services.notification_preferences import NotificationPreferenceService
+from app.services.security_events import SecurityEventService
 from app.services.shared.rate_limit_service import RateLimiter
 from app.services.signup.email_verification_service import EmailVerificationService
 from app.services.signup.password_recovery_service import PasswordRecoveryService
@@ -31,6 +35,7 @@ from app.services.status.status_alert_dispatcher import StatusAlertDispatcher
 from app.services.status.status_subscription_service import StatusSubscriptionService
 from app.services.storage.service import StorageService
 from app.services.tenant.tenant_settings_service import TenantSettingsService
+from app.services.usage_counters import UsageCounterService
 from app.services.usage_policy_service import UsagePolicyService
 from app.services.usage_recorder import UsageRecorder
 from app.services.users import UserService
@@ -75,6 +80,8 @@ class ApplicationContainer:
     geoip_service: GeoIPService = field(default_factory=NullGeoIPService)
     slack_notifier: SlackNotifier | None = None
     auth_service: AuthService | None = None
+    mfa_service: MfaService | None = None
+    security_event_service: SecurityEventService | None = None
     password_recovery_service: PasswordRecoveryService | None = None
     email_verification_service: EmailVerificationService | None = None
     user_session_service: UserSessionService | None = None
@@ -98,6 +105,9 @@ class ApplicationContainer:
     storage_service: StorageService | None = None
     workflow_run_repository: SqlAlchemyWorkflowRunRepository | None = None
     workflow_service: WorkflowService | None = None
+    consent_service: ConsentService | None = None
+    notification_preference_service: NotificationPreferenceService | None = None
+    usage_counter_service: UsageCounterService | None = None
 
     async def shutdown(self) -> None:
         """Gracefully tear down managed services."""

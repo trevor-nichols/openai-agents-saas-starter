@@ -15,8 +15,14 @@ from app.api.models.auth import (
     PasswordResetRequest,
 )
 from app.api.models.common import SuccessResponse
-from app.api.v1.auth.utils import extract_client_ip, extract_user_agent
+from app.api.v1.auth.utils import (
+    extract_client_ip,
+    extract_user_agent,
+    hash_client_ip,
+    hash_user_agent,
+)
 from app.services.auth_service import auth_service
+from app.services.security_events import get_security_event_service
 from app.services.shared.rate_limit_service import RateLimitExceeded, RateLimitQuota, rate_limiter
 from app.services.signup.password_recovery_service import (
     InvalidPasswordResetTokenError,
@@ -83,12 +89,19 @@ async def confirm_password_reset(
     except PasswordReuseError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
+    await get_security_event_service().record(
+        event_type="password_reset_token",
+        user_id=None,
+        ip_hash=hash_client_ip(extract_client_ip(request)),
+        user_agent_hash=hash_user_agent(extract_user_agent(request)),
+    )
     return SuccessResponse(message="Password has been reset successfully.", data=None)
 
 
 @router.post("/password/change", response_model=SuccessResponse)
 async def change_password(
     payload: PasswordChangeRequest,
+    request: Request,
     current_user: dict[str, str] = Depends(require_current_user),
 ) -> SuccessResponse:
     service = get_user_service()
@@ -107,12 +120,19 @@ async def change_password(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     await auth_service.revoke_user_sessions(user_uuid, reason="password_change")
+    await get_security_event_service().record(
+        event_type="password_change",
+        user_id=user_uuid,
+        ip_hash=hash_client_ip(extract_client_ip(request)),
+        user_agent_hash=hash_user_agent(extract_user_agent(request)),
+    )
     return SuccessResponse(message="Password updated successfully", data=None)
 
 
 @router.post("/password/reset", response_model=SuccessResponse)
 async def admin_reset_password(
     payload: PasswordResetRequest,
+    request: Request,
     current_user: dict[str, object] = Depends(require_verified_scopes("support:read")),
 ) -> SuccessResponse:
     tenant_claim: object | None = None
@@ -149,6 +169,13 @@ async def admin_reset_password(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     await auth_service.revoke_user_sessions(payload.user_id, reason="password_reset")
+    await get_security_event_service().record(
+        event_type="password_reset_admin",
+        user_id=payload.user_id,
+        tenant_id=tenant_id,
+        ip_hash=hash_client_ip(extract_client_ip(request)),
+        user_agent_hash=hash_user_agent(extract_user_agent(request)),
+    )
     return SuccessResponse(message="Password reset successfully", data=None)
 
 

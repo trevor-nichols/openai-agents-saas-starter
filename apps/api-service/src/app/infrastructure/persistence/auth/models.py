@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import importlib
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -108,6 +111,36 @@ class UserAccount(Base):
     )
     sessions: Mapped[list[UserSession]] = relationship(
         "UserSession",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    mfa_methods: Mapped[list[UserMfaMethod]] = relationship(
+        "UserMfaMethod",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    recovery_codes: Mapped[list[UserRecoveryCode]] = relationship(
+        "UserRecoveryCode",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    consents: Mapped[list[UserConsent]] = relationship(
+        "UserConsent",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    notification_preferences: Mapped[list[UserNotificationPreference]] = relationship(
+        "UserNotificationPreference",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    security_events: Mapped[list[SecurityEvent]] = relationship(
+        "SecurityEvent",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    usage_counters: Mapped[list[UsageCounter]] = relationship(
+        "UsageCounter",
         back_populates="user",
         cascade="all, delete-orphan",
     )
@@ -470,6 +503,240 @@ class ServiceAccountToken(Base):
         back_populates="refresh_token",
         uselist=False,
     )
+
+
+class MfaMethodType(str, Enum):
+    """Supported MFA factor types."""
+
+    TOTP = "totp"
+    WEBAUTHN = "webauthn"
+
+
+class UserMfaMethod(Base):
+    """Registered multi-factor authentication method for a user."""
+
+    __tablename__ = "user_mfa_methods"
+    __table_args__ = (
+        UniqueConstraint("user_id", "label", name="uq_user_mfa_methods_label"),
+        Index("ix_user_mfa_methods_user_type", "user_id", "method_type"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    method_type: Mapped[MfaMethodType] = mapped_column(
+        SAEnum(
+            MfaMethodType,
+            name="mfa_method_type",
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
+        nullable=False,
+    )
+    label: Mapped[str | None] = mapped_column(String(64))
+    secret_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary)
+    credential_json: Mapped[dict[str, object] | None] = mapped_column(JSONBCompat)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_reason: Mapped[str | None] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=UTC_NOW
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=UTC_NOW, onupdate=UTC_NOW
+    )
+
+    user: Mapped[UserAccount] = relationship(back_populates="mfa_methods")
+
+
+class UserRecoveryCode(Base):
+    """Single-use recovery code hash tied to a user."""
+
+    __tablename__ = "user_recovery_codes"
+    __table_args__ = (
+        Index("ix_user_recovery_codes_user", "user_id"),
+        Index("ix_user_recovery_codes_used", "used_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    code_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=UTC_NOW
+    )
+
+    user: Mapped[UserAccount] = relationship(back_populates="recovery_codes")
+
+
+class UserConsent(Base):
+    """Versioned acceptance of policies or terms."""
+
+    __tablename__ = "user_consents"
+    __table_args__ = (
+        UniqueConstraint("user_id", "policy_key", "version", name="uq_user_consents_version"),
+        Index("ix_user_consents_user_policy", "user_id", "policy_key"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    policy_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    version: Mapped[str] = mapped_column(String(32), nullable=False)
+    accepted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=UTC_NOW
+    )
+    ip_hash: Mapped[str | None] = mapped_column(String(128))
+    user_agent_hash: Mapped[str | None] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=UTC_NOW
+    )
+
+    user: Mapped[UserAccount] = relationship(back_populates="consents")
+
+
+class UserNotificationPreference(Base):
+    """Channel/category preferences with optional tenant scoping."""
+
+    __tablename__ = "user_notification_preferences"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "tenant_id",
+            "channel",
+            "category",
+            name="uq_user_notification_preferences_scope",
+        ),
+        Index("ix_user_notification_preferences_user", "user_id"),
+        Index("ix_user_notification_preferences_tenant", "tenant_id"),
+        Index(
+            "uq_user_notification_preferences_null_tenant",
+            "user_id",
+            "channel",
+            "category",
+            unique=True,
+            postgresql_where=text("tenant_id IS NULL"),
+            sqlite_where=text("tenant_id IS NULL"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("tenant_accounts.id", ondelete="CASCADE"), nullable=True
+    )
+    channel: Mapped[str] = mapped_column(String(16), nullable=False)
+    category: Mapped[str] = mapped_column(String(64), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=UTC_NOW
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=UTC_NOW, onupdate=UTC_NOW
+    )
+
+    user: Mapped[UserAccount] = relationship(back_populates="notification_preferences")
+    tenant: Mapped[TenantAccount | None] = relationship("TenantAccount")
+
+
+class UsageCounterGranularity(str, Enum):
+    """Bucket size for usage summaries."""
+
+    DAY = "day"
+    MONTH = "month"
+
+
+class UsageCounter(Base):
+    """Aggregated usage snapshot for billing/analytics."""
+
+    __tablename__ = "usage_counters"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "user_id",
+            "period_start",
+            "granularity",
+            name="uq_usage_counters_bucket",
+        ),
+        Index("ix_usage_counters_tenant_period", "tenant_id", "period_start"),
+        Index("ix_usage_counters_user_period", "user_id", "period_start"),
+        Index(
+            "uq_usage_counters_tenant_period_null_user",
+            "tenant_id",
+            "period_start",
+            "granularity",
+            unique=True,
+            postgresql_where=text("user_id IS NULL"),
+            sqlite_where=text("user_id IS NULL"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tenant_accounts.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    period_start: Mapped[date] = mapped_column(Date, nullable=False)
+    granularity: Mapped[UsageCounterGranularity] = mapped_column(
+        SAEnum(
+            UsageCounterGranularity,
+            name="usage_counter_granularity",
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
+        nullable=False,
+    )
+    input_tokens: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    output_tokens: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    requests: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    storage_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=UTC_NOW
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=UTC_NOW, onupdate=UTC_NOW
+    )
+
+    user: Mapped[UserAccount | None] = relationship(back_populates="usage_counters")
+    tenant: Mapped[TenantAccount] = relationship("TenantAccount")
+
+
+class SecurityEvent(Base):
+    """Normalized security/audit events (e.g., password change, MFA update)."""
+
+    __tablename__ = "security_events"
+    __table_args__ = (
+        Index("ix_security_events_user_created", "user_id", "created_at"),
+        Index("ix_security_events_tenant_created", "tenant_id", "created_at"),
+        Index("ix_security_events_type", "event_type"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("tenant_accounts.id", ondelete="SET NULL"), nullable=True
+    )
+    event_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    source: Mapped[str | None] = mapped_column(String(32))
+    ip_hash: Mapped[str | None] = mapped_column(String(128))
+    user_agent_hash: Mapped[str | None] = mapped_column(String(128))
+    request_id: Mapped[str | None] = mapped_column(String(128))
+    metadata_json: Mapped[dict[str, object] | None] = mapped_column(JSONBCompat)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=UTC_NOW
+    )
+
+    user: Mapped[UserAccount | None] = relationship(back_populates="security_events")
+    tenant: Mapped[TenantAccount | None] = relationship("TenantAccount")
 
 
 # Ensure the SQLAlchemy registry is aware of tenant models before relationship configuration.

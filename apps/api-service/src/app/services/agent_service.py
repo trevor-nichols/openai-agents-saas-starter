@@ -47,6 +47,7 @@ from app.services.agents.usage import UsageService
 from app.services.containers import ContainerService
 from app.services.conversation_service import ConversationService, get_conversation_service
 from app.services.storage.service import StorageService
+from app.services.usage_counters import UsageCounterService, get_usage_counter_service
 from app.services.usage_recorder import UsageRecorder
 from app.services.vector_stores.service import VectorStoreService
 
@@ -62,6 +63,7 @@ class AgentService:
         conversation_repo: ConversationRepository | None = None,
         conversation_service: ConversationService | None = None,
         usage_recorder: UsageRecorder | None = None,
+        usage_counter_service: UsageCounterService | None = None,
         provider_registry: AgentProviderRegistry | None = None,
         container_service: ContainerService | None = None,
         storage_service: StorageService | None = None,
@@ -93,7 +95,9 @@ class AgentService:
             vector_store_service=vector_store_service,
         )
         self._event_projector = EventProjector(self._conversation_service)
-        self._usage_service = usage_service or UsageService(usage_recorder)
+        self._usage_service = usage_service or UsageService(
+            usage_recorder, usage_counter_service or get_usage_counter_service()
+        )
         self._catalog_service = catalog_service or AgentCatalogService(self._provider_registry)
 
     async def chat(
@@ -498,8 +502,11 @@ def build_agent_service(
 
 def get_agent_service() -> AgentService:
     from app.bootstrap.container import get_container
+    from app.infrastructure.db import get_async_sessionmaker
 
     container = get_container()
+    if container.session_factory is None:
+        container.session_factory = get_async_sessionmaker()
     if container.agent_service is None:
         if container.storage_service is None:
             wire_storage_service(container)

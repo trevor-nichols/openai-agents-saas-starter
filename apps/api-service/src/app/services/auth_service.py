@@ -23,6 +23,7 @@ from app.services.auth import (
     UserSessionService,
 )
 from app.services.auth.errors import (
+    MfaRequiredError,
     ServiceAccountCatalogUnavailable,
     ServiceAccountError,
     ServiceAccountRateLimitError,
@@ -31,6 +32,7 @@ from app.services.auth.errors import (
     UserLogoutError,
     UserRefreshError,
 )
+from app.services.auth.mfa_service import get_mfa_service
 from app.services.geoip_service import GeoIPService, get_geoip_service
 from app.services.users import UserService, get_user_service
 
@@ -52,6 +54,7 @@ class AuthService:
         refresh_repo = refresh_repository or get_refresh_token_repository()
         session_repo = session_repository or get_user_session_repository()
         geoip = geoip_service or get_geoip_service()
+        mfa_service = get_mfa_service()
         refresh_tokens = RefreshTokenManager(refresh_repo)
         session_store = SessionStore(session_repo, geoip)
         self._service_accounts = service_account_service or ServiceAccountTokenService(
@@ -62,6 +65,7 @@ class AuthService:
             refresh_tokens=RefreshTokenManager(refresh_repo),
             session_store=session_store,
             user_service=user_service,
+            mfa_service=mfa_service,
         )
 
         def _forward_verify_token(
@@ -140,6 +144,27 @@ class AuthService:
             tenant_id=tenant_id,
             ip_address=ip_address,
             user_agent=user_agent,
+        )
+
+    async def complete_mfa_challenge(
+        self,
+        *,
+        challenge_token: str,
+        method_id: UUID,
+        code: str,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        ip_hash: str | None = None,
+        user_agent_hash: str | None = None,
+    ) -> UserSessionTokens:
+        return await self._sessions.complete_mfa_challenge(
+            challenge_token=challenge_token,
+            method_id=method_id,
+            code=code,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            ip_hash=ip_hash,
+            user_agent_hash=user_agent_hash,
         )
 
     async def refresh_user_session(
@@ -251,6 +276,7 @@ __all__ = [
     "ServiceAccountValidationError",
     "ServiceAccountRateLimitError",
     "ServiceAccountCatalogUnavailable",
+    "MfaRequiredError",
     "UserAuthenticationError",
     "UserRefreshError",
     "UserLogoutError",

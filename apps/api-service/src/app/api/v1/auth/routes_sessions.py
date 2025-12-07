@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import JSONResponse
 
 from app.api.dependencies.auth import require_current_user
 from app.api.models.auth import (
@@ -16,6 +17,7 @@ from app.api.models.auth import (
     UserSessionResponse,
 )
 from app.api.models.common import SuccessResponse
+from app.api.models.mfa import MfaChallengeResponse, MfaMethodView
 from app.api.v1.auth.utils import (
     current_session_uuid,
     extract_client_ip,
@@ -25,6 +27,7 @@ from app.api.v1.auth.utils import (
     to_user_session_response,
 )
 from app.services.auth_service import (
+    MfaRequiredError,
     UserAuthenticationError,
     UserLogoutError,
     UserRefreshError,
@@ -40,11 +43,11 @@ from app.services.users import (
 router = APIRouter(tags=["auth"])
 
 
-@router.post("/token", response_model=UserSessionResponse)
+@router.post("/token", response_model=UserSessionResponse | MfaChallengeResponse)
 async def login_for_access_token(
     payload: UserLoginRequest,
     request: Request,
-) -> UserSessionResponse:
+) -> UserSessionResponse | JSONResponse:
     """Authenticate a user and mint fresh access/refresh tokens."""
 
     client_ip = extract_client_ip(request)
@@ -58,6 +61,26 @@ async def login_for_access_token(
             ip_address=client_ip,
             user_agent=user_agent,
         )
+    except MfaRequiredError as exc:
+        method_dicts = [cast(dict[str, Any], m) for m in exc.methods]
+        methods = []
+        for m in method_dicts:
+            method_id = UUID(str(m.get("id")))
+            methods.append(
+                MfaMethodView(
+                    id=method_id,
+                    method_type=str(m.get("method_type")),
+                    label=m.get("label") if isinstance(m.get("label"), str) else None,
+                    verified_at=cast(str | None, m.get("verified_at")),
+                    last_used_at=cast(str | None, m.get("last_used_at")),
+                    revoked_at=cast(str | None, m.get("revoked_at")),
+                )
+            )
+        payload_body = MfaChallengeResponse(
+            challenge_token=exc.challenge_token,
+            methods=methods,
+        )
+        return JSONResponse(status_code=status.HTTP_202_ACCEPTED, content=payload_body.model_dump())
     except UserAuthenticationError as exc:
         raise map_user_auth_error(exc) from exc
 
