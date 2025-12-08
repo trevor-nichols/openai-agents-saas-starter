@@ -1,10 +1,12 @@
+'use client';
+
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import type { ChatStatus } from 'ai';
 
-import { ChatSurface } from './ChatSurface';
+import { ChatSurface } from '../components/chat-interface/ChatSurface';
 import type { ChatMessage, ToolState, ConversationLifecycleStatus } from '@/lib/chat/types';
-import type { AttachmentState } from '../../hooks/useAttachmentResolver';
+import type { AttachmentState } from '../hooks/useAttachmentResolver';
 import type { MessageAttachment } from '@/lib/api/client/types.gen';
 
 const baseHeader = {

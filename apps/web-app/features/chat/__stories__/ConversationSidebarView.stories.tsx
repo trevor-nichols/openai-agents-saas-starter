@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react';
 
 import type { ConversationListItem } from '@/types/conversations';
-import { DATE_GROUP_ORDER } from '../../utils/conversationGrouping';
-import { ConversationSidebarView } from './ConversationSidebarView';
+import { DATE_GROUP_ORDER } from '../utils/conversationGrouping';
+import { ConversationSidebarView } from '../components/conversation-sidebar/ConversationSidebarView';
 
 const baseConversations: ConversationListItem[] = [
   {
@@ -19,7 +19,7 @@ const baseConversations: ConversationListItem[] = [
   },
 ];
 
-const grouped: Record<typeof DATE_GROUP_ORDER[number], ConversationListItem[]> = {
+const grouped: Record<(typeof DATE_GROUP_ORDER)[number], ConversationListItem[]> = {
   Today: [baseConversations[0]!],
   Yesterday: [baseConversations[1]!],
   'Previous 7 Days': [],
