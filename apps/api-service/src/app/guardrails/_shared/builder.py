@@ -476,6 +476,7 @@ class GuardrailBuilder:
                     result=result,
                     suppressed=suppress_tripwire,
                     tool_name=tool_name,
+                    tool_call_id=getattr(data, "tool_call_id", None),
                 )
                 return output
             except Exception as e:  # pragma: no cover - defensive logging path
@@ -554,6 +555,7 @@ class GuardrailBuilder:
                     result=result,
                     suppressed=suppress_tripwire,
                     tool_name=tool_name,
+                    tool_call_id=getattr(data, "tool_call_id", None),
                 )
                 return output
             except Exception as e:  # pragma: no cover - defensive logging path
@@ -599,6 +601,7 @@ class GuardrailBuilder:
         result: GuardrailCheckResult,
         suppressed: bool,
         tool_name: str | None = None,
+        tool_call_id: str | None = None,
     ) -> None:
         """Emit a normalized guardrail result for streaming surfaces."""
         payload = {
@@ -614,6 +617,7 @@ class GuardrailBuilder:
             "guardrail_token_usage": result.token_usage,
             "guardrail_details": result.info or {},
             "tool_name": tool_name,
+            "tool_call_id": tool_call_id,
         }
         emit_guardrail_event(payload)
 

@@ -3,6 +3,7 @@
 import json
 import os
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from typing import cast
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
@@ -25,9 +26,15 @@ from app.api.dependencies.auth import require_current_user  # noqa: E402
 from app.api.v1.chat import router as chat_router  # noqa: E402
 from app.api.v1.chat.schemas import AgentChatResponse  # noqa: E402
 from app.bootstrap.container import get_container  # noqa: E402
+from app.core import settings as config_module  # noqa: E402
 from app.domain.ai import AgentRunResult, AgentStreamEvent  # noqa: E402
 from app.domain.conversations import ConversationMessage, ConversationMetadata  # noqa: E402
+from app.services.conversation_service import conversation_service  # noqa: E402
+from app.guardrails._shared.events import emit_guardrail_event  # noqa: E402
+from app.guardrails._shared.specs import GuardrailCheckResult  # noqa: E402
+from app.infrastructure.providers.openai import build_openai_provider  # noqa: E402
 from app.services.agent_service import agent_service  # noqa: E402
+from app.services.agents.provider_registry import get_provider_registry  # noqa: E402
 from app.services.shared.rate_limit_service import RateLimitExceeded, rate_limiter  # noqa: E402
 from app.services.usage_policy_service import (  # noqa: E402
     UsagePolicyDecision,
@@ -194,6 +201,115 @@ def test_chat_stream_persists_assistant_message(
     history = history_response.json()
     assert len(history["messages"]) >= 2
     assert any(msg["role"] == "assistant" for msg in history["messages"])
+
+
+@patch("app.infrastructure.providers.openai.runtime.Runner.run_streamed")
+def test_chat_stream_emits_guardrail_events_from_pipeline(
+    mock_run_streamed, client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def _fake_chat_stream(*args, **kwargs):
+        yield AgentStreamEvent(
+            kind="guardrail_result",
+            response_id="resp-guardrail-pipeline",
+            guardrail_stage="input",
+            guardrail_key="off_topic_prompts",
+            guardrail_name="Off Topic Prompts",
+            guardrail_tripwire_triggered=True,
+            guardrail_suppressed=False,
+            guardrail_flagged=True,
+            guardrail_confidence=0.9,
+        )
+        yield AgentStreamEvent(
+            kind="run_item_stream_event",
+            response_id="resp-guardrail-pipeline",
+            run_item_type="message",
+            is_terminal=True,
+            payload={"item": {"type": "message"}},
+        )
+
+    monkeypatch.setattr("app.services.agent_service.AgentService.chat_stream", _fake_chat_stream)
+
+    payload = {"message": "contains pii: user@example.com", "agent_type": "triage"}
+    events = []
+    with client.stream("POST", "/api/v1/chat/stream", json=payload) as response:
+        assert response.status_code == 200
+        for raw in response.iter_lines():
+            if not raw:
+                continue
+            line = raw
+            if not line.startswith("data: "):
+                continue
+            events.append(json.loads(line[len("data: ") :]))
+
+    guardrail_events = [e for e in events if e.get("kind") == "guardrail_result"]
+    assert guardrail_events, "Expected guardrail_result event from guardrail pipeline"
+    assert all(e.get("response_id") == "resp-guardrail-pipeline" for e in guardrail_events)
+
+
+@patch("app.infrastructure.providers.openai.runtime.Runner.run_streamed")
+def test_chat_stream_emits_tool_guardrail_events_from_pipeline(
+    mock_run_streamed, client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def _fake_chat_stream(*args, **kwargs):
+        yield AgentStreamEvent(
+            kind="guardrail_result",
+            response_id="resp-tool-guardrail",
+            guardrail_stage="tool_input",
+            guardrail_key="pii_tool_input",
+            guardrail_name="PII Detection (Tool Input)",
+            guardrail_tripwire_triggered=True,
+            guardrail_suppressed=False,
+            guardrail_flagged=True,
+            guardrail_confidence=0.9,
+            tool_name="search",
+            tool_call_id="tool-call-123",
+        )
+        yield AgentStreamEvent(
+            kind="run_item_stream_event",
+            response_id="resp-tool-guardrail",
+            run_item_type="message",
+            is_terminal=True,
+            payload={"item": {"type": "message"}},
+        )
+
+    monkeypatch.setattr("app.services.agent_service.AgentService.chat_stream", _fake_chat_stream)
+
+    payload = {"message": "trigger tool guardrail", "agent_type": "triage"}
+    events = []
+    with client.stream("POST", "/api/v1/chat/stream", json=payload) as response:
+        assert response.status_code == 200
+        for raw in response.iter_lines():
+            if not raw:
+                continue
+            line = raw
+            if not line.startswith("data: "):
+                continue
+            events.append(json.loads(line[len("data: ") :]))
+
+    guardrail_events = [e for e in events if e.get("kind") == "guardrail_result"]
+    assert guardrail_events, "Expected guardrail_result event from tool guardrail pipeline"
+    assert all(e.get("response_id") == "resp-tool-guardrail" for e in guardrail_events)
+    assert any(e.get("tool_call_id") == "tool-call-123" for e in guardrail_events)
+
+
+def _register_guardrail_provider(engine, pipeline) -> None:
+    registry = get_provider_registry()
+    registry.clear()
+    from app.guardrails._shared.loaders import initialize_guardrails
+
+    initialize_guardrails()
+    provider = build_openai_provider(
+        settings_factory=config_module.get_settings,
+        conversation_searcher=lambda tenant_id, query: conversation_service.search(
+            tenant_id=tenant_id, query=query
+        ),
+        engine=engine,
+        auto_create_tables=True,
+        enable_guardrail_bundles=True,
+        guardrail_pipeline_source=pipeline,
+    )
+    registry.register(provider, set_default=True)
+    get_container().agent_service = None
 
 
 @patch("app.infrastructure.providers.openai.runtime.Runner.run", new_callable=AsyncMock)

@@ -304,6 +304,7 @@ class AgentService:
         compaction_events: list[AgentStreamEvent] = []
         guardrail_events: list[Mapping[str, Any]] = []
         guardrail_token: GuardrailEmissionToken | None = None
+        last_response_id: str | None = None
 
         async def _emit_compaction(event: AgentStreamEvent) -> None:
             await lifecycle_bus.emit(event)
@@ -323,13 +324,23 @@ class AgentService:
             else None,
             compaction_emitter=_emit_compaction,
         )
+        current_agent = ctx.descriptor.key
 
         def _emit_guardrail(payload: Mapping[str, Any]) -> None:
+            fallback_response_id = None
+            try:
+                if stream_handle is not None:
+                    fallback_response_id = getattr(stream_handle, "last_response_id", None)
+            except Exception:
+                fallback_response_id = None
+
+            response_id = payload.get("response_id") or last_response_id or fallback_response_id
+            agent_for_event = payload.get("agent") or current_agent or ctx.descriptor.key
             event = AgentStreamEvent(
                 kind="guardrail_result",
                 conversation_id=ctx.conversation_id,
-                agent=payload.get("agent") or ctx.descriptor.key,
-                response_id=payload.get("response_id"),
+                agent=agent_for_event,
+                response_id=response_id,
                 guardrail_stage=payload.get("guardrail_stage"),
                 guardrail_key=payload.get("guardrail_key"),
                 guardrail_name=payload.get("guardrail_name"),
@@ -389,7 +400,6 @@ class AgentService:
         complete_response = ""
         attachments: list[ConversationAttachment] = []
         seen_tool_calls: set[str] = set()
-        current_agent = ctx.descriptor.key
         handoff_count = 0
         token = set_current_actor(actor)
         stream_handle = None
@@ -420,6 +430,9 @@ class AgentService:
                     event.conversation_id = ctx.conversation_id
                     if event.agent is None:
                         event.agent = ctx.descriptor.key
+
+                    if event.response_id:
+                        last_response_id = event.response_id
 
                     if event.text_delta:
                         complete_response += event.text_delta
@@ -472,6 +485,10 @@ class AgentService:
                 async for leftover in lifecycle_bus.drain():
                     leftover.conversation_id = ctx.conversation_id
                     yield leftover
+            if stream_handle is not None and hasattr(stream_handle, "last_response_id"):
+                last_response_id = last_response_id or getattr(
+                    stream_handle, "last_response_id", None
+                )
         finally:
             reset_current_actor(token)
             if guardrail_token:
