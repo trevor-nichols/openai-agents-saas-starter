@@ -1,7 +1,7 @@
 """Conversation management endpoints."""
 
 from collections.abc import AsyncIterator
-from typing import Literal
+from typing import Literal, cast
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from fastapi.responses import StreamingResponse
@@ -237,7 +237,29 @@ async def update_conversation_memory(
     except ConversationNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
-    return ConversationMemoryConfigResponse(**payload.model_dump(exclude_unset=True))
+    persisted = await svc.get_memory_config(
+        conversation_id,
+        tenant_id=tenant_context.tenant_id,
+    )
+    if persisted is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+
+    raw_mode = persisted.strategy
+    normalized_mode: Literal["none", "trim", "summarize", "compact"] | None = (
+        cast(Literal["none", "trim", "summarize", "compact"], raw_mode)
+        if raw_mode in {"none", "trim", "summarize", "compact"}
+        else None
+    )
+
+    return ConversationMemoryConfigResponse(
+        mode=normalized_mode,
+        max_user_turns=persisted.max_user_turns,
+        keep_last_turns=persisted.keep_last_turns,
+        compact_trigger_turns=persisted.compact_trigger_turns,
+        compact_keep=persisted.compact_keep,
+        clear_tool_inputs=persisted.clear_tool_inputs,
+        memory_injection=persisted.memory_injection,
+    )
 
 
 @router.get("/{conversation_id}/events", response_model=ConversationEventsResponse)

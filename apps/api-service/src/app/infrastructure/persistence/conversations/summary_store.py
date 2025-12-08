@@ -64,7 +64,7 @@ class ConversationSummaryStore:
         tenant_id: str,
         agent_key: str | None,
         max_age_seconds: int | None = None,
-    ) -> ConversationSummary | None:
+    ) -> DomainSummary | None:
         conversation_uuid = coerce_conversation_uuid(conversation_id)
         tenant_uuid = parse_tenant_id(tenant_id)
         cutoff = None
