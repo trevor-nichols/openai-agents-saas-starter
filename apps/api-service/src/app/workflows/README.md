@@ -18,7 +18,7 @@ Runtime behavior (see `services/workflows/runner.py`):
 Example (fan-out + synthesis):
 
 ```python
-from app.workflows.specs import WorkflowSpec, WorkflowStage, WorkflowStep
+from app.workflows._shared.specs import WorkflowSpec, WorkflowStage, WorkflowStep
 
 def concat(outputs, _):
     return " | ".join(str(o) for o in outputs if o is not None)

@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 
 import pytest
+from agents.tool_guardrails import ToolGuardrailFunctionOutput, ToolInputGuardrailData
+from app.core.settings import Settings
 from pydantic import BaseModel
 
 from app.guardrails._shared.builder import GuardrailBuilder
@@ -86,6 +89,17 @@ class TestToolGuardrailBuilder:
         agent = SimpleNamespace(name="agent1")
         return SimpleNamespace(context=ctx, agent=agent, output=content)
 
+    def _typed_input_data(self, *, content: str = "payload") -> ToolInputGuardrailData:
+        return cast(ToolInputGuardrailData, self._dummy_data(content=content))
+
+    def _typed_guardrail_fn(
+        self, guard: Any
+    ) -> Callable[[ToolInputGuardrailData], Awaitable[ToolGuardrailFunctionOutput]]:
+        return cast(
+            Callable[[ToolInputGuardrailData], Awaitable[ToolGuardrailFunctionOutput]],
+            guard.guardrail_function,
+        )
+
     @pytest.mark.asyncio
     async def test_build_tool_input_guardrails(self, registry: GuardrailRegistry) -> None:
         builder = GuardrailBuilder(registry)
@@ -94,7 +108,8 @@ class TestToolGuardrailBuilder:
         guards = builder.build_tool_input_guardrails(cfg)
         assert len(guards) == 1
 
-        result = await guards[0].guardrail_function(self._dummy_data())
+        guardrail_fn = self._typed_guardrail_fn(guards[0])
+        result = await guardrail_fn(self._typed_input_data())
         behavior_type = getattr(result.behavior, "type", None) or result.behavior.get("type")
         assert behavior_type == "allow"
         assert result.output_info["guardrail_name"] == "Test Tool Input"
@@ -112,9 +127,10 @@ class TestToolGuardrailBuilder:
         )
 
         guards = builder.build_tool_input_guardrails(cfg_trip)
-        data = self._dummy_data()
+        guardrail_fn = self._typed_guardrail_fn(guards[0])
+        data = self._typed_input_data()
 
-        result = await guards[0].guardrail_function(data)
+        result = await guardrail_fn(data)
         behavior_type = getattr(result.behavior, "type", None) or result.behavior.get("type")
         assert behavior_type == "raise_exception"
 
@@ -128,7 +144,8 @@ class TestToolGuardrailBuilder:
             suppress_tripwire=True,
         )
         guards_suppressed = builder.build_tool_input_guardrails(suppress_cfg)
-        result_suppressed = await guards_suppressed[0].guardrail_function(data)
+        guardrail_fn_suppressed = self._typed_guardrail_fn(guards_suppressed[0])
+        result_suppressed = await guardrail_fn_suppressed(data)
         behavior_type_suppressed = getattr(result_suppressed.behavior, "type", None) or result_suppressed.behavior.get("type")
         assert behavior_type_suppressed == "allow"
 
@@ -143,7 +160,8 @@ class TestToolGuardrailBuilder:
         ctx = SimpleNamespace(tool_arguments="payload", context=None, tool_name="t1")
         data = SimpleNamespace(context=ctx, output="payload")
 
-        result = await guards[0].guardrail_function(data)
+        guardrail_fn = self._typed_guardrail_fn(guards[0])
+        result = await guardrail_fn(cast(ToolInputGuardrailData, data))
         behavior_type = getattr(result.behavior, "type", None) or result.behavior.get("type")
         assert behavior_type == "allow"
         assert result.output_info["guardrail_name"] == "Test Tool Input"
@@ -152,7 +170,7 @@ class TestToolGuardrailBuilder:
         builder = GuardrailBuilder(registry)
         resolver = ToolResolver(
             tool_registry=ToolRegistry(),
-            settings_factory=lambda: SimpleNamespace(),  # not used by guardrail attachment
+            settings_factory=lambda: cast(Settings, SimpleNamespace()),  # not used by guardrail attachment
             guardrail_builder=builder,
         )
 

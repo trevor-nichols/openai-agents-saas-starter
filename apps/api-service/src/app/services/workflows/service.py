@@ -17,8 +17,8 @@ from app.services.agents.provider_registry import (
     get_provider_registry,
 )
 from app.services.workflows.runner import WorkflowRunner, WorkflowRunResult
-from app.workflows.registry import WorkflowRegistry, get_workflow_registry
-from app.workflows.specs import WorkflowDescriptor, WorkflowSpec
+from app.workflows._shared.registry import WorkflowRegistry, get_workflow_registry
+from app.workflows._shared.specs import WorkflowDescriptor, WorkflowSpec
 
 
 @dataclass(slots=True)

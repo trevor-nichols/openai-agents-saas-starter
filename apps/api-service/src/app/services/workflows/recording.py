@@ -10,7 +10,7 @@ from app.domain.ai import AgentRunResult
 from app.domain.workflows import WorkflowRun, WorkflowRunRepository, WorkflowRunStep
 from app.services.activity import activity_service
 from app.services.agents.context import ConversationActorContext
-from app.workflows.specs import WorkflowSpec
+from app.workflows._shared.specs import WorkflowSpec
 
 
 def _now():

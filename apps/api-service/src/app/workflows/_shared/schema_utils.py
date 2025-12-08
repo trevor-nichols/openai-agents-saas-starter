@@ -1,5 +1,4 @@
 """Helpers for workflow output typing and validation."""
-
 from __future__ import annotations
 
 from typing import Any
@@ -55,3 +54,4 @@ def validate_against_schema(
 
 
 __all__ = ["SchemaLike", "schema_to_json_schema", "validate_against_schema"]
+

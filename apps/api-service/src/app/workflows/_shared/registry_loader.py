@@ -1,14 +1,13 @@
 """Discovery utilities for workflow specs on disk."""
-
 from __future__ import annotations
 
 import importlib
 from collections.abc import Sequence
 from pathlib import Path
 
-from app.workflows.specs import WorkflowSpec
+from app.workflows._shared.specs import WorkflowSpec
 
-WORKFLOWS_ROOT = Path(__file__).resolve().parent
+WORKFLOWS_ROOT = Path(__file__).resolve().parent.parent
 
 
 def discover_workflow_modules(root: Path = WORKFLOWS_ROOT) -> Sequence[tuple[str, str]]:
@@ -41,3 +40,4 @@ def load_workflow_specs(root: Path = WORKFLOWS_ROOT) -> list[WorkflowSpec]:
 
 
 __all__ = ["load_workflow_specs", "discover_workflow_modules", "WORKFLOWS_ROOT"]
+

@@ -24,9 +24,9 @@ from app.services.workflows.recording import WorkflowRunRecorder
 from app.services.workflows.stages import run_parallel_stage, run_sequential_stage
 from app.services.workflows.streaming import stream_parallel_stage, stream_sequential_stage
 from app.services.workflows.types import WorkflowRunResult, WorkflowStepResult
-from app.workflows.registry import WorkflowRegistry
-from app.workflows.schema_utils import schema_to_json_schema, validate_against_schema
-from app.workflows.specs import WorkflowSpec
+from app.workflows._shared.registry import WorkflowRegistry
+from app.workflows._shared.schema_utils import schema_to_json_schema, validate_against_schema
+from app.workflows._shared.specs import WorkflowSpec
 
 logger = logging.getLogger(__name__)
 

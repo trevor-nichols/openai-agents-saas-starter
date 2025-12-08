@@ -1,5 +1,4 @@
 """Workflow registry for deterministic chains over agents."""
-
 from __future__ import annotations
 
 import importlib
@@ -7,9 +6,9 @@ from collections.abc import Sequence
 
 from app.agents._shared.registry_loader import load_agent_specs
 from app.agents._shared.specs import AgentSpec
-from app.workflows.registry_loader import load_workflow_specs
-from app.workflows.schema_utils import schema_to_json_schema
-from app.workflows.specs import WorkflowDescriptor, WorkflowSpec
+from app.workflows._shared.registry_loader import load_workflow_specs
+from app.workflows._shared.schema_utils import schema_to_json_schema
+from app.workflows._shared.specs import WorkflowDescriptor, WorkflowSpec
 
 
 def _import_callable(path: str, label: str):
@@ -111,3 +110,4 @@ def get_workflow_registry() -> WorkflowRegistry:
 
 
 __all__ = ["WorkflowRegistry", "get_workflow_registry"]
+

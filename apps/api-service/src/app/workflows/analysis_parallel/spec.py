@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from app.workflows.specs import WorkflowSpec, WorkflowStage, WorkflowStep
+from app.workflows._shared.specs import WorkflowSpec, WorkflowStage, WorkflowStep
 
 
 def concat_outputs(outputs: list[Any], prior_steps):

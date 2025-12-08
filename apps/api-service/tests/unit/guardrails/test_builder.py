@@ -1,9 +1,11 @@
 """Tests for guardrail builder."""
 
+from collections.abc import Awaitable, Callable
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 
 import pytest
+from agents.tool_guardrails import ToolGuardrailFunctionOutput, ToolInputGuardrailData
 from pydantic import BaseModel
 
 from app.guardrails._shared.builder import GuardrailBuilder
@@ -183,12 +185,18 @@ class TestGuardrailBuilder:
 
         assert len(tool_guards) == 1
 
-        guardrail_fn = tool_guards[0].guardrail_function
-        data = SimpleNamespace(
-            tool_arguments={"foo": "bar"},
-            tool_name="demo_tool",
-            agent=SimpleNamespace(name="agent_demo"),
-            context=None,
+        guardrail_fn = cast(
+            Callable[[ToolInputGuardrailData], Awaitable[ToolGuardrailFunctionOutput]],
+            tool_guards[0].guardrail_function,
+        )
+        data = cast(
+            ToolInputGuardrailData,
+            SimpleNamespace(
+                tool_arguments={"foo": "bar"},
+                tool_name="demo_tool",
+                agent=SimpleNamespace(name="agent_demo"),
+                context=None,
+            ),
         )
 
         result = await guardrail_fn(data)

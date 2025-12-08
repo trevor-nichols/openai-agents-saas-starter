@@ -12,8 +12,8 @@ from app.domain.ai.models import AgentStreamEvent
 from app.services.workflows.hooks import apply_reducer, evaluate_guard, run_mapper
 from app.services.workflows.recording import WorkflowRunRecorder
 from app.services.workflows.types import WorkflowStepResult
-from app.workflows.schema_utils import schema_to_json_schema, validate_against_schema
-from app.workflows.specs import WorkflowSpec, WorkflowStage, WorkflowStep
+from app.workflows._shared.schema_utils import schema_to_json_schema, validate_against_schema
+from app.workflows._shared.specs import WorkflowSpec, WorkflowStage, WorkflowStep
 
 
 async def stream_sequential_stage(

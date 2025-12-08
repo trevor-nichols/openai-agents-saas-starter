@@ -8,7 +8,7 @@ import pytest
 
 from app.domain.ai.models import AgentStreamEvent
 from app.services.workflows.runner import WorkflowRunner
-from app.workflows.specs import WorkflowSpec, WorkflowStep
+from app.workflows._shared.specs import WorkflowSpec, WorkflowStep
 
 
 class _FakeBaseSession:

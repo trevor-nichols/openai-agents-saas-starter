@@ -27,7 +27,7 @@ from app.api.v1.workflows.schemas import (
 from app.domain.workflows import WorkflowStatus
 from app.services.agents.context import ConversationActorContext
 from app.services.workflows.service import WorkflowRunRequest, get_workflow_service
-from app.workflows.schema_utils import schema_to_json_schema
+from app.workflows._shared.schema_utils import schema_to_json_schema
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
 _ALLOWED_ROLES: tuple[TenantRole, ...] = (

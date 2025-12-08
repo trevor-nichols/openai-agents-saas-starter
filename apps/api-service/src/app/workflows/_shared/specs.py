@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 
-from app.workflows.schema_utils import SchemaLike
+from app.workflows._shared.schema_utils import SchemaLike
 
 GuardType = Literal["function"]
 InputMapperType = Literal["function"]
@@ -97,3 +97,4 @@ class WorkflowDescriptor:
     description: str
     step_count: int
     default: bool
+
