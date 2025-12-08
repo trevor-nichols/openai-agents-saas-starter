@@ -26,6 +26,7 @@ from agents.tool_guardrails import (
     ToolOutputGuardrailData,
 )
 
+from app.guardrails._shared.events import emit_guardrail_event
 from app.guardrails._shared.specs import (
     AgentGuardrailConfig,
     GuardrailCheckResult,
@@ -312,11 +313,19 @@ class GuardrailBuilder:
 
                 output_info = result.to_output_info()
                 output_info["guardrail_name"] = spec.display_name
+                output_info["stage"] = spec.stage
 
-                return GuardrailFunctionOutput(
+                output = GuardrailFunctionOutput(
                     output_info=output_info,
                     tripwire_triggered=result.tripwire_triggered and not suppress_tripwire,
                 )
+                self._emit_guardrail_event(
+                    spec=spec,
+                    stage=spec.stage,
+                    result=result,
+                    suppressed=suppress_tripwire,
+                )
+                return output
 
             except Exception as e:
                 logger.exception(
@@ -325,6 +334,7 @@ class GuardrailBuilder:
                 return GuardrailFunctionOutput(
                     output_info={
                         "guardrail_name": spec.display_name,
+                        "stage": spec.stage,
                         "error": str(e),
                         "flagged": False,
                     },
@@ -379,11 +389,19 @@ class GuardrailBuilder:
 
                 output_info = result.to_output_info()
                 output_info["guardrail_name"] = spec.display_name
+                output_info["stage"] = spec.stage
 
-                return GuardrailFunctionOutput(
+                output = GuardrailFunctionOutput(
                     output_info=output_info,
                     tripwire_triggered=result.tripwire_triggered and not suppress_tripwire,
                 )
+                self._emit_guardrail_event(
+                    spec=spec,
+                    stage=spec.stage,
+                    result=result,
+                    suppressed=suppress_tripwire,
+                )
+                return output
 
             except Exception as e:
                 logger.exception(
@@ -392,6 +410,7 @@ class GuardrailBuilder:
                 return GuardrailFunctionOutput(
                     output_info={
                         "guardrail_name": spec.display_name,
+                        "stage": spec.stage,
                         "error": str(e),
                         "flagged": False,
                     },
@@ -442,6 +461,7 @@ class GuardrailBuilder:
 
                 output_info = result.to_output_info()
                 output_info["guardrail_name"] = spec.display_name
+                output_info["stage"] = spec.stage
 
                 behavior = (
                     RaiseExceptionBehavior(type="raise_exception")
@@ -449,7 +469,15 @@ class GuardrailBuilder:
                     else AllowBehavior(type="allow")
                 )
 
-                return ToolGuardrailFunctionOutput(output_info=output_info, behavior=behavior)
+                output = ToolGuardrailFunctionOutput(output_info=output_info, behavior=behavior)
+                self._emit_guardrail_event(
+                    spec=spec,
+                    stage=spec.stage,
+                    result=result,
+                    suppressed=suppress_tripwire,
+                    tool_name=tool_name,
+                )
+                return output
             except Exception as e:  # pragma: no cover - defensive logging path
                 logger.exception("Tool guardrail '%s' raised an error: %s", spec.key, e)
                 behavior = (
@@ -460,6 +488,7 @@ class GuardrailBuilder:
                 return ToolGuardrailFunctionOutput(
                     output_info={
                         "guardrail_name": spec.display_name,
+                        "stage": spec.stage,
                         "error": str(e),
                         "flagged": False,
                     },
@@ -510,6 +539,7 @@ class GuardrailBuilder:
 
                 output_info = result.to_output_info()
                 output_info["guardrail_name"] = spec.display_name
+                output_info["stage"] = spec.stage
 
                 behavior = (
                     RaiseExceptionBehavior(type="raise_exception")
@@ -517,7 +547,15 @@ class GuardrailBuilder:
                     else AllowBehavior(type="allow")
                 )
 
-                return ToolGuardrailFunctionOutput(output_info=output_info, behavior=behavior)
+                output = ToolGuardrailFunctionOutput(output_info=output_info, behavior=behavior)
+                self._emit_guardrail_event(
+                    spec=spec,
+                    stage=spec.stage,
+                    result=result,
+                    suppressed=suppress_tripwire,
+                    tool_name=tool_name,
+                )
+                return output
             except Exception as e:  # pragma: no cover - defensive logging path
                 logger.exception("Tool guardrail '%s' raised an error: %s", spec.key, e)
                 behavior = (
@@ -528,6 +566,7 @@ class GuardrailBuilder:
                 return ToolGuardrailFunctionOutput(
                     output_info={
                         "guardrail_name": spec.display_name,
+                        "stage": spec.stage,
                         "error": str(e),
                         "flagged": False,
                     },
@@ -551,6 +590,32 @@ class GuardrailBuilder:
         if spec.key not in self._check_fn_cache:
             self._check_fn_cache[spec.key] = self._import_check_fn(spec.check_fn_path)
         return self._check_fn_cache[spec.key]
+
+    @staticmethod
+    def _emit_guardrail_event(
+        *,
+        spec: GuardrailSpec,
+        stage: str,
+        result: GuardrailCheckResult,
+        suppressed: bool,
+        tool_name: str | None = None,
+    ) -> None:
+        """Emit a normalized guardrail result for streaming surfaces."""
+        payload = {
+            "kind": "guardrail_result",
+            "guardrail_stage": stage,
+            "guardrail_key": spec.key,
+            "guardrail_name": spec.display_name,
+            "guardrail_tripwire_triggered": bool(result.tripwire_triggered),
+            "guardrail_suppressed": bool(suppressed),
+            "guardrail_flagged": bool(result.info.get("flagged")) if result.info else None,
+            "guardrail_confidence": result.confidence,
+            "guardrail_masked_content": result.masked_content,
+            "guardrail_token_usage": result.token_usage,
+            "guardrail_details": result.info or {},
+            "tool_name": tool_name,
+        }
+        emit_guardrail_event(payload)
 
     @staticmethod
     def _import_check_fn(path: str) -> CheckFn:

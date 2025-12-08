@@ -50,6 +50,8 @@ class AgentSpec:
       explicit guardrail configs, or both). See AgentGuardrailConfig for details.
     - `tool_guardrails` applies guardrails to all tools on this agent (tool_input
       and tool_output stages). Per-tool overrides can disable or replace these.
+    - `guardrails_runtime` controls how guardrails run
+      (suppress, streaming mode, concurrency, handler).
     """
 
     key: str
@@ -96,6 +98,8 @@ class AgentSpec:
     tool_guardrails: ToolGuardrailConfig | None = None
     # Optional per-tool guardrail overrides keyed by tool name.
     tool_guardrail_overrides: dict[str, ToolGuardrailConfig] = field(default_factory=dict)
+    # Optional runtime execution options for guardrails.
+    guardrails_runtime: GuardrailRuntimeOptions | None = None
 
     def prompt_source(self) -> str:
         if self.instructions:
@@ -128,7 +132,30 @@ class AgentToolConfig:
     max_turns: int | None = None
 
 
-__all__ = ["AgentSpec", "HandoffConfig", "OutputSpec", "AgentToolConfig"]
+__all__ = [
+    "AgentSpec",
+    "HandoffConfig",
+    "OutputSpec",
+    "AgentToolConfig",
+    "GuardrailRuntimeOptions",
+]
+
+
+@dataclass(frozen=True, slots=True)
+class GuardrailRuntimeOptions:
+    """Execution options for guardrails.
+
+    - suppress_tripwire: if True, do not raise when tripwire triggers.
+    - streaming_mode: blocking runs output guardrails before emitting;
+      streaming streams while guardrails run.
+    - concurrency: max concurrent guardrails (None uses default).
+    - result_handler_path: dotted path to async callable(GuardrailCheckResult) -> None.
+    """
+
+    suppress_tripwire: bool = False
+    streaming_mode: Literal["blocking", "streaming"] = "blocking"
+    concurrency: int | None = None
+    result_handler_path: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

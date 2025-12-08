@@ -118,6 +118,7 @@ class StreamingEvent(BaseModel):
         "raw_response_event",
         "run_item_stream_event",
         "agent_updated_stream_event",
+        "guardrail_result",
         "usage",
         "error",
         "lifecycle",
@@ -158,6 +159,26 @@ class StreamingEvent(BaseModel):
     tool_call: ToolCallPayload | dict[str, Any] | None = None
     annotations: list[UrlCitation | ContainerFileCitation | FileCitation] | None = None
     server_timestamp: str | None = None
+
+    # Guardrail metadata (present when kind == "guardrail_result")
+    guardrail_stage: Literal[
+        "pre_flight",
+        "input",
+        "output",
+        "tool_input",
+        "tool_output",
+        "summary",
+    ] | None = None
+    guardrail_key: str | None = None
+    guardrail_name: str | None = None
+    guardrail_tripwire_triggered: bool | None = None
+    guardrail_suppressed: bool | None = None
+    guardrail_flagged: bool | None = None
+    guardrail_confidence: float | None = None
+    guardrail_masked_content: str | None = None
+    guardrail_token_usage: dict[str, Any] | None = None
+    guardrail_details: dict[str, Any] | None = None
+    guardrail_summary: bool | None = None
 
 
 __all__ = [

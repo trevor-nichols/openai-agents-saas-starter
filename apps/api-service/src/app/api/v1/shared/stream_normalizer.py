@@ -86,6 +86,24 @@ def normalize_stream_event(
     parsed_tool_call = _parse_tool_call(event.tool_call)
     attachments = _coerce_attachments(event.attachments)
 
+    guardrail_fields: dict[str, Any] = {}
+    if event.kind == "guardrail_result":
+        guardrail_fields = {
+            "guardrail_stage": event.guardrail_stage,
+            "guardrail_key": event.guardrail_key,
+            "guardrail_name": event.guardrail_name,
+            "guardrail_tripwire_triggered": event.guardrail_tripwire_triggered,
+            "guardrail_suppressed": event.guardrail_suppressed,
+            "guardrail_flagged": event.guardrail_flagged,
+            "guardrail_confidence": event.guardrail_confidence,
+            "guardrail_masked_content": event.guardrail_masked_content,
+            "guardrail_token_usage": event.guardrail_token_usage,
+            "guardrail_details": (
+                event.guardrail_details if isinstance(event.guardrail_details, dict) else None
+            ),
+            "guardrail_summary": bool(event.guardrail_summary),
+        }
+
     return StreamingEvent(
         kind=event.kind,
         run_item_type=event.run_item_type,
@@ -119,6 +137,7 @@ def normalize_stream_event(
         tool_call=parsed_tool_call,
         annotations=annotations,
         server_timestamp=server_timestamp,
+        **guardrail_fields,
     )
 
 

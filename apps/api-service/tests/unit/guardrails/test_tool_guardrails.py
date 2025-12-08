@@ -215,3 +215,20 @@ class TestToolGuardrailBuilder:
         assert input_guards[0].name == "Test Tool Input"
         assert len(output_guards) == 1
         assert output_guards[0].name == "Test Tool Output"
+
+    def test_disabled_tool_guardrails_do_not_fall_back_to_defaults(self, registry: GuardrailRegistry) -> None:
+        resolver = ToolResolver(
+            tool_registry=ToolRegistry(),
+            settings_factory=lambda: cast(Settings, SimpleNamespace()),
+            guardrail_builder=None,
+            default_tool_guardrails=ToolGuardrailConfig(
+                input=AgentGuardrailConfig(guardrail_keys=("test_tool_input",))
+            ),
+        )
+
+        effective = resolver._resolve_tool_guardrail_config(
+            global_config=ToolGuardrailConfig(enabled=False),
+            override_config=None,
+        )
+
+        assert effective is None

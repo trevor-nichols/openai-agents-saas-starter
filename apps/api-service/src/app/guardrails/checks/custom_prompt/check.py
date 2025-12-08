@@ -90,8 +90,8 @@ async def run_check(
     token_usage = None
     if usage:
         token_usage = {
-            "input_tokens": usage.prompt_tokens,
-            "output_tokens": usage.completion_tokens,
+            "prompt_tokens": usage.prompt_tokens,
+            "completion_tokens": usage.completion_tokens,
             "total_tokens": usage.total_tokens,
         }
 

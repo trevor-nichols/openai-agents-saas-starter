@@ -49,6 +49,9 @@ class OpenAIAgentRegistry:
         specs: Sequence[AgentSpec] | None = None,
         tool_registry: ToolRegistry | None = None,
         guardrail_registry: GuardrailRegistry | None = None,
+        default_guardrails: Any | None = None,
+        default_guardrail_runtime: Any | None = None,
+        default_tool_guardrails: Any | None = None,
     ) -> None:
         self._settings_factory = settings_factory
         self._conversation_searcher = conversation_searcher
@@ -67,6 +70,7 @@ class OpenAIAgentRegistry:
             tool_registry=self._tool_registry,
             settings_factory=settings_factory,
             guardrail_builder=guardrail_builder,
+            default_tool_guardrails=default_tool_guardrails,
         )
 
         self._agent_builder = AgentBuilder(
@@ -74,6 +78,8 @@ class OpenAIAgentRegistry:
             prompt_renderer=self._prompt_renderer,
             settings_factory=settings_factory,
             guardrail_builder=guardrail_builder,
+            default_guardrails=default_guardrails,
+            default_runtime_options=default_guardrail_runtime,
         )
         self._descriptors = DescriptorStore()
 

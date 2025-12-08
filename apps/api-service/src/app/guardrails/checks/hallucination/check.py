@@ -121,8 +121,10 @@ Text to validate:
     token_usage = None
     if usage:
         token_usage = {
-            "input_tokens": getattr(usage, "input_tokens", 0),
-            "output_tokens": getattr(usage, "output_tokens", 0),
+            "prompt_tokens": getattr(usage, "prompt_tokens", getattr(usage, "input_tokens", 0)),
+            "completion_tokens": getattr(
+                usage, "completion_tokens", getattr(usage, "output_tokens", 0)
+            ),
             "total_tokens": getattr(usage, "total_tokens", 0),
         }
 

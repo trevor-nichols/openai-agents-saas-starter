@@ -9,6 +9,7 @@ This module follows the same patterns as `app.agents._shared.specs` for consiste
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -85,6 +86,8 @@ class GuardrailCheckResult:
         masked_content: For masking mode, the content with violations masked.
         confidence: For LLM-based checks, the confidence score (0.0-1.0).
         token_usage: Token usage from LLM-based checks (input, output, total).
+        execution_failed: True when the guardrail execution raised.
+        original_exception: Captures the original exception when available.
     """
 
     tripwire_triggered: bool
@@ -92,16 +95,25 @@ class GuardrailCheckResult:
     masked_content: str | None = None
     confidence: float | None = None
     token_usage: dict[str, int] | None = None
+    execution_failed: bool = False
+    original_exception: Exception | None = None
+    stage: str | None = None
 
     def to_output_info(self) -> dict[str, Any]:
         """Convert to the format expected by SDK guardrail output."""
         result = dict(self.info)
+        if self.stage:
+            result.setdefault("stage", self.stage)
         if self.confidence is not None:
             result["confidence"] = self.confidence
         if self.masked_content is not None:
             result["masked_content"] = self.masked_content
         if self.token_usage:
             result["token_usage"] = self.token_usage
+        if self.execution_failed:
+            result["execution_failed"] = True
+        if self.original_exception:
+            result["error"] = str(self.original_exception)
         return result
 
 
@@ -198,6 +210,50 @@ class ToolGuardrailConfig:
         return input_empty and output_empty
 
 
+def total_guardrail_token_usage(
+    results: Iterable[GuardrailCheckResult | None],
+) -> dict[str, int | None]:
+    """Aggregate token usage across guardrail results.
+
+    Args:
+        results: Iterable of guardrail results (can include None).
+
+    Returns:
+        Dictionary with aggregated token usage. If no usage is present, all values are None.
+    """
+    totals: dict[str, int | None] = {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+    }
+    found_usage = False
+
+    for result in results:
+        if not result or not result.token_usage:
+            continue
+        found_usage = True
+        tu = result.token_usage
+        prompt = tu.get("prompt_tokens", tu.get("input_tokens"))
+        completion = tu.get("completion_tokens", tu.get("output_tokens"))
+        total = tu.get("total_tokens", tu.get("total"))
+
+        if prompt is not None:
+            totals["prompt_tokens"] = (totals["prompt_tokens"] or 0) + prompt
+        if completion is not None:
+            totals["completion_tokens"] = (totals["completion_tokens"] or 0) + completion
+        if total is not None:
+            totals["total_tokens"] = (totals["total_tokens"] or 0) + total
+
+    if not found_usage:
+        return {
+            "prompt_tokens": None,
+            "completion_tokens": None,
+            "total_tokens": None,
+        }
+
+    return totals
+
+
 # Type alias for the check function signature
 # CheckFn = Callable[[str, dict[str, Any], ...], Awaitable[GuardrailCheckResult]]
 
@@ -211,4 +267,5 @@ __all__ = [
     "GuardrailPreset",
     "AgentGuardrailConfig",
     "ToolGuardrailConfig",
+    "total_guardrail_token_usage",
 ]

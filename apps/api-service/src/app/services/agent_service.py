@@ -23,6 +23,7 @@ from app.domain.conversations import (
     ConversationMessage,
     ConversationRepository,
 )
+from app.guardrails._shared.events import GuardrailEmissionToken, set_guardrail_emitters
 from app.infrastructure.providers.openai.runtime import LifecycleEventBus
 from app.services.agents.attachments import AttachmentService
 from app.services.agents.catalog import AgentCatalogService
@@ -301,6 +302,8 @@ class AgentService:
     ) -> AsyncGenerator[AgentStreamEvent, None]:
         lifecycle_bus = LifecycleEventBus()
         compaction_events: list[AgentStreamEvent] = []
+        guardrail_events: list[Mapping[str, Any]] = []
+        guardrail_token: GuardrailEmissionToken | None = None
 
         async def _emit_compaction(event: AgentStreamEvent) -> None:
             await lifecycle_bus.emit(event)
@@ -319,6 +322,49 @@ class AgentService:
             if request.conversation_id
             else None,
             compaction_emitter=_emit_compaction,
+        )
+
+        def _emit_guardrail(payload: Mapping[str, Any]) -> None:
+            event = AgentStreamEvent(
+                kind="guardrail_result",
+                conversation_id=ctx.conversation_id,
+                agent=payload.get("agent") or ctx.descriptor.key,
+                response_id=payload.get("response_id"),
+                guardrail_stage=payload.get("guardrail_stage"),
+                guardrail_key=payload.get("guardrail_key"),
+                guardrail_name=payload.get("guardrail_name"),
+                guardrail_tripwire_triggered=payload.get("guardrail_tripwire_triggered"),
+                guardrail_suppressed=payload.get("guardrail_suppressed"),
+                guardrail_flagged=payload.get("guardrail_flagged"),
+                guardrail_confidence=payload.get("guardrail_confidence"),
+                guardrail_masked_content=payload.get("guardrail_masked_content"),
+                guardrail_token_usage=payload.get("guardrail_token_usage"),
+                guardrail_details=payload.get("guardrail_details"),
+                tool_name=payload.get("tool_name"),
+                tool_call_id=payload.get("tool_call_id"),
+                payload=(
+                    payload.get("payload")
+                    if isinstance(payload.get("payload"), Mapping)
+                    else None
+                ),
+            )
+            try:
+                loop = asyncio.get_running_loop()
+                lifecycle_emit_task = loop.create_task(lifecycle_bus.emit(event))
+                lifecycle_emit_task.add_done_callback(lambda _: None)
+            except Exception:
+                logger.exception(
+                    "guardrail_event.emit_failed",
+                    extra={"stage": payload.get("guardrail_stage")},
+                )
+
+        guardrail_token = set_guardrail_emitters(
+            emitter=_emit_guardrail,
+            collector=guardrail_events,
+            context={
+                "conversation_id": ctx.conversation_id,
+                "agent": ctx.descriptor.key,
+            },
         )
 
         await record_user_message(
@@ -428,6 +474,22 @@ class AgentService:
                     yield leftover
         finally:
             reset_current_actor(token)
+            if guardrail_token:
+                guardrail_token.reset()
+
+        if guardrail_events:
+            summary_payload = self._build_guardrail_summary(guardrail_events)
+            summary_event = AgentStreamEvent(
+                kind="guardrail_result",
+                conversation_id=ctx.conversation_id,
+                agent=ctx.descriptor.key,
+                guardrail_stage="summary",
+                guardrail_name="Guardrail Summary",
+                guardrail_key="guardrail_summary",
+                guardrail_summary=True,
+                payload=summary_payload,
+            )
+            yield summary_event
 
         assistant_message = ConversationMessage(
             role="assistant",
@@ -602,6 +664,59 @@ class AgentService:
             agent_key=agent_key,
             provider=provider_name,
         )
+
+    @staticmethod
+    def _build_guardrail_summary(events: list[Mapping[str, Any]]) -> dict[str, Any]:
+        total = len(events)
+        triggered = sum(1 for ev in events if ev.get("guardrail_tripwire_triggered"))
+        suppressed = sum(
+            1
+            for ev in events
+            if ev.get("guardrail_tripwire_triggered") and ev.get("guardrail_suppressed")
+        )
+
+        by_stage: dict[str, dict[str, int]] = {}
+        by_key: dict[str, int] = {}
+        usage_totals: dict[str, int] = {
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+        }
+        usage_found = False
+
+        for ev in events:
+            stage = ev.get("guardrail_stage") or "unknown"
+            stage_bucket = by_stage.setdefault(stage, {"total": 0, "triggered": 0})
+            stage_bucket["total"] += 1
+            if ev.get("guardrail_tripwire_triggered"):
+                stage_bucket["triggered"] += 1
+
+            key = ev.get("guardrail_key")
+            if key:
+                by_key[key] = by_key.get(key, 0) + 1
+
+            token_usage = ev.get("guardrail_token_usage")
+            if isinstance(token_usage, dict):
+                seen_usage = False
+                for field in ("prompt_tokens", "completion_tokens", "total_tokens"):
+                    value = token_usage.get(field)
+                    if isinstance(value, int):
+                        usage_totals[field] = usage_totals.get(field, 0) + value
+                        seen_usage = True
+                if seen_usage:
+                    usage_found = True
+
+        summary = {
+            "total": total,
+            "triggered": triggered,
+            "suppressed": suppressed,
+            "by_stage": by_stage,
+            "by_key": by_key,
+        }
+        if usage_found:
+            summary["token_usage"] = usage_totals
+
+        return summary
 
 
 # Factory helpers -----------------------------------------------------------

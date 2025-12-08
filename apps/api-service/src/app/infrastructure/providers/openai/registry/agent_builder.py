@@ -14,7 +14,13 @@ from agents.extensions.handoff_prompt import prompt_with_handoff_instructions
 from agents.model_settings import ModelSettings
 
 from app.agents._shared.handoff_filters import get_filter as get_handoff_filter
-from app.agents._shared.specs import AgentSpec, AgentToolConfig, HandoffConfig, OutputSpec
+from app.agents._shared.specs import (
+    AgentSpec,
+    AgentToolConfig,
+    GuardrailRuntimeOptions,
+    HandoffConfig,
+    OutputSpec,
+)
 from app.core.settings import Settings
 
 from .prompt import PromptRenderer
@@ -40,11 +46,15 @@ class AgentBuilder:
         prompt_renderer: PromptRenderer,
         settings_factory: Callable[[], Settings],
         guardrail_builder: GuardrailBuilder | None = None,
+        default_guardrails: Any | None = None,
+        default_runtime_options: GuardrailRuntimeOptions | None = None,
     ) -> None:
         self._tool_resolver = tool_resolver
         self._prompt_renderer = prompt_renderer
         self._settings_factory = settings_factory
         self._guardrail_builder = guardrail_builder
+        self._default_guardrails = default_guardrails
+        self._default_runtime_options = default_runtime_options
 
     def build_agent(
         self,
@@ -104,6 +114,9 @@ class AgentBuilder:
             agent_kwargs["input_guardrails"] = input_guardrails
         if output_guardrails:
             agent_kwargs["output_guardrails"] = output_guardrails
+        runtime_opts = spec.guardrails_runtime or self._default_runtime_options
+        if runtime_opts:
+            agent_kwargs.setdefault("guardrails_runtime", self._runtime_options(runtime_opts))
 
         agent = Agent(**agent_kwargs)
         return BuildResult(agent=agent, code_interpreter_mode=tool_selection.code_interpreter_mode)
@@ -321,8 +334,8 @@ class AgentBuilder:
         Returns:
             Tuple of (input_guardrails, output_guardrails) lists.
         """
-        guardrail_config = getattr(spec, "guardrails", None)
-        if not guardrail_config or not self._guardrail_builder:
+        guardrail_config = getattr(spec, "guardrails", None) or self._default_guardrails
+        if guardrail_config is None or not self._guardrail_builder:
             return [], []
 
         try:
@@ -340,6 +353,21 @@ class AgentBuilder:
             raise ValueError(
                 f"Failed to build guardrails for agent '{spec.key}': {e}"
             ) from e
+
+    @staticmethod
+    def _runtime_options(
+        options: GuardrailRuntimeOptions,
+    ) -> dict[str, Any]:
+        """Translate GuardrailRuntimeOptions to Agent kwargs."""
+        runtime: dict[str, Any] = {
+            "suppress_tripwire": options.suppress_tripwire,
+            "streaming_mode": options.streaming_mode,
+        }
+        if options.concurrency is not None:
+            runtime["concurrency"] = options.concurrency
+        if options.result_handler_path:
+            runtime["result_handler_path"] = options.result_handler_path
+        return runtime
 
 
 __all__ = ["AgentBuilder", "BuildResult"]

@@ -41,10 +41,12 @@ class ToolResolver:
         tool_registry: ToolRegistry,
         settings_factory: Callable[[], Settings],
         guardrail_builder: Any | None = None,
+        default_tool_guardrails: ToolGuardrailConfig | None = None,
     ):
         self._tool_registry = tool_registry
         self._settings_factory = settings_factory
         self._guardrail_builder = guardrail_builder
+        self._default_tool_guardrails = default_tool_guardrails
 
     def select_tools(
         self,
@@ -316,8 +318,8 @@ class ToolResolver:
             if tool_output_guardrails:
                 tool.tool_output_guardrails = tool_output_guardrails
 
-    @staticmethod
     def _resolve_tool_guardrail_config(
+        self,
         *,
         global_config: ToolGuardrailConfig | None,
         override_config: ToolGuardrailConfig | None,
@@ -328,10 +330,19 @@ class ToolResolver:
                 return None
             return override_config
 
-        if global_config is None or global_config.is_empty() or not global_config.enabled:
-            return None
+        if global_config is not None:
+            if not global_config.enabled or global_config.is_empty():
+                return None
+            return global_config
 
-        return global_config
+        if (
+            self._default_tool_guardrails is not None
+            and self._default_tool_guardrails.enabled
+            and not self._default_tool_guardrails.is_empty()
+        ):
+            return self._default_tool_guardrails
+
+        return None
 
 
 __all__ = ["ToolResolver", "ToolSelectionResult", "OPTIONAL_TOOL_KEYS"]

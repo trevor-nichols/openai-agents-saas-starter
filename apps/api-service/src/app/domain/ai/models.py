@@ -88,6 +88,7 @@ class AgentStreamEvent:
         "raw_response_event",
         "run_item_stream_event",
         "agent_updated_stream_event",
+        "guardrail_result",
         "usage",
         "error",
         "lifecycle",
@@ -146,6 +147,19 @@ class AgentStreamEvent:
     raw_event: Mapping[str, Any] | None = None
     tool_call: Mapping[str, Any] | None = None
     annotations: list[Mapping[str, Any]] | None = None
+
+    # Guardrail metadata (emitted when kind == "guardrail_result")
+    guardrail_stage: str | None = None  # pre_flight|input|output|tool_input|tool_output
+    guardrail_key: str | None = None
+    guardrail_name: str | None = None
+    guardrail_tripwire_triggered: bool | None = None
+    guardrail_suppressed: bool | None = None
+    guardrail_flagged: bool | None = None
+    guardrail_confidence: float | None = None
+    guardrail_masked_content: str | None = None
+    guardrail_token_usage: Mapping[str, Any] | None = None
+    guardrail_details: Mapping[str, Any] | None = None
+    guardrail_summary: bool = False
 
     @staticmethod
     def _strip_unserializable(obj: Any) -> Any:

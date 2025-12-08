@@ -11,6 +11,7 @@ from app.guardrails._shared.specs import (
     GuardrailCheckResult,
     GuardrailPreset,
     GuardrailSpec,
+    total_guardrail_token_usage,
 )
 
 
@@ -143,14 +144,30 @@ class TestGuardrailCheckResult:
                 "reason": "Test reason",
             },
             confidence=0.95,
-            token_usage={"input": 10, "output": 5, "total": 15},
+            token_usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
         )
 
         output = result.to_output_info()
         assert output["guardrail_name"] == "Test"
         assert output["flagged"] is True
         assert output["reason"] == "Test reason"
-        assert output["token_usage"] == {"input": 10, "output": 5, "total": 15}
+        assert output["token_usage"] == {
+            "prompt_tokens": 10,
+            "completion_tokens": 5,
+            "total_tokens": 15,
+        }
+
+    def test_execution_failed_in_output_info(self) -> None:
+        result = GuardrailCheckResult(
+            tripwire_triggered=False,
+            info={"guardrail_name": "Test", "flagged": False},
+            execution_failed=True,
+            original_exception=ValueError("boom"),
+        )
+
+        output = result.to_output_info()
+        assert output["execution_failed"] is True
+        assert "boom" in output["error"]
 
 
 class TestGuardrailCheckConfig:
@@ -252,3 +269,47 @@ class TestAgentGuardrailConfig:
         )
 
         assert cfg.suppress_tripwire is True
+
+
+class TestTokenUsageAggregation:
+    """Tests for total_guardrail_token_usage helper."""
+
+    def test_aggregates_values(self) -> None:
+        r1 = GuardrailCheckResult(
+            tripwire_triggered=False,
+            info={},
+            token_usage={
+                "prompt_tokens": 10,
+                "completion_tokens": 5,
+                "total_tokens": 15,
+            },
+        )
+        r2 = GuardrailCheckResult(
+            tripwire_triggered=False,
+            info={},
+            token_usage={
+                "prompt_tokens": 2,
+                "completion_tokens": 3,
+                "total_tokens": 5,
+            },
+        )
+
+        totals = total_guardrail_token_usage([r1, r2])
+        assert totals == {
+            "prompt_tokens": 12,
+            "completion_tokens": 8,
+            "total_tokens": 20,
+        }
+
+    def test_handles_missing_usage(self) -> None:
+        r1 = GuardrailCheckResult(
+            tripwire_triggered=False,
+            info={},
+            token_usage=None,
+        )
+        totals = total_guardrail_token_usage([r1, None])
+        assert totals == {
+            "prompt_tokens": None,
+            "completion_tokens": None,
+            "total_tokens": None,
+        }
