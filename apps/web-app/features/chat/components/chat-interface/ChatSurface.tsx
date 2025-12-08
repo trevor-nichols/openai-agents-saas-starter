@@ -1,7 +1,7 @@
 import { FormEvent } from 'react';
 import type { ChatStatus } from 'ai';
 
-import { GlassPanel, InlineTag, SectionHeader, type SectionHeaderProps } from '@/components/ui/foundation';
+import { InlineTag, SectionHeader, type SectionHeaderProps } from '@/components/ui/foundation';
 import { Banner, BannerClose, BannerTitle } from '@/components/ui/banner';
 import { Conversation, ConversationContent, ConversationScrollButton } from '@/components/ui/ai/conversation';
 import { EmptyState, SkeletonPanel } from '@/components/ui/states';
@@ -105,15 +105,15 @@ export function ChatSurface({
   const isBusy = isSending || isLoadingHistory;
 
   return (
-    <GlassPanel className={cn('flex h-full flex-col overflow-hidden p-0', className)}>
+    <div className={cn('relative flex h-full flex-col overflow-hidden bg-background', className)}>
       {headerProps ? (
-        <div className="border-b border-white/5 px-6 py-4">
+        <div className="border-b border-border/40 px-6 py-4">
           <SectionHeader {...headerProps} size="compact" />
         </div>
       ) : null}
 
       <Conversation className="flex-1">
-        <ConversationContent className="space-y-4 px-6 py-6">
+        <ConversationContent className="mx-auto max-w-3xl space-y-6 px-4 py-8">
           {agentNotices.length > 0 ? (
             <div className="space-y-2">
               {agentNotices.map((notice) => (
@@ -227,6 +227,6 @@ export function ChatSurface({
         onMemoryInjectionChange={onMemoryInjectionChange}
         isUpdatingMemory={isUpdatingMemory}
       />
-    </GlassPanel>
+    </div>
   );
 }

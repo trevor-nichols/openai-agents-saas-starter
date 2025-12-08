@@ -1,5 +1,6 @@
 import { FormEvent } from 'react';
 import type { ChatStatus } from 'ai';
+import { Settings2Icon, TrashIcon } from 'lucide-react';
 
 import {
   PromptInput,
@@ -9,11 +10,23 @@ import {
   PromptInputToolbar,
   PromptInputTools,
 } from '@/components/ui/ai/prompt-input';
-import { InlineTag } from '@/components/ui/foundation';
 import { Loader } from '@/components/ui/ai/loader';
 import { LocationOptIn } from '@/components/ui/location';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import type { ConversationLifecycleStatus } from '@/lib/chat/types';
 
 type MemoryModeOption = 'inherit' | 'none' | 'trim' | 'summarize' | 'compact';
@@ -38,7 +51,10 @@ interface PromptComposerProps {
     country?: string | null;
     timezone?: string | null;
   };
-  onLocationHintChange: (field: 'city' | 'region' | 'country' | 'timezone', value: string) => void;
+  onLocationHintChange: (
+    field: 'city' | 'region' | 'country' | 'timezone',
+    value: string
+  ) => void;
   memoryMode: MemoryModeOption;
   memoryInjection?: boolean;
   onMemoryModeChange: (mode: MemoryModeOption) => void;
@@ -55,7 +71,6 @@ export function PromptComposer({
   isLoadingHistory,
   isSending,
   chatStatus,
-  lifecycleStatus,
   activeAgent,
   currentConversationId,
   shareLocation,
@@ -72,77 +87,148 @@ export function PromptComposer({
   const memoryDisabled = disabled || !currentConversationId || isUpdatingMemory;
 
   return (
-    <PromptInput onSubmit={onSubmit} className="border-t border-white/5 bg-white/5 rounded-none border-x-0 border-b-0">
-      <PromptInputTextarea
-        value={messageInput}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={currentConversationId ? `Message ${currentConversationId.substring(0, 8)}…` : 'Ask your agent…'}
-        disabled={disabled}
-        rows={2}
-      />
-      <PromptInputToolbar className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
-        <PromptInputTools className="flex flex-col gap-3 [&_button:first-child]:rounded-lg">
-          {onClearConversation && currentConversationId ? (
-            <PromptInputButton
-              variant="ghost"
-              onClick={() => {
-                void onClearConversation();
-              }}
-              disabled={isClearingConversation || isLoadingHistory}
-            >
-              {isClearingConversation ? 'Clearing…' : 'Clear chat'}
-            </PromptInputButton>
-          ) : null}
-          <div className="flex flex-wrap items-center gap-2">
-            <Select
-              value={memoryMode}
-              onValueChange={(value) =>
-                onMemoryModeChange(value as MemoryModeOption)
-              }
-              disabled={memoryDisabled}
-            >
-              <SelectTrigger className="w-[150px] justify-between rounded-lg border border-white/10 bg-white/5 text-xs font-medium text-muted-foreground">
-                <SelectValue placeholder="Memory strategy" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="inherit">Use defaults</SelectItem>
-                <SelectItem value="none">None</SelectItem>
-                <SelectItem value="trim">Trim</SelectItem>
-                <SelectItem value="summarize">Summarize</SelectItem>
-                <SelectItem value="compact">Compact</SelectItem>
-              </SelectContent>
-            </Select>
-            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1">
-              <span className="text-xs text-muted-foreground">Inject summary</span>
-              <Switch
-                checked={Boolean(memoryInjection)}
-                disabled={memoryDisabled}
-                onCheckedChange={(checked) => onMemoryInjectionChange(checked)}
-              />
-            </div>
+    <div className="mx-auto w-full max-w-3xl px-4 pb-4">
+      <PromptInput
+        onSubmit={onSubmit}
+        className="divide-y-0 overflow-hidden rounded-xl border bg-background shadow-lg transition-all focus-within:ring-1 focus-within:ring-ring"
+      >
+        <PromptInputTextarea
+          value={messageInput}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={
+            currentConversationId
+              ? `Message ${currentConversationId.substring(0, 8)}…`
+              : 'Ask your agent…'
+          }
+          disabled={disabled}
+          minHeight={52}
+        />
+        <PromptInputToolbar className="justify-between px-3 pb-3 pt-2">
+          <PromptInputTools>
+            <Popover>
+              <PopoverTrigger asChild>
+                <PromptInputButton
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 text-muted-foreground hover:text-foreground"
+                >
+                  <Settings2Icon className="size-4" />
+                  <span className="sr-only">Chat settings</span>
+                </PromptInputButton>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-4" align="start">
+                <div className="grid gap-4">
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm leading-none">
+                      Chat Configuration
+                    </h4>
+                    <p className="text-muted-foreground text-xs">
+                      Manage memory and context settings for this session.
+                    </p>
+                  </div>
+                  <Separator />
+                  <div className="grid gap-2">
+                    <Label htmlFor="memory-mode" className="text-xs">
+                      Memory Strategy
+                    </Label>
+                    <Select
+                      value={memoryMode}
+                      onValueChange={(value) =>
+                        onMemoryModeChange(value as MemoryModeOption)
+                      }
+                      disabled={memoryDisabled}
+                    >
+                      <SelectTrigger
+                        id="memory-mode"
+                        className="h-8 w-full text-xs"
+                      >
+                        <SelectValue placeholder="Select strategy" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="inherit">Use defaults</SelectItem>
+                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="trim">Trim</SelectItem>
+                        <SelectItem value="summarize">Summarize</SelectItem>
+                        <SelectItem value="compact">Compact</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label
+                      htmlFor="memory-injection"
+                      className="text-xs font-normal"
+                    >
+                      Inject summary
+                    </Label>
+                    <Switch
+                      id="memory-injection"
+                      className="scale-75"
+                      checked={Boolean(memoryInjection)}
+                      disabled={memoryDisabled}
+                      onCheckedChange={(checked) =>
+                        onMemoryInjectionChange(checked)
+                      }
+                    />
+                  </div>
+                  <Separator />
+                  <div className="space-y-2">
+                    <Label className="text-xs">Location Context</Label>
+                    <LocationOptIn
+                      shareLocation={shareLocation}
+                      onShareLocationChange={onShareLocationChange}
+                      location={locationHint}
+                      onLocationChange={onLocationHintChange}
+                      disabled={disabled}
+                    />
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {onClearConversation && currentConversationId ? (
+              <PromptInputButton
+                variant="ghost"
+                size="icon"
+                className="size-8 text-muted-foreground hover:text-destructive"
+                onClick={() => {
+                  void onClearConversation();
+                }}
+                disabled={isClearingConversation || isLoadingHistory}
+                title="Clear conversation"
+              >
+                <TrashIcon className="size-4" />
+                <span className="sr-only">Clear chat</span>
+              </PromptInputButton>
+            ) : null}
+          </PromptInputTools>
+
+          <div className="flex items-center gap-2">
+            {chatStatus === 'streaming' ? (
+              <div className="flex items-center gap-1.5 rounded-full bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground">
+                <Loader size={12} />
+                <span className="uppercase tracking-wider text-[10px] font-medium">
+                  Generating
+                </span>
+              </div>
+            ) : null}
+
+            {activeAgent ? (
+              <span className="hidden text-[10px] text-muted-foreground uppercase tracking-wider font-medium sm:block">
+                {activeAgent}
+              </span>
+            ) : null}
+
+            <PromptInputSubmit
+              status={chatStatus}
+              disabled={disabled || !messageInput.trim()}
+              className="size-8 rounded-xl transition-all shadow-sm"
+            />
           </div>
-          <LocationOptIn
-            shareLocation={shareLocation}
-            onShareLocationChange={onShareLocationChange}
-            location={locationHint}
-            onLocationChange={onLocationHintChange}
-            disabled={disabled}
-          />
-        </PromptInputTools>
-        <div className="flex flex-wrap items-center gap-2">
-          {chatStatus === 'streaming' ? (
-            <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-muted-foreground">
-              <Loader size={14} />
-              <span className="uppercase tracking-wide">Streaming</span>
-            </div>
-          ) : chatStatus ? (
-            <InlineTag tone="default">{chatStatus}</InlineTag>
-          ) : null}
-          {lifecycleStatus ? <InlineTag tone="default">{lifecycleStatus}</InlineTag> : null}
-          {activeAgent ? <InlineTag tone="default">Agent: {activeAgent}</InlineTag> : null}
-          <PromptInputSubmit status={chatStatus} disabled={disabled || !messageInput.trim()} />
-        </div>
-      </PromptInputToolbar>
-    </PromptInput>
+        </PromptInputToolbar>
+      </PromptInput>
+      <p className="mt-2 text-center text-[10px] text-muted-foreground/60">
+        AI can make mistakes. Please verify important information.
+      </p>
+    </div>
   );
 }

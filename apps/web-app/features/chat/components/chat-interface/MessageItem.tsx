@@ -1,4 +1,3 @@
-import { InlineTag } from '@/components/ui/foundation';
 import { Actions, Action } from '@/components/ui/ai/actions';
 import { Loader } from '@/components/ui/ai/loader';
 import { Message, MessageAvatar, MessageContent } from '@/components/ui/ai/message';
@@ -21,35 +20,12 @@ interface MessageItemProps {
 }
 
 export function MessageItem({ message, onCopy, attachmentState, onResolveAttachment, isBusy }: MessageItemProps) {
-  return (
-    <Message from={message.role}>
-      <MessageContent>
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <InlineTag tone={message.role === 'user' ? 'positive' : 'default'}>
-              {message.role === 'user' ? 'You' : 'Agent'}
-            </InlineTag>
-            {message.isStreaming ? (
-              <div className="flex items-center gap-1 text-muted-foreground">
-                <Loader size={14} />
-                <span className="text-[11px] uppercase tracking-wide">Streaming</span>
-              </div>
-            ) : message.timestamp ? (
-              <span className="text-[11px] uppercase tracking-wide text-foreground/50">
-                {formatClockTime(message.timestamp)}
-              </span>
-            ) : (
-              <span className="text-[11px] uppercase tracking-wide text-foreground/40">Pending</span>
-            )}
-          </div>
-          <Actions>
-            <Action tooltip="Copy message" label="Copy message" onClick={() => void onCopy(message.content)}>
-              <CopyIcon size={14} />
-            </Action>
-          </Actions>
-        </div>
+  const isUser = message.role === 'user';
 
-        <Response className="mt-2 leading-relaxed" citations={message.citations ?? undefined}>
+  return (
+    <Message from={message.role} className="mb-2">
+      <MessageContent className={isUser ? '' : 'bg-transparent pl-0 pt-0'}>
+        <Response className="leading-relaxed" citations={message.citations ?? undefined}>
           {message.content}
         </Response>
 
@@ -69,7 +45,28 @@ export function MessageItem({ message, onCopy, attachmentState, onResolveAttachm
           />
         ) : null}
       </MessageContent>
-      <MessageAvatar src="" name={message.role === 'user' ? 'You' : 'Agent'} />
+
+      <MessageAvatar src="" name={isUser ? 'You' : 'Agent'} />
+
+      <div className="flex w-full flex-row items-center gap-2 pl-1 pt-1 opacity-0 transition-opacity group-hover:opacity-100">
+        {!isUser && (
+          <Actions>
+             <Action tooltip="Copy message" label="Copy message" onClick={() => void onCopy(message.content)}>
+              <CopyIcon size={14} />
+            </Action>
+          </Actions>
+        )}
+        <div className="text-[10px] text-muted-foreground">
+             {message.isStreaming ? (
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <Loader size={12} />
+                <span className="uppercase tracking-wide">Generating</span>
+              </div>
+            ) : message.timestamp ? (
+               formatClockTime(message.timestamp)
+            ) : null}
+        </div>
+      </div>
     </Message>
   );
 }
