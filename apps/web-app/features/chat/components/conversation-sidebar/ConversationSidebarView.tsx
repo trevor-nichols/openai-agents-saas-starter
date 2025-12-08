@@ -1,4 +1,4 @@
-import { RefObject } from 'react';
+import { RefObject, useRef } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { GlassPanel } from '@/components/ui/foundation';
@@ -37,7 +37,7 @@ interface ConversationSidebarViewProps {
   onSelectConversation: (id: string) => void;
   onDeleteConversation?: (id: string) => void;
   onNewConversation: () => void;
-  infiniteScrollRef: RefObject<HTMLDivElement | null>;
+  infiniteScrollRef?: RefObject<HTMLDivElement | null>;
 }
 
 export function ConversationSidebarView({
@@ -62,6 +62,9 @@ export function ConversationSidebarView({
   onNewConversation,
   infiniteScrollRef,
 }: ConversationSidebarViewProps) {
+  const fallbackRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = infiniteScrollRef ?? fallbackRef;
+
   const showLoader = (tab === 'recent' ? recentLoading : isSearching) && (recentCount > 0 || searchResults.length > 0);
 
   const content = (
@@ -121,7 +124,7 @@ export function ConversationSidebarView({
               />
             )}
 
-            <div ref={infiniteScrollRef}>
+            <div ref={sentinelRef}>
               {showLoader ? <ConversationListLoader /> : null}
             </div>
           </div>

@@ -5,6 +5,7 @@ import { ThemeProvider } from 'next-themes';
 
 import '../app/globals.css';
 import { Toaster } from '../components/ui/sonner';
+import { TooltipProvider } from '../components/ui/tooltip';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -44,10 +45,12 @@ export const StoryProviders = ({ children, theme }: { children: ReactNode; theme
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem forcedTheme={forcedTheme} disableTransitionOnChange>
       <QueryClientProvider client={queryClient}>
-        <div className="min-h-screen bg-background text-foreground antialiased">
-          {children}
-          <Toaster richColors position="top-center" />
-        </div>
+        <TooltipProvider>
+          <div className="min-h-screen bg-background text-foreground antialiased">
+            {children}
+            <Toaster richColors position="top-center" />
+          </div>
+        </TooltipProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );

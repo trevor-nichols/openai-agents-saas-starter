@@ -1,4 +1,3 @@
-import { createRef } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 
 import type { ConversationListItem } from '@/types/conversations';
@@ -53,7 +52,6 @@ const meta: Meta<typeof ConversationSidebarView> = {
     onSelectConversation: noop,
     onDeleteConversation: noop,
     onNewConversation: noop,
-    infiniteScrollRef: createRef<HTMLDivElement>(),
   },
 };
 

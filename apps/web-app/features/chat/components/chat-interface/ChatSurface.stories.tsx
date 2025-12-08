@@ -13,9 +13,12 @@ const baseHeader = {
   description: 'System glass UI demo surface',
 };
 
+type MemoryModeOption = 'inherit' | 'none' | 'trim' | 'summarize' | 'compact';
+
 const baseLocation = { city: 'San Francisco', region: 'CA', country: 'USA', timezone: 'America/Los_Angeles' } as const;
 const onInputChange = (_value: string) => {};
 const onToggle = (_value: boolean) => {};
+const onMemoryModeChange = (_mode: MemoryModeOption) => {};
 const onLocationChange = (_field: 'city' | 'region' | 'country' | 'timezone', _value: string) => {};
 const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
   event.preventDefault();
@@ -88,6 +91,12 @@ const meta: Meta<typeof ChatSurface> = {
     onClearConversation: () => {},
     attachmentState: {},
     resolveAttachment: async (_objectId: string) => {},
+    messageInput: '',
+    memoryMode: 'inherit',
+    memoryInjection: false,
+    onMemoryModeChange,
+    onMemoryInjectionChange: onToggle,
+    isUpdatingMemory: false,
   },
 };
 
