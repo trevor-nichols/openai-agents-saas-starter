@@ -8,7 +8,7 @@
  * - Type-safe mutations
  */
 
-import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
 
 import type {
@@ -17,6 +17,8 @@ import type {
   ConversationListPage,
   ConversationSearchResultItem,
   ConversationEvents,
+  ConversationMemoryConfig,
+  ConversationMemoryConfigInput,
 } from '@/types/conversations';
 import {
   fetchConversationsPage,
@@ -24,6 +26,7 @@ import {
   fetchConversationEvents,
   sortConversationsByDate,
   searchConversations,
+  updateConversationMemory as updateConversationMemoryApi,
 } from '@/lib/api/conversations';
 import { queryKeys } from './keys';
 import type { InfiniteData } from '@tanstack/react-query';
@@ -62,6 +65,12 @@ interface UseConversationEventsReturn {
   isFetchingEvents: boolean;
   eventsError: string | null;
   refetchEvents: () => Promise<void>;
+}
+
+interface UseUpdateConversationMemoryReturn {
+  updateMemory: (config: ConversationMemoryConfigInput) => Promise<ConversationMemoryConfig>;
+  isUpdating: boolean;
+  error: string | null;
 }
 
 /**
@@ -277,5 +286,38 @@ export function useConversationEvents(
     isFetchingEvents: isFetching && isEnabled,
     eventsError: error?.message ?? null,
     refetchEvents: () => refetch().then(() => undefined),
+  };
+}
+
+/**
+ * Mutation hook to update conversation memory configuration.
+ */
+export function useUpdateConversationMemory(
+  conversationId: string | null,
+): UseUpdateConversationMemoryReturn {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationKey: [...queryKeys.conversations.all, 'memory', conversationId ?? 'none'],
+    mutationFn: async (config: ConversationMemoryConfigInput) => {
+      if (!conversationId) {
+        throw new Error('Conversation id is required.');
+      }
+      return updateConversationMemoryApi({ conversationId, config });
+    },
+    onSuccess: () => {
+      if (!conversationId) return;
+      // Refresh conversation detail to reflect new memory defaults.
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.conversations.detail(conversationId),
+      });
+      // No list-level invalidation needed unless UI surfaces memory in list.
+      // If future UI includes memory badges, we can invalidate lists here.
+    },
+  });
+
+  return {
+    updateMemory: mutation.mutateAsync,
+    isUpdating: mutation.isPending,
+    error: mutation.error instanceof Error ? mutation.error.message : null,
   };
 }

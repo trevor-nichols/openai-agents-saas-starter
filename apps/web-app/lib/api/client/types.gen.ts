@@ -128,6 +128,11 @@ export type AgentChatRequest = {
     [key: string]: unknown;
   } | null;
   run_options?: AgentRunOptions | null;
+  memory_strategy?: MemoryStrategyRequest | null;
+  /**
+   * Memory Injection
+   */
+  memory_injection?: boolean | null;
 };
 
 /**
@@ -1045,6 +1050,74 @@ export type ConversationListResponse = {
 };
 
 /**
+ * ConversationMemoryConfigRequest
+ */
+export type ConversationMemoryConfigRequest = {
+  /**
+   * Mode
+   */
+  mode?: "none" | "trim" | "summarize" | "compact" | null;
+  /**
+   * Max User Turns
+   */
+  max_user_turns?: number | null;
+  /**
+   * Keep Last Turns
+   */
+  keep_last_turns?: number | null;
+  /**
+   * Compact Trigger Turns
+   */
+  compact_trigger_turns?: number | null;
+  /**
+   * Compact Keep
+   */
+  compact_keep?: number | null;
+  /**
+   * Clear Tool Inputs
+   */
+  clear_tool_inputs?: boolean | null;
+  /**
+   * Memory Injection
+   */
+  memory_injection?: boolean | null;
+};
+
+/**
+ * ConversationMemoryConfigResponse
+ */
+export type ConversationMemoryConfigResponse = {
+  /**
+   * Mode
+   */
+  mode?: "none" | "trim" | "summarize" | "compact" | null;
+  /**
+   * Max User Turns
+   */
+  max_user_turns?: number | null;
+  /**
+   * Keep Last Turns
+   */
+  keep_last_turns?: number | null;
+  /**
+   * Compact Trigger Turns
+   */
+  compact_trigger_turns?: number | null;
+  /**
+   * Compact Keep
+   */
+  compact_keep?: number | null;
+  /**
+   * Clear Tool Inputs
+   */
+  clear_tool_inputs?: boolean | null;
+  /**
+   * Memory Injection
+   */
+  memory_injection?: boolean | null;
+};
+
+/**
  * ConversationMetaEvent
  *
  * Metadata stream event for a conversation.
@@ -1724,6 +1797,76 @@ export type LocationHint = {
    * Timezone
    */
   timezone?: string | null;
+};
+
+/**
+ * MemoryStrategyRequest
+ */
+export type MemoryStrategyRequest = {
+  /**
+   * Mode
+   */
+  mode?: "none" | "trim" | "summarize" | "compact";
+  /**
+   * Max User Turns
+   */
+  max_user_turns?: number | null;
+  /**
+   * Keep Last User Turns
+   */
+  keep_last_user_turns?: number | null;
+  /**
+   * Token Budget
+   */
+  token_budget?: number | null;
+  /**
+   * Token Soft Budget
+   */
+  token_soft_budget?: number | null;
+  /**
+   * Token Remaining Pct
+   */
+  token_remaining_pct?: number | null;
+  /**
+   * Token Soft Remaining Pct
+   */
+  token_soft_remaining_pct?: number | null;
+  /**
+   * Context Window Tokens
+   */
+  context_window_tokens?: number | null;
+  /**
+   * Compact Trigger Turns
+   */
+  compact_trigger_turns?: number | null;
+  /**
+   * Compact Keep
+   */
+  compact_keep?: number | null;
+  /**
+   * Compact Clear Tool Inputs
+   */
+  compact_clear_tool_inputs?: boolean | null;
+  /**
+   * Compact Exclude Tools
+   */
+  compact_exclude_tools?: Array<string> | null;
+  /**
+   * Compact Include Tools
+   */
+  compact_include_tools?: Array<string> | null;
+  /**
+   * Summarizer Model
+   */
+  summarizer_model?: string | null;
+  /**
+   * Summary Max Tokens
+   */
+  summary_max_tokens?: number | null;
+  /**
+   * Summary Max Chars
+   */
+  summary_max_chars?: number | null;
 };
 
 /**
@@ -6616,6 +6759,51 @@ export type GetConversationMessagesApiV1ConversationsConversationIdMessagesGetRe
 
 export type GetConversationMessagesApiV1ConversationsConversationIdMessagesGetResponse =
   GetConversationMessagesApiV1ConversationsConversationIdMessagesGetResponses[keyof GetConversationMessagesApiV1ConversationsConversationIdMessagesGetResponses];
+
+export type UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchData =
+  {
+    body: ConversationMemoryConfigRequest;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Conversation Id
+       */
+      conversation_id: string;
+    };
+    query?: never;
+    url: "/api/v1/conversations/{conversation_id}/memory";
+  };
+
+export type UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchErrors =
+  {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+  };
+
+export type UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchError =
+  UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchErrors[keyof UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchErrors];
+
+export type UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: ConversationMemoryConfigResponse;
+  };
+
+export type UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchResponse =
+  UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchResponses[keyof UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchResponses];
 
 export type GetConversationEventsApiV1ConversationsConversationIdEventsGetData =
   {

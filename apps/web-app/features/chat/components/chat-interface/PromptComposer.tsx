@@ -12,7 +12,11 @@ import {
 import { InlineTag } from '@/components/ui/foundation';
 import { Loader } from '@/components/ui/ai/loader';
 import { LocationOptIn } from '@/components/ui/location';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import type { ConversationLifecycleStatus } from '@/lib/chat/types';
+
+type MemoryModeOption = 'inherit' | 'none' | 'trim' | 'summarize' | 'compact';
 
 interface PromptComposerProps {
   messageInput: string;
@@ -35,6 +39,11 @@ interface PromptComposerProps {
     timezone?: string | null;
   };
   onLocationHintChange: (field: 'city' | 'region' | 'country' | 'timezone', value: string) => void;
+  memoryMode: MemoryModeOption;
+  memoryInjection?: boolean;
+  onMemoryModeChange: (mode: MemoryModeOption) => void;
+  onMemoryInjectionChange: (value: boolean) => void;
+  isUpdatingMemory: boolean;
 }
 
 export function PromptComposer({
@@ -53,8 +62,14 @@ export function PromptComposer({
   onShareLocationChange,
   locationHint,
   onLocationHintChange,
+  memoryMode,
+  memoryInjection,
+  onMemoryModeChange,
+  onMemoryInjectionChange,
+  isUpdatingMemory,
 }: PromptComposerProps) {
   const disabled = isSending || isLoadingHistory;
+  const memoryDisabled = disabled || !currentConversationId || isUpdatingMemory;
 
   return (
     <PromptInput onSubmit={onSubmit} className="border-t border-white/5 bg-white/5 rounded-none border-x-0 border-b-0">
@@ -78,6 +93,34 @@ export function PromptComposer({
               {isClearingConversation ? 'Clearing…' : 'Clear chat'}
             </PromptInputButton>
           ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            <Select
+              value={memoryMode}
+              onValueChange={(value) =>
+                onMemoryModeChange(value as MemoryModeOption)
+              }
+              disabled={memoryDisabled}
+            >
+              <SelectTrigger className="w-[150px] justify-between rounded-lg border border-white/10 bg-white/5 text-xs font-medium text-muted-foreground">
+                <SelectValue placeholder="Memory strategy" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="inherit">Use defaults</SelectItem>
+                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="trim">Trim</SelectItem>
+                <SelectItem value="summarize">Summarize</SelectItem>
+                <SelectItem value="compact">Compact</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1">
+              <span className="text-xs text-muted-foreground">Inject summary</span>
+              <Switch
+                checked={Boolean(memoryInjection)}
+                disabled={memoryDisabled}
+                onCheckedChange={(checked) => onMemoryInjectionChange(checked)}
+              />
+            </div>
+          </div>
           <LocationOptIn
             shareLocation={shareLocation}
             onShareLocationChange={onShareLocationChange}

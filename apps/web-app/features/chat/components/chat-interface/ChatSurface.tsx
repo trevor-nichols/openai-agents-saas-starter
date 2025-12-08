@@ -15,6 +15,8 @@ import { PromptComposer } from './PromptComposer';
 import type { ChatMessage, ConversationLifecycleStatus, ToolState } from '@/lib/chat/types';
 import type { AttachmentState } from '../../hooks/useAttachmentResolver';
 
+type MemoryModeOption = 'inherit' | 'none' | 'trim' | 'summarize' | 'compact';
+
 interface ChatSurfaceProps {
   className?: string;
   headerProps?: SectionHeaderProps;
@@ -53,6 +55,11 @@ interface ChatSurfaceProps {
     timezone?: string | null;
   };
   onLocationHintChange: (field: 'city' | 'region' | 'country' | 'timezone', value: string) => void;
+  memoryMode: MemoryModeOption;
+  memoryInjection?: boolean;
+  onMemoryModeChange: (mode: MemoryModeOption) => void;
+  onMemoryInjectionChange: (value: boolean) => void;
+  isUpdatingMemory: boolean;
 }
 
 export function ChatSurface({
@@ -88,6 +95,11 @@ export function ChatSurface({
   onShareLocationChange,
   locationHint,
   onLocationHintChange,
+  memoryMode,
+  memoryInjection,
+  onMemoryModeChange,
+  onMemoryInjectionChange,
+  isUpdatingMemory,
 }: ChatSurfaceProps) {
   const showEmpty = !isLoadingHistory && messages.length === 0;
   const isBusy = isSending || isLoadingHistory;
@@ -209,6 +221,11 @@ export function ChatSurface({
         onShareLocationChange={onShareLocationChange}
         locationHint={locationHint}
         onLocationHintChange={onLocationHintChange}
+        memoryMode={memoryMode}
+        memoryInjection={memoryInjection}
+        onMemoryModeChange={onMemoryModeChange}
+        onMemoryInjectionChange={onMemoryInjectionChange}
+        isUpdatingMemory={isUpdatingMemory}
       />
     </GlassPanel>
   );

@@ -16,6 +16,8 @@ import {
   useChatToolEvents,
 } from '@/lib/chat';
 import type { ChatMessage, ConversationLifecycleStatus, ToolState } from '@/lib/chat/types';
+import { useUpdateConversationMemory } from '@/lib/queries/conversations';
+import type { ConversationMemoryConfigInput } from '@/types/conversations';
 
 import { ChatSurface } from './chat-interface/ChatSurface';
 import { useAttachmentResolver } from '../hooks/useAttachmentResolver';
@@ -53,6 +55,8 @@ interface ChatInterfaceProps {
   className?: string;
   headerProps?: SectionHeaderProps;
 }
+
+type MemoryModeOption = 'inherit' | 'none' | 'trim' | 'summarize' | 'compact';
 
 export function ChatInterface({
   onSendMessage,
@@ -119,6 +123,18 @@ export function ChatInterface({
   const [messageInput, setMessageInput] = useState('');
   const { attachmentState, resolveAttachment } = useAttachmentResolver();
   const { error: showErrorToast, success: showSuccessToast } = useToast();
+  const { updateMemory, isUpdating: isUpdatingMemory } = useUpdateConversationMemory(currentConversationId);
+  const [memoryByConversation, setMemoryByConversation] = useState<
+    Record<string, { mode: MemoryModeOption; memory_injection?: boolean }>
+  >({});
+  const defaultMemoryState = useMemo(
+    () => ({ mode: 'inherit' as MemoryModeOption, memory_injection: undefined as boolean | undefined }),
+    [],
+  );
+  const currentMemoryState = useMemo(() => {
+    if (!currentConversationId) return defaultMemoryState;
+    return memoryByConversation[currentConversationId] ?? defaultMemoryState;
+  }, [currentConversationId, defaultMemoryState, memoryByConversation]);
 
   const chatStatus = useMemo<ChatStatus | undefined>(() => {
     if (isClearingConversation || isLoadingHistory) return 'submitted';
@@ -133,6 +149,56 @@ export function ChatInterface({
     setMessageInput('');
     await onSendMessage(value);
   };
+
+  const applyMemoryUpdate = useCallback(
+    async (
+      next: { mode: MemoryModeOption; memory_injection?: boolean },
+      options?: { resetMode?: boolean },
+    ) => {
+      if (!currentConversationId) return;
+      const previous = memoryByConversation[currentConversationId] ?? defaultMemoryState;
+      setMemoryByConversation((prev) => ({ ...prev, [currentConversationId]: next }));
+      const body: ConversationMemoryConfigInput = {};
+      if (next.mode !== 'inherit') {
+        body.mode = next.mode;
+      } else if (options?.resetMode) {
+        body.mode = null;
+      }
+      if (typeof next.memory_injection === 'boolean') {
+        body.memory_injection = next.memory_injection;
+      }
+
+      try {
+        await updateMemory(body);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Unable to update conversation memory.';
+        showErrorToast({
+          title: 'Memory update failed',
+          description: message,
+        });
+        setMemoryByConversation((prev) => ({ ...prev, [currentConversationId]: previous }));
+      }
+    },
+    [currentConversationId, defaultMemoryState, memoryByConversation, showErrorToast, updateMemory],
+  );
+
+  const handleMemoryModeChange = useCallback(
+    (mode: MemoryModeOption) => {
+      const next = { ...currentMemoryState, mode };
+      const resetMode = mode === 'inherit';
+      void applyMemoryUpdate(next, { resetMode });
+    },
+    [applyMemoryUpdate, currentMemoryState],
+  );
+
+  const handleMemoryInjectionChange = useCallback(
+    (value: boolean) => {
+      const next = { ...currentMemoryState, memory_injection: value };
+      void applyMemoryUpdate(next);
+    },
+    [applyMemoryUpdate, currentMemoryState],
+  );
 
   const handleCopyMessage = useCallback(
     async (text: string) => {
@@ -190,6 +256,11 @@ export function ChatInterface({
       onShareLocationChange={onShareLocationChange}
       locationHint={locationHint}
       onLocationHintChange={onLocationHintChange}
+      memoryMode={currentMemoryState.mode}
+      memoryInjection={currentMemoryState.memory_injection}
+      onMemoryModeChange={handleMemoryModeChange}
+      onMemoryInjectionChange={handleMemoryInjectionChange}
+      isUpdatingMemory={isUpdatingMemory}
     />
   );
 }

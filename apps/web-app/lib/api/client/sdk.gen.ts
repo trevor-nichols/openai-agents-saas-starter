@@ -303,6 +303,9 @@ import type {
   UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDeleteData,
   UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDeleteErrors,
   UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDeleteResponses,
+  UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchData,
+  UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchErrors,
+  UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchResponses,
   UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchData,
   UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchErrors,
   UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchResponses,
@@ -1732,6 +1735,38 @@ export const getConversationMessagesApiV1ConversationsConversationIdMessagesGet 
       ],
       url: "/api/v1/conversations/{conversation_id}/messages",
       ...options,
+    });
+  };
+
+/**
+ * Update Conversation Memory
+ *
+ * Set or clear memory strategy defaults for a conversation.
+ */
+export const updateConversationMemoryApiV1ConversationsConversationIdMemoryPatch =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).patch<
+      UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchResponses,
+      UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/conversations/{conversation_id}/memory",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
     });
   };
 

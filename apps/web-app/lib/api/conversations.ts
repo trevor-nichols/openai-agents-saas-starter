@@ -15,6 +15,8 @@ import type {
   ConversationSearchPage,
   ConversationEvents,
   ConversationMessagesPage,
+  ConversationMemoryConfig,
+  ConversationMemoryConfigInput,
 } from '@/types/conversations';
 import { apiV1Path } from '@/lib/apiPaths';
 
@@ -219,4 +221,28 @@ export async function deleteConversationById(conversationId: string): Promise<vo
     const errorPayload = (await response.json().catch(() => ({}))) as { message?: string };
     throw new Error(errorPayload.message || 'Failed to delete conversation');
   }
+}
+
+/**
+ * Update conversation memory configuration.
+ */
+export async function updateConversationMemory(params: {
+  conversationId: string;
+  config: ConversationMemoryConfigInput;
+}): Promise<ConversationMemoryConfig> {
+  const { conversationId, config } = params;
+  const response = await fetch(apiV1Path(`/conversations/${encodeURIComponent(conversationId)}/memory`), {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(config),
+  });
+
+  if (!response.ok) {
+    const errorPayload = (await response.json().catch(() => ({}))) as { message?: string };
+    throw new Error(errorPayload.message || 'Failed to update conversation memory');
+  }
+
+  return (await response.json()) as ConversationMemoryConfig;
 }

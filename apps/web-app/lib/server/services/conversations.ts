@@ -8,6 +8,7 @@ import {
   listConversationsApiV1ConversationsGet,
   searchConversationsApiV1ConversationsSearchGet,
   streamConversationMetadataApiV1ConversationsConversationIdStreamGet,
+  updateConversationMemoryApiV1ConversationsConversationIdMemoryPatch,
 } from '@/lib/api/client/sdk.gen';
 import type {
   ConversationHistory,
@@ -15,6 +16,8 @@ import type {
   ConversationListResponse as BackendConversationListResponse,
   ConversationSearchResponse as BackendConversationSearchResponse,
   PaginatedMessagesResponse,
+  ConversationMemoryConfigRequest,
+  ConversationMemoryConfigResponse,
 } from '@/lib/api/client/types.gen';
 import type {
   ConversationEvents,
@@ -249,6 +252,44 @@ export async function deleteConversation(conversationId: string): Promise<void> 
       conversation_id: conversationId,
     },
   });
+}
+
+/**
+ * Update conversation-level memory configuration.
+ */
+export async function updateConversationMemory(
+  conversationId: string,
+  config: ConversationMemoryConfigRequest,
+  options?: { tenantId?: string | null; tenantRole?: string | null },
+): Promise<ConversationMemoryConfigResponse> {
+  if (!conversationId) {
+    throw new Error('Conversation id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+  const headers = new Headers();
+  if (options?.tenantId) {
+    headers.set('X-Tenant-Id', options.tenantId);
+  }
+  if (options?.tenantRole) {
+    headers.set('X-Tenant-Role', options.tenantRole);
+  }
+
+  const result = await updateConversationMemoryApiV1ConversationsConversationIdMemoryPatch({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    headers: headers.keys().next().done ? undefined : headers,
+    path: { conversation_id: conversationId },
+    body: config,
+  });
+
+  const payload = result.data as ConversationMemoryConfigResponse | null | undefined;
+  if (!payload) {
+    throw new Error('Failed to update conversation memory configuration.');
+  }
+  return payload;
 }
 
 export interface ConversationMetadataStreamOptions {
