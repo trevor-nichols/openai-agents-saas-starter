@@ -9,19 +9,21 @@ Operational guide for declaring and running agents with the OpenAI Agents SDK in
 - **Settings select models.** `model_key` chooses `settings.agent_<key>_model`; otherwise `agent_default_model`.
 
 ## AgentSpec fields (TL;DR)
-- `key` (dir name), `display_name`, `description`
-- `model_key` → settings override; else default model
-- `prompt_path` **or** `instructions` (Jinja allowed)
-- `tool_keys` (ordered) + `tool_configs` (per-tool tweaks)
-- `handoff_keys` + `handoff_context` (`full`|`fresh`|`last_turn`)
-- `handoff_overrides` (tool_name/description, input_filter, input_type, is_enabled)
-- `agent_tool_keys` to expose other agents as tools (caller stays in control)
-- `agent_tool_overrides` (tool_name/description, custom_output_extractor, is_enabled, run_config, max_turns)
-- `wrap_with_handoff_prompt` (adds SDK handoff prelude)
-- `prompt_context_keys`, `prompt_defaults`, `extra_context_providers`
-- `output` (text | json_schema, strict flag, custom schema path)
-- `default` (provider default)
+- Identity & model: `key` (dir name), `display_name`, `description`, `model_key` (→ `settings.agent_<key>_model` override or `agent_default_model`), `capabilities` (catalog metadata), `default` (provider default).
+- Prompt: `prompt_path` **or** `instructions` (Jinja allowed), `wrap_with_handoff_prompt`, `prompt_context_keys`, `prompt_defaults`, `extra_context_providers`.
+- Tools: `tool_keys` (ordered, explicit) + `tool_configs` (per-tool knobs).
+- Handoffs: `handoff_keys`, `handoff_context` (`full`|`fresh`|`last_turn`), `handoff_overrides` (tool_name/description, input_filter, input_type, is_enabled).
+- Agents-as-tools: `agent_tool_keys`, `agent_tool_overrides` (tool_name/description, custom_output_extractor, is_enabled, run_config, max_turns).
+- Retrieval: `vector_store_binding` (`tenant_default`|`static`|`required`), optional `vector_store_ids`, `file_search_options` (max_num_results, filters, ranking_options, include_search_results).
+- Outputs & validation: `output` (text | json_schema via `type_path` or `custom_schema_path`), `guardrails`, `tool_guardrails`, `tool_guardrail_overrides`, `guardrails_runtime` (suppress_tripwire, streaming_mode, concurrency, result_handler_path).
+- Memory defaults: `memory_strategy` (defaults applied after per-request and per-conversation overrides; supports trim/summarize/compact, token budgets, compact rules).
+- Misc: `prompt_context_keys`/`prompt_defaults`/`extra_context_providers` feed prompt rendering; `capabilities` are surfaced in catalogs.
 
+## Tool inventory (where tools come from)
+- Registry (`app/utils/tools/registry.py::initialize_tools()`): registers hosted OpenAI tools (`web_search`, `code_interpreter`, `image_generation`, `file_search`) when `OPENAI_API_KEY` is set, plus hosted MCP tools from `mcp_tools` settings.
+- Built-in utility tools: `OpenAIAgentRegistry._register_builtin_tools()` adds `get_current_time` and `search_conversations`.
+- Agent-as-tools: any agent listed in `agent_tool_keys` is exposed via `as_tool`.
+- Custom function tools: register in the tool registry and list the tool name in `tool_keys` to expose it on an agent.
 ## Patterns & examples
 
 ### 1) Simple single-agent
@@ -103,11 +105,21 @@ return AgentSpec(
   - Default registration uses auto containers with `settings.container_default_auto_memory`.
   - Per-agent override via `tool_configs={"code_interpreter": {"mode": "explicit", "container_id": "...", "file_ids": [...], "memory_limit": "2g"}}`.
   - If `mode="explicit"` and no container binding is found, we error unless `settings.container_fallback_to_auto_on_missing_binding` is True.
+  - Container resolution: InteractionContextBuilder pulls per-tenant agent→container bindings from `ContainerService`; if `container_id` is set in `tool_configs`, it is used; otherwise auto mode provisions/uses OpenAI-managed containers with the default memory limit.
 - **Image generation**
   - Override size/quality/format/background/compression/partial_images via `tool_configs={"image_generation": {...}}`.
-  - Validation enforced in `OpenAIAgentRegistry._validate_image_config`.
+  - Validation enforced in `ToolResolver._validate_image_config` (size/quality/background/format/compression/partial_images).
 - **Web search**
   - Inherits user_location from `PromptRuntimeContext` when available; no per-agent config today.
+- **File search / vector stores**
+  - Use `vector_store_binding="tenant_default"` (preferred) or `vector_store_binding="static"` with explicit `vector_store_ids` (tuple of IDs).
+  - `vector_store_binding="required"` fails if no tenant binding is resolved.
+  - Pass per-agent `file_search_options` (max_num_results, filters, ranking_options, include_search_results) to FileSearchTool.
+  - Resolution order at runtime (InteractionContextBuilder):
+    1) Request override (`vector_store_ids`/`vector_store_id`).
+    2) Agent-to-store binding from DB (VectorStoreService binding).
+    3) Spec config: `static` requires `vector_store_ids`; `required` demands an existing primary; `tenant_default` resolves or auto-creates the tenant primary (if enabled).
+  - See `app/services/vector_stores/README.md` for binding APIs and store management.
 
 ## Prompt authoring
 - Prefer `prompt.md.j2`; keep logic minimal and declarative.
@@ -123,6 +135,17 @@ return AgentSpec(
 - `remove_all_tools` – strips tool messages (from SDK handoff_filters).
 - Use `handoff_overrides[input_filter="name"]` to apply a specific filter per target.
 - `input_type` can point to a Pydantic model/dataclass to validate handoff args.
+
+## Guardrails
+- `guardrails` apply input/output guardrails to the agent (built via GuardrailBuilder).
+- `tool_guardrails` apply guardrails to all tools; `tool_guardrail_overrides` can disable or replace per tool.
+- `guardrails_runtime` controls behavior (suppress tripwire, streaming vs blocking, concurrency, result handler).
+- See `app/guardrails/README.md` and `docs/integrations/openai-agents-sdk/guardrails/` for supported configs and tripwire behaviors.
+
+## Memory defaults
+- `memory_strategy` lets you set agent-level defaults for trim/summarize/compact (token budgets, compact_keep, clear_tool_inputs, include/exclude tools).
+- Precedence: request > conversation defaults > agent defaults.
+- Summaries can persist via `StrategySession` when using `SUMMARIZE`; compact events surface as lifecycle stream events.
 
 ## Adding tools
 1) Implement a function tool with `@function_tool` (can accept `RunContextWrapper` as first arg).
