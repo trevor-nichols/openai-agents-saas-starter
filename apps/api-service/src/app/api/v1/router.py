@@ -10,6 +10,7 @@ from app.api.v1.chat.router import router as chat_router
 from app.api.v1.contact.router import router as contact_router
 from app.api.v1.containers.router import router as containers_router
 from app.api.v1.conversations.router import router as conversations_router
+from app.api.v1.guardrails.router import router as guardrails_router
 from app.api.v1.logs.router import router as logs_router
 from app.api.v1.openai_files.router import router as openai_files_router
 from app.api.v1.status.router import router as status_router
@@ -28,6 +29,7 @@ router = APIRouter()
 router.include_router(auth_router)
 router.include_router(chat_router)
 router.include_router(agents_router)
+router.include_router(guardrails_router)
 router.include_router(workflows_router)
 router.include_router(conversations_router)
 router.include_router(tools_router)

@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
+from app.guardrails._shared.specs import AgentGuardrailConfig, ToolGuardrailConfig
+
 
 @dataclass(frozen=True, slots=True)
 class AgentSpec:
@@ -44,6 +46,10 @@ class AgentSpec:
       vector stores (tenant_default vs static ids).
     - `file_search_options` are passed through to the FileSearchTool (e.g.,
       max_num_results, filters, ranking_options, include_search_results).
+    - `guardrails` specifies input/output guardrails configuration (preset key,
+      explicit guardrail configs, or both). See AgentGuardrailConfig for details.
+    - `tool_guardrails` applies guardrails to all tools on this agent (tool_input
+      and tool_output stages). Per-tool overrides can disable or replace these.
     """
 
     key: str
@@ -84,6 +90,12 @@ class AgentSpec:
     # Optional memory strategy defaults applied at agent level (resolved after per-request
     # and conversation overrides).
     memory_strategy: dict[str, Any] | None = None
+    # Optional guardrails configuration for input/output validation.
+    guardrails: AgentGuardrailConfig | None = None
+    # Optional guardrails for all tools on this agent.
+    tool_guardrails: ToolGuardrailConfig | None = None
+    # Optional per-tool guardrail overrides keyed by tool name.
+    tool_guardrail_overrides: dict[str, ToolGuardrailConfig] = field(default_factory=dict)
 
     def prompt_source(self) -> str:
         if self.instructions:

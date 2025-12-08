@@ -5,6 +5,7 @@ This package breaks the legacy monolith into focused collaborators:
 - PromptRenderer: builds and renders prompts.
 - AgentBuilder: constructs concrete SDK Agents.
 - DescriptorStore: tracks descriptors and visibility metadata.
+- GuardrailBuilder: constructs SDK guardrails from specs (optional).
 """
 
 from __future__ import annotations
@@ -12,7 +13,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable, Sequence
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from agents import Agent, function_tool
 
@@ -30,6 +31,10 @@ from .descriptors import DescriptorStore
 from .prompt import PromptRenderer
 from .tool_resolver import ToolResolver
 
+if TYPE_CHECKING:
+    from app.guardrails._shared.builder import GuardrailBuilder
+    from app.guardrails._shared.registry import GuardrailRegistry
+
 logger = logging.getLogger(__name__)
 
 
@@ -43,18 +48,32 @@ class OpenAIAgentRegistry:
         conversation_searcher,
         specs: Sequence[AgentSpec] | None = None,
         tool_registry: ToolRegistry | None = None,
+        guardrail_registry: GuardrailRegistry | None = None,
     ) -> None:
         self._settings_factory = settings_factory
         self._conversation_searcher = conversation_searcher
         self._tool_registry: ToolRegistry = tool_registry or initialize_tools()
         self._prompt_renderer = PromptRenderer(settings_factory=settings_factory)
+
+        # Build guardrails lazily if registry provided
+        guardrail_builder: GuardrailBuilder | None = None
+        if guardrail_registry is not None:
+            from app.guardrails._shared.builder import GuardrailBuilder as GB
+
+            guardrail_builder = GB(guardrail_registry)
+            logger.debug("GuardrailBuilder initialized with registry")
+
         self._tool_resolver = ToolResolver(
-            tool_registry=self._tool_registry, settings_factory=settings_factory
+            tool_registry=self._tool_registry,
+            settings_factory=settings_factory,
+            guardrail_builder=guardrail_builder,
         )
+
         self._agent_builder = AgentBuilder(
             tool_resolver=self._tool_resolver,
             prompt_renderer=self._prompt_renderer,
             settings_factory=settings_factory,
+            guardrail_builder=guardrail_builder,
         )
         self._descriptors = DescriptorStore()
 

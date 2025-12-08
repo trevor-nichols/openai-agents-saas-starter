@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import importlib
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from agents import Agent, RunConfig, handoff
 from agents.agent_output import AgentOutputSchema, AgentOutputSchemaBase
@@ -18,6 +19,11 @@ from app.core.settings import Settings
 
 from .prompt import PromptRenderer
 from .tool_resolver import ToolResolver
+
+if TYPE_CHECKING:
+    from app.guardrails._shared.builder import GuardrailBuilder
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -33,10 +39,12 @@ class AgentBuilder:
         tool_resolver: ToolResolver,
         prompt_renderer: PromptRenderer,
         settings_factory: Callable[[], Settings],
+        guardrail_builder: GuardrailBuilder | None = None,
     ) -> None:
         self._tool_resolver = tool_resolver
         self._prompt_renderer = prompt_renderer
         self._settings_factory = settings_factory
+        self._guardrail_builder = guardrail_builder
 
     def build_agent(
         self,
@@ -78,16 +86,26 @@ class AgentBuilder:
             response_include.append("code_interpreter_call.outputs")
         model_settings = ModelSettings(response_include=response_include or None)
 
-        agent = Agent(
-            name=spec.display_name,
-            instructions=instructions,
-            model=self._resolve_agent_model(self._settings_factory(), spec),
-            model_settings=model_settings,
-            tools=tools_with_agents,
-            handoffs=cast(list[Any], handoff_targets),
-            handoff_description=spec.description if handoff_targets else None,
-            output_type=self._resolve_output_type(spec),
-        )
+        # Build guardrails if configured
+        input_guardrails, output_guardrails = self._build_guardrails(spec)
+
+        # Build agent kwargs with optional guardrails
+        agent_kwargs: dict[str, Any] = {
+            "name": spec.display_name,
+            "instructions": instructions,
+            "model": self._resolve_agent_model(self._settings_factory(), spec),
+            "model_settings": model_settings,
+            "tools": tools_with_agents,
+            "handoffs": cast(list[Any], handoff_targets),
+            "handoff_description": spec.description if handoff_targets else None,
+            "output_type": self._resolve_output_type(spec),
+        }
+        if input_guardrails:
+            agent_kwargs["input_guardrails"] = input_guardrails
+        if output_guardrails:
+            agent_kwargs["output_guardrails"] = output_guardrails
+
+        agent = Agent(**agent_kwargs)
         return BuildResult(agent=agent, code_interpreter_mode=tool_selection.code_interpreter_mode)
 
     def _build_agent_tools(
@@ -290,6 +308,38 @@ class AgentBuilder:
                     f"{label or 'object'} '{dotted}' must be an instance of {expected.__name__}"
                 )
         return obj
+
+    def _build_guardrails(
+        self,
+        spec: AgentSpec,
+    ) -> tuple[list[Any], list[Any]]:
+        """Build input and output guardrails from agent spec.
+
+        Args:
+            spec: The agent specification.
+
+        Returns:
+            Tuple of (input_guardrails, output_guardrails) lists.
+        """
+        guardrail_config = getattr(spec, "guardrails", None)
+        if not guardrail_config or not self._guardrail_builder:
+            return [], []
+
+        try:
+            input_guardrails = self._guardrail_builder.build_input_guardrails(guardrail_config)
+            output_guardrails = self._guardrail_builder.build_output_guardrails(guardrail_config)
+            logger.debug(
+                "Built guardrails for agent '%s': %d input, %d output",
+                spec.key,
+                len(input_guardrails),
+                len(output_guardrails),
+            )
+            return input_guardrails, output_guardrails
+        except Exception as e:
+            logger.exception("Failed to build guardrails for agent '%s': %s", spec.key, e)
+            raise ValueError(
+                f"Failed to build guardrails for agent '{spec.key}': {e}"
+            ) from e
 
 
 __all__ = ["AgentBuilder", "BuildResult"]

@@ -16,14 +16,37 @@
 │   ├── runner.md              # Documents the `Runner` class used to execute agents.
 │   ├── streaming_events.md    # Documents events emitted during a streaming agent run.
 │   └── usage.md               # Documents the data structure for tracking token usage.
+├── guardrails/                # Documentation for the Guardrails safety feature.
+│   ├── agents_sdk_integration.md # Explains how to integrate Guardrails with the Agents SDK.
+│   ├── api_reference/         # API reference documentation for the Guardrails SDK.
+│   │   ├── exceptions.md      # API reference for custom exceptions used by the Guardrails SDK.
+│   │   ├── registry.md        # API reference for the Guardrail specification registry.
+│   │   ├── runtime.md         # API reference for runtime helpers that load and execute guardrails.
+│   │   ├── spec.md            # API reference for the `GuardrailSpec` class which defines a guardrail.
+│   │   └── types.md           # API reference for core data types used in the Guardrails SDK.
+│   ├── checks/                # Documentation for specific, pre-built guardrail checks.
+│   │   ├── Contains_PII.md    # Documentation for the guardrail that detects Personally Identifiable Information.
+│   │   ├── Custom_Prompt_Check.md # Documentation for the guardrail that uses a custom LLM prompt for validation.
+│   │   ├── Hallucination_Detection.md # Documentation for the guardrail that detects factual claims unsupported by documents.
+│   │   ├── Jailbreak_Detection.md # Documentation for the guardrail that detects attempts to bypass AI safety measures.
+│   │   ├── Moderation.md      # Documentation for the guardrail that uses OpenAI's moderation API.
+│   │   ├── NSFW_Text.md       # Documentation for the guardrail that detects Not-Safe-For-Work text.
+│   │   ├── Off_Topic_Prompts.md # Documentation for the guardrail that ensures content stays within a defined scope.
+│   │   ├── Prompt_Injection_Detection.md # Documentation for the guardrail that detects prompt injection in tool calls.
+│   │   └── URL_Filter.md      # Documentation for the guardrail that filters URLs against an allow-list.
+│   ├── eval_tool.md           # Documentation for a command-line tool to evaluate guardrail performance.
+│   ├── streaming_vs_blocking.md # Compares streaming vs. non-streaming guardrail execution modes.
+│   └── tripwires.md           # Explains the tripwire mechanism for blocking execution when a guardrail triggers.
 ├── handoffs/                  # Documentation related to the agent handoff feature.
 │   └── handoff_prompt.md      # Provides a recommended system prompt for agents that use handoffs.
 ├── memory/                    # Documentation for conversation memory and session management.
 │   ├── continuing_conversation.md # An example showing how to continue a conversation using `previous_response_id`.
 │   ├── examples/              # Contains example scripts for memory features.
 │   │   └── session_memmory.md # An example demonstrating session memory for conversation history.
+│   ├── long_term_memory_strategies/ # Documentation on strategies for managing long-term conversation memory.
+│   │   └── README.md          # Describes strategies like trimming, summarization, and compacting for long-term memory.
 │   ├── memory.md              # Documents the base Session protocol and a SQLite implementation.
-│   └── sqlalchemy_session.md  # Documents persistent session implementations using SQLAlchemy, including encrypted sessions.
+│   └── sqlalchemy_session.md  # Documents persistent and encrypted session implementations using SQLAlchemy.
 ├── openai_raw_api_reference.md # Raw API reference for the OpenAI Responses API.
 ├── output_type/               # Documentation for defining and handling agent output structures.
 │   ├── agent_output.md        # Documents schemas and validation for agent outputs.
@@ -33,16 +56,19 @@
 │   └── Streaming_&_Parsing_Reference.md # A comprehensive reference for all streaming events in the SDK.
 ├── table-of-contents.md       # A table of contents for the entire documentation project.
 ├── tools/                     # Documentation for all tools available to agents.
+│   ├── agents-as-tool/        # Documentation for using one agent as a tool for another.
+│   │   └── using-agents-as-tools.md # A guide on how to use one agent as a tool for another agent.
 │   ├── code_interpreter/      # Documentation for tools that execute code and shell commands.
 │   │   ├── apply-patch.md     # A guide on using the `apply_patch` tool for structured code edits.
 │   │   ├── code-interpreter-and-containers.md # A guide to using the Code Interpreter tool and its container environment.
 │   │   ├── containers-api.md  # API reference for the Containers endpoint used by Code Interpreter.
 │   │   └── shell.md           # A guide on using the `shell` tool to run local commands.
+│   ├── conditional-tool-enabling.md # Guide on dynamically enabling or disabling tools at runtime.
 │   ├── function_tools/        # Documentation for creating tools from Python functions.
 │   │   └── function_schema.md # Documents utilities for creating tool schemas from Python functions.
 │   ├── image_generation/      # Documentation for the image generation tool.
 │   │   └── image-generation.md # A guide on using the image generation tool within agents.
-│   ├── mcp/                   # Documentation for the Model Context Protocol (MCP).
+│   ├── mcp-tools/             # Documentation for the Model Context Protocol (MCP).
 │   │   ├── agents-sdk-mcp.md  # A guide on integrating MCP servers with the Agents SDK.
 │   │   ├── connectors-&-mcp-servers.md # Explains how to use OpenAI connectors and remote MCP servers.
 │   │   ├── mcp-servers.md     # API reference for the various MCPServer classes.
@@ -65,14 +91,17 @@
 │   ├── tools.md               # API reference for the various tool classes and types.
 │   └── web-search/            # Documentation for the web search tool.
 │       └── web-search.md      # A guide on using the web search tool and its options.
-└── tracing/                   # API documentation for observability and tracing features.
-    ├── create_traces_spans.md # Documents functions for creating traces and spans manually.
-    ├── processor_interface.md # Documents the abstract interfaces for trace processors and exporters.
-    ├── processors.md          # Documents implementations of trace processors (e.g., batch exporter).
-    ├── scope.md               # Documents the scope manager for the current trace/span context.
-    ├── setup.md               # Documents functions for global tracing configuration.
-    ├── span_data.md           # Documents data structures for different types of spans.
-    ├── spans.md               # Documents the base `Span` class for tracing operations.
-    ├── traces.md              # Documents the base `Trace` class for tracing entire workflows.
-    ├── tracing_module.md      # A comprehensive overview of the tracing module's components.
-    └── util.md                # Documents utility functions for tracing (e.g., ID generation).
+├── tracing/                   # API documentation for observability and tracing features.
+│   ├── create_traces_spans.md # Documents functions for creating traces and spans manually.
+│   ├── processor_interface.md # Documents the abstract interfaces for trace processors and exporters.
+│   ├── processors.md          # Documents implementations of trace processors (e.g., batch exporter).
+│   ├── scope.md               # Documents the scope manager for the current trace/span context.
+│   ├── setup.md               # Documents functions for global tracing configuration.
+│   ├── span_data.md           # Documents data structures for different types of spans.
+│   ├── spans.md               # Documents the base `Span` class for tracing operations.
+│   ├── traces.md              # Documents the base `Trace` class for tracing entire workflows.
+│   ├── tracing_module.md      # A comprehensive overview of the tracing module's components.
+│   └── util.md                # Documents utility functions for tracing (e.g., ID generation).
+├── usage/                     # Documentation related to token usage tracking.
+│   └── token_usage.md         # Detailed explanation of the token `usage` object in API responses.
+└── workflows.md               # Describes how to orchestrate multiple agents in a deterministic sequence.

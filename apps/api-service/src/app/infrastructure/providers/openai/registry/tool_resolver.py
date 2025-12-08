@@ -14,6 +14,7 @@ from agents import CodeInterpreterTool, FileSearchTool, ImageGenerationTool, Web
 
 from app.agents._shared.prompt_context import PromptRuntimeContext
 from app.agents._shared.specs import AgentSpec
+from app.guardrails._shared.specs import AgentGuardrailConfig, ToolGuardrailConfig
 from app.core.settings import Settings
 from app.utils.tools import ToolRegistry
 from openai.types.responses.tool_param import (
@@ -34,9 +35,16 @@ class ToolSelectionResult:
 class ToolResolver:
     """Resolves declarative tool keys into concrete SDK tool instances."""
 
-    def __init__(self, *, tool_registry: ToolRegistry, settings_factory: Callable[[], Settings]):
+    def __init__(
+        self,
+        *,
+        tool_registry: ToolRegistry,
+        settings_factory: Callable[[], Settings],
+        guardrail_builder: Any | None = None,
+    ):
         self._tool_registry = tool_registry
         self._settings_factory = settings_factory
+        self._guardrail_builder = guardrail_builder
 
     def select_tools(
         self,
@@ -53,6 +61,13 @@ class ToolResolver:
         missing_required: list[str] = []
         missing_optional: list[str] = []
         code_mode: str | None = None
+
+        global_tool_guardrails: ToolGuardrailConfig | None = getattr(
+            spec, "tool_guardrails", None
+        )
+        per_tool_overrides: dict[str, ToolGuardrailConfig] = getattr(
+            spec, "tool_guardrail_overrides", {}
+        ) or {}
 
         for name in tool_keys:
             tool = self._tool_registry.get_tool(name)
@@ -87,6 +102,17 @@ class ToolResolver:
                 tools.append(ImageGenerationTool(tool_config=cast(Any, validated)))
             else:
                 tools.append(tool)
+
+            # Attach tool-level guardrails if configured
+            try:
+                self._attach_tool_guardrails(
+                    tool=tools[-1],
+                    tool_name=name,
+                    global_config=global_tool_guardrails,
+                    override_config=per_tool_overrides.get(name),
+                )
+            except Exception:
+                logger.exception("tool.guardrails.attach_failed", extra={"tool": name, "agent": spec.key})
 
         if missing_required:
             raise ValueError(
@@ -254,6 +280,54 @@ class ToolResolver:
             else:
                 customized.append(tool)
         return customized
+
+    def _attach_tool_guardrails(
+        self,
+        *,
+        tool: Any,
+        tool_name: str,
+        global_config: ToolGuardrailConfig | None,
+        override_config: ToolGuardrailConfig | None,
+    ) -> None:
+        """Attach tool-level guardrails to a tool instance."""
+        if self._guardrail_builder is None:
+            return
+
+        effective_config = self._resolve_tool_guardrail_config(
+            global_config=global_config, override_config=override_config
+        )
+        if effective_config is None or effective_config.is_empty():
+            return
+
+        input_cfg: AgentGuardrailConfig | None = effective_config.input
+        output_cfg: AgentGuardrailConfig | None = effective_config.output
+
+        if input_cfg:
+            tool_input_guardrails = self._guardrail_builder.build_tool_input_guardrails(input_cfg)
+            if tool_input_guardrails:
+                setattr(tool, "tool_input_guardrails", tool_input_guardrails)
+
+        if output_cfg:
+            tool_output_guardrails = self._guardrail_builder.build_tool_output_guardrails(output_cfg)
+            if tool_output_guardrails:
+                setattr(tool, "tool_output_guardrails", tool_output_guardrails)
+
+    @staticmethod
+    def _resolve_tool_guardrail_config(
+        *,
+        global_config: ToolGuardrailConfig | None,
+        override_config: ToolGuardrailConfig | None,
+    ) -> ToolGuardrailConfig | None:
+        """Resolve the effective tool guardrail config for a specific tool."""
+        if override_config is not None:
+            if not override_config.enabled or override_config.is_empty():
+                return None
+            return override_config
+
+        if global_config is None or global_config.is_empty() or not global_config.enabled:
+            return None
+
+        return global_config
 
 
 __all__ = ["ToolResolver", "ToolSelectionResult", "OPTIONAL_TOOL_KEYS"]
