@@ -237,7 +237,7 @@ async def update_conversation_memory(
     except ConversationNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
-    return ConversationMemoryConfigResponse(**payload.model_dump())
+    return ConversationMemoryConfigResponse(**payload.model_dump(exclude_unset=True))
 
 
 @router.get("/{conversation_id}/events", response_model=ConversationEventsResponse)

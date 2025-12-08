@@ -54,7 +54,9 @@ def _hash_value(value: str | None, salt: str | None = None) -> str | None:
 
 def hash_client_ip(ip: str | None) -> str | None:
     settings = get_settings()
-    base_salt = settings.auth_session_ip_hash_salt or settings.secret_key or ""
+    base_salt = (
+        getattr(settings, "auth_session_ip_hash_salt", None) or settings.secret_key or ""
+    )
     scoped_salt = f"ip:{base_salt}" if base_salt else None
     return _hash_value(ip, scoped_salt)
 
@@ -62,8 +64,8 @@ def hash_client_ip(ip: str | None) -> str | None:
 def hash_user_agent(user_agent: str | None) -> str | None:
     settings = get_settings()
     base_salt = (
-        settings.auth_session_user_agent_hash_salt
-        or settings.auth_session_ip_hash_salt
+        getattr(settings, "auth_session_user_agent_hash_salt", None)
+        or getattr(settings, "auth_session_ip_hash_salt", None)
         or settings.secret_key
         or ""
     )

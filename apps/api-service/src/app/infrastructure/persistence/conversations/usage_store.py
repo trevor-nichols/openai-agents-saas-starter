@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -82,7 +82,7 @@ class RunUsageStore:
             cached_input_tokens=usage.cached_input_tokens,
             reasoning_output_tokens=usage.reasoning_output_tokens,
             request_usage_entries=usage.request_usage_entries,
-            created_at=to_utc(usage.created_at) if usage.created_at else datetime.utcnow(),
+            created_at=to_utc(usage.created_at) if usage.created_at else datetime.now(UTC),
         )
         session.add(model)
 
@@ -100,7 +100,7 @@ class RunUsageStore:
                 total_cached_input_tokens=
                 AgentConversation.total_cached_input_tokens + (usage.cached_input_tokens or 0),
                 total_requests=AgentConversation.total_requests + requests,
-                updated_at=datetime.utcnow(),
+                updated_at=datetime.now(UTC),
             )
         )
 

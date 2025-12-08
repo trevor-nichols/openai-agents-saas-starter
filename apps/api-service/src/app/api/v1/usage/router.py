@@ -29,7 +29,7 @@ async def list_usage(
         UsageCounterView(
             id=row.id,
             tenant_id=row.tenant_id,
-            user_id=row.user_id if row.user_id != row.tenant_id else None,
+            user_id=row.user_id if row.user_id is not None else None,
             period_start=row.period_start,
             granularity=row.granularity.value,
             input_tokens=row.input_tokens,

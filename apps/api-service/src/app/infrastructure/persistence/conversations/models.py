@@ -14,6 +14,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Text,
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import TSVECTOR
@@ -204,7 +205,7 @@ class ConversationSummary(Base):
         nullable=False,
     )
     agent_key: Mapped[str | None] = mapped_column(String(64))
-    summary_text: Mapped[str] = mapped_column(String)
+    summary_text: Mapped[str] = mapped_column(Text)
     summary_model: Mapped[str | None] = mapped_column(String(64))
     summary_length_tokens: Mapped[int | None] = mapped_column(Integer)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

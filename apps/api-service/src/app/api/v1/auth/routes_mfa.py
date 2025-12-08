@@ -130,7 +130,10 @@ async def complete_mfa_challenge(
     request: Request,
 ) -> UserSessionResponse:
     client_ip = extract_client_ip(request)
-    user_id = _extract_challenge_user_id(payload.challenge_token)
+    try:
+        user_id = _extract_challenge_user_id(payload.challenge_token)
+    except UserAuthenticationError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
     await _enforce_mfa_verify_quota(user_id, client_ip)
     user_agent = extract_user_agent(request)
     try:

@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.domain.conversations import ConversationNotFoundError
+from app.domain.conversations import ConversationSummary as DomainSummary
 from app.infrastructure.persistence.conversations.ids import (
     coerce_conversation_uuid,
     parse_tenant_id,
@@ -83,7 +84,19 @@ class ConversationSummaryStore:
             stmt = stmt.order_by(ConversationSummary.created_at.desc())
             result = await session.execute(stmt)
             row = result.scalars().first()
-            return row
+            return self._to_domain(row) if row else None
+
+    @staticmethod
+    def _to_domain(row: ConversationSummary) -> DomainSummary:
+        return DomainSummary(
+            conversation_id=str(row.conversation_id),
+            agent_key=row.agent_key,
+            summary_text=row.summary_text,
+            summary_model=row.summary_model,
+            summary_length_tokens=row.summary_length_tokens,
+            version=row.version,
+            created_at=row.created_at,
+        )
 
 
 __all__ = ["ConversationSummaryStore"]
