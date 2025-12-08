@@ -11,7 +11,9 @@ def get_guardrail_spec() -> GuardrailSpec:
     return GuardrailSpec(
         key="pii_tool_output",
         display_name="PII Detection (Tool Output)",
-        description="Detects PII in tool outputs. Can block or mask detected PII in tool responses.",
+        description=(
+            "Detects PII in tool outputs. Can block or mask detected PII in tool responses."
+        ),
         stage="tool_output",
         engine="regex",
         config_schema=PIIDetectionConfig,

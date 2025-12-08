@@ -1,5 +1,6 @@
 """Tests for guardrail builder."""
 
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -36,6 +37,19 @@ async def dummy_check_fn(
     )
 
 
+async def dummy_tool_check_fn(
+    content: str,
+    config: dict[str, Any],
+    conversation_history: list[dict[str, str]] | None = None,
+    context: dict[str, Any] | None = None,
+) -> GuardrailCheckResult:
+    """Dummy tool check function for testing."""
+    return GuardrailCheckResult(
+        tripwire_triggered=False,
+        info={"guardrail_name": "Dummy Tool", "flagged": False, "content": content},
+    )
+
+
 class TestGuardrailBuilder:
     """Tests for GuardrailBuilder class."""
 
@@ -64,6 +78,17 @@ class TestGuardrailBuilder:
             check_fn_path="tests.unit.guardrails.test_builder:dummy_check_fn",
         )
         reg.register_spec(output_spec)
+
+        tool_input_spec = GuardrailSpec(
+            key="test_tool_input_guard",
+            display_name="Test Tool Input Guard",
+            description="Test tool input guardrail",
+            stage="tool_input",
+            engine="regex",
+            config_schema=DummyConfig,
+            check_fn_path="tests.unit.guardrails.test_builder:dummy_tool_check_fn",
+        )
+        reg.register_spec(tool_input_spec)
 
         preset = GuardrailPreset(
             key="test_preset",
@@ -146,6 +171,30 @@ class TestGuardrailBuilder:
 
         # The input guard should be disabled
         assert len(input_guards) == 0
+
+    @pytest.mark.asyncio
+    async def test_tool_input_guardrail_receives_arguments(
+        self, registry: GuardrailRegistry
+    ) -> None:
+        builder = GuardrailBuilder(registry)
+        config = AgentGuardrailConfig(guardrail_keys=("test_tool_input_guard",))
+
+        tool_guards = builder.build_tool_input_guardrails(config)
+
+        assert len(tool_guards) == 1
+
+        guardrail_fn = tool_guards[0].guardrail_function
+        data = SimpleNamespace(
+            tool_arguments={"foo": "bar"},
+            tool_name="demo_tool",
+            agent=SimpleNamespace(name="agent_demo"),
+            context=None,
+        )
+
+        result = await guardrail_fn(data)
+
+        assert result.output_info["content"] == "{'foo': 'bar'}"
+        assert result.output_info["guardrail_name"] == "Test Tool Input Guard"
 
 
 class TestBuilderWithRealGuardrails:

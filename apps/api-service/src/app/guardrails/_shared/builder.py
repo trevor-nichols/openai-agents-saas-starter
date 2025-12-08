@@ -426,13 +426,16 @@ class GuardrailBuilder:
                         conversation_history = history
 
                 agent_obj = getattr(data, "agent", None)
+                tool_name = getattr(
+                    data, "tool_name", getattr(ctx, "tool_name", "unknown") if ctx else "unknown"
+                )
                 result = await check_fn(
-                    content=str(getattr(ctx, "tool_arguments", "")),
+                    content=str(getattr(data, "tool_arguments", "")),
                     config=validated_dict,
                     conversation_history=conversation_history,
                     context={
                         "agent_name": getattr(agent_obj, "name", "unknown"),
-                        "tool_name": getattr(ctx, "tool_name", "unknown"),
+                        "tool_name": tool_name,
                         "stage": spec.stage,
                     },
                 )
@@ -491,13 +494,16 @@ class GuardrailBuilder:
                         conversation_history = history
 
                 agent_obj = getattr(data, "agent", None)
+                tool_name = getattr(
+                    data, "tool_name", getattr(ctx, "tool_name", "unknown") if ctx else "unknown"
+                )
                 result = await check_fn(
                     content=str(getattr(data, "output", "")),
                     config=validated_dict,
                     conversation_history=conversation_history,
                     context={
                         "agent_name": getattr(agent_obj, "name", "unknown"),
-                        "tool_name": getattr(ctx, "tool_name", "unknown"),
+                        "tool_name": tool_name,
                         "stage": spec.stage,
                     },
                 )

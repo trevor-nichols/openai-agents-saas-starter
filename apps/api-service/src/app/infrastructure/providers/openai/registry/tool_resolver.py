@@ -14,8 +14,8 @@ from agents import CodeInterpreterTool, FileSearchTool, ImageGenerationTool, Web
 
 from app.agents._shared.prompt_context import PromptRuntimeContext
 from app.agents._shared.specs import AgentSpec
-from app.guardrails._shared.specs import AgentGuardrailConfig, ToolGuardrailConfig
 from app.core.settings import Settings
+from app.guardrails._shared.specs import AgentGuardrailConfig, ToolGuardrailConfig
 from app.utils.tools import ToolRegistry
 from openai.types.responses.tool_param import (
     CodeInterpreter,
@@ -112,7 +112,9 @@ class ToolResolver:
                     override_config=per_tool_overrides.get(name),
                 )
             except Exception:
-                logger.exception("tool.guardrails.attach_failed", extra={"tool": name, "agent": spec.key})
+                logger.exception(
+                    "tool.guardrails.attach_failed", extra={"tool": name, "agent": spec.key}
+                )
 
         if missing_required:
             raise ValueError(
@@ -305,12 +307,14 @@ class ToolResolver:
         if input_cfg:
             tool_input_guardrails = self._guardrail_builder.build_tool_input_guardrails(input_cfg)
             if tool_input_guardrails:
-                setattr(tool, "tool_input_guardrails", tool_input_guardrails)
+                tool.tool_input_guardrails = tool_input_guardrails
 
         if output_cfg:
-            tool_output_guardrails = self._guardrail_builder.build_tool_output_guardrails(output_cfg)
+            tool_output_guardrails = self._guardrail_builder.build_tool_output_guardrails(
+                output_cfg
+            )
             if tool_output_guardrails:
-                setattr(tool, "tool_output_guardrails", tool_output_guardrails)
+                tool.tool_output_guardrails = tool_output_guardrails
 
     @staticmethod
     def _resolve_tool_guardrail_config(
