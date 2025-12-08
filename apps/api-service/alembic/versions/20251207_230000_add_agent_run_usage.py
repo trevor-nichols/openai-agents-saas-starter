@@ -49,7 +49,12 @@ def upgrade() -> None:
         sa.Column("cached_input_tokens", sa.Integer(), nullable=True),
         sa.Column("reasoning_output_tokens", sa.Integer(), nullable=True),
         sa.Column("request_usage_entries", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('utc', now())"),
+            nullable=False,
+        ),
         sa.UniqueConstraint("response_id", name="uq_agent_run_usage_response_id"),
     )
 
