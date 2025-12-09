@@ -10,19 +10,16 @@ def get_agent_spec() -> AgentSpec:
     return AgentSpec(
         key="researcher",
         display_name="Researcher",
-        description="Conducts research with web grounding and synthesizes findings.",
+        description="Conducts open web research and synthesizes findings.",
         model_key="data",
         capabilities=("research", "search"),
-        # Uses web search, file search, and code interpreter for richer tests/flows.
-        tool_keys=("web_search", "file_search", "code_interpreter", "image_generation"),
-        # Bind to the tenant's primary store by default; callers can override via
-        # context.vector_store_id(s).
-        vector_store_binding="tenant_default",
-        # Encourage citations by requesting search results from file_search.
-        file_search_options={
-            "max_num_results": 5,
-            "include_search_results": True,
-        },
+        # Web-first research and synthesis; code/image handled by other specialists.
+        tool_keys=("web_search",),
         prompt_path=base_dir / "prompt.md.j2",
         prompt_context_keys=("user", "tenant", "agent", "run", "env"),
+        memory_strategy={
+            "mode": "summarize",
+            "max_user_turns": 12,
+            "token_budget": 32000,
+        },
     )

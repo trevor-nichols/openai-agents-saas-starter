@@ -10,10 +10,21 @@ def get_agent_spec() -> AgentSpec:
     return AgentSpec(
         key="code_assistant",
         display_name="Code Assistant",
-        description="Handles software engineering questions and code reviews.",
+        description=(
+            "Senior software engineer for code analysis, debugging, reviews, "
+            "and implementation guidance. Has access to a sandboxed Python "
+            "environment for data analysis and algorithm verification."
+        ),
         model_key="code",
-        capabilities=("code", "search"),
+        capabilities=("code", "analysis", "debugging"),
         tool_keys=("code_interpreter",),
         prompt_path=base_dir / "prompt.md.j2",
         prompt_context_keys=("user", "tenant", "agent", "run", "env"),
+        extra_context_providers=("timestamp",),
+        memory_strategy={
+            "mode": "compact",
+            "max_user_turns": 10,
+            "keep_last_user_turns": 2,
+            "token_budget": 32000,
+        },
     )
