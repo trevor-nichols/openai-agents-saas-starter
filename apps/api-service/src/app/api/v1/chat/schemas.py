@@ -51,6 +51,7 @@ class AgentChatResponse(BaseModel):
     handoff_occurred: bool | None = None
     attachments: list[MessageAttachment] | None = None
     structured_output: Any | None = None
+    output_schema: dict[str, Any] | None = None
     metadata: dict[str, Any] | None = None
 
 

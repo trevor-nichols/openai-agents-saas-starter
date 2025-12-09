@@ -4,7 +4,7 @@ import json
 import os
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from typing import cast
+from typing import Any, cast
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
@@ -25,10 +25,14 @@ from app.api.dependencies import usage as usage_dependencies  # noqa: E402
 from app.api.dependencies.auth import require_current_user  # noqa: E402
 from app.api.v1.chat import router as chat_router  # noqa: E402
 from app.api.v1.chat.schemas import AgentChatResponse  # noqa: E402
+from app.api.v1.shared.streaming import StreamingEvent  # noqa: E402
 from app.bootstrap.container import get_container  # noqa: E402
 from app.core import settings as config_module  # noqa: E402
 from app.domain.ai import AgentRunResult, AgentStreamEvent  # noqa: E402
 from app.domain.conversations import ConversationMessage, ConversationMetadata  # noqa: E402
+from app.agents.company_intel.types import CompanyIntelBrief  # noqa: E402
+from agents.agent_output import AgentOutputSchema  # noqa: E402
+from tests.utils.stream_assertions import assert_output_schema_persistent  # noqa: E402
 from app.services.conversation_service import conversation_service  # noqa: E402
 from app.guardrails._shared.events import emit_guardrail_event  # noqa: E402
 from app.guardrails._shared.specs import GuardrailCheckResult  # noqa: E402
@@ -87,6 +91,9 @@ def test_list_available_agents(client: TestClient) -> None:
     payload = response.json()
     assert isinstance(payload, list)
     assert any(agent["name"] == "triage" for agent in payload)
+    company_intel = next((a for a in payload if a["name"] == "company_intel"), None)
+    assert company_intel is not None
+    assert isinstance(company_intel["output_schema"], dict)
 
 
 def test_get_agent_status(client: TestClient) -> None:
@@ -96,6 +103,7 @@ def test_get_agent_status(client: TestClient) -> None:
     payload = response.json()
     assert payload["name"] == "triage"
     assert payload["status"] == "active"
+    assert "output_schema" in payload
 
 
 def test_get_nonexistent_agent_status(client: TestClient) -> None:
@@ -126,6 +134,53 @@ def test_chat_with_agent(mock_run: AsyncMock, client: TestClient) -> None:
     agents_after = client.get("/api/v1/agents").json()
     triage = next(a for a in agents_after if a["name"] == "triage")
     assert triage.get("last_seen_at") is not None
+
+
+@patch("app.infrastructure.providers.openai.runtime.Runner.run", new_callable=AsyncMock)
+def test_chat_with_agent_includes_output_schema(
+    mock_run: AsyncMock, client: TestClient
+) -> None:
+    mock_run.return_value = AgentRunResult(
+        final_output={"foo": "bar"},
+        structured_output={"foo": "bar"},
+        response_id="resp-structured",
+        usage=None,
+        metadata=None,
+    )
+
+    chat_request = {"message": "Give me structured", "agent_type": "company_intel"}
+
+    response = client.post("/api/v1/chat", json=chat_request)
+    assert response.status_code == 200
+
+    payload = response.json()
+    assert payload["structured_output"] == {"foo": "bar"}
+    expected_schema = AgentOutputSchema(CompanyIntelBrief, strict_json_schema=True).json_schema()
+    assert payload["output_schema"] == expected_schema
+
+
+@patch("app.infrastructure.providers.openai.runtime.Runner.run", new_callable=AsyncMock)
+def test_chat_handoff_uses_final_agent_schema(
+    mock_run: AsyncMock, client: TestClient
+) -> None:
+    mock_run.return_value = AgentRunResult(
+        final_output={"foo": "bar"},
+        structured_output={"foo": "bar"},
+        response_id="resp-structured",
+        usage=None,
+        metadata=None,
+        final_agent="company_intel",
+    )
+
+    chat_request = {"message": "Route then structure", "agent_type": "triage"}
+
+    response = client.post("/api/v1/chat", json=chat_request)
+    assert response.status_code == 200
+
+    payload = response.json()
+    assert payload["agent_used"] == "company_intel"
+    expected_schema = AgentOutputSchema(CompanyIntelBrief, strict_json_schema=True).json_schema()
+    assert payload["output_schema"] == expected_schema
 
 
 def test_tools_endpoint_returns_per_agent_tooling(client: TestClient) -> None:
@@ -176,7 +231,7 @@ def test_chat_stream_persists_assistant_message(
 
     mock_run_stream.return_value = _MockStream()
 
-    payload = {"message": "Hi there", "agent_type": "triage"}
+    payload = {"message": "Hi there", "agent_type": "company_intel"}
     with client.stream("POST", "/api/v1/chat/stream", json=payload) as response:
         assert response.status_code == 200
         lines = []
@@ -193,14 +248,104 @@ def test_chat_stream_persists_assistant_message(
             lines.append(data)
 
     assert lines, "stream returned no events"
-    conversation_id = lines[-1]["conversation_id"]
+    events = [StreamingEvent.model_validate(line) for line in lines]
+    assert_output_schema_persistent(events)
+    conversation_id = events[-1].conversation_id
     assert conversation_id
+    expected_schema = AgentOutputSchema(CompanyIntelBrief, strict_json_schema=True).json_schema()
+    assert events[-1].output_schema == expected_schema
 
     history_response = client.get(f"/api/v1/conversations/{conversation_id}")
     assert history_response.status_code == 200
     history = history_response.json()
     assert len(history["messages"]) >= 2
     assert any(msg["role"] == "assistant" for msg in history["messages"])
+
+
+@patch("app.infrastructure.providers.openai.runtime.Runner.run_streamed")
+def test_chat_stream_handoff_updates_schema(
+    mock_run_stream, client: TestClient
+) -> None:
+    class _MockStream:
+        last_response_id = "resp_stream_handoff"
+        usage = None
+        final_output = None
+
+        async def stream_events(self):
+            yield AgentStreamEvent(
+                kind="agent_updated_stream_event",
+                new_agent="company_intel",
+                response_id="resp_stream_handoff",
+            )
+            yield AgentStreamEvent(
+                kind="run_item_stream_event",
+                response_id="resp_stream_handoff",
+                structured_output={"foo": "bar"},
+                is_terminal=True,
+            )
+
+    mock_run_stream.return_value = _MockStream()
+
+    payload = {"message": "handoff me", "agent_type": "triage"}
+    with client.stream("POST", "/api/v1/chat/stream", json=payload) as response:
+        assert response.status_code == 200
+        lines = []
+        for raw in response.iter_lines():
+            if not raw:
+                continue
+            raw_obj: Any = raw
+            line = raw_obj.decode() if isinstance(raw_obj, (bytes, bytearray)) else cast(str, raw_obj)
+            if not line.startswith("data: "):
+                continue
+            lines.append(json.loads(line[len("data: ") :]))
+
+    assert lines, "stream returned no events"
+    events = [StreamingEvent.model_validate(line) for line in lines]
+    assert_output_schema_persistent(events)
+    expected_schema = AgentOutputSchema(CompanyIntelBrief, strict_json_schema=True).json_schema()
+    assert events[-1].output_schema == expected_schema
+    assert events[-1].structured_output == {"foo": "bar"}
+
+
+@patch("app.infrastructure.providers.openai.runtime.Runner.run_streamed")
+def test_chat_stream_handoff_final_output_keeps_schema(
+    mock_run_stream, client: TestClient
+) -> None:
+    class _MockStream:
+        last_response_id = "resp_stream_handoff_final"
+        usage = None
+        final_output = {"foo": "bar"}
+
+        async def stream_events(self):
+            yield AgentStreamEvent(
+                kind="agent_updated_stream_event",
+                new_agent="company_intel",
+                response_id=self.last_response_id,
+            )
+            # No explicit terminal event; OpenAIStreamingHandle will emit one from final_output.
+
+    mock_run_stream.return_value = _MockStream()
+
+    payload = {"message": "handoff then finalize", "agent_type": "triage"}
+    with client.stream("POST", "/api/v1/chat/stream", json=payload) as response:
+        assert response.status_code == 200
+        lines = []
+        for raw in response.iter_lines():
+            if not raw:
+                continue
+            raw_obj: Any = raw
+            line = raw_obj.decode() if isinstance(raw_obj, (bytes, bytearray)) else cast(str, raw_obj)
+            if not line.startswith("data: "):
+                continue
+            lines.append(json.loads(line[len("data: ") :]))
+
+    assert lines, "stream returned no events"
+    events = [StreamingEvent.model_validate(line) for line in lines]
+    assert_output_schema_persistent(events)
+    expected_schema = AgentOutputSchema(CompanyIntelBrief, strict_json_schema=True).json_schema()
+    assert events[-1].output_schema == expected_schema
+    assert events[-1].is_terminal
+    assert events[-1].structured_output == {"foo": "bar"}
 
 
 @patch("app.infrastructure.providers.openai.runtime.Runner.run_streamed")

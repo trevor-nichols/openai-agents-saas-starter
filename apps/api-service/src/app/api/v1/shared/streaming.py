@@ -151,6 +151,7 @@ class StreamingEvent(BaseModel):
     reasoning_delta: str | None = None
     response_text: str | None = None
     structured_output: Any | None = None
+    output_schema: dict[str, Any] | None = None
     is_terminal: bool = False
     event: str | None = None
     payload: dict[str, Any] | None = None

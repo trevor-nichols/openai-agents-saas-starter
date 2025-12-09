@@ -75,6 +75,16 @@ def assert_common_stream(events: Sequence[StreamingEvent]) -> None:
     assert len(resp_ids) <= 1, "response_id changed mid-stream"
 
 
+def assert_output_schema_persistent(events: Sequence[StreamingEvent]) -> None:
+    """Ensure output_schema is present and consistent across streamed events."""
+    assert events, "Expected at least one streaming event"
+    schemas = [e.output_schema for e in events if e.output_schema is not None]
+    assert schemas, "output_schema missing from streamed events"
+    first = schemas[0]
+    for idx, schema in enumerate(schemas):
+        assert schema == first, f"output_schema changed at event {idx}"
+
+
 def assembled_text(events: Iterable[StreamingEvent]) -> str:
     return "".join(e.text_delta or "" for e in events).strip()
 

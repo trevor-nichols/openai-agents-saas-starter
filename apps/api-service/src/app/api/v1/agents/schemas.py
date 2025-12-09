@@ -12,6 +12,10 @@ class AgentSummary(BaseModel):
     status: Literal["active", "inactive", "error"] = Field(
         description="Health status of the agent.",
     )
+    output_schema: dict[str, object] | None = Field(
+        default=None,
+        description="JSON Schema for the agent structured output, if declared.",
+    )
     display_name: str | None = Field(
         default=None,
         description="Human-friendly display name for the agent.",
@@ -36,6 +40,9 @@ class AgentStatus(BaseModel):
     name: str = Field(description="Agent identifier.")
     status: Literal["active", "inactive", "error"] = Field(
         description="Operational status.",
+    )
+    output_schema: dict[str, object] | None = Field(
+        default=None, description="JSON Schema for the agent structured output, if declared."
     )
     last_used: str | None = Field(
         default=None,

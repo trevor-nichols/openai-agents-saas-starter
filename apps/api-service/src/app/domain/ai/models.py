@@ -20,6 +20,7 @@ class AgentDescriptor:
     status: Literal["active", "inactive", "error"] = "active"
     last_seen_at: datetime | None = None
     memory_strategy_defaults: dict[str, Any] | None = None
+    output_schema: dict[str, Any] | None = None
 
 
 @dataclass(slots=True)
@@ -144,6 +145,7 @@ class AgentStreamEvent:
     response_text: str | None = None
 
     # Typed enrichments for downstream consumers
+    output_schema: Mapping[str, Any] | None = None
     raw_event: Mapping[str, Any] | None = None
     tool_call: Mapping[str, Any] | None = None
     annotations: list[Mapping[str, Any]] | None = None

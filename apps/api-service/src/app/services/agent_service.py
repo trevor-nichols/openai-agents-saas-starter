@@ -276,10 +276,20 @@ class AgentService:
 
         ctx.provider.mark_seen(ctx.descriptor.key, datetime.utcnow())
 
+        def _resolve_output_schema(agent_key: str | None):
+            if not agent_key:
+                return ctx.descriptor.output_schema
+            descriptor = ctx.provider.get_agent(agent_key)
+            if descriptor:
+                return descriptor.output_schema
+            return ctx.descriptor.output_schema
+
+        effective_schema = _resolve_output_schema(result.final_agent or ctx.descriptor.key)
         tool_overview = ctx.provider.tool_overview()
         return AgentChatResponse(
             response=response_text,
             structured_output=AgentStreamEvent._strip_unserializable(result.structured_output),
+            output_schema=effective_schema,
             conversation_id=ctx.conversation_id,
             agent_used=result.final_agent or ctx.descriptor.key,
             handoff_occurred=bool(result.handoff_count),
@@ -325,6 +335,7 @@ class AgentService:
             compaction_emitter=_emit_compaction,
         )
         current_agent = ctx.descriptor.key
+        current_output_schema = ctx.descriptor.output_schema
 
         def _emit_guardrail(payload: Mapping[str, Any]) -> None:
             fallback_response_id = None
@@ -464,6 +475,14 @@ class AgentService:
                         if isinstance(event.payload, dict):
                             event.payload.setdefault("_attachment_note", "stored")
 
+                    if event.kind == "agent_updated_stream_event":
+                        if event.new_agent:
+                            current_agent = event.new_agent
+                            descriptor = ctx.provider.get_agent(current_agent)
+                            if descriptor:
+                                current_output_schema = descriptor.output_schema
+                        handoff_count += 1
+
                     # Ensure stream payloads are JSON-serializable for SSE.
                     event.payload = AgentStreamEvent._strip_unserializable(event.payload)
                     event.structured_output = AgentStreamEvent._strip_unserializable(
@@ -472,11 +491,8 @@ class AgentService:
                     event.response_text = (
                         None if event.response_text is None else str(event.response_text)
                     )
-
-                    if event.kind == "agent_updated_stream_event":
-                        if event.new_agent:
-                            current_agent = event.new_agent
-                        handoff_count += 1
+                    if event.output_schema is None and current_output_schema is not None:
+                        event.output_schema = current_output_schema
 
                     yield event
 
@@ -484,6 +500,8 @@ class AgentService:
                         break
                 async for leftover in lifecycle_bus.drain():
                     leftover.conversation_id = ctx.conversation_id
+                    if leftover.output_schema is None and current_output_schema is not None:
+                        leftover.output_schema = current_output_schema
                     yield leftover
             if stream_handle is not None and hasattr(stream_handle, "last_response_id"):
                 last_response_id = last_response_id or getattr(
@@ -506,6 +524,8 @@ class AgentService:
                 guardrail_summary=True,
                 payload=summary_payload,
             )
+            if current_output_schema is not None:
+                summary_event.output_schema = current_output_schema
             yield summary_event
 
         assistant_message = ConversationMessage(
@@ -607,6 +627,7 @@ class AgentService:
                 description=descriptor.description,
                 display_name=descriptor.display_name,
                 model=descriptor.model,
+                output_schema=descriptor.output_schema,
                 last_seen_at=_serialize_ts(getattr(descriptor, "last_seen_at", None)),
             )
             for descriptor in provider.list_agents()
@@ -623,6 +644,7 @@ class AgentService:
         return AgentStatus(
             name=descriptor.key,
             status="active",
+            output_schema=descriptor.output_schema,
             last_used=last_used,
             total_conversations=0,
         )

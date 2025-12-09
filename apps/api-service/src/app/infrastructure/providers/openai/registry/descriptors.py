@@ -9,6 +9,7 @@ from agents import Agent
 
 from app.agents._shared.specs import AgentSpec
 from app.domain.ai import AgentDescriptor
+from app.services.agents.output_schema import resolve_output_schema
 
 
 class DescriptorStore:
@@ -24,6 +25,7 @@ class DescriptorStore:
             capabilities=spec.capabilities,
             last_seen_at=None,
             memory_strategy_defaults=spec.memory_strategy,
+            output_schema=resolve_output_schema(spec),
         )
         self._descriptors[spec.key] = descriptor
         return descriptor

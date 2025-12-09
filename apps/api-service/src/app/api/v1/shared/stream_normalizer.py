@@ -129,6 +129,9 @@ def normalize_stream_event(
         reasoning_delta=event.reasoning_delta,
         response_text=event.response_text,
         structured_output=event.structured_output,
+        output_schema=(
+            event.output_schema if isinstance(event.output_schema, dict) else None
+        ),
         is_terminal=event.is_terminal,
         event=getattr(event, "event", None),
         payload=event.payload if isinstance(event.payload, dict) else None,
