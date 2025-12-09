@@ -5,8 +5,7 @@ from __future__ import annotations
 from typing import Any, cast
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
 from app.api.dependencies.auth import require_current_user
 from app.api.models.auth import (
@@ -43,11 +42,21 @@ from app.services.users import (
 router = APIRouter(tags=["auth"])
 
 
-@router.post("/token", response_model=UserSessionResponse | MfaChallengeResponse)
+@router.post(
+    "/token",
+    response_model=UserSessionResponse | MfaChallengeResponse,
+    responses={
+        status.HTTP_202_ACCEPTED: {
+            "model": MfaChallengeResponse,
+            "description": "MFA required; challenge token and available methods returned.",
+        },
+    },
+)
 async def login_for_access_token(
     payload: UserLoginRequest,
     request: Request,
-) -> UserSessionResponse | JSONResponse:
+    response: Response,
+) -> UserSessionResponse | MfaChallengeResponse:
     """Authenticate a user and mint fresh access/refresh tokens."""
 
     client_ip = extract_client_ip(request)
@@ -80,7 +89,8 @@ async def login_for_access_token(
             challenge_token=exc.challenge_token,
             methods=methods,
         )
-        return JSONResponse(status_code=status.HTTP_202_ACCEPTED, content=payload_body.model_dump())
+        response.status_code = status.HTTP_202_ACCEPTED
+        return payload_body
     except UserAuthenticationError as exc:
         raise map_user_auth_error(exc) from exc
 
