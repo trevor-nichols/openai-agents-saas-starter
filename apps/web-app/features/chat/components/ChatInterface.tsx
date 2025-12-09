@@ -15,7 +15,12 @@ import {
   useChatSelector,
   useChatToolEvents,
 } from '@/lib/chat';
-import type { ChatMessage, ConversationLifecycleStatus, ToolState } from '@/lib/chat/types';
+import type {
+  ChatMessage,
+  ConversationLifecycleStatus,
+  ToolState,
+} from '@/lib/chat/types';
+import type { StreamingChatEvent } from '@/lib/api/client/types.gen';
 import { useUpdateConversationMemory } from '@/lib/queries/conversations';
 import type { ConversationMemoryConfigInput } from '@/types/conversations';
 
@@ -29,6 +34,7 @@ interface ChatInterfaceProps {
   messages?: ChatMessage[];
   tools?: ToolState[];
   agentNotices?: { id: string; text: string }[];
+  guardrailEvents?: StreamingChatEvent[];
   reasoningText?: string;
   activeAgent?: string;
   lifecycleStatus?: ConversationLifecycleStatus;
@@ -65,6 +71,7 @@ export function ChatInterface({
   messages: messagesProp,
   tools: toolsProp,
   agentNotices: agentNoticesProp,
+  guardrailEvents: guardrailEventsProp,
   reasoningText: reasoningTextProp,
   activeAgent: activeAgentProp,
   lifecycleStatus: lifecycleStatusProp,
@@ -89,6 +96,7 @@ export function ChatInterface({
   const messagesFromStore = useChatMessages();
   const toolEventsFromStore = useChatToolEvents();
   const agentNoticesFromStore = useChatAgentNotices();
+  const guardrailEventsFromStore = useChatSelector((s) => s.guardrailEvents);
   const lifecycleFromStore = useChatLifecycle();
   const activeAgentFromStore = useChatSelector((s) => s.activeAgent);
   const reasoningFromStore = useChatSelector((s) => s.reasoningText);
@@ -101,6 +109,7 @@ export function ChatInterface({
   const messages = messagesProp ?? messagesFromStore;
   const toolEvents = toolsProp ?? toolEventsFromStore;
   const agentNotices = agentNoticesProp ?? agentNoticesFromStore;
+  const guardrailEvents = guardrailEventsProp ?? guardrailEventsFromStore ?? [];
   const lifecycleStatus = lifecycleStatusProp ?? lifecycleFromStore;
   const activeAgent = activeAgentProp ?? activeAgentFromStore;
   const reasoningText = reasoningTextProp ?? reasoningFromStore;
@@ -231,6 +240,7 @@ export function ChatInterface({
       messages={messages}
       reasoningText={reasoningText}
       tools={toolEvents}
+      guardrailEvents={guardrailEvents}
       chatStatus={chatStatus}
       lifecycleStatus={lifecycleStatus}
       activeAgent={activeAgent}

@@ -16,7 +16,7 @@ import { queryKeys } from '@/lib/queries/keys';
 import type { ConversationListItem } from '@/types/conversations';
 import type { ChatMessage, ConversationLifecycleStatus, ToolState } from '../types';
 import type { ConversationMessagesPage } from '@/types/conversations';
-import type { LocationHint } from '@/lib/api/client/types.gen';
+import type { LocationHint, StreamingChatEvent } from '@/lib/api/client/types.gen';
 
 import { createLogger } from '@/lib/logging';
 import { consumeChatStream } from '../adapters/chatStreamAdapter';
@@ -53,6 +53,7 @@ export interface UseChatControllerReturn {
   activeAgent: string;
   agentNotices: AgentNotice[];
   toolEvents: ToolState[];
+  guardrailEvents: StreamingChatEvent[];
   reasoningText: string;
   lifecycleStatus: ConversationLifecycleStatus;
   hasOlderMessages: boolean;
@@ -95,6 +96,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
   const [activeAgent, setActiveAgent] = useState<string>('triage');
   const [agentNotices, setAgentNotices] = useState<AgentNotice[]>([]);
   const [toolEvents, setToolEvents] = useState<ToolState[]>([]);
+  const [guardrailEvents, setGuardrailEvents] = useState<StreamingChatEvent[]>([]);
   const [reasoningText, setReasoningText] = useState('');
   const [lifecycleStatus, setLifecycleStatus] = useState<ConversationLifecycleStatus>('idle');
   const lastActiveAgentRef = useRef<string>('triage');
@@ -181,6 +183,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
     setErrorMessage(null);
     setHistoryError(null);
     setToolEvents([]);
+    setGuardrailEvents([]);
     setReasoningText('');
     setAgentNotices([]);
     setLifecycleStatus('idle');
@@ -192,6 +195,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
   const resetTurnState = useCallback(() => {
     setReasoningText('');
     setToolEvents([]);
+    setGuardrailEvents([]);
     setLifecycleStatus('idle');
   }, []);
 
@@ -242,6 +246,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
 
       // Reset per-turn streaming state
       resetTurnState();
+      setGuardrailEvents([]);
 
       setIsSending(true);
       setErrorMessage(null);
@@ -293,6 +298,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
             }),
           onReasoningDelta: (delta) => setReasoningText((prev) => `${prev}${delta}`),
           onToolStates: setToolEvents,
+          onGuardrailEvents: setGuardrailEvents,
           onLifecycle: setLifecycleStatus,
           onAgentChange: (agent) => {
             setActiveAgent(agent);
@@ -533,6 +539,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       activeAgent,
       agentNotices,
       toolEvents,
+      guardrailEvents,
       reasoningText,
       lifecycleStatus,
       hasOlderMessages: Boolean(hasNextPage),
@@ -564,6 +571,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       activeAgent,
       agentNotices,
       toolEvents,
+      guardrailEvents,
       reasoningText,
       lifecycleStatus,
       hasNextPage,

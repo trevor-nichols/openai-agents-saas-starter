@@ -111,10 +111,16 @@ import type {
   GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetData,
   GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetErrors,
   GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetResponses,
+  GetGuardrailApiV1GuardrailsGuardrailKeyGetData,
+  GetGuardrailApiV1GuardrailsGuardrailKeyGetErrors,
+  GetGuardrailApiV1GuardrailsGuardrailKeyGetResponses,
   GetPlatformStatusApiV1StatusGetData,
   GetPlatformStatusApiV1StatusGetResponses,
   GetPlatformStatusRssApiV1StatusRssGetData,
   GetPlatformStatusRssApiV1StatusRssGetResponses,
+  GetPresetApiV1GuardrailsPresetsPresetKeyGetData,
+  GetPresetApiV1GuardrailsPresetsPresetKeyGetErrors,
+  GetPresetApiV1GuardrailsPresetsPresetKeyGetResponses,
   GetSignupAccessPolicyApiV1AuthSignupPolicyGetData,
   GetSignupAccessPolicyApiV1AuthSignupPolicyGetResponses,
   GetTenantSettingsApiV1TenantsSettingsGetData,
@@ -171,6 +177,8 @@ import type {
   ListFilesApiV1VectorStoresVectorStoreIdFilesGetData,
   ListFilesApiV1VectorStoresVectorStoreIdFilesGetErrors,
   ListFilesApiV1VectorStoresVectorStoreIdFilesGetResponses,
+  ListGuardrailsApiV1GuardrailsGetData,
+  ListGuardrailsApiV1GuardrailsGetResponses,
   ListInvitesApiV1AuthInvitesGetData,
   ListInvitesApiV1AuthInvitesGetErrors,
   ListInvitesApiV1AuthInvitesGetResponses,
@@ -182,6 +190,8 @@ import type {
   ListObjectsApiV1StorageObjectsGetData,
   ListObjectsApiV1StorageObjectsGetErrors,
   ListObjectsApiV1StorageObjectsGetResponses,
+  ListPresetsApiV1GuardrailsPresetsGetData,
+  ListPresetsApiV1GuardrailsPresetsGetResponses,
   ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetData,
   ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetErrors,
   ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetResponses,
@@ -1378,6 +1388,116 @@ export const getAgentStatusApiV1AgentsAgentNameStatusGet = <
       },
     ],
     url: "/api/v1/agents/{agent_name}/status",
+    ...options,
+  });
+};
+
+/**
+ * List Guardrails
+ *
+ * Return all available guardrail specifications.
+ */
+export const listGuardrailsApiV1GuardrailsGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<ListGuardrailsApiV1GuardrailsGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    ListGuardrailsApiV1GuardrailsGetResponses,
+    unknown,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/guardrails",
+    ...options,
+  });
+};
+
+/**
+ * List Presets
+ *
+ * Return all available guardrail presets.
+ */
+export const listPresetsApiV1GuardrailsPresetsGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<ListPresetsApiV1GuardrailsPresetsGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    ListPresetsApiV1GuardrailsPresetsGetResponses,
+    unknown,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/guardrails/presets",
+    ...options,
+  });
+};
+
+/**
+ * Get Guardrail
+ *
+ * Return detailed information about a specific guardrail.
+ */
+export const getGuardrailApiV1GuardrailsGuardrailKeyGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    GetGuardrailApiV1GuardrailsGuardrailKeyGetData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).get<
+    GetGuardrailApiV1GuardrailsGuardrailKeyGetResponses,
+    GetGuardrailApiV1GuardrailsGuardrailKeyGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/guardrails/{guardrail_key}",
+    ...options,
+  });
+};
+
+/**
+ * Get Preset
+ *
+ * Return detailed information about a specific preset.
+ */
+export const getPresetApiV1GuardrailsPresetsPresetKeyGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    GetPresetApiV1GuardrailsPresetsPresetKeyGetData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).get<
+    GetPresetApiV1GuardrailsPresetsPresetKeyGetResponses,
+    GetPresetApiV1GuardrailsPresetsPresetKeyGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/guardrails/presets/{preset_key}",
     ...options,
   });
 };

@@ -1,4 +1,4 @@
-import type { MessageAttachment } from '@/lib/api/client/types.gen';
+import type { MessageAttachment, StreamingChatEvent } from '@/lib/api/client/types.gen';
 import type {
   ConversationLifecycleStatus,
   StreamChunk,
@@ -25,6 +25,7 @@ export interface StreamConsumeHandlers {
   onAgentNotice?: (notice: string) => void;
   onAttachments?: (attachments: MessageAttachment[] | null) => void;
   onStructuredOutput?: (data: unknown) => void;
+  onGuardrailEvents?: (events: StreamingChatEvent[]) => void;
   onError?: (errorText: string) => void;
   onConversationId?: (conversationId: string) => void;
 }
@@ -57,6 +58,7 @@ export async function consumeChatStream(
   let finalResponseId: string | null = null;
   let lifecycleStatus: ConversationLifecycleStatus = 'idle';
   const collectedCitations: Annotation[] = [];
+  const guardrailEvents: StreamingChatEvent[] = [];
 
   const isWebSearchToolCall = (
     payload: ToolCallPayload | undefined,
@@ -105,6 +107,11 @@ export async function consumeChatStream(
     if (event.kind === 'agent_updated_stream_event' && event.new_agent) {
       handlers.onAgentChange?.(event.new_agent);
       emitAgentNotice(event.new_agent, 'Switched to');
+    }
+
+    if (event.kind === 'guardrail_result') {
+      guardrailEvents.push(event);
+      handlers.onGuardrailEvents?.([...guardrailEvents]);
     }
 
     if (event.kind === 'raw_response_event') {

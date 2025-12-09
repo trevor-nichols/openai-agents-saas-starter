@@ -56,6 +56,7 @@ export function ChatWorkspace() {
     toolsError,
     refetchTools,
     activeAgents,
+    guardrailEvents,
     hasOlderMessages,
     isFetchingOlderMessages,
     loadOlderMessages,
@@ -140,6 +141,7 @@ export function ChatWorkspace() {
               errorMessage={errorMessage}
               onClearHistory={clearHistoryError}
               onClearError={clearError}
+              guardrailEvents={guardrailEvents}
               headerProps={{
                 eyebrow: CHAT_COPY.header.eyebrow,
                 title: CHAT_COPY.header.title,

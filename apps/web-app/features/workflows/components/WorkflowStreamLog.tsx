@@ -31,6 +31,7 @@ const KIND_LABEL: Record<StreamingWorkflowEvent['kind'], string> = {
   run_item_stream_event: 'Run Item',
   agent_updated_stream_event: 'Agent Update',
   raw_response_event: 'Response',
+  guardrail_result: 'Guardrail',
   usage: 'Usage',
   error: 'Error',
 };
@@ -129,6 +130,44 @@ function mapToolCall(toolCall: ToolCallPayload | Record<string, unknown> | null 
   };
 }
 
+function GuardrailDetails({ event }: { event: StreamingWorkflowEvent }) {
+  if (event.kind !== 'guardrail_result') return null;
+
+  const booleanTag = (label: string, value: boolean | null | undefined) => {
+    if (value === null || value === undefined) return null;
+    return <InlineTag tone={value ? 'warning' : 'default'}>{`${label}: ${value ? 'yes' : 'no'}`}</InlineTag>;
+  };
+
+  const confidence =
+    event.guardrail_confidence !== null && event.guardrail_confidence !== undefined
+      ? event.guardrail_confidence
+      : null;
+
+  return (
+    <div className="mt-3 space-y-2">
+      <div className="flex flex-wrap gap-2">
+        {event.guardrail_stage ? <InlineTag tone="default">Stage: {event.guardrail_stage}</InlineTag> : null}
+        {event.guardrail_key ? <InlineTag tone="default">Key: {event.guardrail_key}</InlineTag> : null}
+        {event.guardrail_name ? <InlineTag tone="default">Name: {event.guardrail_name}</InlineTag> : null}
+        {event.guardrail_summary ? <InlineTag tone="default">Summary</InlineTag> : null}
+        {booleanTag('Tripwire', event.guardrail_tripwire_triggered)}
+        {booleanTag('Flagged', event.guardrail_flagged)}
+        {booleanTag('Suppressed', event.guardrail_suppressed)}
+        {confidence !== null ? <InlineTag tone="default">Confidence: {confidence.toFixed(2)}</InlineTag> : null}
+      </div>
+      {event.guardrail_masked_content ? (
+        <CodeBlock code={event.guardrail_masked_content} language="text" />
+      ) : null}
+      {event.guardrail_details ? (
+        <CodeBlock code={JSON.stringify(event.guardrail_details, null, 2)} language="json" />
+      ) : null}
+      {event.guardrail_token_usage ? (
+        <CodeBlock code={JSON.stringify(event.guardrail_token_usage, null, 2)} language="json" />
+      ) : null}
+    </div>
+  );
+}
+
 export function WorkflowStreamLog({ events }: WorkflowStreamLogProps) {
   const grouped = useMemo(() => events, [events]);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -160,37 +199,37 @@ export function WorkflowStreamLog({ events }: WorkflowStreamLogProps) {
               isTerminal ? 'ring-1 ring-primary/40' : undefined,
             )}
             tabIndex={0}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Badge variant={isTerminal ? 'default' : 'outline'}>{label}</Badge>
-                  {evt.event ? (
-                    <Badge variant="secondary" className="text-[11px] uppercase tracking-wide">
-                      {evt.event}
-                    </Badge>
-                  ) : null}
-                  {evt.raw_type ? (
-                    <span className="text-[11px] uppercase tracking-wide text-foreground/50">{evt.raw_type}</span>
-                  ) : null}
-                  {evt.stage_name ? <InlineTag tone="default">Stage: {evt.stage_name}</InlineTag> : null}
-                  {evt.parallel_group ? (
-                    <InlineTag tone="default">Group: {evt.parallel_group}</InlineTag>
-                  ) : null}
-                  {evt.agent_used || evt.agent ? (
-                    <InlineTag tone="default">Agent: {evt.agent_used ?? evt.agent}</InlineTag>
-                  ) : null}
-                </div>
-                <div className="flex items-center gap-2 text-[11px] text-foreground/60">
-                  {displayTime ? <span>{displayTime}</span> : null}
-                  {isTerminal ? <span className="text-primary">Terminal</span> : null}
-                </div>
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Badge variant={isTerminal ? 'default' : 'outline'}>{label}</Badge>
+                {evt.event ? (
+                  <Badge variant="secondary" className="text-[11px] uppercase tracking-wide">
+                    {evt.event}
+                  </Badge>
+                ) : null}
+                {evt.raw_type ? (
+                  <span className="text-[11px] uppercase tracking-wide text-foreground/50">{evt.raw_type}</span>
+                ) : null}
+                {evt.stage_name ? <InlineTag tone="default">Stage: {evt.stage_name}</InlineTag> : null}
+                {evt.parallel_group ? (
+                  <InlineTag tone="default">Group: {evt.parallel_group}</InlineTag>
+                ) : null}
+                {evt.agent_used || evt.agent ? (
+                  <InlineTag tone="default">Agent: {evt.agent_used ?? evt.agent}</InlineTag>
+                ) : null}
               </div>
+              <div className="flex items-center gap-2 text-[11px] text-foreground/60">
+                {displayTime ? <span>{displayTime}</span> : null}
+                {isTerminal ? <span className="text-primary">Terminal</span> : null}
+              </div>
+            </div>
 
             {(() => {
               const content = evt.response_text ?? evt.text_delta;
               if (!content) return null;
               const annotations = mapAnnotations(
-                evt.annotations as (ApiUrlCitation | ApiContainerFileCitation | ApiFileCitation)[] | undefined
+                evt.annotations as (ApiUrlCitation | ApiContainerFileCitation | ApiFileCitation)[] | undefined,
               );
               return (
                 <div className="mt-3">
@@ -201,32 +240,27 @@ export function WorkflowStreamLog({ events }: WorkflowStreamLogProps) {
 
             {evt.structured_output !== undefined && evt.structured_output !== null ? (
               <div className="mt-2">
-                <CodeBlock
-                  code={JSON.stringify(evt.structured_output, null, 2)}
-                  language="json"
-                />
+                <CodeBlock code={JSON.stringify(evt.structured_output, null, 2)} language="json" />
               </div>
             ) : null}
+
+            {evt.kind === 'guardrail_result' ? <GuardrailDetails event={evt} /> : null}
 
             {evt.tool_call ? (
               (() => {
                 const tool = mapToolCall(evt.tool_call as ToolCallPayload);
                 if (!tool) return null;
                 return (
-                    <Tool>
-                      <ToolHeader type={`tool-${tool.label}` as const} state={tool.state} />
-                      <ToolContent>
+                  <Tool>
+                    <ToolHeader type={`tool-${tool.label}` as const} state={tool.state} />
+                    <ToolContent>
                       {tool.input !== undefined ? <ToolInput input={tool.input} /> : null}
-                      <ToolOutput
-                        output={renderToolOutput(tool)}
-                        errorText={tool.errorText ?? undefined}
-                      />
+                      <ToolOutput output={renderToolOutput(tool)} errorText={tool.errorText ?? undefined} />
                     </ToolContent>
                   </Tool>
                 );
               })()
             ) : null}
-
           </div>
         );
       })}

@@ -168,6 +168,12 @@ export type AgentChatResponse = {
    */
   structured_output?: unknown | null;
   /**
+   * Output Schema
+   */
+  output_schema?: {
+    [key: string]: unknown;
+  } | null;
+  /**
    * Metadata
    */
   metadata?: {
@@ -224,6 +230,14 @@ export type AgentStatus = {
    */
   status: "active" | "inactive" | "error";
   /**
+   * Output Schema
+   *
+   * JSON Schema for the agent structured output, if declared.
+   */
+  output_schema?: {
+    [key: string]: unknown;
+  } | null;
+  /**
    * Last Used
    *
    * Last time the agent was invoked.
@@ -255,6 +269,14 @@ export type AgentSummary = {
    * Health status of the agent.
    */
   status: "active" | "inactive" | "error";
+  /**
+   * Output Schema
+   *
+   * JSON Schema for the agent structured output, if declared.
+   */
+  output_schema?: {
+    [key: string]: unknown;
+  } | null;
   /**
    * Display Name
    *
@@ -1642,6 +1664,150 @@ export type FixtureUserResult = {
 };
 
 /**
+ * GuardrailCheckConfigSchema
+ *
+ * Configuration for a guardrail within a preset.
+ */
+export type GuardrailCheckConfigSchema = {
+  /**
+   * Guardrail Key
+   *
+   * Key of the guardrail.
+   */
+  guardrail_key: string;
+  /**
+   * Enabled
+   *
+   * Whether this guardrail is enabled.
+   */
+  enabled?: boolean;
+  /**
+   * Config
+   *
+   * Configuration overrides for this guardrail.
+   */
+  config?: {
+    [key: string]: unknown;
+  };
+};
+
+/**
+ * GuardrailDetail
+ *
+ * Detailed information about a guardrail specification.
+ */
+export type GuardrailDetail = {
+  /**
+   * Key
+   *
+   * Unique identifier for the guardrail.
+   */
+  key: string;
+  /**
+   * Display Name
+   *
+   * Human-friendly display name.
+   */
+  display_name: string;
+  /**
+   * Description
+   *
+   * Short description of what the guardrail checks.
+   */
+  description: string;
+  /**
+   * Stage
+   *
+   * Stage at which the guardrail executes.
+   */
+  stage: "pre_flight" | "input" | "output" | "tool_input" | "tool_output";
+  /**
+   * Engine
+   *
+   * Underlying engine type for the guardrail.
+   */
+  engine: "regex" | "llm" | "api" | "hybrid";
+  /**
+   * Supports Masking
+   *
+   * Whether the guardrail can mask/redact content instead of blocking.
+   */
+  supports_masking?: boolean;
+  /**
+   * Uses Conversation History
+   *
+   * Whether the guardrail requires conversation history context.
+   */
+  uses_conversation_history?: boolean;
+  /**
+   * Tripwire On Error
+   *
+   * Whether errors in the guardrail should trigger a tripwire.
+   */
+  tripwire_on_error?: boolean;
+  /**
+   * Default Config
+   *
+   * Default configuration values for this guardrail.
+   */
+  default_config?: {
+    [key: string]: unknown;
+  };
+  /**
+   * Config Schema
+   *
+   * JSON schema describing the configuration options.
+   */
+  config_schema?: {
+    [key: string]: unknown;
+  };
+};
+
+/**
+ * GuardrailSummary
+ *
+ * Lightweight representation of a guardrail specification.
+ */
+export type GuardrailSummary = {
+  /**
+   * Key
+   *
+   * Unique identifier for the guardrail.
+   */
+  key: string;
+  /**
+   * Display Name
+   *
+   * Human-friendly display name.
+   */
+  display_name: string;
+  /**
+   * Description
+   *
+   * Short description of what the guardrail checks.
+   */
+  description: string;
+  /**
+   * Stage
+   *
+   * Stage at which the guardrail executes.
+   */
+  stage: "pre_flight" | "input" | "output" | "tool_input" | "tool_output";
+  /**
+   * Engine
+   *
+   * Underlying engine type for the guardrail.
+   */
+  engine: "regex" | "llm" | "api" | "hybrid";
+  /**
+   * Supports Masking
+   *
+   * Whether the guardrail can mask/redact content instead of blocking.
+   */
+  supports_masking?: boolean;
+};
+
+/**
  * HTTPValidationError
  */
 export type HttpValidationError = {
@@ -2186,6 +2352,76 @@ export type PlaywrightFixtureSpec = {
    * Tenants
    */
   tenants?: Array<FixtureTenant>;
+};
+
+/**
+ * PresetDetail
+ *
+ * Detailed information about a guardrail preset.
+ */
+export type PresetDetail = {
+  /**
+   * Key
+   *
+   * Unique identifier for the preset.
+   */
+  key: string;
+  /**
+   * Display Name
+   *
+   * Human-friendly display name.
+   */
+  display_name: string;
+  /**
+   * Description
+   *
+   * Description of what this preset provides.
+   */
+  description: string;
+  /**
+   * Guardrail Count
+   *
+   * Number of guardrails in this preset.
+   */
+  guardrail_count: number;
+  /**
+   * Guardrails
+   *
+   * List of guardrail configurations in this preset.
+   */
+  guardrails: Array<GuardrailCheckConfigSchema>;
+};
+
+/**
+ * PresetSummary
+ *
+ * Lightweight representation of a guardrail preset.
+ */
+export type PresetSummary = {
+  /**
+   * Key
+   *
+   * Unique identifier for the preset.
+   */
+  key: string;
+  /**
+   * Display Name
+   *
+   * Human-friendly display name.
+   */
+  display_name: string;
+  /**
+   * Description
+   *
+   * Description of what this preset provides.
+   */
+  description: string;
+  /**
+   * Guardrail Count
+   *
+   * Number of guardrails in this preset.
+   */
+  guardrail_count: number;
 };
 
 /**
@@ -3210,6 +3446,7 @@ export type StreamingChatEvent = {
     | "raw_response_event"
     | "run_item_stream_event"
     | "agent_updated_stream_event"
+    | "guardrail_result"
     | "usage"
     | "error"
     | "lifecycle";
@@ -3306,6 +3543,12 @@ export type StreamingChatEvent = {
    */
   structured_output?: unknown | null;
   /**
+   * Output Schema
+   */
+  output_schema?: {
+    [key: string]: unknown;
+  } | null;
+  /**
    * Is Terminal
    */
   is_terminal?: boolean;
@@ -3353,6 +3596,61 @@ export type StreamingChatEvent = {
    * Server Timestamp
    */
   server_timestamp?: string | null;
+  /**
+   * Guardrail Stage
+   */
+  guardrail_stage?:
+    | "pre_flight"
+    | "input"
+    | "output"
+    | "tool_input"
+    | "tool_output"
+    | "summary"
+    | null;
+  /**
+   * Guardrail Key
+   */
+  guardrail_key?: string | null;
+  /**
+   * Guardrail Name
+   */
+  guardrail_name?: string | null;
+  /**
+   * Guardrail Tripwire Triggered
+   */
+  guardrail_tripwire_triggered?: boolean | null;
+  /**
+   * Guardrail Suppressed
+   */
+  guardrail_suppressed?: boolean | null;
+  /**
+   * Guardrail Flagged
+   */
+  guardrail_flagged?: boolean | null;
+  /**
+   * Guardrail Confidence
+   */
+  guardrail_confidence?: number | null;
+  /**
+   * Guardrail Masked Content
+   */
+  guardrail_masked_content?: string | null;
+  /**
+   * Guardrail Token Usage
+   */
+  guardrail_token_usage?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Guardrail Details
+   */
+  guardrail_details?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Guardrail Summary
+   */
+  guardrail_summary?: boolean | null;
 };
 
 /**
@@ -3366,6 +3664,7 @@ export type StreamingWorkflowEvent = {
     | "raw_response_event"
     | "run_item_stream_event"
     | "agent_updated_stream_event"
+    | "guardrail_result"
     | "usage"
     | "error"
     | "lifecycle";
@@ -3462,6 +3761,12 @@ export type StreamingWorkflowEvent = {
    */
   structured_output?: unknown | null;
   /**
+   * Output Schema
+   */
+  output_schema?: {
+    [key: string]: unknown;
+  } | null;
+  /**
    * Is Terminal
    */
   is_terminal?: boolean;
@@ -3509,6 +3814,61 @@ export type StreamingWorkflowEvent = {
    * Server Timestamp
    */
   server_timestamp?: string | null;
+  /**
+   * Guardrail Stage
+   */
+  guardrail_stage?:
+    | "pre_flight"
+    | "input"
+    | "output"
+    | "tool_input"
+    | "tool_output"
+    | "summary"
+    | null;
+  /**
+   * Guardrail Key
+   */
+  guardrail_key?: string | null;
+  /**
+   * Guardrail Name
+   */
+  guardrail_name?: string | null;
+  /**
+   * Guardrail Tripwire Triggered
+   */
+  guardrail_tripwire_triggered?: boolean | null;
+  /**
+   * Guardrail Suppressed
+   */
+  guardrail_suppressed?: boolean | null;
+  /**
+   * Guardrail Flagged
+   */
+  guardrail_flagged?: boolean | null;
+  /**
+   * Guardrail Confidence
+   */
+  guardrail_confidence?: number | null;
+  /**
+   * Guardrail Masked Content
+   */
+  guardrail_masked_content?: string | null;
+  /**
+   * Guardrail Token Usage
+   */
+  guardrail_token_usage?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Guardrail Details
+   */
+  guardrail_details?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Guardrail Summary
+   */
+  guardrail_summary?: boolean | null;
 };
 
 /**
@@ -4993,6 +5353,10 @@ export type LoginForAccessTokenApiV1AuthTokenPostResponses = {
    * Successful Response
    */
   200: UserSessionResponse | MfaChallengeResponse;
+  /**
+   * MFA required; challenge token and available methods returned.
+   */
+  202: MfaChallengeResponse;
 };
 
 export type LoginForAccessTokenApiV1AuthTokenPostResponse =
@@ -6117,6 +6481,108 @@ export type GetAgentStatusApiV1AgentsAgentNameStatusGetResponses = {
 
 export type GetAgentStatusApiV1AgentsAgentNameStatusGetResponse =
   GetAgentStatusApiV1AgentsAgentNameStatusGetResponses[keyof GetAgentStatusApiV1AgentsAgentNameStatusGetResponses];
+
+export type ListGuardrailsApiV1GuardrailsGetData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/v1/guardrails";
+};
+
+export type ListGuardrailsApiV1GuardrailsGetResponses = {
+  /**
+   * Response List Guardrails Api V1 Guardrails Get
+   *
+   * Successful Response
+   */
+  200: Array<GuardrailSummary>;
+};
+
+export type ListGuardrailsApiV1GuardrailsGetResponse =
+  ListGuardrailsApiV1GuardrailsGetResponses[keyof ListGuardrailsApiV1GuardrailsGetResponses];
+
+export type ListPresetsApiV1GuardrailsPresetsGetData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/v1/guardrails/presets";
+};
+
+export type ListPresetsApiV1GuardrailsPresetsGetResponses = {
+  /**
+   * Response List Presets Api V1 Guardrails Presets Get
+   *
+   * Successful Response
+   */
+  200: Array<PresetSummary>;
+};
+
+export type ListPresetsApiV1GuardrailsPresetsGetResponse =
+  ListPresetsApiV1GuardrailsPresetsGetResponses[keyof ListPresetsApiV1GuardrailsPresetsGetResponses];
+
+export type GetGuardrailApiV1GuardrailsGuardrailKeyGetData = {
+  body?: never;
+  path: {
+    /**
+     * Guardrail Key
+     */
+    guardrail_key: string;
+  };
+  query?: never;
+  url: "/api/v1/guardrails/{guardrail_key}";
+};
+
+export type GetGuardrailApiV1GuardrailsGuardrailKeyGetErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type GetGuardrailApiV1GuardrailsGuardrailKeyGetError =
+  GetGuardrailApiV1GuardrailsGuardrailKeyGetErrors[keyof GetGuardrailApiV1GuardrailsGuardrailKeyGetErrors];
+
+export type GetGuardrailApiV1GuardrailsGuardrailKeyGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: GuardrailDetail;
+};
+
+export type GetGuardrailApiV1GuardrailsGuardrailKeyGetResponse =
+  GetGuardrailApiV1GuardrailsGuardrailKeyGetResponses[keyof GetGuardrailApiV1GuardrailsGuardrailKeyGetResponses];
+
+export type GetPresetApiV1GuardrailsPresetsPresetKeyGetData = {
+  body?: never;
+  path: {
+    /**
+     * Preset Key
+     */
+    preset_key: string;
+  };
+  query?: never;
+  url: "/api/v1/guardrails/presets/{preset_key}";
+};
+
+export type GetPresetApiV1GuardrailsPresetsPresetKeyGetErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type GetPresetApiV1GuardrailsPresetsPresetKeyGetError =
+  GetPresetApiV1GuardrailsPresetsPresetKeyGetErrors[keyof GetPresetApiV1GuardrailsPresetsPresetKeyGetErrors];
+
+export type GetPresetApiV1GuardrailsPresetsPresetKeyGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: PresetDetail;
+};
+
+export type GetPresetApiV1GuardrailsPresetsPresetKeyGetResponse =
+  GetPresetApiV1GuardrailsPresetsPresetKeyGetResponses[keyof GetPresetApiV1GuardrailsPresetsPresetKeyGetResponses];
 
 export type ListWorkflowsApiV1WorkflowsGetData = {
   body?: never;

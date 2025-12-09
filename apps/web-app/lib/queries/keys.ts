@@ -36,6 +36,16 @@ export const queryKeys = {
     list: () => [...queryKeys.agents.all, 'list'] as const,
     detail: (agentName: string) => [...queryKeys.agents.all, 'detail', agentName] as const,
   },
+  guardrails: {
+    all: ['guardrails'] as const,
+    list: () => [...queryKeys.guardrails.all, 'list'] as const,
+    detail: (guardrailKey: string) => [...queryKeys.guardrails.all, 'detail', guardrailKey] as const,
+    presets: {
+      all: () => [...queryKeys.guardrails.all, 'presets'] as const,
+      list: () => [...queryKeys.guardrails.presets.all(), 'list'] as const,
+      detail: (presetKey: string) => [...queryKeys.guardrails.presets.all(), 'detail', presetKey] as const,
+    },
+  },
   status: {
     all: ['status'] as const,
     snapshot: () => [...queryKeys.status.all, 'snapshot'] as const,

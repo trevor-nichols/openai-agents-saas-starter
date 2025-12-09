@@ -120,6 +120,43 @@ describe('consumeChatStream', () => {
     expect(result.errored).toBe(true);
   });
 
+  it('emits guardrail events to handler and accumulates', async () => {
+    const guardrailEvents: string[] = [];
+
+    const chunks: StreamChunk[] = [
+      {
+        type: 'event',
+        event: {
+          conversation_id: 'g1',
+          kind: 'guardrail_result',
+          guardrail_key: 'pii_mask',
+          guardrail_name: 'PII Masking',
+          guardrail_stage: 'input',
+        },
+      },
+      {
+        type: 'event',
+        event: {
+          conversation_id: 'g1',
+          kind: 'guardrail_result',
+          guardrail_key: 'safety',
+          guardrail_name: 'Safety',
+          guardrail_stage: 'output',
+          is_terminal: true,
+        },
+      },
+    ];
+
+    const result = await consumeChatStream(chunkStream(chunks), {
+      onGuardrailEvents: (events) => {
+        guardrailEvents.push(events.map((e) => e.guardrail_key).join(','));
+      },
+    });
+
+    expect(guardrailEvents).toEqual(['pii_mask', 'pii_mask,safety']);
+    expect(result.errored).toBe(false);
+  });
+
   it('parses web_search tool calls and citations from SDK fixture', async () => {
     const fixturePath = path.resolve(
       __dirname,
