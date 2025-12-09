@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { listConversationsAction } from '@/app/(app)/(workspace)/chat/actions';
+import { listConversationsPage } from '@/lib/server/services/conversations';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -8,22 +8,22 @@ export async function GET(request: Request) {
   const cursor = searchParams.get('cursor');
   const agent = searchParams.get('agent');
 
-  const result = await listConversationsAction({
-    limit: limit ? Number(limit) : undefined,
-    cursor: cursor || null,
-    agent: agent || null,
-  });
+  try {
+    const page = await listConversationsPage({
+      limit: limit ? Number(limit) : undefined,
+      cursor: cursor || null,
+      agent: agent || null,
+    });
 
-  const status = result.success ? 200 : 500;
-  if (!result.success) {
-    return NextResponse.json({ error: result.error ?? 'Failed to fetch conversations' }, { status });
+    return NextResponse.json(
+      {
+        items: page.items ?? [],
+        next_cursor: page.next_cursor ?? null,
+      },
+      { status: 200 },
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to fetch conversations';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-
-  return NextResponse.json(
-    {
-      items: result.items ?? [],
-      next_cursor: result.next_cursor ?? null,
-    },
-    { status },
-  );
 }
