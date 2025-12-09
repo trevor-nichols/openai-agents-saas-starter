@@ -132,6 +132,16 @@
               }
             }
           },
+          "202": {
+            "description": "MFA required; challenge token and available methods returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MfaChallengeResponse"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -2188,6 +2198,164 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AgentStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/guardrails": {
+      "get": {
+        "tags": [
+          "guardrails"
+        ],
+        "summary": "List Guardrails",
+        "description": "Return all available guardrail specifications.",
+        "operationId": "list_guardrails_api_v1_guardrails_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GuardrailSummary"
+                  },
+                  "type": "array",
+                  "title": "Response List Guardrails Api V1 Guardrails Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/guardrails/presets": {
+      "get": {
+        "tags": [
+          "guardrails"
+        ],
+        "summary": "List Presets",
+        "description": "Return all available guardrail presets.",
+        "operationId": "list_presets_api_v1_guardrails_presets_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PresetSummary"
+                  },
+                  "type": "array",
+                  "title": "Response List Presets Api V1 Guardrails Presets Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/guardrails/{guardrail_key}": {
+      "get": {
+        "tags": [
+          "guardrails"
+        ],
+        "summary": "Get Guardrail",
+        "description": "Return detailed information about a specific guardrail.",
+        "operationId": "get_guardrail_api_v1_guardrails__guardrail_key__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "guardrail_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Guardrail Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuardrailDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/guardrails/presets/{preset_key}": {
+      "get": {
+        "tags": [
+          "guardrails"
+        ],
+        "summary": "Get Preset",
+        "description": "Return detailed information about a specific preset.",
+        "operationId": "get_preset_api_v1_guardrails_presets__preset_key__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "preset_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Preset Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresetDetail"
                 }
               }
             }
@@ -8281,6 +8449,18 @@
             ],
             "title": "Structured Output"
           },
+          "output_schema": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Schema"
+          },
           "metadata": {
             "anyOf": [
               {
@@ -8386,6 +8566,19 @@
             "title": "Status",
             "description": "Operational status."
           },
+          "output_schema": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Schema",
+            "description": "JSON Schema for the agent structured output, if declared."
+          },
           "last_used": {
             "anyOf": [
               {
@@ -8429,6 +8622,19 @@
             ],
             "title": "Status",
             "description": "Health status of the agent."
+          },
+          "output_schema": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Schema",
+            "description": "JSON Schema for the agent structured output, if declared."
           },
           "display_name": {
             "anyOf": [
@@ -10899,6 +11105,173 @@
         ],
         "title": "FixtureUserResult"
       },
+      "GuardrailCheckConfigSchema": {
+        "properties": {
+          "guardrail_key": {
+            "type": "string",
+            "title": "Guardrail Key",
+            "description": "Key of the guardrail."
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "description": "Whether this guardrail is enabled.",
+            "default": true
+          },
+          "config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Config",
+            "description": "Configuration overrides for this guardrail."
+          }
+        },
+        "type": "object",
+        "required": [
+          "guardrail_key"
+        ],
+        "title": "GuardrailCheckConfigSchema",
+        "description": "Configuration for a guardrail within a preset."
+      },
+      "GuardrailDetail": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key",
+            "description": "Unique identifier for the guardrail."
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name",
+            "description": "Human-friendly display name."
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Short description of what the guardrail checks."
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "pre_flight",
+              "input",
+              "output",
+              "tool_input",
+              "tool_output"
+            ],
+            "title": "Stage",
+            "description": "Stage at which the guardrail executes."
+          },
+          "engine": {
+            "type": "string",
+            "enum": [
+              "regex",
+              "llm",
+              "api",
+              "hybrid"
+            ],
+            "title": "Engine",
+            "description": "Underlying engine type for the guardrail."
+          },
+          "supports_masking": {
+            "type": "boolean",
+            "title": "Supports Masking",
+            "description": "Whether the guardrail can mask/redact content instead of blocking.",
+            "default": false
+          },
+          "uses_conversation_history": {
+            "type": "boolean",
+            "title": "Uses Conversation History",
+            "description": "Whether the guardrail requires conversation history context.",
+            "default": false
+          },
+          "tripwire_on_error": {
+            "type": "boolean",
+            "title": "Tripwire On Error",
+            "description": "Whether errors in the guardrail should trigger a tripwire.",
+            "default": false
+          },
+          "default_config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Default Config",
+            "description": "Default configuration values for this guardrail."
+          },
+          "config_schema": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Config Schema",
+            "description": "JSON schema describing the configuration options."
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "display_name",
+          "description",
+          "stage",
+          "engine"
+        ],
+        "title": "GuardrailDetail",
+        "description": "Detailed information about a guardrail specification."
+      },
+      "GuardrailSummary": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key",
+            "description": "Unique identifier for the guardrail."
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name",
+            "description": "Human-friendly display name."
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Short description of what the guardrail checks."
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "pre_flight",
+              "input",
+              "output",
+              "tool_input",
+              "tool_output"
+            ],
+            "title": "Stage",
+            "description": "Stage at which the guardrail executes."
+          },
+          "engine": {
+            "type": "string",
+            "enum": [
+              "regex",
+              "llm",
+              "api",
+              "hybrid"
+            ],
+            "title": "Engine",
+            "description": "Underlying engine type for the guardrail."
+          },
+          "supports_masking": {
+            "type": "boolean",
+            "title": "Supports Masking",
+            "description": "Whether the guardrail can mask/redact content instead of blocking.",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "display_name",
+          "description",
+          "stage",
+          "engine"
+        ],
+        "title": "GuardrailSummary",
+        "description": "Lightweight representation of a guardrail specification."
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -11867,6 +12240,81 @@
         },
         "type": "object",
         "title": "PlaywrightFixtureSpec"
+      },
+      "PresetDetail": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key",
+            "description": "Unique identifier for the preset."
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name",
+            "description": "Human-friendly display name."
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Description of what this preset provides."
+          },
+          "guardrail_count": {
+            "type": "integer",
+            "title": "Guardrail Count",
+            "description": "Number of guardrails in this preset."
+          },
+          "guardrails": {
+            "items": {
+              "$ref": "#/components/schemas/GuardrailCheckConfigSchema"
+            },
+            "type": "array",
+            "title": "Guardrails",
+            "description": "List of guardrail configurations in this preset."
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "display_name",
+          "description",
+          "guardrail_count",
+          "guardrails"
+        ],
+        "title": "PresetDetail",
+        "description": "Detailed information about a guardrail preset."
+      },
+      "PresetSummary": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key",
+            "description": "Unique identifier for the preset."
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name",
+            "description": "Human-friendly display name."
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Description of what this preset provides."
+          },
+          "guardrail_count": {
+            "type": "integer",
+            "title": "Guardrail Count",
+            "description": "Number of guardrails in this preset."
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "display_name",
+          "description",
+          "guardrail_count"
+        ],
+        "title": "PresetSummary",
+        "description": "Lightweight representation of a guardrail preset."
       },
       "ReceiptResponse": {
         "properties": {
@@ -13499,6 +13947,7 @@
               "raw_response_event",
               "run_item_stream_event",
               "agent_updated_stream_event",
+              "guardrail_result",
               "usage",
               "error",
               "lifecycle"
@@ -13756,6 +14205,18 @@
             ],
             "title": "Structured Output"
           },
+          "output_schema": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Schema"
+          },
           "is_terminal": {
             "type": "boolean",
             "title": "Is Terminal",
@@ -13867,6 +14328,137 @@
               }
             ],
             "title": "Server Timestamp"
+          },
+          "guardrail_stage": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "pre_flight",
+                  "input",
+                  "output",
+                  "tool_input",
+                  "tool_output",
+                  "summary"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guardrail Stage"
+          },
+          "guardrail_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guardrail Key"
+          },
+          "guardrail_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guardrail Name"
+          },
+          "guardrail_tripwire_triggered": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guardrail Tripwire Triggered"
+          },
+          "guardrail_suppressed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guardrail Suppressed"
+          },
+          "guardrail_flagged": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guardrail Flagged"
+          },
+          "guardrail_confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guardrail Confidence"
+          },
+          "guardrail_masked_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guardrail Masked Content"
+          },
+          "guardrail_token_usage": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guardrail Token Usage"
+          },
+          "guardrail_details": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guardrail Details"
+          },
+          "guardrail_summary": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guardrail Summary"
           }
         },
         "type": "object",
@@ -13883,6 +14475,7 @@
               "raw_response_event",
               "run_item_stream_event",
               "agent_updated_stream_event",
+              "guardrail_result",
               "usage",
               "error",
               "lifecycle"
@@ -14140,6 +14733,18 @@
             ],
             "title": "Structured Output"
           },
+          "output_schema": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Schema"
+          },
           "is_terminal": {
             "type": "boolean",
             "title": "Is Terminal",
@@ -14251,6 +14856,137 @@
               }
             ],
             "title": "Server Timestamp"
+          },
+          "guardrail_stage": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "pre_flight",
+                  "input",
+                  "output",
+                  "tool_input",
+                  "tool_output",
+                  "summary"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guardrail Stage"
+          },
+          "guardrail_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guardrail Key"
+          },
+          "guardrail_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guardrail Name"
+          },
+          "guardrail_tripwire_triggered": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guardrail Tripwire Triggered"
+          },
+          "guardrail_suppressed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guardrail Suppressed"
+          },
+          "guardrail_flagged": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guardrail Flagged"
+          },
+          "guardrail_confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guardrail Confidence"
+          },
+          "guardrail_masked_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guardrail Masked Content"
+          },
+          "guardrail_token_usage": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guardrail Token Usage"
+          },
+          "guardrail_details": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guardrail Details"
+          },
+          "guardrail_summary": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guardrail Summary"
           }
         },
         "type": "object",
