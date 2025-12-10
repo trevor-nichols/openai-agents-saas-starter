@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { Controller, useFieldArray, useForm } from 'react-hook-form';
+import { useFieldArray, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 
@@ -210,7 +210,7 @@ export function BillingContactsCard({ contacts, isSaving, onSubmit }: BillingCon
                       )}
                     />
                   </div>
-                  <Controller
+                  <FormField
                     control={form.control}
                     name={`contacts.${index}.notifyBilling`}
                     render={({ field }) => (

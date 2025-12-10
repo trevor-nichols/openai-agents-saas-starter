@@ -41,7 +41,7 @@ export const Loading: Story = {
   },
 };
 
-export const Error: Story = {
+export const ErrorState: Story = {
   args: {
     containers: [],
     isLoading: false,

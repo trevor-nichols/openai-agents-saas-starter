@@ -53,6 +53,11 @@ export const sampleContainers: ContainerResponse[] = [
     name: 'gpu-sandbox',
     memory_limit: '8g',
     status: 'ready',
+    expires_after: null,
+    last_active_at: new Date(now - 60 * 60 * 1000).toISOString(),
+    metadata: {},
+    created_at: new Date(now - 24 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(now - 30 * 60 * 1000).toISOString(),
   },
   {
     id: 'ctr-2',
@@ -62,5 +67,10 @@ export const sampleContainers: ContainerResponse[] = [
     name: 'cpu-queue',
     memory_limit: '4g',
     status: 'provisioning',
+    expires_after: null,
+    last_active_at: null,
+    metadata: {},
+    created_at: new Date(now - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
   },
 ];

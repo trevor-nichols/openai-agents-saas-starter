@@ -30,6 +30,10 @@ const config: StorybookConfig = {
       '@/lib/api/conversations': path.resolve(__dirname, './mocks/conversations-api.ts'),
       '@/lib/api/activity': path.resolve(__dirname, './mocks/activity-api.ts'),
       '@/lib/streams/activity': path.resolve(__dirname, './mocks/activity-stream.ts'),
+      '@/lib/api/signup': path.resolve(__dirname, './mocks/signup-api.ts'),
+      '@/lib/queries/signup': path.resolve(__dirname, './mocks/signup-queries.ts'),
+      '@/lib/api/tenantSettings': path.resolve(__dirname, './mocks/tenantSettings-api.ts'),
+      '@/lib/queries/tenantSettings': path.resolve(__dirname, './mocks/tenantSettings-queries.ts'),
     };
     return config;
   },
