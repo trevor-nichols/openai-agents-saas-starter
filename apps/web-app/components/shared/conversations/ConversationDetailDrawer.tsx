@@ -59,6 +59,7 @@ export function ConversationDetailDrawer({
     detailError,
     refetchDetail,
   } = useConversationDetail(open ? conversationId : null);
+  const messages = conversationHistory?.messages ?? [];
   const { success, error, info } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -67,13 +68,14 @@ export function ConversationDetailDrawer({
     if (!conversationHistory) {
       return [];
     }
+    const messageCount = messages.length;
     return [
       { label: 'Conversation ID', value: conversationHistory.conversation_id },
       { label: 'Created', value: formatAbsolute(conversationHistory.created_at) },
       { label: 'Updated', value: formatAbsolute(conversationHistory.updated_at) },
-      { label: 'Messages', value: conversationHistory.messages.length.toString() },
+      { label: 'Messages', value: messageCount.toString() },
     ];
-  }, [conversationHistory]);
+  }, [conversationHistory, messages.length]);
 
   const agentContextItems = useMemo(() => {
     if (!conversationHistory?.agent_context) {
@@ -193,18 +195,18 @@ export function ConversationDetailDrawer({
           ) : conversationHistory ? (
             <>
               <GlassPanel className="space-y-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Transcript metadata</p>
-                    <p className="text-xs text-foreground/60">
-                      Updated {formatRelativeTime(conversationHistory.updated_at)}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <InlineTag tone="default">{conversationHistory.messages.length} messages</InlineTag>
-                    <Button size="sm" variant="outline" onClick={handleCopyConversationId}>
-                      Copy ID
-                    </Button>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Transcript metadata</p>
+                  <p className="text-xs text-foreground/60">
+                    Updated {formatRelativeTime(conversationHistory.updated_at)}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <InlineTag tone="default">{messages.length} messages</InlineTag>
+                  <Button size="sm" variant="outline" onClick={handleCopyConversationId}>
+                    Copy ID
+                  </Button>
                     <Button size="sm" variant="outline" onClick={handleExport} disabled={isExporting}>
                       {isExporting ? (
                         <span className="flex items-center gap-2">
@@ -259,7 +261,7 @@ export function ConversationDetailDrawer({
                 </div>
                 <ScrollArea className="max-h-[480px] pr-4">
                   <div className="space-y-4">
-                    {conversationHistory.messages.map((message, index) => (
+                    {messages.map((message, index) => (
                       <div
                         key={`${message.role}-${index}-${message.timestamp ?? index}`}
                         className="space-y-2 rounded-xl border border-white/5 bg-white/5 p-4"

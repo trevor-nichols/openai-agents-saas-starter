@@ -9,7 +9,7 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
-
+apps/web-app/storybook-static/*
 # testing
 /coverage
 

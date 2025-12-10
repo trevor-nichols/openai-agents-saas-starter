@@ -16,7 +16,20 @@ const config: StorybookConfig = {
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
       'next/config': path.resolve(__dirname, './next-config-shim.js'),
+      'next/navigation': path.resolve(__dirname, './mocks/next-navigation.ts'),
       '@': path.resolve(__dirname, '../'),
+      // Storybook-only shims so stories can run without Vitest mocks
+      '@/app/actions/auth': path.resolve(__dirname, './mocks/auth-actions.ts'),
+      '@/app/actions/auth/signup': path.resolve(__dirname, './mocks/auth-signup.ts'),
+      '@/app/actions/auth/passwords': path.resolve(__dirname, './mocks/auth-passwords.ts'),
+      '@/lib/queries/mfa': path.resolve(__dirname, './mocks/mfa-queries.ts'),
+      '@/lib/queries/conversations': path.resolve(
+        __dirname,
+        './mocks/conversations-queries.ts'
+      ),
+      '@/lib/api/conversations': path.resolve(__dirname, './mocks/conversations-api.ts'),
+      '@/lib/api/activity': path.resolve(__dirname, './mocks/activity-api.ts'),
+      '@/lib/streams/activity': path.resolve(__dirname, './mocks/activity-stream.ts'),
     };
     return config;
   },

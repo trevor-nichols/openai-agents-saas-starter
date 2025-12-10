@@ -45,9 +45,9 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 }
 
 export function AppSidebar({
-  navItems,
-  accountItems,
-  user,
+  navItems = [],
+  accountItems = [],
+  user = {},
   brandHref = '/dashboard',
   brandLabel = 'Acme',
   ...props
