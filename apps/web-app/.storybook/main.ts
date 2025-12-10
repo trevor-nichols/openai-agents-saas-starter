@@ -57,6 +57,7 @@ const config: StorybookConfig = {
       '@/lib/queries/status': path.resolve(__dirname, './mocks/status-queries.ts'),
       '@/lib/queries/signup': path.resolve(__dirname, './mocks/signup-queries.ts'),
       '@/features/marketing/hooks/useSignupCtaTarget': path.resolve(__dirname, './mocks/signup-cta-target.ts'),
+      '@/lib/queries/marketing': path.resolve(__dirname, './mocks/marketing-queries.ts'),
     };
     return config;
   },
