@@ -46,6 +46,10 @@ const config: StorybookConfig = {
         './mocks/notificationPreferences-queries.ts'
       ),
       '@/lib/queries/consents': path.resolve(__dirname, './mocks/consents-queries.ts'),
+      '@/lib/queries/storageObjects': path.resolve(__dirname, './mocks/storageObjects.ts'),
+      '@/lib/queries/vectorStores': path.resolve(__dirname, './mocks/vectorStores.ts'),
+      '@/lib/api/storage': path.resolve(__dirname, './mocks/storage-api.ts'),
+      '@/lib/storage/upload': path.resolve(__dirname, './mocks/storage-upload.ts'),
     };
     return config;
   },
