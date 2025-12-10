@@ -20,3 +20,4 @@ public/
 .github/
 .png
 pnpm-lock.yaml
+apps/web-app/storybook-static/

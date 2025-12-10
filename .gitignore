@@ -5,6 +5,7 @@ __pycache__/
 node_modules/
 .next/
 apps/web-app/.next/
+apps/web-app/storybook-static/
 GEMINI.md
 # Scratch CLI runs
 tmp-cli-test*
@@ -189,7 +190,3 @@ CLAUDE.md
 SNAPSHOT.md
 .mcp.json
 /.cursor
-/apps/web-app/storybook-static
-/apps/web-app/storybook-static
-/apps/web-app/storybook-static
-/apps/web-app/storybook-static/sb-addons
