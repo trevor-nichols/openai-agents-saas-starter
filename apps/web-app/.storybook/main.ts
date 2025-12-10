@@ -50,6 +50,13 @@ const config: StorybookConfig = {
       '@/lib/queries/vectorStores': path.resolve(__dirname, './mocks/vectorStores.ts'),
       '@/lib/api/storage': path.resolve(__dirname, './mocks/storage-api.ts'),
       '@/lib/storage/upload': path.resolve(__dirname, './mocks/storage-upload.ts'),
+      '@/features/marketing/hooks/useMarketingAnalytics': path.resolve(__dirname, './mocks/marketing-analytics.ts'),
+      '@/lib/queries/agents': path.resolve(__dirname, './mocks/agents-queries.ts'),
+      '@/lib/queries/tools': path.resolve(__dirname, './mocks/tools-queries.ts'),
+      '@/lib/queries/billingPlans': path.resolve(__dirname, './mocks/billingPlans-queries.ts'),
+      '@/lib/queries/status': path.resolve(__dirname, './mocks/status-queries.ts'),
+      '@/lib/queries/signup': path.resolve(__dirname, './mocks/signup-queries.ts'),
+      '@/features/marketing/hooks/useSignupCtaTarget': path.resolve(__dirname, './mocks/signup-cta-target.ts'),
     };
     return config;
   },

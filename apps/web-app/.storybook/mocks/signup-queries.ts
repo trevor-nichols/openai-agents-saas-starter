@@ -1,3 +1,10 @@
+export function useSignupPolicyQuery() {
+  return {
+    data: { mode: 'public' },
+    isLoading: false,
+    error: null,
+  };
+}
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { queryKeys } from '@/lib/queries/keys';
