@@ -1,14 +1,10 @@
+import { mockStatus } from '@/features/marketing/status/__stories__/fixtures';
+
 export function usePlatformStatusQuery() {
   return {
-    status: {
-      generatedAt: new Date().toISOString(),
-      overview: { state: 'Operational', description: 'All systems go', updatedAt: new Date().toISOString() },
-      services: [],
-      incidents: [],
-      uptimeMetrics: [],
-    },
+    status: mockStatus,
     isLoading: false,
     error: null,
-    refetch: () => {},
+    refetch: async () => {},
   };
 }
