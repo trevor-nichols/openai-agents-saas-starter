@@ -34,6 +34,18 @@ const config: StorybookConfig = {
       '@/lib/queries/signup': path.resolve(__dirname, './mocks/signup-queries.ts'),
       '@/lib/api/tenantSettings': path.resolve(__dirname, './mocks/tenantSettings-api.ts'),
       '@/lib/queries/tenantSettings': path.resolve(__dirname, './mocks/tenantSettings-queries.ts'),
+      '@/lib/queries/account': path.resolve(__dirname, './mocks/account-queries.ts'),
+      '@/lib/queries/accountSecurity': path.resolve(__dirname, './mocks/accountSecurity-queries.ts'),
+      '@/lib/queries/accountSessions': path.resolve(__dirname, './mocks/accountSessions-queries.ts'),
+      '@/lib/queries/accountServiceAccounts': path.resolve(
+        __dirname,
+        './mocks/accountServiceAccounts-queries.ts'
+      ),
+      '@/lib/queries/notificationPreferences': path.resolve(
+        __dirname,
+        './mocks/notificationPreferences-queries.ts'
+      ),
+      '@/lib/queries/consents': path.resolve(__dirname, './mocks/consents-queries.ts'),
     };
     return config;
   },
