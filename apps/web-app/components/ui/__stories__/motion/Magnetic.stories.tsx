@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { ArrowRight } from 'lucide-react';
 
-import { Button } from '../button';
+import { Button } from '../../button';
 import { Magnetic } from '../../motion/Magnetic';
 
 const meta: Meta<typeof Magnetic> = {
