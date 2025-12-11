@@ -6,7 +6,6 @@ import {
   refreshAccessTokenApiV1AuthRefreshPost,
 } from '@/lib/api/client/sdk.gen';
 import type {
-  MfaChallengeResponse,
   SuccessResponse,
   UserLoginRequest,
   UserRefreshRequest,
@@ -15,14 +14,9 @@ import type {
 import type { UserSessionTokens } from '@/lib/types/auth';
 
 import { createApiClient, getServerApiClient } from '../apiClient';
+import { MfaRequiredError } from './auth.errors';
 
 export type CurrentUserProfile = Record<string, unknown>;
-
-export class MfaRequiredError extends Error {
-  constructor(public readonly payload: MfaChallengeResponse) {
-    super('Multi-factor authentication required');
-  }
-}
 
 /**
  * Exchange credentials for a session token pair using the backend auth API.

@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 
 import { getRefreshTokenFromCookies } from '@/lib/auth/cookies';
 import { destroySession, exchangeCredentials, refreshSessionWithBackend } from '@/lib/auth/session';
-import { MfaRequiredError } from '@/lib/server/services/auth';
+import { MfaRequiredError } from '@/lib/server/services/auth.errors';
 
 interface LoginActionInput {
   email: string;
