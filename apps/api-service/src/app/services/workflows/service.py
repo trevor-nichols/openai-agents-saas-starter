@@ -16,6 +16,7 @@ from app.services.agents.provider_registry import (
     AgentProviderRegistry,
     get_provider_registry,
 )
+from app.services.workflows.catalog import WorkflowCatalogPage, WorkflowCatalogService
 from app.services.workflows.runner import WorkflowRunner, WorkflowRunResult
 from app.workflows._shared.registry import WorkflowRegistry, get_workflow_registry
 from app.workflows._shared.specs import WorkflowDescriptor, WorkflowSpec
@@ -37,8 +38,10 @@ class WorkflowService:
         provider_registry: AgentProviderRegistry | None = None,
         interaction_builder: InteractionContextBuilder | None = None,
         run_repository: WorkflowRunRepository | None = None,
+        catalog_service: WorkflowCatalogService | None = None,
     ) -> None:
         self._registry = registry or get_workflow_registry()
+        self._catalog_service = catalog_service or WorkflowCatalogService(self._registry)
         self._runner = WorkflowRunner(
             registry=self._registry,
             provider_registry=provider_registry,
@@ -48,7 +51,18 @@ class WorkflowService:
         )
 
     def list_workflows(self) -> Sequence[WorkflowDescriptor]:
-        return self._registry.list_descriptors()
+        return self._catalog_service.list_workflows()
+
+    def list_workflows_page(
+        self, *, limit: int | None, cursor: str | None, search: str | None
+    ) -> WorkflowCatalogPage:
+        """Paginated workflow catalog listing."""
+
+        return self._catalog_service.list_workflows_page(
+            limit=limit,
+            cursor=cursor,
+            search=search,
+        )
 
     def get_workflow_spec(self, key: str) -> WorkflowSpec:
         spec = self._registry.get(key)

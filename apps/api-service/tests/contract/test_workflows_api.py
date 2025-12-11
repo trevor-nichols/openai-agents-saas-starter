@@ -70,7 +70,27 @@ def test_list_workflows(client: TestClient) -> None:
     response = client.get("/api/v1/workflows")
     assert response.status_code == 200
     payload = response.json()
-    assert any(wf["key"] == "analysis_code" for wf in payload)
+    assert isinstance(payload.get("items"), list)
+    assert any(wf["key"] == "analysis_code" for wf in payload["items"])
+    assert isinstance(payload.get("total"), int)
+
+
+def test_list_workflows_paginates(client: TestClient) -> None:
+    first_page = client.get("/api/v1/workflows", params={"limit": 1})
+    assert first_page.status_code == 200
+    body = first_page.json()
+    assert len(body["items"]) == min(1, body["total"])
+
+    if body["total"] <= 1:
+        assert body["next_cursor"] is None
+        return
+
+    assert body["next_cursor"]
+    second_page = client.get("/api/v1/workflows", params={"cursor": body["next_cursor"]})
+    assert second_page.status_code == 200
+    body2 = second_page.json()
+    assert body2["items"]
+    assert body2["items"][0]["key"] != body["items"][0]["key"]
 
 
 @patch("app.services.workflows.service.WorkflowService.run_workflow", new_callable=AsyncMock)

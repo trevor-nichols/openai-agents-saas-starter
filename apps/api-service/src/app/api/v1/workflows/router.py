@@ -14,6 +14,7 @@ from app.api.v1.shared.stream_normalizer import normalize_stream_event
 from app.api.v1.workflows.schemas import (
     StreamingWorkflowEvent,
     WorkflowDescriptorResponse,
+    WorkflowListResponse,
     WorkflowRunDetail,
     WorkflowRunListItem,
     WorkflowRunListResponse,
@@ -26,6 +27,7 @@ from app.api.v1.workflows.schemas import (
 )
 from app.domain.workflows import WorkflowStatus
 from app.services.agents.context import ConversationActorContext
+from app.services.workflows.catalog import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.services.workflows.service import WorkflowRunRequest, get_workflow_service
 from app.workflows._shared.schema_utils import schema_to_json_schema
 
@@ -38,13 +40,34 @@ _ALLOWED_ROLES: tuple[TenantRole, ...] = (
 _ADMIN_ROLES: tuple[TenantRole, ...] = (TenantRole.ADMIN, TenantRole.OWNER)
 
 
-@router.get("", response_model=list[WorkflowSummary])
+@router.get("", response_model=WorkflowListResponse)
 async def list_workflows(
+    limit: int = Query(
+        default=DEFAULT_PAGE_SIZE,
+        ge=1,
+        le=MAX_PAGE_SIZE,
+        description="Maximum number of workflows to return.",
+    ),
+    cursor: str | None = Query(
+        default=None,
+        description="Opaque pagination cursor from a previous page.",
+    ),
+    search: str | None = Query(
+        default=None,
+        min_length=1,
+        max_length=256,
+        description="Case-insensitive match against key, display_name, or description.",
+    ),
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:read")),
     tenant_context: TenantContext = Depends(require_tenant_role(*_ALLOWED_ROLES)),
 ):
     service = get_workflow_service()
-    return [
+    try:
+        page = service.list_workflows_page(limit=limit, cursor=cursor, search=search)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    items = [
         WorkflowSummary(
             key=desc.key,
             display_name=desc.display_name,
@@ -52,8 +75,9 @@ async def list_workflows(
             step_count=desc.step_count,
             default=desc.default,
         )
-        for desc in service.list_workflows()
+        for desc in page.items
     ]
+    return WorkflowListResponse(items=items, next_cursor=page.next_cursor, total=page.total)
 
 
 @router.post("/{workflow_key}/run", response_model=WorkflowRunResponse)

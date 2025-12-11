@@ -28,6 +28,17 @@ class WorkflowSummary(BaseModel):
     default: bool = False
 
 
+class WorkflowListResponse(BaseModel):
+    """Paginated list of workflows."""
+
+    items: list[WorkflowSummary]
+    next_cursor: str | None = Field(
+        default=None,
+        description="Opaque cursor for fetching the next page.",
+    )
+    total: int = Field(description="Total number of workflows matching the current filter.")
+
+
 class WorkflowRunRequestBody(BaseModel):
     message: str = Field(..., description="Initial user message")
     conversation_id: str | None = Field(
@@ -131,6 +142,7 @@ class StreamingWorkflowEvent(StreamingEvent):
 
 __all__ = [
     "WorkflowSummary",
+    "WorkflowListResponse",
     "WorkflowRunRequestBody",
     "WorkflowRunResponse",
     "WorkflowRunDetail",
