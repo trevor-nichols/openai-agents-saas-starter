@@ -29,7 +29,7 @@ This tracker captures the Starter CLI setup flow plus the recommended environmen
 ## Wizard Sections & Expectations
 | Section | Purpose | Local-Lite Defaults | Higher Environment Requirements |
 | --- | --- | --- | --- |
-| Core & Metadata | ENV label, URLs, auth defaults | Keep defaults (`ENVIRONMENT=development`, `DEBUG=true`); auto migrations true | Explicit hostnames, `DEBUG=false`, stricter CORS |
+| Core & Metadata | ENV label, URLs, auth defaults | Keep defaults (`ENVIRONMENT=development`; `DEBUG` auto-derives); auto migrations true | Explicit hostnames; derived `DEBUG=false` outside dev; stricter CORS |
 | Secrets & Vault | Generate peppers, choose provider, optional signing key rotation | Autogenerate peppers, `vault_dev`, verification off | Real secret manager, Vault verification on, rotate keys each milestone |
 | Security & Rate Limits | Lockouts, JWKS cache, rate limit redis prefix | Accept defaults to stay unblocked | Tune email/reset throttles per policy, JWKS salt stored in secret manager |
 | Providers & Infra | DB URL, AI providers, Redis pools, Stripe, Resend | OpenAI key only; leave `DATABASE_URL` empty; Redis=localhost; skip billing/email | Managed DB URL, TLS Redis per workload, Stripe secrets + plan map, Resend templates |
@@ -37,7 +37,7 @@ This tracker captures the Starter CLI setup flow plus the recommended environmen
 | Observability | Tenant slug, logging sink, GeoIP | `LOGGING_SINK=stdout`, `GEOIP_PROVIDER=none` | Datadog/OTLP endpoints, GeoIP provider tokens, optional collector exporters |
 | Integrations | Slack incident notifications | Disabled | Slack bot token, channel map, send test |
 | Signup & Worker | Signup policy, rate limits, billing worker topology | `invite_only`, inline worker, insecure cookies allowed | `approval` or `invite_only`, dedicated worker, auto-generated worker overlay |
-| Frontend | Next.js envs (API URL, Playwright, cookie posture) | `NEXT_PUBLIC_API_URL` from API base, allow insecure cookies | HTTPS URLs only, secure cookies, Playwright hitting deployed host |
+| Frontend | Next.js envs (API URL, Playwright, cookie posture) | `API_BASE_URL` canonical; frontend mirrors to `NEXT_PUBLIC_API_URL`; allow insecure cookies in local | HTTPS URLs only, secure cookies, Playwright hitting deployed host |
 
 ## Suggested Workflow
 1. **Verify dependencies once**  
