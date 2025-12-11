@@ -5,11 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "starter-contracts"
 version = "0.1.1"
-description = "Shared contracts and validation helpers for the OpenAI Agents starter."
+description = "Shared contracts and validation helpers for the OpenAI Agents SaaS starter."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
-authors = [ { name = "OpenAI Agents Starter Team" } ]
+authors = [ { name = "OpenAI Agents SaaS Starter Team" } ]
 keywords = ["contracts", "agents", "starter"]
 classifiers = [
   "Development Status :: 4 - Beta",

@@ -29,7 +29,7 @@ export const DOC_SECTIONS: DocSectionEntry[] = [
       'Shared JWT keys, Postgres migrations, and seed data',
     ],
     badge: 'Foundation',
-    cta: { label: 'Starter CLI quickstart', href: 'https://github.com/openai/openai-agents-starter/blob/main/docs/trackers/complete/MILESTONE_CLI.md', intent: 'primary' },
+    cta: { label: 'Starter CLI quickstart', href: 'https://github.com/openai/openai-agents-saas-starter/blob/main/docs/trackers/complete/MILESTONE_CLI.md', intent: 'primary' },
   },
   {
     id: 'auth-billing',
@@ -41,7 +41,7 @@ export const DOC_SECTIONS: DocSectionEntry[] = [
       'Tenant settings schema + form contracts',
     ],
     badge: 'Security',
-    cta: { label: 'Auth + billing playbook', href: 'https://github.com/openai/openai-agents-starter/blob/main/docs/security/auth-threat-model.md', intent: 'secondary' },
+    cta: { label: 'Auth + billing playbook', href: 'https://github.com/openai/openai-agents-saas-starter/blob/main/docs/security/auth-threat-model.md', intent: 'secondary' },
   },
   {
     id: 'agents-chat',
@@ -53,7 +53,7 @@ export const DOC_SECTIONS: DocSectionEntry[] = [
       'Chat workspace structure + testing notes',
     ],
     badge: 'Agents',
-    cta: { label: 'Agents SDK guide', href: 'https://github.com/openai/openai-agents-starter/blob/main/docs/openai-agents-sdk/table-of-contents.md', intent: 'secondary' },
+    cta: { label: 'Agents SDK guide', href: 'https://github.com/openai/openai-agents-saas-starter/blob/main/docs/openai-agents-sdk/table-of-contents.md', intent: 'secondary' },
   },
   {
     id: 'operations',
@@ -65,7 +65,7 @@ export const DOC_SECTIONS: DocSectionEntry[] = [
       'Observability + health endpoint reference',
     ],
     badge: 'Ops',
-    cta: { label: 'Operations checklist', href: 'https://github.com/openai/openai-agents-starter/blob/main/docs/security/vault-transit-signing.md', intent: 'secondary' },
+    cta: { label: 'Operations checklist', href: 'https://github.com/openai/openai-agents-saas-starter/blob/main/docs/security/vault-transit-signing.md', intent: 'secondary' },
   },
 ];
 
@@ -73,25 +73,25 @@ export const DOC_RESOURCES: DocResourceLink[] = [
   {
     label: 'Backend API reference',
     description: 'OpenAPI schema for GPT-5 agents, auth, billing, and conversations.',
-    href: 'https://github.com/openai/openai-agents-starter/blob/main/docs/openai-agents-sdk/openai_raw_api_reference.md',
+    href: 'https://github.com/openai/openai-agents-saas-starter/blob/main/docs/openai-agents-sdk/openai_raw_api_reference.md',
     badge: 'OpenAPI',
   },
   {
     label: 'Frontend data-access guide',
     description: 'TanStack Query patterns, hook layering, and generated HeyAPI usage.',
-    href: 'https://github.com/openai/openai-agents-starter/blob/main/docs/frontend/data-access.md',
+    href: 'https://github.com/openai/openai-agents-saas-starter/blob/main/docs/frontend/data-access.md',
     badge: 'Guide',
   },
   {
     label: 'Component inventory',
     description: 'Shadcn components + glass kit tracked for designers/devs.',
-    href: 'https://github.com/openai/openai-agents-starter/blob/main/docs/frontend/ui/components.md',
+    href: 'https://github.com/openai/openai-agents-saas-starter/blob/main/docs/frontend/ui/components.md',
     badge: 'UI Kit',
   },
   {
     label: 'Security threat model',
     description: 'JWT issuance, refresh, and SOC2-aligned controls.',
-    href: 'https://github.com/openai/openai-agents-starter/blob/main/docs/security/auth-threat-model.md',
+    href: 'https://github.com/openai/openai-agents-saas-starter/blob/main/docs/security/auth-threat-model.md',
     badge: 'Security',
   },
 ];
@@ -100,7 +100,7 @@ export const DOC_GUIDES: DocGuideCard[] = [
   {
     title: 'Starter CLI playbook',
     description: 'Hydrate env files, rotate keys, and export audit bundles via interactive or headless runs.',
-    href: 'https://github.com/openai/openai-agents-starter/blob/main/docs/trackers/complete/MILESTONE_CLI.md',
+    href: 'https://github.com/openai/openai-agents-saas-starter/blob/main/docs/trackers/complete/MILESTONE_CLI.md',
     minutes: '10 min read',
     updated: 'Updated Nov 2025',
     badge: 'CLI',
@@ -109,7 +109,7 @@ export const DOC_GUIDES: DocGuideCard[] = [
   {
     title: 'Stripe billing runbook',
     description: 'Connect plan catalogs, usage events, SSE dashboards, and retry-safe workers.',
-    href: 'https://github.com/openai/openai-agents-starter/blob/main/docs/billing/stripe-runbook.md',
+    href: 'https://github.com/openai/openai-agents-saas-starter/blob/main/docs/billing/stripe-runbook.md',
     minutes: '12 min read',
     updated: 'Updated Oct 2025',
     badge: 'Billing',
@@ -118,7 +118,7 @@ export const DOC_GUIDES: DocGuideCard[] = [
   {
     title: 'Agents SDK integration',
     description: 'Wire GPT-5 Agents, tools, conversations, and memory persistence.',
-    href: 'https://github.com/openai/openai-agents-starter/blob/main/docs/openai-agents-sdk/table-of-contents.md',
+    href: 'https://github.com/openai/openai-agents-saas-starter/blob/main/docs/openai-agents-sdk/table-of-contents.md',
     minutes: '15 min read',
     updated: 'Updated Nov 2025',
     badge: 'Agents',
@@ -154,7 +154,7 @@ export const DOCS_CTA: CtaConfig = {
   description: 'Every workflow—CLI, auth, billing, agents, ops—is documented here. Keep the docs open while you ship.',
   primaryCta: {
     label: 'Clone the repo',
-    href: 'https://github.com/openai/openai-agents-starter',
+    href: 'https://github.com/openai/openai-agents-saas-starter',
     intent: 'primary',
   },
   secondaryCta: {

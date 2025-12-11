@@ -5,11 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "starter-cli"
 version = "0.1.1"
-description = "Operator CLI for the OpenAI Agents starter stack."
+description = "Operator CLI for the OpenAI Agents SaaS starter stack."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
-authors = [ { name = "OpenAI Agents Starter Team" } ]
+authors = [ { name = "OpenAI Agents SaaS Starter Team" } ]
 keywords = ["cli", "agents", "starter"]
 classifiers = [
   "Development Status :: 4 - Beta",

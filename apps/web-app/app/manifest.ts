@@ -9,7 +9,7 @@ export default function manifest(): MetadataRoute.Manifest {
   const siteUrl = getSiteUrl();
 
   return {
-    name: 'OpenAI Agents Starter',
+    name: 'OpenAI Agents SaaS Starter',
     short_name: 'Agents Starter',
     description: 'Launch an AI agent SaaS fast with the OpenAI Agents SDK, FastAPI backend, and Next.js 16 frontend.',
     start_url: '/',

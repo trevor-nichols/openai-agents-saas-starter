@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { file = "LICENSE" }
 authors = [
-  { name = "OpenAI Agents Starter Team" }
+  { name = "OpenAI Agents SaaS Starter Team" }
 ]
 keywords = ["fastapi", "openai", "agents", "ai", "starter"]
 classifiers = [
@@ -83,10 +83,10 @@ tui = [
 ]
 
 [project.urls]
-homepage = "https://github.com/openai/openai-agents-starter"
-repository = "https://github.com/openai/openai-agents-starter"
-documentation = "https://github.com/openai/openai-agents-starter/tree/main/docs/openai-agents-sdk"
-issues = "https://github.com/openai/openai-agents-starter/issues"
+homepage = "https://github.com/openai/openai-agents-saas-starter"
+repository = "https://github.com/openai/openai-agents-saas-starter"
+documentation = "https://github.com/openai/openai-agents-saas-starter/tree/main/docs/openai-agents-sdk"
+issues = "https://github.com/openai/openai-agents-saas-starter/issues"
 
 [project.scripts]
 api-service = "run:main"

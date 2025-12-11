@@ -176,10 +176,29 @@ dev-up: _check_env
         fi; \
         echo "Starting $services$collector_msg"; \
         docker compose -f {{compose_file}} up -d $services; \
+        if [ "${ENABLE_MINIO:-false}" = "true" ]; then \
+            echo "Starting minio (storage)"; \
+            docker compose -f {{minio_compose_file}} up -d minio; \
+        fi; \
+        if [ "${ENABLE_VAULT_DEV:-false}" = "true" ]; then \
+            echo "Starting vault-dev signer on {{vault_dev_host_addr}}"; \
+            VAULT_DEV_PORT={{vault_dev_port}} VAULT_DEV_ROOT_TOKEN_ID={{vault_dev_root_token_id}} docker compose -f {{vault_compose_file}} up -d; \
+            VAULT_ADDR={{vault_dev_host_addr}} tools/vault/wait-for-dev.sh; \
+            HOST_VAULT_ADDR={{vault_dev_host_addr}} VAULT_DEV_ROOT_TOKEN_ID={{vault_dev_root_token_id}} VAULT_TRANSIT_KEY={{vault_transit_key}} docker compose -f {{vault_compose_file}} exec vault-dev /vault/dev-init.sh; \
+        fi; \
     '
 
 dev-down: _check_env
-    {{env_runner}} -- bash -c 'cd {{repo_root}} && docker compose -f {{compose_file}} down'
+    {{env_runner}} -- bash -c '\
+        cd {{repo_root}}; \
+        docker compose -f {{compose_file}} down; \
+        if [ "${ENABLE_MINIO:-false}" = "true" ]; then \
+            docker compose -f {{minio_compose_file}} down; \
+        fi; \
+        if [ "${ENABLE_VAULT_DEV:-false}" = "true" ]; then \
+            docker compose -f {{vault_compose_file}} down; \
+        fi; \
+    '
 
 dev-logs: _check_env
     {{env_runner}} -- bash -c '\
@@ -190,10 +209,25 @@ dev-logs: _check_env
             services="${services} otel-collector"; \
         fi; \
         docker compose -f {{compose_file}} logs -f --tail=100 ${services}; \
+        if [ "${ENABLE_MINIO:-false}" = "true" ]; then \
+            docker compose -f {{minio_compose_file}} logs -f --tail=100 minio; \
+        fi; \
+        if [ "${ENABLE_VAULT_DEV:-false}" = "true" ]; then \
+            docker compose -f {{vault_compose_file}} logs -f --tail=200; \
+        fi; \
     '
 
 dev-ps: _check_env
-    {{env_runner}} -- bash -c 'cd {{repo_root}} && docker compose -f {{compose_file}} ps'
+    {{env_runner}} -- bash -c '\
+        cd {{repo_root}}; \
+        docker compose -f {{compose_file}} ps; \
+        if [ "${ENABLE_MINIO:-false}" = "true" ]; then \
+            docker compose -f {{minio_compose_file}} ps; \
+        fi; \
+        if [ "${ENABLE_VAULT_DEV:-false}" = "true" ]; then \
+            docker compose -f {{vault_compose_file}} ps; \
+        fi; \
+    '
 
 # -------------------------
 # MinIO (storage)
@@ -214,15 +248,23 @@ storage-logs: _check_env
 
 vault-up:
     @echo "Starting Vault dev signer on {{vault_dev_host_addr}}"
-    VAULT_DEV_PORT={{vault_dev_port}} VAULT_DEV_ROOT_TOKEN_ID={{vault_dev_root_token_id}} docker compose -f {{vault_compose_file}} up -d
+    {{env_runner}} -- bash -c '\
+        VAULT_DEV_PORT={{vault_dev_port}} VAULT_DEV_ROOT_TOKEN_ID={{vault_dev_root_token_id}} \
+        docker compose -f {{vault_compose_file}} up -d; \
+    '
     VAULT_ADDR={{vault_dev_host_addr}} tools/vault/wait-for-dev.sh
-    HOST_VAULT_ADDR={{vault_dev_host_addr}} VAULT_DEV_ROOT_TOKEN_ID={{vault_dev_root_token_id}} VAULT_TRANSIT_KEY={{vault_transit_key}} docker compose -f {{vault_compose_file}} exec vault-dev /vault/dev-init.sh
+    {{env_runner}} -- bash -c '\
+        HOST_VAULT_ADDR={{vault_dev_host_addr}} \
+        VAULT_DEV_ROOT_TOKEN_ID={{vault_dev_root_token_id}} \
+        VAULT_TRANSIT_KEY={{vault_transit_key}} \
+        docker compose -f {{vault_compose_file}} exec vault-dev /vault/dev-init.sh; \
+    '
 
 vault-down:
-    docker compose -f {{vault_compose_file}} down
+    {{env_runner}} -- bash -c 'docker compose -f {{vault_compose_file}} down'
 
 vault-logs:
-    docker compose -f {{vault_compose_file}} logs -f --tail=200
+    {{env_runner}} -- bash -c 'docker compose -f {{vault_compose_file}} logs -f --tail=200'
 
 verify-vault: vault-up _check_env
     @echo "Running service-account issuance via starter CLI (ensure FastAPI is reachable)."
