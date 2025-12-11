@@ -19,7 +19,7 @@ class SecretsProviderSettingsMixin(BaseModel):
         default=SecretsProviderLiteral.VAULT_DEV,
         description=(
             "Which secrets provider implementation to use (vault_dev, vault_hcp, "
-            "infisical_cloud, infisical_self_host)."
+            "infisical_cloud, infisical_self_host, aws_sm, azure_kv)."
         ),
         alias="SECRETS_PROVIDER",
     )

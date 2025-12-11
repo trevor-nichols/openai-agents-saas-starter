@@ -97,8 +97,8 @@ def build_prompt_context(
         ctx.setdefault("agent", {})
         ctx["agent"].setdefault("key", spec.key)
         ctx["agent"].setdefault("display_name", spec.display_name)
+        ctx.setdefault("memory", {})
         if runtime_ctx.memory_summary:
-            ctx.setdefault("memory", {})
             ctx["memory"].setdefault("summary", runtime_ctx.memory_summary)
 
     # Merge prompt defaults from spec (if any)

@@ -155,7 +155,7 @@ def build_openai_provider(
     if runtime_defaults is None and resolved_guardrails is not None:
         runtime_defaults = resolved_guardrails.runtime_options
 
-    return OpenAIAgentProvider(
+    provider = OpenAIAgentProvider(
         settings_factory=settings_factory,
         conversation_searcher=conversation_searcher,
         session_store=session_store,
@@ -164,6 +164,7 @@ def build_openai_provider(
         default_guardrails=resolved_guardrails,
         default_guardrail_runtime=runtime_defaults,
     )
+    return provider
 
 
 __all__ = ["OpenAIAgentProvider", "build_openai_provider"]

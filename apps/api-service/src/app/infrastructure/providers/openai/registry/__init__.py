@@ -85,7 +85,10 @@ class OpenAIAgentRegistry:
 
         self._agents: dict[str, Agent] = {}
         self._validated_static_agents: dict[str, Agent] | None = None
-        self._specs: list[AgentSpec] = list(specs) if specs is not None else load_agent_specs()
+        if specs is not None:
+            self._specs = list(specs)
+        else:
+            self._specs = load_agent_specs()
         self._default_agent_key = default_agent_key(self._specs)
         self._code_interpreter_modes: dict[str, str] = {}
         self._static_ctx = self._prompt_renderer.build_static_context()

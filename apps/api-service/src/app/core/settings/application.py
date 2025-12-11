@@ -55,7 +55,7 @@ class ApplicationSettingsMixin(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _default_debug_from_environment(cls, values: dict) -> dict:
+    def _default_debug_from_environment(cls, values: dict[str, object]) -> dict[str, object]:
         # Derive debug automatically from environment when not explicitly set.
         debug = values.get("debug")
         environment = str(values.get("environment") or "").lower()
