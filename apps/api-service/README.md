@@ -214,8 +214,19 @@ The API will be available at `http://localhost:8000`
    ```
 3. Generate new migrations as the schema evolves:
    ```bash
+   # Autogenerate from model diffs; review the file before committing.
    just migration-revision message="add widget table"
+
+   # If you truly need a hand-written migration, use Alembic directly:
+   cd apps/api-service && hatch run alembic revision -m "manual step"
+
+   # When concurrent work creates multiple heads, add a merge revision:
+   cd apps/api-service && hatch run alembic revision -m "merge heads" --head <head1> --splice --branch-label merge --from-version <head2>
    ```
+4. Migration guardrails:
+   - `just migrate` now checks `alembic_version` for multiple rows before running; fix duplicates (or recreate the DB) if it fails.
+   - Always run `alembic upgrade heads` (already wrapped by the Just/Hatch scripts); avoid manual `alembic_version` edits or `stamp`.
+   - Use `depends_on` in a revision when a change must wait on another branch, and prefer merge revisions over deleting history.
 
 ### 6. Seed a Local Admin User
 

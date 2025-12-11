@@ -19,6 +19,11 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 - Never truncate or hand-edit `alembic_version`. If you need to align an existing schema without data loss, use `alembic stamp heads`; if data is disposable, drop + recreate the DB then rerun `just migrate`.
 - Don’t manually create tables; schema drift without matching `alembic_version` rows leads to “relation already exists” / startup hangs.
 - New migrations that depend on other branches must declare `depends_on` to enforce ordering (see `b6dcb157d208` depending on `c3c9b1f4cf29`).
+- Migration policy (autogen by default; manual needs approval):
+  - Default: `just migration-revision message="add widget table"` (wraps `alembic revision --autogenerate ...`). Review the generated file before committing.
+  - Apply: `just migrate` (runs `scripts/check_alembic_version.py` first, then `alembic upgrade heads`).
+  - Manual revisions are forbidden unless a lead explicitly approves a one-off (e.g., irreconcilable autogen). If approved, run inside `apps/api-service`: `hatch run alembic revision -m "manual step"` and follow with a merge revision if multiple heads arise.
+  - Never bypass `just migrate` or edit `alembic_version` directly; fix multi-heads with merge revisions, not deletes.
 
 ### Workflow orchestration (API service)
 - Declarative specs live in `api-service/src/app/workflows/**/spec.py`. You can define either a flat `steps` list (legacy) or explicit `stages`.

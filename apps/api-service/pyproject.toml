@@ -135,7 +135,7 @@ typecheck = "python -m pyright --project pyproject.toml && python -m mypy --conf
 coverage = "python -m coverage run -m pytest && python -m coverage report"
 pyright = "python -m pyright --project pyproject.toml"
 migrate = "alembic -c alembic.ini upgrade heads"
-migration-revision = "alembic -c alembic.ini revision -m \"{args}\""
+migration-revision = "alembic -c alembic.ini revision --autogenerate -m \"{args}\""
 
 [tool.ruff]
 line-length = 100

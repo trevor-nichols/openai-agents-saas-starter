@@ -26,7 +26,7 @@ serve: _check_env
 
 migrate: _check_env
     @echo "Running Alembic migrations"
-    {{env_runner}} {{env_compose}} {{env_local}} {{env_default}} -- bash -lc 'cd {{project_dir}} && hatch run migrate'
+    {{env_runner}} {{env_compose}} {{env_local}} {{env_default}} -- bash -lc 'cd {{project_dir}} && python scripts/check_alembic_version.py && hatch run migrate'
 
 migration-revision message: _check_env
     @echo "Creating Alembic revision: {{message}}"
