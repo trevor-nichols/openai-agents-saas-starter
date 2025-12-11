@@ -52,3 +52,16 @@ class AgentStatus(BaseModel):
         default=0,
         description="Total number of conversations handled.",
     )
+
+
+class AgentListResponse(BaseModel):
+    """Paginated list of available agents."""
+
+    items: list[AgentSummary]
+    next_cursor: str | None = Field(
+        default=None,
+        description="Opaque cursor for fetching the next page.",
+    )
+    total: int = Field(
+        description="Total number of agents matching the current filter.",
+    )

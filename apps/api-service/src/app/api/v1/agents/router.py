@@ -1,21 +1,45 @@
 """Agent catalog endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.dependencies.auth import CurrentUser, require_verified_scopes
-from app.api.v1.agents.schemas import AgentStatus, AgentSummary
+from app.api.v1.agents.schemas import AgentListResponse, AgentStatus
 from app.services.agent_service import agent_service
+from app.services.agents.catalog import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 
 
-@router.get("", response_model=list[AgentSummary])
+@router.get("", response_model=AgentListResponse)
 async def list_available_agents(
+    limit: int = Query(
+        default=DEFAULT_PAGE_SIZE,
+        ge=1,
+        le=MAX_PAGE_SIZE,
+        description="Maximum number of agents to return.",
+    ),
+    cursor: str | None = Query(
+        default=None,
+        description="Opaque pagination cursor from a previous page.",
+    ),
+    search: str | None = Query(
+        default=None,
+        min_length=1,
+        max_length=256,
+        description="Case-insensitive match against name, display_name, or description.",
+    ),
     _current_user: CurrentUser = Depends(require_verified_scopes("tools:read")),
-) -> list[AgentSummary]:
-    """Return all agents registered with the platform."""
+) -> AgentListResponse:
+    """Return a paginated list of available agents."""
 
-    return agent_service.list_available_agents()
+    try:
+        page = agent_service.list_available_agents_page(
+            limit=limit, cursor=cursor, search=search
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    return AgentListResponse(items=page.items, next_cursor=page.next_cursor, total=page.total)
 
 
 @router.get("/{agent_name}/status", response_model=AgentStatus)

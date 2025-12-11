@@ -26,7 +26,7 @@ from app.domain.conversations import (
 from app.guardrails._shared.events import GuardrailEmissionToken, set_guardrail_emitters
 from app.infrastructure.providers.openai.runtime import LifecycleEventBus
 from app.services.agents.attachments import AttachmentService
-from app.services.agents.catalog import AgentCatalogService
+from app.services.agents.catalog import AgentCatalogPage, AgentCatalogService
 from app.services.agents.context import (
     ConversationActorContext,
     reset_current_actor,
@@ -614,24 +614,21 @@ class AgentService:
         return self._conversation_service.repository
 
     def list_available_agents(self) -> list[AgentSummary]:
-        provider = self._get_provider()
-        def _serialize_ts(dt):
-            if dt is None:
-                return None
-            return dt.replace(microsecond=0).isoformat() + "Z"
+        """Return the first page of the catalog using default sizing."""
 
-        return [
-            AgentSummary(
-                name=descriptor.key,
-                status=descriptor.status,
-                description=descriptor.description,
-                display_name=descriptor.display_name,
-                model=descriptor.model,
-                output_schema=descriptor.output_schema,
-                last_seen_at=_serialize_ts(getattr(descriptor, "last_seen_at", None)),
-            )
-            for descriptor in provider.list_agents()
-        ]
+        return self._catalog_service.list_available_agents()
+
+    def list_available_agents_page(
+        self, *, limit: int | None, cursor: str | None, search: str | None
+    ) -> AgentCatalogPage:
+        """Paginated catalog listing."""
+
+        page = self._catalog_service.list_available_agents_page(
+            limit=limit,
+            cursor=cursor,
+            search=search,
+        )
+        return page
 
     def get_agent_status(self, agent_name: str) -> AgentStatus:
         provider = self._get_provider()
