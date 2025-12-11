@@ -1,8 +1,8 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "anything-agents",
-    "description": "anything-agents FastAPI microservice",
+    "title": "openai-agents-saas-starter",
+    "description": "openai-agents-saas-starter FastAPI microservice",
     "version": "1.0.0"
   },
   "paths": {
@@ -2142,29 +2142,89 @@
           "agents"
         ],
         "summary": "List Available Agents",
-        "description": "Return all agents registered with the platform.",
+        "description": "Return a paginated list of available agents.",
         "operationId": "list_available_agents_api_v1_agents_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Maximum number of agents to return.",
+              "default": 24,
+              "title": "Limit"
+            },
+            "description": "Maximum number of agents to return."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque pagination cursor from a previous page.",
+              "title": "Cursor"
+            },
+            "description": "Opaque pagination cursor from a previous page."
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Case-insensitive match against name, display_name, or description.",
+              "title": "Search"
+            },
+            "description": "Case-insensitive match against name, display_name, or description."
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/AgentSummary"
-                  },
-                  "type": "array",
-                  "title": "Response List Available Agents Api V1 Agents Get"
+                  "$ref": "#/components/schemas/AgentListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/agents/{agent_name}/status": {
@@ -2387,6 +2447,58 @@
         ],
         "parameters": [
           {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Maximum number of workflows to return.",
+              "default": 24,
+              "title": "Limit"
+            },
+            "description": "Maximum number of workflows to return."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque pagination cursor from a previous page.",
+              "title": "Cursor"
+            },
+            "description": "Opaque pagination cursor from a previous page."
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Case-insensitive match against key, display_name, or description.",
+              "title": "Search"
+            },
+            "description": "Case-insensitive match against key, display_name, or description."
+          },
+          {
             "name": "X-Tenant-Id",
             "in": "header",
             "required": false,
@@ -2425,11 +2537,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/WorkflowSummary"
-                  },
-                  "title": "Response List Workflows Api V1 Workflows Get"
+                  "$ref": "#/components/schemas/WorkflowListResponse"
                 }
               }
             }
@@ -8480,6 +8588,41 @@
           "response"
         ],
         "title": "AgentChatResponse"
+      },
+      "AgentListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AgentSummary"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor",
+            "description": "Opaque cursor for fetching the next page."
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Total number of agents matching the current filter."
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "AgentListResponse",
+        "description": "Paginated list of available agents."
       },
       "AgentRunOptions": {
         "properties": {
@@ -16665,6 +16808,41 @@
           "stages"
         ],
         "title": "WorkflowDescriptorResponse"
+      },
+      "WorkflowListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowSummary"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor",
+            "description": "Opaque cursor for fetching the next page."
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Total number of workflows matching the current filter."
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "WorkflowListResponse",
+        "description": "Paginated list of workflows."
       },
       "WorkflowRunDetail": {
         "properties": {
