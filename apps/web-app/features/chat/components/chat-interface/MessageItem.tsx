@@ -24,49 +24,53 @@ export function MessageItem({ message, onCopy, attachmentState, onResolveAttachm
 
   return (
     <Message from={message.role} className="mb-2">
-      <MessageContent className={isUser ? '' : 'bg-transparent pl-0 pt-0'}>
-        <Response className="leading-relaxed" citations={message.citations ?? undefined}>
-          {message.content}
-        </Response>
+      <div className="flex min-w-0 flex-col gap-1">
+        <MessageContent className={isUser ? '' : 'bg-transparent pl-0 pt-0'}>
+          <Response className="leading-relaxed" citations={message.citations ?? undefined}>
+            {message.content}
+          </Response>
 
-        {message.structuredOutput ? (
-          <div className="mt-3 space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-foreground/60">Structured output</p>
-            <CodeBlock code={formatStructuredOutput(message.structuredOutput)} language="json" />
-          </div>
-        ) : null}
+          {message.structuredOutput ? (
+            <div className="mt-3 space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-foreground/60">
+                Structured output
+              </p>
+              <CodeBlock code={formatStructuredOutput(message.structuredOutput)} language="json" />
+            </div>
+          ) : null}
 
-        {message.attachments && message.attachments.length > 0 ? (
-          <MessageAttachments
-            attachments={message.attachments}
-            attachmentState={attachmentState}
-            onResolve={onResolveAttachment}
-            isBusy={isBusy}
-          />
-        ) : null}
-      </MessageContent>
+          {message.attachments && message.attachments.length > 0 ? (
+            <MessageAttachments
+              attachments={message.attachments}
+              attachmentState={attachmentState}
+              onResolve={onResolveAttachment}
+              isBusy={isBusy}
+            />
+          ) : null}
+        </MessageContent>
 
-      <MessageAvatar src="" name={isUser ? 'You' : 'Agent'} />
-
-      <div className="flex w-full flex-row items-center gap-2 pl-1 pt-1 opacity-0 transition-opacity group-hover:opacity-100">
-        {!isUser && (
-          <Actions>
-             <Action tooltip="Copy message" label="Copy message" onClick={() => void onCopy(message.content)}>
-              <CopyIcon size={14} />
-            </Action>
-          </Actions>
-        )}
-        <div className="text-[10px] text-muted-foreground">
-             {message.isStreaming ? (
+        <div className="flex flex-row items-center gap-2 pl-1 pt-1 opacity-0 transition-opacity group-hover:opacity-100">
+          {!isUser ? (
+            <Actions>
+              <Action tooltip="Copy message" label="Copy message" onClick={() => void onCopy(message.content)}>
+                <CopyIcon size={14} />
+              </Action>
+            </Actions>
+          ) : null}
+          <div className="text-[10px] text-muted-foreground">
+            {message.isStreaming ? (
               <div className="flex items-center gap-1 text-muted-foreground">
                 <Loader size={12} />
                 <span className="uppercase tracking-wide">Generating</span>
               </div>
             ) : message.timestamp ? (
-               formatClockTime(message.timestamp)
+              formatClockTime(message.timestamp)
             ) : null}
+          </div>
         </div>
       </div>
+
+      <MessageAvatar src="" name={isUser ? 'You' : 'Agent'} />
     </Message>
   );
 }

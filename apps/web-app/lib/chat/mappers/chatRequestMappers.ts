@@ -42,50 +42,94 @@ export function mapMessagesToChatMessages(
 }
 
 export function dedupeAndSortMessages(messages: ChatMessage[]): ChatMessage[] {
-  const byKey = new Map<
-    string,
-    { message: ChatMessage; isPlaceholder: boolean }
-  >();
+  const PLACEHOLDER_ID_RE = /^(user|assistant)-\d+/;
+  const CURSOR_TOKEN = '▋';
+  const PLACEHOLDER_MATCH_WINDOW_MS = 2 * 60 * 1000;
 
-  messages.forEach((message, index) => {
-    const isPlaceholder =
-      typeof message.id === 'string' && /^(user|assistant)-\d+/.test(message.id);
-    const bucket =
-      message.timestamp !== undefined && message.timestamp !== null
-        ? Math.floor(Date.parse(message.timestamp) / 1000)
-        : 'no-ts';
-    const contentKey = `${bucket}-${message.role}-${message.content}`;
+  const normalizeContent = (content: string) =>
+    content.replace(new RegExp(`${CURSOR_TOKEN}\\s*$`), '').trim();
 
-    const existing = byKey.get(contentKey);
-    if (!existing) {
-      byKey.set(contentKey, { message, isPlaceholder });
-      return;
-    }
+  const parseTimestampMs = (timestamp?: string) => {
+    if (!timestamp) return null;
+    const ms = Date.parse(timestamp);
+    return Number.isFinite(ms) ? ms : null;
+  };
 
-    if (existing.isPlaceholder && !isPlaceholder) {
-      // Replace optimistic placeholder with persisted copy
-      byKey.set(contentKey, { message, isPlaceholder });
-      return;
-    }
+  type Indexed = {
+    message: ChatMessage;
+    index: number;
+    isPlaceholder: boolean;
+    signature: string;
+    timestampMs: number | null;
+  };
 
-    if (!existing.isPlaceholder && isPlaceholder) {
-      // Keep existing real message; drop placeholder
-      return;
-    }
+  const indexed: Indexed[] = messages.map((message, index) => ({
+    message,
+    index,
+    isPlaceholder: typeof message.id === 'string' && PLACEHOLDER_ID_RE.test(message.id),
+    signature: `${message.role}:${normalizeContent(message.content)}`,
+    timestampMs: parseTimestampMs(message.timestamp),
+  }));
 
-    // Same kind (both real or both placeholder) with identical bucket/content:
-    // preserve distinct turns by giving them unique composite keys.
-    const altKey = `${contentKey}::${index}`;
-    byKey.set(altKey, { message, isPlaceholder });
+  const groups = new Map<string, Indexed[]>();
+  indexed.forEach((entry) => {
+    const group = groups.get(entry.signature);
+    if (group) group.push(entry);
+    else groups.set(entry.signature, [entry]);
   });
 
-  return Array.from(byKey.values())
-    .map((entry) => entry.message)
+  const dropPlaceholderIndexes = new Set<number>();
+
+  for (const group of groups.values()) {
+    const placeholders = group
+      .filter((entry) => entry.isPlaceholder)
+      .sort((a, b) => (a.timestampMs ?? a.index) - (b.timestampMs ?? b.index));
+    const persisted = group
+      .filter((entry) => !entry.isPlaceholder)
+      .sort((a, b) => (a.timestampMs ?? a.index) - (b.timestampMs ?? b.index));
+
+    if (placeholders.length === 0 || persisted.length === 0) continue;
+
+    let p = 0;
+    let r = 0;
+
+    while (p < placeholders.length && r < persisted.length) {
+      const placeholder = placeholders[p];
+      const real = persisted[r];
+      if (!placeholder || !real) break;
+
+      if (placeholder.timestampMs === null || real.timestampMs === null) {
+        dropPlaceholderIndexes.add(placeholder.index);
+        p += 1;
+        r += 1;
+        continue;
+      }
+
+      const diff = Math.abs(placeholder.timestampMs - real.timestampMs);
+      if (diff <= PLACEHOLDER_MATCH_WINDOW_MS) {
+        dropPlaceholderIndexes.add(placeholder.index);
+        p += 1;
+        r += 1;
+        continue;
+      }
+
+      if (placeholder.timestampMs < real.timestampMs) {
+        p += 1;
+      } else {
+        r += 1;
+      }
+    }
+  }
+
+  return indexed
+    .filter((entry) => !(entry.isPlaceholder && dropPlaceholderIndexes.has(entry.index)))
     .sort((a, b) => {
-      const aTime = a.timestamp ? Date.parse(a.timestamp) : 0;
-      const bTime = b.timestamp ? Date.parse(b.timestamp) : 0;
-      return aTime - bTime;
-    });
+      const aTime = a.timestampMs ?? Number.POSITIVE_INFINITY;
+      const bTime = b.timestampMs ?? Number.POSITIVE_INFINITY;
+      if (aTime !== bTime) return aTime - bTime;
+      return a.index - b.index;
+    })
+    .map((entry) => entry.message);
 }
 
 export function normalizeLocationPayload(

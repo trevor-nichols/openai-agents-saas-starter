@@ -26,6 +26,63 @@ describe('dedupeAndSortMessages', () => {
     expect(result[0]).toMatchObject({ role: 'user', content: 'Hello there' });
   });
 
+  it('dedupes placeholders even when persisted timestamps differ slightly', () => {
+    const messages: ChatMessage[] = [
+      {
+        id: 'assistant-1712345678901',
+        role: 'assistant',
+        content: 'Hi there▋',
+        timestamp: '2025-01-01T00:00:00.000Z',
+        isStreaming: true,
+      },
+      {
+        id: 'msg_999',
+        role: 'assistant',
+        content: 'Hi there',
+        timestamp: '2025-01-01T00:00:02.500Z',
+      },
+    ];
+
+    const result = dedupeAndSortMessages(messages);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ role: 'assistant', content: 'Hi there' });
+  });
+
+  it('dedupes multiple placeholders against multiple persisted messages', () => {
+    const messages: ChatMessage[] = [
+      {
+        id: 'user-1712345678901',
+        role: 'user',
+        content: 'Repeat',
+        timestamp: '2025-01-01T00:00:00.000Z',
+      },
+      {
+        id: 'user-1712345679901',
+        role: 'user',
+        content: 'Repeat',
+        timestamp: '2025-01-01T00:00:01.000Z',
+      },
+      {
+        id: 'msg_1',
+        role: 'user',
+        content: 'Repeat',
+        timestamp: '2025-01-01T00:00:03.000Z',
+      },
+      {
+        id: 'msg_2',
+        role: 'user',
+        content: 'Repeat',
+        timestamp: '2025-01-01T00:00:04.000Z',
+      },
+    ];
+
+    const result = dedupeAndSortMessages(messages);
+
+    expect(result).toHaveLength(2);
+    expect(result.map((m) => m.id)).toEqual(['msg_1', 'msg_2']);
+  });
+
   it('preserves distinct real messages with same content in the same second', () => {
     const messages: ChatMessage[] = [
       {
