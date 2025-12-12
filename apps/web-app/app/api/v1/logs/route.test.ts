@@ -19,7 +19,6 @@ describe('/api/logs proxy route', () => {
       json: vi.fn().mockResolvedValue({ event: 'ui.click' }),
       headers: new Headers({
         cookie: 'aa_access_token=abc',
-        authorization: 'Bearer token',
       }),
     } as never;
 
@@ -32,8 +31,7 @@ describe('/api/logs proxy route', () => {
     expect(url).toContain('/api/v1/logs');
     expect((options as RequestInit).method).toBe('POST');
     expect((options as RequestInit).headers).toMatchObject({
-      Cookie: 'aa_access_token=abc',
-      Authorization: 'Bearer token',
+      Authorization: 'Bearer abc',
     });
 
     expect(response.status).toBe(202);

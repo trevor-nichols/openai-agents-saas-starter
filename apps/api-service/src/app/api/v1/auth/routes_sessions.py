@@ -9,13 +9,16 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response,
 
 from app.api.dependencies.auth import require_current_user
 from app.api.models.auth import (
+    CurrentUserInfoResponseData,
+    CurrentUserInfoSuccessResponse,
+    SessionRevocationStatusResponseData,
+    SessionRevocationSuccessResponse,
     UserLoginRequest,
     UserLogoutRequest,
     UserRefreshRequest,
     UserSessionListResponse,
     UserSessionResponse,
 )
-from app.api.models.common import SuccessResponse
 from app.api.models.mfa import MfaChallengeResponse, MfaMethodView
 from app.api.v1.auth.utils import (
     current_session_uuid,
@@ -125,11 +128,11 @@ async def refresh_access_token(
     return to_user_session_response(tokens)
 
 
-@router.post("/logout", response_model=SuccessResponse)
+@router.post("/logout", response_model=SessionRevocationSuccessResponse)
 async def logout_session(
     payload: UserLogoutRequest,
     current_user: dict[str, Any] = Depends(require_current_user),
-) -> SuccessResponse:
+) -> SessionRevocationSuccessResponse:
     """Revoke a single refresh token for the authenticated user."""
 
     try:
@@ -143,19 +146,25 @@ async def logout_session(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
 
     message = "Session revoked successfully." if revoked else "Session already inactive."
-    return SuccessResponse(message=message, data={"revoked": revoked})
+    return SessionRevocationSuccessResponse(
+        message=message,
+        data=SessionRevocationStatusResponseData(revoked=revoked),
+    )
 
 
-@router.post("/logout/all", response_model=SuccessResponse)
+@router.post("/logout/all", response_model=SessionRevocationSuccessResponse)
 async def logout_all_sessions(
     current_user: dict[str, Any] = Depends(require_current_user),
-) -> SuccessResponse:
+) -> SessionRevocationSuccessResponse:
     """Revoke every refresh token tied to the authenticated user."""
 
     user_uuid = UUID(current_user["user_id"])
     revoked = await auth_service.revoke_user_sessions(user_uuid, reason="user_logout_all")
     message = "All sessions revoked successfully." if revoked else "No active sessions to revoke."
-    return SuccessResponse(message=message, data={"revoked": revoked})
+    return SessionRevocationSuccessResponse(
+        message=message,
+        data=SessionRevocationStatusResponseData(revoked=revoked),
+    )
 
 
 @router.get("/sessions", response_model=UserSessionListResponse)
@@ -207,11 +216,11 @@ async def list_user_sessions(
     )
 
 
-@router.delete("/sessions/{session_id}", response_model=SuccessResponse)
+@router.delete("/sessions/{session_id}", response_model=SessionRevocationSuccessResponse)
 async def revoke_user_session(
     session_id: UUID,
     current_user: dict[str, Any] = Depends(require_current_user),
-) -> SuccessResponse:
+) -> SessionRevocationSuccessResponse:
     """Revoke a specific session/device for the authenticated user."""
 
     user_uuid = UUID(current_user["user_id"])
@@ -231,19 +240,22 @@ async def revoke_user_session(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Session not found or already revoked.",
         )
-    return SuccessResponse(message="Session revoked successfully.", data={"revoked": True})
+    return SessionRevocationSuccessResponse(
+        message="Session revoked successfully.",
+        data=SessionRevocationStatusResponseData(revoked=True),
+    )
 
 
-@router.get("/me", response_model=SuccessResponse)
+@router.get("/me", response_model=CurrentUserInfoSuccessResponse)
 async def get_current_user_info(
     current_user: dict[str, Any] = Depends(require_current_user),
-) -> SuccessResponse:
+) -> CurrentUserInfoSuccessResponse:
     """Return metadata about the current authenticated user."""
 
-    return SuccessResponse(
+    return CurrentUserInfoSuccessResponse(
         message="User information retrieved successfully",
-        data={
-            "user_id": current_user["user_id"],
-            "token_payload": current_user["payload"],
-        },
+        data=CurrentUserInfoResponseData(
+            user_id=current_user["user_id"],
+            token_payload=current_user["payload"],
+        ),
     )

@@ -15,6 +15,7 @@ from app.api.v1.workflows.schemas import (
     StreamingWorkflowEvent,
     WorkflowDescriptorResponse,
     WorkflowListResponse,
+    WorkflowRunCancelResponse,
     WorkflowRunDetail,
     WorkflowRunListItem,
     WorkflowRunListResponse,
@@ -241,7 +242,11 @@ async def get_workflow_run(
     )
 
 
-@router.post("/runs/{run_id}/cancel", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/runs/{run_id}/cancel",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=WorkflowRunCancelResponse,
+)
 async def cancel_workflow_run(
     run_id: str,
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:write")),
@@ -254,7 +259,7 @@ async def cancel_workflow_run(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-    return {"success": True}
+    return WorkflowRunCancelResponse(workflow_run_id=run_id, success=True)
 
 
 @router.delete("/runs/{run_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -1,25 +1,56 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { createHmac } from 'node:crypto';
 
 import { API_BASE_URL } from '@/lib/config';
+import { ACCESS_TOKEN_COOKIE } from '@/lib/config';
 
 const BACKEND_LOG_ENDPOINT = `${API_BASE_URL}/api/v1/logs`;
 
+function getCookieValue(cookieHeader: string, name: string): string | null {
+  const parts = cookieHeader.split(';');
+  for (const part of parts) {
+    const [key, ...rest] = part.trim().split('=');
+    if (!key) continue;
+    if (key === name) {
+      return rest.join('=') || null;
+    }
+  }
+  return null;
+}
+
+function signBody(body: string): string | null {
+  const secret = process.env.FRONTEND_LOG_SHARED_SECRET;
+  if (!secret) return null;
+  return createHmac('sha256', secret).update(body).digest('hex');
+}
+
 async function forwardToBackend(request: NextRequest, payload: unknown) {
+  const body = JSON.stringify(payload);
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
   };
 
-  const cookieHeader = request.headers.get('cookie');
-  if (cookieHeader) headers.Cookie = cookieHeader;
-
   const authHeader = request.headers.get('authorization');
-  if (authHeader) headers.Authorization = authHeader;
+  if (authHeader) {
+    headers.Authorization = authHeader;
+  } else {
+    const cookieHeader = request.headers.get('cookie');
+    if (cookieHeader) {
+      const accessToken = getCookieValue(cookieHeader, ACCESS_TOKEN_COOKIE);
+      if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+    }
+  }
+
+  if (!headers.Authorization) {
+    const signature = signBody(body);
+    if (signature) headers['X-Log-Signature'] = signature;
+  }
 
   return fetch(BACKEND_LOG_ENDPOINT, {
     method: 'POST',
     headers,
-    body: JSON.stringify(payload),
+    body,
     cache: 'no-store',
     redirect: 'manual',
   });

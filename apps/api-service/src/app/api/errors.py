@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
 
-from app.api.models.common import ErrorResponse
+from app.api.models.common import ErrorResponse, ValidationErrorResponse
 
 ExceptionHandler = Callable[[Request, Exception], Response | Awaitable[Response]]
 
@@ -40,11 +40,7 @@ def _http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
 
 
 def _validation_exception_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
-    payload = ErrorResponse(
-        error="ValidationError",
-        message="Request validation failed.",
-        details=exc.errors(),
-    )
+    payload = ValidationErrorResponse(details=cast(list[dict[str, Any]], exc.errors()))
     return JSONResponse(status_code=422, content=payload.model_dump())
 
 

@@ -14,7 +14,7 @@ from app.api.models.auth import (
     PasswordResetConfirmRequest,
     PasswordResetRequest,
 )
-from app.api.models.common import SuccessResponse
+from app.api.models.common import SuccessNoDataResponse
 from app.api.v1.auth.utils import (
     extract_client_ip,
     extract_user_agent,
@@ -42,13 +42,13 @@ router = APIRouter(tags=["auth"])
 
 @router.post(
     "/password/forgot",
-    response_model=SuccessResponse,
+    response_model=SuccessNoDataResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def request_password_reset(
     payload: PasswordForgotRequest,
     request: Request,
-) -> SuccessResponse:
+) -> SuccessNoDataResponse:
     client_ip = extract_client_ip(request)
     await _enforce_password_reset_quota(email=payload.email, client_ip=client_ip)
     service = get_password_recovery_service()
@@ -63,17 +63,16 @@ async def request_password_reset(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Unable to send password reset email. Please try again shortly.",
         ) from exc
-    return SuccessResponse(
+    return SuccessNoDataResponse(
         message="If the account exists, password reset instructions have been sent.",
-        data=None,
     )
 
 
-@router.post("/password/confirm", response_model=SuccessResponse)
+@router.post("/password/confirm", response_model=SuccessNoDataResponse)
 async def confirm_password_reset(
     payload: PasswordResetConfirmRequest,
     request: Request,
-) -> SuccessResponse:
+) -> SuccessNoDataResponse:
     try:
         service = get_password_recovery_service()
         await service.confirm_password_reset(
@@ -95,15 +94,15 @@ async def confirm_password_reset(
         ip_hash=hash_client_ip(extract_client_ip(request)),
         user_agent_hash=hash_user_agent(extract_user_agent(request)),
     )
-    return SuccessResponse(message="Password has been reset successfully.", data=None)
+    return SuccessNoDataResponse(message="Password has been reset successfully.")
 
 
-@router.post("/password/change", response_model=SuccessResponse)
+@router.post("/password/change", response_model=SuccessNoDataResponse)
 async def change_password(
     payload: PasswordChangeRequest,
     request: Request,
     current_user: dict[str, str] = Depends(require_current_user),
-) -> SuccessResponse:
+) -> SuccessNoDataResponse:
     service = get_user_service()
     user_uuid = UUID(current_user["user_id"])
     try:
@@ -126,15 +125,15 @@ async def change_password(
         ip_hash=hash_client_ip(extract_client_ip(request)),
         user_agent_hash=hash_user_agent(extract_user_agent(request)),
     )
-    return SuccessResponse(message="Password updated successfully", data=None)
+    return SuccessNoDataResponse(message="Password updated successfully")
 
 
-@router.post("/password/reset", response_model=SuccessResponse)
+@router.post("/password/reset", response_model=SuccessNoDataResponse)
 async def admin_reset_password(
     payload: PasswordResetRequest,
     request: Request,
     current_user: dict[str, object] = Depends(require_verified_scopes("support:read")),
-) -> SuccessResponse:
+) -> SuccessNoDataResponse:
     tenant_claim: object | None = None
     payload_claim = current_user.get("payload")
     if isinstance(payload_claim, dict):
@@ -176,7 +175,7 @@ async def admin_reset_password(
         ip_hash=hash_client_ip(extract_client_ip(request)),
         user_agent_hash=hash_user_agent(extract_user_agent(request)),
     )
-    return SuccessResponse(message="Password reset successfully", data=None)
+    return SuccessNoDataResponse(message="Password reset successfully")
 
 
 async def _enforce_password_reset_quota(email: str, client_ip: str | None) -> None:

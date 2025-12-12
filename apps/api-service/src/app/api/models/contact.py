@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, EmailStr, Field
 
+from app.api.models.common import SuccessResponse
 from app.services.contact_service import MAX_MESSAGE_LENGTH
 
 
@@ -48,3 +49,9 @@ class ContactSubmissionResponse(BaseModel):
         description="True when the submission was accepted but intentionally skipped (honeypot).",
     )
 
+
+class ContactSubmissionSuccessResponse(SuccessResponse):
+    data: ContactSubmissionResponse | None = Field(
+        default=None,
+        description="Contact submission result payload.",
+    )

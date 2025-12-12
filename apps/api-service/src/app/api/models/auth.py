@@ -1,10 +1,14 @@
 """Authentication request and response models."""
 
+from __future__ import annotations
+
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from app.api.models.common import SuccessResponse
 from app.core.password_policy import PasswordPolicyError, validate_password_strength
 
 
@@ -122,6 +126,40 @@ class EmailVerificationConfirmRequest(BaseModel):
     """Payload for confirming the email verification token."""
 
     token: str = Field(min_length=1, description="Verification token delivered via email.")
+
+
+class EmailVerificationStatusResponseData(BaseModel):
+    email_verified: bool = Field(description="Whether the user's email address is verified.")
+
+
+class EmailVerificationSendSuccessResponse(SuccessResponse):
+    data: EmailVerificationStatusResponseData | None = Field(
+        default=None,
+        description="Email verification status payload.",
+    )
+
+
+class SessionRevocationStatusResponseData(BaseModel):
+    revoked: bool = Field(description="Whether the session/token was revoked by this request.")
+
+
+class SessionRevocationSuccessResponse(SuccessResponse):
+    data: SessionRevocationStatusResponseData | None = Field(
+        default=None,
+        description="Session revocation result payload.",
+    )
+
+
+class CurrentUserInfoResponseData(BaseModel):
+    user_id: str = Field(description="Current authenticated user id.")
+    token_payload: dict[str, Any] = Field(description="Decoded access token claims.")
+
+
+class CurrentUserInfoSuccessResponse(SuccessResponse):
+    data: CurrentUserInfoResponseData | None = Field(
+        default=None,
+        description="Current authenticated user info payload.",
+    )
 
 
 class PasswordChangeRequest(BaseModel):
@@ -388,6 +426,17 @@ class ServiceAccountTokenRevokeRequest(BaseModel):
         default=None,
         max_length=256,
         description="Human-readable explanation for auditing (required for operators).",
+    )
+
+
+class ServiceAccountTokenRevokeResponseData(BaseModel):
+    jti: str = Field(description="Refresh token identifier (JWT jti).")
+
+
+class ServiceAccountTokenRevokeSuccessResponse(SuccessResponse):
+    data: ServiceAccountTokenRevokeResponseData | None = Field(
+        default=None,
+        description="Revoked token reference payload.",
     )
 
 

@@ -15,7 +15,7 @@ from app.api.dependencies.tenant import (
     get_tenant_context,
     require_tenant_role,
 )
-from app.api.models.common import SuccessResponse
+from app.api.models.common import SuccessNoDataResponse
 from app.api.v1.billing.schemas import (
     BillingEventHistoryResponse,
     BillingEventResponse,
@@ -185,14 +185,14 @@ async def cancel_subscription(
 
 @router.post(
     "/tenants/{tenant_id}/usage",
-    response_model=SuccessResponse,
+    response_model=SuccessNoDataResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def record_usage(
     tenant_id: str,
     payload: UsageRecordRequest,
     context: TenantContext = Depends(require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)),
-) -> SuccessResponse:
+) -> SuccessNoDataResponse:
     """Report metered usage for a tenant subscription."""
 
     _assert_same_tenant(context, tenant_id)
@@ -208,7 +208,7 @@ async def record_usage(
         )
     except BillingError as exc:  # pragma: no cover - translated below
         _handle_billing_error(exc)
-    return SuccessResponse(success=True, message="Usage recorded.")
+    return SuccessNoDataResponse(message="Usage recorded.")
 
 
 @router.get(

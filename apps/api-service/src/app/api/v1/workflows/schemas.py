@@ -107,6 +107,11 @@ class WorkflowRunListResponse(BaseModel):
     next_cursor: str | None = None
 
 
+class WorkflowRunCancelResponse(BaseModel):
+    workflow_run_id: str = Field(..., description="The workflow run id that was cancelled.")
+    success: bool = Field(..., description="True if the cancel request succeeded.")
+
+
 class WorkflowStepDescriptor(BaseModel):
     name: str
     agent_key: str
@@ -148,6 +153,7 @@ __all__ = [
     "WorkflowRunDetail",
     "WorkflowRunListItem",
     "WorkflowRunListResponse",
+    "WorkflowRunCancelResponse",
     "WorkflowStepDescriptor",
     "WorkflowStageDescriptor",
     "WorkflowDescriptorResponse",

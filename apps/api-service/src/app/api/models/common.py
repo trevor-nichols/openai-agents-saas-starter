@@ -19,6 +19,15 @@ class SuccessResponse(BaseModel):
     )
 
 
+class SuccessNoDataResponse(SuccessResponse):
+    """Success response where `data` is always null."""
+
+    data: None = Field(
+        default=None,
+        description="Always null for this response type.",
+    )
+
+
 class ErrorResponse(BaseModel):
     """Standard error response envelope."""
 
@@ -31,6 +40,23 @@ class ErrorResponse(BaseModel):
     details: Any | None = Field(
         default=None,
         description="Additional error context for debugging.",
+    )
+
+
+class ValidationErrorResponse(BaseModel):
+    """Validation error envelope for request/response parsing errors (422)."""
+
+    success: bool = Field(
+        default=False,
+        description="Operation success status flag.",
+    )
+    error: str = Field(default="ValidationError", description="Short machine-readable error name.")
+    message: str = Field(
+        default="Request validation failed.",
+        description="Human-readable error description.",
+    )
+    details: list[dict[str, Any]] = Field(
+        description="Pydantic validation errors list.",
     )
 
 

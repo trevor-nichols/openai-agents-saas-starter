@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.api.dependencies.auth import require_current_user
 from app.api.models.auth import UserSessionResponse
-from app.api.models.common import SuccessResponse
+from app.api.models.common import SuccessNoDataResponse
 from app.api.models.mfa import (
     MfaChallengeCompleteRequest,
     MfaMethodView,
@@ -81,12 +81,12 @@ async def start_totp_enrollment(
     return TotpEnrollResponse(secret=secret, method_id=method_id, otpauth_url=otpauth_url)
 
 
-@router.post("/mfa/totp/verify", response_model=SuccessResponse)
+@router.post("/mfa/totp/verify", response_model=SuccessNoDataResponse)
 async def verify_totp(
     payload: TotpVerifyRequest,
     request: Request,
     current_user: dict[str, str] = Depends(require_current_user),
-) -> SuccessResponse:
+) -> SuccessNoDataResponse:
     service = _service()
     client_ip = extract_client_ip(request)
     await _enforce_mfa_verify_quota(current_user["user_id"], client_ip)
@@ -100,19 +100,19 @@ async def verify_totp(
         )
     except MfaVerificationError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return SuccessResponse(message="MFA verified.", data=None)
+    return SuccessNoDataResponse(message="MFA verified.")
 
 
-@router.delete("/mfa/{method_id}", response_model=SuccessResponse)
+@router.delete("/mfa/{method_id}", response_model=SuccessNoDataResponse)
 async def revoke_mfa_method(
     method_id: UUID,
     current_user: dict[str, str] = Depends(require_current_user),
-) -> SuccessResponse:
+) -> SuccessNoDataResponse:
     service = _service()
     await service.revoke_method(
         user_id=UUID(current_user["user_id"]), method_id=method_id, reason="user_request"
     )
-    return SuccessResponse(message="MFA method revoked.", data=None)
+    return SuccessNoDataResponse(message="MFA method revoked.")
 
 
 @router.post("/mfa/recovery/regenerate", response_model=RecoveryCodesResponse)

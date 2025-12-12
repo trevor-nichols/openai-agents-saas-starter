@@ -332,8 +332,11 @@ def _patch_raw_body_endpoints(schema: dict[str, Any]) -> None:
         _ensure_header_param(
             operation["parameters"],
             name="x-log-signature",
-            required=True,
-            description="HMAC signature for the raw request body.",
+            required=False,
+            description=(
+                "HMAC signature for the raw request body. Required only when submitting "
+                "anonymous frontend logs (ALLOW_ANON_FRONTEND_LOGS=true)."
+            ),
         )
         operation["requestBody"] = {
             "required": True,
