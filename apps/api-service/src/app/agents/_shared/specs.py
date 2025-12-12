@@ -24,6 +24,8 @@ class AgentSpec:
     - `model_key` controls which settings override is applied (e.g., "triage"
       resolves to `settings.agent_triage_model`). If unset, `agent_default_model`
       is used.
+    - `model` optionally fixes the agent to a specific model name (e.g., "gpt-5.1").
+      When set, this takes precedence over settings and per-request overrides.
     - `capabilities` describe the agent for catalog/filtering; tool selection
       is now explicit via `tool_keys`.
     - `instructions` or `prompt_path` provide the system prompt. Only one is
@@ -58,6 +60,7 @@ class AgentSpec:
     display_name: str
     description: str
     model_key: str | None = None
+    model: str | None = None
     capabilities: tuple[str, ...] = ()
     instructions: str | None = None
     prompt_path: Path | None = None
@@ -111,6 +114,19 @@ class AgentSpec:
     def ensure_prompt(self) -> None:
         if not (self.instructions or self.prompt_path):
             raise ValueError(f"Agent '{self.key}' must supply instructions or prompt_path")
+
+    def ensure_model_config(self) -> None:
+        if self.model is not None and not str(self.model).strip():
+            raise ValueError(
+                f"Agent '{self.key}' has an invalid 'model' value. "
+                "If set, 'model' must be a non-empty string."
+            )
+        if self.model is not None and self.model_key is not None:
+            raise ValueError(
+                f"Agent '{self.key}' must not set both 'model' and 'model_key'. "
+                "Use 'model' to fix the agent to a specific model, or 'model_key' to allow "
+                "settings to select the model."
+            )
 
 
 @dataclass(frozen=True, slots=True)

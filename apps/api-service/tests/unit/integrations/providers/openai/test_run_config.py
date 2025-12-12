@@ -13,7 +13,9 @@ def test_build_run_config_filters_allowed_keys_only():
     )
 
     assert run_config is not None
-    assert run_config.model == "gpt-5.1"
+    # Model override is intentionally not accepted from RunOptions.run_config.
+    # Agents must be configured via AgentSpec.model / model_key or AGENT_MODEL_DEFAULT.
+    assert run_config.model is None
     assert run_config.tracing_disabled is True
     # unsupported key is dropped
     assert not hasattr(run_config, "unsupported")

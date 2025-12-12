@@ -72,6 +72,7 @@ class AgentBuilder:
             runtime_ctx=runtime_ctx,
             allow_unresolved_file_search=allow_unresolved_file_search,
         )
+        spec.ensure_model_config()
         instructions, _ = self._prompt_renderer.render_instructions(
             spec=spec,
             runtime_ctx=runtime_ctx,
@@ -294,6 +295,8 @@ class AgentBuilder:
         return AgentOutputSchema(type_obj, strict_json_schema=cfg.strict)
 
     def _resolve_agent_model(self, settings: Settings, spec: AgentSpec) -> str:
+        if spec.model is not None:
+            return str(spec.model)
         if spec.model_key:
             attr = f"agent_{spec.model_key}_model"
             override = getattr(settings, attr, None)

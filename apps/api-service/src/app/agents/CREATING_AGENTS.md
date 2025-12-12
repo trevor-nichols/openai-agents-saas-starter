@@ -118,11 +118,21 @@ You can create dynamic context variables (like `timestamp`) by registering a Pyt
 
 ## 4. Configuration Reference
 
-### Model Resolution (`model_key`)
-The `model_key` field determines which LLM is used. It maps to environment variables defined in `src/app/core/settings/ai.py`.
+### Model Resolution (default vs fixed)
+There is a single global default model, and agents may optionally fix themselves to a specific model.
 
-*   **Logic:** `model_key="triage"` -> looks for `agent_triage_model` setting -> maps to `AGENT_MODEL_TRIAGE` env var.
-*   **Fallback:** If the specific key isn't found in Settings, it defaults to `AGENT_MODEL_DEFAULT` (`agent_default_model`).
+- **Global default:** `AGENT_MODEL_DEFAULT` (`agent_default_model`) in `src/app/core/settings/ai.py`.
+- **Per-agent fixed model:** set `model="..."` in the agent spec. When set, that agent always uses that model.
+- **Settings-selected model:** set `model_key="triage"|"code"|"data"` to opt into a settings/env override bucket.
+
+Resolution order is:
+1) `model` from the spec (if set; fixed)
+2) `model_key` → `AGENT_MODEL_<KEY>` (if set)
+3) `AGENT_MODEL_DEFAULT` (`agent_default_model`)
+
+`model_key` maps to environment variables defined in `src/app/core/settings/ai.py`:
+- **Logic:** `model_key="triage"` -> looks for `agent_triage_model` -> env `AGENT_MODEL_TRIAGE`.
+- **Fallback:** If the specific key isn't set, it falls back through the order above.
 
 | `model_key` Value | Mapped Env Variable | Default Value |
 | :--- | :--- | :--- |
@@ -130,6 +140,9 @@ The `model_key` field determines which LLM is used. It maps to environment varia
 | `"triage"` | `AGENT_MODEL_TRIAGE` | `None` (Falls back to Default) |
 | `"code"` | `AGENT_MODEL_CODE` | `None` (Falls back to Default) |
 | `"data"` | `AGENT_MODEL_DATA` | `None` (Falls back to Default) |
+
+**Per-agent overrides (recommended for production operations):**
+If you need per-agent rollouts without code changes, prefer introducing a new `model_key` bucket in `src/app/core/settings/ai.py` and using it in specs.
 
 ### Standard Tools
 These keys can be added to `tool_keys`:

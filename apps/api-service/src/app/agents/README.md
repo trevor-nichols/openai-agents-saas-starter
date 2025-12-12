@@ -6,10 +6,10 @@ Operational guide for declaring and running agents with the OpenAI Agents SDK in
 - **Declarative specs → concrete SDK Agents at runtime.** Specs live in `app/agents/<key>/spec.py`; `OpenAIAgentRegistry` renders prompts with request context and attaches tools/handoffs on each call.
 - **Explicit tools only.** If a tool isn’t named in `tool_keys`, it is not exposed. Optional tools (e.g., `web_search`) are skipped quietly when unavailable; required tools cause startup errors.
 - **Handoffs are first-class.** Orchestrator agents list `handoff_keys`; input filters and per-target overrides tune what history/shape flows to the next agent.
-- **Settings select models.** `model_key` chooses `settings.agent_<key>_model`; otherwise `agent_default_model`.
+- **Models are explicit and predictable.** Specs can set `model` (fixed per-agent) or use `model_key` (settings bucket). Otherwise they use `AGENT_MODEL_DEFAULT`.
 
 ## AgentSpec fields (TL;DR)
-- Identity & model: `key` (dir name), `display_name`, `description`, `model_key` (→ `settings.agent_<key>_model` override or `agent_default_model`), `capabilities` (catalog metadata), `default` (provider default).
+- Identity & model: `key` (dir name), `display_name`, `description`, optional `model` (spec default), optional `model_key` (→ settings bucket), `capabilities` (catalog metadata), `default` (provider default).
 - Prompt: `prompt_path` **or** `instructions` (Jinja allowed), `wrap_with_handoff_prompt`, `prompt_context_keys`, `prompt_defaults`, `extra_context_providers`.
 - Tools: `tool_keys` (ordered, explicit) + `tool_configs` (per-tool knobs).
 - Handoffs: `handoff_keys`, `handoff_context` (`full`|`fresh`|`last_turn`), `handoff_overrides` (tool_name/description, input_filter, input_type, is_enabled).
@@ -163,7 +163,7 @@ return AgentSpec(
 ## Runtime knobs (per request)
 - `AgentChatRequest.run_options` maps to `RunOptions` → `agents.Runner`:
   - `max_turns`, `previous_response_id`
-  - `run_config` keys: `model`, `model_settings`, `input_guardrails`, `output_guardrails`, `tracing_disabled`, `trace_include_sensitive_data`, `workflow_name`
+  - `run_config` keys: `model_settings`, `input_guardrails`, `output_guardrails`, `tracing_disabled`, `trace_include_sensitive_data`, `workflow_name` (model overrides are intentionally not accepted)
   - `handoff_input_filter` (global, name resolved via `_shared/handoff_filters`)
   - `handoff_context_policy` (alias for the common filters: `full`/`fresh`/`last_turn`)
 - Streaming vs sync: `chat_stream` uses `run_stream` and emits `AgentStreamEvent` (raw deltas, run items, lifecycle); `chat` uses `run`.
