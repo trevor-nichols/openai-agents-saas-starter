@@ -158,6 +158,7 @@ import type {
   ListActivityEventsApiV1ActivityGetErrors,
   ListActivityEventsApiV1ActivityGetResponses,
   ListAvailableAgentsApiV1AgentsGetData,
+  ListAvailableAgentsApiV1AgentsGetErrors,
   ListAvailableAgentsApiV1AgentsGetResponses,
   ListAvailableToolsApiV1ToolsGetData,
   ListAvailableToolsApiV1ToolsGetResponses,
@@ -1340,7 +1341,7 @@ export const streamChatWithAgentApiV1ChatStreamPost = <
 /**
  * List Available Agents
  *
- * Return all agents registered with the platform.
+ * Return a paginated list of available agents.
  */
 export const listAvailableAgentsApiV1AgentsGet = <
   ThrowOnError extends boolean = false,
@@ -1349,7 +1350,7 @@ export const listAvailableAgentsApiV1AgentsGet = <
 ) => {
   return (options?.client ?? client).get<
     ListAvailableAgentsApiV1AgentsGetResponses,
-    unknown,
+    ListAvailableAgentsApiV1AgentsGetErrors,
     ThrowOnError
   >({
     security: [

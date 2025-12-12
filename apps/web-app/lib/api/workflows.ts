@@ -4,10 +4,12 @@ import type {
   WorkflowRunListResponse,
   WorkflowRunRequestBody,
   WorkflowRunResponse,
+  WorkflowListResponse,
   WorkflowSummary,
   StreamingWorkflowEvent,
 } from '@/lib/api/client/types.gen';
 import { USE_API_MOCK } from '@/lib/config';
+import { collectCursorItems } from '@/lib/api/pagination';
 import {
   mockRunWorkflow,
   mockWorkflowDescriptor,
@@ -19,18 +21,51 @@ import {
 import type { WorkflowRunInput, WorkflowRunListFilters } from '@/lib/workflows/types';
 import { apiV1Path } from '@/lib/apiPaths';
 
-export async function listWorkflows(): Promise<WorkflowSummary[]> {
+export async function listWorkflows(params?: {
+  search?: string | null;
+  maxPages?: number;
+}): Promise<WorkflowSummary[]> {
   if (USE_API_MOCK) {
     return mockWorkflows;
   }
+  return collectCursorItems(
+    (cursor) =>
+      listWorkflowsPage({
+        limit: 100,
+        cursor,
+        search: params?.search ?? null,
+      }),
+    { maxPages: params?.maxPages },
+  );
+}
 
-  // Call the Next.js API proxy so the server can attach auth from cookies.
-  const response = await fetch(apiV1Path('/workflows'), { method: 'GET', cache: 'no-store' });
+export async function listWorkflowsPage(params?: {
+  limit?: number;
+  cursor?: string | null;
+  search?: string | null;
+}): Promise<WorkflowListResponse> {
+  if (USE_API_MOCK) {
+    return { items: mockWorkflows, next_cursor: null, total: mockWorkflows.length };
+  }
+
+  const searchParams = new URLSearchParams();
+  if (params?.limit) searchParams.set('limit', String(params.limit));
+  if (params?.cursor) searchParams.set('cursor', params.cursor);
+  if (params?.search) searchParams.set('search', params.search);
+
+  const response = await fetch(
+    `${apiV1Path('/workflows')}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`,
+    { method: 'GET', cache: 'no-store' },
+  );
   if (!response.ok) {
     throw new Error(`Failed to load workflows (${response.status})`);
   }
-  const data = (await response.json()) as WorkflowSummary[] | undefined;
-  return data ?? [];
+  const data = (await response.json()) as WorkflowListResponse;
+  return {
+    items: data.items ?? [],
+    next_cursor: data.next_cursor ?? null,
+    total: data.total ?? 0,
+  };
 }
 
 export async function listWorkflowRuns(filters: WorkflowRunListFilters = {}): Promise<WorkflowRunListResponse> {

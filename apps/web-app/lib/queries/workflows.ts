@@ -18,7 +18,7 @@ import { fetchConversationEvents } from '@/lib/api/conversations';
 export function useWorkflowsQuery() {
   return useQuery({
     queryKey: queryKeys.workflows.list(),
-    queryFn: listWorkflows,
+    queryFn: () => listWorkflows(),
   });
 }
 

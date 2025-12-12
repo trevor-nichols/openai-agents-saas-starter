@@ -182,6 +182,30 @@ export type AgentChatResponse = {
 };
 
 /**
+ * AgentListResponse
+ *
+ * Paginated list of available agents.
+ */
+export type AgentListResponse = {
+  /**
+   * Items
+   */
+  items: Array<AgentSummary>;
+  /**
+   * Next Cursor
+   *
+   * Opaque cursor for fetching the next page.
+   */
+  next_cursor?: string | null;
+  /**
+   * Total
+   *
+   * Total number of agents matching the current filter.
+   */
+  total: number;
+};
+
+/**
  * AgentRunOptions
  *
  * Optional per-request runtime knobs forwarded to the Agents SDK.
@@ -4946,6 +4970,30 @@ export type WorkflowDescriptorResponse = {
 };
 
 /**
+ * WorkflowListResponse
+ *
+ * Paginated list of workflows.
+ */
+export type WorkflowListResponse = {
+  /**
+   * Items
+   */
+  items: Array<WorkflowSummary>;
+  /**
+   * Next Cursor
+   *
+   * Opaque cursor for fetching the next page.
+   */
+  next_cursor?: string | null;
+  /**
+   * Total
+   *
+   * Total number of workflows matching the current filter.
+   */
+  total: number;
+};
+
+/**
  * WorkflowRunDetail
  */
 export type WorkflowRunDetail = {
@@ -6434,17 +6482,44 @@ export type StreamChatWithAgentApiV1ChatStreamPostResponse =
 export type ListAvailableAgentsApiV1AgentsGetData = {
   body?: never;
   path?: never;
-  query?: never;
+  query?: {
+    /**
+     * Limit
+     *
+     * Maximum number of agents to return.
+     */
+    limit?: number;
+    /**
+     * Cursor
+     *
+     * Opaque pagination cursor from a previous page.
+     */
+    cursor?: string | null;
+    /**
+     * Search
+     *
+     * Case-insensitive match against name, display_name, or description.
+     */
+    search?: string | null;
+  };
   url: "/api/v1/agents";
 };
 
+export type ListAvailableAgentsApiV1AgentsGetErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type ListAvailableAgentsApiV1AgentsGetError =
+  ListAvailableAgentsApiV1AgentsGetErrors[keyof ListAvailableAgentsApiV1AgentsGetErrors];
+
 export type ListAvailableAgentsApiV1AgentsGetResponses = {
   /**
-   * Response List Available Agents Api V1 Agents Get
-   *
    * Successful Response
    */
-  200: Array<AgentSummary>;
+  200: AgentListResponse;
 };
 
 export type ListAvailableAgentsApiV1AgentsGetResponse =
@@ -6597,7 +6672,26 @@ export type ListWorkflowsApiV1WorkflowsGetData = {
     "X-Tenant-Role"?: string | null;
   };
   path?: never;
-  query?: never;
+  query?: {
+    /**
+     * Limit
+     *
+     * Maximum number of workflows to return.
+     */
+    limit?: number;
+    /**
+     * Cursor
+     *
+     * Opaque pagination cursor from a previous page.
+     */
+    cursor?: string | null;
+    /**
+     * Search
+     *
+     * Case-insensitive match against key, display_name, or description.
+     */
+    search?: string | null;
+  };
   url: "/api/v1/workflows";
 };
 
@@ -6613,11 +6707,9 @@ export type ListWorkflowsApiV1WorkflowsGetError =
 
 export type ListWorkflowsApiV1WorkflowsGetResponses = {
   /**
-   * Response List Workflows Api V1 Workflows Get
-   *
    * Successful Response
    */
-  200: Array<WorkflowSummary>;
+  200: WorkflowListResponse;
 };
 
 export type ListWorkflowsApiV1WorkflowsGetResponse =

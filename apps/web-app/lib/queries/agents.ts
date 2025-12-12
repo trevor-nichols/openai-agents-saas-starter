@@ -12,7 +12,7 @@ export function useAgents() {
     error,
   } = useQuery({
     queryKey: queryKeys.agents.list(),
-    queryFn: fetchAgents,
+    queryFn: () => fetchAgents(),
     staleTime: 30 * 1000,
   });
 

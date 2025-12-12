@@ -4,14 +4,18 @@ import {
   getAgentStatusApiV1AgentsAgentNameStatusGet,
   listAvailableAgentsApiV1AgentsGet,
 } from '@/lib/api/client/sdk.gen';
-import type { AgentStatus, AgentSummary } from '@/lib/api/client/types.gen';
+import type { AgentListResponse, AgentStatus, AgentSummary } from '@/lib/api/client/types.gen';
 
 import { getServerApiClient } from '../apiClient';
 
 /**
- * Fetch all agents currently registered with the platform.
+ * Fetch a paginated slice of agents currently registered with the platform.
  */
-export async function listAvailableAgents(): Promise<AgentSummary[]> {
+export async function listAvailableAgentsPage(params?: {
+  limit?: number;
+  cursor?: string | null;
+  search?: string | null;
+}): Promise<AgentListResponse> {
   const { client, auth } = await getServerApiClient();
 
   const response = await listAvailableAgentsApiV1AgentsGet({
@@ -19,9 +23,22 @@ export async function listAvailableAgents(): Promise<AgentSummary[]> {
     auth,
     responseStyle: 'fields',
     throwOnError: true,
+    query: {
+      limit: params?.limit,
+      cursor: params?.cursor ?? undefined,
+      search: params?.search ?? undefined,
+    },
   });
 
-  return response.data ?? [];
+  return response.data ?? { items: [], next_cursor: null, total: 0 };
+}
+
+/**
+ * Fetch all agents currently registered with the platform (first page only).
+ */
+export async function listAvailableAgents(): Promise<AgentSummary[]> {
+  const page = await listAvailableAgentsPage();
+  return page.items ?? [];
 }
 
 /**
@@ -51,4 +68,3 @@ export async function getAgentStatus(agentName: string): Promise<AgentStatus> {
 
   return payload;
 }
-

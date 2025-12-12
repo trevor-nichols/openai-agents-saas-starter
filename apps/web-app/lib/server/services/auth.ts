@@ -6,6 +6,7 @@ import {
   refreshAccessTokenApiV1AuthRefreshPost,
 } from '@/lib/api/client/sdk.gen';
 import type {
+  MfaChallengeResponse,
   SuccessResponse,
   UserLoginRequest,
   UserRefreshRequest,
