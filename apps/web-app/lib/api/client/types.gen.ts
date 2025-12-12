@@ -1832,16 +1832,6 @@ export type GuardrailSummary = {
 };
 
 /**
- * HTTPValidationError
- */
-export type HttpValidationError = {
-  /**
-   * Detail
-   */
-  detail?: Array<ValidationError>;
-};
-
-/**
  * HealthResponse
  *
  * Health check response payload.
@@ -4069,6 +4059,32 @@ export type ToolCallPayload = {
 };
 
 /**
+ * ToolCatalogResponse
+ *
+ * Stable, typed shape for the tool catalog response.
+ */
+export type ToolCatalogResponse = {
+  /**
+   * Total Tools
+   */
+  total_tools: number;
+  /**
+   * Tool Names
+   */
+  tool_names?: Array<string>;
+  /**
+   * Categories
+   */
+  categories?: Array<string>;
+  /**
+   * Per Agent
+   */
+  per_agent?: {
+    [key: string]: Array<string>;
+  };
+};
+
+/**
  * TotpEnrollResponse
  */
 export type TotpEnrollResponse = {
@@ -4631,24 +4647,6 @@ export type UserSessionResponse = {
 };
 
 /**
- * ValidationError
- */
-export type ValidationError = {
-  /**
-   * Location
-   */
-  loc: Array<string | number>;
-  /**
-   * Message
-   */
-  msg: string;
-  /**
-   * Error Type
-   */
-  type: string;
-};
-
-/**
  * VectorStoreCreateRequest
  */
 export type VectorStoreCreateRequest = {
@@ -4857,13 +4855,27 @@ export type VectorStoreResponse = {
 };
 
 /**
+ * VectorStoreSearchContentChunkResponse
+ */
+export type VectorStoreSearchContentChunkResponse = {
+  /**
+   * Type
+   */
+  type: "text";
+  /**
+   * Text
+   */
+  text: string;
+};
+
+/**
  * VectorStoreSearchRequest
  */
 export type VectorStoreSearchRequest = {
   /**
    * Query
    */
-  query: string;
+  query: string | Array<string>;
   /**
    * Filters
    */
@@ -4887,9 +4899,53 @@ export type VectorStoreSearchRequest = {
  */
 export type VectorStoreSearchResponse = {
   /**
+   * Object
+   */
+  object: string;
+  /**
+   * Search Query
+   */
+  search_query: string;
+  /**
    * Data
    */
-  data: unknown;
+  data?: Array<VectorStoreSearchResultResponse>;
+  /**
+   * Has More
+   */
+  has_more?: boolean;
+  /**
+   * Next Page
+   */
+  next_page?: string | null;
+};
+
+/**
+ * VectorStoreSearchResultResponse
+ */
+export type VectorStoreSearchResultResponse = {
+  /**
+   * File Id
+   */
+  file_id: string;
+  /**
+   * Filename
+   */
+  filename: string;
+  /**
+   * Score
+   */
+  score: number;
+  /**
+   * Attributes
+   */
+  attributes?: {
+    [key: string]: unknown;
+  };
+  /**
+   * Content
+   */
+  content?: Array<VectorStoreSearchContentChunkResponse>;
 };
 
 /**
@@ -5305,12 +5361,112 @@ export type WorkflowSummary = {
   default?: boolean;
 };
 
+/**
+ * ErrorResponse
+ *
+ * Standard error response envelope.
+ */
+export type ErrorResponse = {
+  /**
+   * Operation success status flag.
+   */
+  success: boolean;
+  /**
+   * Short machine-readable error name.
+   */
+  error: string;
+  /**
+   * Human-readable error description.
+   */
+  message: string;
+  /**
+   * Additional error context for debugging.
+   */
+  details?: unknown;
+};
+
+/**
+ * ValidationErrorResponse
+ *
+ * Validation error envelope (RequestValidationError).
+ */
+export type ValidationErrorResponse = {
+  /**
+   * Operation success status flag.
+   */
+  success: boolean;
+  /**
+   * Short machine-readable error name.
+   */
+  error: string;
+  /**
+   * Human-readable error description.
+   */
+  message: string;
+  /**
+   * Pydantic validation errors list.
+   */
+  details: Array<{
+    [key: string]: unknown;
+  }>;
+};
+
 export type HealthCheckHealthGetData = {
   body?: never;
   path?: never;
   query?: never;
   url: "/health";
 };
+
+export type HealthCheckHealthGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type HealthCheckHealthGetError =
+  HealthCheckHealthGetErrors[keyof HealthCheckHealthGetErrors];
 
 export type HealthCheckHealthGetResponses = {
   /**
@@ -5329,6 +5485,56 @@ export type ReadinessCheckHealthReadyGetData = {
   url: "/health/ready";
 };
 
+export type ReadinessCheckHealthReadyGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ReadinessCheckHealthReadyGetError =
+  ReadinessCheckHealthReadyGetErrors[keyof ReadinessCheckHealthReadyGetErrors];
+
 export type ReadinessCheckHealthReadyGetResponses = {
   /**
    * Successful Response
@@ -5346,6 +5552,56 @@ export type StorageHealthHealthStorageGetData = {
   url: "/health/storage";
 };
 
+export type StorageHealthHealthStorageGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type StorageHealthHealthStorageGetError =
+  StorageHealthHealthStorageGetErrors[keyof StorageHealthHealthStorageGetErrors];
+
 export type StorageHealthHealthStorageGetResponses = {
   /**
    * Successful Response
@@ -5357,11 +5613,75 @@ export type StorageHealthHealthStorageGetResponse =
   StorageHealthHealthStorageGetResponses[keyof StorageHealthHealthStorageGetResponses];
 
 export type HandleStripeWebhookWebhooksStripePostData = {
-  body?: never;
+  body: {
+    [key: string]: unknown;
+  };
+  headers: {
+    /**
+     * Stripe-Signature
+     *
+     * Stripe signature header used to verify the webhook payload.
+     */
+    "stripe-signature": string | null;
+  };
   path?: never;
   query?: never;
   url: "/webhooks/stripe";
 };
+
+export type HandleStripeWebhookWebhooksStripePostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type HandleStripeWebhookWebhooksStripePostError =
+  HandleStripeWebhookWebhooksStripePostErrors[keyof HandleStripeWebhookWebhooksStripePostErrors];
 
 export type HandleStripeWebhookWebhooksStripePostResponses = {
   /**
@@ -5386,9 +5706,53 @@ export type LoginForAccessTokenApiV1AuthTokenPostData = {
 
 export type LoginForAccessTokenApiV1AuthTokenPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type LoginForAccessTokenApiV1AuthTokenPostError =
@@ -5419,9 +5783,53 @@ export type RefreshAccessTokenApiV1AuthRefreshPostData = {
 
 export type RefreshAccessTokenApiV1AuthRefreshPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type RefreshAccessTokenApiV1AuthRefreshPostError =
@@ -5446,9 +5854,53 @@ export type LogoutSessionApiV1AuthLogoutPostData = {
 
 export type LogoutSessionApiV1AuthLogoutPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type LogoutSessionApiV1AuthLogoutPostError =
@@ -5470,6 +5922,56 @@ export type LogoutAllSessionsApiV1AuthLogoutAllPostData = {
   query?: never;
   url: "/api/v1/auth/logout/all";
 };
+
+export type LogoutAllSessionsApiV1AuthLogoutAllPostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type LogoutAllSessionsApiV1AuthLogoutAllPostError =
+  LogoutAllSessionsApiV1AuthLogoutAllPostErrors[keyof LogoutAllSessionsApiV1AuthLogoutAllPostErrors];
 
 export type LogoutAllSessionsApiV1AuthLogoutAllPostResponses = {
   /**
@@ -5515,9 +6017,53 @@ export type ListUserSessionsApiV1AuthSessionsGetData = {
 
 export type ListUserSessionsApiV1AuthSessionsGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListUserSessionsApiV1AuthSessionsGetError =
@@ -5547,9 +6093,53 @@ export type RevokeUserSessionApiV1AuthSessionsSessionIdDeleteData = {
 
 export type RevokeUserSessionApiV1AuthSessionsSessionIdDeleteErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type RevokeUserSessionApiV1AuthSessionsSessionIdDeleteError =
@@ -5572,6 +6162,56 @@ export type GetCurrentUserInfoApiV1AuthMeGetData = {
   url: "/api/v1/auth/me";
 };
 
+export type GetCurrentUserInfoApiV1AuthMeGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type GetCurrentUserInfoApiV1AuthMeGetError =
+  GetCurrentUserInfoApiV1AuthMeGetErrors[keyof GetCurrentUserInfoApiV1AuthMeGetErrors];
+
 export type GetCurrentUserInfoApiV1AuthMeGetResponses = {
   /**
    * Successful Response
@@ -5588,6 +6228,56 @@ export type SendEmailVerificationApiV1AuthEmailSendPostData = {
   query?: never;
   url: "/api/v1/auth/email/send";
 };
+
+export type SendEmailVerificationApiV1AuthEmailSendPostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type SendEmailVerificationApiV1AuthEmailSendPostError =
+  SendEmailVerificationApiV1AuthEmailSendPostErrors[keyof SendEmailVerificationApiV1AuthEmailSendPostErrors];
 
 export type SendEmailVerificationApiV1AuthEmailSendPostResponses = {
   /**
@@ -5608,9 +6298,53 @@ export type VerifyEmailTokenApiV1AuthEmailVerifyPostData = {
 
 export type VerifyEmailTokenApiV1AuthEmailVerifyPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type VerifyEmailTokenApiV1AuthEmailVerifyPostError =
@@ -5635,9 +6369,53 @@ export type RequestPasswordResetApiV1AuthPasswordForgotPostData = {
 
 export type RequestPasswordResetApiV1AuthPasswordForgotPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type RequestPasswordResetApiV1AuthPasswordForgotPostError =
@@ -5662,9 +6440,53 @@ export type ConfirmPasswordResetApiV1AuthPasswordConfirmPostData = {
 
 export type ConfirmPasswordResetApiV1AuthPasswordConfirmPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ConfirmPasswordResetApiV1AuthPasswordConfirmPostError =
@@ -5689,9 +6511,53 @@ export type ChangePasswordApiV1AuthPasswordChangePostData = {
 
 export type ChangePasswordApiV1AuthPasswordChangePostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ChangePasswordApiV1AuthPasswordChangePostError =
@@ -5716,9 +6582,53 @@ export type AdminResetPasswordApiV1AuthPasswordResetPostData = {
 
 export type AdminResetPasswordApiV1AuthPasswordResetPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type AdminResetPasswordApiV1AuthPasswordResetPostError =
@@ -5753,9 +6663,53 @@ export type IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostData = {
 
 export type IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostError =
@@ -5801,9 +6755,53 @@ export type IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIs
 export type IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostError =
@@ -5888,9 +6886,53 @@ export type ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetData = {
 
 export type ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetError =
@@ -5943,9 +6985,53 @@ export type RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePost
 export type RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostError =
@@ -5969,6 +7055,56 @@ export type GetSignupAccessPolicyApiV1AuthSignupPolicyGetData = {
   url: "/api/v1/auth/signup-policy";
 };
 
+export type GetSignupAccessPolicyApiV1AuthSignupPolicyGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type GetSignupAccessPolicyApiV1AuthSignupPolicyGetError =
+  GetSignupAccessPolicyApiV1AuthSignupPolicyGetErrors[keyof GetSignupAccessPolicyApiV1AuthSignupPolicyGetErrors];
+
 export type GetSignupAccessPolicyApiV1AuthSignupPolicyGetResponses = {
   /**
    * Successful Response
@@ -5988,9 +7124,53 @@ export type RegisterTenantApiV1AuthRegisterPostData = {
 
 export type RegisterTenantApiV1AuthRegisterPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type RegisterTenantApiV1AuthRegisterPostError =
@@ -6015,9 +7195,53 @@ export type SubmitAccessRequestApiV1AuthRequestAccessPostData = {
 
 export type SubmitAccessRequestApiV1AuthRequestAccessPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type SubmitAccessRequestApiV1AuthRequestAccessPostError =
@@ -6055,9 +7279,53 @@ export type ListSignupRequestsApiV1AuthSignupRequestsGetData = {
 
 export type ListSignupRequestsApiV1AuthSignupRequestsGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListSignupRequestsApiV1AuthSignupRequestsGetError =
@@ -6089,9 +7357,53 @@ export type ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostData 
 export type ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostError =
@@ -6124,9 +7436,53 @@ export type RejectSignupRequestApiV1AuthSignupRequestsRequestIdRejectPostData =
 export type RejectSignupRequestApiV1AuthSignupRequestsRequestIdRejectPostErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type RejectSignupRequestApiV1AuthSignupRequestsRequestIdRejectPostError =
@@ -6173,9 +7529,53 @@ export type ListInvitesApiV1AuthInvitesGetData = {
 
 export type ListInvitesApiV1AuthInvitesGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListInvitesApiV1AuthInvitesGetError =
@@ -6200,9 +7600,53 @@ export type IssueInviteApiV1AuthInvitesPostData = {
 
 export type IssueInviteApiV1AuthInvitesPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type IssueInviteApiV1AuthInvitesPostError =
@@ -6232,9 +7676,53 @@ export type RevokeInviteApiV1AuthInvitesInviteIdRevokePostData = {
 
 export type RevokeInviteApiV1AuthInvitesInviteIdRevokePostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type RevokeInviteApiV1AuthInvitesInviteIdRevokePostError =
@@ -6256,6 +7744,56 @@ export type ListMfaMethodsApiV1AuthMfaGetData = {
   query?: never;
   url: "/api/v1/auth/mfa";
 };
+
+export type ListMfaMethodsApiV1AuthMfaGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ListMfaMethodsApiV1AuthMfaGetError =
+  ListMfaMethodsApiV1AuthMfaGetErrors[keyof ListMfaMethodsApiV1AuthMfaGetErrors];
 
 export type ListMfaMethodsApiV1AuthMfaGetResponses = {
   /**
@@ -6283,9 +7821,53 @@ export type StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostData = {
 
 export type StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostError =
@@ -6310,9 +7892,53 @@ export type VerifyTotpApiV1AuthMfaTotpVerifyPostData = {
 
 export type VerifyTotpApiV1AuthMfaTotpVerifyPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type VerifyTotpApiV1AuthMfaTotpVerifyPostError =
@@ -6342,9 +7968,53 @@ export type RevokeMfaMethodApiV1AuthMfaMethodIdDeleteData = {
 
 export type RevokeMfaMethodApiV1AuthMfaMethodIdDeleteErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type RevokeMfaMethodApiV1AuthMfaMethodIdDeleteError =
@@ -6367,6 +8037,56 @@ export type RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostData = {
   url: "/api/v1/auth/mfa/recovery/regenerate";
 };
 
+export type RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostError =
+  RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostErrors[keyof RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostErrors];
+
 export type RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostResponses =
   {
     /**
@@ -6387,9 +8107,53 @@ export type CompleteMfaChallengeApiV1AuthMfaCompletePostData = {
 
 export type CompleteMfaChallengeApiV1AuthMfaCompletePostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type CompleteMfaChallengeApiV1AuthMfaCompletePostError =
@@ -6424,9 +8188,53 @@ export type ChatWithAgentApiV1ChatPostData = {
 
 export type ChatWithAgentApiV1ChatPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ChatWithAgentApiV1ChatPostError =
@@ -6461,9 +8269,53 @@ export type StreamChatWithAgentApiV1ChatStreamPostData = {
 
 export type StreamChatWithAgentApiV1ChatStreamPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type StreamChatWithAgentApiV1ChatStreamPostError =
@@ -6507,9 +8359,53 @@ export type ListAvailableAgentsApiV1AgentsGetData = {
 
 export type ListAvailableAgentsApiV1AgentsGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListAvailableAgentsApiV1AgentsGetError =
@@ -6539,9 +8435,53 @@ export type GetAgentStatusApiV1AgentsAgentNameStatusGetData = {
 
 export type GetAgentStatusApiV1AgentsAgentNameStatusGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type GetAgentStatusApiV1AgentsAgentNameStatusGetError =
@@ -6564,6 +8504,56 @@ export type ListGuardrailsApiV1GuardrailsGetData = {
   url: "/api/v1/guardrails";
 };
 
+export type ListGuardrailsApiV1GuardrailsGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ListGuardrailsApiV1GuardrailsGetError =
+  ListGuardrailsApiV1GuardrailsGetErrors[keyof ListGuardrailsApiV1GuardrailsGetErrors];
+
 export type ListGuardrailsApiV1GuardrailsGetResponses = {
   /**
    * Response List Guardrails Api V1 Guardrails Get
@@ -6582,6 +8572,56 @@ export type ListPresetsApiV1GuardrailsPresetsGetData = {
   query?: never;
   url: "/api/v1/guardrails/presets";
 };
+
+export type ListPresetsApiV1GuardrailsPresetsGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ListPresetsApiV1GuardrailsPresetsGetError =
+  ListPresetsApiV1GuardrailsPresetsGetErrors[keyof ListPresetsApiV1GuardrailsPresetsGetErrors];
 
 export type ListPresetsApiV1GuardrailsPresetsGetResponses = {
   /**
@@ -6609,9 +8649,53 @@ export type GetGuardrailApiV1GuardrailsGuardrailKeyGetData = {
 
 export type GetGuardrailApiV1GuardrailsGuardrailKeyGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type GetGuardrailApiV1GuardrailsGuardrailKeyGetError =
@@ -6641,9 +8725,53 @@ export type GetPresetApiV1GuardrailsPresetsPresetKeyGetData = {
 
 export type GetPresetApiV1GuardrailsPresetsPresetKeyGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type GetPresetApiV1GuardrailsPresetsPresetKeyGetError =
@@ -6697,9 +8825,53 @@ export type ListWorkflowsApiV1WorkflowsGetData = {
 
 export type ListWorkflowsApiV1WorkflowsGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListWorkflowsApiV1WorkflowsGetError =
@@ -6739,9 +8911,53 @@ export type RunWorkflowApiV1WorkflowsWorkflowKeyRunPostData = {
 
 export type RunWorkflowApiV1WorkflowsWorkflowKeyRunPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type RunWorkflowApiV1WorkflowsWorkflowKeyRunPostError =
@@ -6819,9 +9035,53 @@ export type ListWorkflowRunsApiV1WorkflowsRunsGetData = {
 
 export type ListWorkflowRunsApiV1WorkflowsRunsGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListWorkflowRunsApiV1WorkflowsRunsGetError =
@@ -6874,9 +9134,53 @@ export type DeleteWorkflowRunApiV1WorkflowsRunsRunIdDeleteData = {
 
 export type DeleteWorkflowRunApiV1WorkflowsRunsRunIdDeleteErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type DeleteWorkflowRunApiV1WorkflowsRunsRunIdDeleteError =
@@ -6916,9 +9220,53 @@ export type GetWorkflowRunApiV1WorkflowsRunsRunIdGetData = {
 
 export type GetWorkflowRunApiV1WorkflowsRunsRunIdGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type GetWorkflowRunApiV1WorkflowsRunsRunIdGetError =
@@ -6958,9 +9306,53 @@ export type CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostData = {
 
 export type CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostError =
@@ -6997,9 +9389,53 @@ export type RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostData = {
 
 export type RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostError =
@@ -7039,9 +9475,53 @@ export type GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetData = {
 
 export type GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetError =
@@ -7093,9 +9573,53 @@ export type ListConversationsApiV1ConversationsGetData = {
 
 export type ListConversationsApiV1ConversationsGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListConversationsApiV1ConversationsGetError =
@@ -7153,9 +9677,53 @@ export type SearchConversationsApiV1ConversationsSearchGetData = {
 
 export type SearchConversationsApiV1ConversationsSearchGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type SearchConversationsApiV1ConversationsSearchGetError =
@@ -7195,9 +9763,53 @@ export type DeleteConversationApiV1ConversationsConversationIdDeleteData = {
 
 export type DeleteConversationApiV1ConversationsConversationIdDeleteErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type DeleteConversationApiV1ConversationsConversationIdDeleteError =
@@ -7238,9 +9850,53 @@ export type GetConversationApiV1ConversationsConversationIdGetData = {
 
 export type GetConversationApiV1ConversationsConversationIdGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type GetConversationApiV1ConversationsConversationIdGetError =
@@ -7299,9 +9955,53 @@ export type GetConversationMessagesApiV1ConversationsConversationIdMessagesGetDa
 export type GetConversationMessagesApiV1ConversationsConversationIdMessagesGetErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type GetConversationMessagesApiV1ConversationsConversationIdMessagesGetError =
@@ -7344,9 +10044,53 @@ export type UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchD
 export type UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchError =
@@ -7396,9 +10140,53 @@ export type GetConversationEventsApiV1ConversationsConversationIdEventsGetData =
 export type GetConversationEventsApiV1ConversationsConversationIdEventsGetErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type GetConversationEventsApiV1ConversationsConversationIdEventsGetError =
@@ -7441,9 +10229,53 @@ export type StreamConversationMetadataApiV1ConversationsConversationIdStreamGetD
 export type StreamConversationMetadataApiV1ConversationsConversationIdStreamGetErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type StreamConversationMetadataApiV1ConversationsConversationIdStreamGetError =
@@ -7467,15 +10299,61 @@ export type ListAvailableToolsApiV1ToolsGetData = {
   url: "/api/v1/tools";
 };
 
+export type ListAvailableToolsApiV1ToolsGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ListAvailableToolsApiV1ToolsGetError =
+  ListAvailableToolsApiV1ToolsGetErrors[keyof ListAvailableToolsApiV1ToolsGetErrors];
+
 export type ListAvailableToolsApiV1ToolsGetResponses = {
   /**
-   * Response List Available Tools Api V1 Tools Get
-   *
    * Successful Response
    */
-  200: {
-    [key: string]: unknown;
-  };
+  200: ToolCatalogResponse;
 };
 
 export type ListAvailableToolsApiV1ToolsGetResponse =
@@ -7555,9 +10433,53 @@ export type ListActivityEventsApiV1ActivityGetData = {
 
 export type ListActivityEventsApiV1ActivityGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListActivityEventsApiV1ActivityGetError =
@@ -7592,9 +10514,53 @@ export type StreamActivityEventsApiV1ActivityStreamGetData = {
 
 export type StreamActivityEventsApiV1ActivityStreamGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type StreamActivityEventsApiV1ActivityStreamGetError =
@@ -7602,10 +10568,19 @@ export type StreamActivityEventsApiV1ActivityStreamGetError =
 
 export type StreamActivityEventsApiV1ActivityStreamGetResponses = {
   /**
-   * Successful Response
+   * Server-sent events stream of activity updates.
+   *
+   * SSE framing:
+   * - Heartbeats are emitted as comments: `:\n\n`
+   * - Events are emitted as: `data: <json>\n\n`
+   *
+   * The `<json>` payload is a single ActivityEventItem object.
    */
-  200: unknown;
+  200: ActivityEventItem;
 };
+
+export type StreamActivityEventsApiV1ActivityStreamGetResponse =
+  StreamActivityEventsApiV1ActivityStreamGetResponses[keyof StreamActivityEventsApiV1ActivityStreamGetResponses];
 
 export type MarkActivityReadApiV1ActivityEventIdReadPostData = {
   body?: never;
@@ -7631,9 +10606,53 @@ export type MarkActivityReadApiV1ActivityEventIdReadPostData = {
 
 export type MarkActivityReadApiV1ActivityEventIdReadPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type MarkActivityReadApiV1ActivityEventIdReadPostError =
@@ -7673,9 +10692,53 @@ export type DismissActivityApiV1ActivityEventIdDismissPostData = {
 
 export type DismissActivityApiV1ActivityEventIdDismissPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type DismissActivityApiV1ActivityEventIdDismissPostError =
@@ -7710,9 +10773,53 @@ export type MarkAllActivityReadApiV1ActivityMarkAllReadPostData = {
 
 export type MarkAllActivityReadApiV1ActivityMarkAllReadPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type MarkAllActivityReadApiV1ActivityMarkAllReadPostError =
@@ -7756,9 +10863,53 @@ export type ListContainersApiV1ContainersGetData = {
 
 export type ListContainersApiV1ContainersGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListContainersApiV1ContainersGetError =
@@ -7793,9 +10944,53 @@ export type CreateContainerApiV1ContainersPostData = {
 
 export type CreateContainerApiV1ContainersPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type CreateContainerApiV1ContainersPostError =
@@ -7835,9 +11030,53 @@ export type DeleteContainerApiV1ContainersContainerIdDeleteData = {
 
 export type DeleteContainerApiV1ContainersContainerIdDeleteErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type DeleteContainerApiV1ContainersContainerIdDeleteError =
@@ -7877,9 +11116,53 @@ export type GetContainerByIdApiV1ContainersContainerIdGetData = {
 
 export type GetContainerByIdApiV1ContainersContainerIdGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type GetContainerByIdApiV1ContainersContainerIdGetError =
@@ -7921,9 +11204,53 @@ export type UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteData
 export type UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteError =
@@ -7965,9 +11292,53 @@ export type BindAgentContainerApiV1ContainersAgentsAgentKeyContainerPostData = {
 export type BindAgentContainerApiV1ContainersAgentsAgentKeyContainerPostErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type BindAgentContainerApiV1ContainersAgentsAgentKeyContainerPostError =
@@ -8012,9 +11383,53 @@ export type ListVectorStoresApiV1VectorStoresGetData = {
 
 export type ListVectorStoresApiV1VectorStoresGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListVectorStoresApiV1VectorStoresGetError =
@@ -8049,9 +11464,53 @@ export type CreateVectorStoreApiV1VectorStoresPostData = {
 
 export type CreateVectorStoreApiV1VectorStoresPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type CreateVectorStoreApiV1VectorStoresPostError =
@@ -8091,9 +11550,53 @@ export type DeleteVectorStoreApiV1VectorStoresVectorStoreIdDeleteData = {
 
 export type DeleteVectorStoreApiV1VectorStoresVectorStoreIdDeleteErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type DeleteVectorStoreApiV1VectorStoresVectorStoreIdDeleteError =
@@ -8133,9 +11636,53 @@ export type GetVectorStoreApiV1VectorStoresVectorStoreIdGetData = {
 
 export type GetVectorStoreApiV1VectorStoresVectorStoreIdGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type GetVectorStoreApiV1VectorStoresVectorStoreIdGetError =
@@ -8188,9 +11735,53 @@ export type ListFilesApiV1VectorStoresVectorStoreIdFilesGetData = {
 
 export type ListFilesApiV1VectorStoresVectorStoreIdFilesGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListFilesApiV1VectorStoresVectorStoreIdFilesGetError =
@@ -8230,9 +11821,53 @@ export type AttachFileApiV1VectorStoresVectorStoreIdFilesPostData = {
 
 export type AttachFileApiV1VectorStoresVectorStoreIdFilesPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type AttachFileApiV1VectorStoresVectorStoreIdFilesPostError =
@@ -8276,9 +11911,53 @@ export type DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteData = {
 
 export type DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteError =
@@ -8323,9 +12002,53 @@ export type GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetData = {
 
 export type GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetError =
@@ -8365,9 +12088,53 @@ export type SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostData = {
 
 export type SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostError =
@@ -8414,9 +12181,53 @@ export type UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgen
 export type UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDeleteErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDeleteError =
@@ -8463,9 +12274,53 @@ export type BindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKey
 export type BindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPostErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type BindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPostError =
@@ -8501,9 +12356,53 @@ export type CreatePresignedUploadApiV1StorageObjectsUploadUrlPostData = {
 
 export type CreatePresignedUploadApiV1StorageObjectsUploadUrlPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type CreatePresignedUploadApiV1StorageObjectsUploadUrlPostError =
@@ -8551,9 +12450,53 @@ export type ListObjectsApiV1StorageObjectsGetData = {
 
 export type ListObjectsApiV1StorageObjectsGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListObjectsApiV1StorageObjectsGetError =
@@ -8593,9 +12536,53 @@ export type GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetData = {
 
 export type GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetError =
@@ -8635,9 +12622,53 @@ export type DeleteObjectApiV1StorageObjectsObjectIdDeleteData = {
 
 export type DeleteObjectApiV1StorageObjectsObjectIdDeleteErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type DeleteObjectApiV1StorageObjectsObjectIdDeleteError =
@@ -8677,9 +12708,53 @@ export type DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetData = {
 
 export type DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetError =
@@ -8687,10 +12762,13 @@ export type DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetError =
 
 export type DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetResponses = {
   /**
-   * Successful Response
+   * Binary file download.
    */
-  200: unknown;
+  200: Blob | File;
 };
+
+export type DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetResponse =
+  DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetResponses[keyof DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetResponses];
 
 export type DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetData =
   {
@@ -8722,9 +12800,53 @@ export type DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFile
 export type DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetError =
@@ -8733,10 +12855,13 @@ export type DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFile
 export type DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetResponses =
   {
     /**
-     * Successful Response
+     * Binary file download.
      */
-    200: unknown;
+    200: Blob | File;
   };
+
+export type DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetResponse =
+  DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetResponses[keyof DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetResponses];
 
 export type SubmitContactApiV1ContactPostData = {
   body: ContactSubmissionRequest;
@@ -8747,9 +12872,53 @@ export type SubmitContactApiV1ContactPostData = {
 
 export type SubmitContactApiV1ContactPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type SubmitContactApiV1ContactPostError =
@@ -8772,6 +12941,56 @@ export type GetPlatformStatusApiV1StatusGetData = {
   url: "/api/v1/status";
 };
 
+export type GetPlatformStatusApiV1StatusGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type GetPlatformStatusApiV1StatusGetError =
+  GetPlatformStatusApiV1StatusGetErrors[keyof GetPlatformStatusApiV1StatusGetErrors];
+
 export type GetPlatformStatusApiV1StatusGetResponses = {
   /**
    * Successful Response
@@ -8789,12 +13008,65 @@ export type GetPlatformStatusRssApiV1StatusRssGetData = {
   url: "/api/v1/status/rss";
 };
 
+export type GetPlatformStatusRssApiV1StatusRssGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type GetPlatformStatusRssApiV1StatusRssGetError =
+  GetPlatformStatusRssApiV1StatusRssGetErrors[keyof GetPlatformStatusRssApiV1StatusRssGetErrors];
+
 export type GetPlatformStatusRssApiV1StatusRssGetResponses = {
   /**
-   * Successful Response
+   * RSS feed (XML).
    */
-  200: unknown;
+  200: string;
 };
+
+export type GetPlatformStatusRssApiV1StatusRssGetResponse =
+  GetPlatformStatusRssApiV1StatusRssGetResponses[keyof GetPlatformStatusRssApiV1StatusRssGetResponses];
 
 export type ListStatusSubscriptionsApiV1StatusSubscriptionsGetData = {
   body?: never;
@@ -8826,9 +13098,53 @@ export type ListStatusSubscriptionsApiV1StatusSubscriptionsGetData = {
 
 export type ListStatusSubscriptionsApiV1StatusSubscriptionsGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListStatusSubscriptionsApiV1StatusSubscriptionsGetError =
@@ -8853,9 +13169,53 @@ export type CreateStatusSubscriptionApiV1StatusSubscriptionsPostData = {
 
 export type CreateStatusSubscriptionApiV1StatusSubscriptionsPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type CreateStatusSubscriptionApiV1StatusSubscriptionsPostError =
@@ -8880,9 +13240,53 @@ export type VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostData = {
 
 export type VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostError =
@@ -8909,9 +13313,53 @@ export type ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostData = {
 export type ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostError =
@@ -8951,9 +13399,53 @@ export type RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDelete
 export type RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteError =
@@ -8985,9 +13477,53 @@ export type ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostData = {
 export type ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostError =
@@ -9023,9 +13559,53 @@ export type GetTenantSettingsApiV1TenantsSettingsGetData = {
 
 export type GetTenantSettingsApiV1TenantsSettingsGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type GetTenantSettingsApiV1TenantsSettingsGetError =
@@ -9060,9 +13640,53 @@ export type UpdateTenantSettingsApiV1TenantsSettingsPutData = {
 
 export type UpdateTenantSettingsApiV1TenantsSettingsPutErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type UpdateTenantSettingsApiV1TenantsSettingsPutError =
@@ -9085,6 +13709,56 @@ export type ListConsentsApiV1UsersConsentsGetData = {
   url: "/api/v1/users/consents";
 };
 
+export type ListConsentsApiV1UsersConsentsGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ListConsentsApiV1UsersConsentsGetError =
+  ListConsentsApiV1UsersConsentsGetErrors[keyof ListConsentsApiV1UsersConsentsGetErrors];
+
 export type ListConsentsApiV1UsersConsentsGetResponses = {
   /**
    * Response List Consents Api V1 Users Consents Get
@@ -9106,9 +13780,53 @@ export type RecordConsentApiV1UsersConsentsPostData = {
 
 export type RecordConsentApiV1UsersConsentsPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type RecordConsentApiV1UsersConsentsPostError =
@@ -9145,9 +13863,53 @@ export type ListNotificationPreferencesApiV1UsersNotificationPreferencesGetData 
 export type ListNotificationPreferencesApiV1UsersNotificationPreferencesGetErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type ListNotificationPreferencesApiV1UsersNotificationPreferencesGetError =
@@ -9187,9 +13949,53 @@ export type UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutData
 export type UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutError =
@@ -9225,9 +14031,53 @@ export type ListUsageApiV1UsageGetData = {
 
 export type ListUsageApiV1UsageGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListUsageApiV1UsageGetError =
@@ -9251,6 +14101,56 @@ export type ListBillingPlansApiV1BillingPlansGetData = {
   query?: never;
   url: "/api/v1/billing/plans";
 };
+
+export type ListBillingPlansApiV1BillingPlansGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ListBillingPlansApiV1BillingPlansGetError =
+  ListBillingPlansApiV1BillingPlansGetErrors[keyof ListBillingPlansApiV1BillingPlansGetErrors];
 
 export type ListBillingPlansApiV1BillingPlansGetResponses = {
   /**
@@ -9290,9 +14190,53 @@ export type GetTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGetData 
 export type GetTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGetErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type GetTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGetError =
@@ -9335,9 +14279,53 @@ export type UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchData =
 export type UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchError =
@@ -9379,9 +14367,53 @@ export type StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostData = {
 export type StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostError =
@@ -9424,9 +14456,53 @@ export type CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostD
 export type CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostError =
@@ -9467,9 +14543,53 @@ export type RecordUsageApiV1BillingTenantsTenantIdUsagePostData = {
 
 export type RecordUsageApiV1BillingTenantsTenantIdUsagePostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type RecordUsageApiV1BillingTenantsTenantIdUsagePostError =
@@ -9534,9 +14654,53 @@ export type ListBillingEventsApiV1BillingTenantsTenantIdEventsGetData = {
 
 export type ListBillingEventsApiV1BillingTenantsTenantIdEventsGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListBillingEventsApiV1BillingTenantsTenantIdEventsGetError =
@@ -9571,9 +14735,53 @@ export type BillingEventStreamApiV1BillingStreamGetData = {
 
 export type BillingEventStreamApiV1BillingStreamGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type BillingEventStreamApiV1BillingStreamGetError =
@@ -9581,10 +14789,19 @@ export type BillingEventStreamApiV1BillingStreamGetError =
 
 export type BillingEventStreamApiV1BillingStreamGetResponses = {
   /**
-   * Successful Response
+   * Server-sent events stream of billing events.
+   *
+   * SSE framing:
+   * - Heartbeats are emitted as comments: `: ping\n\n`
+   * - Events are emitted as: `data: <json>\n\n`
+   *
+   * The `<json>` payload is a single BillingEventResponse object.
    */
-  200: unknown;
+  200: BillingEventResponse;
 };
+
+export type BillingEventStreamApiV1BillingStreamGetResponse =
+  BillingEventStreamApiV1BillingStreamGetResponses[keyof BillingEventStreamApiV1BillingStreamGetResponses];
 
 export type ApplyTestFixturesApiV1TestFixturesApplyPostData = {
   body: PlaywrightFixtureSpec;
@@ -9595,9 +14812,53 @@ export type ApplyTestFixturesApiV1TestFixturesApplyPostData = {
 
 export type ApplyTestFixturesApiV1TestFixturesApplyPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ApplyTestFixturesApiV1TestFixturesApplyPostError =
@@ -9624,9 +14885,53 @@ export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPo
 export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostError =

@@ -1,7 +1,6 @@
 'use server';
 
 import {
-  billingEventStreamApiV1BillingStreamGet,
   cancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPost,
   getTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGet,
   listBillingEventsApiV1BillingTenantsTenantIdEventsGet,
@@ -24,46 +23,13 @@ import type { BillingEventHistoryResponse } from '@/types/billing';
 import { USE_API_MOCK } from '@/lib/config';
 
 import { getServerApiClient } from '../apiClient';
+import { proxyBackendSseStream } from '../streaming/sseProxy';
 
 const STREAM_HEADERS = {
   'Content-Type': 'text/event-stream',
   'Cache-Control': 'no-cache',
   Connection: 'keep-alive',
 } as const;
-
-function assertBillingSdkPresent() {
-  const missing: string[] = [];
-  if (!billingEventStreamApiV1BillingStreamGet) missing.push('billingEventStreamApiV1BillingStreamGet');
-  if (!listBillingPlansApiV1BillingPlansGet) missing.push('listBillingPlansApiV1BillingPlansGet');
-  if (!listBillingEventsApiV1BillingTenantsTenantIdEventsGet) {
-    missing.push('listBillingEventsApiV1BillingTenantsTenantIdEventsGet');
-  }
-  if (!getTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGet) {
-    missing.push('getTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGet');
-  }
-  if (!startSubscriptionApiV1BillingTenantsTenantIdSubscriptionPost) {
-    missing.push('startSubscriptionApiV1BillingTenantsTenantIdSubscriptionPost');
-  }
-  if (!updateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatch) {
-    missing.push('updateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatch');
-  }
-  if (!cancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPost) {
-    missing.push('cancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPost');
-  }
-  if (!recordUsageApiV1BillingTenantsTenantIdUsagePost) {
-    missing.push('recordUsageApiV1BillingTenantsTenantIdUsagePost');
-  }
-
-  if (missing.length) {
-    throw new Error(
-      `Billing SDK exports missing: ${missing.join(
-        ', ',
-      )}. Regenerate via "pnpm generate" against api-service/.artifacts/openapi.json.`,
-    );
-  }
-}
-
-assertBillingSdkPresent();
 
 export interface BillingStreamOptions {
   signal: AbortSignal;
@@ -99,38 +65,13 @@ export async function openBillingStream(options: BillingStreamOptions): Promise<
 
   const { client, auth } = await getServerApiClient();
 
-  const headers = new Headers({
-    Accept: 'text/event-stream',
-    ...(options.tenantRole ? { 'X-Tenant-Role': options.tenantRole } : {}),
-  });
-
-  const upstream = await billingEventStreamApiV1BillingStreamGet({
+  return proxyBackendSseStream({
     client,
     auth,
+    url: '/api/v1/billing/stream',
     signal: options.signal,
-    cache: 'no-store',
-    headers,
-    parseAs: 'stream',
-    responseStyle: 'fields',
-    throwOnError: true,
-  });
-
-  const stream = upstream.data;
-
-  if (!stream || !upstream.response) {
-    throw new Error('Billing stream returned no data.');
-  }
-
-  const responseHeaders = new Headers(STREAM_HEADERS);
-  const contentType = upstream.response.headers.get('Content-Type');
-  if (contentType) {
-    responseHeaders.set('Content-Type', contentType);
-  }
-
-  return new Response(stream as BodyInit, {
-    status: upstream.response.status,
-    statusText: upstream.response.statusText,
-    headers: responseHeaders,
+    requestHeaders: options.tenantRole ? { 'X-Tenant-Role': options.tenantRole } : undefined,
+    responseHeaders: STREAM_HEADERS,
   });
 }
 

@@ -4,6 +4,12 @@ import { searchVectorStoreApiV1VectorStoresVectorStoreIdSearchPost } from '@/lib
 import type { VectorStoreSearchRequest, VectorStoreSearchResponse } from '@/lib/api/client/types.gen';
 import { getServerApiClient } from '@/lib/server/apiClient';
 
+function isVectorStoreSearchResponse(payload: unknown): payload is VectorStoreSearchResponse {
+  if (!payload || typeof payload !== 'object') return false;
+  const record = payload as Record<string, unknown>;
+  return typeof record.object === 'string' && typeof record.search_query === 'string';
+}
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ vectorStoreId: string }> },
@@ -20,7 +26,13 @@ export async function POST(
       path: { vector_store_id: vectorStoreId },
       body: payload,
     });
-    return NextResponse.json((res.data ?? {}) as VectorStoreSearchResponse);
+    if (!isVectorStoreSearchResponse(res.data)) {
+      return NextResponse.json(
+        { message: 'Vector store search returned an invalid payload.' },
+        { status: 502 },
+      );
+    }
+    return NextResponse.json(res.data);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to search vector store';
     const normalized = message.toLowerCase();

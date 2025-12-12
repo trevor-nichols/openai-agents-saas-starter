@@ -104,6 +104,7 @@ import type {
   GetConversationMessagesApiV1ConversationsConversationIdMessagesGetErrors,
   GetConversationMessagesApiV1ConversationsConversationIdMessagesGetResponses,
   GetCurrentUserInfoApiV1AuthMeGetData,
+  GetCurrentUserInfoApiV1AuthMeGetErrors,
   GetCurrentUserInfoApiV1AuthMeGetResponses,
   GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetData,
   GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetErrors,
@@ -115,13 +116,16 @@ import type {
   GetGuardrailApiV1GuardrailsGuardrailKeyGetErrors,
   GetGuardrailApiV1GuardrailsGuardrailKeyGetResponses,
   GetPlatformStatusApiV1StatusGetData,
+  GetPlatformStatusApiV1StatusGetErrors,
   GetPlatformStatusApiV1StatusGetResponses,
   GetPlatformStatusRssApiV1StatusRssGetData,
+  GetPlatformStatusRssApiV1StatusRssGetErrors,
   GetPlatformStatusRssApiV1StatusRssGetResponses,
   GetPresetApiV1GuardrailsPresetsPresetKeyGetData,
   GetPresetApiV1GuardrailsPresetsPresetKeyGetErrors,
   GetPresetApiV1GuardrailsPresetsPresetKeyGetResponses,
   GetSignupAccessPolicyApiV1AuthSignupPolicyGetData,
+  GetSignupAccessPolicyApiV1AuthSignupPolicyGetErrors,
   GetSignupAccessPolicyApiV1AuthSignupPolicyGetResponses,
   GetTenantSettingsApiV1TenantsSettingsGetData,
   GetTenantSettingsApiV1TenantsSettingsGetErrors,
@@ -139,8 +143,10 @@ import type {
   GetWorkflowRunApiV1WorkflowsRunsRunIdGetErrors,
   GetWorkflowRunApiV1WorkflowsRunsRunIdGetResponses,
   HandleStripeWebhookWebhooksStripePostData,
+  HandleStripeWebhookWebhooksStripePostErrors,
   HandleStripeWebhookWebhooksStripePostResponses,
   HealthCheckHealthGetData,
+  HealthCheckHealthGetErrors,
   HealthCheckHealthGetResponses,
   IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData,
   IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors,
@@ -161,13 +167,16 @@ import type {
   ListAvailableAgentsApiV1AgentsGetErrors,
   ListAvailableAgentsApiV1AgentsGetResponses,
   ListAvailableToolsApiV1ToolsGetData,
+  ListAvailableToolsApiV1ToolsGetErrors,
   ListAvailableToolsApiV1ToolsGetResponses,
   ListBillingEventsApiV1BillingTenantsTenantIdEventsGetData,
   ListBillingEventsApiV1BillingTenantsTenantIdEventsGetErrors,
   ListBillingEventsApiV1BillingTenantsTenantIdEventsGetResponses,
   ListBillingPlansApiV1BillingPlansGetData,
+  ListBillingPlansApiV1BillingPlansGetErrors,
   ListBillingPlansApiV1BillingPlansGetResponses,
   ListConsentsApiV1UsersConsentsGetData,
+  ListConsentsApiV1UsersConsentsGetErrors,
   ListConsentsApiV1UsersConsentsGetResponses,
   ListContainersApiV1ContainersGetData,
   ListContainersApiV1ContainersGetErrors,
@@ -179,11 +188,13 @@ import type {
   ListFilesApiV1VectorStoresVectorStoreIdFilesGetErrors,
   ListFilesApiV1VectorStoresVectorStoreIdFilesGetResponses,
   ListGuardrailsApiV1GuardrailsGetData,
+  ListGuardrailsApiV1GuardrailsGetErrors,
   ListGuardrailsApiV1GuardrailsGetResponses,
   ListInvitesApiV1AuthInvitesGetData,
   ListInvitesApiV1AuthInvitesGetErrors,
   ListInvitesApiV1AuthInvitesGetResponses,
   ListMfaMethodsApiV1AuthMfaGetData,
+  ListMfaMethodsApiV1AuthMfaGetErrors,
   ListMfaMethodsApiV1AuthMfaGetResponses,
   ListNotificationPreferencesApiV1UsersNotificationPreferencesGetData,
   ListNotificationPreferencesApiV1UsersNotificationPreferencesGetErrors,
@@ -192,6 +203,7 @@ import type {
   ListObjectsApiV1StorageObjectsGetErrors,
   ListObjectsApiV1StorageObjectsGetResponses,
   ListPresetsApiV1GuardrailsPresetsGetData,
+  ListPresetsApiV1GuardrailsPresetsGetErrors,
   ListPresetsApiV1GuardrailsPresetsGetResponses,
   ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetData,
   ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetErrors,
@@ -221,6 +233,7 @@ import type {
   LoginForAccessTokenApiV1AuthTokenPostErrors,
   LoginForAccessTokenApiV1AuthTokenPostResponses,
   LogoutAllSessionsApiV1AuthLogoutAllPostData,
+  LogoutAllSessionsApiV1AuthLogoutAllPostErrors,
   LogoutAllSessionsApiV1AuthLogoutAllPostResponses,
   LogoutSessionApiV1AuthLogoutPostData,
   LogoutSessionApiV1AuthLogoutPostErrors,
@@ -232,6 +245,7 @@ import type {
   MarkAllActivityReadApiV1ActivityMarkAllReadPostErrors,
   MarkAllActivityReadApiV1ActivityMarkAllReadPostResponses,
   ReadinessCheckHealthReadyGetData,
+  ReadinessCheckHealthReadyGetErrors,
   ReadinessCheckHealthReadyGetResponses,
   RecordConsentApiV1UsersConsentsPostData,
   RecordConsentApiV1UsersConsentsPostErrors,
@@ -243,6 +257,7 @@ import type {
   RefreshAccessTokenApiV1AuthRefreshPostErrors,
   RefreshAccessTokenApiV1AuthRefreshPostResponses,
   RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostData,
+  RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostErrors,
   RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostResponses,
   RegisterTenantApiV1AuthRegisterPostData,
   RegisterTenantApiV1AuthRegisterPostErrors,
@@ -284,6 +299,7 @@ import type {
   SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostErrors,
   SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostResponses,
   SendEmailVerificationApiV1AuthEmailSendPostData,
+  SendEmailVerificationApiV1AuthEmailSendPostErrors,
   SendEmailVerificationApiV1AuthEmailSendPostResponses,
   StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostData,
   StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostErrors,
@@ -292,6 +308,7 @@ import type {
   StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostErrors,
   StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostResponses,
   StorageHealthHealthStorageGetData,
+  StorageHealthHealthStorageGetErrors,
   StorageHealthHealthStorageGetResponses,
   StreamActivityEventsApiV1ActivityStreamGetData,
   StreamActivityEventsApiV1ActivityStreamGetErrors,
@@ -364,7 +381,7 @@ export const healthCheckHealthGet = <ThrowOnError extends boolean = false>(
 ) => {
   return (options?.client ?? client).get<
     HealthCheckHealthGetResponses,
-    unknown,
+    HealthCheckHealthGetErrors,
     ThrowOnError
   >({
     url: "/health",
@@ -384,7 +401,7 @@ export const readinessCheckHealthReadyGet = <
 ) => {
   return (options?.client ?? client).get<
     ReadinessCheckHealthReadyGetResponses,
-    unknown,
+    ReadinessCheckHealthReadyGetErrors,
     ThrowOnError
   >({
     url: "/health/ready",
@@ -404,7 +421,7 @@ export const storageHealthHealthStorageGet = <
 ) => {
   return (options?.client ?? client).get<
     StorageHealthHealthStorageGetResponses,
-    unknown,
+    StorageHealthHealthStorageGetErrors,
     ThrowOnError
   >({
     url: "/health/storage",
@@ -418,15 +435,19 @@ export const storageHealthHealthStorageGet = <
 export const handleStripeWebhookWebhooksStripePost = <
   ThrowOnError extends boolean = false,
 >(
-  options?: Options<HandleStripeWebhookWebhooksStripePostData, ThrowOnError>,
+  options: Options<HandleStripeWebhookWebhooksStripePostData, ThrowOnError>,
 ) => {
-  return (options?.client ?? client).post<
+  return (options.client ?? client).post<
     HandleStripeWebhookWebhooksStripePostResponses,
-    unknown,
+    HandleStripeWebhookWebhooksStripePostErrors,
     ThrowOnError
   >({
     url: "/webhooks/stripe",
     ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
   });
 };
 
@@ -520,7 +541,7 @@ export const logoutAllSessionsApiV1AuthLogoutAllPost = <
 ) => {
   return (options?.client ?? client).post<
     LogoutAllSessionsApiV1AuthLogoutAllPostResponses,
-    unknown,
+    LogoutAllSessionsApiV1AuthLogoutAllPostErrors,
     ThrowOnError
   >({
     security: [
@@ -601,7 +622,7 @@ export const getCurrentUserInfoApiV1AuthMeGet = <
 ) => {
   return (options?.client ?? client).get<
     GetCurrentUserInfoApiV1AuthMeGetResponses,
-    unknown,
+    GetCurrentUserInfoApiV1AuthMeGetErrors,
     ThrowOnError
   >({
     security: [
@@ -628,7 +649,7 @@ export const sendEmailVerificationApiV1AuthEmailSendPost = <
 ) => {
   return (options?.client ?? client).post<
     SendEmailVerificationApiV1AuthEmailSendPostResponses,
-    unknown,
+    SendEmailVerificationApiV1AuthEmailSendPostErrors,
     ThrowOnError
   >({
     security: [
@@ -900,7 +921,7 @@ export const getSignupAccessPolicyApiV1AuthSignupPolicyGet = <
 ) => {
   return (options?.client ?? client).get<
     GetSignupAccessPolicyApiV1AuthSignupPolicyGetResponses,
-    unknown,
+    GetSignupAccessPolicyApiV1AuthSignupPolicyGetErrors,
     ThrowOnError
   >({
     url: "/api/v1/auth/signup-policy",
@@ -1133,7 +1154,7 @@ export const listMfaMethodsApiV1AuthMfaGet = <
 ) => {
   return (options?.client ?? client).get<
     ListMfaMethodsApiV1AuthMfaGetResponses,
-    unknown,
+    ListMfaMethodsApiV1AuthMfaGetErrors,
     ThrowOnError
   >({
     security: [
@@ -1239,7 +1260,7 @@ export const regenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePost = <
 ) => {
   return (options?.client ?? client).post<
     RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostResponses,
-    unknown,
+    RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostErrors,
     ThrowOnError
   >({
     security: [
@@ -1405,7 +1426,7 @@ export const listGuardrailsApiV1GuardrailsGet = <
 ) => {
   return (options?.client ?? client).get<
     ListGuardrailsApiV1GuardrailsGetResponses,
-    unknown,
+    ListGuardrailsApiV1GuardrailsGetErrors,
     ThrowOnError
   >({
     security: [
@@ -1431,7 +1452,7 @@ export const listPresetsApiV1GuardrailsPresetsGet = <
 ) => {
   return (options?.client ?? client).get<
     ListPresetsApiV1GuardrailsPresetsGetResponses,
-    unknown,
+    ListPresetsApiV1GuardrailsPresetsGetErrors,
     ThrowOnError
   >({
     security: [
@@ -1958,7 +1979,7 @@ export const listAvailableToolsApiV1ToolsGet = <
 ) => {
   return (options?.client ?? client).get<
     ListAvailableToolsApiV1ToolsGetResponses,
-    unknown,
+    ListAvailableToolsApiV1ToolsGetErrors,
     ThrowOnError
   >({
     security: [
@@ -2007,7 +2028,7 @@ export const streamActivityEventsApiV1ActivityStreamGet = <
     ThrowOnError
   >,
 ) => {
-  return (options?.client ?? client).get<
+  return (options?.client ?? client).sse.get<
     StreamActivityEventsApiV1ActivityStreamGetResponses,
     StreamActivityEventsApiV1ActivityStreamGetErrors,
     ThrowOnError
@@ -2764,7 +2785,7 @@ export const getPlatformStatusApiV1StatusGet = <
 ) => {
   return (options?.client ?? client).get<
     GetPlatformStatusApiV1StatusGetResponses,
-    unknown,
+    GetPlatformStatusApiV1StatusGetErrors,
     ThrowOnError
   >({
     url: "/api/v1/status",
@@ -2784,7 +2805,7 @@ export const getPlatformStatusRssApiV1StatusRssGet = <
 ) => {
   return (options?.client ?? client).get<
     GetPlatformStatusRssApiV1StatusRssGetResponses,
-    unknown,
+    GetPlatformStatusRssApiV1StatusRssGetErrors,
     ThrowOnError
   >({
     url: "/api/v1/status/rss",
@@ -3022,7 +3043,7 @@ export const listConsentsApiV1UsersConsentsGet = <
 ) => {
   return (options?.client ?? client).get<
     ListConsentsApiV1UsersConsentsGetResponses,
-    unknown,
+    ListConsentsApiV1UsersConsentsGetErrors,
     ThrowOnError
   >({
     security: [
@@ -3155,7 +3176,7 @@ export const listBillingPlansApiV1BillingPlansGet = <
 ) => {
   return (options?.client ?? client).get<
     ListBillingPlansApiV1BillingPlansGetResponses,
-    unknown,
+    ListBillingPlansApiV1BillingPlansGetErrors,
     ThrowOnError
   >({
     url: "/api/v1/billing/plans",
@@ -3360,7 +3381,7 @@ export const billingEventStreamApiV1BillingStreamGet = <
 >(
   options?: Options<BillingEventStreamApiV1BillingStreamGetData, ThrowOnError>,
 ) => {
-  return (options?.client ?? client).get<
+  return (options?.client ?? client).sse.get<
     BillingEventStreamApiV1BillingStreamGetResponses,
     BillingEventStreamApiV1BillingStreamGetErrors,
     ThrowOnError
