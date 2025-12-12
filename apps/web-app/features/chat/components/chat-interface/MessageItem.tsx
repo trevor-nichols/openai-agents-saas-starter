@@ -50,13 +50,15 @@ export function MessageItem({ message, onCopy, attachmentState, onResolveAttachm
         </MessageContent>
 
         <div className="flex flex-row items-center gap-2 pl-1 pt-1 opacity-0 transition-opacity group-hover:opacity-100">
-          {!isUser ? (
-            <Actions>
-              <Action tooltip="Copy message" label="Copy message" onClick={() => void onCopy(message.content)}>
-                <CopyIcon size={14} />
-              </Action>
-            </Actions>
-          ) : null}
+          <Actions>
+            <Action
+              tooltip="Copy message"
+              label="Copy message"
+              onClick={() => void onCopy(message.content)}
+            >
+              <CopyIcon size={14} />
+            </Action>
+          </Actions>
           <div className="text-[10px] text-muted-foreground">
             {message.isStreaming ? (
               <div className="flex items-center gap-1 text-muted-foreground">
