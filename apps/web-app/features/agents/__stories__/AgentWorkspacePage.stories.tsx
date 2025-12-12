@@ -18,6 +18,27 @@ type AgentWorkspacePreviewProps = {
 
 function AgentWorkspacePreview({ isLoading = false, showError = false }: AgentWorkspacePreviewProps) {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(agentSummaries[0]?.name ?? null);
+  const catalogPages =
+    agentSummaries.length > 6
+      ? [
+          {
+            items: agentSummaries.slice(0, 6),
+            next_cursor: 'cursor-1',
+            total: agentSummaries.length,
+          },
+          {
+            items: agentSummaries.slice(6, 12),
+            next_cursor: null,
+            total: agentSummaries.length,
+          },
+        ]
+      : [
+          {
+            items: agentSummaries,
+            next_cursor: null,
+            total: agentSummaries.length,
+          },
+        ];
 
   const toolsError = showError ? 'Tool registry unavailable' : null;
   const catalogError = showError ? 'Failed to load agents' : null;
@@ -33,13 +54,22 @@ function AgentWorkspacePreview({ isLoading = false, showError = false }: AgentWo
 
       <div className="grid gap-8 xl:grid-cols-[minmax(520px,1.1fr)_minmax(480px,1fr)]">
         <AgentCatalogGrid
-          agents={agentSummaries}
+          agentsPages={catalogPages}
+          visiblePageIndex={0}
+          totalAgents={agentSummaries.length}
+          hasNextPage={catalogPages.length > 1}
+          hasPrevPage={false}
+          isFetchingNextPage={false}
           toolsByAgent={toolsByAgent}
           summary={toolsSummary}
           isLoadingAgents={isLoading}
           isLoadingTools={isLoading}
           errorMessage={catalogError}
+          onNextPage={() => console.log('next page')}
+          onPrevPage={() => console.log('prev page')}
+          onPageSelect={(pageIndex: number) => console.log('select page', pageIndex)}
           onRefreshTools={() => console.log('refresh tools')}
+          onRefreshAgents={() => console.log('refresh agents')}
           selectedAgent={selectedAgent}
           onSelectAgent={setSelectedAgent}
         />

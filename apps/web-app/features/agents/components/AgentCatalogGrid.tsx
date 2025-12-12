@@ -3,55 +3,108 @@
 
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowUpRight } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { GlassPanel, InlineTag, SectionHeader } from '@/components/ui/foundation';
+import { InlineTag, SectionHeader } from '@/components/ui/foundation';
 import { EmptyState, ErrorState, SkeletonPanel } from '@/components/ui/states';
-import { formatRelativeTime } from '@/lib/utils/time';
-import type { AgentSummary } from '@/types/agents';
+import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from '@/components/ui/carousel';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import type { AgentListResponse } from '@/lib/api/client/types.gen';
 
+import { AgentCatalogCard } from './AgentCatalogCard';
 import type { ToolRegistrySummary, ToolsByAgentMap } from '../types';
 
 interface AgentCatalogGridProps {
-  agents: AgentSummary[];
-  toolsByAgent: ToolsByAgentMap;
-  summary: ToolRegistrySummary;
+  agentsPages: AgentListResponse[];
+  visiblePageIndex: number;
+  totalAgents: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+  isFetchingNextPage: boolean;
   isLoadingAgents: boolean;
   isLoadingTools: boolean;
   errorMessage: string | null;
+  onNextPage: () => void | Promise<void>;
+  onPrevPage: () => void | Promise<void>;
+  onPageSelect: (pageIndex: number) => void;
   onRefreshTools: () => void | Promise<void>;
+  onRefreshAgents: () => void | Promise<void>;
+  toolsByAgent: ToolsByAgentMap;
+  summary: ToolRegistrySummary;
   selectedAgent: string | null;
   onSelectAgent: (agentName: string) => void;
 }
 
 export function AgentCatalogGrid({
-  agents,
-  toolsByAgent,
-  summary: _summary,
+  agentsPages,
+  visiblePageIndex,
+  totalAgents,
+  hasNextPage,
+  hasPrevPage,
+  isFetchingNextPage,
   isLoadingAgents,
   isLoadingTools,
   errorMessage,
+  onNextPage,
+  onPrevPage,
+  onPageSelect,
   onRefreshTools,
+  onRefreshAgents,
+  toolsByAgent,
+  summary: _summary,
   selectedAgent,
   onSelectAgent,
 }: AgentCatalogGridProps) {
-  const totalAgents = agents.length;
+  const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
 
+  const pageCount = agentsPages.length;
+  const pageLabel = pageCount ? `${visiblePageIndex + 1}/${pageCount}${hasNextPage ? '+' : ''}` : '1/1';
   const isLoading = isLoadingAgents || isLoadingTools;
+
+  useEffect(() => {
+    if (!carouselApi) {
+      return;
+    }
+    carouselApi.scrollTo(Math.min(visiblePageIndex, Math.max(pageCount - 1, 0)), true);
+  }, [carouselApi, pageCount, visiblePageIndex]);
+
+  useEffect(() => {
+    if (!carouselApi) {
+      return;
+    }
+    const handleSelect = () => {
+      const idx = carouselApi.selectedScrollSnap();
+      onPageSelect(idx);
+    };
+    carouselApi.on('select', handleSelect);
+    return () => {
+      carouselApi.off('select', handleSelect);
+    };
+  }, [carouselApi, onPageSelect]);
+
+  const renderedPages = useMemo(() => {
+    if (pageCount === 0) {
+      return [];
+    }
+    return agentsPages;
+  }, [agentsPages, pageCount]);
 
   if (isLoading) {
     return <SkeletonPanel lines={8} />;
   }
 
-  if (errorMessage) {
+  const hasRenderablePages = renderedPages.length > 0 && totalAgents > 0;
+
+  if (errorMessage && !hasRenderablePages) {
     return (
       <ErrorState
         title="Unable to load agent catalog"
         message={errorMessage}
         onRetry={() => {
+          void onRefreshAgents();
           void onRefreshTools();
         }}
       />
@@ -68,6 +121,10 @@ export function AgentCatalogGrid({
     );
   }
 
+  if (!renderedPages.length) {
+    return <SkeletonPanel lines={8} />;
+  }
+
   return (
     <div className="space-y-6">
       <SectionHeader
@@ -79,6 +136,17 @@ export function AgentCatalogGrid({
             <InlineTag tone={totalAgents ? 'positive' : 'default'}>
               {`${totalAgents} agent${totalAgents === 1 ? '' : 's'}`}
             </InlineTag>
+            <InlineTag tone="default">Page {pageLabel}</InlineTag>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                void onRefreshAgents();
+              }}
+              disabled={isLoadingAgents}
+            >
+              Refresh agents
+            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -99,89 +167,72 @@ export function AgentCatalogGrid({
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-        {agents.map((agent) => {
-          const agentTools = toolsByAgent[agent.name] ?? [];
-          const isSelected = selectedAgent === agent.name;
-          const displayName = agent.display_name ?? agent.name;
-          return (
-            <GlassPanel
-              key={agent.name}
-              className="flex h-full cursor-pointer flex-col justify-between gap-4 border border-transparent transition hover:border-white/20"
-              onClick={() => onSelectAgent(agent.name)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault();
-                  onSelectAgent(agent.name);
-                }
+      {errorMessage ? (
+        <Alert variant="destructive">
+          <AlertTitle>Some pages failed to load</AlertTitle>
+          <AlertDescription className="flex flex-wrap items-center gap-3">
+            <span>{errorMessage}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                void onRefreshAgents();
               }}
-              role="button"
-              tabIndex={0}
+              disabled={isLoadingAgents || isFetchingNextPage}
             >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-lg font-semibold text-foreground">
-                      {displayName}
-                    </p>
-                    <p className="text-xs uppercase tracking-[0.2em] text-foreground/60">
-                      {agent.model ?? 'Unknown model'}
-                    </p>
-                  </div>
-                </div>
-                <p className="text-sm text-foreground/70">
-                  {agent.description ?? 'No description provided.'}
-                </p>
-              </div>
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-xs text-foreground/60">
-                  <span>Last heartbeat</span>
-                  <span>{agent.last_seen_at ? formatRelativeTime(agent.last_seen_at) : '—'}</span>
+      <div className="relative">
+        <Carousel
+          setApi={setCarouselApi}
+          opts={{ align: 'start', loop: false, watchDrag: true }}
+          className="px-1"
+        >
+          <CarouselContent className="gap-0">
+            {renderedPages.map((page, idx) => (
+              <CarouselItem key={`agent-page-${idx}`}>
+                <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+                  {(page.items ?? []).map((agent) => (
+                    <AgentCatalogCard
+                      key={agent.name}
+                      agent={agent}
+                      tools={toolsByAgent[agent.name] ?? []}
+                      isSelected={selectedAgent === agent.name}
+                      onSelect={onSelectAgent}
+                    />
+                  ))}
                 </div>
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/60">Tools</p>
-                  {agentTools.length ? (
-                    <div className="flex flex-wrap gap-2">
-                      {agentTools.slice(0, 6).map((tool) => (
-                        <Badge
-                          key={`${agent.name}-${tool}`}
-                          variant={isSelected ? 'default' : 'outline'}
-                          className="text-xs"
-                        >
-                          {tool}
-                        </Badge>
-                      ))}
-                      {agentTools.length > 6 ? (
-                        <Badge variant="outline" className="text-xs">
-                          +{agentTools.length - 6}
-                        </Badge>
-                      ) : null}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-foreground/50">No tools assigned</p>
-                  )}
-                </div>
-              </div>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
 
-              <div className="flex items-center justify-end border-t border-white/10 pt-4 text-sm">
-                <Button
-                  variant={isSelected ? 'default' : 'ghost'}
-                  size="sm"
-                  className="gap-2"
-                  aria-pressed={isSelected}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onSelectAgent(agent.name);
-                  }}
-                >
-                  {isSelected ? 'Active agent' : 'Route chat'}
-                  <ArrowUpRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </GlassPanel>
-          );
-        })}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm text-foreground/70">
+            <span>
+              Page {visiblePageIndex + 1} of {pageCount || 1}
+              {hasNextPage ? '+' : ''}
+            </span>
+            {isFetchingNextPage ? <Loader2 className="h-4 w-4 animate-spin text-foreground/60" /> : null}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => onPrevPage()} disabled={!hasPrevPage}>
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onNextPage()}
+              disabled={!hasNextPage && visiblePageIndex >= pageCount - 1}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

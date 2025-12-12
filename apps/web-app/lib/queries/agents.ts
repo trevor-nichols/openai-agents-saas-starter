@@ -1,9 +1,11 @@
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueries, useQuery } from '@tanstack/react-query';
 
-import { fetchAgentStatus, fetchAgents } from '@/lib/api/agents';
+import { fetchAgentStatus, fetchAgents, fetchAgentsPage } from '@/lib/api/agents';
 import type { AgentStatus } from '@/types/agents';
 
 import { queryKeys } from './keys';
+
+const DEFAULT_AGENT_PAGE_SIZE = 6;
 
 export function useAgents() {
   const {
@@ -20,6 +22,40 @@ export function useAgents() {
     agents,
     isLoadingAgents: isLoading,
     agentsError: error instanceof Error ? error : null,
+  };
+}
+
+export function useAgentsInfinite(params?: { pageSize?: number; search?: string | null }) {
+  const pageSize = params?.pageSize ?? DEFAULT_AGENT_PAGE_SIZE;
+  const search = params?.search ?? null;
+
+  const query = useInfiniteQuery({
+    queryKey: [...queryKeys.agents.list(), 'paginated', pageSize, search],
+    queryFn: ({ pageParam = null }) =>
+      fetchAgentsPage({
+        limit: pageSize,
+        cursor: pageParam,
+        search,
+      }),
+    getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+    initialPageParam: null as string | null,
+    staleTime: 30 * 1000,
+  });
+
+  const pages = query.data?.pages ?? [];
+  const agents = pages.flatMap((page) => page.items ?? []);
+  const totalAgents = pages[0]?.total ?? agents.length;
+
+  return {
+    pages,
+    agents,
+    totalAgents,
+    isLoadingAgents: query.isLoading,
+    agentsError: query.error instanceof Error ? query.error : null,
+    hasNextPage: query.hasNextPage ?? false,
+    fetchNextPage: query.fetchNextPage,
+    isFetchingNextPage: query.isFetchingNextPage,
+    refetchAgents: query.refetch,
   };
 }
 

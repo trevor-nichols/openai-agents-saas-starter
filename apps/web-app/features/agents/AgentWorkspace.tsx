@@ -3,13 +3,14 @@
 
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { SectionHeader } from '@/components/ui/foundation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ConversationDetailDrawer } from '@/components/shared/conversations/ConversationDetailDrawer';
 import { Button } from '@/components/ui/button';
 import { useChatController } from '@/lib/chat';
+import { useAgentStatuses } from '@/lib/queries/agents';
 
 import { AGENT_WORKSPACE_COPY } from './constants';
 import { useAgentWorkspaceData } from './hooks/useAgentWorkspaceData';
@@ -22,9 +23,15 @@ import { useCreateContainer, useDeleteContainer, useBindAgentContainer, useUnbin
 
 export function AgentWorkspace() {
   const {
+    agentsPages,
     agents,
+    agentsTotal,
     isLoadingAgents,
     agentsError,
+    hasNextAgentsPage,
+    fetchNextAgentsPage,
+    isFetchingNextAgentsPage,
+    refetchAgents,
     containers,
     isLoadingContainers,
     containersError,
@@ -43,6 +50,100 @@ export function AgentWorkspace() {
     updateConversationInList,
     removeConversationFromList,
   } = useAgentWorkspaceData();
+
+  const [pageIndex, setPageIndex] = useState(0);
+  const pagesLengthRef = useRef(agentsPages.length);
+
+  useEffect(() => {
+    pagesLengthRef.current = agentsPages.length;
+  }, [agentsPages.length]);
+
+  const clampedPageIndex = useMemo(() => {
+    if (agentsPages.length === 0) {
+      return 0;
+    }
+    return Math.min(pageIndex, agentsPages.length - 1);
+  }, [agentsPages.length, pageIndex]);
+
+  const statusQuery = useAgentStatuses(agents.map((agent) => agent.name));
+
+  const agentsWithStatus = useMemo(
+    () =>
+      agents.map((agent) => ({
+        ...agent,
+        last_seen_at: statusQuery.statusMap[agent.name]?.last_used ?? agent.last_seen_at ?? null,
+      })),
+    [agents, statusQuery.statusMap],
+  );
+
+  const pagedAgentsWithStatus = useMemo(
+    () =>
+      agentsPages.map((page) => ({
+        ...page,
+        items: (page.items ?? []).map((agent) => ({
+          ...agent,
+          last_seen_at: statusQuery.statusMap[agent.name]?.last_used ?? agent.last_seen_at ?? null,
+        })),
+      })),
+    [agentsPages, statusQuery.statusMap],
+  );
+
+  const pageCount = pagedAgentsWithStatus.length;
+  const hasPrevPage = clampedPageIndex > 0;
+  const canAdvanceLoadedPage = clampedPageIndex < pageCount - 1;
+  const rosterErrorMessage = agentsError?.message ?? statusQuery.statusError?.message ?? toolsError;
+  const rosterLoading = isLoadingAgents || statusQuery.isLoadingStatuses;
+
+  const handleNextPage = useCallback(async () => {
+    if (canAdvanceLoadedPage) {
+      setPageIndex((idx) => Math.min(idx + 1, pageCount - 1));
+      return;
+    }
+    if (!hasNextAgentsPage || isFetchingNextAgentsPage) {
+      return;
+    }
+    const result = await fetchNextAgentsPage();
+    const nextLength = result.data?.pages?.length ?? pagesLengthRef.current;
+    if (nextLength > pageCount) {
+      setPageIndex((idx) => Math.min(idx + 1, nextLength - 1));
+    }
+  }, [canAdvanceLoadedPage, fetchNextAgentsPage, hasNextAgentsPage, isFetchingNextAgentsPage, pageCount]);
+
+  const handlePrevPage = useCallback(() => {
+    if (!hasPrevPage) {
+      return;
+    }
+    setPageIndex((idx) => Math.max(idx - 1, 0));
+  }, [hasPrevPage]);
+
+  const handleCarouselSelect = useCallback(
+    async (nextIndex: number) => {
+      if (nextIndex === clampedPageIndex) {
+        return;
+      }
+      if (nextIndex < clampedPageIndex) {
+        setPageIndex(Math.max(0, nextIndex));
+        return;
+      }
+
+      // Attempting to move forward
+      if (nextIndex < pageCount) {
+        setPageIndex(Math.min(nextIndex, pageCount - 1));
+        return;
+      }
+
+      if (!hasNextAgentsPage || isFetchingNextAgentsPage) {
+        return;
+      }
+
+      const result = await fetchNextAgentsPage();
+      const nextLength = result.data?.pages?.length ?? pagesLengthRef.current;
+      if (nextLength > clampedPageIndex) {
+        setPageIndex(() => Math.min(nextIndex, nextLength - 1));
+      }
+    },
+    [clampedPageIndex, fetchNextAgentsPage, hasNextAgentsPage, isFetchingNextAgentsPage, pageCount],
+  );
 
   const chatController = useChatController({
     onConversationAdded: addConversationToList,
@@ -72,8 +173,6 @@ export function AgentWorkspace() {
   const deleteContainer = useDeleteContainer();
   const bindContainer = useBindAgentContainer(selectedAgent);
   const unbindContainer = useUnbindAgentContainer(selectedAgent);
-
-  const rosterErrorMessage = agentsError?.message ?? toolsError;
 
   const handleSelectConversationFromArchive = useCallback(
     (conversationId: string) => {
@@ -132,21 +231,30 @@ export function AgentWorkspace() {
 
       <div className="grid gap-8 xl:grid-cols-[minmax(520px,1.1fr)_minmax(640px,1fr)]">
         <AgentCatalogGrid
-          agents={agents}
+          agentsPages={pagedAgentsWithStatus}
+          visiblePageIndex={clampedPageIndex}
+          totalAgents={agentsTotal}
+          hasNextPage={hasNextAgentsPage}
+          hasPrevPage={hasPrevPage}
+          onNextPage={handleNextPage}
+          onPrevPage={handlePrevPage}
+          onPageSelect={handleCarouselSelect}
           toolsByAgent={toolsByAgent}
           summary={toolsSummary}
-          isLoadingAgents={isLoadingAgents}
+          isLoadingAgents={rosterLoading}
+          isFetchingNextPage={isFetchingNextAgentsPage}
           isLoadingTools={isLoadingTools}
           errorMessage={rosterErrorMessage}
           onRefreshTools={refetchTools}
+          onRefreshAgents={() => refetchAgents().then(() => undefined)}
           selectedAgent={selectedAgent}
           onSelectAgent={handleSelectAgent}
         />
 
         <AgentWorkspaceChatPanel
-          agents={agents}
+          agents={agentsWithStatus}
           agentsError={agentsError}
-          isLoadingAgents={isLoadingAgents}
+          isLoadingAgents={rosterLoading}
           selectedAgent={selectedAgent}
           onSelectAgent={handleSelectAgent}
           currentConversationId={currentConversationId}

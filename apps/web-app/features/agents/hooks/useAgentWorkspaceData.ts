@@ -1,18 +1,24 @@
 import { useMemo } from 'react';
 
-import { useAgentStatuses, useAgents } from '@/lib/queries/agents';
+import { useAgentsInfinite } from '@/lib/queries/agents';
 import { useConversations } from '@/lib/queries/conversations';
 import { useTools } from '@/lib/queries/tools';
 import { useContainersQuery } from '@/lib/queries/containers';
 
 import { buildToolsByAgentMap, summarizeToolRegistry } from '../utils/toolTransforms';
 import type { ToolRegistrySummary, ToolsByAgentMap } from '../types';
-import type { ContainerResponse } from '@/lib/api/client/types.gen';
+import type { AgentListResponse, ContainerResponse } from '@/lib/api/client/types.gen';
 
 export interface AgentWorkspaceQueries {
-  agents: ReturnType<typeof useAgents>['agents'];
+  agentsPages: AgentListResponse[];
+  agents: ReturnType<typeof useAgentsInfinite>['agents'];
+  agentsTotal: number;
   isLoadingAgents: boolean;
-  agentsError: ReturnType<typeof useAgents>['agentsError'];
+  agentsError: ReturnType<typeof useAgentsInfinite>['agentsError'];
+  hasNextAgentsPage: boolean;
+  fetchNextAgentsPage: ReturnType<typeof useAgentsInfinite>['fetchNextPage'];
+  isFetchingNextAgentsPage: boolean;
+  refetchAgents: ReturnType<typeof useAgentsInfinite>['refetchAgents'];
   containers: ContainerResponse[];
   isLoadingContainers: boolean;
   containersError: Error | null;
@@ -34,24 +40,14 @@ export interface AgentWorkspaceQueries {
 }
 
 export function useAgentWorkspaceData(): AgentWorkspaceQueries {
-  const agentsQuery = useAgents();
-  const statusQuery = useAgentStatuses(agentsQuery.agents.map((agent) => agent.name));
+  const agentsQuery = useAgentsInfinite();
   const toolsQuery = useTools();
   const conversationsQuery = useConversations();
   const containersQuery = useContainersQuery();
 
-  const agentsWithStatus = useMemo(
-    () =>
-      agentsQuery.agents.map((agent) => ({
-        ...agent,
-        last_seen_at: statusQuery.statusMap[agent.name]?.last_used ?? agent.last_seen_at ?? null,
-      })),
-    [agentsQuery.agents, statusQuery.statusMap],
-  );
-
   const toolsByAgent = useMemo(
-    () => buildToolsByAgentMap(agentsWithStatus, toolsQuery.tools),
-    [agentsWithStatus, toolsQuery.tools],
+    () => buildToolsByAgentMap(agentsQuery.agents, toolsQuery.tools),
+    [agentsQuery.agents, toolsQuery.tools],
   );
 
   const toolsSummary = useMemo(
@@ -60,9 +56,15 @@ export function useAgentWorkspaceData(): AgentWorkspaceQueries {
   );
 
   return {
-    agents: agentsWithStatus,
-    isLoadingAgents: agentsQuery.isLoadingAgents || statusQuery.isLoadingStatuses,
-    agentsError: agentsQuery.agentsError ?? statusQuery.statusError,
+    agentsPages: agentsQuery.pages,
+    agents: agentsQuery.agents,
+    agentsTotal: agentsQuery.totalAgents,
+    isLoadingAgents: agentsQuery.isLoadingAgents,
+    agentsError: agentsQuery.agentsError,
+    hasNextAgentsPage: agentsQuery.hasNextPage,
+    fetchNextAgentsPage: agentsQuery.fetchNextPage,
+    isFetchingNextAgentsPage: agentsQuery.isFetchingNextPage,
+    refetchAgents: agentsQuery.refetchAgents,
     containers: containersQuery.data?.items ?? [],
     isLoadingContainers: containersQuery.isLoading,
     containersError: (containersQuery.error as Error | null) ?? null,
