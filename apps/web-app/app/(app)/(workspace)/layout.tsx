@@ -9,9 +9,8 @@ interface WorkspaceLayoutProps {
 
 export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   return (
-    <div className="flex min-h-[70vh] flex-col gap-6">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {children}
     </div>
   );
 }
-

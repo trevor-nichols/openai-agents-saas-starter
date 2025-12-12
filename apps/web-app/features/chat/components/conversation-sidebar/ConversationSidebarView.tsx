@@ -78,7 +78,7 @@ export function ConversationSidebarView({
       <Tabs
         value={tab}
         onValueChange={(value) => onTabChange(value as ConversationSidebarTab)}
-        className="flex flex-1 flex-col overflow-hidden"
+        className="flex min-h-0 flex-1 flex-col overflow-hidden"
       >
         {showTabs && (
           <div className="px-4 pb-2">
@@ -93,7 +93,7 @@ export function ConversationSidebarView({
           </div>
         )}
 
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex min-h-0 flex-1">
           <div className="flex w-full min-w-0 max-w-full flex-col py-2">
             {tab === 'recent' ? (
               recentLoading && recentCount === 0 ? (

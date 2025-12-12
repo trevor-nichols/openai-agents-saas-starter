@@ -113,7 +113,7 @@ export function ChatWorkspace() {
       </Sheet>
 
       {/* Main Layout Container - Flex row to manage sidebar transition smoothly */}
-      <div className="flex min-h-[70vh] gap-6 overflow-hidden">
+      <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
         
         {/* Chat Interface (Flex Grow) */}
         <div className="flex-1 min-w-0 flex flex-col gap-4 transition-all duration-300 ease-in-out">
@@ -132,7 +132,7 @@ export function ChatWorkspace() {
               onShareLocationChange={setShareLocation}
               locationHint={locationHint}
               onLocationHintChange={updateLocationField}
-              className="h-full min-h-[600px]"
+              className="h-full min-h-0"
               hasOlderMessages={hasOlderMessages}
               isLoadingOlderMessages={isFetchingOlderMessages}
               onLoadOlderMessages={loadOlderMessages}
@@ -178,8 +178,8 @@ export function ChatWorkspace() {
                 isSidebarOpen ? "w-[320px] opacity-100 translate-x-0" : "w-0 opacity-0 translate-x-10"
             )}
         >
-           <div className="w-[320px] h-full flex flex-col">
-              <GlassPanel className="flex h-full flex-col p-0 overflow-hidden bg-background/40 backdrop-blur-xl border-l border-white/10">
+           <div className="w-[320px] min-h-0 flex flex-1 flex-col">
+              <GlassPanel className="flex min-h-0 flex-1 flex-col overflow-hidden border-l border-white/10 bg-background/40 p-0 backdrop-blur-xl">
                 {/* Agent Switcher Section */}
                 <div className="p-4 border-b border-white/5">
                   <AgentSwitcher
@@ -205,7 +205,7 @@ export function ChatWorkspace() {
                   onSelectConversation={handleSelectConversation}
                   onNewConversation={handleNewConversation}
                   onDeleteConversation={handleDeleteConversation}
-                  className="flex-1 border-none bg-transparent"
+                  className="min-h-0 flex-1 border-none bg-transparent"
                   variant="embedded"
                 />
               </GlassPanel>
