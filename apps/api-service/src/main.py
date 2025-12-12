@@ -14,6 +14,7 @@ from app.bootstrap import (
     get_container,
     shutdown_container,
     wire_conversation_query_service,
+    wire_storage_service,
     wire_title_service,
 )
 from app.core.provider_validation import (
@@ -426,12 +427,14 @@ async def lifespan(app: FastAPI):
     )
 
     # Agent service (after vector store is finalized)
+    wire_storage_service(container)
     wire_title_service(container)
     container.agent_service = build_agent_service(
         conversation_service=container.conversation_service,
         usage_recorder=container.usage_recorder,
         provider_registry=provider_registry,
         container_service=container.container_service,
+        storage_service=container.storage_service,
         vector_store_service=container.vector_store_service,
         title_service=container.title_service,
     )
