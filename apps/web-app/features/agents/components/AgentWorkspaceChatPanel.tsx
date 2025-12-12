@@ -53,8 +53,8 @@ export function AgentWorkspaceChatPanel({
   chatController,
 }: AgentWorkspaceChatPanelProps) {
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+    <div className="flex h-full flex-col gap-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <AgentSwitcher
           className="w-full lg:max-w-sm"
           agents={agents}
@@ -65,32 +65,34 @@ export function AgentWorkspaceChatPanel({
         />
         <div className="flex flex-wrap gap-2">
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             disabled={!currentConversationId}
             onClick={onShowConversationDetail}
           >
-            Conversation details
+            Details
           </Button>
           <Button variant="outline" size="sm" onClick={onStartNewConversation}>
-            New conversation
+            New chat
           </Button>
         </div>
       </div>
 
-      <ChatControllerProvider value={chatController}>
-        <ChatInterface
-          onSendMessage={onSendMessage}
-          currentConversationId={currentConversationId}
-          onClearConversation={onStartNewConversation}
-          onClearError={onClearError}
-          shareLocation={shareLocation}
-          onShareLocationChange={onShareLocationChange ?? (() => {})}
-          locationHint={locationHint}
-          onLocationHintChange={onLocationHintChange ?? (() => {})}
-          className="min-h-[520px]"
-        />
-      </ChatControllerProvider>
+      <div className="flex-1 min-h-0 rounded-2xl border bg-muted/10 p-4">
+        <ChatControllerProvider value={chatController}>
+          <ChatInterface
+            onSendMessage={onSendMessage}
+            currentConversationId={currentConversationId}
+            onClearConversation={onStartNewConversation}
+            onClearError={onClearError}
+            shareLocation={shareLocation}
+            onShareLocationChange={onShareLocationChange ?? (() => {})}
+            locationHint={locationHint}
+            onLocationHintChange={onLocationHintChange ?? (() => {})}
+            className="h-full"
+          />
+        </ChatControllerProvider>
+      </div>
     </div>
   );
 }

@@ -1,10 +1,11 @@
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, Cpu, Wrench } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
-import { GlassPanel } from '@/components/ui/foundation';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { formatRelativeTime } from '@/lib/utils/time';
 import type { AgentSummary } from '@/types/agents';
+import { cn } from '@/lib/utils';
 
 interface AgentCatalogCardProps {
   agent: AgentSummary;
@@ -17,9 +18,12 @@ export function AgentCatalogCard({ agent, tools, isSelected, onSelect }: AgentCa
   const displayName = agent.display_name ?? agent.name;
 
   return (
-    <GlassPanel
+    <Card
       key={agent.name}
-      className="flex h-full cursor-pointer flex-col justify-between gap-4 border border-transparent transition hover:border-white/20"
+      className={cn(
+        "group flex h-full cursor-pointer flex-col justify-between transition-all duration-200 hover:shadow-md",
+        isSelected ? "border-primary/50 bg-primary/5 ring-1 ring-primary/20" : "hover:border-primary/20 hover:bg-muted/30"
+      )}
       onClick={() => onSelect(agent.name)}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -30,57 +34,74 @@ export function AgentCatalogCard({ agent, tools, isSelected, onSelect }: AgentCa
       role="button"
       tabIndex={0}
     >
-      <div className="space-y-2">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-lg font-semibold text-foreground">{displayName}</p>
-            <p className="text-xs uppercase tracking-[0.2em] text-foreground/60">{agent.model ?? 'Unknown model'}</p>
+      <CardHeader className="space-y-2 p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <CardTitle className="text-base font-semibold leading-tight text-foreground group-hover:text-primary transition-colors">
+              {displayName}
+            </CardTitle>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Cpu className="h-3 w-3" />
+              <span className="uppercase tracking-wider">{agent.model ?? 'Unknown model'}</span>
+            </div>
           </div>
+          {agent.last_seen_at && (
+            <Badge variant="secondary" className="shrink-0 text-[10px] font-normal opacity-70">
+              {formatRelativeTime(agent.last_seen_at)}
+            </Badge>
+          )}
         </div>
-        <p className="text-sm text-foreground/70">{agent.description ?? 'No description provided.'}</p>
-      </div>
+        <p className="line-clamp-2 text-sm text-muted-foreground/80">
+          {agent.description ?? 'No description provided.'}
+        </p>
+      </CardHeader>
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between text-xs text-foreground/60">
-          <span>Last heartbeat</span>
-          <span>{agent.last_seen_at ? formatRelativeTime(agent.last_seen_at) : '—'}</span>
-        </div>
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/60">Tools</p>
+      <CardContent className="px-5 pb-4 pt-0">
+        <div className="space-y-2.5">
+          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+            <Wrench className="h-3 w-3" />
+            <span>Tools available</span>
+          </div>
           {tools.length ? (
-            <div className="flex flex-wrap gap-2">
-              {tools.slice(0, 6).map((tool) => (
-                <Badge key={`${agent.name}-${tool}`} variant={isSelected ? 'default' : 'outline'} className="text-xs">
+            <div className="flex flex-wrap gap-1.5">
+              {tools.slice(0, 4).map((tool) => (
+                <Badge
+                  key={`${agent.name}-${tool}`}
+                  variant="outline"
+                  className="bg-background/50 px-2 py-0 text-[10px] font-normal text-muted-foreground"
+                >
                   {tool}
                 </Badge>
               ))}
-              {tools.length > 6 ? (
-                <Badge variant="outline" className="text-xs">
-                  +{tools.length - 6}
+              {tools.length > 4 ? (
+                <Badge variant="outline" className="bg-background/50 px-2 py-0 text-[10px] text-muted-foreground">
+                  +{tools.length - 4}
                 </Badge>
               ) : null}
             </div>
           ) : (
-            <p className="text-sm text-foreground/50">No tools assigned</p>
+            <p className="text-xs text-muted-foreground/50 italic">No tools assigned</p>
           )}
         </div>
-      </div>
+      </CardContent>
 
-      <div className="flex items-center justify-end border-t border-white/10 pt-4 text-sm">
+      <CardFooter className="border-t bg-muted/10 p-3">
         <Button
           variant={isSelected ? 'default' : 'ghost'}
           size="sm"
-          className="gap-2"
-          aria-pressed={isSelected}
+          className={cn(
+            "w-full justify-between gap-2 text-xs",
+            !isSelected && "text-muted-foreground hover:text-foreground"
+          )}
           onClick={(event) => {
             event.stopPropagation();
             onSelect(agent.name);
           }}
         >
-          {isSelected ? 'Active agent' : 'Route chat'}
-          <ArrowUpRight className="h-4 w-4" />
+          <span>{isSelected ? 'Active Session' : 'Start Session'}</span>
+          <ArrowUpRight className="h-3 w-3" />
         </Button>
-      </div>
-    </GlassPanel>
+      </CardFooter>
+    </Card>
   );
 }

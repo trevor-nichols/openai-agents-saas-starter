@@ -5,10 +5,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Plus, RefreshCw } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { InlineTag, SectionHeader } from '@/components/ui/foundation';
+import { InlineTag } from '@/components/ui/foundation';
 import { EmptyState, ErrorState, SkeletonPanel } from '@/components/ui/states';
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from '@/components/ui/carousel';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -61,7 +61,6 @@ export function AgentCatalogGrid({
   const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
 
   const pageCount = agentsPages.length;
-  const pageLabel = pageCount ? `${visiblePageIndex + 1}/${pageCount}${hasNextPage ? '+' : ''}` : '1/1';
   const isLoading = isLoadingAgents || isLoadingTools;
 
   useEffect(() => {
@@ -115,7 +114,7 @@ export function AgentCatalogGrid({
     return (
       <EmptyState
         title="No agents registered yet"
-        description="Provision your first agent via the CLI or API, then refresh this page to see live telemetry."
+        description="Provision your first agent via the CLI or API."
         action={<Button disabled>Create agent</Button>}
       />
     );
@@ -126,63 +125,40 @@ export function AgentCatalogGrid({
   }
 
   return (
-    <div className="space-y-6">
-      <SectionHeader
-        eyebrow="Automation"
-        title="Agent catalog"
-        description="Inspect active agents, review their telemetry, and route chats with confidence."
-        actions={
-          <div className="flex flex-wrap items-center gap-3">
-            <InlineTag tone={totalAgents ? 'positive' : 'default'}>
-              {`${totalAgents} agent${totalAgents === 1 ? '' : 's'}`}
-            </InlineTag>
-            <InlineTag tone="default">Page {pageLabel}</InlineTag>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                void onRefreshAgents();
-              }}
-              disabled={isLoadingAgents}
-            >
-              Refresh agents
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                void onRefreshTools();
-              }}
-              disabled={isLoadingTools}
-            >
-              Refresh tools
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/chat">Open workspace</Link>
-            </Button>
-            <Button size="sm" disabled>
-              Create agent
-            </Button>
-          </div>
-        }
-      />
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-foreground">Available Agents</h3>
+          <InlineTag tone={totalAgents ? 'positive' : 'default'}>
+            {totalAgents}
+          </InlineTag>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => {
+              void onRefreshAgents();
+              void onRefreshTools();
+            }}
+            disabled={isLoadingAgents}
+            title="Refresh"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7" asChild title="Open full workspace">
+            <Link href="/chat">
+              <Plus className="h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        </div>
+      </div>
 
       {errorMessage ? (
         <Alert variant="destructive">
-          <AlertTitle>Some pages failed to load</AlertTitle>
-          <AlertDescription className="flex flex-wrap items-center gap-3">
-            <span>{errorMessage}</span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                void onRefreshAgents();
-              }}
-              disabled={isLoadingAgents || isFetchingNextPage}
-            >
-              Retry
-            </Button>
-          </AlertDescription>
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription className="text-xs">{errorMessage}</AlertDescription>
         </Alert>
       ) : null}
 
@@ -190,12 +166,12 @@ export function AgentCatalogGrid({
         <Carousel
           setApi={setCarouselApi}
           opts={{ align: 'start', loop: false, watchDrag: true }}
-          className="px-1"
+          className="w-full"
         >
-          <CarouselContent className="gap-0">
+          <CarouselContent className="gap-0 ml-0">
             {renderedPages.map((page, idx) => (
-              <CarouselItem key={`agent-page-${idx}`}>
-                <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+              <CarouselItem key={`agent-page-${idx}`} className="pl-0">
+                <div className="flex flex-col gap-3">
                   {(page.items ?? []).map((agent) => (
                     <AgentCatalogCard
                       key={agent.name}
@@ -211,28 +187,35 @@ export function AgentCatalogGrid({
           </CarouselContent>
         </Carousel>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-sm text-foreground/70">
-            <span>
-              Page {visiblePageIndex + 1} of {pageCount || 1}
-              {hasNextPage ? '+' : ''}
-            </span>
-            {isFetchingNextPage ? <Loader2 className="h-4 w-4 animate-spin text-foreground/60" /> : null}
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => onPrevPage()} disabled={!hasPrevPage}>
-              Previous
-            </Button>
+        {(hasPrevPage || hasNextPage) && (
+          <div className="mt-4 flex items-center justify-center gap-2">
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
+              className="h-8 w-8 rounded-full"
+              onClick={() => onPrevPage()}
+              disabled={!hasPrevPage}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-xs text-muted-foreground min-w-[3rem] text-center">
+              {visiblePageIndex + 1} / {pageCount}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 rounded-full"
               onClick={() => onNextPage()}
               disabled={!hasNextPage && visiblePageIndex >= pageCount - 1}
             >
-              Next
+              {isFetchingNextPage ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
             </Button>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
