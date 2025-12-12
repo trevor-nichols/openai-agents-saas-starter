@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 
 import { ErrorState } from '@/components/ui/states';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { USE_API_MOCK } from '@/lib/config';
 import {
   useWorkflowDescriptorQuery,
@@ -11,8 +12,9 @@ import {
   useWorkflowsQuery,
 } from '@/lib/queries/workflows';
 import type { LocationHint } from '@/lib/api/client/types.gen';
-import { RunHistoryPanel } from './components/RunHistoryPanel';
-import { RunConsole } from './components/RunConsole';
+
+import { WorkflowCanvas } from './components/WorkflowCanvas';
+import { WorkflowRunFeed } from './components/WorkflowRunFeed';
 import { WorkflowSidebar } from './components/WorkflowSidebar';
 import type { WorkflowStatusFilter } from './constants';
 import {
@@ -105,58 +107,67 @@ export function WorkflowsWorkspace() {
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)_320px]">
-      <WorkflowSidebar
-        workflows={workflows}
-        isLoadingWorkflows={isWorkflowsLoading}
-        selectedKey={selectedWorkflowKey}
-        onSelect={setWorkflow}
-        descriptor={descriptorQuery.data ?? null}
-        isLoadingDescriptor={descriptorQuery.isLoading}
-        activeStep={activeStreamStep}
-      />
+    <div className="h-[calc(100vh-4rem)] overflow-hidden">
+        <ResizablePanelGroup direction="horizontal" className="h-full border-t">
+            <ResizablePanel defaultSize={20} minSize={15} maxSize={30} className="bg-background">
+                <WorkflowSidebar
+                    workflows={workflows}
+                    isLoadingWorkflows={isWorkflowsLoading}
+                    selectedKey={selectedWorkflowKey}
+                    onSelect={setWorkflow}
+                />
+            </ResizablePanel>
+            
+            <ResizableHandle />
+            
+            <ResizablePanel defaultSize={55} minSize={30} className="bg-muted/5 relative">
+                <WorkflowCanvas
+                    descriptor={descriptorQuery.data ?? null}
+                    activeStep={activeStreamStep}
+                    selectedKey={selectedWorkflowKey}
+                    onRun={handleRun}
+                    isRunning={isStreaming}
+                    runError={runError}
+                    isLoadingWorkflows={isWorkflowsLoading}
+                    streamStatus={streamStatus}
+                />
+            </ResizablePanel>
 
-      <div className="space-y-4">
-        <RunConsole
-          workflows={workflows}
-          selectedWorkflowKey={selectedWorkflowKey}
-          onRun={handleRun}
-          isRunning={isStreaming}
-          isLoadingWorkflows={isWorkflowsLoading}
-          runError={runError}
-          streamStatus={streamStatus}
-          isMockMode={USE_API_MOCK}
-          onSimulate={simulate}
-          streamEvents={streamEvents}
-          lastRunSummary={lastSummary}
-          lastUpdated={lastUpdated}
-          selectedRunId={selectedRunId}
-          runDetail={runDetailQuery.data ?? null}
-          runEvents={runEventsQuery.data ?? null}
-          isLoadingRun={runDetailQuery.isLoading}
-          isLoadingEvents={runEventsQuery.isLoading}
-          onCancelRun={cancelRun}
-          cancelPending={cancelPending}
-          onDeleteRun={deleteRun}
-          deletingRunId={deletingRunId}
-        />
-      </div>
+            <ResizableHandle />
 
-      <RunHistoryPanel
-        runs={runs.runs}
-        workflows={workflows}
-        statusFilter={statusFilter}
-        onStatusChange={setStatusFilter}
-        onRefresh={runs.refetch}
-        onLoadMore={runs.loadMore}
-        hasMore={runs.hasMore}
-        isLoading={runs.isInitialLoading}
-        isFetchingMore={runs.isLoadingMore}
-        onSelectRun={(runId, workflowKey) => setRun(runId, workflowKey ?? selectedWorkflowKey)}
-        selectedRunId={selectedRunId}
-        onDeleteRun={deleteRun}
-        deletingRunId={deletingRunId}
-      />
+            <ResizablePanel defaultSize={25} minSize={20} maxSize={40} className="bg-background">
+                <WorkflowRunFeed
+                    workflows={workflows}
+                    streamEvents={streamEvents}
+                    streamStatus={streamStatus}
+                    runError={runError}
+                    isMockMode={USE_API_MOCK}
+                    onSimulate={simulate}
+                    lastRunSummary={lastSummary}
+                    lastUpdated={lastUpdated}
+                    selectedRunId={selectedRunId}
+                    
+                    runDetail={runDetailQuery.data ?? null}
+                    runEvents={runEventsQuery.data ?? null}
+                    isLoadingRun={runDetailQuery.isLoading}
+                    isLoadingEvents={runEventsQuery.isLoading}
+                    onCancelRun={cancelRun}
+                    cancelPending={cancelPending}
+                    onDeleteRun={deleteRun}
+                    deletingRunId={deletingRunId}
+
+                    historyRuns={runs.runs}
+                    historyStatusFilter={statusFilter}
+                    onHistoryStatusChange={setStatusFilter}
+                    onHistoryRefresh={runs.refetch}
+                    onHistoryLoadMore={runs.loadMore}
+                    historyHasMore={runs.hasMore}
+                    isHistoryLoading={runs.isInitialLoading}
+                    isHistoryFetchingMore={runs.isLoadingMore}
+                    onSelectRun={(runId, workflowKey) => setRun(runId, workflowKey ?? selectedWorkflowKey)}
+                />
+            </ResizablePanel>
+        </ResizablePanelGroup>
     </div>
   );
 }

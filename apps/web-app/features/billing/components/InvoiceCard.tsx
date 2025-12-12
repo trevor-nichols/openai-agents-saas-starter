@@ -1,9 +1,10 @@
 import Link from 'next/link';
+import { FileText } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { GlassPanel } from '@/components/ui/foundation';
-import { SkeletonPanel } from '@/components/ui/states';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { InvoiceSummary } from '@/features/billing/types';
 
 interface InvoiceCardProps {
@@ -13,37 +14,50 @@ interface InvoiceCardProps {
 
 export function InvoiceCard({ summary, isLoading }: InvoiceCardProps) {
   return (
-    <GlassPanel className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-foreground/50">Upcoming invoice</p>
-          <p className="text-lg font-semibold text-foreground">{summary?.amountLabel ?? '—'}</p>
-        </div>
-        <Badge variant="outline">{summary?.statusLabel ?? 'pending'}</Badge>
-      </div>
-
-      {isLoading ? (
-        <SkeletonPanel lines={4} />
-      ) : summary ? (
-        <div className="space-y-2 text-sm text-foreground/70">
-          <p>
-            <strong>Reason:</strong> {summary.reason ?? 'Usage'}
-          </p>
-          <p>
-            <strong>Collection:</strong> {summary.collectionMethod ?? 'auto'}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {summary.invoiceUrl ? (
-              <Button asChild size="sm">
-                <Link href={summary.invoiceUrl}>View invoice</Link>
-              </Button>
-            ) : null}
-            <Button asChild size="sm" variant="ghost">
-              <Link href="/billing/plans">Manage plan</Link>
-            </Button>
+    <Card className="flex flex-col">
+      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">Upcoming Invoice</CardTitle>
+        <FileText className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      
+      <CardContent className="flex-1 space-y-4">
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-24" />
+            <Skeleton className="h-4 w-16" />
           </div>
-        </div>
-      ) : null}
-    </GlassPanel>
+        ) : summary ? (
+          <>
+            <div className="space-y-1">
+              <span className="text-2xl font-bold">{summary.amountLabel}</span>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="font-normal text-[10px] uppercase tracking-wide">
+                  {summary.statusLabel}
+                </Badge>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {summary.reason ?? 'Usage'} · {summary.collectionMethod === 'charge_automatically' ? 'Auto-pay' : 'Invoiced'}
+            </p>
+          </>
+        ) : (
+          <div className="flex h-full items-center">
+            <p className="text-sm text-muted-foreground">No pending invoice</p>
+          </div>
+        )}
+      </CardContent>
+
+      <CardFooter>
+        {summary?.invoiceUrl ? (
+          <Button asChild size="sm" variant="outline" className="w-full">
+            <Link href={summary.invoiceUrl}>View invoice</Link>
+          </Button>
+        ) : (
+          <Button disabled size="sm" variant="outline" className="w-full">
+            No invoice
+          </Button>
+        )}
+      </CardFooter>
+    </Card>
   );
 }
