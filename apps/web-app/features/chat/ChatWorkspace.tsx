@@ -116,7 +116,7 @@ export function ChatWorkspace() {
       <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
         
         {/* Chat Interface (Flex Grow) */}
-        <div className="flex-1 min-w-0 flex flex-col gap-4 transition-all duration-300 ease-in-out">
+        <div className="flex min-h-0 flex-1 min-w-0 flex-col overflow-hidden transition-all duration-300 ease-in-out">
           <ChatControllerProvider value={chatController}>
             <ChatInterface
               onSendMessage={sendMessage}

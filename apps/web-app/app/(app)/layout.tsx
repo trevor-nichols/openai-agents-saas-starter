@@ -42,7 +42,7 @@ async function AppLayoutContent({ children }: AppLayoutProps) {
         }}
       />
 
-      <SidebarInset>
+      <SidebarInset className="overflow-hidden">
         {children}
       </SidebarInset>
     </SidebarProvider>

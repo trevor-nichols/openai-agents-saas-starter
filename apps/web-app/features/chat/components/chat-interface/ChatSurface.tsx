@@ -109,7 +109,7 @@ export function ChatSurface({
   const isBusy = isSending || isLoadingHistory;
 
   return (
-    <div className={cn('relative flex h-full flex-col overflow-hidden bg-background', className)}>
+    <div className={cn('relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background', className)}>
       {headerProps ? (
         <div className="border-b border-border/40 px-6 py-4">
           <SectionHeader {...headerProps} size="compact" />
