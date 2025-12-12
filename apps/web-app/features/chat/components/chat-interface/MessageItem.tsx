@@ -25,7 +25,7 @@ export function MessageItem({ message, onCopy, attachmentState, onResolveAttachm
   return (
     <Message from={message.role} className="mb-2">
       <div className="flex min-w-0 flex-col gap-1">
-        <MessageContent className={isUser ? '' : 'bg-transparent pl-0 pt-0'}>
+        <MessageContent>
           <Response className="leading-relaxed" citations={message.citations ?? undefined}>
             {message.content}
           </Response>
