@@ -1,7 +1,7 @@
 import { GlassPanel } from '@/components/ui/foundation/GlassPanel';
 import { cn } from '@/lib/utils';
 
-type EmptyStateVariant = 'default' | 'ghost';
+type EmptyStateVariant = 'default' | 'card';
 
 interface EmptyStateProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string;
@@ -20,16 +20,16 @@ export function EmptyState({
   className,
   ...props
 }: EmptyStateProps) {
-  const Container = variant === 'ghost' ? 'div' : GlassPanel;
+  const Container = variant === 'card' ? GlassPanel : 'div';
   const containerClass = cn(
     'text-center',
-    variant === 'ghost' && 'bg-transparent p-0 shadow-none',
+    variant === 'default' && 'bg-transparent p-0 shadow-none',
     className,
   );
 
   const iconClass = cn(
     'mx-auto flex h-14 w-14 items-center justify-center rounded-full text-2xl text-foreground/70',
-    variant === 'ghost' ? 'border border-dashed border-white/10 bg-transparent' : 'border border-white/10 bg-white/5',
+    variant === 'default' ? 'bg-transparent' : 'border border-white/10 bg-white/5',
   );
 
   return (
