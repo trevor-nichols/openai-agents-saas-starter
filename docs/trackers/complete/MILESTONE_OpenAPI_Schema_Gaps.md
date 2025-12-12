@@ -193,9 +193,11 @@ Implementation notes (Phase 5):
 
 #### Phase 6 — Publish artifacts + frontend alignment
 
-- [ ] Export OpenAPI artifact to `apps/api-service/.artifacts/openapi-fixtures.json`.
-- [ ] Regenerate the frontend HeyAPI client (`apps/web-app/lib/api/client/**`) using the artifact.
-- [ ] Run `just backend-typecheck` and `just web-typecheck` to validate end-to-end typing.
+- [x] Export OpenAPI artifact to `apps/api-service/.artifacts/openapi-fixtures.json`.
+- [x] Regenerate the frontend HeyAPI client (`apps/web-app/lib/api/client/**`) using the artifact.
+- [ ] Validate end-to-end typing:
+  - [x] Backend: `just backend-lint` and `just backend-typecheck`
+  - [ ] Frontend: `just web-lint` and `just web-typecheck` (pending; to be handled by web team/agents)
 
 ## 0) Global error responses do **not** match the OpenAPI (highest priority)
 
@@ -633,20 +635,20 @@ Even after switching `content-type` to `text/event-stream`, you should decide wh
 
 ### Must-fix (contract correctness)
 
-* [ ] **Global errors:** OpenAPI must match `ErrorResponse` envelope (incl. validation 422).
-* [ ] `POST /webhooks/stripe`: add requestBody schema + document `Stripe-Signature` header (and raw-body option).
-* [ ] `GET /api/v1/activity/stream`: mark as `text/event-stream` + document SSE shape.
-* [ ] `GET /api/v1/billing/stream`: mark as `text/event-stream` + document SSE shape + heartbeat comments.
+* [x] **Global errors:** OpenAPI must match `ErrorResponse` envelope (incl. validation 422).
+* [x] `POST /webhooks/stripe`: add requestBody schema + document `stripe-signature` header (and raw-body option).
+* [x] `GET /api/v1/activity/stream`: mark as `text/event-stream` + document SSE shape.
+* [x] `GET /api/v1/billing/stream`: mark as `text/event-stream` + document SSE shape + heartbeat comments.
 * [ ] `POST /api/v1/workflows/runs/{run_id}/cancel`: define response schema (or standardize to `SuccessResponse`).
-* [ ] `GET /api/v1/openai/*/download`: change to `application/octet-stream` with `format: binary` + document headers.
-* [ ] `GET /api/v1/status/rss`: declare `application/rss+xml`.
+* [x] `GET /api/v1/openai/*/download`: change to `application/octet-stream` with `format: binary` + document headers.
+* [x] `GET /api/v1/status/rss`: declare `application/rss+xml`.
 
 ### Conditional (when feature flags enabled)
 
-* [ ] `POST /api/v1/logs`: define requestBody schema + document `x-log-signature` header.
+* [x] `POST /api/v1/logs`: define requestBody schema + document `x-log-signature` header.
 
 ### Strongly recommended (better DX + typed clients)
 
-* [ ] `VectorStoreSearchResponse.data`: replace `Any` with concrete model(s).
-* [ ] `/api/v1/tools`: define stable tool metadata schema if possible.
+* [x] `VectorStoreSearchResponse.data`: replace `Any` with concrete model(s).
+* [x] `/api/v1/tools`: define stable tool metadata schema if possible.
 * [ ] Consider typed success envelopes (or per-endpoint response DTOs) so `data` isn’t `Any`.
