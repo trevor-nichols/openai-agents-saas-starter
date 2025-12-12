@@ -4,10 +4,10 @@ import Link from 'next/link';
 
 import { HeroGeometric } from '@/components/ui/hero';
 import { Button } from '@/components/ui/button';
-import { GlassPanel } from '@/components/ui/foundation';
 
 import type { CtaLink } from '@/features/marketing/types';
 import type { HeroCopy, StatusSummary } from '../types';
+import { SystemStatusConsole } from './SystemStatusConsole';
 
 interface HeroSectionProps {
   copy: HeroCopy;
@@ -51,45 +51,11 @@ export function HeroSection({ copy, statusSummary, onCtaClick }: HeroSectionProp
           </>
         }
         footer={
-          <GlassPanel className="flex flex-col gap-4 w-full max-w-lg rounded-3xl border border-white/10 bg-background/40 p-6 shadow-2xl backdrop-blur-xl">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <p className="text-xs font-bold uppercase tracking-wider text-primary">
-                Deployment snapshot
-              </p>
-              {statusSummary ? (
-                <span
-                  className="flex h-6 items-center rounded-full bg-emerald-500/15 px-2.5 text-[10px] font-bold uppercase tracking-wide text-emerald-500"
-                  role="status"
-                >
-                  {statusSummary.state}
-                </span>
-              ) : null}
-            </div>
-            
-            <div className="space-y-4">
-              {statusSummary ? (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <p>Updated {statusSummary.updatedAt}</p>
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{statusSummary.description}</p>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Live status, billing telemetry, and agents SDK sessions all ship ready for your brand.
-                </p>
-              )}
-              
-              <Button 
-                className="w-full rounded-full bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary font-semibold h-10 shadow-none" 
-                onClick={handleClick(statusCta, 'hero-status')}
-                asChild
-              >
-                <Link href={statusCta.href}>{statusCta.label}</Link>
-              </Button>
-            </div>
-          </GlassPanel>
+          <SystemStatusConsole
+            statusSummary={statusSummary}
+            cta={{ label: statusCta.label, href: statusCta.href }}
+            onCtaClick={handleClick(statusCta, 'hero-status')}
+          />
         }
       />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background via-background/50 to-transparent" />
