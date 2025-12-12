@@ -5,6 +5,7 @@ import { Message, MessageContent } from '@/components/ui/ai/message';
 import { InlineTag } from '@/components/ui/foundation';
 import { CodeBlock } from '@/components/ui/ai/code-block';
 import { Response } from '@/components/ui/ai/response';
+import { cn } from '@/lib/utils';
 import type { WorkflowRunDetailView } from '@/lib/workflows/types';
 import type { Annotation } from '@/lib/chat/types';
 import type { ConversationEvents } from '@/types/conversations';
@@ -15,6 +16,7 @@ interface WorkflowRunConversationProps {
   events: ConversationEvents | null | undefined;
   isLoadingRun?: boolean;
   isLoadingEvents?: boolean;
+  className?: string;
 }
 
 type ConversationEntry = {
@@ -31,6 +33,7 @@ export function WorkflowRunConversation({
   events,
   isLoadingRun,
   isLoadingEvents,
+  className,
 }: WorkflowRunConversationProps) {
   const entries = useMemo<ConversationEntry[]>(() => {
     // Prefer conversation events when present
@@ -90,7 +93,7 @@ export function WorkflowRunConversation({
   }
 
   return (
-    <Conversation className="rounded-xl border border-white/5 bg-white/5">
+    <Conversation className={cn('rounded-xl border border-white/5 bg-white/5', className)}>
       <ConversationContent className="space-y-4 p-4">
         {entries.length === 0 ? (
           <p className="text-sm text-foreground/60">No messages recorded for this run.</p>

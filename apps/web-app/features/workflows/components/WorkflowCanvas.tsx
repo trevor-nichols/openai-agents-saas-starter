@@ -2,9 +2,9 @@
 
 import type { WorkflowDescriptorResponse, LocationHint } from '@/lib/api/client/types.gen';
 
-import { WorkflowGraph } from './WorkflowGraph';
 import { WorkflowRunPanel } from './WorkflowRunPanel';
 import { Separator } from '@/components/ui/separator';
+import { WorkflowPreview } from './WorkflowPreview';
 
 interface WorkflowCanvasProps {
   descriptor: WorkflowDescriptorResponse | null;
@@ -37,15 +37,11 @@ export function WorkflowCanvas({
   streamStatus,
 }: WorkflowCanvasProps) {
   return (
-    <div className="flex h-full flex-col bg-muted/5">
+    <div className="flex h-full min-h-0 flex-col bg-muted/5">
       {/* Canvas Area */}
-      <div className="flex-1 overflow-hidden relative">
-        <div className="absolute inset-0 flex items-center justify-center p-8">
-            <WorkflowGraph 
-                descriptor={descriptor} 
-                activeStep={activeStep} 
-                className="w-full max-w-4xl h-full border-none bg-transparent shadow-none" 
-            />
+      <div className="flex-1 min-h-0 overflow-hidden relative">
+        <div className="absolute inset-0">
+          <WorkflowPreview descriptor={descriptor} activeStep={activeStep} className="h-full" />
         </div>
         
         {/* Dot pattern background effect */}

@@ -107,9 +107,9 @@ export function WorkflowsWorkspace() {
   }
 
   return (
-    <div className="h-[calc(100vh-4rem)] overflow-hidden">
-        <ResizablePanelGroup direction="horizontal" className="h-full border-t">
-            <ResizablePanel defaultSize={20} minSize={15} maxSize={30} className="bg-background">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <ResizablePanelGroup direction="horizontal" className="h-full min-h-0 border-t">
+            <ResizablePanel defaultSize={20} minSize={15} maxSize={30} className="min-h-0 bg-background">
                 <WorkflowSidebar
                     workflows={workflows}
                     isLoadingWorkflows={isWorkflowsLoading}
@@ -120,7 +120,7 @@ export function WorkflowsWorkspace() {
             
             <ResizableHandle />
             
-            <ResizablePanel defaultSize={55} minSize={30} className="bg-muted/5 relative">
+            <ResizablePanel defaultSize={55} minSize={30} className="min-h-0 bg-muted/5 relative">
                 <WorkflowCanvas
                     descriptor={descriptorQuery.data ?? null}
                     activeStep={activeStreamStep}
@@ -135,7 +135,7 @@ export function WorkflowsWorkspace() {
 
             <ResizableHandle />
 
-            <ResizablePanel defaultSize={25} minSize={20} maxSize={40} className="bg-background">
+            <ResizablePanel defaultSize={25} minSize={20} maxSize={40} className="min-h-0 bg-background">
                 <WorkflowRunFeed
                     workflows={workflows}
                     streamEvents={streamEvents}

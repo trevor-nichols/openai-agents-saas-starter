@@ -142,7 +142,7 @@ export function RunConsole({
           </div>
         ) : null}
         <WorkflowStreamLog events={streamEvents} />
-        <SheetContent side="right" className="w-full sm:max-w-xl">
+        <SheetContent side="right" className="flex w-full flex-col overflow-hidden sm:max-w-xl">
           <SheetHeader>
             <SheetTitle>Run transcript</SheetTitle>
             <SheetDescription>Displays step outputs as a conversation.</SheetDescription>
@@ -169,12 +169,13 @@ export function RunConsole({
               />
             ) : null}
           </div>
-          <div className="mt-4 h-[70vh] overflow-y-auto pr-2">
+          <div className="mt-4 flex min-h-0 flex-1 pr-2">
             <WorkflowRunConversation
               run={runDetail ?? null}
               events={runEvents ?? null}
               isLoadingRun={isLoadingRun}
               isLoadingEvents={isLoadingEvents}
+              className="min-h-0 flex-1"
             />
           </div>
         </SheetContent>

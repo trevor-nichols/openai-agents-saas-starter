@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Conversation, ConversationContent, ConversationScrollButton } from '@/components/ui/ai/conversation';
 import type {
   StreamingWorkflowEvent,
   WorkflowRunDetail,
@@ -129,7 +130,7 @@ export function WorkflowRunFeed({
                         <Activity className="h-3.5 w-3.5 mr-1" /> Transcript
                     </Button>
                 </SheetTrigger>
-                <SheetContent side="right" className="w-full sm:max-w-xl">
+                <SheetContent side="right" className="flex w-full flex-col overflow-hidden sm:max-w-xl">
                     <SheetHeader>
                         <SheetTitle>Run transcript</SheetTitle>
                         <SheetDescription>Displays step outputs as a conversation.</SheetDescription>
@@ -151,13 +152,14 @@ export function WorkflowRunFeed({
                         />
                         ) : null}
                     </div>
-                    <div className="mt-4 h-[70vh] overflow-y-auto pr-2">
-                        <WorkflowRunConversation
+                    <div className="mt-4 flex min-h-0 flex-1 pr-2">
+                      <WorkflowRunConversation
                         run={runDetail ?? null}
                         events={runEvents ?? null}
                         isLoadingRun={isLoadingRun}
                         isLoadingEvents={isLoadingEvents}
-                        />
+                        className="min-h-0 flex-1"
+                      />
                     </div>
                 </SheetContent>
              </Sheet>
@@ -166,8 +168,8 @@ export function WorkflowRunFeed({
 
         {/* CONSOLE TAB */}
         <TabsContent value="console" className="flex-1 min-h-0 data-[state=active]:flex flex-col m-0 p-0">
-            <ScrollArea className="flex-1 p-4">
-                <div className="space-y-4">
+            <Conversation className="flex-1">
+                <ConversationContent className="space-y-4 p-4">
                     {/* Status Messages */}
                     {streamStatus === 'completed' && (
                         <div className="rounded-md border border-emerald-900/50 bg-emerald-900/10 px-3 py-2 text-xs text-emerald-600 dark:text-emerald-400">
@@ -212,8 +214,9 @@ export function WorkflowRunFeed({
 
                     {/* Stream Log */}
                     <WorkflowStreamLog events={streamEvents} />
-                </div>
-            </ScrollArea>
+                </ConversationContent>
+                <ConversationScrollButton />
+            </Conversation>
         </TabsContent>
 
         {/* HISTORY TAB */}
@@ -234,8 +237,8 @@ export function WorkflowRunFeed({
                     Refresh
                 </Button>
             </div>
-            <div className="flex-1 p-0 overflow-hidden">
-                 <WorkflowRunsList
+            <ScrollArea className="flex-1 min-h-0 p-4">
+                <WorkflowRunsList
                     runs={historyRuns}
                     workflows={workflows}
                     isLoading={isHistoryLoading}
@@ -248,7 +251,7 @@ export function WorkflowRunFeed({
                     onDeleteRun={onDeleteRun}
                     deletingRunId={deletingRunId}
                 />
-            </div>
+            </ScrollArea>
         </TabsContent>
       </Tabs>
     </div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { CodeBlock } from '@/components/ui/ai/code-block';
@@ -170,19 +170,13 @@ function GuardrailDetails({ event }: { event: StreamingWorkflowEvent }) {
 
 export function WorkflowStreamLog({ events }: WorkflowStreamLogProps) {
   const grouped = useMemo(() => events, [events]);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-    containerRef.current.scrollTo({ top: containerRef.current.scrollHeight, behavior: 'smooth' });
-  }, [grouped.length]);
 
   if (grouped.length === 0) {
     return <p className="text-sm text-foreground/60">No events yet.</p>;
   }
 
   return (
-    <div ref={containerRef} className="space-y-3 max-h-96 overflow-y-auto">
+    <div className="space-y-3">
       {grouped.map((evt, idx) => {
         const label = KIND_LABEL[evt.kind] ?? evt.kind;
         const isTerminal = Boolean(evt.is_terminal);
