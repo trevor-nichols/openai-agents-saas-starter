@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.errors import register_exception_handlers
+from app.api.openapi import build_openapi_schema
 from app.api.router import api_router
 from app.bootstrap import (
     get_container,
@@ -485,6 +486,7 @@ def create_application() -> FastAPI:
         redoc_url="/redoc" if settings.debug else None,
         lifespan=lifespan,
     )
+    app.openapi = lambda: build_openapi_schema(app)  # type: ignore[method-assign]
 
     # =============================================================================
     # MIDDLEWARE CONFIGURATION

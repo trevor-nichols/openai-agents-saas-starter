@@ -98,7 +98,7 @@ class OpenAIVectorStoreGateway:
         *,
         tenant_id: uuid.UUID,
         vector_store_openai_id: str,
-        query: str,
+        query: str | list[str],
         filters: dict[str, Any] | None,
         max_num_results: int | None,
         ranking_options: dict[str, Any] | None,

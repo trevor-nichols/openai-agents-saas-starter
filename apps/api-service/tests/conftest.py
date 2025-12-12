@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 from collections import defaultdict
 from collections.abc import AsyncGenerator, Generator
@@ -34,6 +35,10 @@ os.environ.setdefault("ENABLE_BILLING", "false")
 os.environ.setdefault("ALLOW_PUBLIC_SIGNUP", "true")
 os.environ.setdefault("STARTER_CLI_SKIP_ENV", "true")
 os.environ.setdefault("STARTER_CLI_SKIP_VAULT_PROBE", "true")
+os.environ.setdefault("OPENAI_AGENTS_DISABLE_TRACING", "true")
+
+# Avoid shutdown-unsafe debug logs from Agents SDK during pytest capture teardown.
+logging.getLogger("openai.agents").setLevel(logging.WARNING)
 
 TEST_DB_PATH = Path("test.db")
 if TEST_DB_PATH.exists():

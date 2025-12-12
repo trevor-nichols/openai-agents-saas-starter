@@ -174,7 +174,7 @@ async def attach_file(
     current_user: CurrentUser = Depends(require_verified_user()),
     tenant_context=Depends(tenant_admin),
     service: VectorStoreService = Depends(_svc),
-    ) -> VectorStoreFileResponse:
+) -> VectorStoreFileResponse:
     try:
         file = await service.attach_file(
             vector_store_id=vector_store_id,
@@ -294,7 +294,7 @@ async def search_vector_store(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Vector store not found"
         ) from None
-    return VectorStoreSearchResponse(data=result)
+    return VectorStoreSearchResponse.from_domain(result)
 
 
 @router.post(

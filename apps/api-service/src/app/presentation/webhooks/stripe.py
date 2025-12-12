@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from typing import Any, cast
 
 import stripe
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Header, HTTPException, Request, status
 
 from app.core.settings import get_settings
 from app.infrastructure.persistence.stripe.repository import (
@@ -29,22 +29,32 @@ router = APIRouter()
 
 
 @router.post("/webhooks/stripe", status_code=status.HTTP_202_ACCEPTED)
-async def handle_stripe_webhook(request: Request) -> dict[str, bool]:
+async def handle_stripe_webhook(
+    request: Request,
+    stripe_signature: str | None = Header(None, alias="stripe-signature"),
+) -> dict[str, bool]:
     settings = get_settings()
     secret = settings.stripe_webhook_secret
     if not secret:
         logger.error("STRIPE_WEBHOOK_SECRET is not configured; rejecting webhook call")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Webhook secret not configured.",
+            detail={
+                "code": "StripeWebhookNotConfigured",
+                "message": "Webhook secret not configured.",
+            },
         )
 
     payload = await request.body()
-    signature = request.headers.get("stripe-signature")
+    signature = stripe_signature
     if not signature:
         observe_stripe_webhook_event(event_type="unknown", result="missing_signature")
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Missing Stripe signature header."
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "MissingStripeSignature",
+                "message": "Missing Stripe signature header.",
+            },
         )
 
     try:
@@ -54,14 +64,22 @@ async def handle_stripe_webhook(request: Request) -> dict[str, bool]:
     except ValueError as exc:  # pragma: no cover - invalid JSON
         observe_stripe_webhook_event(event_type="unknown", result="invalid_json")
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payload."
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "InvalidStripePayload",
+                "message": "Invalid payload.",
+            },
         ) from exc
     except SignatureVerificationError as exc:
         observe_stripe_webhook_event(event_type="unknown", result="invalid_signature")
         message = getattr(exc, "user_message", None) or str(exc)
         logger.warning("Stripe signature verification failed: %s", message)
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Signature verification failed."
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "InvalidStripeSignature",
+                "message": "Signature verification failed.",
+            },
         ) from exc
 
     event_dict = event.to_dict_recursive()
@@ -96,7 +114,11 @@ async def handle_stripe_webhook(request: Request) -> dict[str, bool]:
             extra={"stripe_event_id": event_dict["id"], "event_type": event_type},
         )
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to process event."
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "code": "StripeWebhookProcessingFailed",
+                "message": "Failed to process event.",
+            },
         ) from exc
 
     processed_at = dispatch_result.processed_at if dispatch_result else None
@@ -124,7 +146,10 @@ async def handle_stripe_webhook(request: Request) -> dict[str, bool]:
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to publish billing event.",
+                detail={
+                    "code": "StripeBillingStreamPublishFailed",
+                    "message": "Failed to publish billing event.",
+                },
             ) from exc
         await events_service.mark_processed(processed_at)
     observe_stripe_webhook_event(event_type=event_type, result="dispatched")
