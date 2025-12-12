@@ -5,12 +5,10 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { RunConsole } from '../components/RunConsole';
 import { RunHistoryPanel } from '../components/RunHistoryPanel';
 import { WorkflowSidebar } from '../components/WorkflowSidebar';
-import { mockWorkflowRunDetail, mockWorkflowRunList, mockWorkflowDescriptor, mockWorkflows } from '@/lib/workflows/mock';
+import { mockWorkflowRunDetail, mockWorkflowRunList, mockWorkflows } from '@/lib/workflows/mock';
 import type {
   WorkflowSummaryView,
   WorkflowRunListItemView,
-  WorkflowStageDescriptor,
-  WorkflowDescriptor,
 } from '@/lib/workflows/types';
 import type { ConversationEvents } from '@/types/conversations';
 import type { StreamingWorkflowEvent } from '@/lib/api/client/types.gen';
@@ -166,21 +164,6 @@ function WorkspacePreview({ streamStatus, isRunning, runError = null }: Workspac
 type WorkspacePreviewWithSidebarProps = WorkspacePreviewProps;
 
 function WorkspacePreviewWithSidebar({ streamStatus, isRunning, runError = null }: WorkspacePreviewWithSidebarProps) {
-  const baseDescriptor: WorkflowDescriptor = mockWorkflowDescriptor(primaryWorkflow.key);
-  const extraStage: WorkflowStageDescriptor = {
-    name: 'notify',
-    mode: 'parallel',
-    reducer: null,
-    steps: [
-      { name: 'Notify A', agent_key: 'agent-a', guard: null, guard_type: null, input_mapper: null, input_mapper_type: null, max_turns: null, output_schema: null },
-      { name: 'Notify B', agent_key: 'agent-b', guard: null, guard_type: null, input_mapper: null, input_mapper_type: null, max_turns: null, output_schema: null },
-    ],
-  };
-  const descriptor: WorkflowDescriptor = {
-    ...baseDescriptor,
-    stages: [...(baseDescriptor.stages ?? []), extraStage],
-  };
-
   return (
     <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)_320px]">
       <WorkflowSidebar
@@ -188,9 +171,6 @@ function WorkspacePreviewWithSidebar({ streamStatus, isRunning, runError = null 
         isLoadingWorkflows={false}
         selectedKey={primaryWorkflow.key}
         onSelect={(key) => console.log('select', key)}
-        descriptor={descriptor}
-        isLoadingDescriptor={false}
-        activeStep={{ stageName: 'notify', parallelGroup: 'notify', branchIndex: 1 }}
       />
 
       <RunConsole

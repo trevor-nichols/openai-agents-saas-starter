@@ -63,7 +63,7 @@ function BillingOverviewPreview({ streamStatus = 'open', showEmpty = false }: Bi
         </div>
 
         <div className="space-y-4">
-          <PlanSnapshotCard snapshot={snapshot} streamStatus={streamStatus} />
+          <PlanSnapshotCard snapshot={snapshot} />
           <InvoiceCard summary={invoice} isLoading={showSkeleton} />
         </div>
       </div>

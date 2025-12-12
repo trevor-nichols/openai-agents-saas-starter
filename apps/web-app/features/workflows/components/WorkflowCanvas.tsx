@@ -1,28 +1,28 @@
 'use client';
 
+import type { WorkflowDescriptorResponse, LocationHint } from '@/lib/api/client/types.gen';
+
 import { WorkflowGraph } from './WorkflowGraph';
 import { WorkflowRunPanel } from './WorkflowRunPanel';
-import type { WorkflowDescriptor, LocationHint } from '@/lib/api/client/types.gen';
 import { Separator } from '@/components/ui/separator';
 
 interface WorkflowCanvasProps {
-  descriptor: WorkflowDescriptor | null;
-  activeStep?: {
-    stepName?: string | null;
-    stageName?: string | null;
-    parallelGroup?: string | null;
-    branchIndex?: number | null;
+  descriptor: WorkflowDescriptorResponse | null;
+  activeStep: {
+    stageName: string | null;
+    parallelGroup: string | null;
+    branchIndex: number | null;
   } | null;
   selectedKey: string | null;
-  onRun: (payload: {
+  onRun: (input: {
     workflowKey: string;
     message: string;
     shareLocation?: boolean;
     location?: LocationHint | null;
   }) => Promise<void>;
   isRunning: boolean;
-  runError?: string | null;
-  isLoadingWorkflows?: boolean;
+  runError: string | null;
+  isLoadingWorkflows: boolean;
   streamStatus?: 'idle' | 'connecting' | 'streaming' | 'completed' | 'error';
 }
 

@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react';
 
 import { WorkflowSidebar } from '../components/WorkflowSidebar';
-import { mockWorkflowDescriptor, mockWorkflows } from '@/lib/workflows/mock';
-import type { WorkflowSummaryView, WorkflowStageDescriptor } from '@/lib/workflows/types';
+import { mockWorkflows } from '@/lib/workflows/mock';
+import type { WorkflowSummaryView } from '@/lib/workflows/types';
 
 const defaultWorkflow: WorkflowSummaryView = {
   key: 'placeholder',
@@ -13,7 +13,6 @@ const defaultWorkflow: WorkflowSummaryView = {
 };
 
 const [primaryWorkflow = defaultWorkflow] = mockWorkflows;
-const descriptor = mockWorkflowDescriptor(primaryWorkflow.key);
 
 const meta: Meta<typeof WorkflowSidebar> = {
   title: 'Workflows/Workflow Sidebar',
@@ -30,8 +29,6 @@ export const Default: Story = {
     isLoadingWorkflows: false,
     selectedKey: primaryWorkflow.key,
     onSelect: (key) => console.log('select', key),
-    descriptor,
-    isLoadingDescriptor: false,
   },
 };
 
@@ -41,8 +38,6 @@ export const Loading: Story = {
     isLoadingWorkflows: true,
     selectedKey: null,
     onSelect: () => {},
-    descriptor: null,
-    isLoadingDescriptor: true,
   },
 };
 
@@ -52,22 +47,5 @@ export const WithActiveStep: Story = {
     isLoadingWorkflows: false,
     selectedKey: primaryWorkflow.key,
     onSelect: (key) => console.log('select', key),
-    descriptor: (() => {
-      const extraStage: WorkflowStageDescriptor = {
-        name: 'notify',
-        mode: 'parallel',
-        reducer: null,
-        steps: [
-          { name: 'Notify A', agent_key: 'agent-a', guard: null, guard_type: null, input_mapper: null, input_mapper_type: null, max_turns: null, output_schema: null },
-          { name: 'Notify B', agent_key: 'agent-b', guard: null, guard_type: null, input_mapper: null, input_mapper_type: null, max_turns: null, output_schema: null },
-        ],
-      };
-      return {
-        ...descriptor,
-        stages: [...(descriptor.stages ?? []), extraStage],
-      };
-    })(),
-    isLoadingDescriptor: false,
-    activeStep: { stageName: 'notify', parallelGroup: 'notify', branchIndex: 1 },
   },
 };

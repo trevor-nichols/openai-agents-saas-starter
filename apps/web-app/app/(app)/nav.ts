@@ -3,9 +3,16 @@ import { billingEnabled } from '@/lib/config/features';
 
 const PRIMARY_NAV: AppNavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: 'layout-dashboard' satisfies NavIconKey },
-  { href: '/chat', label: 'Workspace', icon: 'message-square' satisfies NavIconKey },
-  { href: '/workflows', label: 'Workflows', icon: 'workflow' satisfies NavIconKey },
-  { href: '/agents', label: 'Agents', icon: 'bot' satisfies NavIconKey },
+  {
+    href: '#',
+    label: 'Workspace',
+    icon: 'square-terminal' satisfies NavIconKey,
+    items: [
+      { href: '/chat', label: 'Chat' },
+      { href: '/workflows', label: 'Workflows' },
+      { href: '/agents', label: 'Agents' },
+    ],
+  },
 ];
 
 const BILLING_NAV: AppNavItem = {

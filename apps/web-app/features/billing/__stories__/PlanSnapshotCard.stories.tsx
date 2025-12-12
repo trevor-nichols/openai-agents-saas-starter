@@ -10,7 +10,6 @@ const meta: Meta<typeof PlanSnapshotCard> = {
   component: PlanSnapshotCard,
   args: {
     snapshot: mockPlanSnapshot,
-    streamStatus: 'open',
   },
 };
 
@@ -21,7 +20,5 @@ type Story = StoryObj<typeof PlanSnapshotCard>;
 export const Default: Story = {};
 
 export const ErrorStream: Story = {
-  args: {
-    streamStatus: 'error',
-  },
+  args: {},
 };

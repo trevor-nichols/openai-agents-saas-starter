@@ -157,7 +157,7 @@ export function ChatSurface({
           ) : showEmpty ? (
             <div className="flex min-h-[360px] items-center justify-center py-4">
               <EmptyState
-                variant="ghost"
+                variant="default"
                 title="No messages yet"
                 description="Compose a prompt below to brief your agent."
                 className="max-w-lg text-foreground/80"
