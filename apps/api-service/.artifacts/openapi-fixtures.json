@@ -931,7 +931,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
+                  "$ref": "#/components/schemas/LogoutSessionSuccessResponse"
                 }
               }
             }
@@ -1079,7 +1079,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
+                  "$ref": "#/components/schemas/LogoutAllSessionsSuccessResponse"
                 }
               }
             }
@@ -1442,7 +1442,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
+                  "$ref": "#/components/schemas/SessionRevokeByIdSuccessResponse"
                 }
               }
             }
@@ -1585,7 +1585,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
+                  "$ref": "#/components/schemas/CurrentUserInfoSuccessResponse"
                 }
               }
             }
@@ -1722,7 +1722,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
+                  "$ref": "#/components/schemas/EmailVerificationSendSuccessResponse"
                 }
               }
             }
@@ -1869,7 +1869,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
+                  "$ref": "#/components/schemas/SuccessNoDataResponse"
                 }
               }
             }
@@ -2021,7 +2021,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
+                  "$ref": "#/components/schemas/SuccessNoDataResponse"
                 }
               }
             }
@@ -2173,7 +2173,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
+                  "$ref": "#/components/schemas/SuccessNoDataResponse"
                 }
               }
             }
@@ -2325,7 +2325,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
+                  "$ref": "#/components/schemas/SuccessNoDataResponse"
                 }
               }
             }
@@ -2482,7 +2482,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
+                  "$ref": "#/components/schemas/SuccessNoDataResponse"
                 }
               }
             }
@@ -3441,7 +3441,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
+                  "$ref": "#/components/schemas/ServiceAccountTokenRevokeSuccessResponse"
                 }
               }
             }
@@ -5396,7 +5396,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
+                  "$ref": "#/components/schemas/SuccessNoDataResponse"
                 }
               }
             }
@@ -5560,7 +5560,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
+                  "$ref": "#/components/schemas/SuccessNoDataResponse"
                 }
               }
             }
@@ -8513,7 +8513,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowRunCancelResponse"
+                }
               }
             }
           },
@@ -16456,7 +16458,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
+                  "$ref": "#/components/schemas/ContactSubmissionSuccessResponse"
                 }
               }
             }
@@ -18374,7 +18376,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
+                  "$ref": "#/components/schemas/SuccessNoDataResponse"
                 }
               }
             }
@@ -20057,7 +20059,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
+                  "$ref": "#/components/schemas/SuccessNoDataResponse"
                 }
               }
             }
@@ -22382,6 +22384,75 @@
         ],
         "title": "ContactSubmissionRequest"
       },
+      "ContactSubmissionResponse": {
+        "properties": {
+          "reference_id": {
+            "type": "string",
+            "title": "Reference Id",
+            "description": "Correlation identifier for the submission."
+          },
+          "delivered": {
+            "type": "boolean",
+            "title": "Delivered",
+            "description": "Whether the email was delivered via Resend."
+          },
+          "message_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Id",
+            "description": "Resend message id when available."
+          },
+          "suppressed": {
+            "type": "boolean",
+            "title": "Suppressed",
+            "description": "True when the submission was accepted but intentionally skipped (honeypot).",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "reference_id",
+          "delivered"
+        ],
+        "title": "ContactSubmissionResponse"
+      },
+      "ContactSubmissionSuccessResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "Operation success status flag.",
+            "default": true
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Human-readable summary of the result."
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContactSubmissionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Contact submission result payload."
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "ContactSubmissionSuccessResponse"
+      },
       "ContainerBindRequest": {
         "properties": {
           "container_id": {
@@ -23392,6 +23463,58 @@
         "title": "ConversationSummary",
         "description": "Lightweight summary used when listing conversations."
       },
+      "CurrentUserInfoResponseData": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id",
+            "description": "Current authenticated user id."
+          },
+          "token_payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Token Payload",
+            "description": "Decoded access token claims."
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "token_payload"
+        ],
+        "title": "CurrentUserInfoResponseData"
+      },
+      "CurrentUserInfoSuccessResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "Operation success status flag.",
+            "default": true
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Human-readable summary of the result."
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurrentUserInfoResponseData"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Current authenticated user info payload."
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "CurrentUserInfoSuccessResponse"
+      },
       "EmailVerificationConfirmRequest": {
         "properties": {
           "token": {
@@ -23407,6 +23530,51 @@
         ],
         "title": "EmailVerificationConfirmRequest",
         "description": "Payload for confirming the email verification token."
+      },
+      "EmailVerificationSendSuccessResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "Operation success status flag.",
+            "default": true
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Human-readable summary of the result."
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EmailVerificationStatusResponseData"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Email verification status payload."
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "EmailVerificationSendSuccessResponse"
+      },
+      "EmailVerificationStatusResponseData": {
+        "properties": {
+          "email_verified": {
+            "type": "boolean",
+            "title": "Email Verified",
+            "description": "Whether the user's email address is verified."
+          }
+        },
+        "type": "object",
+        "required": [
+          "email_verified"
+        ],
+        "title": "EmailVerificationStatusResponseData"
       },
       "EmailVerificationTokenRequest": {
         "properties": {
@@ -24423,6 +24591,68 @@
         },
         "type": "object",
         "title": "LocationHint"
+      },
+      "LogoutAllSessionsSuccessResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "Operation success status flag.",
+            "default": true
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Human-readable summary of the result."
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionLogoutAllResponseData"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Logout-all result payload."
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "LogoutAllSessionsSuccessResponse"
+      },
+      "LogoutSessionSuccessResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "Operation success status flag.",
+            "default": true
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Human-readable summary of the result."
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionLogoutResponseData"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Single-session logout result payload."
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "LogoutSessionSuccessResponse"
       },
       "MemoryStrategyRequest": {
         "properties": {
@@ -25518,6 +25748,51 @@
         "title": "ServiceAccountTokenRevokeRequest",
         "description": "Payload for revoking a service-account refresh token."
       },
+      "ServiceAccountTokenRevokeResponseData": {
+        "properties": {
+          "jti": {
+            "type": "string",
+            "title": "Jti",
+            "description": "Refresh token identifier (JWT jti)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "jti"
+        ],
+        "title": "ServiceAccountTokenRevokeResponseData"
+      },
+      "ServiceAccountTokenRevokeSuccessResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "Operation success status flag.",
+            "default": true
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Human-readable summary of the result."
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ServiceAccountTokenRevokeResponseData"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Revoked token reference payload."
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "ServiceAccountTokenRevokeSuccessResponse"
+      },
       "ServiceAccountTokenStatus": {
         "type": "string",
         "enum": [
@@ -25669,6 +25944,66 @@
         "type": "object",
         "title": "SessionLocationInfo",
         "description": "Approximate geolocation information for a session."
+      },
+      "SessionLogoutAllResponseData": {
+        "properties": {
+          "revoked": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Revoked",
+            "description": "Number of sessions/tokens revoked by this request."
+          }
+        },
+        "type": "object",
+        "required": [
+          "revoked"
+        ],
+        "title": "SessionLogoutAllResponseData"
+      },
+      "SessionLogoutResponseData": {
+        "properties": {
+          "revoked": {
+            "type": "boolean",
+            "title": "Revoked",
+            "description": "Whether the session/token was revoked by this request."
+          }
+        },
+        "type": "object",
+        "required": [
+          "revoked"
+        ],
+        "title": "SessionLogoutResponseData"
+      },
+      "SessionRevokeByIdSuccessResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "Operation success status flag.",
+            "default": true
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Human-readable summary of the result."
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionLogoutResponseData"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Session revocation result payload."
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "SessionRevokeByIdSuccessResponse"
       },
       "SignupAccessPolicyResponse": {
         "properties": {
@@ -27875,7 +28210,7 @@
         ],
         "title": "StripeEventStatus"
       },
-      "SuccessResponse": {
+      "SuccessNoDataResponse": {
         "properties": {
           "success": {
             "type": "boolean",
@@ -27889,22 +28224,17 @@
             "description": "Human-readable summary of the result."
           },
           "data": {
-            "anyOf": [
-              {},
-              {
-                "type": "null"
-              }
-            ],
+            "type": "null",
             "title": "Data",
-            "description": "Optional payload containing the result."
+            "description": "Always null for this response type."
           }
         },
         "type": "object",
         "required": [
           "message"
         ],
-        "title": "SuccessResponse",
-        "description": "Standard success response envelope."
+        "title": "SuccessNoDataResponse",
+        "description": "Success response where `data` is always null."
       },
       "TenantSettingsResponse": {
         "properties": {
@@ -29670,6 +30000,26 @@
         ],
         "title": "WorkflowListResponse",
         "description": "Paginated list of workflows."
+      },
+      "WorkflowRunCancelResponse": {
+        "properties": {
+          "workflow_run_id": {
+            "type": "string",
+            "title": "Workflow Run Id",
+            "description": "The workflow run id that was cancelled."
+          },
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "True if the cancel request succeeded."
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflow_run_id",
+          "success"
+        ],
+        "title": "WorkflowRunCancelResponse"
       },
       "WorkflowRunDetail": {
         "properties": {

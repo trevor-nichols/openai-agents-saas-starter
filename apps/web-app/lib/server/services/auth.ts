@@ -6,8 +6,8 @@ import {
   refreshAccessTokenApiV1AuthRefreshPost,
 } from '@/lib/api/client/sdk.gen';
 import type {
+  CurrentUserInfoSuccessResponse,
   MfaChallengeResponse,
-  SuccessResponse,
   UserLoginRequest,
   UserRefreshRequest,
   UserSessionResponse,
@@ -81,7 +81,7 @@ export async function getCurrentUserProfile<TProfile extends CurrentUserProfile 
     throwOnError: true,
   });
 
-  const payload = response.data as SuccessResponse | undefined;
+  const payload = response.data as CurrentUserInfoSuccessResponse | undefined;
   const data = (payload?.data ?? null) as TProfile | null;
 
   if (payload?.success === false || !data) {

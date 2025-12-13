@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 
 import type { NextRequest } from 'next/server';
-import type { SuccessResponse } from '@/lib/api/client/types.gen';
+import type { SuccessNoDataResponse } from '@/lib/api/client/types.gen';
 
 import { POST } from './route';
 
@@ -22,7 +22,7 @@ describe('/api/auth/password/forgot route', () => {
   });
 
   it('returns 202 with success payload', async () => {
-    const payload: SuccessResponse = {
+    const payload: SuccessNoDataResponse = {
       success: true,
       message: 'queued',
       data: null,
@@ -44,4 +44,3 @@ describe('/api/auth/password/forgot route', () => {
     await expect(response.json()).resolves.toEqual({ message: 'Missing access token' });
   });
 });
-

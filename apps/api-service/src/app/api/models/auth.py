@@ -139,12 +139,33 @@ class EmailVerificationSendSuccessResponse(SuccessResponse):
     )
 
 
-class SessionRevocationStatusResponseData(BaseModel):
+class SessionLogoutResponseData(BaseModel):
     revoked: bool = Field(description="Whether the session/token was revoked by this request.")
 
 
-class SessionRevocationSuccessResponse(SuccessResponse):
-    data: SessionRevocationStatusResponseData | None = Field(
+class SessionLogoutAllResponseData(BaseModel):
+    revoked: int = Field(
+        ge=0,
+        description="Number of sessions/tokens revoked by this request.",
+    )
+
+
+class LogoutSessionSuccessResponse(SuccessResponse):
+    data: SessionLogoutResponseData | None = Field(
+        default=None,
+        description="Single-session logout result payload.",
+    )
+
+
+class LogoutAllSessionsSuccessResponse(SuccessResponse):
+    data: SessionLogoutAllResponseData | None = Field(
+        default=None,
+        description="Logout-all result payload.",
+    )
+
+
+class SessionRevokeByIdSuccessResponse(SuccessResponse):
+    data: SessionLogoutResponseData | None = Field(
         default=None,
         description="Session revocation result payload.",
     )

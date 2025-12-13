@@ -1,7 +1,7 @@
 import type {
   PasswordChangeRequest,
   PasswordResetRequest,
-  SuccessResponse,
+  SuccessNoDataResponse,
 } from '@/lib/api/client/types.gen';
 import { apiV1Path } from '@/lib/apiPaths';
 
@@ -13,7 +13,9 @@ async function parseJson<T>(response: Response): Promise<T> {
   }
 }
 
-export async function changePasswordRequest(payload: PasswordChangeRequest): Promise<SuccessResponse> {
+export async function changePasswordRequest(
+  payload: PasswordChangeRequest,
+): Promise<SuccessNoDataResponse> {
   const response = await fetch(apiV1Path('/auth/password/change'), {
     method: 'POST',
     headers: {
@@ -23,17 +25,19 @@ export async function changePasswordRequest(payload: PasswordChangeRequest): Pro
     cache: 'no-store',
   });
 
-  const data = await parseJson<SuccessResponse | { message?: string }>(response);
+  const data = await parseJson<SuccessNoDataResponse | { message?: string }>(response);
 
   if (!response.ok) {
     const message = 'message' in data && data.message ? data.message : 'Failed to change password.';
     throw new Error(message);
   }
 
-  return data as SuccessResponse;
+  return data as SuccessNoDataResponse;
 }
 
-export async function adminResetPasswordRequest(payload: PasswordResetRequest): Promise<SuccessResponse> {
+export async function adminResetPasswordRequest(
+  payload: PasswordResetRequest,
+): Promise<SuccessNoDataResponse> {
   const response = await fetch(apiV1Path('/auth/password/reset'), {
     method: 'POST',
     headers: {
@@ -43,7 +47,7 @@ export async function adminResetPasswordRequest(payload: PasswordResetRequest): 
     cache: 'no-store',
   });
 
-  const data = await parseJson<SuccessResponse | { message?: string }>(response);
+  const data = await parseJson<SuccessNoDataResponse | { message?: string }>(response);
 
   if (!response.ok) {
     const message =
@@ -53,5 +57,5 @@ export async function adminResetPasswordRequest(payload: PasswordResetRequest): 
     throw new Error(message);
   }
 
-  return data as SuccessResponse;
+  return data as SuccessNoDataResponse;
 }

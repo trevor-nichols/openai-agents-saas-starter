@@ -778,6 +778,58 @@ export type ContactSubmissionRequest = {
 };
 
 /**
+ * ContactSubmissionResponse
+ */
+export type ContactSubmissionResponse = {
+  /**
+   * Reference Id
+   *
+   * Correlation identifier for the submission.
+   */
+  reference_id: string;
+  /**
+   * Delivered
+   *
+   * Whether the email was delivered via Resend.
+   */
+  delivered: boolean;
+  /**
+   * Message Id
+   *
+   * Resend message id when available.
+   */
+  message_id?: string | null;
+  /**
+   * Suppressed
+   *
+   * True when the submission was accepted but intentionally skipped (honeypot).
+   */
+  suppressed?: boolean;
+};
+
+/**
+ * ContactSubmissionSuccessResponse
+ */
+export type ContactSubmissionSuccessResponse = {
+  /**
+   * Success
+   *
+   * Operation success status flag.
+   */
+  success?: boolean;
+  /**
+   * Message
+   *
+   * Human-readable summary of the result.
+   */
+  message: string;
+  /**
+   * Contact submission result payload.
+   */
+  data?: ContactSubmissionResponse | null;
+};
+
+/**
  * ContainerBindRequest
  */
 export type ContainerBindRequest = {
@@ -1350,6 +1402,48 @@ export type ConversationSummary = {
 };
 
 /**
+ * CurrentUserInfoResponseData
+ */
+export type CurrentUserInfoResponseData = {
+  /**
+   * User Id
+   *
+   * Current authenticated user id.
+   */
+  user_id: string;
+  /**
+   * Token Payload
+   *
+   * Decoded access token claims.
+   */
+  token_payload: {
+    [key: string]: unknown;
+  };
+};
+
+/**
+ * CurrentUserInfoSuccessResponse
+ */
+export type CurrentUserInfoSuccessResponse = {
+  /**
+   * Success
+   *
+   * Operation success status flag.
+   */
+  success?: boolean;
+  /**
+   * Message
+   *
+   * Human-readable summary of the result.
+   */
+  message: string;
+  /**
+   * Current authenticated user info payload.
+   */
+  data?: CurrentUserInfoResponseData | null;
+};
+
+/**
  * EmailVerificationConfirmRequest
  *
  * Payload for confirming the email verification token.
@@ -1361,6 +1455,40 @@ export type EmailVerificationConfirmRequest = {
    * Verification token delivered via email.
    */
   token: string;
+};
+
+/**
+ * EmailVerificationSendSuccessResponse
+ */
+export type EmailVerificationSendSuccessResponse = {
+  /**
+   * Success
+   *
+   * Operation success status flag.
+   */
+  success?: boolean;
+  /**
+   * Message
+   *
+   * Human-readable summary of the result.
+   */
+  message: string;
+  /**
+   * Email verification status payload.
+   */
+  data?: EmailVerificationStatusResponseData | null;
+};
+
+/**
+ * EmailVerificationStatusResponseData
+ */
+export type EmailVerificationStatusResponseData = {
+  /**
+   * Email Verified
+   *
+   * Whether the user's email address is verified.
+   */
+  email_verified: boolean;
 };
 
 /**
@@ -1977,6 +2105,50 @@ export type LocationHint = {
    * Timezone
    */
   timezone?: string | null;
+};
+
+/**
+ * LogoutAllSessionsSuccessResponse
+ */
+export type LogoutAllSessionsSuccessResponse = {
+  /**
+   * Success
+   *
+   * Operation success status flag.
+   */
+  success?: boolean;
+  /**
+   * Message
+   *
+   * Human-readable summary of the result.
+   */
+  message: string;
+  /**
+   * Logout-all result payload.
+   */
+  data?: SessionLogoutAllResponseData | null;
+};
+
+/**
+ * LogoutSessionSuccessResponse
+ */
+export type LogoutSessionSuccessResponse = {
+  /**
+   * Success
+   *
+   * Operation success status flag.
+   */
+  success?: boolean;
+  /**
+   * Message
+   *
+   * Human-readable summary of the result.
+   */
+  message: string;
+  /**
+   * Single-session logout result payload.
+   */
+  data?: SessionLogoutResponseData | null;
 };
 
 /**
@@ -2679,6 +2851,40 @@ export type ServiceAccountTokenRevokeRequest = {
 };
 
 /**
+ * ServiceAccountTokenRevokeResponseData
+ */
+export type ServiceAccountTokenRevokeResponseData = {
+  /**
+   * Jti
+   *
+   * Refresh token identifier (JWT jti).
+   */
+  jti: string;
+};
+
+/**
+ * ServiceAccountTokenRevokeSuccessResponse
+ */
+export type ServiceAccountTokenRevokeSuccessResponse = {
+  /**
+   * Success
+   *
+   * Operation success status flag.
+   */
+  success?: boolean;
+  /**
+   * Message
+   *
+   * Human-readable summary of the result.
+   */
+  message: string;
+  /**
+   * Revoked token reference payload.
+   */
+  data?: ServiceAccountTokenRevokeResponseData | null;
+};
+
+/**
  * ServiceAccountTokenStatus
  */
 export type ServiceAccountTokenStatus = "active" | "revoked" | "all";
@@ -2775,6 +2981,52 @@ export type SessionLocationInfo = {
    * Country code derived from GeoIP.
    */
   country?: string | null;
+};
+
+/**
+ * SessionLogoutAllResponseData
+ */
+export type SessionLogoutAllResponseData = {
+  /**
+   * Revoked
+   *
+   * Number of sessions/tokens revoked by this request.
+   */
+  revoked: number;
+};
+
+/**
+ * SessionLogoutResponseData
+ */
+export type SessionLogoutResponseData = {
+  /**
+   * Revoked
+   *
+   * Whether the session/token was revoked by this request.
+   */
+  revoked: boolean;
+};
+
+/**
+ * SessionRevokeByIdSuccessResponse
+ */
+export type SessionRevokeByIdSuccessResponse = {
+  /**
+   * Success
+   *
+   * Operation success status flag.
+   */
+  success?: boolean;
+  /**
+   * Message
+   *
+   * Human-readable summary of the result.
+   */
+  message: string;
+  /**
+   * Session revocation result payload.
+   */
+  data?: SessionLogoutResponseData | null;
 };
 
 /**
@@ -3891,11 +4143,11 @@ export type StreamingWorkflowEvent = {
 export type StripeEventStatus = "received" | "processed" | "failed";
 
 /**
- * SuccessResponse
+ * SuccessNoDataResponse
  *
- * Standard success response envelope.
+ * Success response where `data` is always null.
  */
-export type SuccessResponse = {
+export type SuccessNoDataResponse = {
   /**
    * Success
    *
@@ -3911,9 +4163,9 @@ export type SuccessResponse = {
   /**
    * Data
    *
-   * Optional payload containing the result.
+   * Always null for this response type.
    */
-  data?: unknown | null;
+  data?: null;
 };
 
 /**
@@ -5050,6 +5302,24 @@ export type WorkflowListResponse = {
 };
 
 /**
+ * WorkflowRunCancelResponse
+ */
+export type WorkflowRunCancelResponse = {
+  /**
+   * Workflow Run Id
+   *
+   * The workflow run id that was cancelled.
+   */
+  workflow_run_id: string;
+  /**
+   * Success
+   *
+   * True if the cancel request succeeded.
+   */
+  success: boolean;
+};
+
+/**
  * WorkflowRunDetail
  */
 export type WorkflowRunDetail = {
@@ -5910,7 +6180,7 @@ export type LogoutSessionApiV1AuthLogoutPostResponses = {
   /**
    * Successful Response
    */
-  200: SuccessResponse;
+  200: LogoutSessionSuccessResponse;
 };
 
 export type LogoutSessionApiV1AuthLogoutPostResponse =
@@ -5977,7 +6247,7 @@ export type LogoutAllSessionsApiV1AuthLogoutAllPostResponses = {
   /**
    * Successful Response
    */
-  200: SuccessResponse;
+  200: LogoutAllSessionsSuccessResponse;
 };
 
 export type LogoutAllSessionsApiV1AuthLogoutAllPostResponse =
@@ -6149,7 +6419,7 @@ export type RevokeUserSessionApiV1AuthSessionsSessionIdDeleteResponses = {
   /**
    * Successful Response
    */
-  200: SuccessResponse;
+  200: SessionRevokeByIdSuccessResponse;
 };
 
 export type RevokeUserSessionApiV1AuthSessionsSessionIdDeleteResponse =
@@ -6216,7 +6486,7 @@ export type GetCurrentUserInfoApiV1AuthMeGetResponses = {
   /**
    * Successful Response
    */
-  200: SuccessResponse;
+  200: CurrentUserInfoSuccessResponse;
 };
 
 export type GetCurrentUserInfoApiV1AuthMeGetResponse =
@@ -6283,7 +6553,7 @@ export type SendEmailVerificationApiV1AuthEmailSendPostResponses = {
   /**
    * Successful Response
    */
-  202: SuccessResponse;
+  202: EmailVerificationSendSuccessResponse;
 };
 
 export type SendEmailVerificationApiV1AuthEmailSendPostResponse =
@@ -6354,7 +6624,7 @@ export type VerifyEmailTokenApiV1AuthEmailVerifyPostResponses = {
   /**
    * Successful Response
    */
-  200: SuccessResponse;
+  200: SuccessNoDataResponse;
 };
 
 export type VerifyEmailTokenApiV1AuthEmailVerifyPostResponse =
@@ -6425,7 +6695,7 @@ export type RequestPasswordResetApiV1AuthPasswordForgotPostResponses = {
   /**
    * Successful Response
    */
-  202: SuccessResponse;
+  202: SuccessNoDataResponse;
 };
 
 export type RequestPasswordResetApiV1AuthPasswordForgotPostResponse =
@@ -6496,7 +6766,7 @@ export type ConfirmPasswordResetApiV1AuthPasswordConfirmPostResponses = {
   /**
    * Successful Response
    */
-  200: SuccessResponse;
+  200: SuccessNoDataResponse;
 };
 
 export type ConfirmPasswordResetApiV1AuthPasswordConfirmPostResponse =
@@ -6567,7 +6837,7 @@ export type ChangePasswordApiV1AuthPasswordChangePostResponses = {
   /**
    * Successful Response
    */
-  200: SuccessResponse;
+  200: SuccessNoDataResponse;
 };
 
 export type ChangePasswordApiV1AuthPasswordChangePostResponse =
@@ -6638,7 +6908,7 @@ export type AdminResetPasswordApiV1AuthPasswordResetPostResponses = {
   /**
    * Successful Response
    */
-  200: SuccessResponse;
+  200: SuccessNoDataResponse;
 };
 
 export type AdminResetPasswordApiV1AuthPasswordResetPostResponse =
@@ -7042,7 +7312,7 @@ export type RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePost
     /**
      * Successful Response
      */
-    200: SuccessResponse;
+    200: ServiceAccountTokenRevokeSuccessResponse;
   };
 
 export type RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostResponse =
@@ -7948,7 +8218,7 @@ export type VerifyTotpApiV1AuthMfaTotpVerifyPostResponses = {
   /**
    * Successful Response
    */
-  200: SuccessResponse;
+  200: SuccessNoDataResponse;
 };
 
 export type VerifyTotpApiV1AuthMfaTotpVerifyPostResponse =
@@ -8024,7 +8294,7 @@ export type RevokeMfaMethodApiV1AuthMfaMethodIdDeleteResponses = {
   /**
    * Successful Response
    */
-  200: SuccessResponse;
+  200: SuccessNoDataResponse;
 };
 
 export type RevokeMfaMethodApiV1AuthMfaMethodIdDeleteResponse =
@@ -9362,8 +9632,11 @@ export type CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostResponses = {
   /**
    * Successful Response
    */
-  202: unknown;
+  202: WorkflowRunCancelResponse;
 };
+
+export type CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostResponse =
+  CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostResponses[keyof CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostResponses];
 
 export type RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostData = {
   body: WorkflowRunRequestBody;
@@ -12928,7 +13201,7 @@ export type SubmitContactApiV1ContactPostResponses = {
   /**
    * Successful Response
    */
-  202: SuccessResponse;
+  202: ContactSubmissionSuccessResponse;
 };
 
 export type SubmitContactApiV1ContactPostResponse =
@@ -13836,7 +14109,7 @@ export type RecordConsentApiV1UsersConsentsPostResponses = {
   /**
    * Successful Response
    */
-  201: SuccessResponse;
+  201: SuccessNoDataResponse;
 };
 
 export type RecordConsentApiV1UsersConsentsPostResponse =
@@ -14599,7 +14872,7 @@ export type RecordUsageApiV1BillingTenantsTenantIdUsagePostResponses = {
   /**
    * Successful Response
    */
-  202: SuccessResponse;
+  202: SuccessNoDataResponse;
 };
 
 export type RecordUsageApiV1BillingTenantsTenantIdUsagePostResponse =

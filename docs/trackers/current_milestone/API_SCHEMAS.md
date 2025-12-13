@@ -19,10 +19,10 @@
 
 * **POST** `/auth/token` → `UserSessionResponse | MfaChallengeResponse` ✅
 * **POST** `/auth/refresh` → `UserSessionResponse` ✅
-* **POST** `/auth/logout` → `SessionRevocationSuccessResponse` ✅
-* **POST** `/auth/logout/all` → `SessionRevocationSuccessResponse` ✅
+* **POST** `/auth/logout` → `LogoutSessionSuccessResponse` ✅
+* **POST** `/auth/logout/all` → `LogoutAllSessionsSuccessResponse` ✅
 * **GET** `/auth/sessions` → `UserSessionListResponse` ✅
-* **DELETE** `/auth/sessions/{session_id}` → `SessionRevocationSuccessResponse` ✅
+* **DELETE** `/auth/sessions/{session_id}` → `SessionRevokeByIdSuccessResponse` ✅
 * **GET** `/auth/me` → `CurrentUserInfoSuccessResponse` ✅
 
 **Email verification**

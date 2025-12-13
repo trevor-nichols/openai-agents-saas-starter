@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 
-import type { SuccessResponse } from '@/lib/api/client/types.gen';
+import type { SessionRevokeByIdSuccessResponse } from '@/lib/api/client/types.gen';
 
 import { DELETE } from './route';
 
@@ -20,10 +20,10 @@ describe('/api/auth/sessions/[sessionId] route', () => {
   });
 
   it('returns revoked session payload on success', async () => {
-    const payload: SuccessResponse = {
+    const payload: SessionRevokeByIdSuccessResponse = {
       success: true,
       message: 'revoked',
-      data: null,
+      data: { revoked: true },
     };
     revokeUserSession.mockResolvedValueOnce(payload);
 

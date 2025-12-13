@@ -7,7 +7,8 @@ import {
   revokeUserSessionApiV1AuthSessionsSessionIdDelete,
 } from '@/lib/api/client/sdk.gen';
 import type {
-  SuccessResponse,
+  LogoutAllSessionsSuccessResponse,
+  SessionRevokeByIdSuccessResponse,
   UserLogoutRequest,
   UserSessionListResponse,
 } from '@/lib/api/client/types.gen';
@@ -59,7 +60,7 @@ export async function logoutSession(payload: UserLogoutRequest): Promise<void> {
   });
 }
 
-export async function logoutAllSessions(): Promise<SuccessResponse> {
+export async function logoutAllSessions(): Promise<LogoutAllSessionsSuccessResponse> {
   const { client, auth } = await getServerApiClient();
   const response = await logoutAllSessionsApiV1AuthLogoutAllPost({
     client,
@@ -76,7 +77,7 @@ export async function logoutAllSessions(): Promise<SuccessResponse> {
   return payload;
 }
 
-export async function revokeUserSession(sessionId: string): Promise<SuccessResponse> {
+export async function revokeUserSession(sessionId: string): Promise<SessionRevokeByIdSuccessResponse> {
   if (!sessionId) {
     throw new Error('Session id is required.');
   }

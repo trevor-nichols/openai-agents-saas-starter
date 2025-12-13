@@ -9,7 +9,7 @@ import type {
   ServiceAccountTokenResponse,
   ServiceAccountTokenItem,
   ServiceAccountTokenRevokeRequest,
-  SuccessResponse,
+  ServiceAccountTokenRevokeSuccessResponse,
 } from '@/lib/api/client/types.gen';
 import type {
   BrowserServiceAccountIssuePayload,
@@ -67,7 +67,7 @@ export async function listServiceAccountTokens(
 export async function revokeServiceAccountToken(
   tokenId: string,
   reason?: string | null,
-): Promise<SuccessResponse> {
+): Promise<ServiceAccountTokenRevokeSuccessResponse> {
   if (!tokenId) {
     throw new Error('Token id is required.');
   }
@@ -126,7 +126,14 @@ export async function issueServiceAccountToken(
   const data = (await response.json().catch(() => ({}))) as Record<string, unknown>;
 
   if (!response.ok || !data) {
-    const message = typeof data?.detail === 'string' ? data.detail : typeof data?.error === 'string' ? data.error : 'Failed to issue service-account token.';
+    const message =
+      typeof data?.detail === 'string'
+        ? data.detail
+        : typeof data?.message === 'string'
+          ? data.message
+          : typeof data?.error === 'string'
+            ? data.error
+            : 'Failed to issue service-account token.';
     throw new Error(message);
   }
 

@@ -11,8 +11,11 @@ from app.api.dependencies.auth import require_current_user
 from app.api.models.auth import (
     CurrentUserInfoResponseData,
     CurrentUserInfoSuccessResponse,
-    SessionRevocationStatusResponseData,
-    SessionRevocationSuccessResponse,
+    LogoutAllSessionsSuccessResponse,
+    LogoutSessionSuccessResponse,
+    SessionLogoutAllResponseData,
+    SessionLogoutResponseData,
+    SessionRevokeByIdSuccessResponse,
     UserLoginRequest,
     UserLogoutRequest,
     UserRefreshRequest,
@@ -128,11 +131,11 @@ async def refresh_access_token(
     return to_user_session_response(tokens)
 
 
-@router.post("/logout", response_model=SessionRevocationSuccessResponse)
+@router.post("/logout", response_model=LogoutSessionSuccessResponse)
 async def logout_session(
     payload: UserLogoutRequest,
     current_user: dict[str, Any] = Depends(require_current_user),
-) -> SessionRevocationSuccessResponse:
+) -> LogoutSessionSuccessResponse:
     """Revoke a single refresh token for the authenticated user."""
 
     try:
@@ -146,24 +149,24 @@ async def logout_session(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
 
     message = "Session revoked successfully." if revoked else "Session already inactive."
-    return SessionRevocationSuccessResponse(
+    return LogoutSessionSuccessResponse(
         message=message,
-        data=SessionRevocationStatusResponseData(revoked=revoked),
+        data=SessionLogoutResponseData(revoked=revoked),
     )
 
 
-@router.post("/logout/all", response_model=SessionRevocationSuccessResponse)
+@router.post("/logout/all", response_model=LogoutAllSessionsSuccessResponse)
 async def logout_all_sessions(
     current_user: dict[str, Any] = Depends(require_current_user),
-) -> SessionRevocationSuccessResponse:
+) -> LogoutAllSessionsSuccessResponse:
     """Revoke every refresh token tied to the authenticated user."""
 
     user_uuid = UUID(current_user["user_id"])
     revoked = await auth_service.revoke_user_sessions(user_uuid, reason="user_logout_all")
     message = "All sessions revoked successfully." if revoked else "No active sessions to revoke."
-    return SessionRevocationSuccessResponse(
+    return LogoutAllSessionsSuccessResponse(
         message=message,
-        data=SessionRevocationStatusResponseData(revoked=revoked),
+        data=SessionLogoutAllResponseData(revoked=revoked),
     )
 
 
@@ -216,11 +219,11 @@ async def list_user_sessions(
     )
 
 
-@router.delete("/sessions/{session_id}", response_model=SessionRevocationSuccessResponse)
+@router.delete("/sessions/{session_id}", response_model=SessionRevokeByIdSuccessResponse)
 async def revoke_user_session(
     session_id: UUID,
     current_user: dict[str, Any] = Depends(require_current_user),
-) -> SessionRevocationSuccessResponse:
+) -> SessionRevokeByIdSuccessResponse:
     """Revoke a specific session/device for the authenticated user."""
 
     user_uuid = UUID(current_user["user_id"])
@@ -240,9 +243,9 @@ async def revoke_user_session(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Session not found or already revoked.",
         )
-    return SessionRevocationSuccessResponse(
+    return SessionRevokeByIdSuccessResponse(
         message="Session revoked successfully.",
-        data=SessionRevocationStatusResponseData(revoked=True),
+        data=SessionLogoutResponseData(revoked=True),
     )
 
 

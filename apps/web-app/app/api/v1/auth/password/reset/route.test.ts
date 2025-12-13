@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 
 import type { NextRequest } from 'next/server';
-import type { SuccessResponse } from '@/lib/api/client/types.gen';
+import type { SuccessNoDataResponse } from '@/lib/api/client/types.gen';
 import { POST } from './route';
 
 const adminResetPassword = vi.hoisted(() => vi.fn());
@@ -35,7 +35,7 @@ describe('/api/v1/auth/password/reset route', () => {
   });
 
   it('returns 200 with success payload', async () => {
-    const payload: SuccessResponse = {
+    const payload: SuccessNoDataResponse = {
       success: true,
       message: 'reset',
       data: null,

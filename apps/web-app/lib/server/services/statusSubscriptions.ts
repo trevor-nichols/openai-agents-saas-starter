@@ -35,8 +35,8 @@ function extractErrorMessage(error: unknown, fallback: string): string {
 
   if (typeof error === 'object' && error !== null) {
     const candidate = (error as Record<string, unknown>).detail
-      ?? (error as Record<string, unknown>).error
-      ?? (error as Record<string, unknown>).message;
+      ?? (error as Record<string, unknown>).message
+      ?? (error as Record<string, unknown>).error;
     if (typeof candidate === 'string' && candidate.trim().length > 0) {
       return candidate;
     }

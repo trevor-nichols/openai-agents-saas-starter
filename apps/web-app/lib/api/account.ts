@@ -1,4 +1,4 @@
-import type { SuccessResponse } from '@/lib/api/client/types.gen';
+import type { EmailVerificationSendSuccessResponse } from '@/lib/api/client/types.gen';
 import type { TenantSubscription } from '@/lib/types/billing';
 import type { AccountSessionResponse } from '@/types/account';
 import { apiV1Path } from '@/lib/apiPaths';
@@ -50,7 +50,7 @@ export async function fetchTenantSubscriptionSummary(
   return parseJson<TenantSubscription>(response);
 }
 
-export async function resendVerificationEmailRequest(): Promise<SuccessResponse> {
+export async function resendVerificationEmailRequest(): Promise<EmailVerificationSendSuccessResponse> {
   const response = await fetch(apiV1Path('/auth/email/send'), {
     method: 'POST',
     cache: 'no-store',
@@ -63,5 +63,5 @@ export async function resendVerificationEmailRequest(): Promise<SuccessResponse>
       typeof payload?.message === 'string' ? payload.message : undefined,
     );
   }
-  return parseJson<SuccessResponse>(response);
+  return parseJson<EmailVerificationSendSuccessResponse>(response);
 }

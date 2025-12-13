@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 
 import type { NextRequest } from 'next/server';
-import type { SuccessResponse } from '@/lib/api/client/types.gen';
+import type { SuccessNoDataResponse } from '@/lib/api/client/types.gen';
 
 import { POST } from './route';
 
@@ -22,7 +22,7 @@ describe('/api/auth/email/verify route', () => {
   });
 
   it('returns success payload', async () => {
-    const responsePayload: SuccessResponse = {
+    const responsePayload: SuccessNoDataResponse = {
       success: true,
       message: 'verified',
       data: null,
@@ -46,4 +46,3 @@ describe('/api/auth/email/verify route', () => {
     await expect(response.json()).resolves.toEqual({ message: 'Missing access token' });
   });
 });
-

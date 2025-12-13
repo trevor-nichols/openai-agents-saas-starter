@@ -11,6 +11,25 @@ from app.api.models.common import ErrorResponse, ValidationErrorResponse
 
 ExceptionHandler = Callable[[Request, Exception], Response | Awaitable[Response]]
 
+_STATUS_ERROR_CODES: dict[int, str] = {
+    400: "BadRequest",
+    401: "Unauthorized",
+    403: "Forbidden",
+    404: "NotFound",
+    409: "Conflict",
+    410: "Gone",
+    413: "PayloadTooLarge",
+    423: "Locked",
+    429: "TooManyRequests",
+    500: "InternalServerError",
+    502: "BadGateway",
+    503: "ServiceUnavailable",
+}
+
+
+def _default_error_code(status_code: int) -> str:
+    return _STATUS_ERROR_CODES.get(status_code, "HTTPException")
+
 
 def _http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
     detail = exc.detail
@@ -18,14 +37,14 @@ def _http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
     detail_str = detail if isinstance(detail, str) else None
 
     if detail_dict is not None:
-        error_code = detail_dict.get("code", exc.__class__.__name__)
+        error_code = detail_dict.get("code", _default_error_code(exc.status_code))
         message = detail_dict.get("message", str(detail_dict))
     elif detail_str is not None:
-        error_code = detail_str
         message = detail_str
+        error_code = _default_error_code(exc.status_code)
     else:
-        error_code = exc.__class__.__name__
         message = str(detail)
+        error_code = _default_error_code(exc.status_code)
 
     payload = ErrorResponse(
         error=str(error_code),

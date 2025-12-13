@@ -11,14 +11,14 @@ import type {
   PasswordForgotRequest,
   PasswordResetConfirmRequest,
   PasswordResetRequest,
-  SuccessResponse,
+  SuccessNoDataResponse,
 } from '@/lib/api/client/types.gen';
 
 import { getServerApiClient } from '../../apiClient';
 
 export async function requestPasswordReset(
   payload: PasswordForgotRequest,
-): Promise<SuccessResponse> {
+): Promise<SuccessNoDataResponse> {
   const { client, auth } = await getServerApiClient();
   const response = await requestPasswordResetApiV1AuthPasswordForgotPost({
     client,
@@ -41,7 +41,7 @@ export async function requestPasswordReset(
 
 export async function confirmPasswordReset(
   payload: PasswordResetConfirmRequest,
-): Promise<SuccessResponse> {
+): Promise<SuccessNoDataResponse> {
   const { client, auth } = await getServerApiClient();
   const response = await confirmPasswordResetApiV1AuthPasswordConfirmPost({
     client,
@@ -64,7 +64,7 @@ export async function confirmPasswordReset(
 
 export async function changePassword(
   payload: PasswordChangeRequest,
-): Promise<SuccessResponse> {
+): Promise<SuccessNoDataResponse> {
   const { client, auth } = await getServerApiClient();
   const response = await changePasswordApiV1AuthPasswordChangePost({
     client,
@@ -87,7 +87,7 @@ export async function changePassword(
 
 export async function adminResetPassword(
   payload: PasswordResetRequest,
-): Promise<SuccessResponse> {
+): Promise<SuccessNoDataResponse> {
   const { client, auth } = await getServerApiClient();
   const response = await adminResetPasswordApiV1AuthPasswordResetPost({
     client,
@@ -107,4 +107,3 @@ export async function adminResetPassword(
 
   return result;
 }
-
