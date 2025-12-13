@@ -40,8 +40,9 @@ export const PromptInputTextarea = ({
   onChange,
   className,
   placeholder = 'What would you like to know?',
-  minHeight: _minHeight = 48,
-  maxHeight: _maxHeight = 164,
+  minHeight = 48,
+  maxHeight = 164,
+  style,
   ...props
 }: PromptInputTextareaProps) => {
   const handleKeyDown: KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
@@ -64,7 +65,11 @@ export const PromptInputTextarea = ({
     <Textarea
       className={cn(
         'w-full resize-none rounded-none border-none p-3 shadow-none outline-none ring-0',
-        'field-sizing-content max-h-[6lh] bg-transparent dark:bg-transparent',
+        'field-sizing-content bg-transparent dark:bg-transparent',
+        '[scrollbar-color:hsl(var(--border))_transparent] [scrollbar-width:thin]',
+        '[&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5',
+        '[&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:bg-clip-content [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-transparent',
+        '[&::-webkit-scrollbar-track]:bg-transparent',
         'focus-visible:ring-0',
         className
       )}
@@ -74,6 +79,11 @@ export const PromptInputTextarea = ({
       }}
       onKeyDown={handleKeyDown}
       placeholder={placeholder}
+      style={{
+        ...style,
+        maxHeight,
+        minHeight,
+      }}
       {...props}
     />
   );
