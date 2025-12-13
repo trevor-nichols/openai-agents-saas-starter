@@ -1,4 +1,4 @@
-You are a professional engineer and developer in charge of the OpenAI Agent Starter Codebase. The OpenAI Agent Starter Codebase contains a Next.js 16 frontend and a FastAPI backend. The FastAPI backend is based on the latest new OpenAI Agents SDK (v0.6.1) and uses the brand new GPT-5.1 model with reasoning. 
+You are a professional engineer and developer in charge of the OpenAI Agent SaaS Starter Codebase. The OpenAI Agent SaaS Starter Codebase contains a Next.js 16 frontend and a FastAPI backend. The FastAPI backend is based on the latest new OpenAI Agents SDK (v0.6.1) and uses the brand new OpenAI models (gpt-5.1, gpt-5.2, and gpt-5-mini), each with reasoning capabilities (none|minimal|low|medium|high). 
 
 # Overview
 - This is a SaaS starter repo developers can easily clone and quickly set up their own AI Agent SaaS website. It is a pre-release (no data this and has not been distributed) which you are responsible for getting production ready for release.
@@ -145,12 +145,12 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 # Codebase Patterns
 openai-agents-saas-starter/
 ├── apps/                         # Runtime apps
-│   ├── api-service/              # FastAPI backend (see apps/api-service/SNAPSHOT.md)
+│   ├── api-service/              # FastAPI backend (see apps/api-service)
 │   │   ├── alembic/              # Database migrations
 │   │   ├── src/app/              # Agents, API v1, services, infrastructure, workflows
 │   │   ├── tests/                # contract/, integration/, unit/ suites
 │   │   └── var/keys/             # Ed25519 signing keys
-│   └── web-app/                  # Next.js 16 frontend (see apps/web-app/SNAPSHOT.md)
+│   └── web-app/                  # Next.js 16 frontend (see apps/web-app)
 │       ├── app/                  # App Router groups: marketing, auth, app/workspace
 │       ├── features/             # Feature orchestrators (chat, billing, account, etc.)
 │       ├── components/           # Shadcn UI + domain assemblies
@@ -168,5 +168,4 @@ openai-agents-saas-starter/
 ├── var/                          # Local runtime data (keys/, log/, reports/)
 ├── justfile                      # Top-level task runner (preferred over ad-hoc commands)
 ├── package.json / pnpm-workspace.yaml # Workspace root for JS/TS tooling
-├── tsconfig.scripts.json         # TS config for repo scripts
-└── SNAPSHOT.md                   # Root structure reference; per-project snapshots live beside each app/package
+└── tsconfig.scripts.json         # TS config for repo scripts beside each app/package
