@@ -160,6 +160,72 @@ describe('useChatController', () => {
     expect(assistantMessages.at(-1)?.content).toBe('Streaming response');
   });
 
+  it('does not append an empty assistant message when a tool ends the turn', async () => {
+    useSendChatMutation.mockReturnValue(createMutationMock());
+
+    streamChat.mockImplementation(() => (async function* () {
+      yield {
+        type: 'event' as const,
+        event: {
+          kind: 'raw_response_event',
+          conversation_id: 'conv-tool-only',
+          agent_used: 'triage',
+          response_id: 'resp-tool-only',
+          sequence_number: 1,
+          raw_type: 'response.output_text.delta',
+          text_delta: 'Preamble',
+          is_terminal: false,
+          payload: {},
+        },
+      };
+      yield {
+        type: 'event' as const,
+        event: {
+          kind: 'run_item_stream_event',
+          conversation_id: 'conv-tool-only',
+          agent_used: 'triage',
+          response_id: 'resp-tool-only',
+          sequence_number: 2,
+          run_item_name: 'tool_called',
+          run_item_type: 'tool_call_item',
+          tool_call_id: 'tool-1',
+          tool_name: 'web_search',
+          agent: 'triage',
+          is_terminal: false,
+          payload: { q: 'hello' },
+        },
+      };
+      yield {
+        type: 'event' as const,
+        event: {
+          kind: 'run_item_stream_event',
+          conversation_id: 'conv-tool-only',
+          agent_used: 'triage',
+          response_id: 'resp-tool-only',
+          sequence_number: 3,
+          run_item_name: 'tool_output',
+          run_item_type: 'tool_call_output_item',
+          tool_call_id: 'tool-1',
+          tool_name: 'web_search',
+          agent: 'triage',
+          is_terminal: true,
+          payload: { results: [] },
+        },
+      };
+    })());
+
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useChatController(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.sendMessage('tool-only please');
+    });
+
+    const assistantMessages = result.current.messages.filter((msg) => msg.role === 'assistant');
+    expect(assistantMessages).toHaveLength(1);
+    expect(assistantMessages[0]?.content).toBe('Preamble');
+  });
+
   it('falls back to mutation when streaming fails', async () => {
     const fallbackResponse = {
       conversation_id: 'conv-fallback',

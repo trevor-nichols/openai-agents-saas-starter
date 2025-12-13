@@ -10,9 +10,8 @@ import { cn } from '@/lib/utils';
 
 import { MessageList } from './MessageList';
 import { ReasoningPanel } from './ReasoningPanel';
-import { ToolEventsPanel } from './ToolEventsPanel';
 import { PromptComposer } from './PromptComposer';
-import type { ChatMessage, ConversationLifecycleStatus, ToolState } from '@/lib/chat/types';
+import type { ChatMessage, ConversationLifecycleStatus, ToolEventAnchors, ToolState } from '@/lib/chat/types';
 import type { AttachmentState } from '../../hooks/useAttachmentResolver';
 import type { StreamingChatEvent } from '@/lib/api/client/types.gen';
 import { GuardrailEventsPanel } from './GuardrailEventsPanel';
@@ -27,6 +26,7 @@ interface ChatSurfaceProps {
   messages: ChatMessage[];
   reasoningText?: string;
   tools: ToolState[];
+  toolEventAnchors?: ToolEventAnchors;
   guardrailEvents?: StreamingChatEvent[];
   chatStatus?: ChatStatus;
   lifecycleStatus?: ConversationLifecycleStatus;
@@ -73,6 +73,7 @@ export function ChatSurface({
   messages,
   reasoningText,
   tools,
+  toolEventAnchors,
   guardrailEvents = [],
   chatStatus,
   lifecycleStatus,
@@ -194,6 +195,8 @@ export function ChatSurface({
 
               <MessageList
                 messages={messages}
+                tools={tools}
+                toolEventAnchors={toolEventAnchors}
                 attachmentState={attachmentState}
                 onResolveAttachment={resolveAttachment}
                 isBusy={isBusy}
@@ -203,8 +206,6 @@ export function ChatSurface({
               <ReasoningPanel reasoningText={reasoningText} isStreaming={isSending} />
 
               <GuardrailEventsPanel events={guardrailEvents} />
-
-              <ToolEventsPanel tools={tools} />
             </>
           )}
         </ConversationContent>

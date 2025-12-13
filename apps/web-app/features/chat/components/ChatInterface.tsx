@@ -13,11 +13,13 @@ import {
   useChatLifecycle,
   useChatMessages,
   useChatSelector,
+  useChatToolEventAnchors,
   useChatToolEvents,
 } from '@/lib/chat';
 import type {
   ChatMessage,
   ConversationLifecycleStatus,
+  ToolEventAnchors,
   ToolState,
 } from '@/lib/chat/types';
 import type { StreamingChatEvent } from '@/lib/api/client/types.gen';
@@ -33,6 +35,7 @@ interface ChatInterfaceProps {
   onClearConversation?: () => void | Promise<void>;
   messages?: ChatMessage[];
   tools?: ToolState[];
+  toolEventAnchors?: ToolEventAnchors;
   agentNotices?: { id: string; text: string }[];
   guardrailEvents?: StreamingChatEvent[];
   reasoningText?: string;
@@ -70,6 +73,7 @@ export function ChatInterface({
   onClearConversation,
   messages: messagesProp,
   tools: toolsProp,
+  toolEventAnchors: toolEventAnchorsProp,
   agentNotices: agentNoticesProp,
   guardrailEvents: guardrailEventsProp,
   reasoningText: reasoningTextProp,
@@ -95,6 +99,7 @@ export function ChatInterface({
 }: ChatInterfaceProps) {
   const messagesFromStore = useChatMessages();
   const toolEventsFromStore = useChatToolEvents();
+  const toolEventAnchorsFromStore = useChatToolEventAnchors();
   const agentNoticesFromStore = useChatAgentNotices();
   const guardrailEventsFromStore = useChatSelector((s) => s.guardrailEvents);
   const lifecycleFromStore = useChatLifecycle();
@@ -108,6 +113,7 @@ export function ChatInterface({
 
   const messages = messagesProp ?? messagesFromStore;
   const toolEvents = toolsProp ?? toolEventsFromStore;
+  const toolEventAnchors = toolEventAnchorsProp ?? toolEventAnchorsFromStore;
   const agentNotices = agentNoticesProp ?? agentNoticesFromStore;
   const guardrailEvents = guardrailEventsProp ?? guardrailEventsFromStore ?? [];
   const lifecycleStatus = lifecycleStatusProp ?? lifecycleFromStore;
@@ -240,6 +246,7 @@ export function ChatInterface({
       messages={messages}
       reasoningText={reasoningText}
       tools={toolEvents}
+      toolEventAnchors={toolEventAnchors}
       guardrailEvents={guardrailEvents}
       chatStatus={chatStatus}
       lifecycleStatus={lifecycleStatus}

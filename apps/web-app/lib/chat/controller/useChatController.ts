@@ -14,7 +14,12 @@ import { streamChat } from '@/lib/api/chat';
 import { useSendChatMutation } from '@/lib/queries/chat';
 import { queryKeys } from '@/lib/queries/keys';
 import type { ConversationListItem } from '@/types/conversations';
-import type { ChatMessage, ConversationLifecycleStatus, ToolState } from '../types';
+import type {
+  ChatMessage,
+  ConversationLifecycleStatus,
+  ToolEventAnchors,
+  ToolState,
+} from '../types';
 import type { ConversationMessagesPage } from '@/types/conversations';
 import type { LocationHint, StreamingChatEvent } from '@/lib/api/client/types.gen';
 
@@ -53,6 +58,7 @@ export interface UseChatControllerReturn {
   activeAgent: string;
   agentNotices: AgentNotice[];
   toolEvents: ToolState[];
+  toolEventAnchors: ToolEventAnchors;
   guardrailEvents: StreamingChatEvent[];
   reasoningText: string;
   lifecycleStatus: ConversationLifecycleStatus;
@@ -96,11 +102,18 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
   const [activeAgent, setActiveAgent] = useState<string>('triage');
   const [agentNotices, setAgentNotices] = useState<AgentNotice[]>([]);
   const [toolEvents, setToolEvents] = useState<ToolState[]>([]);
+  const [toolEventAnchors, setToolEventAnchors] = useState<ToolEventAnchors>({});
   const [guardrailEvents, setGuardrailEvents] = useState<StreamingChatEvent[]>([]);
   const [reasoningText, setReasoningText] = useState('');
   const [lifecycleStatus, setLifecycleStatus] = useState<ConversationLifecycleStatus>('idle');
   const lastActiveAgentRef = useRef<string>('triage');
   const lastResponseIdRef = useRef<string | null>(null);
+  const assistantMessageIdRef = useRef<string | null>(null);
+  const assistantSegmentStartOffsetRef = useRef<number>(0);
+  const latestAssistantAccumulatedRef = useRef<string>('');
+  const lastToolAnchorMessageIdRef = useRef<string | null>(null);
+  const toolAnchorByIdRef = useRef<Map<string, string>>(new Map());
+  const assistantIdNonceRef = useRef<number>(0);
 
   const invalidateMessagesCache = useCallback(
     async (conversationId: string | null) => {
@@ -183,6 +196,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
     setErrorMessage(null);
     setHistoryError(null);
     setToolEvents([]);
+    setToolEventAnchors({});
     setGuardrailEvents([]);
     setReasoningText('');
     setAgentNotices([]);
@@ -190,13 +204,24 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
     setActiveAgent(selectedAgent);
     lastActiveAgentRef.current = selectedAgent;
     lastResponseIdRef.current = null;
+    assistantMessageIdRef.current = null;
+    assistantSegmentStartOffsetRef.current = 0;
+    latestAssistantAccumulatedRef.current = '';
+    lastToolAnchorMessageIdRef.current = null;
+    toolAnchorByIdRef.current = new Map();
   }, [selectedAgent]);
 
   const resetTurnState = useCallback(() => {
     setReasoningText('');
     setToolEvents([]);
+    setToolEventAnchors({});
     setGuardrailEvents([]);
     setLifecycleStatus('idle');
+    assistantMessageIdRef.current = null;
+    assistantSegmentStartOffsetRef.current = 0;
+    latestAssistantAccumulatedRef.current = '';
+    lastToolAnchorMessageIdRef.current = null;
+    toolAnchorByIdRef.current = new Map();
   }, []);
 
   const appendAgentNotice = useCallback((text: string) => {
@@ -267,17 +292,33 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       };
       dispatchMessages({ type: 'append', message: userMessage });
 
-      const assistantMessageId = `assistant-${Date.now()}`;
-      const assistantPlaceholderMessage: ChatMessage = {
-        id: assistantMessageId,
-        role: 'assistant',
-        content: '▋',
-        timestamp: new Date().toISOString(),
-        isStreaming: true,
-      };
-      dispatchMessages({ type: 'append', message: assistantPlaceholderMessage });
+      assistantMessageIdRef.current = null;
+      assistantSegmentStartOffsetRef.current = 0;
+      latestAssistantAccumulatedRef.current = '';
+      lastToolAnchorMessageIdRef.current = userMessage.id;
+      toolAnchorByIdRef.current = new Map();
+      setToolEventAnchors({});
 
       const previousConversationId = currentConversationId;
+
+      const ensureAssistantMessage = () => {
+        if (assistantMessageIdRef.current) return assistantMessageIdRef.current;
+        assistantIdNonceRef.current += 1;
+        const assistantMessageId = `assistant-${Date.now()}-${assistantIdNonceRef.current}`;
+        assistantMessageIdRef.current = assistantMessageId;
+        lastToolAnchorMessageIdRef.current = assistantMessageId;
+        enqueueMessageAction({
+          type: 'append',
+          message: {
+            id: assistantMessageId,
+            role: 'assistant',
+            content: '▋',
+            timestamp: new Date().toISOString(),
+            isStreaming: true,
+          },
+        });
+        return assistantMessageId;
+      };
 
       try {
         const stream = streamChat({
@@ -290,14 +331,73 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
         });
 
         const streamResult = await consumeChatStream(stream, {
-          onTextDelta: (contentWithCursor) =>
+          onTextDelta: (_contentWithCursor, accumulated) => {
+            latestAssistantAccumulatedRef.current = accumulated;
+            const assistantMessageId = ensureAssistantMessage();
+            const segmentStart = assistantSegmentStartOffsetRef.current;
+            const segmentText = accumulated.slice(segmentStart);
             enqueueMessageAction({
               type: 'updateById',
               id: assistantMessageId,
-              patch: { content: contentWithCursor, isStreaming: true },
-            }),
+              patch: { content: `${segmentText}▋`, isStreaming: true },
+            });
+          },
           onReasoningDelta: (delta) => setReasoningText((prev) => `${prev}${delta}`),
-          onToolStates: setToolEvents,
+          onToolStates: (tools) => {
+            setToolEvents(tools);
+
+            const newlySeenToolIds: string[] = [];
+            for (const tool of tools) {
+              if (!toolAnchorByIdRef.current.has(tool.id)) {
+                newlySeenToolIds.push(tool.id);
+              }
+            }
+
+            if (newlySeenToolIds.length === 0) {
+              return;
+            }
+
+            const anchorId = lastToolAnchorMessageIdRef.current;
+            if (!anchorId) {
+              return;
+            }
+
+            setToolEventAnchors((prev) => {
+              const existing = prev[anchorId] ?? [];
+              const nextIds = [...existing];
+              let changed = false;
+
+              for (const toolId of newlySeenToolIds) {
+                if (toolAnchorByIdRef.current.has(toolId)) continue;
+                toolAnchorByIdRef.current.set(toolId, anchorId);
+                nextIds.push(toolId);
+                changed = true;
+              }
+
+              if (!changed) return prev;
+              return {
+                ...prev,
+                [anchorId]: nextIds,
+              };
+            });
+
+            // Close the current assistant segment when a tool starts so tool cards render inline
+            // between assistant message segments (ChatGPT-style).
+            if (assistantMessageIdRef.current) {
+              const currentAssistantId = assistantMessageIdRef.current;
+              const segmentText = latestAssistantAccumulatedRef.current.slice(
+                assistantSegmentStartOffsetRef.current,
+              );
+              enqueueMessageAction({
+                type: 'updateById',
+                id: currentAssistantId,
+                patch: { content: segmentText, isStreaming: false },
+              });
+              assistantMessageIdRef.current = null;
+              assistantSegmentStartOffsetRef.current = latestAssistantAccumulatedRef.current.length;
+              lastToolAnchorMessageIdRef.current = currentAssistantId;
+            }
+          },
           onGuardrailEvents: setGuardrailEvents,
           onLifecycle: setLifecycleStatus,
           onAgentChange: (agent) => {
@@ -309,20 +409,25 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
             if (notice.endsWith(current)) return;
             appendAgentNotice(notice);
           },
-          onAttachments: (attachments) =>
+          onAttachments: (attachments) => {
+            const assistantMessageId = ensureAssistantMessage();
             enqueueMessageAction({
               type: 'updateById',
               id: assistantMessageId,
               patch: { attachments: attachments ?? null },
-            }),
-          onStructuredOutput: (structuredOutput) =>
+            });
+          },
+          onStructuredOutput: (structuredOutput) => {
+            const assistantMessageId = ensureAssistantMessage();
             enqueueMessageAction({
               type: 'updateById',
               id: assistantMessageId,
               patch: { structuredOutput },
-            }),
+            });
+          },
           onError: (errorText) => {
             setErrorMessage(errorText);
+            const assistantMessageId = ensureAssistantMessage();
             enqueueMessageAction({
               type: 'updateById',
               id: assistantMessageId,
@@ -336,17 +441,32 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
           return;
         }
 
-        enqueueMessageAction({
-          type: 'updateById',
-          id: assistantMessageId,
-          patch: {
-            content: streamResult.finalContent,
-            isStreaming: false,
-            attachments: streamResult.attachments ?? null,
-            structuredOutput: streamResult.structuredOutput ?? null,
-            citations: streamResult.citations ?? null,
-          },
-        });
+        const finalSegmentText =
+          streamResult.finalContent.length >= assistantSegmentStartOffsetRef.current
+            ? streamResult.finalContent.slice(assistantSegmentStartOffsetRef.current)
+            : streamResult.finalContent;
+
+        const hasFinalText = finalSegmentText.trim().length > 0;
+        const hasAttachments = (streamResult.attachments?.length ?? 0) > 0;
+        const hasStructuredOutput =
+          streamResult.structuredOutput !== null && streamResult.structuredOutput !== undefined;
+        const hasFinalPayload =
+          Boolean(assistantMessageIdRef.current) || hasFinalText || hasAttachments || hasStructuredOutput;
+
+        if (hasFinalPayload) {
+          const assistantMessageId = ensureAssistantMessage();
+          enqueueMessageAction({
+            type: 'updateById',
+            id: assistantMessageId,
+            patch: {
+              content: finalSegmentText,
+              isStreaming: false,
+              attachments: streamResult.attachments ?? null,
+              structuredOutput: streamResult.structuredOutput ?? null,
+              citations: streamResult.citations ?? null,
+            },
+          });
+        }
         flushQueuedMessages();
 
         setLifecycleStatus(streamResult.lifecycleStatus);
@@ -392,9 +512,31 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
             run_options: runOptions,
           });
 
+          const fallbackAssistantId = (() => {
+            const existingId = assistantMessageIdRef.current;
+            if (existingId) return existingId;
+            assistantIdNonceRef.current += 1;
+            const nextId = `assistant-${Date.now()}-${assistantIdNonceRef.current}`;
+            assistantMessageIdRef.current = nextId;
+            lastToolAnchorMessageIdRef.current = nextId;
+            dispatchMessages({
+              type: 'append',
+              message: {
+                id: nextId,
+                role: 'assistant',
+                content: fallbackResponse.response,
+                timestamp: new Date().toISOString(),
+                isStreaming: false,
+                attachments: fallbackResponse.attachments ?? null,
+                structuredOutput: fallbackResponse.structured_output ?? null,
+              },
+            });
+            return nextId;
+          })();
+
           dispatchMessages({
             type: 'updateById',
-            id: assistantMessageId,
+            id: fallbackAssistantId,
             patch: {
               content: fallbackResponse.response,
               isStreaming: false,
@@ -433,7 +575,9 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
           log.debug('Fallback send failed', {
             error: fallbackError,
           });
-          dispatchMessages({ type: 'removeById', id: assistantMessageId });
+          if (assistantMessageIdRef.current) {
+            dispatchMessages({ type: 'removeById', id: assistantMessageIdRef.current });
+          }
           dispatchMessages({
             type: 'updateById',
             id: userMessage.id,
@@ -539,6 +683,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       activeAgent,
       agentNotices,
       toolEvents,
+      toolEventAnchors,
       guardrailEvents,
       reasoningText,
       lifecycleStatus,
@@ -571,6 +716,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       activeAgent,
       agentNotices,
       toolEvents,
+      toolEventAnchors,
       guardrailEvents,
       reasoningText,
       lifecycleStatus,

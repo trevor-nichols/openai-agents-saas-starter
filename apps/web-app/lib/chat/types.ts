@@ -31,6 +31,8 @@ export type ToolState = {
   errorText?: string | null;
 };
 
+export type ToolEventAnchors = Record<string, string[]>;
+
 export type ConversationLifecycleStatus =
   | 'idle'
   | 'created'

@@ -4,6 +4,7 @@ export {
   ChatControllerProvider,
   useChatSelector,
   useChatMessages,
+  useChatToolEventAnchors,
   useChatToolEvents,
   useChatGuardrailEvents,
   useChatLifecycle,
