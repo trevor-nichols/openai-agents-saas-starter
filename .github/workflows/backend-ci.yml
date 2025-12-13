@@ -53,7 +53,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: saas_strarter_db_ci
+          POSTGRES_DB: saas_starter_db_ci
         ports:
           - 5432:5432
         options: >-
@@ -95,7 +95,7 @@ jobs:
 
       - name: Postgres integration smoke tests
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/saas_strarter_db_ci
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/saas_starter_db_ci
         run: |
           cd apps/api-service && hatch run pytest tests/integration --maxfail=1 -m postgres
 

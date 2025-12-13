@@ -146,15 +146,35 @@ def _run_backend_seed_script(project_root: Path, config: DevUserConfig) -> str:
         detail = stderr or stdout or "unknown error"
         raise CLIError(f"Dev user seeding failed: {detail}")
 
-    try:
-        payload = json.loads(completed.stdout or "")
-    except json.JSONDecodeError as exc:
-        raise CLIError(f"Dev user seeding returned invalid JSON: {exc}") from exc
+    payload = _extract_seed_payload(completed.stdout or "")
 
     result = payload.get("result")
     if not isinstance(result, str) or not result.strip():
         raise CLIError(f"Dev user seeding returned unexpected payload: {payload}")
     return result
+
+
+def _extract_seed_payload(stdout: str) -> dict[str, object]:
+    raw = stdout.strip()
+    if not raw:
+        raise CLIError("Dev user seeding produced no output.")
+
+    last_error: json.JSONDecodeError | None = None
+    for line in reversed(raw.splitlines()):
+        candidate = line.strip()
+        if not candidate:
+            continue
+        try:
+            payload = json.loads(candidate)
+        except json.JSONDecodeError as exc:
+            last_error = exc
+            continue
+        if isinstance(payload, dict) and "result" in payload:
+            return payload
+
+    if last_error is not None:
+        raise CLIError(f"Dev user seeding returned invalid JSON: {last_error}") from last_error
+    raise CLIError("Dev user seeding returned invalid JSON output.")
 
 
 def seed_dev_user(context: WizardContext, config: DevUserConfig) -> str:

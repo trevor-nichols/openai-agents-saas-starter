@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import sys
 from dataclasses import dataclass
 from uuid import uuid4
@@ -126,6 +127,13 @@ async def _seed_dev_user(args: SeedDevUserArgs) -> str:
         return "created"
 
 
+async def _run_seed(args: SeedDevUserArgs) -> str:
+    try:
+        return await _seed_dev_user(args)
+    finally:
+        await dispose_engine()
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Seed or rotate the local dev user.")
     parser.add_argument("--email", required=True)
@@ -143,6 +151,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     ns = parser.parse_args(argv)
 
+    # This script is used by the operator CLI and must produce machine-readable JSON.
+    # Disable SQLAlchemy echo even if enabled in the developer's env to avoid polluting stdout.
+    os.environ["DATABASE_ECHO"] = "false"
+
     args = SeedDevUserArgs(
         email=str(ns.email).strip().lower(),
         password=str(ns.password),
@@ -154,14 +166,7 @@ def main(argv: list[str] | None = None) -> int:
         rotate_existing=not bool(ns.no_rotate_existing),
     )
 
-    try:
-        result = asyncio.run(_seed_dev_user(args))
-    finally:
-        # Avoid "event loop is closed" cleanup issues during repeated local runs/tests.
-        try:
-            asyncio.run(dispose_engine())
-        except RuntimeError:
-            pass
+    result = asyncio.run(_run_seed(args))
 
     print(json.dumps({"result": result}, separators=(",", ":")))
     return 0
@@ -169,4 +174,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv[1:]))
-

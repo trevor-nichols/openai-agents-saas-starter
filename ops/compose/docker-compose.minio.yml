@@ -1,5 +1,3 @@
-version: "3.11"
-
 services:
   minio:
     # Upstream removed official docker images in Oct 2025. Use the community-rebuilt,
