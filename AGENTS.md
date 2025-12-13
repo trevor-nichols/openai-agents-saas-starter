@@ -143,29 +143,56 @@ You are a professional engineer and developer in charge of the OpenAI Agent SaaS
 - Quick tail: `python -m starter_cli.app logs tail --service api --service frontend --errors`.
 
 # Codebase Patterns
+<patterns>
 openai-agents-saas-starter/
-├── apps/                         # Runtime apps
-│   ├── api-service/              # FastAPI backend (see apps/api-service)
-│   │   ├── alembic/              # Database migrations
-│   │   ├── src/app/              # Agents, API v1, services, infrastructure, workflows
-│   │   ├── tests/                # contract/, integration/, unit/ suites
-│   │   └── var/keys/             # Ed25519 signing keys
-│   └── web-app/                  # Next.js 16 frontend (see apps/web-app)
-│       ├── app/                  # App Router groups: marketing, auth, app/workspace
-│       ├── features/             # Feature orchestrators (chat, billing, account, etc.)
-│       ├── components/           # Shadcn UI + domain assemblies
-│       ├── lib/                  # API client, config, streaming helpers
-│       ├── hooks/                # Client-side hooks
-│       ├── tests/ + storybook    # Vitest/Playwright and Storybook assets
-│       └── public/               # Static assets
-├── packages/                     # Shared Python libraries
-│   ├── starter_cli/              # Operator CLI (src/starter_cli/, tests/, justfile)
-│   └── starter_contracts/        # Shared contracts used by CLI + backend
-├── tools/                        # CI/utility scripts (typecheck, smoke tests, vault helpers)
-├── ops/                          # Local infra configs (compose stacks, observability)
-├── docs/                         # SDK reference, trackers, frontend docs
-├── scripts/                      # Repo-level helper scripts
-├── var/                          # Local runtime data (keys/, log/, reports/)
-├── justfile                      # Top-level task runner (preferred over ad-hoc commands)
-├── package.json / pnpm-workspace.yaml # Workspace root for JS/TS tooling
-└── tsconfig.scripts.json         # TS config for repo scripts beside each app/package
+├── apps/                         # Runtime apps (deployable services)
+│   ├── api-service/              # FastAPI backend
+│   │   ├── .artifacts/            # Generated artifacts (OpenAPI snapshots, fixtures)
+│   │   ├── alembic/               # Database migrations
+│   │   ├── src/app/               # Layered backend architecture
+│   │   │   ├── api/               # FastAPI routing + API v1 modules/schemas
+│   │   │   ├── agents/            # Agent specs/prompts + shared agent utilities
+│   │   │   ├── guardrails/        # Guardrail checks + presets + shared guardrail plumbing
+│   │   │   ├── workflows/         # Workflow specs + orchestration/runner logic
+│   │   │   ├── domain/            # Domain models + ports (core business concepts)
+│   │   │   ├── services/          # Application services / use-cases
+│   │   │   ├── infrastructure/    # Persistence + integrations + repositories
+│   │   │   ├── providers/         # External providers (OpenAI, secrets, storage, stripe, redis, etc.)
+│   │   │   ├── observability/     # Logging/metrics/OTLP sinks + instrumentation
+│   │   │   ├── middleware/        # Request/response middleware
+│   │   │   └── core/ + bootstrap/ + utils/  # Settings, security, app wiring, helpers
+│   │   ├── tests/                 # contract/, integration/, unit/, smoke/ (+ stream goldens/fixtures)
+│   │   ├── scripts/               # One-off maintenance / admin scripts
+│   │   ├── var/keys/              # Local signing keysets (Ed25519)
+│   │   └── justfile               # App-scoped tasks (pairs with root justfile)
+│   └── web-app/                   # Next.js App Router frontend
+│       ├── app/                   # Route groups: (marketing)/, (auth)/, (app)/(workspace)
+│       │   └── api/               # BFF/edge route handlers (proxy to backend, streaming, downloads)
+│       ├── features/              # Feature modules (chat, agents, billing, settings, etc.)
+│       ├── components/            # shadcn/ui + shared UI assemblies
+│       ├── lib/                   # API client, server helpers, streaming utilities
+│       │   └── api/client/        # Generated OpenAPI TS client + types (*.gen.ts)
+│       ├── hooks/                 # Shared React hooks
+│       ├── tests/                 # Playwright e2e + Vitest unit tests
+│       ├── .storybook/            # Storybook config + mocks/fixtures
+│       ├── seeds/                 # Test seeds/config (e.g., Playwright)
+│       ├── public/                # Static assets
+│       └── justfile               # App-scoped tasks
+├── packages/                      # Shared Python libraries (reused across apps)
+│   ├── starter_cli/               # Operator CLI (Typer/Rich TUI, setup wizard, probes, tests)
+│   │   └── justfile               # Package-scoped tasks
+│   └── starter_contracts/         # Shared contracts/models/config used by CLI + backend (tests, py.typed)
+├── ops/                           # Local infra configs
+│   ├── compose/                   # Docker compose stacks (vault/minio/etc.)
+│   └── observability/             # Collector/config generation helpers
+├── tools/                         # Repo tooling (typecheck, smoke tests, vault helpers, module viz)
+├── scripts/                       # Repo-level helper scripts (e.g., vault file/log helpers)
+├── var/                           # Local runtime outputs (keys/, observability/, ...)
+├── .env.compose*                  # Repo-level dev env for compose (example + real)
+├── .nvmrc                         # Node version pin for JS tooling
+├── justfile                       # Root task runner (preferred entrypoint; complements per-app justfiles)
+├── package.json                   # Workspace root for JS/TS tooling
+├── pnpm-workspace.yaml            # pnpm workspace definition
+└── tsconfig.scripts.json          # TS config for repo-level scripts beside each app/package
+</patterns>
+
