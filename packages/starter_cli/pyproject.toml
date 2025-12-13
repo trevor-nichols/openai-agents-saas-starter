@@ -41,6 +41,7 @@ dev = [
   "mypy>=1.11.0,<1.13.0",
   "pyright>=1.1.375,<1.2.0",
   "ruff>=0.7.0,<0.8.0",
+  "alembic>=1.13.3,<2.0.0",
   "types-PyYAML>=6.0.12.20240917,<7.0.0",
   # backend deps for shared test fixtures
   "fastapi>=0.115.12,<0.116.0",
@@ -80,6 +81,7 @@ starter_cli = ["py.typed"]
 features = ["dev"]
 python = "3.11"
 path = ".venv"
+pre-install-commands = ["python -m pip install --editable ../starter_contracts"]
 
 [tool.hatch.envs.default.scripts]
 lint = "ruff check src"

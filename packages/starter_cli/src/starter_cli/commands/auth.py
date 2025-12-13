@@ -214,7 +214,7 @@ def _post_issue_service_account(
     if response.status_code >= 400:
         try:
             body = response.json()
-            detail = body.get("detail") or body.get("error") or body.get("message")
+            detail = body.get("detail") or body.get("message") or body.get("error")
         except Exception:
             detail = response.text
         raise CLIError(f"Issuance failed ({response.status_code}): {detail}")

@@ -42,8 +42,8 @@ See `docs/architecture/repo-layout.md` for rules and ownership.
 ## Prerequisites
 | Tool | Version | Notes |
 | --- | --- | --- |
-| Python | 3.11+ | Install backend extras: `pip install 'api-service[dev]'`. |
-| Hatch | Latest | Manages backend virtualenv + scripts. |
+| Python | 3.11+ | Recommended: install via `uv python install 3.11`. |
+| Hatch | 1.16+ | Recommended: `uv tool install --python 3.11 hatch` (or `pipx install hatch`). |
 | Node.js | 22+ | Paired with `pnpm` for the Next.js app. |
 | pnpm | 8+ | `pnpm install` in `apps/web-app/`. |
 | just | Latest | Task runner replacing the old Makefile; install via `brew install just` or `sudo apt-get install just`. |
@@ -55,25 +55,33 @@ See `docs/architecture/repo-layout.md` for rules and ownership.
 ## First-Time Setup
 1. **Bootstrap tooling**  
    ```bash
+   just python-bootstrap   # installs Python 3.11 + Hatch (via uv)
    just bootstrap          # creates/refreshes the Hatch environment
    pnpm install            # inside apps/web-app/
    ```
-2. **Run prerequisite check**  
+2. **Create local compose defaults**  
    ```bash
-   cd packages/starter_cli
-   python -m starter_cli.app infra deps --format table
+   cp .env.compose.example .env.compose
    ```
-3. **Guided environment wizard**  
+   `.env.compose` is gitignored and holds non-sensitive defaults for local helpers (ports, toggles, etc.).
+3. **Run prerequisite check**  
+   ```bash
+   just cli cmd="infra deps --format table"
+   ```
+4. **Guided environment wizard**  
    ```bash
    python -m starter_cli.app setup wizard --profile local
    # OR from repo root: just cli cmd="setup wizard --profile local"
    ```  
    The wizard writes `apps/api-service/.env.local` (backend) and `apps/web-app/.env.local`, covering secrets, providers, tenants, signup policy, and frontend runtime config. Use `--non-interactive`, `--answers-file`, and `--summary-path` for headless or auditable runs.
-4. **Bring up local infrastructure**  
+5. **Bring up local infrastructure**  
    ```bash
    just dev-up        # Postgres + Redis
    just vault-up      # optional: dev Vault signer for auth flows
    ```
+   If you're pointing `DATABASE_URL` at an external Postgres instance for local development, set
+   `STARTER_LOCAL_DATABASE_MODE=external` to start Redis (and optional collectors) without starting
+   the bundled Postgres container.
 
 ## Running The Stack
 - **Backend API**  

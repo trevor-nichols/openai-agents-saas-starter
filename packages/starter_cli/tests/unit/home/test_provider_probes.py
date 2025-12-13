@@ -21,6 +21,7 @@ def test_probe_registry_order_and_names():
         "environment",
         "ports",
         "stack",
+        "database_config",
         "database",
         "redis",
         "api",

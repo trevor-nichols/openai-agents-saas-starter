@@ -19,7 +19,7 @@
   "AUTH_KEY_STORAGE_PATH": "var/keys/keyset.json",
   "AUTH_KEY_SECRET_NAME": "kv/agents/production/jwks",
   "DATABASE_ECHO": "false",
-  "DATABASE_URL": "postgresql+asyncpg://prod_user:CHANGE_ME@prod-db.agents.example.com:5432/saas_strarter_db",
+  "DATABASE_URL": "postgresql+asyncpg://prod_user:CHANGE_ME@prod-db.agents.example.com:5432/saas_starter_db",
   "DATABASE_POOL_SIZE": "25",
   "DATABASE_MAX_OVERFLOW": "10",
   "DATABASE_POOL_RECYCLE": "600",

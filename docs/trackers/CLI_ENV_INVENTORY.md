@@ -1,13 +1,19 @@
 # Starter CLI Environment Inventory
 
 This file is generated via `python -m starter_cli.app config write-inventory`.
-Last updated: 2025-11-29 00:37:04 UTC
+Last updated: 2025-12-13 16:35:32 UTC
 
 Legend: `✅` = wizard prompts for it, blank = requires manual population.
 
 | Env Var | Type | Default | Required | Wizard? | Description |
 | --- | --- | --- | --- | --- | --- |
 | ACCESS_TOKEN_EXPIRE_MINUTES | int | 30 |  | ✅ | Access token expiration time in minutes |
+| ACTIVITY_EVENTS_CLEANUP_BATCH | int | 10000 |  |  | Delete batch size for activity-event cleanup jobs. |
+| ACTIVITY_EVENTS_CLEANUP_SLEEP_MS | int | 0 |  |  | Sleep between cleanup batches in milliseconds (throttle). |
+| ACTIVITY_EVENTS_REDIS_URL | str \| NoneType | — |  |  | Redis URL used for activity event streaming (defaults to REDIS_URL). |
+| ACTIVITY_EVENTS_TTL_DAYS | int | 365 |  |  | Number of days to retain activity_events before cleanup. |
+| ACTIVITY_STREAM_MAX_LENGTH | int | 2048 |  |  | Maximum Redis stream length for activity events per tenant. |
+| ACTIVITY_STREAM_TTL_SECONDS | int | 86400 |  |  | TTL applied to activity stream keys (0 disables TTL). |
 | AGENT_MODEL_CODE | str \| NoneType | — |  |  | Override for the code assistant model; defaults to agent_default_model. |
 | AGENT_MODEL_DATA | str \| NoneType | — |  |  | Override for the data analyst model; defaults to agent_default_model. |
 | AGENT_MODEL_DEFAULT | str | gpt-5.1 |  |  | Default reasoning model for triage and agent fallbacks. |
@@ -16,6 +22,7 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | ALLOWED_HOSTS | str | localhost,localhost:8000,127.0.0.1,testserver,testclient |  | ✅ | Trusted hosts for FastAPI TrustedHostMiddleware (comma-separated host[:port] entries). |
 | ALLOWED_METHODS | str | GET,POST,PUT,DELETE,OPTIONS |  | ✅ | CORS allowed methods (comma-separated) |
 | ALLOWED_ORIGINS | str | http://localhost:3000,http://localhost:8000 |  | ✅ | CORS allowed origins (comma-separated) |
+| ALLOW_ANON_FRONTEND_LOGS | bool | False |  |  | Allow anonymous frontend log ingest when signature is valid. |
 | ALLOW_PUBLIC_SIGNUP | bool | True |  | ✅ | Allow unauthenticated tenants to self-register via /auth/register. Derived from SIGNUP_ACCESS_POLICY. |
 | ALLOW_SIGNUP_TRIAL_OVERRIDE | bool | False |  | ✅ | Permit /auth/register callers to request trial periods up to the plan/default cap. |
 | ANTHROPIC_API_KEY | str \| NoneType | — |  | ✅ | Anthropic API key |
@@ -45,6 +52,7 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | AUTH_REFRESH_TOKEN_TTL_MINUTES | int | 43200 |  | ✅ | Default refresh token lifetime for human users (minutes). |
 | AUTH_SESSION_ENCRYPTION_KEY | str \| NoneType | — |  | ✅ | Base64-compatible secret used to encrypt stored IP metadata for user sessions. |
 | AUTH_SESSION_IP_HASH_SALT | str \| NoneType | — |  | ✅ | Salt blended into session IP hash derivation (defaults to SECRET_KEY). |
+| AUTO_CREATE_VECTOR_STORE_FOR_FILE_SEARCH | bool | True |  |  | Automatically create a primary vector store for tenants when file_search is used. |
 | AUTO_PURGE_EXPIRED_VECTOR_STORES | bool | False |  |  | When true, expired vector stores are deleted remotely and soft-deleted locally. |
 | AUTO_RUN_MIGRATIONS | bool | False |  | ✅ | Automatically run Alembic migrations on startup (dev convenience) |
 | AWS_ACCESS_KEY_ID | str \| NoneType | — |  | ✅ | AWS access key ID (overrides profile/IMDS when set). |
@@ -68,6 +76,11 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | CHAT_RATE_LIMIT_PER_MINUTE | int | 60 |  | ✅ | Maximum chat completions allowed per user per minute. |
 | CHAT_STREAM_CONCURRENT_LIMIT | int | 5 |  | ✅ | Simultaneous streaming chat sessions allowed per user. |
 | CHAT_STREAM_RATE_LIMIT_PER_MINUTE | int | 30 |  | ✅ | Maximum streaming chat sessions started per user per minute. |
+| CONTACT_EMAIL_EMAIL_RATE_LIMIT_PER_HOUR | int | 3 |  |  | Contact form submissions allowed per email per hour. |
+| CONTACT_EMAIL_IP_RATE_LIMIT_PER_HOUR | int | 20 |  |  | Contact form submissions allowed per IP per hour. |
+| CONTACT_EMAIL_SUBJECT_PREFIX | str | [Contact] |  |  | Subject prefix prepended to contact form emails. |
+| CONTACT_EMAIL_TEMPLATE_ID | str \| NoneType | — |  |  | Optional Resend template ID for contact form deliveries. |
+| CONTACT_EMAIL_TO | list[str] | — |  |  | Comma-separated or JSON list of recipients for contact form submissions (e.g., support@example.com,security@example.com). |
 | CONTAINER_ALLOWED_MEMORY_TIERS | list[str] | — |  |  | Allowed memory tiers for explicit containers. |
 | CONTAINER_DEFAULT_AUTO_MEMORY | str | 1g |  |  | Default memory tier for auto containers when not specified (1g,4g,16g,64g). |
 | CONTAINER_FALLBACK_TO_AUTO_ON_MISSING_BINDING | bool | True |  |  | When True, agent runs fall back to auto container if an explicit binding is missing or expired; when False, runs will error. |
@@ -83,6 +96,7 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | EMAIL_VERIFICATION_EMAIL_RATE_LIMIT_PER_HOUR | int | 3 |  | ✅ | Verification email sends per account per hour. |
 | EMAIL_VERIFICATION_IP_RATE_LIMIT_PER_HOUR | int | 10 |  | ✅ | Verification email sends per IP per hour. |
 | EMAIL_VERIFICATION_TOKEN_TTL_MINUTES | int | 60 |  | ✅ | Email verification token lifetime in minutes. |
+| ENABLE_ACTIVITY_STREAM | bool | False |  |  | Enable Redis-backed SSE streaming for activity events. |
 | ENABLE_BILLING | bool | False |  | ✅ | Expose billing features and APIs once subscriptions are implemented |
 | ENABLE_BILLING_RETRY_WORKER | bool | True |  | ✅ | Run the Stripe dispatch retry worker inside this process |
 | ENABLE_BILLING_STREAM | bool | False |  | ✅ | Enable real-time billing event streaming endpoints |
@@ -93,6 +107,7 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | ENABLE_USAGE_GUARDRAILS | bool | False |  | ✅ | If true, enforce plan usage limits before servicing chat requests. Requires billing to be enabled. |
 | ENABLE_VECTOR_STORE_SYNC_WORKER | bool | True |  |  | Run background sync worker to refresh vector store/file status and expiry. Set false only for constrained/local dev. |
 | ENVIRONMENT | str | development |  | ✅ | Deployment environment label (development, staging, production, etc.) |
+| FRONTEND_LOG_SHARED_SECRET | str \| NoneType | — |  |  | Shared secret for signed anonymous frontend logs. |
 | GCS_BUCKET | str \| NoneType | — |  |  | Default bucket name when using GCS provider. |
 | GCS_CREDENTIALS_JSON | str \| NoneType | — |  |  | Inline JSON credentials for GCS (service account). Optional if using ADC or credentials path. |
 | GCS_CREDENTIALS_PATH | str \| NoneType | — |  |  | Path to GCS credentials JSON file. |
@@ -115,7 +130,7 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | IMAGE_DEFAULT_FORMAT | str | png |  | ✅ | Default image format (png, jpeg, webp). |
 | IMAGE_DEFAULT_QUALITY | str | high |  | ✅ | Default quality for image generation (auto, low, medium, high). |
 | IMAGE_DEFAULT_SIZE | str | 1024x1024 |  | ✅ | Default output size for image generation tool (supports auto, 1024x1024, 1024x1536, 1536x1024). |
-| IMAGE_MAX_PARTIAL_IMAGES | int | 2 |  | ✅ | Maximum partial images to stream when enabled (0-3). |
+| IMAGE_MAX_PARTIAL_IMAGES | int | 3 |  | ✅ | Maximum partial images to stream when enabled (0-3). |
 | IMAGE_OUTPUT_MAX_MB | int | 6 |  | ✅ | Hard cap on decoded image size in megabytes to avoid large inline payloads. |
 | INFISICAL_BASE_URL | str \| NoneType | — |  | ✅ | Base URL for Infisical API (set when using Infisical providers). |
 | INFISICAL_CACHE_TTL_SECONDS | int | 60 |  | ✅ | TTL (seconds) for Infisical secret cache entries. |
@@ -128,13 +143,20 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | JWT_ALGORITHM | str | HS256 |  | ✅ | JWT algorithm |
 | LOGGING_DATADOG_API_KEY | str \| NoneType | — |  | ✅ | Datadog API key when logging_sink=datadog. |
 | LOGGING_DATADOG_SITE | str \| NoneType | datadoghq.com |  | ✅ | Datadog site (datadoghq.com, datadoghq.eu, etc.). |
+| LOGGING_DUPLEX_ERROR_FILE | bool | False |  |  | When logging_sink=stdout, also write errors to the dated error file. |
 | LOGGING_FILE_BACKUPS | int | 5 |  |  | Rotated backup files to retain when logging_sink=file. |
 | LOGGING_FILE_MAX_MB | int | 10 |  |  | Maximum megabytes per log file when logging_sink=file. |
 | LOGGING_FILE_PATH | str | var/log/api-service.log |  |  | Filesystem path for file sink when logging_sink=file. |
+| LOGGING_MAX_DAYS | int | 0 |  |  | Prune dated log directories older than N days (0 disables pruning). |
 | LOGGING_OTLP_ENDPOINT | str \| NoneType | — |  | ✅ | OTLP/HTTP endpoint when logging_sink=otlp. |
 | LOGGING_OTLP_HEADERS | str \| NoneType | — |  | ✅ | Optional OTLP headers JSON when logging_sink=otlp. |
 | LOGGING_SINK | str | stdout |  | ✅ | Logging sink (stdout, file, datadog, otlp, or none). |
+| LOGGING_SINKS | str \| NoneType | — |  | ✅ | Comma-separated logging sinks (stdout, file, datadog, otlp, none). Overrides LOGGING_SINK when set. |
 | LOG_LEVEL | str | INFO |  | ✅ | Logging level |
+| LOG_ROOT | str \| NoneType | — |  |  | Base directory for dated log roots (defaults to var/log). |
+| MCP_TOOLS | list[MCPToolSettings] | — |  |  | Hosted MCP tool definitions registered into the tool registry. |
+| MFA_CHALLENGE_TTL_MINUTES | int | 5 |  |  | Lifetime of MFA challenge tokens issued during login. |
+| MFA_VERIFY_RATE_LIMIT_PER_HOUR | int | 10 |  |  | Maximum MFA verification attempts per user per hour. |
 | MINIO_ACCESS_KEY | str \| NoneType | — |  |  | MinIO access key. |
 | MINIO_ENDPOINT | str \| NoneType | — |  |  | MinIO endpoint (http(s)://host:port). Required when storage_provider=minio. |
 | MINIO_REGION | str \| NoneType | — |  |  | MinIO region (optional). |
@@ -155,7 +177,10 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | RESEND_EMAIL_ENABLED | bool | False |  | ✅ | When true, use Resend for transactional email delivery. |
 | RESEND_EMAIL_VERIFICATION_TEMPLATE_ID | str \| NoneType | — |  | ✅ | Optional Resend template ID for email verification messages. |
 | RESEND_PASSWORD_RESET_TEMPLATE_ID | str \| NoneType | — |  | ✅ | Optional Resend template ID for password reset messages. |
-| SECRETS_PROVIDER | SecretsProviderLiteral | vault_dev |  | ✅ | Which secrets provider implementation to use (vault_dev, vault_hcp, infisical_cloud, infisical_self_host). |
+| RUN_EVENTS_CLEANUP_BATCH | int | 10000 |  |  | Delete batch size for run-event cleanup jobs. |
+| RUN_EVENTS_CLEANUP_SLEEP_MS | int | 0 |  |  | Sleep between cleanup batches in milliseconds (throttle). |
+| RUN_EVENTS_TTL_DAYS | int | 180 |  |  | Number of days to retain agent_run_events before cleanup. |
+| SECRETS_PROVIDER | SecretsProviderLiteral | vault_dev |  | ✅ | Which secrets provider implementation to use (vault_dev, vault_hcp, infisical_cloud, infisical_self_host, aws_sm, azure_kv). |
 | SECRET_KEY | str | your-secret-key-here-change-in-production |  | ✅ | JWT secret key |
 | SECURITY_TOKEN_REDIS_URL | str \| NoneType | — |  | ✅ | Redis URL dedicated to nonce/email/password token stores (falls back to REDIS_URL). |
 | SIGNUP_ACCESS_POLICY | public \| invite_only \| approval | invite_only |  | ✅ | Signup exposure posture: public, invite_only, or approval. |
@@ -206,4 +231,5 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | VECTOR_MAX_TOTAL_BYTES | int \| NoneType | — |  |  | Optional per-tenant hard cap on total bytes across vector stores. None disables. |
 | VECTOR_STORE_SYNC_BATCH_SIZE | int | 20 |  |  | Maximum stores refreshed per sync iteration. |
 | VECTOR_STORE_SYNC_POLL_SECONDS | float | 60.0 |  |  | Polling interval for vector store sync worker. |
+| WORKFLOW_MIN_PURGE_AGE_HOURS | int | 0 |  |  | Minimum age in hours before a workflow run can be hard-deleted. Set to 0 to disable the guard. |
 | XAI_API_KEY | str \| NoneType | — |  | ✅ | xAI API key |

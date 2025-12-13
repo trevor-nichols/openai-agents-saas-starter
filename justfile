@@ -3,19 +3,9 @@ set shell := ["bash", "-uc"]
 # Root orchestrator: delegates to per-package Justfiles and shared infra.
 
 # Env + helpers
-env_file := `python - <<'PY'
-import os
-from pathlib import Path
-import sys
-candidates = [
-    Path("apps/api-service/.env.local"),
-    Path("apps/api-service/.env"),
-]
-path = next((str(p) for p in candidates if p.exists()), "")
-sys.stdout.write(path)
-PY`
+env_file := `if [ -f "apps/api-service/.env.local" ]; then echo "apps/api-service/.env.local"; elif [ -f "apps/api-service/.env" ]; then echo "apps/api-service/.env"; else echo ""; fi`
 repo_root := justfile_directory()
-env_runner := "python -m starter_cli.app --skip-env util run-with-env " + repo_root + "/.env.compose " + repo_root + "/" + env_file
+env_runner := "cd " + repo_root + "/packages/starter_cli && hatch run python -m starter_cli.app --skip-env util run-with-env " + repo_root + "/.env.compose " + repo_root + "/" + env_file
 api_just := "just -f apps/api-service/justfile"
 cli_just := "just -f packages/starter_cli/justfile"
 contracts_just := "just -f packages/starter_contracts/justfile"
@@ -52,6 +42,7 @@ default:
 
 help:
     @echo "Core commands:" && \
+    echo "  just python-bootstrap        # Install Python 3.11 + Hatch (via uv)" && \
     echo "  just dev-up                 # Start Postgres/Redis (and otel if enabled)" && \
     echo "  just dev-down               # Stop infra stack" && \
     echo "  just dev-logs               # Tail infra logs" && \
@@ -140,6 +131,11 @@ web-test:
 # Dev environment install
 # -------------------------
 
+python-bootstrap:
+    @command -v uv >/dev/null 2>&1 || (echo "uv not found. Install it first (https://astral.sh/uv)"; exit 1)
+    uv python install 3.11
+    uv tool install --python 3.11 --force hatch
+
 dev-install:
     python -m pip install -e packages/starter_contracts
     python -m pip install -e packages/starter_cli
@@ -168,13 +164,17 @@ dev-up: _check_env
         set -euo pipefail; \
         cd {{repo_root}}; \
         python ops/observability/render_collector_config.py; \
-        services="postgres redis"; \
+        db_mode="${STARTER_LOCAL_DATABASE_MODE:-compose}"; \
+        services="redis"; \
+        if [ "$db_mode" = "compose" ]; then \
+            services="postgres redis"; \
+        fi; \
         collector_msg=""; \
         if [ "$ENABLE_OTEL_COLLECTOR" = "true" ]; then \
             services="$services otel-collector"; \
             collector_msg=" + otel-collector"; \
         fi; \
-        echo "Starting $services$collector_msg"; \
+        echo "Starting $services$collector_msg (db_mode=$db_mode)"; \
         docker compose -f {{compose_file}} up -d $services; \
         if [ "${ENABLE_MINIO:-false}" = "true" ]; then \
             echo "Starting minio (storage)"; \
@@ -204,7 +204,11 @@ dev-logs: _check_env
     {{env_runner}} -- bash -c '\
         set -euo pipefail; \
         cd {{repo_root}}; \
-        services="postgres redis"; \
+        db_mode="${STARTER_LOCAL_DATABASE_MODE:-compose}"; \
+        services="redis"; \
+        if [ "$db_mode" = "compose" ]; then \
+            services="postgres redis"; \
+        fi; \
         if [ "${ENABLE_OTEL_COLLECTOR:-false}" = "true" ]; then \
             services="${services} otel-collector"; \
         fi; \
@@ -220,7 +224,15 @@ dev-logs: _check_env
 dev-ps: _check_env
     {{env_runner}} -- bash -c '\
         cd {{repo_root}}; \
-        docker compose -f {{compose_file}} ps; \
+        db_mode="${STARTER_LOCAL_DATABASE_MODE:-compose}"; \
+        services="redis"; \
+        if [ "$db_mode" = "compose" ]; then \
+            services="postgres redis"; \
+        fi; \
+        if [ "${ENABLE_OTEL_COLLECTOR:-false}" = "true" ]; then \
+            services="${services} otel-collector"; \
+        fi; \
+        docker compose -f {{compose_file}} ps ${services}; \
         if [ "${ENABLE_MINIO:-false}" = "true" ]; then \
             docker compose -f {{minio_compose_file}} ps; \
         fi; \

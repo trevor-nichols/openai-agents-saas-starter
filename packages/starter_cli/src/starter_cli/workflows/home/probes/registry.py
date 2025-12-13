@@ -38,6 +38,7 @@ PROBE_SPECS: tuple[ProbeSpec, ...] = (
     ProbeSpec("environment", lambda ctx: _env_probe(), category="core"),
     ProbeSpec("ports", lambda ctx: _ports_probe(), category="core"),
     ProbeSpec("stack", lambda ctx: _stack_probe(), category="core", optional=True),
+    ProbeSpec("database_config", lambda ctx: _db_config_probe(ctx), category="core"),
     ProbeSpec("database", lambda ctx: _db_probe(ctx.warn_only), category="core"),
     ProbeSpec("redis", lambda ctx: _redis_probe(ctx.warn_only), category="core"),
     ProbeSpec("api", lambda ctx: _api_probe(ctx.warn_only), category="core"),
@@ -65,6 +66,12 @@ def _stack_probe() -> ProbeResult:
     from starter_cli.workflows.home.probes.stack import stack_probe
 
     return stack_probe()
+
+
+def _db_config_probe(ctx: ProbeContext) -> ProbeResult:
+    from starter_cli.workflows.home.probes.db_config import db_config_probe
+
+    return db_config_probe(ctx)
 
 
 def _db_probe(warn_only: bool) -> ProbeResult:

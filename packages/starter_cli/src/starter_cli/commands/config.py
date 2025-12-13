@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, get_args, get_origin
 
 from pydantic_core import PydanticUndefined
+from starter_contracts.config import get_settings_class
 
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext
@@ -69,8 +70,7 @@ class FieldSpec:
 
 
 def handle_dump_schema(args: argparse.Namespace, ctx: CLIContext) -> int:
-    settings = ctx.require_settings()
-    settings_cls = settings.__class__
+    settings_cls = get_settings_class()
 
     field_specs = _collect_field_specs(settings_cls)
     if args.format == "json":
@@ -84,8 +84,7 @@ def handle_dump_schema(args: argparse.Namespace, ctx: CLIContext) -> int:
 
 
 def handle_write_inventory(args: argparse.Namespace, ctx: CLIContext) -> int:
-    settings = ctx.require_settings()
-    field_specs = _collect_field_specs(settings.__class__)
+    field_specs = _collect_field_specs(get_settings_class())
     destination = Path(args.path).expanduser().resolve()
     body = _render_markdown(field_specs)
     destination.parent.mkdir(parents=True, exist_ok=True)

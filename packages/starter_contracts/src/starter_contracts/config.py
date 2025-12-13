@@ -8,8 +8,10 @@ than on the concrete FastAPI settings class.
 
 from __future__ import annotations
 
+import sys
 from functools import lru_cache
 from importlib import import_module
+from pathlib import Path
 from typing import Any, Literal, Protocol, cast, runtime_checkable
 
 from starter_contracts.secrets.models import (
@@ -115,6 +117,13 @@ class StarterSettingsProtocol(Protocol):
 
 
 def _resolve_settings_class() -> type[StarterSettingsProtocol]:
+    repo_root = Path(__file__).resolve().parents[4]
+    api_src = repo_root / "apps" / "api-service" / "src"
+    if api_src.is_dir():
+        api_src_str = api_src.as_posix()
+        if api_src_str not in sys.path:
+            sys.path.insert(0, api_src_str)
+
     try:
         module = import_module("app.core.settings")
     except ModuleNotFoundError as exc:  # pragma: no cover - defensive
@@ -128,6 +137,17 @@ def _resolve_settings_class() -> type[StarterSettingsProtocol]:
 
 
 @lru_cache(maxsize=1)
+def get_settings_class() -> type[StarterSettingsProtocol]:
+    """Return the FastAPI Settings class without instantiating it.
+
+    This is safe to call in tooling contexts (e.g., CLI schema inventory) where
+    required environment variables may not be populated yet.
+    """
+
+    return _resolve_settings_class()
+
+
+@lru_cache(maxsize=1)
 def get_settings() -> StarterSettingsProtocol:
     """Lazily instantiate (and cache) the FastAPI settings object."""
 
@@ -136,4 +156,4 @@ def get_settings() -> StarterSettingsProtocol:
     return cast(StarterSettingsProtocol, settings)
 
 
-__all__ = ["StarterSettingsProtocol", "get_settings"]
+__all__ = ["StarterSettingsProtocol", "get_settings", "get_settings_class"]

@@ -3,7 +3,8 @@
 Operator tooling for the OpenAI Agents SaaS starter. It bootstraps local infra, seeds data, provisions secrets and Stripe, exports OpenAPI for the frontend SDK, and ships TUIs/health checks so you never need ad-hoc scripts.
 
 ## Prereqs & install
-- Python env ready with repo deps; from repo root run `just dev-install` (editable `starter_cli` + `starter_contracts`).
+- Recommended: run `just python-bootstrap` (installs Python 3.11 + Hatch via `uv`), then `cd packages/starter_cli && hatch env create`.
+- Alternative: from repo root run `just dev-install` (editable installs for `starter_cli` + `starter_contracts`).
 - Run commands from the repo root (paths are repo-root relative even if you `cd packages/starter_cli`).
 - Env loading: defaults to `.env.compose`, `apps/api-service/.env.local`, `apps/api-service/.env`, `.env`. Override with `--env-file`, or skip with `--skip-env`. Quiet logging with `--quiet-env`.
 
@@ -19,7 +20,7 @@ Operator tooling for the OpenAI Agents SaaS starter. It bootstraps local infra, 
 - Seed users/tokens: `python -m starter_cli.app users ensure-dev` and `python -m starter_cli.app auth tokens issue-service-account --account demo-bot --scopes chat:write,conversations:read`.
 
 ## Command catalog (what each one does)
-- `setup menu|wizard`: Setup hub + milestone-aware wizard with automation toggles for infra, secrets, Stripe, migrations, Redis, GeoIP, dev user; supports headless runs, schema-driven prompts, JSON/Markdown summaries, and answer export.
+- `setup menu|wizard`: Setup hub + milestone-aware wizard with automation toggles for infra, secrets, Stripe, migrations, Redis, GeoIP, dev user; supports headless runs, schema-driven prompts, JSON/Markdown summaries, and answer export. For `--profile local`, the wizard can manage Docker Postgres end-to-end (writes `POSTGRES_*` and derives `DATABASE_URL`) or accept an external `DATABASE_URL` and set `STARTER_LOCAL_DATABASE_MODE=external` so `infra compose up` starts Redis without launching Postgres.
 - `infra deps|compose|vault`: Check local prerequisites; run Just recipes for docker-compose dev stack and Vault dev signer (up/down/logs/verify).
 - `start` / `stop`: Start dev/backend/frontend with health checks; detached mode tracks PIDs/logs and can auto-run infra; stop clears state and optionally runs compose down.
 - `home`: TUI/summary showing stack status, detached processes, and shortcuts.

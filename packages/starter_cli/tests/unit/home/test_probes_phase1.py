@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import httpx
 from starter_cli.core.status_models import ProbeState
-from starter_cli.workflows.home.probes import db, migrations, redis, stripe, vault
+from starter_cli.workflows.home.probes import db, db_config, migrations, redis, stripe, vault
+from starter_cli.workflows.home.probes.registry import ProbeContext
 
 
 def test_db_probe_warns_on_unsupported_scheme(monkeypatch):
@@ -65,3 +66,60 @@ def test_vault_probe_missing_addr_warn(monkeypatch):
     result = vault.vault_probe(warn_only=True)
     assert result.state is ProbeState.WARN
     assert "VAULT_ADDR" in (result.detail or "")
+
+
+def test_db_config_probe_skips_non_local_profile():
+    ctx = ProbeContext(env={}, settings=None, profile="staging", strict=False, warn_only=True)
+    result = db_config.db_config_probe(ctx)
+    assert result.state is ProbeState.SKIPPED
+
+
+def test_db_config_probe_skips_external_mode():
+    ctx = ProbeContext(
+        env={"STARTER_LOCAL_DATABASE_MODE": "external"},
+        settings=None,
+        profile="local",
+        strict=False,
+        warn_only=True,
+    )
+    result = db_config.db_config_probe(ctx)
+    assert result.state is ProbeState.SKIPPED
+
+
+def test_db_config_probe_warns_on_mismatch():
+    ctx = ProbeContext(
+        env={
+            "STARTER_LOCAL_DATABASE_MODE": "compose",
+            "POSTGRES_PORT": "5433",
+            "POSTGRES_USER": "postgres",
+            "POSTGRES_PASSWORD": "postgres",
+            "POSTGRES_DB": "saas_starter_db",
+            "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/saas_starter_db",
+        },
+        settings=None,
+        profile="local",
+        strict=False,
+        warn_only=True,
+    )
+    result = db_config.db_config_probe(ctx)
+    assert result.state is ProbeState.WARN
+    assert "port mismatch" in (result.detail or "")
+
+
+def test_db_config_probe_ok_when_consistent():
+    ctx = ProbeContext(
+        env={
+            "STARTER_LOCAL_DATABASE_MODE": "compose",
+            "POSTGRES_PORT": "5432",
+            "POSTGRES_USER": "postgres",
+            "POSTGRES_PASSWORD": "postgres",
+            "POSTGRES_DB": "saas_starter_db",
+            "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/saas_starter_db",
+        },
+        settings=None,
+        profile="local",
+        strict=False,
+        warn_only=True,
+    )
+    result = db_config.db_config_probe(ctx)
+    assert result.state is ProbeState.OK

@@ -463,6 +463,12 @@ class SetupWizard:
     def _maybe_export_answers(self) -> None:
         if not self.export_answers_path or not self._answer_recorder:
             return
+        # Some values are derived (not directly prompted) during the wizard.
+        # Export them when available so answers files remain a faithful replay artifact.
+        if "DATABASE_URL" not in self._answer_recorder.snapshot():
+            derived_db = self.context.backend_env.get("DATABASE_URL")
+            if derived_db:
+                self._answer_recorder.record("DATABASE_URL", derived_db)
         try:
             self._answer_recorder.export(self.export_answers_path)
         except OSError as exc:  # pragma: no cover - filesystem failures
