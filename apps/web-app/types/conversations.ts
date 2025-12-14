@@ -6,6 +6,8 @@ import type {
   PaginatedMessagesResponse,
   ConversationMemoryConfigRequest,
   ConversationMemoryConfigResponse,
+  ConversationTitleUpdateRequest,
+  ConversationTitleUpdateResponse,
 } from '@/lib/api/client/types.gen';
 
 export interface ConversationListItem {
@@ -66,3 +68,6 @@ export type ConversationEvents = BackendConversationEventsResponse;
 
 export type ConversationMemoryConfig = ConversationMemoryConfigResponse;
 export type ConversationMemoryConfigInput = ConversationMemoryConfigRequest;
+
+export type ConversationTitleUpdate = ConversationTitleUpdateResponse;
+export type ConversationTitleUpdateInput = ConversationTitleUpdateRequest;

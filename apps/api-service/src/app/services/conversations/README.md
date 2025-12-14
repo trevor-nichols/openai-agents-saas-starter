@@ -11,7 +11,7 @@ Developer-facing overview of the pieces that persist and surface conversation da
 - `conversation_service.py`: Core façade that enforces tenant scoping and delegates to the configured `ConversationRepository` (Postgres by default via `infrastructure/persistence/conversations/postgres.py`). Also logs creation/clear events to `activity_service` best-effort.
 - `conversations/title_service.py`: Small helper that streams an SDK `Agent` (default `gpt-5-nano`, 5s timeout) and persists the final title via `ConversationService.set_display_name`. The streaming endpoint is `/api/v1/conversations/{conversation_id}/stream`.
 - `services/agents/query.py`: Read-only layer that composes `ConversationService` with `ConversationHistoryService` for list/search/history/messages/event reads.
-- `api/v1/conversations/router.py`: Public endpoints for listing, searching, reading history/messages/events, updating memory config, deleting conversations, and streaming conversation titles.
+- `api/v1/conversations/router.py`: Public endpoints for listing/searching/reading history/messages/events, updating memory config, deleting conversations, streaming conversation titles, and `PATCH /api/v1/conversations/{conversation_id}/title` for manual renames.
 
 ## Lifecycle in agent runs (where it is used)
 - `services/agents/run_pipeline.py` uses `ConversationService` to append user/assistant messages with `ConversationMetadata`, load/apply memory configs, fetch cross-session summaries, persist run events, and upsert session state.

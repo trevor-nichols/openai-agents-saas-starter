@@ -18,6 +18,8 @@ from app.api.v1.conversations.schemas import (
     ConversationMemoryConfigResponse,
     ConversationSearchResponse,
     ConversationSearchResult,
+    ConversationTitleUpdateRequest,
+    ConversationTitleUpdateResponse,
     PaginatedMessagesResponse,
 )
 from app.domain.conversations import ConversationMemoryConfig, ConversationNotFoundError
@@ -258,6 +260,43 @@ async def update_conversation_memory(
         compact_keep=persisted.compact_keep,
         clear_tool_inputs=persisted.clear_tool_inputs,
         memory_injection=persisted.memory_injection,
+    )
+
+
+@router.patch("/{conversation_id}/title", response_model=ConversationTitleUpdateResponse)
+async def update_conversation_title(
+    conversation_id: str,
+    payload: ConversationTitleUpdateRequest,
+    current_user: CurrentUser = Depends(require_verified_scopes("conversations:write")),
+    tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
+    tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
+) -> ConversationTitleUpdateResponse:
+    """Rename a conversation title (manual override of auto-generated titles)."""
+
+    tenant_context = await _resolve_tenant_context(
+        current_user,
+        tenant_id_header,
+        tenant_role_header,
+        min_role=TenantRole.VIEWER,
+    )
+
+    try:
+        normalized_title = await get_conversation_service().update_display_name(
+            conversation_id,
+            tenant_id=tenant_context.tenant_id,
+            display_name=payload.display_name,
+        )
+    except ConversationNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+    return ConversationTitleUpdateResponse(
+        conversation_id=conversation_id,
+        display_name=normalized_title,
     )
 
 

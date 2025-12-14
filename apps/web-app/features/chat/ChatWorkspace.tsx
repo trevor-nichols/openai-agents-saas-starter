@@ -63,6 +63,7 @@ export function ChatWorkspace() {
     handleSelectConversation,
     handleNewConversation,
     handleDeleteConversation,
+    handleRenameConversation,
     handleWorkspaceError,
     sendMessage,
     shareLocation,
@@ -205,6 +206,7 @@ export function ChatWorkspace() {
                   onSelectConversation={handleSelectConversation}
                   onNewConversation={handleNewConversation}
                   onDeleteConversation={handleDeleteConversation}
+                  onRenameConversation={handleRenameConversation}
                   className="min-h-0 flex-1 border-none bg-transparent"
                   variant="embedded"
                 />

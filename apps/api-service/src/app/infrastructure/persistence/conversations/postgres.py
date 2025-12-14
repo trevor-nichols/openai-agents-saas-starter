@@ -245,5 +245,18 @@ class PostgresConversationRepository(ConversationRepository):
             generated_at=generated_at,
         )
 
+    async def update_display_name(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        display_name: str,
+    ) -> None:
+        await self._messages.update_display_name(
+            conversation_id,
+            tenant_id=tenant_id,
+            display_name=display_name,
+        )
+
 
 __all__ = ["PostgresConversationRepository"]

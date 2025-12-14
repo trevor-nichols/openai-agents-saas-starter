@@ -1370,6 +1370,40 @@ export type ConversationSummary = {
 };
 
 /**
+ * ConversationTitleUpdateRequest
+ *
+ * Request payload to rename a conversation title.
+ */
+export type ConversationTitleUpdateRequest = {
+  /**
+   * Display Name
+   *
+   * User-defined conversation title.
+   */
+  display_name: string;
+};
+
+/**
+ * ConversationTitleUpdateResponse
+ *
+ * Response payload after updating a conversation title.
+ */
+export type ConversationTitleUpdateResponse = {
+  /**
+   * Conversation Id
+   *
+   * Conversation identifier.
+   */
+  conversation_id: string;
+  /**
+   * Display Name
+   *
+   * Updated conversation title.
+   */
+  display_name: string;
+};
+
+/**
  * CurrentUserInfoResponseData
  */
 export type CurrentUserInfoResponseData = {
@@ -10347,6 +10381,95 @@ export type UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchR
 
 export type UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchResponse =
   UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchResponses[keyof UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchResponses];
+
+export type UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchData =
+  {
+    body: ConversationTitleUpdateRequest;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Conversation Id
+       */
+      conversation_id: string;
+    };
+    query?: never;
+    url: "/api/v1/conversations/{conversation_id}/title";
+  };
+
+export type UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchError =
+  UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchErrors[keyof UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchErrors];
+
+export type UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: ConversationTitleUpdateResponse;
+  };
+
+export type UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchResponse =
+  UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchResponses[keyof UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchResponses];
 
 export type GetConversationEventsApiV1ConversationsConversationIdEventsGetData =
   {

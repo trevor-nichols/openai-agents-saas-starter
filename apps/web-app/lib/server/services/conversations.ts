@@ -9,6 +9,7 @@ import {
   searchConversationsApiV1ConversationsSearchGet,
   streamConversationMetadataApiV1ConversationsConversationIdStreamGet,
   updateConversationMemoryApiV1ConversationsConversationIdMemoryPatch,
+  updateConversationTitleApiV1ConversationsConversationIdTitlePatch,
 } from '@/lib/api/client/sdk.gen';
 import type {
   ConversationHistory,
@@ -18,6 +19,8 @@ import type {
   PaginatedMessagesResponse,
   ConversationMemoryConfigRequest,
   ConversationMemoryConfigResponse,
+  ConversationTitleUpdateRequest,
+  ConversationTitleUpdateResponse,
 } from '@/lib/api/client/types.gen';
 import type {
   ConversationEvents,
@@ -34,6 +37,60 @@ const STREAM_HEADERS = {
   'Cache-Control': 'no-cache',
   Connection: 'keep-alive',
 } as const;
+
+type SdkFieldsResult<T> =
+  | {
+      data: T;
+      error: undefined;
+      response: Response;
+    }
+  | {
+      data: undefined;
+      error: unknown;
+      response: Response;
+    };
+
+function mapApiErrorMessage(payload: unknown, fallback: string): string {
+  if (typeof payload === 'string') {
+    return payload || fallback;
+  }
+
+  if (!payload || typeof payload !== 'object') {
+    return fallback;
+  }
+
+  const record = payload as Record<string, unknown>;
+  if (typeof record.detail === 'string' && record.detail) return record.detail;
+  if (typeof record.message === 'string' && record.message) return record.message;
+
+  const detail = record.detail;
+  if (Array.isArray(detail) && detail.length > 0) {
+    const parts = detail
+      .map((item) => {
+        if (item && typeof item === 'object' && typeof (item as Record<string, unknown>).msg === 'string') {
+          return (item as Record<string, unknown>).msg as string;
+        }
+        if (typeof item === 'string') return item;
+        return null;
+      })
+      .filter(Boolean);
+    if (parts.length > 0) {
+      return parts.join('; ');
+    }
+  }
+
+  return fallback;
+}
+
+export class ConversationTitleApiError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'ConversationTitleApiError';
+  }
+}
 
 /**
  * Fetch the authenticated user's conversation summaries (paginated).
@@ -290,6 +347,51 @@ export async function updateConversationMemory(
     throw new Error('Failed to update conversation memory configuration.');
   }
   return payload;
+}
+
+/**
+ * Update conversation title (manual rename).
+ */
+export async function updateConversationTitle(
+  conversationId: string,
+  payload: ConversationTitleUpdateRequest,
+  options?: { tenantId?: string | null; tenantRole?: string | null },
+): Promise<ConversationTitleUpdateResponse> {
+  if (!conversationId) {
+    throw new Error('Conversation id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+  const headers = new Headers();
+  if (options?.tenantId) {
+    headers.set('X-Tenant-Id', options.tenantId);
+  }
+  if (options?.tenantRole) {
+    headers.set('X-Tenant-Role', options.tenantRole);
+  }
+
+  const result = (await updateConversationTitleApiV1ConversationsConversationIdTitlePatch({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: false,
+    headers: headers.keys().next().done ? undefined : headers,
+    path: { conversation_id: conversationId },
+    body: payload,
+  })) as SdkFieldsResult<ConversationTitleUpdateResponse>;
+
+  if (result.error) {
+    throw new ConversationTitleApiError(
+      result.response.status,
+      mapApiErrorMessage(result.error, 'Failed to update conversation title.'),
+    );
+  }
+
+  if (!result.data) {
+    throw new ConversationTitleApiError(result.response.status || 500, 'Failed to update conversation title.');
+  }
+
+  return result.data;
 }
 
 export interface ConversationTitleStreamOptions {

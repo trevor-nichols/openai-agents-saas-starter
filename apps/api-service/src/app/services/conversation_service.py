@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 
+from app.domain.conversation_titles import normalize_display_name
 from app.domain.conversations import (
     ConversationEvent,
     ConversationMemoryConfig,
@@ -410,6 +411,37 @@ class ConversationService:
             display_name=display_name,
             generated_at=generated_at,
         )
+
+    async def update_display_name(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        display_name: str,
+    ) -> str:
+        normalized_tenant = _require_tenant_id(tenant_id)
+        normalized_title = normalize_display_name(display_name)
+        await self._require_repository().update_display_name(
+            conversation_id,
+            tenant_id=normalized_tenant,
+            display_name=normalized_title,
+        )
+
+        try:
+            await activity_service.record(
+                tenant_id=normalized_tenant,
+                action="conversation.title.updated",
+                object_type="conversation",
+                object_id=conversation_id,
+                source="api",
+                metadata={
+                    "conversation_id": conversation_id,
+                    "display_name_length": len(normalized_title),
+                },
+            )
+        except Exception:  # pragma: no cover - best effort
+            pass
+        return normalized_title
 
 
 def get_conversation_service() -> ConversationService:

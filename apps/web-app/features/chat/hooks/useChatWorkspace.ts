@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 
 import { useChatController } from '@/lib/chat';
+import { updateConversationTitle as updateConversationTitleApi } from '@/lib/api/conversations';
 import type { LocationHint } from '@/lib/api/client/types.gen';
 import { useAgents } from '@/lib/queries/agents';
 import { useBillingStream } from '@/lib/queries/billing';
@@ -129,6 +130,55 @@ export function useChatWorkspace() {
       await deleteConversation(conversationId);
     },
     [deleteConversation],
+  );
+
+  const handleRenameConversation = useCallback(
+    async (conversationId: string, title: string) => {
+      const normalized = (title || '').trim();
+      if (!conversationId) return;
+      if (!normalized) {
+        throw new Error('Title cannot be empty.');
+      }
+
+      const existing = conversationList.find((c) => c.id === conversationId) ?? null;
+      const base = existing ?? {
+        id: conversationId,
+        updated_at: new Date().toISOString(),
+        topic_hint: null,
+        agent_entrypoint: null,
+        active_agent: null,
+        status: null,
+        message_count: 0,
+        last_message_preview: undefined,
+      };
+
+      updateConversationInList({
+        ...base,
+        display_name: normalized,
+        display_name_pending: false,
+        title: normalized,
+      });
+
+      try {
+        const updated = await updateConversationTitleApi({ conversationId, displayName: normalized });
+        updateConversationInList({
+          ...base,
+          display_name: updated.display_name,
+          display_name_pending: false,
+          title: updated.display_name,
+          updated_at: new Date().toISOString(),
+        });
+      } catch (error) {
+        if (existing) {
+          updateConversationInList(existing);
+        }
+        const message =
+          error instanceof Error ? error.message : 'Failed to rename conversation title.';
+        toast.error('Failed to rename conversation', { description: message });
+        throw error instanceof Error ? error : new Error(message);
+      }
+    },
+    [conversationList, updateConversationInList],
   );
 
   const setPending = useCallback(
@@ -261,6 +311,7 @@ export function useChatWorkspace() {
     handleSelectConversation,
     handleNewConversation,
     handleDeleteConversation,
+    handleRenameConversation,
     handleWorkspaceError,
     clearError,
     sendMessage: handleSendMessage,

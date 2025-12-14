@@ -358,6 +358,14 @@ class ConversationRepository(Protocol):
         generated_at: datetime | None = None,
     ) -> bool: ...
 
+    async def update_display_name(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        display_name: str,
+    ) -> None: ...
+
 
 __all__ = [
     "ConversationAttachment",

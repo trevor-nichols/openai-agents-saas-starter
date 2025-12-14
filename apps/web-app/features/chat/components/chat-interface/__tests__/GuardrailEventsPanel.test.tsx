@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 
-import { GuardrailEventsPanel } from './GuardrailEventsPanel';
+import { GuardrailEventsPanel } from '../GuardrailEventsPanel';
 import type { StreamingChatEvent } from '@/lib/api/client/types.gen';
 
 describe('GuardrailEventsPanel', () => {

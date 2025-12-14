@@ -17,6 +17,7 @@ import type {
   ConversationMessagesPage,
   ConversationMemoryConfig,
   ConversationMemoryConfigInput,
+  ConversationTitleUpdate,
 } from '@/types/conversations';
 import { apiV1Path } from '@/lib/apiPaths';
 
@@ -221,6 +222,30 @@ export async function deleteConversationById(conversationId: string): Promise<vo
     const errorPayload = (await response.json().catch(() => ({}))) as { message?: string };
     throw new Error(errorPayload.message || 'Failed to delete conversation');
   }
+}
+
+/**
+ * Update a conversation title (manual rename).
+ */
+export async function updateConversationTitle(params: {
+  conversationId: string;
+  displayName: string;
+}): Promise<ConversationTitleUpdate> {
+  const { conversationId, displayName } = params;
+  const response = await fetch(apiV1Path(`/conversations/${encodeURIComponent(conversationId)}/title`), {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ display_name: displayName }),
+  });
+
+  if (!response.ok) {
+    const errorPayload = (await response.json().catch(() => ({}))) as { message?: string };
+    throw new Error(errorPayload.message || 'Failed to update conversation title');
+  }
+
+  return (await response.json()) as ConversationTitleUpdate;
 }
 
 /**

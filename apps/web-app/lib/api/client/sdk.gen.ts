@@ -334,6 +334,9 @@ import type {
   UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchData,
   UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchErrors,
   UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchResponses,
+  UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchData,
+  UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchErrors,
+  UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchResponses,
   UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchData,
   UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchErrors,
   UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchResponses,
@@ -1904,6 +1907,38 @@ export const updateConversationMemoryApiV1ConversationsConversationIdMemoryPatch
         },
       ],
       url: "/api/v1/conversations/{conversation_id}/memory",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
+  };
+
+/**
+ * Update Conversation Title
+ *
+ * Rename a conversation title (manual override of auto-generated titles).
+ */
+export const updateConversationTitleApiV1ConversationsConversationIdTitlePatch =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).patch<
+      UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchResponses,
+      UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/conversations/{conversation_id}/title",
       ...options,
       headers: {
         "Content-Type": "application/json",

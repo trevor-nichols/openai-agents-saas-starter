@@ -36,6 +36,7 @@ interface ConversationSidebarViewProps {
   currentConversationId: string | null;
   onSelectConversation: (id: string) => void;
   onDeleteConversation?: (id: string) => void;
+  onRenameConversation?: (conversation: ConversationListItem) => void;
   onNewConversation: () => void;
   infiniteScrollRef?: RefObject<HTMLDivElement | null>;
 }
@@ -59,6 +60,7 @@ export function ConversationSidebarView({
   currentConversationId,
   onSelectConversation,
   onDeleteConversation,
+  onRenameConversation,
   onNewConversation,
   infiniteScrollRef,
 }: ConversationSidebarViewProps) {
@@ -107,6 +109,7 @@ export function ConversationSidebarView({
                   currentConversationId={currentConversationId}
                   onSelectConversation={onSelectConversation}
                   onDeleteConversation={onDeleteConversation}
+                  onRenameConversation={onRenameConversation}
                 />
               )
             ) : isSearching && searchResults.length === 0 ? (
@@ -121,6 +124,7 @@ export function ConversationSidebarView({
                 currentConversationId={currentConversationId}
                 onSelectConversation={onSelectConversation}
                 onDeleteConversation={onDeleteConversation}
+                onRenameConversation={onRenameConversation}
               />
             )}
 

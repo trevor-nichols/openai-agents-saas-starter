@@ -51,6 +51,7 @@ from app.domain.conversations import (
     ConversationMemoryConfig,
     ConversationMessage,
     ConversationMetadata,
+    ConversationNotFoundError,
     ConversationPage,
     ConversationRecord,
     ConversationRepository,
@@ -576,6 +577,20 @@ class EphemeralConversationRepository(ConversationRepository):
             return False
         self._display_names[key] = (display_name, generated_at)
         return True
+
+    async def update_display_name(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        display_name: str,
+    ) -> None:
+        key = self._key(tenant_id, conversation_id)
+        if key not in self._messages:
+            raise ConversationNotFoundError(f"Conversation {conversation_id} does not exist")
+        existing = self._display_names.get(key)
+        generated_at = existing[1] if existing else None
+        self._display_names[key] = (display_name, generated_at)
 
     def _key(self, tenant_id: str, conversation_id: str) -> tuple[str, str]:
         tenant = self._require_tenant(tenant_id)
