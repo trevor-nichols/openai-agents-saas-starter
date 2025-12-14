@@ -12,7 +12,7 @@ import { useTools } from '@/lib/queries/tools';
 
 import { CHAT_COPY } from '../constants';
 import { normalizeAgentLabel } from '../utils/formatters';
-import { useConversationMetadata } from './useConversationMetadata';
+import { useConversationTitleStream } from './useConversationTitleStream';
 
 export function useChatWorkspace() {
   const {
@@ -168,14 +168,13 @@ export function useChatWorkspace() {
       updateConversationInList({
         ...base,
         display_name: title,
-        display_name_pending: false,
         title,
       });
     },
     [currentConversation, currentConversationId, updateConversationInList],
   );
 
-  useConversationMetadata({
+  useConversationTitleStream({
     conversationId: currentConversationId,
     onTitle: handleTitle,
     onPendingStart: () => setPending(true),

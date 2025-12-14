@@ -5,20 +5,18 @@ Developer-facing overview of the pieces that persist and surface conversation da
 ## What this area does
 - Persists conversation messages, run events, run usage, session state, and memory config via `ConversationService` (façade over the domain `ConversationRepository`).
 - Serves read APIs (list/search/history/memory/events) through `ConversationQueryService` and the `api/v1/conversations` router.
-- Emits lightweight metadata events (e.g., generated titles) over an in-memory stream for the UI.
-- Generates conversation titles asynchronously after the first user message.
+- Streams and persists conversation titles derived from the first user message.
 
 ## Key modules
 - `conversation_service.py`: Core façade that enforces tenant scoping and delegates to the configured `ConversationRepository` (Postgres by default via `infrastructure/persistence/conversations/postgres.py`). Also logs creation/clear events to `activity_service` best-effort.
-- `conversations/title_service.py`: Small helper that asks an SDK `Agent` (default `gpt-5-nano`, 5s timeout) to produce a short title, persists it via `ConversationService.set_display_name`, and publishes a metadata event. Wired in `bootstrap/container.py` as `title_service`.
-- `conversations/metadata_stream.py`: In-memory async pub/sub used for best-effort metadata fan-out; backs `/api/v1/conversations/{id}/stream` SSE. State is per-process—do not rely on it for durable events.
+- `conversations/title_service.py`: Small helper that streams an SDK `Agent` (default `gpt-5-nano`, 5s timeout) and persists the final title via `ConversationService.set_display_name`. The streaming endpoint is `/api/v1/conversations/{conversation_id}/stream`.
 - `services/agents/query.py`: Read-only layer that composes `ConversationService` with `ConversationHistoryService` for list/search/history/messages/event reads.
-- `api/v1/conversations/router.py`: Public endpoints for listing, searching, reading history/messages/events, updating memory config, deleting conversations, and streaming metadata.
+- `api/v1/conversations/router.py`: Public endpoints for listing, searching, reading history/messages/events, updating memory config, deleting conversations, and streaming conversation titles.
 
 ## Lifecycle in agent runs (where it is used)
 - `services/agents/run_pipeline.py` uses `ConversationService` to append user/assistant messages with `ConversationMetadata`, load/apply memory configs, fetch cross-session summaries, persist run events, and upsert session state.
 - `services/agents/usage.py` records per-run token usage back into `ConversationService.persist_run_usage` so audit/billing views can reuse the same data.
-- `TitleService.generate_if_absent` is typically triggered after the first user turn to name the thread and push a `conversation.title.generated` metadata event to listeners.
+- `GET /api/v1/conversations/{conversation_id}/stream` streams the LLM-generated title text and persists it once complete.
 
 ## Persistence shape
 - Domain contracts live in `app/domain/conversations.py` (messages, attachments, summaries, memory config, run events/usage, etc.).
@@ -28,5 +26,4 @@ Developer-facing overview of the pieces that persist and surface conversation da
 ## How to work with it
 - Use `get_conversation_service()` from the container when persisting chat data or session state; set a new repository via `ConversationService.set_repository` during startup wiring if you replace storage.
 - Use `get_conversation_query_service()` when serving read-only views (list/search/history/messages/events) to keep read paths isolated from orchestration logic.
-- Subscribe to metadata events in the UI via `GET /api/v1/conversations/{conversation_id}/stream`; events are JSON strings with a `timestamp`.
-- When extending metadata (e.g., new async annotations), publish through `metadata_stream.publish(...)` and document the shape in the router schema.
+- Generate a title client-side by opening `GET /api/v1/conversations/{conversation_id}/stream` and rendering each SSE `data:` chunk as it arrives. The stream emits `data: [DONE]` once complete.

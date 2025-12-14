@@ -437,7 +437,6 @@ async def lifespan(app: FastAPI):
         container_service=container.container_service,
         storage_service=container.storage_service,
         vector_store_service=container.vector_store_service,
-        title_service=container.title_service,
     )
     logger.debug("Startup checkpoint: agent service configured")
 

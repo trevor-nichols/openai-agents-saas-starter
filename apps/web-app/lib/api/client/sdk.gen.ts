@@ -1942,7 +1942,7 @@ export const getConversationEventsApiV1ConversationsConversationIdEventsGet = <
 /**
  * Stream Conversation Metadata
  *
- * SSE stream of conversation metadata events (e.g., generated titles).
+ * SSE stream of the conversation title generated from the first user message.
  */
 export const streamConversationMetadataApiV1ConversationsConversationIdStreamGet =
   <ThrowOnError extends boolean = false>(

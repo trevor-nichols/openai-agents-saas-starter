@@ -1,10 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-import { openConversationMetadataStream } from '@/lib/streams/conversationMetadata';
-
-type ConversationMetadataEvent = {
-  data?: unknown;
-};
+import { openConversationTitleStream } from '@/lib/streams/conversationTitle';
 
 interface UseConversationMetadataOptions {
   conversationId: string | null;
@@ -15,16 +11,18 @@ interface UseConversationMetadataOptions {
 }
 
 /**
- * Subscribe to conversation metadata SSE (e.g., generated titles) and invoke a callback on updates.
+ * Subscribe to the conversation title SSE stream and invoke callbacks as the title is generated.
  */
-export function useConversationMetadata({
+export function useConversationTitleStream({
   conversationId,
   onTitle,
   onPendingStart,
   onPendingResolve,
-  timeoutMs = 1800,
+  timeoutMs = 5000,
 }: UseConversationMetadataOptions) {
   const lastTitleRef = useRef<string | null>(null);
+  const bufferRef = useRef<string>('');
+  const resolvedRef = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onTitleRef = useRef(onTitle);
   const onPendingStartRef = useRef(onPendingStart);
@@ -49,35 +47,49 @@ export function useConversationMetadata({
 
     onPendingStartRef.current?.();
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => {
-      onPendingResolveRef.current?.();
-      timeoutRef.current = null;
-    }, timeoutMs);
+    bufferRef.current = '';
+    lastTitleRef.current = null;
+    resolvedRef.current = false;
 
-    const source = openConversationMetadataStream({
-      conversationId,
-      onEvent: (event: ConversationMetadataEvent) => {
-        const payload = event?.data as { display_name?: string | null } | null;
-        const title = payload?.display_name ?? null;
-        if (!title || title === lastTitleRef.current) {
-          return;
-        }
-        lastTitleRef.current = title;
-        onPendingResolveRef.current?.();
-        onTitleRef.current(title);
-      },
-      onError: () => {
-        // Fail open: metadata stream is best-effort; do nothing on errors.
-      },
-    });
-
-    return () => {
-      lastTitleRef.current = null;
+    const resolvePending = () => {
+      if (resolvedRef.current) return;
+      resolvedRef.current = true;
       onPendingResolveRef.current?.();
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
+    };
+
+    timeoutRef.current = setTimeout(resolvePending, timeoutMs);
+
+    const source = openConversationTitleStream({
+      conversationId,
+      onMessage: (message: string) => {
+        if (!message) return;
+        if (message === '[DONE]') {
+          resolvePending();
+          source.close(); // prevent automatic EventSource reconnects
+          return;
+        }
+
+        bufferRef.current += message;
+        const title = bufferRef.current.trim();
+        if (!title || title === lastTitleRef.current) return;
+        lastTitleRef.current = title;
+        onTitleRef.current(title);
+      },
+      onError: () => {
+        // Fail open: title stream is best-effort; keep the UI responsive.
+        resolvePending();
+        source.close();
+      },
+    });
+
+    return () => {
+      bufferRef.current = '';
+      lastTitleRef.current = null;
+      resolvePending();
       source.close();
     };
   }, [conversationId, timeoutMs]);

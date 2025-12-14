@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-import { openConversationMetadataStream } from '@/lib/server/services/conversations';
+import { openConversationTitleStream } from '@/lib/server/services/conversations';
 
 type RouteContext = {
   params: Promise<{
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   }
 
   try {
-    return await openConversationMetadataStream({
+    return await openConversationTitleStream({
       conversationId,
       signal: request.signal,
       tenantRole: request.headers.get('x-tenant-role'),

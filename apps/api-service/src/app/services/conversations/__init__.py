@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from . import metadata_stream
-from .title_service import TitleService
+from .title_service import TitleService, get_title_service
 
-__all__ = ["TitleService", "metadata_stream"]
+__all__ = ["TitleService", "get_title_service"]

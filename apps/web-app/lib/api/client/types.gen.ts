@@ -1216,38 +1216,6 @@ export type ConversationMemoryConfigResponse = {
 };
 
 /**
- * ConversationMetaEvent
- *
- * Metadata stream event for a conversation.
- */
-export type ConversationMetaEvent = {
-  /**
-   * Kind
-   *
-   * Event type, e.g., conversation.title.generated
-   */
-  kind: string;
-  /**
-   * Conversation Id
-   *
-   * Conversation identifier.
-   */
-  conversation_id: string;
-  /**
-   * Display Name
-   *
-   * Generated conversation title.
-   */
-  display_name?: string | null;
-  /**
-   * Timestamp
-   *
-   * Server timestamp.
-   */
-  timestamp?: string | null;
-};
-
-/**
  * ConversationSearchResponse
  *
  * Paginated search results.
@@ -10557,13 +10525,10 @@ export type StreamConversationMetadataApiV1ConversationsConversationIdStreamGetE
 export type StreamConversationMetadataApiV1ConversationsConversationIdStreamGetResponses =
   {
     /**
-     * Server-sent events stream for conversation metadata updates.
+     * Server-sent events stream of the generated conversation title.
      */
-    200: ConversationMetaEvent;
+    200: unknown;
   };
-
-export type StreamConversationMetadataApiV1ConversationsConversationIdStreamGetResponse =
-  StreamConversationMetadataApiV1ConversationsConversationIdStreamGetResponses[keyof StreamConversationMetadataApiV1ConversationsConversationIdStreamGetResponses];
 
 export type ListAvailableToolsApiV1ToolsGetData = {
   body?: never;

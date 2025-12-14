@@ -116,15 +116,6 @@ class ConversationMemoryConfigResponse(ConversationMemoryConfigRequest):
     pass
 
 
-class ConversationMetaEvent(BaseModel):
-    """Metadata stream event for a conversation."""
-
-    kind: str = Field(description="Event type, e.g., conversation.title.generated")
-    conversation_id: str = Field(description="Conversation identifier.")
-    display_name: str | None = Field(default=None, description="Generated conversation title.")
-    timestamp: str | None = Field(default=None, description="Server timestamp.")
-
-
 class ConversationSearchResponse(BaseModel):
     """Paginated search results."""
 
@@ -177,5 +168,4 @@ __all__ = [
     "ConversationSearchResponse",
     "ConversationEventItem",
     "ConversationEventsResponse",
-    "ConversationMetaEvent",
 ]

@@ -16,7 +16,7 @@ from agents import trace
 
 from app.api.v1.agents.schemas import AgentStatus, AgentSummary
 from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse, MessageAttachment
-from app.bootstrap.container import wire_storage_service, wire_title_service
+from app.bootstrap.container import wire_storage_service
 from app.domain.ai.models import AgentStreamEvent
 from app.domain.conversations import (
     ConversationAttachment,
@@ -48,7 +48,6 @@ from app.services.agents.session_manager import SessionManager
 from app.services.agents.usage import UsageService
 from app.services.containers import ContainerService
 from app.services.conversation_service import ConversationService, get_conversation_service
-from app.services.conversations.title_service import TitleService
 from app.services.storage.service import StorageService
 from app.services.usage_counters import UsageCounterService, get_usage_counter_service
 from app.services.usage_recorder import UsageRecorder
@@ -77,7 +76,6 @@ class AgentService:
         attachment_service: AttachmentService | None = None,
         usage_service: UsageService | None = None,
         catalog_service: AgentCatalogService | None = None,
-        title_service: TitleService | None = None,
     ) -> None:
         self._conversation_service = conversation_service or get_conversation_service()
         if conversation_repo is not None:
@@ -105,41 +103,6 @@ class AgentService:
             self._conversation_service,
         )
         self._catalog_service = catalog_service or AgentCatalogService(self._provider_registry)
-        self._title_service = title_service
-
-    def _start_title_task(
-        self,
-        *,
-        is_new_conversation: bool,
-        conversation_id: str,
-        tenant_id: str,
-        first_user_message: str,
-    ) -> asyncio.Task[str | None] | None:
-        if not self._title_service or not is_new_conversation:
-            return None
-        return asyncio.create_task(
-            self._title_service.generate_if_absent(
-                conversation_id=conversation_id,
-                tenant_id=tenant_id,
-                first_user_message=first_user_message,
-            )
-        )
-
-    @staticmethod
-    def _attach_error_logger(
-        task: asyncio.Task[str | None] | None, *, context: dict[str, object]
-    ) -> None:
-        if task is None:
-            return
-
-        def _log_failure(t: asyncio.Task[str | None]) -> None:
-            if t.cancelled():
-                return
-            exc = t.exception()
-            if exc:
-                logger.exception("title_generation.task_failed", extra=context, exc_info=exc)
-
-        task.add_done_callback(_log_failure)
 
     async def chat(
         self, request: AgentChatRequest, *, actor: ConversationActorContext
@@ -162,19 +125,6 @@ class AgentService:
             ctx=ctx,
             request=request,
             conversation_service=self._conversation_service,
-        )
-        title_task = self._start_title_task(
-            is_new_conversation=ctx.existing_state is None,
-            conversation_id=ctx.conversation_id,
-            tenant_id=actor.tenant_id,
-            first_user_message=request.message,
-        )
-        self._attach_error_logger(
-            title_task,
-            context={
-                "conversation_id": ctx.conversation_id,
-                "tenant_id": actor.tenant_id,
-            },
         )
 
         token = set_current_actor(actor)
@@ -393,19 +343,6 @@ class AgentService:
             ctx=ctx,
             request=request,
             conversation_service=self._conversation_service,
-        )
-        title_task = self._start_title_task(
-            is_new_conversation=ctx.existing_state is None,
-            conversation_id=ctx.conversation_id,
-            tenant_id=actor.tenant_id,
-            first_user_message=request.message,
-        )
-        self._attach_error_logger(
-            title_task,
-            context={
-                "conversation_id": ctx.conversation_id,
-                "tenant_id": actor.tenant_id,
-            },
         )
 
         complete_response = ""
@@ -768,7 +705,6 @@ def build_agent_service(
     policy: AgentRuntimePolicy | None = None,
     vector_store_service: VectorStoreService | None = None,
     catalog_service: AgentCatalogService | None = None,
-    title_service: TitleService | None = None,
 ) -> AgentService:
     return AgentService(
         conversation_repo=conversation_repository,
@@ -780,7 +716,6 @@ def build_agent_service(
         policy=policy,
         vector_store_service=vector_store_service,
         catalog_service=catalog_service,
-        title_service=title_service,
     )
 
 
@@ -794,7 +729,6 @@ def get_agent_service() -> AgentService:
     if container.agent_service is None:
         if container.storage_service is None:
             wire_storage_service(container)
-        wire_title_service(container)
         container.agent_service = build_agent_service(
             conversation_service=container.conversation_service,
             conversation_repository=None,
@@ -803,7 +737,6 @@ def get_agent_service() -> AgentService:
             container_service=container.container_service,
             storage_service=container.storage_service,
             vector_store_service=container.vector_store_service,
-            title_service=container.title_service,
         )
     return container.agent_service
 

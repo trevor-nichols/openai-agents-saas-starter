@@ -1,19 +1,26 @@
-"""Internal helper to generate and persist conversation titles."""
+"""Internal helper to stream and persist conversation titles.
+
+Design goals:
+- The `/api/v1/conversations/{id}/stream` endpoint should stream the *LLM output*
+  (ChatGPT-esque "title appears as it is generated"), not app-defined metadata.
+- Titles are persisted as `agent_conversations.display_name` once, and are derived
+  solely from the first user message of a conversation.
+"""
 
 from __future__ import annotations
 
 import asyncio
 import logging
 import re
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime
+from typing import Any, Protocol
 
 from agents import Agent, ModelSettings, Runner
 from openai.types.shared.reasoning import Reasoning
 from pydantic import BaseModel, Field
 
 from app.services.conversation_service import ConversationService
-from app.services.conversations import metadata_stream
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +32,14 @@ class _TitleOutput(BaseModel):
         max_length=60,
         description="Short title for the conversation.",
     )
+
+
+class _RunnerStream(Protocol):
+    """Protocol for streamed Runner results (used for dependency injection + tests)."""
+
+    final_output: Any
+
+    def stream_events(self) -> AsyncIterator[Any]: ...
 
 
 def _default_agent(model: str) -> Agent:
@@ -47,6 +62,124 @@ def _default_agent(model: str) -> Agent:
     )
 
 
+class _JsonStringFieldExtractor:
+    """Streaming extractor for a JSON string field value.
+
+    Used to stream *only* the `title` field from a structured-output JSON response
+    (i.e. ignore braces, other keys, etc.).
+    """
+
+    def __init__(self, field_name: str) -> None:
+        self._field_pattern = f"\"{field_name}\""
+        self._pattern_index = 0
+        self._state: str = "search_key"
+        self._escape_pending = False
+        self._unicode_pending: list[str] | None = None
+
+    def feed(self, chunk: str) -> str:
+        """Consume raw JSON text and return newly extracted characters (may be empty)."""
+
+        if not chunk:
+            return ""
+
+        out: list[str] = []
+        for ch in chunk:
+            emitted = self._feed_char(ch)
+            if emitted:
+                out.append(emitted)
+        return "".join(out)
+
+    def _feed_char(self, ch: str) -> str:
+        if self._state == "search_key":
+            return self._search_key(ch)
+        if self._state == "seek_colon":
+            return self._seek_colon(ch)
+        if self._state == "seek_value_quote":
+            return self._seek_value_quote(ch)
+        if self._state == "in_string":
+            return self._in_string(ch)
+        return ""
+
+    def _search_key(self, ch: str) -> str:
+        expected = self._field_pattern[self._pattern_index]
+        if ch == expected:
+            self._pattern_index += 1
+            if self._pattern_index >= len(self._field_pattern):
+                self._state = "seek_colon"
+                self._pattern_index = 0
+            return ""
+
+        # Restart matching if this character could be the beginning of the pattern.
+        self._pattern_index = 1 if ch == self._field_pattern[0] else 0
+        return ""
+
+    def _seek_colon(self, ch: str) -> str:
+        if ch.isspace():
+            return ""
+        if ch == ":":
+            self._state = "seek_value_quote"
+            return ""
+        # Unexpected token; reset.
+        self._state = "search_key"
+        return ""
+
+    def _seek_value_quote(self, ch: str) -> str:
+        if ch.isspace():
+            return ""
+        if ch == "\"":
+            self._state = "in_string"
+            self._escape_pending = False
+            self._unicode_pending = None
+            return ""
+        # Unexpected token; reset.
+        self._state = "search_key"
+        return ""
+
+    def _in_string(self, ch: str) -> str:
+        if self._unicode_pending is not None:
+            if ch.lower() in "0123456789abcdef":
+                self._unicode_pending.append(ch)
+                if len(self._unicode_pending) == 4:
+                    try:
+                        codepoint = int("".join(self._unicode_pending), 16)
+                        emitted = chr(codepoint)
+                    except Exception:
+                        emitted = ""
+                    self._unicode_pending = None
+                    self._escape_pending = False
+                    return emitted
+                return ""
+            # Invalid unicode escape; drop.
+            self._unicode_pending = None
+            self._escape_pending = False
+            return ""
+
+        if self._escape_pending:
+            self._escape_pending = False
+            if ch == "u":
+                self._unicode_pending = []
+                return ""
+            mapping = {
+                "\"": "\"",
+                "\\": "\\",
+                "/": "/",
+                "b": "\b",
+                "f": "\f",
+                "n": "\n",
+                "r": "\r",
+                "t": "\t",
+            }
+            return mapping.get(ch, ch)
+
+        if ch == "\\":
+            self._escape_pending = True
+            return ""
+        if ch == "\"":
+            self._state = "search_key"
+            return ""
+        return ch
+
+
 class TitleService:
     """Generates short conversation titles and stores them if absent."""
 
@@ -56,81 +189,91 @@ class TitleService:
         *,
         model: str = "gpt-5-nano",
         timeout_seconds: float = 5.0,
-        runner: Callable[[Agent, str], Awaitable[object]] | None = None,
+        stream_runner: Callable[[Agent, str], _RunnerStream] | None = None,
     ) -> None:
         self._conversation_service = conversation_service
         self._timeout_seconds = timeout_seconds
         self._agent = _default_agent(model)
-        self._runner = runner or Runner.run
+        self._stream_runner = stream_runner or Runner.run_streamed
 
-    async def generate_if_absent(
+    async def stream_title(
         self,
         *,
         conversation_id: str,
         tenant_id: str,
         first_user_message: str,
-    ) -> str | None:
-        """Generate and persist a title when none exists. Returns the stored title or None."""
+    ) -> AsyncIterator[str]:
+        """Stream the generated title and persist it once complete.
+
+        Yields only title text deltas (not JSON envelope). The caller is expected
+        to wrap these in SSE (`data: ...\\n\\n`).
+        """
 
         message = (first_user_message or "").strip()
         if not message:
-            return None
+            return
+
+        stream: _RunnerStream | None = None
+        extracted_so_far: list[str] = []
+        extractor = _JsonStringFieldExtractor("title")
 
         try:
-            raw_title = await asyncio.wait_for(
-                self._runner(self._agent, message),
-                timeout=self._timeout_seconds,
-            )
+            stream = self._stream_runner(self._agent, message)
+
+            async with asyncio.timeout(self._timeout_seconds):
+                async for event in stream.stream_events():
+                    if getattr(event, "type", None) != "raw_response_event":
+                        continue
+                    raw = getattr(event, "data", None)
+                    if getattr(raw, "type", None) != "response.output_text.delta":
+                        continue
+                    delta = getattr(raw, "delta", None)
+                    if not isinstance(delta, str) or not delta:
+                        continue
+                    chunk = extractor.feed(delta)
+                    if not chunk:
+                        continue
+                    # SSE `data:` lines are newline-delimited; avoid breaking the frame.
+                    chunk = chunk.replace("\r", " ").replace("\n", " ")
+                    extracted_so_far.append(chunk)
+                    yield chunk
+
         except TimeoutError:
             logger.warning(
                 "title_generation.timeout",
-                extra={
-                    "conversation_id": conversation_id,
-                    "tenant_id": tenant_id,
-                },
+                extra={"conversation_id": conversation_id, "tenant_id": tenant_id},
             )
-            return None
+            return
+        except asyncio.CancelledError:  # client disconnected, server shutdown, etc.
+            raise
         except Exception:
             logger.exception(
                 "title_generation.error",
-                extra={
-                    "conversation_id": conversation_id,
-                    "tenant_id": tenant_id,
-                },
+                extra={"conversation_id": conversation_id, "tenant_id": tenant_id},
             )
-            return None
+            return
 
-        title_text = self._extract_title(raw_title)
+        final_output = getattr(stream, "final_output", None) if stream is not None else None
+        title_text = self._extract_title(final_output)
         if not title_text:
-            return None
+            title_text = self._extract_title("".join(extracted_so_far))
 
+        if not title_text:
+            return
+
+        # Persist once (best-effort). A parallel request may win; that's okay.
         try:
-            stored = await self._conversation_service.set_display_name(
+            await self._conversation_service.set_display_name(
                 conversation_id,
                 tenant_id=tenant_id,
                 display_name=title_text,
                 generated_at=datetime.now(UTC),
             )
-            if stored:
-                await metadata_stream.publish(
-                    tenant_id=tenant_id,
-                    conversation_id=conversation_id,
-                    event={
-                        "kind": "conversation.title.generated",
-                        "conversation_id": conversation_id,
-                        "display_name": title_text,
-                    },
-                )
-            return title_text if stored else None
         except Exception:
             logger.exception(
                 "title_generation.persist_failed",
-                extra={
-                    "conversation_id": conversation_id,
-                    "tenant_id": tenant_id,
-                },
+                extra={"conversation_id": conversation_id, "tenant_id": tenant_id},
             )
-            return None
 
     @staticmethod
     def _extract_title(result: object) -> str | None:
@@ -177,9 +320,7 @@ class TitleService:
             return None
 
         normalized = re.sub(r"[\r\n]+", " ", str(text)).strip()
-        normalized = re.sub(r"^(title\\s*:\\s*)", "", normalized, flags=re.IGNORECASE)
         normalized = re.sub(r"^[\"'“”]+|[\"'“”]+$", "", normalized)
-        normalized = re.sub(r"[.!?]+$", "", normalized)
         normalized = " ".join(normalized.split())  # collapse whitespace
 
         if not normalized:
@@ -191,4 +332,18 @@ class TitleService:
         return normalized
 
 
-__all__ = ["TitleService"]
+def get_title_service() -> TitleService:
+    """Resolve the container-backed title service."""
+
+    from app.bootstrap.container import get_container, wire_title_service
+
+    container = get_container()
+    if getattr(container, "title_service", None) is None:
+        wire_title_service(container)
+    svc = container.title_service
+    if svc is None:  # pragma: no cover - defensive
+        raise RuntimeError("TitleService is not configured")
+    return svc
+
+
+__all__ = ["TitleService", "get_title_service"]

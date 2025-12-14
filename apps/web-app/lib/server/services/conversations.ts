@@ -292,17 +292,17 @@ export async function updateConversationMemory(
   return payload;
 }
 
-export interface ConversationMetadataStreamOptions {
+export interface ConversationTitleStreamOptions {
   conversationId: string;
   signal: AbortSignal;
   tenantRole?: string | null;
 }
 
 /**
-  * Open the SSE stream for conversation metadata (e.g., generated titles).
+  * Open the SSE stream for the conversation title (generated server-side).
   */
-export async function openConversationMetadataStream(
-  options: ConversationMetadataStreamOptions,
+export async function openConversationTitleStream(
+  options: ConversationTitleStreamOptions,
 ): Promise<Response> {
   if (!options.conversationId) {
     throw new Error('Conversation id is required.');
@@ -329,7 +329,7 @@ export async function openConversationMetadataStream(
 
   const stream = upstream.data;
   if (!stream || !upstream.response) {
-    throw new Error('Conversation metadata stream returned no data.');
+    throw new Error('Conversation title stream returned no data.');
   }
 
   const responseHeaders = new Headers(STREAM_HEADERS);

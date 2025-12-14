@@ -7,7 +7,7 @@ import { GET } from './route';
 const openConversationMetadataStream = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/server/services/conversations', () => ({
-  openConversationMetadataStream,
+  openConversationTitleStream: openConversationMetadataStream,
 }));
 
 const context = (conversationId?: string): Parameters<typeof GET>[1] => ({

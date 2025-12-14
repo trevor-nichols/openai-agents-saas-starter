@@ -16,7 +16,6 @@ from app.api.v1.conversations.schemas import (
     ConversationListResponse,
     ConversationMemoryConfigRequest,
     ConversationMemoryConfigResponse,
-    ConversationMetaEvent,
     ConversationSearchResponse,
     ConversationSearchResult,
     PaginatedMessagesResponse,
@@ -25,15 +24,15 @@ from app.domain.conversations import ConversationMemoryConfig, ConversationNotFo
 from app.services.agents.context import ConversationActorContext
 from app.services.agents.query import get_conversation_query_service
 from app.services.conversation_service import get_conversation_service
-from app.services.conversations import metadata_stream
+from app.services.conversations.title_service import get_title_service
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
-META_STREAM_RESPONSE = {
-    "description": "Server-sent events stream for conversation metadata updates.",
+TITLE_STREAM_RESPONSE = {
+    "description": "Server-sent events stream of the generated conversation title.",
     "content": {
         "text/event-stream": {
-            "schema": {"$ref": "#/components/schemas/ConversationMetaEvent"}
+            "schema": {"type": "string"}
         }
     },
 }
@@ -337,8 +336,7 @@ async def get_conversation_events(
 
 @router.get(
     "/{conversation_id}/stream",
-    response_model=ConversationMetaEvent,
-    responses={200: META_STREAM_RESPONSE},
+    responses={200: TITLE_STREAM_RESPONSE},
 )
 async def stream_conversation_metadata(
     conversation_id: str,
@@ -346,7 +344,7 @@ async def stream_conversation_metadata(
     tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
     tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
 ) -> StreamingResponse:
-    """SSE stream of conversation metadata events (e.g., generated titles)."""
+    """SSE stream of the conversation title generated from the first user message."""
 
     tenant_context = await _resolve_tenant_context(
         current_user,
@@ -354,13 +352,65 @@ async def stream_conversation_metadata(
         tenant_role_header,
         min_role=TenantRole.VIEWER,
     )
+    tenant_id = tenant_context.tenant_id
 
-    async def _event_stream() -> AsyncIterator[str]:
-        async for payload in metadata_stream.subscribe(
-            tenant_id=tenant_context.tenant_id,
+    record = await get_conversation_service().get_conversation(
+        conversation_id,
+        tenant_id=tenant_id,
+    )
+    if record is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+
+    if record.display_name:
+
+        async def _event_stream_existing_title() -> AsyncIterator[str]:
+            yield f"data: {record.display_name}\n\n"
+            yield "data: [DONE]\n\n"
+
+        headers = {
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Content-Type": "text/event-stream",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "*",
+        }
+
+        return StreamingResponse(
+            _event_stream_existing_title(),
+            media_type="text/event-stream",
+            headers=headers,
+        )
+
+    first_user_message = next(
+        (msg.content for msg in record.messages if msg.role == "user" and msg.content),
+        "",
+    ).strip()
+    if not first_user_message:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Conversation has no user messages"
+        )
+
+    async def _event_stream_generate_title() -> AsyncIterator[str]:
+        emitted_any = False
+        async for chunk in get_title_service().stream_title(
             conversation_id=conversation_id,
+            tenant_id=tenant_id,
+            first_user_message=first_user_message,
         ):
-            yield f"data: {payload}\n\n"
+            if not chunk:
+                continue
+            emitted_any = True
+            yield f"data: {chunk}\n\n"
+
+        if not emitted_any:
+            refreshed = await get_conversation_service().get_conversation(
+                conversation_id,
+                tenant_id=tenant_id,
+            )
+            if refreshed and refreshed.display_name:
+                yield f"data: {refreshed.display_name}\n\n"
+
+        yield "data: [DONE]\n\n"
 
     headers = {
         "Cache-Control": "no-cache",
@@ -371,7 +421,7 @@ async def stream_conversation_metadata(
     }
 
     return StreamingResponse(
-        _event_stream(),
+        _event_stream_generate_title(),
         media_type="text/event-stream",
         headers=headers,
     )

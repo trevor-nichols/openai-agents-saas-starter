@@ -10525,7 +10525,7 @@
           "conversations"
         ],
         "summary": "Stream Conversation Metadata",
-        "description": "SSE stream of conversation metadata events (e.g., generated titles).",
+        "description": "SSE stream of the conversation title generated from the first user message.",
         "operationId": "stream_conversation_metadata_api_v1_conversations__conversation_id__stream_get",
         "security": [
           {
@@ -10577,16 +10577,14 @@
         ],
         "responses": {
           "200": {
-            "description": "Server-sent events stream for conversation metadata updates.",
+            "description": "Server-sent events stream of the generated conversation title.",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConversationMetaEvent"
-                }
+                "schema": {}
               },
               "text/event-stream": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConversationMetaEvent"
+                  "type": "string"
                 }
               }
             }
@@ -23172,51 +23170,6 @@
         },
         "type": "object",
         "title": "ConversationMemoryConfigResponse"
-      },
-      "ConversationMetaEvent": {
-        "properties": {
-          "kind": {
-            "type": "string",
-            "title": "Kind",
-            "description": "Event type, e.g., conversation.title.generated"
-          },
-          "conversation_id": {
-            "type": "string",
-            "title": "Conversation Id",
-            "description": "Conversation identifier."
-          },
-          "display_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Display Name",
-            "description": "Generated conversation title."
-          },
-          "timestamp": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Timestamp",
-            "description": "Server timestamp."
-          }
-        },
-        "type": "object",
-        "required": [
-          "kind",
-          "conversation_id"
-        ],
-        "title": "ConversationMetaEvent",
-        "description": "Metadata stream event for a conversation."
       },
       "ConversationSearchResponse": {
         "properties": {

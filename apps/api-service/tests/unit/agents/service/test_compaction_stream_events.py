@@ -77,7 +77,11 @@ class _FakeProvider:
         self.session_store = _FakeSessionStore()
         self.runtime = _FakeRuntime()
         self._descriptor = SimpleNamespace(
-            key="triage", model="gpt", status="active", memory_strategy_defaults=None
+            key="triage",
+            model="gpt",
+            status="active",
+            memory_strategy_defaults=None,
+            output_schema=None,
         )
 
     def resolve_agent(self, preferred_key=None):
@@ -135,11 +139,6 @@ async def test_chat_stream_emits_compaction_event():
     async def _record_usage(*_args, **_kwargs):
         return None
 
-    async def _title_start(*_args, **_kwargs):
-        return None
-    async def _title_generate(**_kwargs):
-        return None
-
     async def _ingest_images(*_args, **_kwargs):
         return []
     agent_service = AgentService(
@@ -149,7 +148,6 @@ async def test_chat_stream_emits_compaction_event():
         session_manager=session_manager,
         usage_service=SimpleNamespace(record=_record_usage),
         usage_recorder=None,
-        title_service=SimpleNamespace(start=_title_start, generate_if_absent=_title_generate),
         attachment_service=SimpleNamespace(
             ingest_image_outputs=_ingest_images,
             to_attachment_payload=lambda *args, **kwargs: {},
