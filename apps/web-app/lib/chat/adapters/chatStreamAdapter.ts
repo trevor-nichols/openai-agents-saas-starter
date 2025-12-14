@@ -89,6 +89,18 @@ export async function consumeChatStream(
     } | null;
   } => Boolean(payload && payload.tool_type === 'file_search' && 'file_search_call' in payload);
 
+  const statusRank: Record<ToolState['status'], number> = {
+    'input-streaming': 0,
+    'input-available': 1,
+    'output-available': 2,
+    'output-error': 3,
+  };
+
+  const upgradeStatus = (
+    current: ToolState['status'],
+    next: ToolState['status'],
+  ): ToolState['status'] => (statusRank[next] > statusRank[current] ? next : current);
+
   const emitAgentNotice = (agent: string, prefix: 'Switched to' | 'Handed off to') => {
     if (agent === lastAgentNotice) return;
     lastAgentNotice = agent;
@@ -236,15 +248,43 @@ export async function consumeChatStream(
         id: toolId,
         name:
           event.tool_name ||
+          (() => {
+            const rawItem =
+              event.payload && typeof event.payload === 'object'
+                ? (event.payload as { raw_item?: unknown }).raw_item
+                : null;
+            const rawType =
+              rawItem && typeof rawItem === 'object' ? (rawItem as { type?: unknown }).type : null;
+            if (rawType === 'web_search_call') return 'web_search';
+            if (rawType === 'file_search_call') return 'file_search';
+            if (rawType === 'code_interpreter_call') return 'code_interpreter';
+            if (rawType === 'image_generation_call') return 'image_generation';
+            return null;
+          })() ||
           ((event.tool_call as ToolCallPayload | undefined)?.tool_type ?? event.run_item_name),
         status: 'input-streaming' as const,
       };
 
       if (event.run_item_name === 'tool_called') {
-        existing.status = 'input-available';
-        existing.input = event.payload;
+        existing.status = upgradeStatus(existing.status, 'input-available');
+        if (event.payload && typeof event.payload === 'object') {
+          const rawItem = (event.payload as { raw_item?: unknown }).raw_item;
+          const action = rawItem && typeof rawItem === 'object' ? (rawItem as { action?: unknown }).action : null;
+          const status =
+            rawItem && typeof rawItem === 'object' ? (rawItem as { status?: unknown }).status : null;
+          const query =
+            action && typeof action === 'object'
+              ? (action as { query?: unknown }).query
+              : undefined;
+          existing.input = typeof query === 'string' ? query : event.payload;
+          if (status === 'completed') {
+            existing.status = upgradeStatus(existing.status, 'output-available');
+          }
+        } else {
+          existing.input = event.payload;
+        }
       } else if (event.run_item_name === 'tool_output') {
-        existing.status = 'output-available';
+        existing.status = upgradeStatus(existing.status, 'output-available');
         const toolPayload = event.tool_call as ToolCallPayload | undefined;
         const hasOutputsField =
           typeof event.payload === 'object' &&
@@ -304,7 +344,7 @@ export async function consumeChatStream(
       }
     }
 
-    if (event.structured_output !== undefined) {
+    if (event.structured_output !== undefined && event.structured_output !== null) {
       streamedStructuredOutput = event.structured_output;
       handlers.onStructuredOutput?.(streamedStructuredOutput);
     }

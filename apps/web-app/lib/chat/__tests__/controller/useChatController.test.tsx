@@ -226,6 +226,77 @@ describe('useChatController', () => {
     expect(assistantMessages[0]?.content).toBe('Preamble');
   });
 
+  it('anchors tools to the user message when tool events arrive before the first text delta', async () => {
+    useSendChatMutation.mockReturnValue(createMutationMock());
+
+    streamChat.mockImplementation(() => (async function* () {
+      yield {
+        type: 'event' as const,
+        event: {
+          kind: 'agent_updated_stream_event',
+          conversation_id: 'conv-tool-first',
+          new_agent: 'Researcher',
+          structured_output: null,
+        },
+      };
+      yield {
+        type: 'event' as const,
+        event: {
+          kind: 'raw_response_event',
+          conversation_id: 'conv-tool-first',
+          raw_type: 'response.web_search_call.in_progress',
+          structured_output: null,
+          tool_call: {
+            tool_type: 'web_search',
+            web_search_call: {
+              id: 'call-1',
+              type: 'web_search_call',
+              status: 'in_progress',
+              action: null,
+            },
+          },
+        },
+      };
+      yield {
+        type: 'event' as const,
+        event: {
+          kind: 'raw_response_event',
+          conversation_id: 'conv-tool-first',
+          raw_type: 'response.output_text.delta',
+          text_delta: 'Final answer',
+          structured_output: null,
+        },
+      };
+      yield {
+        type: 'event' as const,
+        event: {
+          kind: 'raw_response_event',
+          conversation_id: 'conv-tool-first',
+          raw_type: 'response.completed',
+          is_terminal: true,
+          structured_output: null,
+        },
+      };
+    })());
+
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useChatController(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.sendMessage('Search first');
+    });
+
+    await waitFor(() => {
+      const assistantMessages = result.current.messages.filter((msg) => msg.role === 'assistant');
+      expect(assistantMessages).toHaveLength(1);
+      expect(assistantMessages[0]?.content).toBe('Final answer');
+
+      const userMessage = result.current.messages.find((msg) => msg.role === 'user');
+      expect(userMessage).toBeTruthy();
+      expect(result.current.toolEventAnchors[userMessage!.id]).toEqual(['call-1']);
+    });
+  });
+
   it('falls back to mutation when streaming fails', async () => {
     const fallbackResponse = {
       conversation_id: 'conv-fallback',

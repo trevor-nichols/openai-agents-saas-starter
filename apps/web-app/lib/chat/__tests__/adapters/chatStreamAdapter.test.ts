@@ -111,6 +111,64 @@ describe('consumeChatStream', () => {
     expect(result.errored).toBe(false);
   });
 
+  it('does not downgrade tool status when run item events arrive after a completed raw tool call', async () => {
+    const toolStates: ToolState[][] = [];
+
+    const chunks: StreamChunk[] = [
+      {
+        type: 'event',
+        event: {
+          conversation_id: 'c3',
+          kind: 'raw_response_event',
+          raw_type: 'response.web_search_call.completed',
+          tool_call: {
+            tool_type: 'web_search',
+            web_search_call: { id: 'call-1', type: 'web_search_call', status: 'completed', action: null },
+          },
+        },
+      },
+      {
+        type: 'event',
+        event: {
+          conversation_id: 'c3',
+          kind: 'run_item_stream_event',
+          run_item_name: 'tool_called',
+          run_item_type: 'tool_call_item',
+          tool_call_id: 'call-1',
+          payload: {
+            raw_item: {
+              type: 'web_search_call',
+              action: { type: 'search', query: 'latest OpenAI model' },
+              status: 'completed',
+            },
+          },
+        },
+      },
+      {
+        type: 'event',
+        event: {
+          conversation_id: 'c3',
+          kind: 'raw_response_event',
+          raw_type: 'response.completed',
+          is_terminal: true,
+        },
+      },
+    ];
+
+    const result = await consumeChatStream(chunkStream(chunks), {
+      onToolStates: (tools) => toolStates.push(tools),
+    });
+
+    expect(result.errored).toBe(false);
+    expect(toolStates.length).toBeGreaterThan(0);
+    expect(toolStates.at(-1)?.[0]).toMatchObject({
+      id: 'call-1',
+      name: 'web_search',
+      status: 'output-available',
+      input: 'latest OpenAI model',
+    });
+  });
+
   it('marks errored streams', async () => {
     const chunks: StreamChunk[] = [
       { type: 'error', payload: 'boom' },
@@ -118,6 +176,36 @@ describe('consumeChatStream', () => {
 
     const result = await consumeChatStream(chunkStream(chunks), {});
     expect(result.errored).toBe(true);
+  });
+
+  it('ignores null structured_output payloads', async () => {
+    const onStructuredOutput = vi.fn();
+
+    const chunks: StreamChunk[] = [
+      {
+        type: 'event',
+        event: {
+          conversation_id: 'so-null',
+          kind: 'agent_updated_stream_event',
+          new_agent: 'Researcher',
+          structured_output: null,
+        },
+      },
+      {
+        type: 'event',
+        event: {
+          conversation_id: 'so-null',
+          kind: 'raw_response_event',
+          raw_type: 'response.completed',
+          structured_output: null,
+          is_terminal: true,
+        },
+      },
+    ];
+
+    const result = await consumeChatStream(chunkStream(chunks), { onStructuredOutput });
+    expect(onStructuredOutput).not.toHaveBeenCalled();
+    expect(result.structuredOutput).toBe(null);
   });
 
   it('emits guardrail events to handler and accumulates', async () => {

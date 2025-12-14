@@ -1,4 +1,5 @@
 import type { LocationHint } from '@/lib/api/client/types.gen';
+import { parseTimestampMs } from '@/lib/utils/time';
 import type {
   ConversationHistory,
   ConversationListItem,
@@ -48,12 +49,6 @@ export function dedupeAndSortMessages(messages: ChatMessage[]): ChatMessage[] {
 
   const normalizeContent = (content: string) =>
     content.replace(new RegExp(`${CURSOR_TOKEN}\\s*$`), '').trim();
-
-  const parseTimestampMs = (timestamp?: string) => {
-    if (!timestamp) return null;
-    const ms = Date.parse(timestamp);
-    return Number.isFinite(ms) ? ms : null;
-  };
 
   type Indexed = {
     message: ChatMessage;

@@ -7,9 +7,13 @@ import {
   useState,
   type Dispatch,
 } from 'react';
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { deleteConversationById, fetchConversationMessages } from '@/lib/api/conversations';
+import {
+  deleteConversationById,
+  fetchConversationEvents,
+  fetchConversationMessages,
+} from '@/lib/api/conversations';
 import { streamChat } from '@/lib/api/chat';
 import { useSendChatMutation } from '@/lib/queries/chat';
 import { queryKeys } from '@/lib/queries/keys';
@@ -20,7 +24,7 @@ import type {
   ToolEventAnchors,
   ToolState,
 } from '../types';
-import type { ConversationMessagesPage } from '@/types/conversations';
+import type { ConversationEvents, ConversationMessagesPage } from '@/types/conversations';
 import type { LocationHint, StreamingChatEvent } from '@/lib/api/client/types.gen';
 
 import { createLogger } from '@/lib/logging';
@@ -31,6 +35,12 @@ import {
   mapMessagesToChatMessages,
   normalizeLocationPayload,
 } from '../mappers/chatRequestMappers';
+import {
+  mapConversationEventsToToolTimeline,
+  mergeToolEventAnchors,
+  mergeToolStates,
+  reanchorToolEventAnchors,
+} from '../mappers/toolTimelineMappers';
 import { upsertConversationCaches } from '../cache/conversationCache';
 import { messagesReducer, type MessagesAction } from '../state/messagesReducer';
 
@@ -129,8 +139,26 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
     [queryClient],
   );
 
+  const invalidateEventsCache = useCallback(
+    async (conversationId: string | null) => {
+      if (!conversationId) return;
+      try {
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.conversations.events(conversationId),
+        });
+      } catch (error) {
+        console.warn('[useChatController] Failed to invalidate events cache', error);
+      }
+    },
+    [queryClient],
+  );
+
   const messagesQueryKey = useMemo(
     () => queryKeys.conversations.messages(currentConversationId ?? 'preview'),
+    [currentConversationId],
+  );
+  const eventsQueryKey = useMemo(
+    () => queryKeys.conversations.events(currentConversationId ?? 'preview'),
     [currentConversationId],
   );
 
@@ -154,6 +182,17 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       }),
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
     initialPageParam: null as string | null,
+    staleTime: 30 * 1000,
+    retry: false,
+  });
+
+  const { data: conversationEvents } = useQuery<ConversationEvents>({
+    queryKey: eventsQueryKey,
+    enabled: Boolean(currentConversationId),
+    queryFn: () =>
+      fetchConversationEvents({
+        conversationId: currentConversationId as string,
+      }),
     staleTime: 30 * 1000,
     retry: false,
   });
@@ -185,6 +224,31 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
   const mergedMessages = useMemo(
     () => dedupeAndSortMessages([...historyMessages, ...messages]),
     [historyMessages, messages],
+  );
+
+  const persistedToolTimeline = useMemo(() => {
+    if (!conversationEvents?.items?.length) {
+      return { tools: [] as ToolState[], anchors: {} as ToolEventAnchors };
+    }
+    if (historyMessages.length === 0) {
+      return { tools: [] as ToolState[], anchors: {} as ToolEventAnchors };
+    }
+    return mapConversationEventsToToolTimeline(conversationEvents.items, historyMessages);
+  }, [conversationEvents?.items, historyMessages]);
+
+  const combinedToolEvents = useMemo(
+    () => mergeToolStates(persistedToolTimeline.tools, toolEvents),
+    [persistedToolTimeline.tools, toolEvents],
+  );
+
+  const reanchoredToolEventAnchors = useMemo(
+    () => reanchorToolEventAnchors(toolEventAnchors, messages, mergedMessages),
+    [toolEventAnchors, messages, mergedMessages],
+  );
+
+  const combinedToolEventAnchors = useMemo(
+    () => mergeToolEventAnchors(persistedToolTimeline.anchors, reanchoredToolEventAnchors),
+    [persistedToolTimeline.anchors, reanchoredToolEventAnchors],
   );
 
   const isLoadingHistory = Boolean(currentConversationId) && isLoadingMessages && !messagesPages;
@@ -306,7 +370,6 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
         assistantIdNonceRef.current += 1;
         const assistantMessageId = `assistant-${Date.now()}-${assistantIdNonceRef.current}`;
         assistantMessageIdRef.current = assistantMessageId;
-        lastToolAnchorMessageIdRef.current = assistantMessageId;
         enqueueMessageAction({
           type: 'append',
           message: {
@@ -341,6 +404,12 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
               id: assistantMessageId,
               patch: { content: `${segmentText}▋`, isStreaming: true },
             });
+            if (segmentText.trim().length > 0) {
+              // Only advance the tool anchor to the assistant message once there is real content.
+              // This prevents tool calls that occur before visible assistant text from anchoring
+              // to an empty cursor-only bubble.
+              lastToolAnchorMessageIdRef.current = assistantMessageId;
+            }
           },
           onReasoningDelta: (delta) => setReasoningText((prev) => `${prev}${delta}`),
           onToolStates: (tools) => {
@@ -388,14 +457,20 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
               const segmentText = latestAssistantAccumulatedRef.current.slice(
                 assistantSegmentStartOffsetRef.current,
               );
-              enqueueMessageAction({
-                type: 'updateById',
-                id: currentAssistantId,
-                patch: { content: segmentText, isStreaming: false },
-              });
+              if (segmentText.trim().length > 0) {
+                enqueueMessageAction({
+                  type: 'updateById',
+                  id: currentAssistantId,
+                  patch: { content: segmentText, isStreaming: false },
+                });
+                lastToolAnchorMessageIdRef.current = currentAssistantId;
+              } else {
+                // Avoid leaving a blank message bubble when tools start before the assistant
+                // has produced visible content since the last segment boundary.
+                enqueueMessageAction({ type: 'removeById', id: currentAssistantId });
+              }
               assistantMessageIdRef.current = null;
               assistantSegmentStartOffsetRef.current = latestAssistantAccumulatedRef.current.length;
-              lastToolAnchorMessageIdRef.current = currentAssistantId;
             }
           },
           onGuardrailEvents: setGuardrailEvents,
@@ -494,6 +569,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
           });
           // Ensure paginated messages refresh picks up the new turn
           void invalidateMessagesCache(resolvedConversationId);
+          void invalidateEventsCache(resolvedConversationId);
         }
       } catch (error) {
         console.error('[useChatController] Streaming failed, falling back to mutation:', error);
@@ -566,6 +642,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
               onConversationUpdated,
             });
             void invalidateMessagesCache(resolvedConversationId);
+            void invalidateEventsCache(resolvedConversationId);
           }
         } catch (fallbackError) {
           console.error('[useChatController] Fallback send failed:', fallbackError);
@@ -601,6 +678,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       selectedAgent,
       sendChatMutation,
       invalidateMessagesCache,
+      invalidateEventsCache,
     ],
   );
 
@@ -682,8 +760,8 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       setSelectedAgent,
       activeAgent,
       agentNotices,
-      toolEvents,
-      toolEventAnchors,
+      toolEvents: combinedToolEvents,
+      toolEventAnchors: combinedToolEventAnchors,
       guardrailEvents,
       reasoningText,
       lifecycleStatus,
@@ -715,8 +793,8 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       clearError,
       activeAgent,
       agentNotices,
-      toolEvents,
-      toolEventAnchors,
+      combinedToolEvents,
+      combinedToolEventAnchors,
       guardrailEvents,
       reasoningText,
       lifecycleStatus,

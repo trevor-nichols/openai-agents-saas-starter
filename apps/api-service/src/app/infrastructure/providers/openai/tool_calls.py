@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from app.utils.tools.builtin_tools import infer_builtin_tool_name
+
 
 def coerce_delta(delta: Any) -> str:
     if delta is None:
@@ -144,6 +146,10 @@ def extract_tool_info(item: Any) -> tuple[str | None, str | None]:
     raw_item = getattr(item, "raw_item", None)
     tool_call_id = getattr(raw_item, "id", None) or getattr(item, "id", None)
     tool_name = getattr(raw_item, "name", None) or getattr(item, "name", None)
+    if tool_name is None:
+        raw_item_type = getattr(raw_item, "type", None)
+        item_type = getattr(item, "type", None)
+        tool_name = infer_builtin_tool_name(raw_item_type) or infer_builtin_tool_name(item_type)
     if tool_call_id is not None:
         tool_call_id = str(tool_call_id)
     if tool_name is not None:

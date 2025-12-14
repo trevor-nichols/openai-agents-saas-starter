@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from agents.usage import Usage
 
 from app.domain.ai import AgentRunUsage
@@ -29,6 +31,21 @@ def convert_usage(usage: Usage | None) -> AgentRunUsage | None:
             return 1
         return max(0, value)
 
+    def _normalize_request_usage_entries(raw: object) -> list[Mapping[str, object]] | None:
+        if not isinstance(raw, list):
+            return None
+
+        # Import locally to avoid hard coupling at module import time.
+        from app.domain.ai.models import AgentStreamEvent
+
+        normalized: list[Mapping[str, object]] = []
+        for entry in raw:
+            mapped = AgentStreamEvent._to_mapping(entry)
+            if mapped is None:
+                continue
+            normalized.append(mapped)
+        return normalized or None
+
     return AgentRunUsage(
         input_tokens=_to_int(getattr(usage, "input_tokens", None)),
         output_tokens=_to_int(getattr(usage, "output_tokens", None)),
@@ -38,7 +55,9 @@ def convert_usage(usage: Usage | None) -> AgentRunUsage | None:
             _get(usage, "output_tokens_details", "reasoning_tokens")
         ),
         requests=_normalize_requests(_to_int(getattr(usage, "requests", None))),
-        request_usage_entries=getattr(usage, "request_usage_entries", None),
+        request_usage_entries=_normalize_request_usage_entries(
+            getattr(usage, "request_usage_entries", None)
+        ),
     )
 
 

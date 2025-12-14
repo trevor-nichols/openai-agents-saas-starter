@@ -36,3 +36,21 @@ def test_convert_usage_defaults_requests_to_one():
     result = convert_usage(usage)
 
     assert result.requests == 1
+
+
+def test_convert_usage_normalizes_request_usage_entries_to_mappings():
+    class FakeRequestUsage:
+        def model_dump(self, mode: str = "python", exclude_none: bool = False):  # noqa: ARG002
+            return {
+                "input_tokens": 7,
+                "output_tokens": 3,
+                "total_tokens": 10,
+            }
+
+    usage = _usage(request_usage_entries=[FakeRequestUsage()])
+
+    result = convert_usage(usage)
+
+    assert result.request_usage_entries == [
+        {"input_tokens": 7, "output_tokens": 3, "total_tokens": 10}
+    ]
