@@ -10,7 +10,7 @@ Developer-facing overview of the pieces that persist and surface conversation da
 
 ## Key modules
 - `conversation_service.py`: Core façade that enforces tenant scoping and delegates to the configured `ConversationRepository` (Postgres by default via `infrastructure/persistence/conversations/postgres.py`). Also logs creation/clear events to `activity_service` best-effort.
-- `conversations/title_service.py`: Small helper that asks an SDK `Agent` (default `gpt-5-mini`, 2s timeout) to produce a short title, persists it via `ConversationService.set_display_name`, and publishes a metadata event. Wired in `bootstrap/container.py` as `title_service`.
+- `conversations/title_service.py`: Small helper that asks an SDK `Agent` (default `gpt-5-nano`, 5s timeout) to produce a short title, persists it via `ConversationService.set_display_name`, and publishes a metadata event. Wired in `bootstrap/container.py` as `title_service`.
 - `conversations/metadata_stream.py`: In-memory async pub/sub used for best-effort metadata fan-out; backs `/api/v1/conversations/{id}/stream` SSE. State is per-process—do not rely on it for durable events.
 - `services/agents/query.py`: Read-only layer that composes `ConversationService` with `ConversationHistoryService` for list/search/history/messages/event reads.
 - `api/v1/conversations/router.py`: Public endpoints for listing, searching, reading history/messages/events, updating memory config, deleting conversations, and streaming metadata.

@@ -8,13 +8,23 @@ import re
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 
-from agents import Agent, Runner
-from agents.model_settings import ModelSettings
+from agents import Agent, ModelSettings, Runner
+from openai.types.shared.reasoning import Reasoning
+from pydantic import BaseModel, Field
 
 from app.services.conversation_service import ConversationService
 from app.services.conversations import metadata_stream
 
 logger = logging.getLogger(__name__)
+
+
+class _TitleOutput(BaseModel):
+    title: str = Field(
+        ...,
+        min_length=1,
+        max_length=60,
+        description="Short title for the conversation.",
+    )
 
 
 def _default_agent(model: str) -> Agent:
@@ -28,8 +38,12 @@ def _default_agent(model: str) -> Agent:
         ),
         model=model,
         model_settings=ModelSettings(
-            temperature=0.2,
+            reasoning=Reasoning(effort="minimal"),
+            verbosity="low",
+            max_tokens=64,
+            store=False,
         ),
+        output_type=_TitleOutput,
     )
 
 
@@ -40,8 +54,8 @@ class TitleService:
         self,
         conversation_service: ConversationService,
         *,
-        model: str = "gpt-5-mini",
-        timeout_seconds: float = 2.0,
+        model: str = "gpt-5-nano",
+        timeout_seconds: float = 5.0,
         runner: Callable[[Agent, str], Awaitable[object]] | None = None,
     ) -> None:
         self._conversation_service = conversation_service
@@ -86,7 +100,7 @@ class TitleService:
             )
             return None
 
-        title_text = self._extract_text(raw_title)
+        title_text = self._extract_title(raw_title)
         if not title_text:
             return None
 
@@ -119,21 +133,51 @@ class TitleService:
             return None
 
     @staticmethod
-    def _extract_text(result: object) -> str | None:
-        """Normalize the runner result into a short title."""
+    def _extract_title(result: object) -> str | None:
+        """Normalize the runner result into a short title string.
+
+        The title generator uses structured output (`output_type=_TitleOutput`), but
+        we keep this extractor defensive so unit tests or alternate runners can
+        stub in simpler return types.
+        """
 
         if result is None:
             return None
 
-        if hasattr(result, "final_output"):
-            text = getattr(result, "final_output", None) or getattr(result, "response_text", None)
+        final_output = getattr(result, "final_output", None)
+        candidate = final_output if final_output is not None else result
+
+        text: str | None = None
+        if isinstance(candidate, str):
+            text = candidate
+        elif isinstance(candidate, dict) and "title" in candidate:
+            title_val = candidate.get("title")
+            text = str(title_val) if title_val is not None else None
         else:
-            text = str(result)
+            title_attr = getattr(candidate, "title", None)
+            if isinstance(title_attr, str):
+                text = title_attr
+            else:
+                dump_fn = getattr(candidate, "model_dump", None)
+                if callable(dump_fn):
+                    dumped = dump_fn()
+                    if isinstance(dumped, dict) and "title" in dumped:
+                        title_val = dumped.get("title")
+                        text = str(title_val) if title_val is not None else None
+
+        if not text and hasattr(result, "response_text"):
+            response_text = getattr(result, "response_text", None)
+            if isinstance(response_text, str):
+                text = response_text
+
+        if not text:
+            text = str(candidate)
 
         if not text:
             return None
 
         normalized = re.sub(r"[\r\n]+", " ", str(text)).strip()
+        normalized = re.sub(r"^(title\\s*:\\s*)", "", normalized, flags=re.IGNORECASE)
         normalized = re.sub(r"^[\"'“”]+|[\"'“”]+$", "", normalized)
         normalized = re.sub(r"[.!?]+$", "", normalized)
         normalized = " ".join(normalized.split())  # collapse whitespace
