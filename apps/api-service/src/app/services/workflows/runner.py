@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import inspect
 import logging
 from collections.abc import AsyncIterator
 from types import SimpleNamespace
@@ -18,7 +17,7 @@ from app.services.agents.context import ConversationActorContext
 from app.services.agents.event_log import EventProjector
 from app.services.agents.interaction_context import InteractionContextBuilder
 from app.services.agents.provider_registry import AgentProviderRegistry, get_provider_registry
-from app.services.agents.run_pipeline import _compute_session_delta
+from app.services.agents.session_items import compute_session_delta, get_session_items
 from app.services.conversation_service import ConversationService, get_conversation_service
 from app.services.workflows.recording import WorkflowRunRecorder
 from app.services.workflows.stages import run_parallel_stage, run_sequential_stage
@@ -52,23 +51,6 @@ class WorkflowRunner:
         self._conversation_service = conversation_service or get_conversation_service()
         self._event_projector = event_projector or EventProjector(self._conversation_service)
 
-    async def _get_session_items(self, session_handle: Any) -> list[dict[str, Any]]:
-        getter = getattr(session_handle, "get_items", None)
-        if getter is None or not callable(getter):
-            return []
-        try:
-            result = getter()
-            items = await result if inspect.isawaitable(result) else result
-            if not items:
-                return []
-            if isinstance(items, list):
-                return list(items)
-            if isinstance(items, (tuple, set)):  # noqa: UP038 - tuple is runtime-safe for isinstance
-                return list(items)
-            return []
-        except Exception:
-            return []
-
     async def _ingest_session_delta(
         self,
         *,
@@ -83,16 +65,14 @@ class WorkflowRunner:
         session_items: list[dict[str, Any]] | None = None,
     ) -> None:
         post_items = (
-            session_items
-            if session_items is not None
-            else await self._get_session_items(session_handle)
+            session_items if session_items is not None else await get_session_items(session_handle)
         )
         if not post_items:
             return
         delta = (
             post_items
             if session_items is not None
-            else _compute_session_delta(pre_items, post_items)
+            else compute_session_delta(pre_items, post_items)
         )
         if not delta:
             return
@@ -170,7 +150,7 @@ class WorkflowRunner:
         )
 
         async def session_getter():
-            return await self._get_session_items(session_handle)
+            return await get_session_items(session_handle)
 
         async def ingest_session_delta(
             *,
@@ -327,7 +307,7 @@ class WorkflowRunner:
         )
 
         async def session_getter():
-            return await self._get_session_items(session_handle)
+            return await get_session_items(session_handle)
 
         async def ingest_session_delta(
             *,

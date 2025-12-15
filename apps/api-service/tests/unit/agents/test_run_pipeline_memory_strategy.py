@@ -14,9 +14,9 @@ from app.observability.metrics import (
     MEMORY_TOKENS_BEFORE_AFTER,
     MEMORY_TRIGGER_TOTAL,
 )
-from app.services.agents.run_pipeline import (
-    _load_cross_session_summary,
+from app.services.agents.memory_strategy import (
     build_memory_strategy_config,
+    load_cross_session_summary,
     resolve_memory_injection,
 )
 
@@ -99,7 +99,7 @@ def test_load_cross_session_summary_rejects_stale_and_long(monkeypatch):
     stale_row = _Row("ok", datetime.utcnow() - timedelta(days=30))
     svc = _Svc(stale_row)
     res = asyncio.get_event_loop().run_until_complete(
-        _load_cross_session_summary(
+        load_cross_session_summary(
             conversation_id="c",
             tenant_id="t",
             agent_key="a",
@@ -114,7 +114,7 @@ def test_load_cross_session_summary_rejects_stale_and_long(monkeypatch):
     long_row = _Row("x" * 200, datetime.utcnow())
     svc2 = _Svc(long_row)
     res2 = asyncio.get_event_loop().run_until_complete(
-        _load_cross_session_summary(
+        load_cross_session_summary(
             conversation_id="c",
             tenant_id="t",
             agent_key="a",
@@ -129,7 +129,7 @@ def test_load_cross_session_summary_rejects_stale_and_long(monkeypatch):
     aware_row = _Row("fresh", datetime.now(timezone.utc))
     svc3 = _Svc(aware_row)
     res3 = asyncio.get_event_loop().run_until_complete(
-        _load_cross_session_summary(
+        load_cross_session_summary(
             conversation_id="c",
             tenant_id="t",
             agent_key="a",
@@ -188,7 +188,7 @@ def test_summary_injection_metrics_mark_stale_and_used(monkeypatch):
     stale_row = _Row("ok", datetime.utcnow() - timedelta(days=30))
     svc = _Svc(stale_row)
     res = asyncio.get_event_loop().run_until_complete(
-        _load_cross_session_summary(
+        load_cross_session_summary(
             conversation_id="c",
             tenant_id="t",
             agent_key="a",
@@ -204,7 +204,7 @@ def test_summary_injection_metrics_mark_stale_and_used(monkeypatch):
     valid_row = _Row("fine", datetime.utcnow())
     svc_valid = _Svc(valid_row)
     res_valid = asyncio.get_event_loop().run_until_complete(
-        _load_cross_session_summary(
+        load_cross_session_summary(
             conversation_id="c",
             tenant_id="t",
             agent_key="a",
