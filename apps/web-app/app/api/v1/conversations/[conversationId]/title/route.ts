@@ -1,7 +1,8 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-import { ConversationTitleApiError, updateConversationTitle } from '@/lib/server/services/conversations';
+import { updateConversationTitle } from '@/lib/server/services/conversations';
+import { ConversationTitleApiError } from '@/lib/server/services/conversations.errors';
 import type { ConversationTitleUpdateRequest } from '@/lib/api/client/types.gen';
 
 interface RouteContext {

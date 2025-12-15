@@ -31,6 +31,7 @@ import type {
 } from '@/types/conversations';
 
 import { getServerApiClient } from '../apiClient';
+import { ConversationTitleApiError } from './conversations.errors';
 
 const STREAM_HEADERS = {
   'Content-Type': 'text/event-stream',
@@ -80,16 +81,6 @@ function mapApiErrorMessage(payload: unknown, fallback: string): string {
   }
 
   return fallback;
-}
-
-export class ConversationTitleApiError extends Error {
-  constructor(
-    public readonly status: number,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'ConversationTitleApiError';
-  }
 }
 
 /**

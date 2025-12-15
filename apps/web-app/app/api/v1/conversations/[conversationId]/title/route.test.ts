@@ -21,6 +21,9 @@ const ConversationTitleApiError = vi.hoisted(
 
 vi.mock('@/lib/server/services/conversations', () => ({
   updateConversationTitle,
+}));
+
+vi.mock('@/lib/server/services/conversations.errors', () => ({
   ConversationTitleApiError,
 }));
 
