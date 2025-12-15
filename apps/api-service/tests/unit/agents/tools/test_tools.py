@@ -302,6 +302,32 @@ async def _noop_search(*args, **kwargs):  # pragma: no cover - helper
     return []
 
 
+def _test_agent_specs() -> list[AgentSpec]:
+    """Minimal spec set for tool-resolution tests.
+
+    Keep these unit tests isolated from the full production agent catalog so
+    unrelated spec/tool changes don't break the suite.
+    """
+
+    return [
+        AgentSpec(
+            key="triage",
+            display_name="Triage Assistant",
+            description="Triage agent used for tool wiring tests.",
+            instructions="hi",
+            tool_keys=("get_current_time", "search_conversations"),
+            default=True,
+        ),
+        AgentSpec(
+            key="researcher",
+            display_name="Researcher",
+            description="Researcher agent used for hosted web search tool tests.",
+            instructions="hi",
+            tool_keys=("web_search",),
+        ),
+    ]
+
+
 def _build_openai_registry(monkeypatch, registry: ToolRegistry):
     class _StubSettings:
         agent_default_model: str = "gpt-5.1"
@@ -327,6 +353,7 @@ def _build_openai_registry(monkeypatch, registry: ToolRegistry):
     return OpenAIAgentRegistry(
         settings_factory=lambda: cast(Settings, settings),
         conversation_searcher=_noop_search,
+        specs=_test_agent_specs(),
     )
 
 
@@ -500,7 +527,7 @@ def test_file_search_tool_uses_runtime_resolution(monkeypatch):
     assert getattr(tool, "max_num_results", None) == 2
 
 
-def test_file_search_tool_missing_runtime_context_raises(monkeypatch):
+def test_file_search_tool_missing_runtime_context_is_deferred(monkeypatch):
     settings = SimpleNamespace(
         openai_api_key="test-key",
         agent_default_model="gpt-5.1",
@@ -546,8 +573,11 @@ def test_file_search_tool_missing_runtime_context_raises(monkeypatch):
         client_overrides=None,
     )
 
-    with pytest.raises(ValueError):
-        registry.get_agent_handle("fs_agent", runtime_ctx=runtime_ctx, validate_prompts=False)
+    agent = registry.get_agent_handle("fs_agent", runtime_ctx=runtime_ctx, validate_prompts=False)
+    assert agent is not None
+    fs_tools = [t for t in agent.tools if isinstance(t, FileSearchTool)]
+    assert len(fs_tools) == 1
+    assert fs_tools[0].vector_store_ids == []
 
 
 def test_agent_specs_are_sorted_topologically():

@@ -18,6 +18,9 @@ class DummyRegistry:
     def get_agent_handle(self, agent_key: str, *, runtime_ctx=None, validate_prompts: bool = True):
         return self._agent
 
+    def get_code_interpreter_mode(self, agent_key: str) -> str | None:
+        return None
+
     @property
     def default_agent_key(self) -> str:  # pragma: no cover - not used
         return "test"
@@ -89,4 +92,3 @@ async def test_runtime_stream_includes_hooks(monkeypatch: pytest.MonkeyPatch):
     async for evt in handle.events():
         events.append(evt)
     assert events  # at least one event forwarded
-
