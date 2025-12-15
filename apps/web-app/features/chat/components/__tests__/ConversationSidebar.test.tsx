@@ -56,6 +56,7 @@ describe('ConversationSidebar', () => {
     mockUseConversationSearch.mockReturnValue({
       results: [],
       isLoading: false,
+      isFetchingMore: false,
       loadMore: vi.fn(),
       hasNextPage: false,
     });

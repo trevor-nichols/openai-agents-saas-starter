@@ -147,6 +147,7 @@ export function useAgentWorkspace() {
     () => ({
       conversationList: data.conversationList,
       isLoadingConversations: data.isLoadingConversations,
+      isFetchingMoreConversations: data.isFetchingMoreConversations,
       conversationsError: data.conversationsError,
       onRefreshConversations: data.loadConversations,
       onLoadMoreConversations: data.loadMoreConversations,

@@ -23,6 +23,7 @@ import type { ConversationListItem } from '@/types/conversations';
 interface ConversationArchivePanelProps {
   conversationList: ConversationListItem[];
   isLoading: boolean;
+  isLoadingMore?: boolean;
   error: string | null;
   onRefresh: () => void;
    onLoadMore?: () => void;
@@ -33,6 +34,7 @@ interface ConversationArchivePanelProps {
 export function ConversationArchivePanel({
   conversationList,
   isLoading,
+  isLoadingMore,
   error,
   onRefresh,
   onLoadMore,
@@ -43,6 +45,9 @@ export function ConversationArchivePanel({
   const [debounced, setDebounced] = useState('');
   const queryClient = useQueryClient();
 
+  const isLoadingMoreConversations = Boolean(isLoadingMore);
+  const isBusy = isLoading || isLoadingMoreConversations;
+
   useEffect(() => {
     const id = setTimeout(() => setDebounced(searchTerm.trim()), 250);
     return () => clearTimeout(id);
@@ -51,6 +56,7 @@ export function ConversationArchivePanel({
   const {
     results: searchResults,
     isLoading: isSearching,
+    isFetchingMore: isFetchingMoreSearchResults,
     loadMore: loadMoreSearch,
     hasNextPage: hasNextSearchPage,
     error: searchError,
@@ -72,6 +78,7 @@ export function ConversationArchivePanel({
   const totalCount = conversationList.length;
   const visibleCount = filteredConversations.length;
   const isSearchingActive = Boolean(debounced);
+  const isSearchBusy = isSearching || isFetchingMoreSearchResults;
 
   const columns = useMemo<ConversationColumn[]>(() => {
     return [
@@ -147,11 +154,13 @@ export function ConversationArchivePanel({
           <InlineTag tone={totalCount ? 'positive' : 'default'}>
             {isLoading
               ? 'Loading…'
+              : isLoadingMoreConversations
+                ? 'Loading more…'
               : isSearchingActive
                 ? `${visibleCount}/${totalCount} matches`
                 : `${totalCount} threads`}
           </InlineTag>
-          <Button variant="ghost" size="sm" onClick={onRefresh} disabled={isLoading}>
+          <Button variant="ghost" size="sm" onClick={onRefresh} disabled={isBusy}>
             Refresh
             </Button>
           </div>
@@ -199,7 +208,7 @@ export function ConversationArchivePanel({
 
       {!debounced && hasNextPage ? (
         <div className="flex justify-center">
-          <Button variant="ghost" size="sm" onClick={onLoadMore} disabled={isLoading}>
+          <Button variant="ghost" size="sm" onClick={onLoadMore} disabled={isBusy}>
             Load more
           </Button>
         </div>
@@ -207,7 +216,7 @@ export function ConversationArchivePanel({
 
       {debounced && hasNextSearchPage ? (
         <div className="flex justify-center">
-          <Button variant="ghost" size="sm" onClick={loadMoreSearch} disabled={isSearching}>
+          <Button variant="ghost" size="sm" onClick={loadMoreSearch} disabled={isSearchBusy}>
             Load more results
           </Button>
         </div>

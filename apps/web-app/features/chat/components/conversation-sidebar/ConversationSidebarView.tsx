@@ -29,9 +29,11 @@ interface ConversationSidebarViewProps {
   groupedConversations: Record<DateGroup, ConversationListItem[]>;
   groupOrder: DateGroup[];
   recentLoading: boolean;
+  recentFetchingMore: boolean;
   recentCount: number;
   searchResults: ConversationListItem[];
   isSearching: boolean;
+  isFetchingMoreSearchResults: boolean;
   showSearchEmpty: boolean;
   currentConversationId: string | null;
   onSelectConversation: (id: string) => void;
@@ -53,9 +55,11 @@ export function ConversationSidebarView({
   groupedConversations,
   groupOrder,
   recentLoading,
+  recentFetchingMore,
   recentCount,
   searchResults,
   isSearching,
+  isFetchingMoreSearchResults,
   showSearchEmpty,
   currentConversationId,
   onSelectConversation,
@@ -67,7 +71,10 @@ export function ConversationSidebarView({
   const fallbackRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = infiniteScrollRef ?? fallbackRef;
 
-  const showLoader = (tab === 'recent' ? recentLoading : isSearching) && (recentCount > 0 || searchResults.length > 0);
+  const showLoader =
+    tab === 'recent'
+      ? recentFetchingMore && recentCount > 0
+      : isFetchingMoreSearchResults && searchResults.length > 0;
 
   const content = (
     <>
@@ -128,9 +135,8 @@ export function ConversationSidebarView({
               />
             )}
 
-            <div ref={sentinelRef}>
-              {showLoader ? <ConversationListLoader /> : null}
-            </div>
+            <div ref={sentinelRef} aria-hidden="true" className="h-px w-full opacity-0" />
+            {showLoader ? <ConversationListLoader /> : null}
           </div>
         </ScrollArea>
       </Tabs>

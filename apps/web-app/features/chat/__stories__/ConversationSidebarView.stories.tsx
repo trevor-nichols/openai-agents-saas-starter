@@ -44,9 +44,11 @@ const meta: Meta<typeof ConversationSidebarView> = {
     groupedConversations: grouped,
     groupOrder: DATE_GROUP_ORDER,
     recentLoading: false,
+    recentFetchingMore: false,
     recentCount: baseConversations.length,
     searchResults: [],
     isSearching: false,
+    isFetchingMoreSearchResults: false,
     showSearchEmpty: false,
     currentConversationId: 'conv-1',
     onSelectConversation: noop,
@@ -64,6 +66,7 @@ export const GroupedRecent: Story = {};
 export const LoadingRecent: Story = {
   args: {
     recentLoading: true,
+    recentFetchingMore: false,
     recentCount: 0,
     groupedConversations: {
       Today: [],
@@ -78,6 +81,7 @@ export const LoadingRecent: Story = {
 export const EmptyRecent: Story = {
   args: {
     recentLoading: false,
+    recentFetchingMore: false,
     recentCount: 0,
     groupedConversations: {
       Today: [],
@@ -96,6 +100,7 @@ export const SearchEmpty: Story = {
     searchTerm: 'billing',
     searchResults: [],
     isSearching: false,
+    isFetchingMoreSearchResults: false,
     showSearchEmpty: true,
   },
 };

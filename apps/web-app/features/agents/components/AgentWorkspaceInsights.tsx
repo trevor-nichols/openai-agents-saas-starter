@@ -21,6 +21,7 @@ import type { ToolRegistrySummary, ToolsByAgentMap } from '../types';
 interface AgentWorkspaceInsightsProps {
   conversationList: ConversationListItem[];
   isLoadingConversations: boolean;
+  isFetchingMoreConversations: boolean;
   conversationsError: string | null;
   onRefreshConversations: () => void;
   onLoadMoreConversations: () => void;
@@ -46,6 +47,7 @@ interface AgentWorkspaceInsightsProps {
 export function AgentWorkspaceInsights({
   conversationList,
   isLoadingConversations,
+  isFetchingMoreConversations,
   conversationsError,
   onRefreshConversations,
   onLoadMoreConversations,
@@ -147,6 +149,7 @@ export function AgentWorkspaceInsights({
                 <ConversationArchivePanel
                   conversationList={conversationList}
                   isLoading={isLoadingConversations}
+                  isLoadingMore={isFetchingMoreConversations}
                   error={conversationsError}
                   onRefresh={onRefreshConversations}
                   onLoadMore={onLoadMoreConversations}
@@ -190,4 +193,3 @@ export function AgentWorkspaceInsights({
     </>
   );
 }
-

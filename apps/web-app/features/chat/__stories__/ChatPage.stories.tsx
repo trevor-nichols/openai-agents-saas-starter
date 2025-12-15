@@ -215,9 +215,11 @@ function ChatPage({ status, streamStatus, billingStatus = 'open', includeAttachm
           groupedConversations={groupedConversations}
           groupOrder={DATE_GROUP_ORDER}
           recentLoading={false}
+          recentFetchingMore={false}
           recentCount={conversations.length}
           searchResults={[]}
           isSearching={false}
+          isFetchingMoreSearchResults={false}
           showSearchEmpty={false}
           currentConversationId="conv-1"
           onSelectConversation={() => {}}

@@ -30,6 +30,7 @@ export interface AgentWorkspaceQueries {
   refetchTools: ReturnType<typeof useTools>['refetch'];
   conversationList: ReturnType<typeof useConversations>['conversationList'];
   isLoadingConversations: boolean;
+  isFetchingMoreConversations: ReturnType<typeof useConversations>['isFetchingMoreConversations'];
   conversationsError: ReturnType<typeof useConversations>['error'];
   loadConversations: ReturnType<typeof useConversations>['loadConversations'];
   loadMoreConversations: ReturnType<typeof useConversations>['loadMore'];
@@ -76,6 +77,7 @@ export function useAgentWorkspaceData(): AgentWorkspaceQueries {
     refetchTools: toolsQuery.refetch,
     conversationList: conversationsQuery.conversationList,
     isLoadingConversations: conversationsQuery.isLoadingConversations,
+    isFetchingMoreConversations: conversationsQuery.isFetchingMoreConversations,
     conversationsError: conversationsQuery.error,
     loadConversations: conversationsQuery.loadConversations,
     loadMoreConversations: conversationsQuery.loadMore,

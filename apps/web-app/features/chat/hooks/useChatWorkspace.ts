@@ -19,6 +19,7 @@ export function useChatWorkspace() {
   const {
     conversationList,
     isLoadingConversations,
+    isFetchingMoreConversations,
     loadMore,
     hasNextPage,
     addConversationToList,
@@ -270,6 +271,7 @@ export function useChatWorkspace() {
   return {
     conversationList,
     isLoadingConversations,
+    isFetchingMoreConversations,
     titlePending,
     billingEvents,
     billingStreamStatus,

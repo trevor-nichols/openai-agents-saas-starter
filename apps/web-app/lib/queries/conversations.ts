@@ -34,6 +34,7 @@ import type { InfiniteData } from '@tanstack/react-query';
 interface UseConversationsReturn {
   conversationList: ConversationListItem[];
   isLoadingConversations: boolean;
+  isFetchingMoreConversations: boolean;
   loadMore: () => void;
   hasNextPage: boolean;
   loadConversations: () => void;
@@ -46,6 +47,7 @@ interface UseConversationsReturn {
 interface UseConversationSearchReturn {
   results: ConversationSearchResultItem[];
   isLoading: boolean;
+  isFetchingMore: boolean;
   loadMore: () => void;
   hasNextPage: boolean;
   error: string | null;
@@ -88,6 +90,7 @@ export function useConversations(): UseConversationsReturn {
   const {
     data,
     isLoading: isLoadingConversations,
+    isFetchingNextPage: isFetchingMoreConversations,
     error,
     fetchNextPage,
     hasNextPage,
@@ -106,10 +109,10 @@ export function useConversations(): UseConversationsReturn {
   );
 
   const loadMore = useCallback(() => {
-    if (hasNextPage) {
+    if (hasNextPage && !isFetchingMoreConversations) {
       void fetchNextPage();
     }
-  }, [fetchNextPage, hasNextPage]);
+  }, [fetchNextPage, hasNextPage, isFetchingMoreConversations]);
 
   const loadConversations = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.conversations.lists() });
@@ -180,6 +183,7 @@ export function useConversations(): UseConversationsReturn {
   return {
     conversationList,
     isLoadingConversations,
+    isFetchingMoreConversations,
     loadMore,
     hasNextPage: Boolean(hasNextPage),
     loadConversations,
@@ -197,6 +201,7 @@ export function useConversationSearch(query: string): UseConversationSearchRetur
   const {
     data,
     isLoading,
+    isFetchingNextPage: isFetchingMore,
     error,
     fetchNextPage,
     hasNextPage,
@@ -216,14 +221,15 @@ export function useConversationSearch(query: string): UseConversationSearchRetur
   );
 
   const loadMore = useCallback(() => {
-    if (isActive && hasNextPage) {
+    if (isActive && hasNextPage && !isFetchingMore) {
       void fetchNextPage();
     }
-  }, [fetchNextPage, hasNextPage, isActive]);
+  }, [fetchNextPage, hasNextPage, isActive, isFetchingMore]);
 
   return {
     results,
     isLoading: isActive ? isLoading : false,
+    isFetchingMore: isActive ? isFetchingMore : false,
     loadMore,
     hasNextPage: isActive ? Boolean(hasNextPage) : false,
     error: isActive ? error?.message ?? null : null,

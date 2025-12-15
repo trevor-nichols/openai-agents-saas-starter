@@ -14,6 +14,7 @@ import { ConversationSidebarView } from './ConversationSidebarView';
 export interface ConversationSidebarProps {
   conversationList: ConversationListItem[];
   isLoadingConversations: boolean;
+  isFetchingMoreConversations?: boolean;
   loadMoreConversations?: () => void;
   hasNextConversationPage?: boolean;
   currentConversationId: string | null;
@@ -28,6 +29,7 @@ export interface ConversationSidebarProps {
 export function ConversationSidebar({
   conversationList,
   isLoadingConversations,
+  isFetchingMoreConversations,
   loadMoreConversations,
   hasNextConversationPage,
   currentConversationId,
@@ -53,12 +55,14 @@ export function ConversationSidebar({
     groupedConversations,
     groupOrder,
     isSearching,
+    isFetchingMoreSearchResults,
     showSearchEmpty,
     searchResults,
     infiniteScrollRef,
   } = useConversationSidebarState({
     conversationList,
     isLoadingConversations,
+    isFetchingMoreConversations,
     loadMoreConversations,
     hasNextConversationPage,
   });
@@ -108,9 +112,11 @@ export function ConversationSidebar({
         groupedConversations={groupedConversations}
         groupOrder={groupOrder}
         recentLoading={isLoadingConversations}
+        recentFetchingMore={Boolean(isFetchingMoreConversations)}
         recentCount={conversationList.length}
         searchResults={searchResults}
         isSearching={isSearching}
+        isFetchingMoreSearchResults={isFetchingMoreSearchResults}
         showSearchEmpty={showSearchEmpty}
         currentConversationId={currentConversationId}
         onSelectConversation={onSelectConversation}

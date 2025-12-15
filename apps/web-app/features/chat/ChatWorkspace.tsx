@@ -31,6 +31,7 @@ export function ChatWorkspace() {
   const {
     conversationList,
     isLoadingConversations,
+    isFetchingMoreConversations,
     loadMoreConversations: loadMore,
     hasNextConversationPage: hasNextPage,
     billingEvents,
@@ -200,6 +201,7 @@ export function ChatWorkspace() {
                 <ConversationSidebar
                   conversationList={conversationList}
                   isLoadingConversations={isLoadingConversations}
+                  isFetchingMoreConversations={isFetchingMoreConversations}
                   loadMoreConversations={loadMore}
                   hasNextConversationPage={hasNextPage}
                   currentConversationId={currentConversationId}
