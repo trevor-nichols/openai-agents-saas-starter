@@ -161,3 +161,8 @@ def _iter_image_generation_calls(candidate: Mapping[str, Any]) -> Iterable[Mappi
         for item in outputs:
             if isinstance(item, Mapping) and item.get("type") == "image_generation_call":
                 yield item
+
+    # Tool-call item wrappers from SDK sessions
+    raw_item = candidate.get("raw_item")
+    if isinstance(raw_item, Mapping):
+        yield from _iter_image_generation_calls(raw_item)

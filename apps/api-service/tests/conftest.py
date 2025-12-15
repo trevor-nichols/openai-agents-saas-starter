@@ -15,6 +15,7 @@ import pytest_asyncio
 import sqlalchemy.ext.asyncio as sqla_async
 from fakeredis.aioredis import FakeRedis
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.ext.compiler import compiles
 from starter_contracts import config as shared_config
 
@@ -80,6 +81,11 @@ def _compile_jsonb_to_text(element, compiler, **kwargs):
 
 @compiles(CITEXT, "sqlite")
 def _compile_citext_to_text(element, compiler, **kwargs):
+    return "TEXT"
+
+
+@compiles(PG_UUID, "sqlite")
+def _compile_uuid_to_text(element, compiler, **kwargs):
     return "TEXT"
 
 

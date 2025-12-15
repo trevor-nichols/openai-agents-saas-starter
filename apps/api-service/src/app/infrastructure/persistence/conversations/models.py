@@ -7,7 +7,6 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
-    BigInteger,
     Computed,
     DateTime,
     ForeignKey,
@@ -22,7 +21,7 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.infrastructure.persistence.models.base import UTC_NOW, Base, uuid_pk
+from app.infrastructure.persistence.models.base import INT_PK_TYPE, UTC_NOW, Base, uuid_pk
 from app.infrastructure.persistence.types import JSONBCompat
 
 
@@ -158,7 +157,7 @@ class AgentMessage(Base):
         ),
     )
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(INT_PK_TYPE, primary_key=True, autoincrement=True)
     conversation_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("agent_conversations.id", ondelete="CASCADE"), nullable=False
     )
@@ -197,7 +196,7 @@ class ConversationSummary(Base):
 
     __tablename__ = "conversation_summaries"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(INT_PK_TYPE, primary_key=True, autoincrement=True)
     tenant_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
     conversation_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True),
@@ -233,7 +232,7 @@ class AgentRunEvent(Base):
         Index("ix_agent_run_events_workflow_run_seq", "workflow_run_id", "sequence_no"),
     )
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(INT_PK_TYPE, primary_key=True, autoincrement=True)
     conversation_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("agent_conversations.id", ondelete="CASCADE"),
@@ -277,7 +276,7 @@ class AgentRunUsageModel(Base):
         UniqueConstraint("response_id", name="uq_agent_run_usage_response_id"),
     )
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(INT_PK_TYPE, primary_key=True, autoincrement=True)
     tenant_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
     conversation_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True),

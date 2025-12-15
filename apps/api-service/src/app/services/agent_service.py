@@ -6,7 +6,6 @@ the surface here stays lean and testable.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from collections.abc import AsyncGenerator, Mapping
 from datetime import datetime
@@ -17,14 +16,12 @@ from agents import trace
 from app.api.v1.agents.schemas import AgentStatus, AgentSummary
 from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse, MessageAttachment
 from app.bootstrap.container import wire_storage_service
+from app.domain.ai.lifecycle import LifecycleEventBus
 from app.domain.ai.models import AgentStreamEvent
 from app.domain.conversations import (
-    ConversationAttachment,
-    ConversationMessage,
     ConversationRepository,
 )
 from app.guardrails._shared.events import GuardrailEmissionToken, set_guardrail_emitters
-from app.infrastructure.providers.openai.runtime import LifecycleEventBus
 from app.services.agents.attachments import AttachmentService
 from app.services.agents.catalog import AgentCatalogPage, AgentCatalogService
 from app.services.agents.context import (
@@ -38,13 +35,19 @@ from app.services.agents.policy import AgentRuntimePolicy
 from app.services.agents.provider_registry import AgentProviderRegistry, get_provider_registry
 from app.services.agents.run_options import build_run_options
 from app.services.agents.run_pipeline import (
-    build_metadata,
+    RunContext,
     persist_assistant_message,
     prepare_run_context,
+    project_compaction_events,
     project_new_session_items,
     record_user_message,
 )
 from app.services.agents.session_manager import SessionManager
+from app.services.agents.streaming_pipeline import (
+    AgentStreamProcessor,
+    GuardrailStreamForwarder,
+    build_guardrail_summary,
+)
 from app.services.agents.usage import UsageService
 from app.services.containers import ContainerService
 from app.services.conversation_service import ConversationService, get_conversation_service
@@ -99,7 +102,7 @@ class AgentService:
         self._event_projector = EventProjector(self._conversation_service)
         self._usage_service = usage_service or UsageService(
             usage_recorder,
-            usage_counter_service or get_usage_counter_service(),
+            usage_counter_service,
             self._conversation_service,
         )
         self._catalog_service = catalog_service or AgentCatalogService(self._provider_registry)
@@ -177,54 +180,12 @@ class AgentService:
                 "response_id": result.response_id,
             },
         )
-        await self._sync_session_state(
+        await self._finalize_run(
+            ctx=ctx,
             tenant_id=actor.tenant_id,
-            conversation_id=ctx.conversation_id,
-            session_id=ctx.session_id,
-            provider_name=ctx.provider.name,
-            provider_conversation_id=ctx.provider_conversation_id,
-        )
-        await self._record_usage_metrics(
-            tenant_id=actor.tenant_id,
-            conversation_id=ctx.conversation_id,
             response_id=result.response_id,
             usage=result.usage,
-            agent_key=ctx.descriptor.key,
-            provider_name=ctx.provider.name,
         )
-
-        if ctx.compaction_events:
-            try:
-                await self._event_projector.ingest_session_items(
-                    conversation_id=ctx.conversation_id,
-                    tenant_id=actor.tenant_id,
-                    session_items=
-                    [AgentStreamEvent._to_mapping(ev) or {} for ev in ctx.compaction_events],
-                    agent=ctx.descriptor.key,
-                    model=ctx.descriptor.model,
-                    response_id=result.response_id,
-                )
-            except Exception:  # pragma: no cover - defensive
-                logger.exception(
-                    "compaction_event_projection_failed",
-                    extra={
-                        "conversation_id": ctx.conversation_id,
-                        "tenant_id": actor.tenant_id,
-                    },
-                )
-
-        await project_new_session_items(
-            event_projector=self._event_projector,
-            session_handle=ctx.session_handle,
-            pre_items=ctx.pre_session_items,
-            conversation_id=ctx.conversation_id,
-            tenant_id=actor.tenant_id,
-            agent=ctx.descriptor.key,
-            model=ctx.descriptor.model,
-            response_id=result.response_id,
-        )
-
-        ctx.provider.mark_seen(ctx.descriptor.key, datetime.utcnow())
 
         def _resolve_output_schema(agent_key: str | None):
             if not agent_key:
@@ -261,14 +222,12 @@ class AgentService:
         actor: ConversationActorContext,
     ) -> AsyncGenerator[AgentStreamEvent, None]:
         lifecycle_bus = LifecycleEventBus()
-        compaction_events: list[AgentStreamEvent] = []
         guardrail_events: list[Mapping[str, Any]] = []
         guardrail_token: GuardrailEmissionToken | None = None
-        last_response_id: str | None = None
+        stream_handle = None
 
         async def _emit_compaction(event: AgentStreamEvent) -> None:
             await lifecycle_bus.emit(event)
-            compaction_events.append(event)
 
         ctx = await prepare_run_context(
             actor=actor,
@@ -284,54 +243,31 @@ class AgentService:
             else None,
             compaction_emitter=_emit_compaction,
         )
-        current_agent = ctx.descriptor.key
-        current_output_schema = ctx.descriptor.output_schema
 
-        def _emit_guardrail(payload: Mapping[str, Any]) -> None:
-            fallback_response_id = None
-            try:
-                if stream_handle is not None:
-                    fallback_response_id = getattr(stream_handle, "last_response_id", None)
-            except Exception:
-                fallback_response_id = None
+        processor = AgentStreamProcessor(
+            lifecycle_bus=lifecycle_bus,
+            provider=ctx.provider,
+            actor=actor,
+            conversation_id=ctx.conversation_id,
+            entrypoint_agent=ctx.descriptor.key,
+            entrypoint_output_schema=ctx.descriptor.output_schema,
+            attachment_service=self._attachment_service,
+        )
 
-            response_id = payload.get("response_id") or last_response_id or fallback_response_id
-            agent_for_event = payload.get("agent") or current_agent or ctx.descriptor.key
-            event = AgentStreamEvent(
-                kind="guardrail_result",
-                conversation_id=ctx.conversation_id,
-                agent=agent_for_event,
-                response_id=response_id,
-                guardrail_stage=payload.get("guardrail_stage"),
-                guardrail_key=payload.get("guardrail_key"),
-                guardrail_name=payload.get("guardrail_name"),
-                guardrail_tripwire_triggered=payload.get("guardrail_tripwire_triggered"),
-                guardrail_suppressed=payload.get("guardrail_suppressed"),
-                guardrail_flagged=payload.get("guardrail_flagged"),
-                guardrail_confidence=payload.get("guardrail_confidence"),
-                guardrail_masked_content=payload.get("guardrail_masked_content"),
-                guardrail_token_usage=payload.get("guardrail_token_usage"),
-                guardrail_details=payload.get("guardrail_details"),
-                tool_name=payload.get("tool_name"),
-                tool_call_id=payload.get("tool_call_id"),
-                payload=(
-                    payload.get("payload")
-                    if isinstance(payload.get("payload"), Mapping)
-                    else None
-                ),
-            )
-            try:
-                loop = asyncio.get_running_loop()
-                lifecycle_emit_task = loop.create_task(lifecycle_bus.emit(event))
-                lifecycle_emit_task.add_done_callback(lambda _: None)
-            except Exception:
-                logger.exception(
-                    "guardrail_event.emit_failed",
-                    extra={"stage": payload.get("guardrail_stage")},
-                )
-
+        guardrail_forwarder = GuardrailStreamForwarder(
+            lifecycle_bus=lifecycle_bus,
+            conversation_id=ctx.conversation_id,
+            default_agent=ctx.descriptor.key,
+            get_current_agent=lambda: processor.outcome.current_agent or ctx.descriptor.key,
+            get_last_response_id=lambda: processor.outcome.last_response_id,
+            get_fallback_response_id=(
+                lambda: getattr(stream_handle, "last_response_id", None)
+                if stream_handle is not None
+                else None
+            ),
+        )
         guardrail_token = set_guardrail_emitters(
-            emitter=_emit_guardrail,
+            emitter=guardrail_forwarder,
             collector=guardrail_events,
             context={
                 "conversation_id": ctx.conversation_id,
@@ -345,12 +281,7 @@ class AgentService:
             conversation_service=self._conversation_service,
         )
 
-        complete_response = ""
-        attachments: list[ConversationAttachment] = []
-        seen_tool_calls: set[str] = set()
-        handoff_count = 0
         token = set_current_actor(actor)
-        stream_handle = None
         try:
             logger.info(
                 "agent.chat_stream.start",
@@ -374,83 +305,15 @@ class AgentService:
                     metadata={"prompt_runtime_ctx": ctx.runtime_ctx},
                     options=build_run_options(request.run_options, hook_sink=lifecycle_bus),
                 )
-                async for event in stream_handle.events():
-                    event.conversation_id = ctx.conversation_id
-                    if event.agent is None:
-                        event.agent = ctx.descriptor.key
-
-                    if event.response_id:
-                        last_response_id = event.response_id
-
-                    if event.text_delta:
-                        complete_response += event.text_delta
-                    elif event.response_text and not complete_response:
-                        complete_response = event.response_text
-
-                    attachment_sources: list[Mapping[str, Any]] = []
-                    if event.payload and isinstance(event.payload, Mapping):
-                        attachment_sources.append(event.payload)
-                    if isinstance(event.tool_call, Mapping):
-                        attachment_sources.append(event.tool_call)
-
-                    new_attachments = await self._attachment_service.ingest_image_outputs(
-                        attachment_sources or None,
-                        actor=actor,
-                        conversation_id=ctx.conversation_id,
-                        agent_key=ctx.descriptor.key,
-                        response_id=event.response_id,
-                        seen_tool_calls=seen_tool_calls,
-                    )
-                    if new_attachments:
-                        attachments.extend(new_attachments)
-                        event.attachments = [
-                            self._attachment_service.to_attachment_payload(att)
-                            for att in new_attachments
-                        ]
-                        if event.payload is None:
-                            event.payload = {}
-                        if isinstance(event.payload, dict):
-                            event.payload.setdefault("_attachment_note", "stored")
-
-                    if event.kind == "agent_updated_stream_event":
-                        if event.new_agent:
-                            current_agent = event.new_agent
-                            descriptor = ctx.provider.get_agent(current_agent)
-                            if descriptor:
-                                current_output_schema = descriptor.output_schema
-                        handoff_count += 1
-
-                    # Ensure stream payloads are JSON-serializable for SSE.
-                    event.payload = AgentStreamEvent._strip_unserializable(event.payload)
-                    event.structured_output = AgentStreamEvent._strip_unserializable(
-                        event.structured_output
-                    )
-                    event.response_text = (
-                        None if event.response_text is None else str(event.response_text)
-                    )
-                    if event.output_schema is None and current_output_schema is not None:
-                        event.output_schema = current_output_schema
-
+                async for event in processor.iter_events(stream_handle):
                     yield event
-
-                    if event.is_terminal:
-                        break
-                async for leftover in lifecycle_bus.drain():
-                    leftover.conversation_id = ctx.conversation_id
-                    if leftover.output_schema is None and current_output_schema is not None:
-                        leftover.output_schema = current_output_schema
-                    yield leftover
-            if stream_handle is not None and hasattr(stream_handle, "last_response_id"):
-                last_response_id = last_response_id or getattr(
-                    stream_handle, "last_response_id", None
-                )
         finally:
             reset_current_actor(token)
             if guardrail_token:
                 guardrail_token.reset()
 
         if guardrail_events:
-            summary_payload = self._build_guardrail_summary(guardrail_events)
+            summary_payload = build_guardrail_summary(guardrail_events)
             summary_event = AgentStreamEvent(
                 kind="guardrail_result",
                 conversation_id=ctx.conversation_id,
@@ -461,29 +324,17 @@ class AgentService:
                 guardrail_summary=True,
                 payload=summary_payload,
             )
-            if current_output_schema is not None:
-                summary_event.output_schema = current_output_schema
+            if processor.outcome.current_output_schema is not None:
+                summary_event.output_schema = processor.outcome.current_output_schema
             yield summary_event
 
-        assistant_message = ConversationMessage(
-            role="assistant",
-            content=complete_response,
-            attachments=attachments,
-        )
-        await self._conversation_service.append_message(
-            ctx.conversation_id,
-            assistant_message,
-            tenant_id=actor.tenant_id,
-            metadata=build_metadata(
-                tenant_id=actor.tenant_id,
-                provider=ctx.provider.name,
-                provider_conversation_id=ctx.provider_conversation_id,
-                agent_entrypoint=request.agent_type or ctx.descriptor.key,
-                active_agent=current_agent,
-                session_id=ctx.session_id,
-                user_id=actor.user_id,
-                handoff_count=handoff_count or None,
-            ),
+        await persist_assistant_message(
+            ctx=ctx,
+            conversation_service=self._conversation_service,
+            response_text=processor.outcome.complete_response,
+            attachments=processor.outcome.attachments,
+            active_agent=processor.outcome.current_agent or ctx.descriptor.key,
+            handoff_count=processor.outcome.handoff_count or None,
         )
         logger.info(
             "agent.chat_stream.end",
@@ -492,57 +343,19 @@ class AgentService:
                 "conversation_id": ctx.conversation_id,
                 "provider_conversation_id": ctx.provider_conversation_id,
                 "agent": ctx.descriptor.key,
-                "response_id": getattr(stream_handle, "last_response_id", None),
+                "response_id": getattr(stream_handle, "last_response_id", None)
+                if stream_handle is not None
+                else None,
             },
         )
-        await self._sync_session_state(
+        await self._finalize_run(
+            ctx=ctx,
             tenant_id=actor.tenant_id,
-            conversation_id=ctx.conversation_id,
-            session_id=ctx.session_id,
-            provider_name=ctx.provider.name,
-            provider_conversation_id=ctx.provider_conversation_id,
+            response_id=getattr(stream_handle, "last_response_id", None)
+            if stream_handle is not None
+            else None,
+            usage=getattr(stream_handle, "usage", None) if stream_handle is not None else None,
         )
-        await self._record_usage_metrics(
-            tenant_id=actor.tenant_id,
-            conversation_id=ctx.conversation_id,
-            response_id=getattr(stream_handle, "last_response_id", None),
-            usage=getattr(stream_handle, "usage", None),
-            agent_key=ctx.descriptor.key,
-            provider_name=ctx.provider.name,
-        )
-
-        if ctx.compaction_events:
-            try:
-                await self._event_projector.ingest_session_items(
-                    conversation_id=ctx.conversation_id,
-                    tenant_id=actor.tenant_id,
-                    session_items=
-                    [AgentStreamEvent._to_mapping(ev) or {} for ev in ctx.compaction_events],
-                    agent=ctx.descriptor.key,
-                    model=ctx.descriptor.model,
-                    response_id=getattr(stream_handle, "last_response_id", None),
-                )
-            except Exception:  # pragma: no cover - defensive
-                logger.exception(
-                    "compaction_event_projection_failed",
-                    extra={
-                        "conversation_id": ctx.conversation_id,
-                        "tenant_id": actor.tenant_id,
-                    },
-                )
-
-        await project_new_session_items(
-            event_projector=self._event_projector,
-            session_handle=ctx.session_handle,
-            pre_items=ctx.pre_session_items,
-            conversation_id=ctx.conversation_id,
-            tenant_id=actor.tenant_id,
-            agent=ctx.descriptor.key,
-            model=ctx.descriptor.model,
-            response_id=getattr(stream_handle, "last_response_id", None),
-        )
-
-        ctx.provider.mark_seen(ctx.descriptor.key, datetime.utcnow())
 
     @property
     def conversation_repository(self):
@@ -638,58 +451,49 @@ class AgentService:
             provider=provider_name,
         )
 
-    @staticmethod
-    def _build_guardrail_summary(events: list[Mapping[str, Any]]) -> dict[str, Any]:
-        total = len(events)
-        triggered = sum(1 for ev in events if ev.get("guardrail_tripwire_triggered"))
-        suppressed = sum(
-            1
-            for ev in events
-            if ev.get("guardrail_tripwire_triggered") and ev.get("guardrail_suppressed")
+    async def _finalize_run(
+        self,
+        *,
+        ctx: RunContext,
+        tenant_id: str,
+        response_id: str | None,
+        usage: Any,
+    ) -> None:
+        await self._sync_session_state(
+            tenant_id=tenant_id,
+            conversation_id=ctx.conversation_id,
+            session_id=ctx.session_id,
+            provider_name=ctx.provider.name,
+            provider_conversation_id=ctx.provider_conversation_id,
         )
-
-        by_stage: dict[str, dict[str, int]] = {}
-        by_key: dict[str, int] = {}
-        usage_totals: dict[str, int] = {
-            "prompt_tokens": 0,
-            "completion_tokens": 0,
-            "total_tokens": 0,
-        }
-        usage_found = False
-
-        for ev in events:
-            stage = ev.get("guardrail_stage") or "unknown"
-            stage_bucket = by_stage.setdefault(stage, {"total": 0, "triggered": 0})
-            stage_bucket["total"] += 1
-            if ev.get("guardrail_tripwire_triggered"):
-                stage_bucket["triggered"] += 1
-
-            key = ev.get("guardrail_key")
-            if key:
-                by_key[key] = by_key.get(key, 0) + 1
-
-            token_usage = ev.get("guardrail_token_usage")
-            if isinstance(token_usage, dict):
-                seen_usage = False
-                for field in ("prompt_tokens", "completion_tokens", "total_tokens"):
-                    value = token_usage.get(field)
-                    if isinstance(value, int):
-                        usage_totals[field] = usage_totals.get(field, 0) + value
-                        seen_usage = True
-                if seen_usage:
-                    usage_found = True
-
-        summary = {
-            "total": total,
-            "triggered": triggered,
-            "suppressed": suppressed,
-            "by_stage": by_stage,
-            "by_key": by_key,
-        }
-        if usage_found:
-            summary["token_usage"] = usage_totals
-
-        return summary
+        await self._record_usage_metrics(
+            tenant_id=tenant_id,
+            conversation_id=ctx.conversation_id,
+            response_id=response_id,
+            usage=usage,
+            agent_key=ctx.descriptor.key,
+            provider_name=ctx.provider.name,
+        )
+        await project_compaction_events(
+            event_projector=self._event_projector,
+            compaction_events=ctx.compaction_events,
+            conversation_id=ctx.conversation_id,
+            tenant_id=tenant_id,
+            agent=ctx.descriptor.key,
+            model=ctx.descriptor.model,
+            response_id=response_id,
+        )
+        await project_new_session_items(
+            event_projector=self._event_projector,
+            session_handle=ctx.session_handle,
+            pre_items=ctx.pre_session_items,
+            conversation_id=ctx.conversation_id,
+            tenant_id=tenant_id,
+            agent=ctx.descriptor.key,
+            model=ctx.descriptor.model,
+            response_id=response_id,
+        )
+        ctx.provider.mark_seen(ctx.descriptor.key, datetime.utcnow())
 
 
 # Factory helpers -----------------------------------------------------------
@@ -699,6 +503,7 @@ def build_agent_service(
     conversation_service: ConversationService | None = None,
     conversation_repository: ConversationRepository | None = None,
     usage_recorder: UsageRecorder | None = None,
+    usage_counter_service: UsageCounterService | None = None,
     provider_registry: AgentProviderRegistry | None = None,
     container_service: ContainerService | None = None,
     storage_service: StorageService | None = None,
@@ -710,6 +515,7 @@ def build_agent_service(
         conversation_repo=conversation_repository,
         conversation_service=conversation_service,
         usage_recorder=usage_recorder,
+        usage_counter_service=usage_counter_service,
         provider_registry=provider_registry,
         container_service=container_service,
         storage_service=storage_service,
@@ -733,6 +539,7 @@ def get_agent_service() -> AgentService:
             conversation_service=container.conversation_service,
             conversation_repository=None,
             usage_recorder=container.usage_recorder,
+            usage_counter_service=get_usage_counter_service(),
             provider_registry=get_provider_registry(),
             container_service=container.container_service,
             storage_service=container.storage_service,

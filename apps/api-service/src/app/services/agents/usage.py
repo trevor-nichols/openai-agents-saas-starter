@@ -9,7 +9,7 @@ from uuid import UUID
 from app.domain.ai import AgentRunUsage
 from app.infrastructure.persistence.auth.models import UsageCounterGranularity
 from app.services.conversation_service import ConversationService
-from app.services.usage_counters import UsageCounterService, get_usage_counter_service
+from app.services.usage_counters import UsageCounterService
 from app.services.usage_recorder import UsageEntry, UsageRecorder
 
 
@@ -23,7 +23,7 @@ class UsageService:
         conversation_service: ConversationService | None = None,
     ) -> None:
         self._recorder = recorder
-        self._usage_counters = usage_counters or get_usage_counter_service()
+        self._usage_counters = usage_counters
         self._conversation_service = conversation_service
 
     async def record(

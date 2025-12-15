@@ -35,6 +35,9 @@ class FakeConversationService(ConversationService):
     ) -> ConversationSessionState | None:
         return self.session_states.get((tenant_id, conversation_id))
 
+    async def get_memory_config(self, conversation_id, *, tenant_id):  # pragma: no cover - noop
+        return None
+
     async def update_session_state(
         self, conversation_id, *, tenant_id, state: ConversationSessionState
     ):

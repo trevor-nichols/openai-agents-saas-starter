@@ -3,7 +3,7 @@ from __future__ import annotations
 from app.api.v1.shared.stream_normalizer import normalize_stream_event
 from app.api.v1.shared.streaming import StreamingEvent
 from app.domain.ai.models import AgentStreamEvent
-from app.services.agent_service import AgentService
+from app.services.agents.streaming_pipeline import build_guardrail_summary
 
 
 def test_normalize_guardrail_event():
@@ -61,7 +61,7 @@ def test_guardrail_summary_builder():
         },
     ]
 
-    summary = AgentService._build_guardrail_summary(events)
+    summary = build_guardrail_summary(events)
 
     assert summary["total"] == 3
     assert summary["triggered"] == 2

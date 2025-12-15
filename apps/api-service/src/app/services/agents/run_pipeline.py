@@ -15,7 +15,7 @@ import logging
 import uuid
 from collections import Counter
 from collections.abc import Awaitable, Callable, Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -76,7 +76,7 @@ class RunContext:
     runtime_ctx: Any
     pre_session_items: list[dict[str, Any]]
     existing_state: Any
-    compaction_events: list[AgentStreamEvent]
+    compaction_events: list[AgentStreamEvent] = field(default_factory=list)
 
 
 async def prepare_run_context(
@@ -304,6 +304,41 @@ async def project_new_session_items(
         )
 
 
+async def project_compaction_events(
+    *,
+    event_projector: EventProjector,
+    compaction_events: list[AgentStreamEvent],
+    conversation_id: str,
+    tenant_id: str,
+    agent: str | None,
+    model: str | None,
+    response_id: str | None,
+    workflow_run_id: str | None = None,
+) -> None:
+    """Persist compaction lifecycle events into the event log (best-effort)."""
+
+    if not compaction_events:
+        return
+    try:
+        await event_projector.ingest_session_items(
+            conversation_id=conversation_id,
+            tenant_id=tenant_id,
+            session_items=[AgentStreamEvent._to_mapping(ev) or {} for ev in compaction_events],
+            agent=agent,
+            model=model,
+            response_id=response_id,
+            workflow_run_id=workflow_run_id,
+        )
+    except Exception:  # pragma: no cover - defensive
+        logger.exception(
+            "compaction_event_projection_failed",
+            extra={
+                "conversation_id": conversation_id,
+                "tenant_id": tenant_id,
+            },
+        )
+
+
 def build_metadata(
     *,
     tenant_id: str,
@@ -352,6 +387,7 @@ __all__ = [
     "record_user_message",
     "persist_assistant_message",
     "project_new_session_items",
+    "project_compaction_events",
     "build_metadata",
     "get_session_items",
     "_compute_session_delta",

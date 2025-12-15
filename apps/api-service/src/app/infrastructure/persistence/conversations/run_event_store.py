@@ -75,11 +75,16 @@ class RunEventStore:
                 existing_keys = {(row[0], row[1], row[2]) for row in result.all()}
 
             rows: list[AgentRunEvent] = []
+            batch_keys: set[tuple[str | None, str | None, str | None]] = set()
             seq = start_seq
             for event in events:
                 key = (event.response_id, event.run_item_name, event.tool_call_id)
-                if event.response_id and key in existing_keys:
-                    continue
+                if event.response_id:
+                    if key in existing_keys:
+                        continue
+                    if key in batch_keys:
+                        continue
+                    batch_keys.add(key)
 
                 rows.append(
                     AgentRunEvent(

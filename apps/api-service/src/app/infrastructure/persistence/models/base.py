@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import MetaData
+from sqlalchemy import BigInteger, Integer, MetaData
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase
 
@@ -31,3 +31,10 @@ def uuid_pk() -> uuid.UUID:
     """Factory for UUID primary keys."""
 
     return uuid.uuid4()
+
+
+# SQLite only auto-increments on INTEGER PRIMARY KEY; BigInteger breaks insert tests.
+INT_PK_TYPE = BigInteger().with_variant(Integer, "sqlite")
+
+
+__all__ = ["Base", "NAMING_CONVENTION", "UTC_NOW", "INT_PK_TYPE", "uuid_pk"]

@@ -12,7 +12,9 @@ from app.domain.ai.models import AgentRunResult
 async def test_sync_chat_ingests_tool_call_item_images(monkeypatch):
     provider = MagicMock()
     provider.name = "openai"
-    provider.resolve_agent.return_value = MagicMock(key="triage", model="gpt-5.1")
+    provider.resolve_agent.return_value = MagicMock(key="triage", model="gpt-5.1", output_schema=None)
+    provider.get_agent.return_value = None
+    provider.tool_overview.return_value = {"tool_names": []}
 
     run_result = AgentRunResult(
         final_output="done",
@@ -50,6 +52,8 @@ async def test_sync_chat_ingests_tool_call_item_images(monkeypatch):
     req.location = None
     req.share_location = False
     req.run_options = None
+    req.memory_strategy = None
+    req.memory_injection = None
 
     resp = await svc.chat(req, actor=actor)
 

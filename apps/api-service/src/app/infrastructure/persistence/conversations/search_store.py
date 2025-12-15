@@ -135,11 +135,11 @@ class ConversationSearchStore:
             rows = result.all()
             next_cursor = None
             if len(rows) > limit:
-                tail_conv, tail_rank = rows[limit]
+                rows = rows[:limit]
+                tail_conv, tail_rank = rows[-1]
                 next_cursor = encode_search_cursor(
                     float(tail_rank or 0.0), tail_conv.updated_at, tail_conv.id
                 )
-                rows = rows[:limit]
 
             if not rows:
                 return ConversationSearchPage(items=[], next_cursor=None)

@@ -12,7 +12,7 @@ from app.services.agents.context import ConversationActorContext
 async def test_sse_events_include_attachments(monkeypatch):
     provider = MagicMock()
     provider.name = "openai"
-    provider.resolve_agent.return_value = MagicMock(key="triage", model="gpt-5.1")
+    provider.resolve_agent.return_value = MagicMock(key="triage", model="gpt-5.1", output_schema=None)
 
     class MockStream:
         last_response_id = "resp_1"
@@ -51,6 +51,8 @@ async def test_sse_events_include_attachments(monkeypatch):
     req.location = None
     req.share_location = False
     req.run_options = None
+    req.memory_strategy = None
+    req.memory_injection = None
 
     stream = svc.chat_stream(req, actor=actor)
     events = []

@@ -2,40 +2,19 @@
 
 from __future__ import annotations
 
-import asyncio
-from collections.abc import AsyncIterable
-from typing import Any, Protocol, runtime_checkable
+from typing import Any
 
 from agents import Agent
 from agents.lifecycle import RunHooksBase
 
+from app.domain.ai.lifecycle import LifecycleEventBus as _LifecycleEventBus
+from app.domain.ai.lifecycle import LifecycleEventSink as _LifecycleEventSink
 from app.domain.ai.models import AgentStreamEvent
 
 from .tool_calls import extract_agent_name
 
-
-@runtime_checkable
-class LifecycleEventSink(Protocol):
-    async def emit(self, event: AgentStreamEvent) -> None: ...
-
-    def drain(self) -> AsyncIterable[AgentStreamEvent]: ...
-
-
-class LifecycleEventBus:
-    """Lightweight async queue for lifecycle events emitted by hooks."""
-
-    def __init__(self) -> None:
-        self._queue: asyncio.Queue[AgentStreamEvent] = asyncio.Queue()
-
-    async def emit(self, event: AgentStreamEvent) -> None:
-        await self._queue.put(event)
-
-    def drain(self) -> AsyncIterable[AgentStreamEvent]:
-        async def _gen():
-            while not self._queue.empty():
-                yield await self._queue.get()
-
-        return _gen()
+LifecycleEventBus = _LifecycleEventBus
+LifecycleEventSink = _LifecycleEventSink
 
 
 class HookRelay(RunHooksBase[Any, Agent[Any]]):
