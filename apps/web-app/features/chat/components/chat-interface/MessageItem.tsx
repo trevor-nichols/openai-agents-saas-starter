@@ -5,6 +5,7 @@ import { Response } from '@/components/ui/ai/response';
 import { CodeBlock } from '@/components/ui/ai/code-block';
 import { CopyIcon } from 'lucide-react';
 
+import { cn } from '@/lib/utils';
 import { formatClockTime } from '@/lib/utils/time';
 import type { ChatMessage } from '@/lib/chat/types';
 import type { AttachmentState } from '../../hooks/useAttachmentResolver';
@@ -21,6 +22,30 @@ interface MessageItemProps {
 
 export function MessageItem({ message, onCopy, attachmentState, onResolveAttachment, isBusy }: MessageItemProps) {
   const isUser = message.role === 'user';
+  const timestamp = (
+    <div className="text-[10px] text-muted-foreground">
+      {message.isStreaming ? (
+        <div className="flex items-center gap-1 text-muted-foreground">
+          <Loader size={12} />
+          <span className="uppercase tracking-wide">Generating</span>
+        </div>
+      ) : message.timestamp ? (
+        formatClockTime(message.timestamp)
+      ) : null}
+    </div>
+  );
+
+  const copyAction = (
+    <Actions>
+      <Action
+        tooltip="Copy message"
+        label="Copy message"
+        onClick={() => void onCopy(message.content)}
+      >
+        <CopyIcon size={14} />
+      </Action>
+    </Actions>
+  );
 
   return (
     <Message from={message.role} className="mb-2">
@@ -49,26 +74,23 @@ export function MessageItem({ message, onCopy, attachmentState, onResolveAttachm
           ) : null}
         </MessageContent>
 
-        <div className="flex flex-row items-center gap-2 pl-1 pt-1 opacity-0 transition-opacity group-hover:opacity-100">
-          <Actions>
-            <Action
-              tooltip="Copy message"
-              label="Copy message"
-              onClick={() => void onCopy(message.content)}
-            >
-              <CopyIcon size={14} />
-            </Action>
-          </Actions>
-          <div className="text-[10px] text-muted-foreground">
-            {message.isStreaming ? (
-              <div className="flex items-center gap-1 text-muted-foreground">
-                <Loader size={12} />
-                <span className="uppercase tracking-wide">Generating</span>
-              </div>
-            ) : message.timestamp ? (
-              formatClockTime(message.timestamp)
-            ) : null}
-          </div>
+        <div
+          className={cn(
+            'flex w-full items-center gap-2 px-1 pt-1 opacity-0 transition-opacity group-hover:opacity-100',
+            isUser ? 'justify-start' : 'justify-end',
+          )}
+        >
+          {isUser ? (
+            <>
+              {copyAction}
+              {timestamp}
+            </>
+          ) : (
+            <>
+              {timestamp}
+              {copyAction}
+            </>
+          )}
         </div>
       </div>
 
