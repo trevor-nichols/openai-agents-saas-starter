@@ -10,8 +10,28 @@ import type {
   Annotation,
 } from '../types';
 
+export type OutputItemUpdate = {
+  itemId: string;
+  outputIndex: number;
+  itemType: string;
+  role?: string | null;
+  status?: string | null;
+};
+
+export type TextDeltaUpdate = {
+  channel: 'message' | 'refusal';
+  itemId: string;
+  outputIndex: number;
+  contentIndex: number;
+  delta: string;
+  accumulatedText: string;
+  textWithCursor: string;
+};
+
 export interface StreamConsumeHandlers {
-  onTextDelta?: (contentWithCursor: string, accumulated: string) => void;
+  onOutputItemAdded?: (update: OutputItemUpdate) => void;
+  onOutputItemDone?: (update: OutputItemUpdate) => void;
+  onTextDelta?: (update: TextDeltaUpdate) => void;
   onReasoningDelta?: (delta: string) => void;
   onToolStates?: (toolStates: ToolState[]) => void;
   onLifecycle?: (status: ConversationLifecycleStatus) => void;
@@ -62,6 +82,17 @@ function mimeFromImageFormat(format: string | null | undefined): string {
   return `image/${normalized}`;
 }
 
+function toolPlaceholderNameFromItemType(itemType: string | undefined | null): string | null {
+  if (!itemType) return null;
+  if (itemType === 'web_search_call') return 'web_search';
+  if (itemType === 'file_search_call') return 'file_search';
+  if (itemType === 'code_interpreter_call') return 'code_interpreter';
+  if (itemType === 'image_generation_call') return 'image_generation';
+  if (itemType === 'mcp_call') return 'mcp';
+  if (itemType === 'function_call' || itemType === 'custom_tool_call') return 'function';
+  return null;
+}
+
 type ChunkKey = string;
 
 function chunkKeyFor(
@@ -75,13 +106,47 @@ type ChunkAccumulator = {
   parts: Map<number, string>;
 };
 
+type TextParts = Map<number, string>;
+
+function assembledText(parts: TextParts | undefined): string {
+  if (!parts || parts.size === 0) return '';
+  return Array.from(parts.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([, value]) => value)
+    .join('');
+}
+
+function appendDelta(
+  store: Map<string, TextParts>,
+  update: { itemId: string; contentIndex: number; delta: string },
+): string {
+  const { itemId, contentIndex, delta } = update;
+  const parts = store.get(itemId) ?? new Map<number, string>();
+  const existing = parts.get(contentIndex) ?? '';
+  parts.set(contentIndex, `${existing}${delta}`);
+  store.set(itemId, parts);
+  return assembledText(parts);
+}
+
+function replaceText(
+  store: Map<string, TextParts>,
+  update: { itemId: string; contentIndex: number; text: string },
+): string {
+  const { itemId, contentIndex, text } = update;
+  const parts = store.get(itemId) ?? new Map<number, string>();
+  parts.set(contentIndex, text);
+  store.set(itemId, parts);
+  return assembledText(parts);
+}
+
 export async function consumeChatStream(
   stream: AsyncIterable<StreamChunk>,
   handlers: StreamConsumeHandlers,
 ): Promise<StreamConsumeResult> {
-  let accumulatedMessageText = '';
-  let accumulatedRefusalText = '';
+  const messageTextByItemId = new Map<string, TextParts>();
+  const refusalTextByItemId = new Map<string, TextParts>();
   let activeTextChannel: 'message' | 'refusal' = 'message';
+  let lastTextItemId: string | null = null;
 
   let reasoningSummaryText = '';
 
@@ -107,8 +172,7 @@ export async function consumeChatStream(
   let finalResponseId: string | null = null;
   let lifecycleStatus: ConversationLifecycleStatus = 'idle';
 
-  let lastMessageId: string | null = null;
-  const citationsByMessageId = new Map<string, Annotation[]>();
+  const citationsByItemId = new Map<string, Annotation[]>();
 
   const emitAgentNotice = (agent: string, prefix: 'Switched to') => {
     if (agent === lastAgentNotice) return;
@@ -132,12 +196,16 @@ export async function consumeChatStream(
       name: patch.name ?? existing.name,
       input: patch.input ?? existing.input,
       output: patch.output ?? existing.output,
+      outputIndex: patch.outputIndex ?? existing.outputIndex,
       errorText: patch.errorText ?? existing.errorText,
       status: patch.status ? upgradeStatus(existing.status, patch.status) : existing.status,
     };
 
     toolMap.set(toolId, next);
-    handlers.onToolStates?.(Array.from(toolMap.values()));
+    const sorted = Array.from(toolMap.values()).sort(
+      (a, b) => (a.outputIndex ?? Number.POSITIVE_INFINITY) - (b.outputIndex ?? Number.POSITIVE_INFINITY),
+    );
+    handlers.onToolStates?.(sorted);
   };
 
   const updateToolImageFrames = (toolId: string) => {
@@ -154,11 +222,13 @@ export async function consumeChatStream(
     const tool = event.tool;
     const toolId = tool.tool_call_id;
     const status = toolUiStatusFromProviderStatus(tool.status);
+    const outputIndex = event.output_index;
 
     if (tool.tool_type === 'web_search') {
       upsertTool(toolId, {
         name: 'web_search',
         status,
+        outputIndex,
         input: tool.query ?? undefined,
         output: tool.sources ?? undefined,
       });
@@ -169,6 +239,7 @@ export async function consumeChatStream(
       upsertTool(toolId, {
         name: 'file_search',
         status,
+        outputIndex,
         input: tool.queries ?? undefined,
         output: tool.results ?? undefined,
       });
@@ -180,6 +251,7 @@ export async function consumeChatStream(
       upsertTool(toolId, {
         name: 'code_interpreter',
         status,
+        outputIndex,
         input: code ?? undefined,
       });
       return;
@@ -194,6 +266,7 @@ export async function consumeChatStream(
       upsertTool(toolId, {
         name: 'image_generation',
         status,
+        outputIndex,
         input: tool.revised_prompt ?? undefined,
       });
       updateToolImageFrames(toolId);
@@ -210,6 +283,7 @@ export async function consumeChatStream(
       upsertTool(toolId, {
         name: tool.name,
         status,
+        outputIndex,
         input: includesArguments
           ? {
               tool_type: 'function',
@@ -234,6 +308,7 @@ export async function consumeChatStream(
       upsertTool(toolId, {
         name: tool.tool_name,
         status,
+        outputIndex,
         input: includesArguments
           ? {
               tool_type: 'mcp',
@@ -258,6 +333,7 @@ export async function consumeChatStream(
     upsertTool(event.tool_call_id, {
       name: event.tool_name,
       status: 'input-streaming',
+      outputIndex: event.output_index,
       input: { tool_type: event.tool_type, tool_name: event.tool_name, arguments_text: next },
     });
   };
@@ -269,6 +345,7 @@ export async function consumeChatStream(
     upsertTool(event.tool_call_id, {
       name: event.tool_name,
       status: 'input-available',
+      outputIndex: event.output_index,
       input: {
         tool_type: event.tool_type,
         tool_name: event.tool_name,
@@ -287,6 +364,7 @@ export async function consumeChatStream(
     upsertTool(event.tool_call_id, {
       name: 'code_interpreter',
       status: 'input-streaming',
+      outputIndex: event.output_index,
       input: next,
     });
   };
@@ -298,6 +376,7 @@ export async function consumeChatStream(
     upsertTool(event.tool_call_id, {
       name: 'code_interpreter',
       status: 'input-available',
+      outputIndex: event.output_index,
       input: event.code,
     });
   };
@@ -307,6 +386,7 @@ export async function consumeChatStream(
   ) => {
     upsertTool(event.tool_call_id, {
       status: 'output-available',
+      outputIndex: event.output_index,
       output: event.output,
     });
   };
@@ -397,20 +477,58 @@ export async function consumeChatStream(
       continue;
     }
 
+    if (kind === 'output_item.added' || kind === 'output_item.done') {
+      const update: OutputItemUpdate = {
+        itemId: event.item_id,
+        outputIndex: event.output_index,
+        itemType: event.item_type,
+        role: event.role ?? null,
+        status: event.status ?? null,
+      };
+      if (kind === 'output_item.added') {
+        handlers.onOutputItemAdded?.(update);
+        const placeholder = toolPlaceholderNameFromItemType(event.item_type);
+        if (placeholder) {
+          const existing = toolMap.get(event.item_id);
+          if (!existing) {
+            upsertTool(event.item_id, {
+              name: placeholder,
+              status: 'input-streaming',
+              outputIndex: event.output_index,
+            });
+          } else if (existing.outputIndex === undefined || existing.outputIndex === null) {
+            upsertTool(event.item_id, { outputIndex: event.output_index });
+          }
+        }
+      } else {
+        handlers.onOutputItemDone?.(update);
+      }
+      continue;
+    }
+
     if (kind === 'message.delta') {
-      lastMessageId = event.message_id;
-      accumulatedMessageText += event.delta;
+      const accumulated = appendDelta(messageTextByItemId, {
+        itemId: event.item_id,
+        contentIndex: event.content_index,
+        delta: event.delta,
+      });
+      lastTextItemId = event.item_id;
       activeTextChannel = 'message';
-      handlers.onTextDelta?.(
-        `${accumulatedMessageText}▋`,
-        accumulatedMessageText,
-      );
+      handlers.onTextDelta?.({
+        channel: 'message',
+        itemId: event.item_id,
+        outputIndex: event.output_index,
+        contentIndex: event.content_index,
+        delta: event.delta,
+        accumulatedText: accumulated,
+        textWithCursor: `${accumulated}▋`,
+      });
       continue;
     }
 
     if (kind === 'message.citation') {
-      const existing = citationsByMessageId.get(event.message_id) ?? [];
-      citationsByMessageId.set(event.message_id, [...existing, event.citation as Annotation]);
+      const existing = citationsByItemId.get(event.item_id) ?? [];
+      citationsByItemId.set(event.item_id, [...existing, event.citation as Annotation]);
       continue;
     }
 
@@ -421,25 +539,45 @@ export async function consumeChatStream(
     }
 
     if (kind === 'refusal.delta') {
-      accumulatedRefusalText += event.delta;
-      if (activeTextChannel === 'refusal' || accumulatedMessageText.length === 0) {
+      const accumulated = appendDelta(refusalTextByItemId, {
+        itemId: event.item_id,
+        contentIndex: event.content_index,
+        delta: event.delta,
+      });
+      lastTextItemId = event.item_id;
+      if (activeTextChannel === 'refusal' || messageTextByItemId.size === 0) {
         activeTextChannel = 'refusal';
-        handlers.onTextDelta?.(
-          `${accumulatedRefusalText}▋`,
-          accumulatedRefusalText,
-        );
+        handlers.onTextDelta?.({
+          channel: 'refusal',
+          itemId: event.item_id,
+          outputIndex: event.output_index,
+          contentIndex: event.content_index,
+          delta: event.delta,
+          accumulatedText: accumulated,
+          textWithCursor: `${accumulated}▋`,
+        });
       }
       continue;
     }
 
     if (kind === 'refusal.done') {
-      accumulatedRefusalText = event.refusal_text;
-      if (activeTextChannel === 'refusal' || accumulatedMessageText.length === 0) {
+      const accumulated = replaceText(refusalTextByItemId, {
+        itemId: event.item_id,
+        contentIndex: event.content_index,
+        text: event.refusal_text,
+      });
+      lastTextItemId = event.item_id;
+      if (activeTextChannel === 'refusal' || messageTextByItemId.size === 0) {
         activeTextChannel = 'refusal';
-        handlers.onTextDelta?.(
-          `${accumulatedRefusalText}▋`,
-          accumulatedRefusalText,
-        );
+        handlers.onTextDelta?.({
+          channel: 'refusal',
+          itemId: event.item_id,
+          outputIndex: event.output_index,
+          contentIndex: event.content_index,
+          delta: '',
+          accumulatedText: accumulated,
+          textWithCursor: `${accumulated}▋`,
+        });
       }
       continue;
     }
@@ -542,20 +680,23 @@ export async function consumeChatStream(
         return String(responseTextOverride);
       }
     }
-    return activeTextChannel === 'refusal' ? accumulatedRefusalText : accumulatedMessageText;
+    if (!lastTextItemId) return '';
+    const store = activeTextChannel === 'refusal' ? refusalTextByItemId : messageTextByItemId;
+    return assembledText(store.get(lastTextItemId));
   })();
 
   const citations = (() => {
-    if (lastMessageId) {
-      const forMessage = citationsByMessageId.get(lastMessageId);
+    if (lastTextItemId && activeTextChannel === 'message') {
+      const forMessage = citationsByItemId.get(lastTextItemId);
       return forMessage?.length ? forMessage : null;
     }
-    const all = Array.from(citationsByMessageId.values()).flat();
+    const all = Array.from(citationsByItemId.values()).flat();
     return all.length ? all : null;
   })();
 
   if (!terminalSeen) {
-    lifecycleStatus = accumulatedRefusalText.length > 0 ? 'refused' : lifecycleStatus;
+    const anyRefusal = Array.from(refusalTextByItemId.values()).some((parts) => assembledText(parts).length > 0);
+    lifecycleStatus = anyRefusal ? 'refused' : lifecycleStatus;
   }
 
   return {

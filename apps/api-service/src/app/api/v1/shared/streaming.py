@@ -211,47 +211,69 @@ class PublicSseEventBase(BaseModel):
     notices: list[StreamNotice] | None = None
 
 
+class PublicSseItemEventBase(PublicSseEventBase):
+    """Event scoped to a single Responses output item."""
+
+    output_index: int = Field(description="Index into the provider response.output[] array.")
+    item_id: str = Field(description="Stable identifier of the provider output item.")
+
+
 class LifecycleEvent(PublicSseEventBase):
     kind: Literal["lifecycle"]
     status: Literal["queued", "in_progress", "completed", "failed", "incomplete", "cancelled"]
     reason: str | None = None
 
 
-class MessageDeltaEvent(PublicSseEventBase):
+class OutputItemAddedEvent(PublicSseItemEventBase):
+    kind: Literal["output_item.added"]
+    item_type: str
+    role: str | None = None
+    status: str | None = None
+
+
+class OutputItemDoneEvent(PublicSseItemEventBase):
+    kind: Literal["output_item.done"]
+    item_type: str
+    role: str | None = None
+    status: str | None = None
+
+
+class MessageDeltaEvent(PublicSseItemEventBase):
     kind: Literal["message.delta"]
-    message_id: str
+    content_index: int
     delta: str
 
 
-class MessageCitationEvent(PublicSseEventBase):
+class MessageCitationEvent(PublicSseItemEventBase):
     kind: Literal["message.citation"]
-    message_id: str
+    content_index: int
     citation: PublicCitation
 
 
-class ReasoningSummaryDeltaEvent(PublicSseEventBase):
+class ReasoningSummaryDeltaEvent(PublicSseItemEventBase):
     kind: Literal["reasoning_summary.delta"]
+    summary_index: int | None = None
     delta: str
 
 
-class RefusalDeltaEvent(PublicSseEventBase):
+class RefusalDeltaEvent(PublicSseItemEventBase):
     kind: Literal["refusal.delta"]
-    message_id: str
+    content_index: int
     delta: str
 
 
-class RefusalDoneEvent(PublicSseEventBase):
+class RefusalDoneEvent(PublicSseItemEventBase):
     kind: Literal["refusal.done"]
-    message_id: str
+    content_index: int
     refusal_text: str
 
 
-class ToolStatusEvent(PublicSseEventBase):
+class ToolStatusEvent(PublicSseItemEventBase):
     kind: Literal["tool.status"]
     tool: PublicTool
 
 
-class ToolArgumentsDeltaEvent(PublicSseEventBase):
+class ToolArgumentsDeltaEvent(PublicSseItemEventBase):
     kind: Literal["tool.arguments.delta"]
     tool_call_id: str
     tool_type: Literal["function", "mcp"]
@@ -259,7 +281,7 @@ class ToolArgumentsDeltaEvent(PublicSseEventBase):
     delta: str
 
 
-class ToolArgumentsDoneEvent(PublicSseEventBase):
+class ToolArgumentsDoneEvent(PublicSseItemEventBase):
     kind: Literal["tool.arguments.done"]
     tool_call_id: str
     tool_type: Literal["function", "mcp"]
@@ -268,19 +290,19 @@ class ToolArgumentsDoneEvent(PublicSseEventBase):
     arguments_json: dict[str, Any] | None = None
 
 
-class ToolCodeDeltaEvent(PublicSseEventBase):
+class ToolCodeDeltaEvent(PublicSseItemEventBase):
     kind: Literal["tool.code.delta"]
     tool_call_id: str
     delta: str
 
 
-class ToolCodeDoneEvent(PublicSseEventBase):
+class ToolCodeDoneEvent(PublicSseItemEventBase):
     kind: Literal["tool.code.done"]
     tool_call_id: str
     code: str
 
 
-class ToolOutputEvent(PublicSseEventBase):
+class ToolOutputEvent(PublicSseItemEventBase):
     kind: Literal["tool.output"]
     tool_call_id: str
     tool_type: Literal[
@@ -303,7 +325,7 @@ class ChunkTarget(BaseModel):
     part_index: int | None = None
 
 
-class ChunkDeltaEvent(PublicSseEventBase):
+class ChunkDeltaEvent(PublicSseItemEventBase):
     kind: Literal["chunk.delta"]
     target: ChunkTarget
     encoding: Literal["base64", "utf8"] = "utf8"
@@ -311,7 +333,7 @@ class ChunkDeltaEvent(PublicSseEventBase):
     data: str
 
 
-class ChunkDoneEvent(PublicSseEventBase):
+class ChunkDoneEvent(PublicSseItemEventBase):
     kind: Literal["chunk.done"]
     target: ChunkTarget
 
@@ -349,6 +371,8 @@ class FinalEvent(PublicSseEventBase):
 
 PublicSseEventUnion = (
     LifecycleEvent
+    | OutputItemAddedEvent
+    | OutputItemDoneEvent
     | MessageDeltaEvent
     | MessageCitationEvent
     | ReasoningSummaryDeltaEvent
@@ -380,6 +404,8 @@ __all__ = [
     "ChunkTarget",
     "CodeInterpreterTool",
     "ContainerFileCitation",
+    "OutputItemAddedEvent",
+    "OutputItemDoneEvent",
     "ErrorEvent",
     "ErrorPayload",
     "FileCitation",

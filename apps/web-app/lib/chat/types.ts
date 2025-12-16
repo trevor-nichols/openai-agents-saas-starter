@@ -30,6 +30,7 @@ export type StreamChunk =
 export type ToolState = {
   id: string;
   name?: string | null;
+  outputIndex?: number | null;
   status: 'input-streaming' | 'input-available' | 'output-available' | 'output-error';
   input?: unknown;
   output?: unknown;

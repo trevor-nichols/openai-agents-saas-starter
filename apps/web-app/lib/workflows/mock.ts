@@ -178,7 +178,9 @@ export async function* mockWorkflowStream(runId: string): AsyncGenerator<Streami
     response_id,
     agent: 'analysis',
     workflow,
-    message_id: 'msg_mock_workflow_1',
+    output_index: 0,
+    item_id: 'msg_mock_workflow_1',
+    content_index: 0,
     delta: 'Working on it...',
   } as StreamingWorkflowEvent;
 

@@ -101,7 +101,9 @@ describe('useChatController', () => {
             conversation_id: 'conv-99',
             response_id: 'resp-1',
             agent: 'triage',
-            message_id: 'msg-1',
+            output_index: 0,
+            item_id: 'msg-1',
+            content_index: 0,
             delta: 'Streaming response',
           },
         };
@@ -163,6 +165,8 @@ describe('useChatController', () => {
             conversation_id: 'conv-tool-only',
             response_id: 'resp-tool',
             agent: 'triage',
+            output_index: 0,
+            item_id: 'tool-1',
             tool: {
               tool_type: 'web_search',
               tool_call_id: 'tool-1',
@@ -222,7 +226,9 @@ describe('useChatController', () => {
             conversation_id: 'conv-output-only',
             response_id: 'resp-output-only',
             agent: 'triage',
-            message_id: 'msg-output-only',
+            output_index: 1,
+            item_id: 'msg-output-only',
+            content_index: 0,
             delta: 'Here is the answer.',
           },
         };
@@ -238,6 +244,8 @@ describe('useChatController', () => {
             conversation_id: 'conv-output-only',
             response_id: 'resp-output-only',
             agent: 'triage',
+            output_index: 0,
+            item_id: 'call-output-only',
             tool_call_id: 'call-output-only',
             tool_type: 'function',
             output: { ok: true },
@@ -327,7 +335,9 @@ describe('useChatController', () => {
               conversation_id: 'conv-anchor',
               response_id: 'resp-anchor',
               agent: 'triage',
-              message_id: 'msg-1',
+              output_index: 1,
+              item_id: 'msg-1',
+              content_index: 0,
               delta: 'Let me check.',
             },
           };
@@ -345,6 +355,8 @@ describe('useChatController', () => {
               conversation_id: 'conv-anchor',
               response_id: 'resp-anchor',
               agent: 'triage',
+              output_index: 0,
+              item_id: 'tool-1',
               tool: {
                 tool_type: 'web_search',
                 tool_call_id: 'tool-1',
@@ -402,9 +414,9 @@ describe('useChatController', () => {
         expect(result.current.toolEvents.some((tool) => tool.id === 'tool-1')).toBe(true);
       });
 
-      const assistant = result.current.messages.find((msg) => msg.role === 'assistant');
-      expect(assistant).toBeTruthy();
-      expect(result.current.toolEventAnchors[assistant!.id]).toEqual(['tool-1']);
+      const user = result.current.messages.find((msg) => msg.role === 'user');
+      expect(user).toBeTruthy();
+      expect(result.current.toolEventAnchors[user!.id]).toEqual(['tool-1']);
 
       await act(async () => {
         pauseAfterTool.resolve();

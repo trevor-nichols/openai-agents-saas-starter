@@ -212,6 +212,7 @@ export function mergeToolStates(base: ToolState[], overlay: ToolState[]): ToolSt
     ...incoming,
     // Avoid clobbering stable fields with `undefined` from partial updates.
     name: incoming.name ?? existing.name,
+    outputIndex: incoming.outputIndex ?? existing.outputIndex,
     input: incoming.input ?? existing.input,
     output: incoming.output ?? existing.output,
     errorText: incoming.errorText ?? existing.errorText,

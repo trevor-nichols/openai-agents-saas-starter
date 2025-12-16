@@ -82,7 +82,7 @@ describe('chat API helpers', () => {
       start(controller) {
         controller.enqueue(
           encoder.encode(
-            'data: {"schema":"public_sse_v1","event_id":1,"stream_id":"stream-test","server_timestamp":"2025-12-15T00:00:00.000Z","kind":"message.delta","conversation_id":"conv-1","response_id":"resp-1","agent":"triage","message_id":"msg-1","delta":"Hello"}\n\n',
+            'data: {"schema":"public_sse_v1","event_id":1,"stream_id":"stream-test","server_timestamp":"2025-12-15T00:00:00.000Z","kind":"message.delta","conversation_id":"conv-1","response_id":"resp-1","agent":"triage","output_index":0,"item_id":"msg-1","content_index":0,"delta":"Hello"}\n\n',
           ),
         );
         controller.enqueue(

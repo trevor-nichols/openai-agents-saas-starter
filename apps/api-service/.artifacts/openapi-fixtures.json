@@ -22427,6 +22427,16 @@
             ],
             "title": "Notices"
           },
+          "output_index": {
+            "type": "integer",
+            "title": "Output Index",
+            "description": "Index into the provider response.output[] array."
+          },
+          "item_id": {
+            "type": "string",
+            "title": "Item Id",
+            "description": "Stable identifier of the provider output item."
+          },
           "kind": {
             "type": "string",
             "const": "chunk.delta",
@@ -22461,6 +22471,8 @@
           "stream_id",
           "server_timestamp",
           "conversation_id",
+          "output_index",
+          "item_id",
           "kind",
           "target",
           "chunk_index",
@@ -22548,6 +22560,16 @@
             ],
             "title": "Notices"
           },
+          "output_index": {
+            "type": "integer",
+            "title": "Output Index",
+            "description": "Index into the provider response.output[] array."
+          },
+          "item_id": {
+            "type": "string",
+            "title": "Item Id",
+            "description": "Stable identifier of the provider output item."
+          },
           "kind": {
             "type": "string",
             "const": "chunk.done",
@@ -22565,6 +22587,8 @@
           "stream_id",
           "server_timestamp",
           "conversation_id",
+          "output_index",
+          "item_id",
           "kind",
           "target"
         ],
@@ -25960,14 +25984,24 @@
             ],
             "title": "Notices"
           },
+          "output_index": {
+            "type": "integer",
+            "title": "Output Index",
+            "description": "Index into the provider response.output[] array."
+          },
+          "item_id": {
+            "type": "string",
+            "title": "Item Id",
+            "description": "Stable identifier of the provider output item."
+          },
           "kind": {
             "type": "string",
             "const": "message.citation",
             "title": "Kind"
           },
-          "message_id": {
-            "type": "string",
-            "title": "Message Id"
+          "content_index": {
+            "type": "integer",
+            "title": "Content Index"
           },
           "citation": {
             "anyOf": [
@@ -25992,8 +26026,10 @@
           "stream_id",
           "server_timestamp",
           "conversation_id",
+          "output_index",
+          "item_id",
           "kind",
-          "message_id",
+          "content_index",
           "citation"
         ],
         "title": "MessageCitationEvent"
@@ -26078,14 +26114,24 @@
             ],
             "title": "Notices"
           },
+          "output_index": {
+            "type": "integer",
+            "title": "Output Index",
+            "description": "Index into the provider response.output[] array."
+          },
+          "item_id": {
+            "type": "string",
+            "title": "Item Id",
+            "description": "Stable identifier of the provider output item."
+          },
           "kind": {
             "type": "string",
             "const": "message.delta",
             "title": "Kind"
           },
-          "message_id": {
-            "type": "string",
-            "title": "Message Id"
+          "content_index": {
+            "type": "integer",
+            "title": "Content Index"
           },
           "delta": {
             "type": "string",
@@ -26100,8 +26146,10 @@
           "stream_id",
           "server_timestamp",
           "conversation_id",
+          "output_index",
+          "item_id",
           "kind",
-          "message_id",
+          "content_index",
           "delta"
         ],
         "title": "MessageDeltaEvent"
@@ -26299,6 +26347,280 @@
           "enabled"
         ],
         "title": "NotificationPreferenceView"
+      },
+      "OutputItemAddedEvent": {
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "public_sse_v1",
+            "title": "Schema"
+          },
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id"
+          },
+          "stream_id": {
+            "type": "string",
+            "title": "Stream Id"
+          },
+          "server_timestamp": {
+            "type": "string",
+            "title": "Server Timestamp"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "workflow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider_sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Sequence Number"
+          },
+          "notices": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StreamNotice"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notices"
+          },
+          "output_index": {
+            "type": "integer",
+            "title": "Output Index",
+            "description": "Index into the provider response.output[] array."
+          },
+          "item_id": {
+            "type": "string",
+            "title": "Item Id",
+            "description": "Stable identifier of the provider output item."
+          },
+          "kind": {
+            "type": "string",
+            "const": "output_item.added",
+            "title": "Kind"
+          },
+          "item_type": {
+            "type": "string",
+            "title": "Item Type"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema",
+          "event_id",
+          "stream_id",
+          "server_timestamp",
+          "conversation_id",
+          "output_index",
+          "item_id",
+          "kind",
+          "item_type"
+        ],
+        "title": "OutputItemAddedEvent"
+      },
+      "OutputItemDoneEvent": {
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "public_sse_v1",
+            "title": "Schema"
+          },
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id"
+          },
+          "stream_id": {
+            "type": "string",
+            "title": "Stream Id"
+          },
+          "server_timestamp": {
+            "type": "string",
+            "title": "Server Timestamp"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "workflow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider_sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Sequence Number"
+          },
+          "notices": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StreamNotice"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notices"
+          },
+          "output_index": {
+            "type": "integer",
+            "title": "Output Index",
+            "description": "Index into the provider response.output[] array."
+          },
+          "item_id": {
+            "type": "string",
+            "title": "Item Id",
+            "description": "Stable identifier of the provider output item."
+          },
+          "kind": {
+            "type": "string",
+            "const": "output_item.done",
+            "title": "Kind"
+          },
+          "item_type": {
+            "type": "string",
+            "title": "Item Type"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema",
+          "event_id",
+          "stream_id",
+          "server_timestamp",
+          "conversation_id",
+          "output_index",
+          "item_id",
+          "kind",
+          "item_type"
+        ],
+        "title": "OutputItemDoneEvent"
       },
       "PaginatedMessagesResponse": {
         "properties": {
@@ -26766,10 +27088,31 @@
             ],
             "title": "Notices"
           },
+          "output_index": {
+            "type": "integer",
+            "title": "Output Index",
+            "description": "Index into the provider response.output[] array."
+          },
+          "item_id": {
+            "type": "string",
+            "title": "Item Id",
+            "description": "Stable identifier of the provider output item."
+          },
           "kind": {
             "type": "string",
             "const": "reasoning_summary.delta",
             "title": "Kind"
+          },
+          "summary_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Index"
           },
           "delta": {
             "type": "string",
@@ -26784,6 +27127,8 @@
           "stream_id",
           "server_timestamp",
           "conversation_id",
+          "output_index",
+          "item_id",
           "kind",
           "delta"
         ],
@@ -26897,14 +27242,24 @@
             ],
             "title": "Notices"
           },
+          "output_index": {
+            "type": "integer",
+            "title": "Output Index",
+            "description": "Index into the provider response.output[] array."
+          },
+          "item_id": {
+            "type": "string",
+            "title": "Item Id",
+            "description": "Stable identifier of the provider output item."
+          },
           "kind": {
             "type": "string",
             "const": "refusal.delta",
             "title": "Kind"
           },
-          "message_id": {
-            "type": "string",
-            "title": "Message Id"
+          "content_index": {
+            "type": "integer",
+            "title": "Content Index"
           },
           "delta": {
             "type": "string",
@@ -26919,8 +27274,10 @@
           "stream_id",
           "server_timestamp",
           "conversation_id",
+          "output_index",
+          "item_id",
           "kind",
-          "message_id",
+          "content_index",
           "delta"
         ],
         "title": "RefusalDeltaEvent"
@@ -27005,14 +27362,24 @@
             ],
             "title": "Notices"
           },
+          "output_index": {
+            "type": "integer",
+            "title": "Output Index",
+            "description": "Index into the provider response.output[] array."
+          },
+          "item_id": {
+            "type": "string",
+            "title": "Item Id",
+            "description": "Stable identifier of the provider output item."
+          },
           "kind": {
             "type": "string",
             "const": "refusal.done",
             "title": "Kind"
           },
-          "message_id": {
-            "type": "string",
-            "title": "Message Id"
+          "content_index": {
+            "type": "integer",
+            "title": "Content Index"
           },
           "refusal_text": {
             "type": "string",
@@ -27027,8 +27394,10 @@
           "stream_id",
           "server_timestamp",
           "conversation_id",
+          "output_index",
+          "item_id",
           "kind",
-          "message_id",
+          "content_index",
           "refusal_text"
         ],
         "title": "RefusalDoneEvent"
@@ -28768,6 +29137,12 @@
             "$ref": "#/components/schemas/LifecycleEvent"
           },
           {
+            "$ref": "#/components/schemas/OutputItemAddedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/OutputItemDoneEvent"
+          },
+          {
             "$ref": "#/components/schemas/MessageDeltaEvent"
           },
           {
@@ -28819,6 +29194,12 @@
         "anyOf": [
           {
             "$ref": "#/components/schemas/LifecycleEvent"
+          },
+          {
+            "$ref": "#/components/schemas/OutputItemAddedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/OutputItemDoneEvent"
           },
           {
             "$ref": "#/components/schemas/MessageDeltaEvent"
@@ -29204,6 +29585,16 @@
             ],
             "title": "Notices"
           },
+          "output_index": {
+            "type": "integer",
+            "title": "Output Index",
+            "description": "Index into the provider response.output[] array."
+          },
+          "item_id": {
+            "type": "string",
+            "title": "Item Id",
+            "description": "Stable identifier of the provider output item."
+          },
           "kind": {
             "type": "string",
             "const": "tool.arguments.delta",
@@ -29238,6 +29629,8 @@
           "stream_id",
           "server_timestamp",
           "conversation_id",
+          "output_index",
+          "item_id",
           "kind",
           "tool_call_id",
           "tool_type",
@@ -29326,6 +29719,16 @@
             ],
             "title": "Notices"
           },
+          "output_index": {
+            "type": "integer",
+            "title": "Output Index",
+            "description": "Index into the provider response.output[] array."
+          },
+          "item_id": {
+            "type": "string",
+            "title": "Item Id",
+            "description": "Stable identifier of the provider output item."
+          },
           "kind": {
             "type": "string",
             "const": "tool.arguments.done",
@@ -29372,6 +29775,8 @@
           "stream_id",
           "server_timestamp",
           "conversation_id",
+          "output_index",
+          "item_id",
           "kind",
           "tool_call_id",
           "tool_type",
@@ -29499,6 +29904,16 @@
             ],
             "title": "Notices"
           },
+          "output_index": {
+            "type": "integer",
+            "title": "Output Index",
+            "description": "Index into the provider response.output[] array."
+          },
+          "item_id": {
+            "type": "string",
+            "title": "Item Id",
+            "description": "Stable identifier of the provider output item."
+          },
           "kind": {
             "type": "string",
             "const": "tool.code.delta",
@@ -29521,6 +29936,8 @@
           "stream_id",
           "server_timestamp",
           "conversation_id",
+          "output_index",
+          "item_id",
           "kind",
           "tool_call_id",
           "delta"
@@ -29607,6 +30024,16 @@
             ],
             "title": "Notices"
           },
+          "output_index": {
+            "type": "integer",
+            "title": "Output Index",
+            "description": "Index into the provider response.output[] array."
+          },
+          "item_id": {
+            "type": "string",
+            "title": "Item Id",
+            "description": "Stable identifier of the provider output item."
+          },
           "kind": {
             "type": "string",
             "const": "tool.code.done",
@@ -29629,6 +30056,8 @@
           "stream_id",
           "server_timestamp",
           "conversation_id",
+          "output_index",
+          "item_id",
           "kind",
           "tool_call_id",
           "code"
@@ -29715,6 +30144,16 @@
             ],
             "title": "Notices"
           },
+          "output_index": {
+            "type": "integer",
+            "title": "Output Index",
+            "description": "Index into the provider response.output[] array."
+          },
+          "item_id": {
+            "type": "string",
+            "title": "Item Id",
+            "description": "Stable identifier of the provider output item."
+          },
           "kind": {
             "type": "string",
             "const": "tool.output",
@@ -29748,6 +30187,8 @@
           "stream_id",
           "server_timestamp",
           "conversation_id",
+          "output_index",
+          "item_id",
           "kind",
           "tool_call_id",
           "tool_type",
@@ -29835,6 +30276,16 @@
             ],
             "title": "Notices"
           },
+          "output_index": {
+            "type": "integer",
+            "title": "Output Index",
+            "description": "Index into the provider response.output[] array."
+          },
+          "item_id": {
+            "type": "string",
+            "title": "Item Id",
+            "description": "Stable identifier of the provider output item."
+          },
           "kind": {
             "type": "string",
             "const": "tool.status",
@@ -29872,6 +30323,8 @@
           "stream_id",
           "server_timestamp",
           "conversation_id",
+          "output_index",
+          "item_id",
           "kind",
           "tool"
         ],

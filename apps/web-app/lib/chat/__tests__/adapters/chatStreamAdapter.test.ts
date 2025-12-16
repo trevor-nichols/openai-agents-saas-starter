@@ -41,7 +41,9 @@ describe('consumeChatStream (public_sse_v1)', () => {
         conversation_id: 'c1',
         response_id: 'resp_1',
         agent: 'triage',
-        message_id: 'msg_1',
+        output_index: 0,
+        item_id: 'msg_1',
+        content_index: 0,
         delta: 'Hello',
       },
       {
@@ -53,7 +55,9 @@ describe('consumeChatStream (public_sse_v1)', () => {
         conversation_id: 'c1',
         response_id: 'resp_1',
         agent: 'triage',
-        message_id: 'msg_1',
+        output_index: 0,
+        item_id: 'msg_1',
+        content_index: 0,
         delta: ' world',
       },
       {

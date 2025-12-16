@@ -699,6 +699,18 @@ export type ChunkDeltaEvent = {
    */
   notices?: Array<StreamNotice> | null;
   /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
    * Kind
    */
   kind: "chunk.delta";
@@ -758,6 +770,18 @@ export type ChunkDoneEvent = {
    * Notices
    */
   notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
   /**
    * Kind
    */
@@ -2695,13 +2719,25 @@ export type MessageCitationEvent = {
    */
   notices?: Array<StreamNotice> | null;
   /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
    * Kind
    */
   kind: "message.citation";
   /**
-   * Message Id
+   * Content Index
    */
-  message_id: string;
+  content_index: number;
   /**
    * Citation
    */
@@ -2750,13 +2786,25 @@ export type MessageDeltaEvent = {
    */
   notices?: Array<StreamNotice> | null;
   /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
    * Kind
    */
   kind: "message.delta";
   /**
-   * Message Id
+   * Content Index
    */
-  message_id: string;
+  content_index: number;
   /**
    * Delta
    */
@@ -2875,6 +2923,148 @@ export type NotificationPreferenceView = {
    * Tenant Id
    */
   tenant_id?: string | null;
+};
+
+/**
+ * OutputItemAddedEvent
+ */
+export type OutputItemAddedEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
+   * Kind
+   */
+  kind: "output_item.added";
+  /**
+   * Item Type
+   */
+  item_type: string;
+  /**
+   * Role
+   */
+  role?: string | null;
+  /**
+   * Status
+   */
+  status?: string | null;
+};
+
+/**
+ * OutputItemDoneEvent
+ */
+export type OutputItemDoneEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
+   * Kind
+   */
+  kind: "output_item.done";
+  /**
+   * Item Type
+   */
+  item_type: string;
+  /**
+   * Role
+   */
+  role?: string | null;
+  /**
+   * Status
+   */
+  status?: string | null;
 };
 
 /**
@@ -3182,9 +3372,25 @@ export type ReasoningSummaryDeltaEvent = {
    */
   notices?: Array<StreamNotice> | null;
   /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
    * Kind
    */
   kind: "reasoning_summary.delta";
+  /**
+   * Summary Index
+   */
+  summary_index?: number | null;
   /**
    * Delta
    */
@@ -3253,13 +3459,25 @@ export type RefusalDeltaEvent = {
    */
   notices?: Array<StreamNotice> | null;
   /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
    * Kind
    */
   kind: "refusal.delta";
   /**
-   * Message Id
+   * Content Index
    */
-  message_id: string;
+  content_index: number;
   /**
    * Delta
    */
@@ -3308,13 +3526,25 @@ export type RefusalDoneEvent = {
    */
   notices?: Array<StreamNotice> | null;
   /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
    * Kind
    */
   kind: "refusal.done";
   /**
-   * Message Id
+   * Content Index
    */
-  message_id: string;
+  content_index: number;
   /**
    * Refusal Text
    */
@@ -4417,6 +4647,8 @@ export type StreamNotice = {
  */
 export type StreamingChatEvent =
   | LifecycleEvent
+  | OutputItemAddedEvent
+  | OutputItemDoneEvent
   | MessageDeltaEvent
   | MessageCitationEvent
   | ReasoningSummaryDeltaEvent
@@ -4438,6 +4670,8 @@ export type StreamingChatEvent =
  */
 export type StreamingWorkflowEvent =
   | LifecycleEvent
+  | OutputItemAddedEvent
+  | OutputItemDoneEvent
   | MessageDeltaEvent
   | MessageCitationEvent
   | ReasoningSummaryDeltaEvent
@@ -4643,6 +4877,18 @@ export type ToolArgumentsDeltaEvent = {
    */
   notices?: Array<StreamNotice> | null;
   /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
    * Kind
    */
   kind: "tool.arguments.delta";
@@ -4705,6 +4951,18 @@ export type ToolArgumentsDoneEvent = {
    * Notices
    */
   notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
   /**
    * Kind
    */
@@ -4801,6 +5059,18 @@ export type ToolCodeDeltaEvent = {
    */
   notices?: Array<StreamNotice> | null;
   /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
    * Kind
    */
   kind: "tool.code.delta";
@@ -4856,6 +5126,18 @@ export type ToolCodeDoneEvent = {
    */
   notices?: Array<StreamNotice> | null;
   /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
    * Kind
    */
   kind: "tool.code.done";
@@ -4910,6 +5192,18 @@ export type ToolOutputEvent = {
    * Notices
    */
   notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
   /**
    * Kind
    */
@@ -4975,6 +5269,18 @@ export type ToolStatusEvent = {
    * Notices
    */
   notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
   /**
    * Kind
    */

@@ -25,6 +25,8 @@ const fileSearchEvent: StreamingWorkflowEvent = {
   conversation_id: 'conv-1',
   response_id: 'resp-1',
   agent: 'triage',
+  output_index: 0,
+  item_id: 'fs-1',
   workflow: {
     workflow_key: 'wf-1',
     workflow_run_id: 'run-1',
@@ -70,6 +72,8 @@ const imageGenerationEvent: StreamingWorkflowEvent = {
   conversation_id: 'conv-1',
   response_id: 'resp-1',
   agent: 'triage',
+  output_index: 1,
+  item_id: 'img-1',
   workflow: {
     workflow_key: 'wf-1',
     workflow_run_id: 'run-1',

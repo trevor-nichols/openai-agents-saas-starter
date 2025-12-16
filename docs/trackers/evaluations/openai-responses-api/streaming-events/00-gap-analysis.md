@@ -1,7 +1,7 @@
 # Consolidated Gap Analysis — OpenAI Responses API Streaming Events
 
 **Evaluations:** `docs/trackers/evaluations/openai-responses-api/streaming-events/01-lifecycle.md` through `07-errors.md`  
-**Last updated:** 2025-12-15  
+**Last updated:** 2025-12-16  
 **Status:** Implemented (Backend + Frontend).
 
 ## Purpose
@@ -40,13 +40,25 @@ It is intended to drive a professional, intentional redesign (no backwards-compa
 These gaps are addressed by the `public_sse_v1` contract and projection:
 
 - **Public contract (authoritative):** `docs/contracts/public-sse-streaming/v1.md`
-- **Projection (derived-only):** `apps/api-service/src/app/api/v1/shared/public_stream_projector.py`
+- **Projection (derived-only):** `apps/api-service/src/app/api/v1/shared/public_stream_projector/` (`projector.py`)
 - **Schemas:** `apps/api-service/src/app/api/v1/shared/streaming.py` (`PublicSseEvent`)
 - **SSE endpoints (data-only):**
   - `apps/api-service/src/app/api/v1/chat/router.py` (`POST /api/v1/chat/stream`)
   - `apps/api-service/src/app/api/v1/workflows/router.py` (`POST /api/v1/workflows/{workflow_key}/run-stream`)
 - **Contract playback tests (fixtures):** `apps/api-service/tests/contract/streams/test_stream_goldens.py`
   - Example fixtures live under `docs/contracts/public-sse-streaming/examples/`.
+
+## Resolution (frontend)
+
+Browser streaming now follows the provider’s “insert/update” semantics:
+
+- **Parser:** `apps/web-app/lib/streams/sseParser.ts` (spec-compliant SSE parsing with comment support + multiline `data:`)
+- **Stream adapter:** `apps/web-app/lib/chat/adapters/chatStreamAdapter.ts`
+  - Preserves `output_index` / `item_id` and surfaces `output_item.*` signals for consumers.
+- **Chat controller:** `apps/web-app/lib/chat/controller/useChatController.ts`
+  - Creates assistant placeholders ordered by `output_index`.
+  - Renders tool cards by `output_index` (late-arriving tool items still render above assistant text when their index is lower).
+  - Applies updates keyed by provider `item_id` (message/tool ids), not event arrival order.
 
 ## Dependency map (what blocks what)
 

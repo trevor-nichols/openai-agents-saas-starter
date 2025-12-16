@@ -55,7 +55,7 @@ describe('useChatController (integration)', () => {
       start(controller) {
         controller.enqueue(
           encoder.encode(
-            'data: {"schema":"public_sse_v1","event_id":1,"stream_id":"stream-integration","server_timestamp":"2025-12-15T00:00:00.000Z","kind":"message.delta","conversation_id":"conv-integration","response_id":"resp-integration","agent":"triage","message_id":"msg-1","delta":"Integrated response"}\n\n',
+            'data: {"schema":"public_sse_v1","event_id":1,"stream_id":"stream-integration","server_timestamp":"2025-12-15T00:00:00.000Z","kind":"message.delta","conversation_id":"conv-integration","response_id":"resp-integration","agent":"triage","output_index":0,"item_id":"msg-1","content_index":0,"delta":"Integrated response"}\n\n',
           ),
         );
         controller.enqueue(
