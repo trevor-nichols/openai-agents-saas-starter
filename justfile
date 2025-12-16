@@ -13,6 +13,7 @@ web_just := "just -f apps/web-app/justfile"
 compose_file := "ops/compose/docker-compose.yml"
 vault_compose_file := "ops/compose/docker-compose.vault-dev.yml"
 minio_compose_file := "ops/compose/docker-compose.minio.yml"
+otel_compose_file := "ops/compose/docker-compose.otel.yml"
 vault_dev_port := "18200"
 vault_dev_root_token_id := "vault-dev-root"
 vault_dev_host_addr := "http://127.0.0.1:" + vault_dev_port
@@ -165,7 +166,7 @@ dev-up: _check_env
         set -euo pipefail; \
         cd {{repo_root}}; \
         python ops/observability/render_collector_config.py; \
-        compose_files="-f {{compose_file}} -f {{minio_compose_file}} -f {{vault_compose_file}}"; \
+        compose_files="-f {{compose_file}} -f {{otel_compose_file}} -f {{minio_compose_file}} -f {{vault_compose_file}}"; \
         db_mode="$(printenv STARTER_LOCAL_DATABASE_MODE 2>/dev/null || true)"; \
         if [ -z "$db_mode" ]; then db_mode="compose"; fi; \
         services="redis"; \
@@ -200,7 +201,7 @@ dev-up: _check_env
 dev-down: _check_env
     {{env_runner}} -- bash -c '\
         cd {{repo_root}}; \
-        docker compose -f {{compose_file}} -f {{minio_compose_file}} -f {{vault_compose_file}} down; \
+        docker compose -f {{compose_file}} -f {{otel_compose_file}} -f {{minio_compose_file}} -f {{vault_compose_file}} down; \
     '
 
 dev-reset: _check_env
@@ -208,20 +209,20 @@ dev-reset: _check_env
         set -euo pipefail; \
         cd {{repo_root}}; \
         echo "Stopping compose stack and removing volumes (this deletes local data)"; \
-        docker compose -f {{compose_file}} -f {{minio_compose_file}} -f {{vault_compose_file}} down -v; \
+        docker compose -f {{compose_file}} -f {{otel_compose_file}} -f {{minio_compose_file}} -f {{vault_compose_file}} down -v; \
     '
 
 dev-logs: _check_env
     {{env_runner}} -- bash -c '\
         set -euo pipefail; \
         cd {{repo_root}}; \
-        docker compose -f {{compose_file}} -f {{minio_compose_file}} -f {{vault_compose_file}} logs -f --tail=100; \
+        docker compose -f {{compose_file}} -f {{otel_compose_file}} -f {{minio_compose_file}} -f {{vault_compose_file}} logs -f --tail=100; \
     '
 
 dev-ps: _check_env
     {{env_runner}} -- bash -c '\
         cd {{repo_root}}; \
-        docker compose -f {{compose_file}} -f {{minio_compose_file}} -f {{vault_compose_file}} ps; \
+        docker compose -f {{compose_file}} -f {{otel_compose_file}} -f {{minio_compose_file}} -f {{vault_compose_file}} ps; \
     '
 
 # -------------------------

@@ -41,7 +41,12 @@ def configure_logging(settings: Settings) -> None:
         "root": {"level": log_level, "handlers": root_handlers},
     }
     logging.config.dictConfig(logging_config)
-    logging.getLogger("httpx").setLevel(max(logging.WARNING, logging.getLogger("httpx").level))
+    # Suppress verbose HTTP client logs to prevent infinite recursion when OTLP sink
+    # is enabled (httpx/httpcore debug logs would trigger more OTLP sends).
+    for logger_name in ("httpx", "httpcore"):
+        logging.getLogger(logger_name).setLevel(
+            max(logging.WARNING, logging.getLogger(logger_name).level)
+        )
 
 
 def _parse_sinks(settings: Settings) -> list[str]:

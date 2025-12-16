@@ -24,6 +24,8 @@ def test_streaming_chat_event_accepts_web_search_tool_status():
             "conversation_id": "conv_123",
             "response_id": "resp_123",
             "agent": "researcher",
+            "output_index": 0,
+            "item_id": "ws_1",
             "tool": {
                 "tool_type": "web_search",
                 "tool_call_id": "ws_1",
@@ -50,6 +52,8 @@ def test_streaming_chat_event_accepts_code_interpreter_tool_status_and_code_done
             "conversation_id": "conv_123",
             "response_id": "resp_123",
             "agent": "researcher",
+            "output_index": 0,
+            "item_id": "ci_1",
             "tool": {
                 "tool_type": "code_interpreter",
                 "tool_call_id": "ci_1",
@@ -71,6 +75,8 @@ def test_streaming_chat_event_accepts_code_interpreter_tool_status_and_code_done
             "conversation_id": "conv_123",
             "response_id": "resp_123",
             "agent": "researcher",
+            "output_index": 0,
+            "item_id": "ci_1",
             "tool_call_id": "ci_1",
             "code": "print('hi')",
         }
@@ -90,6 +96,8 @@ def test_streaming_chat_event_accepts_file_search_tool_status_with_results():
             "conversation_id": "conv_123",
             "response_id": "resp_123",
             "agent": "researcher",
+            "output_index": 0,
+            "item_id": "fs_1",
             "tool": {
                 "tool_type": "file_search",
                 "tool_call_id": "fs_1",
@@ -123,6 +131,8 @@ def test_streaming_chat_event_accepts_function_tool_arguments_delta_and_done():
             "conversation_id": "conv_123",
             "response_id": "resp_123",
             "agent": "triage",
+            "output_index": 0,
+            "item_id": "call_1",
             "tool_call_id": "call_1",
             "tool_type": "function",
             "tool_name": "get_current_time",
@@ -141,6 +151,8 @@ def test_streaming_chat_event_accepts_function_tool_arguments_delta_and_done():
             "conversation_id": "conv_123",
             "response_id": "resp_123",
             "agent": "triage",
+            "output_index": 0,
+            "item_id": "call_1",
             "tool_call_id": "call_1",
             "tool_type": "function",
             "tool_name": "get_current_time",
@@ -163,6 +175,8 @@ def test_streaming_chat_event_accepts_mcp_tool_status():
             "conversation_id": "conv_123",
             "response_id": "resp_123",
             "agent": "triage",
+            "output_index": 0,
+            "item_id": "mcp_1",
             "tool": {
                 "tool_type": "mcp",
                 "tool_call_id": "mcp_1",
@@ -186,6 +200,8 @@ def test_streaming_chat_event_accepts_reasoning_summary_and_refusal():
             "conversation_id": "conv_123",
             "response_id": "resp_123",
             "agent": "triage",
+            "output_index": 0,
+            "item_id": "msg_1",
             "delta": "Summary",
         }
     ).root
@@ -201,7 +217,9 @@ def test_streaming_chat_event_accepts_reasoning_summary_and_refusal():
             "conversation_id": "conv_123",
             "response_id": "resp_123",
             "agent": "triage",
-            "message_id": "msg_1",
+            "output_index": 0,
+            "item_id": "msg_1",
+            "content_index": 0,
             "refusal_text": "No.",
         }
     ).root
