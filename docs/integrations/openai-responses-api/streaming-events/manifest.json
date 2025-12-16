@@ -68,6 +68,12 @@
     ],
     "07-errors.md": [
       "error"
+    ],
+    "08-agents.md": [
+      "StreamEvent",
+      "RawResponsesStreamEvent",
+      "RunItemStreamEvent",
+      "AgentUpdatedStreamEvent"
     ]
   },
   "unassigned_headings": [],
@@ -120,6 +126,10 @@
     "response.queued",
     "response.custom_tool_call_input.delta",
     "response.custom_tool_call_input.done",
-    "error"
+    "error",
+    "StreamEvent",
+    "RawResponsesStreamEvent",
+    "RunItemStreamEvent",
+    "AgentUpdatedStreamEvent"
   ]
 }

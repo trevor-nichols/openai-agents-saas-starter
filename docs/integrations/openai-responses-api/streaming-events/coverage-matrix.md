@@ -1,8 +1,13 @@
-# Coverage Matrix - OpenAI Responses Streming Events
+# Coverage Matrix — OpenAI Responses Streaming Events
 
 Legend for **Status**: ✅ Implemented · 🟨 Partial · ⬜ Planned · ⛔ Ignored
 
-# Raw protocol coverage
+Legend for **Mode** (suggested): `prod` · `debug` · `prod+debug`  
+Legend for **Used?** (suggested): `yes` · `no` · `partial` · `tbd`
+
+---
+
+# Raw protocol coverage (Responses API)
 
 ## Lifecycle (01-lifecycle.md) — Tracker Template
 
@@ -119,7 +124,7 @@ Legend for **Status**: ✅ Implemented · 🟨 Partial · ⬜ Planned · ⛔ Ign
 
 ---
 
-# Agent-level Abstraction Coverage
+# Agent-level abstraction coverage (Agents SDK)
 
 ## 08-agents.md — Tracker Template
 
@@ -128,7 +133,7 @@ Legend for **Status**: ✅ Implemented · 🟨 Partial · ⬜ Planned · ⛔ Ign
 | Event type/name           | Correlation keys               | What the event represents (from your Agents SDK doc)                                                                                  | Used? | Mode | Inbound schema (Pydantic model + path) | Outbound schema (Pydantic model + path or passthrough) | Frontend type (TS/Zod) | Reducer/handler | Test trace (golden) | Status | Notes                                                                                                                          |
 | ------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- | ----- | ---- | -------------------------------------- | ------------------------------------------------------ | ---------------------- | --------------- | ------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | `raw_response_event`      | (wrapped) `data.*`             | Wrapper around a raw Responses streaming event (`data: TResponseStreamEvent`).                                                        | —     | —    | —                                      | —                                                      | —                      | —               | —                   | —      | Map this row to your **01–07 tables** (you already have coverage there). Decide: forward to FE? debug-only? stored trace-only? |
-| `RunItemStreamEvent`      | (from `item: RunItem`)         | Higher-level events produced by the agent as it processes LLM output (messages, tool calls, tool outputs, handoffs, approvals, etc.). | —     | —    | —                                      | —                                                      | —                      | —               | —                   | —      | Use this if you want a **normalized “product stream”** without forcing FE to understand every raw event.                       |
+| `RunItemStreamEvent`      | (from `item: RunItem`)         | Higher-level events produced by the agent as it processes LLM output (messages, tool calls, tool outputs, handoffs, approvals, etc.). | —     | —    | —                                      | —                                                      | —                      | —               | —                   | —      | Use this if you want a normalized “product stream” without forcing FE to understand every raw event.                           |
 | `AgentUpdatedStreamEvent` | (from `new_agent: Agent[Any]`) | Notifies that there is a new agent running.                                                                                           | —     | —    | —                                      | —                                                      | —                      | —               | —                   | —      | Useful if you support dynamic handoffs / agent switching in UI.                                                                |
 
 ---
@@ -142,9 +147,15 @@ Legend for **Status**: ✅ Implemented · 🟨 Partial · ⬜ Planned · ⛔ Ign
 | `tool_output`            | (from `item: RunItem`) | Agent produced tool output RunItem.                  | —     | —    | —                                      | —                                                      | —                      | —               | —                   | —      | Useful if you want the FE to render tool outputs cleanly. |
 | `reasoning_item_created` | (from `item: RunItem`) | Agent created a reasoning-related RunItem.           | —     | —    | —                                      | —                                                      | —                      | —               | —                   | —      | Decide if this is prod UI vs debug UI.                    |
 | `handoff_requested`      | (from `item: RunItem`) | A handoff was requested.                             | —     | —    | —                                      | —                                                      | —                      | —               | —                   | —      | Useful if you show “handoff pending” UX.                  |
-| `handoff_occured`        | (from `item: RunItem`) | A handoff occurred.                                  | —     | —    | —                                      | —                                                      | —                      | —               | —                   | —      | (Keep spelling as in your doc.)                           |
+| `handoff_occured`        | (from `item: RunItem`) | A handoff occurred.                                  | —     | —    | —                                      | —                                                      | —                      | —               | —                   | —      | Keep spelling as in your doc.                             |
 | `mcp_approval_requested` | (from `item: RunItem`) | MCP approval requested.                              | —     | —    | —                                      | —                                                      | —                      | —               | —                   | —      | Typically drives a “human approval” UI gate.              |
 | `mcp_approval_response`  | (from `item: RunItem`) | MCP approval response provided.                      | —     | —    | —                                      | —                                                      | —                      | —               | —                   | —      | Typically resolves the approval gate.                     |
 | `mcp_list_tools`         | (from `item: RunItem`) | Agent produced an MCP list-tools RunItem.            | —     | —    | —                                      | —                                                      | —                      | —               | —                   | —      | Often debug/admin UX, sometimes user-facing.              |
 
 ---
+
+## Filling rules (optional, but useful)
+- Mark **Used? = yes** only if the event affects your FE UX or is required for correctness.
+- Mark **Mode = prod** if user-facing; **debug** if only shown in an inspector; **prod+debug** if both.
+- **Status ✅** requires: inbound schema + reducer/handler + at least one golden trace.
+- **Status 🟨** means you parse/store it but UX or tests are incomplete.
