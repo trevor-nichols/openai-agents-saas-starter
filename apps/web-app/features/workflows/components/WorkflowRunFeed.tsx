@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Conversation, ConversationContent, ConversationScrollButton } from '@/components/ui/ai/conversation';
 import type {
   StreamingWorkflowEvent,
@@ -20,6 +21,7 @@ import type { StreamStatus, WorkflowStatusFilter } from '../constants';
 import type { WorkflowRunListItemView } from '@/lib/workflows/types';
 
 import { WorkflowStreamLog } from './WorkflowStreamLog';
+import { WorkflowLiveStream } from './WorkflowLiveStream';
 import { WorkflowRunsList } from './WorkflowRunsList';
 import { WorkflowRunConversation } from './WorkflowRunConversation';
 import { WorkflowRunDeleteButton } from './WorkflowRunDeleteButton';
@@ -96,6 +98,7 @@ export function WorkflowRunFeed({
 }: WorkflowRunFeedProps) {
   const [activeTab, setActiveTab] = useState<'console' | 'history'>('console');
   const [isTranscriptOpen, setIsTranscriptOpen] = useState(false);
+  const [debugOpen, setDebugOpen] = useState(false);
 
   const transcriptOpen = isTranscriptOpen && Boolean(selectedRunId);
   const handleTranscriptToggle = (open: boolean) => {
@@ -213,7 +216,23 @@ export function WorkflowRunFeed({
                     )}
 
                     {/* Stream Log */}
-                    <WorkflowStreamLog events={streamEvents} />
+                    <WorkflowLiveStream events={streamEvents} />
+
+                    <Collapsible open={debugOpen} onOpenChange={setDebugOpen}>
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-foreground/60">
+                          Debug events
+                        </div>
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-7 text-xs">
+                            {debugOpen ? 'Hide' : 'Show'}
+                          </Button>
+                        </CollapsibleTrigger>
+                      </div>
+                      <CollapsibleContent className="mt-3">
+                        <WorkflowStreamLog events={streamEvents} />
+                      </CollapsibleContent>
+                    </Collapsible>
                 </ConversationContent>
                 <ConversationScrollButton />
             </Conversation>

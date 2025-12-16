@@ -39,7 +39,7 @@ In our public contract, provider `sequence_number` is surfaced as `provider_sequ
   - `POST /api/v1/workflows/{workflow_key}/run-stream` → `apps/api-service/src/app/api/v1/workflows/router.py`
 - **Frontend parsing:** `apps/web-app/lib/streams/sseParser.ts` is the single SSE parser (comments + multiline `data:`).
 - **Chat transcript ordering:** `apps/web-app/lib/chat/controller/useChatController.ts` inserts assistant rows by `output_index` and updates by `item_id`.
-- **Workflows UI:** the “Live events” panel is a debug log (arrival order), and the “Transcript” view is derived from persisted run + conversation state (not the live stream).
+- **Workflows UI:** the default “Live stream” view renders insert/update semantics by `output_index`/`item_id` (`apps/web-app/features/workflows/components/WorkflowLiveStream.tsx` + `apps/web-app/lib/workflows/liveStreamTranscript.ts`). A debug event log remains available behind a toggle (`apps/web-app/features/workflows/components/WorkflowStreamLog.tsx`). Persisted transcripts are still derived from stored run + conversation state.
 
 ## Historical gap inventory (resolved)
 
@@ -63,4 +63,3 @@ If you’re debugging “tool card appears below assistant text” or “items a
 1. Log these fields per received SSE JSON event: `kind`, `output_index`, `item_id`, `provider_sequence_number`.
 2. If a tool event has **lower `output_index`** than the assistant message but renders below it, the UI is still **append-based** and must switch to **insert/update** semantics.
 3. If the tool event has **higher `output_index`**, then the model actually placed the tool after the message in `response.output[]` and the UI ordering is correct.
-

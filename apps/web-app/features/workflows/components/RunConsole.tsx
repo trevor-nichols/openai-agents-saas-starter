@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { InlineTag } from '@/components/ui/foundation';
 import { GlassPanel } from '@/components/ui/foundation';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import type {
   LocationHint,
   StreamingWorkflowEvent,
@@ -16,6 +17,7 @@ import type { ConversationEvents } from '@/types/conversations';
 import type { StreamStatus } from '../constants';
 import { WorkflowRunPanel } from './WorkflowRunPanel';
 import { WorkflowStreamLog } from './WorkflowStreamLog';
+import { WorkflowLiveStream } from './WorkflowLiveStream';
 import { WorkflowRunConversation } from './WorkflowRunConversation';
 import { WorkflowRunDeleteButton } from './WorkflowRunDeleteButton';
 
@@ -75,6 +77,7 @@ export function RunConsole({
   deletingRunId,
 }: Props) {
   const [isTranscriptOpen, setIsTranscriptOpen] = useState(false);
+  const [debugOpen, setDebugOpen] = useState(false);
   const transcriptOpen = isTranscriptOpen && Boolean(selectedRunId);
   const handleTranscriptToggle = (open: boolean) => {
     if (!open) {
@@ -141,7 +144,21 @@ export function RunConsole({
             ) : null}
           </div>
         ) : null}
-        <WorkflowStreamLog events={streamEvents} />
+        <WorkflowLiveStream events={streamEvents} />
+
+        <Collapsible open={debugOpen} onOpenChange={setDebugOpen}>
+          <div className="mt-3 flex items-center justify-between">
+            <div className="text-xs font-semibold uppercase tracking-wide text-foreground/60">Debug events</div>
+            <CollapsibleTrigger asChild>
+              <Button size="sm" variant="ghost" className="h-7 text-xs">
+                {debugOpen ? 'Hide' : 'Show'}
+              </Button>
+            </CollapsibleTrigger>
+          </div>
+          <CollapsibleContent className="mt-3">
+            <WorkflowStreamLog events={streamEvents} />
+          </CollapsibleContent>
+        </Collapsible>
         <SheetContent side="right" className="flex w-full flex-col overflow-hidden sm:max-w-xl">
           <SheetHeader>
             <SheetTitle>Run transcript</SheetTitle>
