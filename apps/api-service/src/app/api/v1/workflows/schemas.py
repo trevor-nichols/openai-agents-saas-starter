@@ -4,18 +4,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.api.v1.shared.streaming import (
-    CodeInterpreterCall,
-    ContainerFileCitation,
-    FileCitation,
-    FileSearchCall,
-    MessageAttachment,
-    StreamingEvent,
-    ToolCallPayload,
-    UrlCitation,
-    WebSearchAction,
-    WebSearchCall,
-)
+from app.api.v1.shared.streaming import MessageAttachment, PublicSseEvent
 from app.domain.workflows import WorkflowStatus
 from app.utils.tools.location import LocationHint
 
@@ -141,7 +130,7 @@ class WorkflowDescriptorResponse(BaseModel):
     output_schema: dict[str, Any] | None = None
 
 
-class StreamingWorkflowEvent(StreamingEvent):
+class StreamingWorkflowEvent(PublicSseEvent):
     model_config = ConfigDict(title="StreamingWorkflowEvent")
 
 
@@ -158,13 +147,5 @@ __all__ = [
     "WorkflowStageDescriptor",
     "WorkflowDescriptorResponse",
     "StreamingWorkflowEvent",
-    "ToolCallPayload",
-    "UrlCitation",
-    "ContainerFileCitation",
-    "FileCitation",
     "MessageAttachment",
-    "WebSearchAction",
-    "WebSearchCall",
-    "CodeInterpreterCall",
-    "FileSearchCall",
 ]

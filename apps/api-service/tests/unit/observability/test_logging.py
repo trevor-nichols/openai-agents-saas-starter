@@ -70,8 +70,9 @@ def test_log_event_emits_context_and_fields() -> None:
     assert payload["fields"]["quota"] == "signup.per_hour"
 
 
-def test_configure_logging_requires_datadog_api_key() -> None:
-    settings = Settings.model_validate({"LOGGING_SINK": "datadog"})
+def test_configure_logging_requires_datadog_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("LOGGING_DATADOG_API_KEY", raising=False)
+    settings = Settings.model_validate({"LOGGING_SINKS": None, "LOGGING_SINK": "datadog"})
     with pytest.raises(ValueError):
         configure_logging(settings)
 

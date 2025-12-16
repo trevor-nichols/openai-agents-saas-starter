@@ -17,6 +17,7 @@ import type {
 import { createLogger } from '@/lib/logging';
 import type { StreamingChatEvent } from '@/lib/api/client/types.gen';
 import { apiV1Path } from '@/lib/apiPaths';
+import { parseSseStream } from '@/lib/streams/sseParser';
 
 const CHAT_ROUTE = apiV1Path('/chat');
 const CHAT_STREAM_ROUTE = apiV1Path('/chat/stream');
@@ -163,132 +164,63 @@ export async function* streamChat(
     return;
   }
 
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
+  let terminalSeen = false;
 
   try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+    for await (const evt of parseSseStream(response.body)) {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(evt.data) as unknown;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Invalid JSON in stream event';
+        yield {
+          type: 'error',
+          payload: `Failed to parse stream payload: ${message}`,
+        };
+        return;
+      }
 
-      buffer += decoder.decode(value, { stream: true });
-      const segments = buffer.split('\n\n');
-      buffer = segments.pop() ?? '';
+      if (typeof parsed !== 'object' || parsed === null || !('kind' in parsed)) {
+        yield {
+          type: 'error',
+          payload: 'Unknown stream payload shape',
+        };
+        return;
+      }
 
-      for (const segment of segments) {
-        if (!segment.trim() || !segment.startsWith('data: ')) continue;
+      const event = parsed as StreamingChatEvent;
+      if (!event.kind) {
+        yield {
+          type: 'error',
+          payload: 'Stream event missing kind',
+        };
+        return;
+      }
 
-        const parsed = parseStreamSegment(segment);
+      const isTerminal = event.kind === 'final' || event.kind === 'error';
 
-        if (parsed.chunk.type === 'event') {
-          log.debug('Stream event', {
-            kind: parsed.chunk.event.kind,
-            rawType: (parsed.chunk.event as StreamingChatEvent).raw_type,
-            terminal: parsed.done,
-          });
-        }
+      log.debug('Stream event', {
+        kind: event.kind,
+        terminal: isTerminal,
+      });
 
-        if (parsed.chunk.type === 'error') {
-          yield parsed.chunk;
-          return;
-        }
+      yield { type: 'event', event };
 
-        yield parsed.chunk;
-
-        if (parsed.done) {
-          return;
-        }
+      if (isTerminal) {
+        terminalSeen = true;
+        return;
       }
     }
   } catch (error) {
     log.debug('Chat stream reader threw error', { error });
   } finally {
-    reader.releaseLock();
+    // response.body is owned by parseSseStream; nothing to release here.
   }
-}
 
-type ParsedSegment = { chunk: StreamChunk; done: boolean };
-
-function parseStreamSegment(segment: string): ParsedSegment {
-  try {
-    const data = JSON.parse(segment.slice(6)) as unknown;
-
-    // Preferred: new StreamingChatEvent shape
-    if (typeof data === 'object' && data !== null && 'kind' in data) {
-      const event = data as StreamingChatEvent;
-      return {
-        chunk: { type: 'event', event },
-        done: Boolean(event.is_terminal),
-      };
-    }
-
-    // Legacy error blob
-    if (
-      typeof data === 'object' &&
-      data !== null &&
-      'error' in data &&
-      typeof (data as { error: unknown }).error === 'string'
-    ) {
-      const err = data as { error: string; conversation_id?: string };
-      return {
-        chunk: {
-          type: 'error',
-          payload: err.error,
-          conversationId: err.conversation_id,
-        },
-        done: true,
-      };
-    }
-
-    // Legacy chunk-only shape: coerce into a synthetic event
-    if (typeof data === 'object' && data !== null && 'chunk' in data) {
-      const legacy = data as { chunk?: string; conversation_id?: string; is_complete?: boolean };
-      const event: StreamingChatEvent = {
-        kind: 'raw_response_event',
-        conversation_id: legacy.conversation_id ?? '',
-        agent_used: null,
-        response_id: null,
-        sequence_number: null,
-        raw_type: 'response.output_text.delta',
-        run_item_name: null,
-        run_item_type: null,
-        tool_call_id: null,
-        tool_name: null,
-        agent: null,
-        new_agent: null,
-        text_delta: legacy.chunk ?? '',
-        reasoning_delta: null,
-        is_terminal: Boolean(legacy.is_complete),
-        payload: legacy,
-        structured_output: null,
-        attachments: null,
-      };
-      return {
-        chunk: { type: 'event', event },
-        done: Boolean(event.is_terminal),
-      };
-    }
-
-    return {
-      chunk: {
-        type: 'error',
-        payload: 'Unknown stream payload shape',
-      },
-      done: true,
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown streaming parse error';
-    log.debug('Chat stream failed to parse payload', {
-      segment,
-      errorMessage: message,
-    });
-    return {
-      chunk: {
-        type: 'error',
-        payload: `Failed to parse stream payload: ${message}`,
-      },
-      done: true,
+  if (!terminalSeen) {
+    yield {
+      type: 'error',
+      payload: 'Stream ended without a terminal event.',
     };
   }
 }

@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
-import type { ImageGenerationCall } from '@/lib/api/client/types.gen';
 import type { Experimental_GeneratedImage } from 'ai';
+import type { GeneratedImageFrame, GeneratedImageStatus } from '@/lib/streams/imageFrames';
 
 type BaseImageProps = Partial<Experimental_GeneratedImage> & {
   className?: string;
@@ -12,48 +12,28 @@ export type ImageProps = BaseImageProps & {
    * Optional stream of image generation events (partial frames + final).
    * When provided, frames take precedence over the single `base64` image.
    */
-  frames?: ImageGenerationCall[];
+  frames?: GeneratedImageFrame[];
 };
 
 type EnrichedFrame = {
   key: string;
   src: string;
-  status: ImageGenerationCall['status'];
+  status: GeneratedImageStatus;
   label: string;
   outputIndex: number | undefined;
   revisedPrompt: string | undefined;
 };
 
-const statusLabel: Record<ImageGenerationCall['status'], string> = {
+const statusLabel: Record<GeneratedImageStatus, string> = {
   in_progress: 'Starting',
   generating: 'Generating',
   partial_image: 'Preview',
   completed: 'Completed',
 };
 
-const formatToMime = (format?: string | null) => {
-  if (!format) return 'image/png';
-  const normalized = format.toLowerCase();
-  if (normalized.includes('png')) return 'image/png';
-  if (normalized.includes('jpg') || normalized.includes('jpeg')) return 'image/jpeg';
-  if (normalized.includes('webp')) return 'image/webp';
-  return `image/${normalized}`;
-};
-
-const toDataUrl = (call: ImageGenerationCall): string | null => {
-  const payload = call.partial_image_b64 ?? call.b64_json ?? call.result ?? null;
-  if (!payload) return null;
-
-  // If the payload is already a data URL or remote URL, use it directly.
-  if (payload.startsWith('data:') || payload.startsWith('http')) return payload;
-
-  const mime = formatToMime(call.format);
-  return `data:${mime};base64,${payload}`;
-};
-
 /**
  * Renders a generated image, optionally showing progressive frames from
- * ImageGenerationCall events (partial images + final output) in a single view.
+ * streamed image frames (partial images + final output) in a single view.
  */
 export const Image = ({
   frames,
@@ -67,17 +47,15 @@ export const Image = ({
   const enrichedFrames: EnrichedFrame[] =
     frames
       ?.map((frame, index) => {
-        const src = toDataUrl(frame);
-        return src
-          ? {
-              key: frame.id ?? `${frame.output_index ?? index}-${frame.status}-${index}`,
-              src,
-              status: frame.status,
-              label: statusLabel[frame.status] ?? frame.status,
-              outputIndex: frame.output_index ?? undefined,
-              revisedPrompt: frame.revised_prompt ?? undefined,
-            }
-          : null;
+        if (!frame.src) return null;
+        return {
+          key: frame.id ?? `${frame.outputIndex ?? index}-${frame.status}-${index}`,
+          src: frame.src,
+          status: frame.status,
+          label: statusLabel[frame.status] ?? frame.status,
+          outputIndex: frame.outputIndex ?? undefined,
+          revisedPrompt: frame.revisedPrompt ?? undefined,
+        };
       })
       .filter((frame): frame is EnrichedFrame => Boolean(frame)) ?? [];
 

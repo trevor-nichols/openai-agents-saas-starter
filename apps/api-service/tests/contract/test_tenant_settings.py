@@ -146,7 +146,9 @@ def test_update_settings_translates_validation_error(
     )
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "invalid"
+    body = response.json()
+    assert body["error"] == "BadRequest"
+    assert body["message"] == "invalid"
 
 
 def test_viewer_forbidden(client: TestClient) -> None:

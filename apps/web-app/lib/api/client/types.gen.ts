@@ -658,29 +658,151 @@ export type ChatMessage = {
 };
 
 /**
- * CodeInterpreterCall
+ * ChunkDeltaEvent
  */
-export type CodeInterpreterCall = {
+export type ChunkDeltaEvent = {
   /**
-   * Id
+   * Schema
    */
-  id: string;
+  schema: "public_sse_v1";
   /**
-   * Type
+   * Event Id
    */
-  type: "code_interpreter_call";
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Kind
+   */
+  kind: "chunk.delta";
+  target: ChunkTarget;
+  /**
+   * Encoding
+   */
+  encoding?: "base64" | "utf8";
+  /**
+   * Chunk Index
+   */
+  chunk_index: number;
+  /**
+   * Data
+   */
+  data: string;
+};
+
+/**
+ * ChunkDoneEvent
+ */
+export type ChunkDoneEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Kind
+   */
+  kind: "chunk.done";
+  target: ChunkTarget;
+};
+
+/**
+ * ChunkTarget
+ */
+export type ChunkTarget = {
+  /**
+   * Entity Kind
+   */
+  entity_kind: "tool_call" | "message";
+  /**
+   * Entity Id
+   */
+  entity_id: string;
+  /**
+   * Field
+   */
+  field: string;
+  /**
+   * Part Index
+   */
+  part_index?: number | null;
+};
+
+/**
+ * CodeInterpreterTool
+ */
+export type CodeInterpreterTool = {
+  /**
+   * Tool Type
+   */
+  tool_type: "code_interpreter";
+  /**
+   * Tool Call Id
+   */
+  tool_call_id: string;
   /**
    * Status
    */
   status: "in_progress" | "interpreting" | "completed";
-  /**
-   * Code
-   */
-  code?: string | null;
-  /**
-   * Outputs
-   */
-  outputs?: Array<unknown> | null;
   /**
    * Container Id
    */
@@ -689,10 +811,6 @@ export type CodeInterpreterCall = {
    * Container Mode
    */
   container_mode?: "auto" | "explicit" | null;
-  /**
-   * Annotations
-   */
-  annotations?: Array<ContainerFileCitation> | null;
 };
 
 /**
@@ -1530,6 +1648,76 @@ export type EmailVerificationTokenResponse = {
 };
 
 /**
+ * ErrorEvent
+ */
+export type ErrorEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Kind
+   */
+  kind: "error";
+  error: ErrorPayload;
+};
+
+/**
+ * ErrorPayload
+ */
+export type ErrorPayload = {
+  /**
+   * Code
+   */
+  code?: string | null;
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Source
+   */
+  source: "provider" | "server";
+  /**
+   * Is Retryable
+   */
+  is_retryable: boolean;
+};
+
+/**
  * FileCitation
  */
 export type FileCitation = {
@@ -1557,32 +1745,6 @@ export type FileCitation = {
    * Filename
    */
   filename?: string | null;
-};
-
-/**
- * FileSearchCall
- */
-export type FileSearchCall = {
-  /**
-   * Id
-   */
-  id: string;
-  /**
-   * Type
-   */
-  type: "file_search_call";
-  /**
-   * Status
-   */
-  status: "in_progress" | "searching" | "completed";
-  /**
-   * Queries
-   */
-  queries?: Array<string> | null;
-  /**
-   * Results
-   */
-  results?: Array<FileSearchResult> | null;
 };
 
 /**
@@ -1615,6 +1777,111 @@ export type FileSearchResult = {
    * Text
    */
   text?: string | null;
+};
+
+/**
+ * FileSearchTool
+ */
+export type FileSearchTool = {
+  /**
+   * Tool Type
+   */
+  tool_type: "file_search";
+  /**
+   * Tool Call Id
+   */
+  tool_call_id: string;
+  /**
+   * Status
+   */
+  status: "in_progress" | "searching" | "completed";
+  /**
+   * Queries
+   */
+  queries?: Array<string> | null;
+  /**
+   * Results
+   */
+  results?: Array<FileSearchResult> | null;
+};
+
+/**
+ * FinalEvent
+ */
+export type FinalEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Kind
+   */
+  kind: "final";
+  final: FinalPayload;
+};
+
+/**
+ * FinalPayload
+ */
+export type FinalPayload = {
+  /**
+   * Status
+   */
+  status: "completed" | "failed" | "incomplete" | "refused" | "cancelled";
+  /**
+   * Response Text
+   */
+  response_text?: string | null;
+  /**
+   * Structured Output
+   */
+  structured_output?: unknown | null;
+  /**
+   * Reasoning Summary Text
+   */
+  reasoning_summary_text?: string | null;
+  /**
+   * Refusal Text
+   */
+  refusal_text?: string | null;
+  /**
+   * Attachments
+   */
+  attachments?: Array<MessageAttachment>;
+  usage?: PublicUsage | null;
 };
 
 /**
@@ -1818,6 +2085,42 @@ export type FixtureUserResult = {
 };
 
 /**
+ * FunctionTool
+ */
+export type FunctionTool = {
+  /**
+   * Tool Type
+   */
+  tool_type: "function";
+  /**
+   * Tool Call Id
+   */
+  tool_call_id: string;
+  /**
+   * Status
+   */
+  status: "in_progress" | "completed" | "failed";
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Arguments Text
+   */
+  arguments_text?: string | null;
+  /**
+   * Arguments Json
+   */
+  arguments_json?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Output
+   */
+  output?: unknown | null;
+};
+
+/**
  * GuardrailCheckConfigSchema
  *
  * Configuration for a guardrail within a preset.
@@ -1994,25 +2297,21 @@ export type HealthResponse = {
 };
 
 /**
- * ImageGenerationCall
+ * ImageGenerationTool
  */
-export type ImageGenerationCall = {
+export type ImageGenerationTool = {
   /**
-   * Id
+   * Tool Type
    */
-  id: string;
+  tool_type: "image_generation";
   /**
-   * Type
+   * Tool Call Id
    */
-  type: "image_generation_call";
+  tool_call_id: string;
   /**
    * Status
    */
   status: "in_progress" | "generating" | "partial_image" | "completed";
-  /**
-   * Result
-   */
-  result?: string | null;
   /**
    * Revised Prompt
    */
@@ -2034,21 +2333,9 @@ export type ImageGenerationCall = {
    */
   background?: string | null;
   /**
-   * Output Index
-   */
-  output_index?: number | null;
-  /**
    * Partial Image Index
    */
   partial_image_index?: number | null;
-  /**
-   * Partial Image B64
-   */
-  partial_image_b64?: string | null;
-  /**
-   * B64 Json
-   */
-  b64_json?: string | null;
 };
 
 /**
@@ -2085,6 +2372,67 @@ export type IncidentSchema = {
    * Current incident lifecycle state.
    */
   state: string;
+};
+
+/**
+ * LifecycleEvent
+ */
+export type LifecycleEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Kind
+   */
+  kind: "lifecycle";
+  /**
+   * Status
+   */
+  status:
+    | "queued"
+    | "in_progress"
+    | "completed"
+    | "failed"
+    | "incomplete"
+    | "cancelled";
+  /**
+   * Reason
+   */
+  reason?: string | null;
 };
 
 /**
@@ -2151,6 +2499,46 @@ export type LogoutSessionSuccessResponse = {
    * Single-session logout result payload.
    */
   data?: SessionLogoutResponseData | null;
+};
+
+/**
+ * McpTool
+ */
+export type McpTool = {
+  /**
+   * Tool Type
+   */
+  tool_type: "mcp";
+  /**
+   * Tool Call Id
+   */
+  tool_call_id: string;
+  /**
+   * Status
+   */
+  status: "awaiting_approval" | "in_progress" | "completed" | "failed";
+  /**
+   * Tool Name
+   */
+  tool_name: string;
+  /**
+   * Server Label
+   */
+  server_label?: string | null;
+  /**
+   * Arguments Text
+   */
+  arguments_text?: string | null;
+  /**
+   * Arguments Json
+   */
+  arguments_json?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Output
+   */
+  output?: unknown | null;
 };
 
 /**
@@ -2263,6 +2651,116 @@ export type MessageAttachment = {
    * Originating tool call id
    */
   tool_call_id?: string | null;
+};
+
+/**
+ * MessageCitationEvent
+ */
+export type MessageCitationEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Kind
+   */
+  kind: "message.citation";
+  /**
+   * Message Id
+   */
+  message_id: string;
+  /**
+   * Citation
+   */
+  citation: UrlCitation | ContainerFileCitation | FileCitation;
+};
+
+/**
+ * MessageDeltaEvent
+ */
+export type MessageDeltaEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Kind
+   */
+  kind: "message.delta";
+  /**
+   * Message Id
+   */
+  message_id: string;
+  /**
+   * Delta
+   */
+  delta: string;
 };
 
 /**
@@ -2613,6 +3111,87 @@ export type PresetSummary = {
 };
 
 /**
+ * PublicUsage
+ */
+export type PublicUsage = {
+  /**
+   * Input Tokens
+   */
+  input_tokens?: number | null;
+  /**
+   * Output Tokens
+   */
+  output_tokens?: number | null;
+  /**
+   * Total Tokens
+   */
+  total_tokens?: number | null;
+  /**
+   * Cached Input Tokens
+   */
+  cached_input_tokens?: number | null;
+  /**
+   * Reasoning Output Tokens
+   */
+  reasoning_output_tokens?: number | null;
+  /**
+   * Requests
+   */
+  requests?: number | null;
+};
+
+/**
+ * ReasoningSummaryDeltaEvent
+ */
+export type ReasoningSummaryDeltaEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Kind
+   */
+  kind: "reasoning_summary.delta";
+  /**
+   * Delta
+   */
+  delta: string;
+};
+
+/**
  * ReceiptResponse
  */
 export type ReceiptResponse = {
@@ -2630,6 +3209,116 @@ export type RecoveryCodesResponse = {
    * Codes
    */
   codes: Array<string>;
+};
+
+/**
+ * RefusalDeltaEvent
+ */
+export type RefusalDeltaEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Kind
+   */
+  kind: "refusal.delta";
+  /**
+   * Message Id
+   */
+  message_id: string;
+  /**
+   * Delta
+   */
+  delta: string;
+};
+
+/**
+ * RefusalDoneEvent
+ */
+export type RefusalDoneEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Kind
+   */
+  kind: "refusal.done";
+  /**
+   * Message Id
+   */
+  message_id: string;
+  /**
+   * Refusal Text
+   */
+  refusal_text: string;
 };
 
 /**
@@ -3704,440 +4393,66 @@ export type StoragePresignUploadResponse = {
 };
 
 /**
+ * StreamNotice
+ *
+ * Explicit markers for UX when content is altered for safety/stability.
+ */
+export type StreamNotice = {
+  /**
+   * Type
+   */
+  type: "redacted" | "truncated";
+  /**
+   * Path
+   */
+  path: string;
+  /**
+   * Message
+   */
+  message: string;
+};
+
+/**
  * StreamingChatEvent
  */
-export type StreamingChatEvent = {
-  /**
-   * Kind
-   */
-  kind:
-    | "raw_response_event"
-    | "run_item_stream_event"
-    | "agent_updated_stream_event"
-    | "guardrail_result"
-    | "usage"
-    | "error"
-    | "lifecycle";
-  /**
-   * Workflow Key
-   */
-  workflow_key?: string | null;
-  /**
-   * Workflow Run Id
-   */
-  workflow_run_id?: string | null;
-  /**
-   * Step Name
-   */
-  step_name?: string | null;
-  /**
-   * Step Agent
-   */
-  step_agent?: string | null;
-  /**
-   * Stage Name
-   */
-  stage_name?: string | null;
-  /**
-   * Parallel Group
-   */
-  parallel_group?: string | null;
-  /**
-   * Branch Index
-   */
-  branch_index?: number | null;
-  /**
-   * Conversation Id
-   */
-  conversation_id?: string | null;
-  /**
-   * Agent Used
-   */
-  agent_used?: string | null;
-  /**
-   * Response Id
-   */
-  response_id?: string | null;
-  /**
-   * Sequence Number
-   */
-  sequence_number?: number | null;
-  /**
-   * Raw Type
-   */
-  raw_type?: string | null;
-  /**
-   * Run Item Name
-   */
-  run_item_name?: string | null;
-  /**
-   * Run Item Type
-   */
-  run_item_type?: string | null;
-  /**
-   * Tool Call Id
-   */
-  tool_call_id?: string | null;
-  /**
-   * Tool Name
-   */
-  tool_name?: string | null;
-  /**
-   * Agent
-   */
-  agent?: string | null;
-  /**
-   * New Agent
-   */
-  new_agent?: string | null;
-  /**
-   * Display Name
-   */
-  display_name?: string | null;
-  /**
-   * Text Delta
-   */
-  text_delta?: string | null;
-  /**
-   * Reasoning Delta
-   */
-  reasoning_delta?: string | null;
-  /**
-   * Response Text
-   */
-  response_text?: string | null;
-  /**
-   * Structured Output
-   */
-  structured_output?: unknown | null;
-  /**
-   * Output Schema
-   */
-  output_schema?: {
-    [key: string]: unknown;
-  } | null;
-  /**
-   * Is Terminal
-   */
-  is_terminal?: boolean;
-  /**
-   * Event
-   */
-  event?: string | null;
-  /**
-   * Payload
-   */
-  payload?: {
-    [key: string]: unknown;
-  } | null;
-  /**
-   * Attachments
-   */
-  attachments?: Array<
-    | MessageAttachment
-    | {
-        [key: string]: unknown;
-      }
-  > | null;
-  /**
-   * Raw Event
-   */
-  raw_event?: {
-    [key: string]: unknown;
-  } | null;
-  /**
-   * Tool Call
-   */
-  tool_call?:
-    | ToolCallPayload
-    | {
-        [key: string]: unknown;
-      }
-    | null;
-  /**
-   * Annotations
-   */
-  annotations?: Array<
-    UrlCitation | ContainerFileCitation | FileCitation
-  > | null;
-  /**
-   * Server Timestamp
-   */
-  server_timestamp?: string | null;
-  /**
-   * Guardrail Stage
-   */
-  guardrail_stage?:
-    | "pre_flight"
-    | "input"
-    | "output"
-    | "tool_input"
-    | "tool_output"
-    | "summary"
-    | null;
-  /**
-   * Guardrail Key
-   */
-  guardrail_key?: string | null;
-  /**
-   * Guardrail Name
-   */
-  guardrail_name?: string | null;
-  /**
-   * Guardrail Tripwire Triggered
-   */
-  guardrail_tripwire_triggered?: boolean | null;
-  /**
-   * Guardrail Suppressed
-   */
-  guardrail_suppressed?: boolean | null;
-  /**
-   * Guardrail Flagged
-   */
-  guardrail_flagged?: boolean | null;
-  /**
-   * Guardrail Confidence
-   */
-  guardrail_confidence?: number | null;
-  /**
-   * Guardrail Masked Content
-   */
-  guardrail_masked_content?: string | null;
-  /**
-   * Guardrail Token Usage
-   */
-  guardrail_token_usage?: {
-    [key: string]: unknown;
-  } | null;
-  /**
-   * Guardrail Details
-   */
-  guardrail_details?: {
-    [key: string]: unknown;
-  } | null;
-  /**
-   * Guardrail Summary
-   */
-  guardrail_summary?: boolean | null;
-};
+export type StreamingChatEvent =
+  | LifecycleEvent
+  | MessageDeltaEvent
+  | MessageCitationEvent
+  | ReasoningSummaryDeltaEvent
+  | RefusalDeltaEvent
+  | RefusalDoneEvent
+  | ToolStatusEvent
+  | ToolArgumentsDeltaEvent
+  | ToolArgumentsDoneEvent
+  | ToolCodeDeltaEvent
+  | ToolCodeDoneEvent
+  | ToolOutputEvent
+  | ChunkDeltaEvent
+  | ChunkDoneEvent
+  | ErrorEvent
+  | FinalEvent;
 
 /**
  * StreamingWorkflowEvent
  */
-export type StreamingWorkflowEvent = {
-  /**
-   * Kind
-   */
-  kind:
-    | "raw_response_event"
-    | "run_item_stream_event"
-    | "agent_updated_stream_event"
-    | "guardrail_result"
-    | "usage"
-    | "error"
-    | "lifecycle";
-  /**
-   * Workflow Key
-   */
-  workflow_key?: string | null;
-  /**
-   * Workflow Run Id
-   */
-  workflow_run_id?: string | null;
-  /**
-   * Step Name
-   */
-  step_name?: string | null;
-  /**
-   * Step Agent
-   */
-  step_agent?: string | null;
-  /**
-   * Stage Name
-   */
-  stage_name?: string | null;
-  /**
-   * Parallel Group
-   */
-  parallel_group?: string | null;
-  /**
-   * Branch Index
-   */
-  branch_index?: number | null;
-  /**
-   * Conversation Id
-   */
-  conversation_id?: string | null;
-  /**
-   * Agent Used
-   */
-  agent_used?: string | null;
-  /**
-   * Response Id
-   */
-  response_id?: string | null;
-  /**
-   * Sequence Number
-   */
-  sequence_number?: number | null;
-  /**
-   * Raw Type
-   */
-  raw_type?: string | null;
-  /**
-   * Run Item Name
-   */
-  run_item_name?: string | null;
-  /**
-   * Run Item Type
-   */
-  run_item_type?: string | null;
-  /**
-   * Tool Call Id
-   */
-  tool_call_id?: string | null;
-  /**
-   * Tool Name
-   */
-  tool_name?: string | null;
-  /**
-   * Agent
-   */
-  agent?: string | null;
-  /**
-   * New Agent
-   */
-  new_agent?: string | null;
-  /**
-   * Display Name
-   */
-  display_name?: string | null;
-  /**
-   * Text Delta
-   */
-  text_delta?: string | null;
-  /**
-   * Reasoning Delta
-   */
-  reasoning_delta?: string | null;
-  /**
-   * Response Text
-   */
-  response_text?: string | null;
-  /**
-   * Structured Output
-   */
-  structured_output?: unknown | null;
-  /**
-   * Output Schema
-   */
-  output_schema?: {
-    [key: string]: unknown;
-  } | null;
-  /**
-   * Is Terminal
-   */
-  is_terminal?: boolean;
-  /**
-   * Event
-   */
-  event?: string | null;
-  /**
-   * Payload
-   */
-  payload?: {
-    [key: string]: unknown;
-  } | null;
-  /**
-   * Attachments
-   */
-  attachments?: Array<
-    | MessageAttachment
-    | {
-        [key: string]: unknown;
-      }
-  > | null;
-  /**
-   * Raw Event
-   */
-  raw_event?: {
-    [key: string]: unknown;
-  } | null;
-  /**
-   * Tool Call
-   */
-  tool_call?:
-    | ToolCallPayload
-    | {
-        [key: string]: unknown;
-      }
-    | null;
-  /**
-   * Annotations
-   */
-  annotations?: Array<
-    UrlCitation | ContainerFileCitation | FileCitation
-  > | null;
-  /**
-   * Server Timestamp
-   */
-  server_timestamp?: string | null;
-  /**
-   * Guardrail Stage
-   */
-  guardrail_stage?:
-    | "pre_flight"
-    | "input"
-    | "output"
-    | "tool_input"
-    | "tool_output"
-    | "summary"
-    | null;
-  /**
-   * Guardrail Key
-   */
-  guardrail_key?: string | null;
-  /**
-   * Guardrail Name
-   */
-  guardrail_name?: string | null;
-  /**
-   * Guardrail Tripwire Triggered
-   */
-  guardrail_tripwire_triggered?: boolean | null;
-  /**
-   * Guardrail Suppressed
-   */
-  guardrail_suppressed?: boolean | null;
-  /**
-   * Guardrail Flagged
-   */
-  guardrail_flagged?: boolean | null;
-  /**
-   * Guardrail Confidence
-   */
-  guardrail_confidence?: number | null;
-  /**
-   * Guardrail Masked Content
-   */
-  guardrail_masked_content?: string | null;
-  /**
-   * Guardrail Token Usage
-   */
-  guardrail_token_usage?: {
-    [key: string]: unknown;
-  } | null;
-  /**
-   * Guardrail Details
-   */
-  guardrail_details?: {
-    [key: string]: unknown;
-  } | null;
-  /**
-   * Guardrail Summary
-   */
-  guardrail_summary?: boolean | null;
-};
+export type StreamingWorkflowEvent =
+  | LifecycleEvent
+  | MessageDeltaEvent
+  | MessageCitationEvent
+  | ReasoningSummaryDeltaEvent
+  | RefusalDeltaEvent
+  | RefusalDoneEvent
+  | ToolStatusEvent
+  | ToolArgumentsDeltaEvent
+  | ToolArgumentsDoneEvent
+  | ToolCodeDeltaEvent
+  | ToolCodeDoneEvent
+  | ToolOutputEvent
+  | ChunkDeltaEvent
+  | ChunkDoneEvent
+  | ErrorEvent
+  | FinalEvent;
 
 /**
  * StripeEventStatus
@@ -4287,29 +4602,135 @@ export type TenantSubscriptionResponse = {
 };
 
 /**
- * ToolCallPayload
+ * ToolArgumentsDeltaEvent
  */
-export type ToolCallPayload = {
+export type ToolArgumentsDeltaEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Kind
+   */
+  kind: "tool.arguments.delta";
+  /**
+   * Tool Call Id
+   */
+  tool_call_id: string;
   /**
    * Tool Type
    */
-  tool_type: string;
-  web_search_call?: WebSearchCall | null;
-  code_interpreter_call?: CodeInterpreterCall | null;
-  file_search_call?: FileSearchCall | null;
-  image_generation_call?: ImageGenerationCall | null;
-  [key: string]:
-    | unknown
-    | string
-    | WebSearchCall
-    | null
-    | CodeInterpreterCall
-    | null
-    | FileSearchCall
-    | null
-    | ImageGenerationCall
-    | null
-    | undefined;
+  tool_type: "function" | "mcp";
+  /**
+   * Tool Name
+   */
+  tool_name: string;
+  /**
+   * Delta
+   */
+  delta: string;
+};
+
+/**
+ * ToolArgumentsDoneEvent
+ */
+export type ToolArgumentsDoneEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Kind
+   */
+  kind: "tool.arguments.done";
+  /**
+   * Tool Call Id
+   */
+  tool_call_id: string;
+  /**
+   * Tool Type
+   */
+  tool_type: "function" | "mcp";
+  /**
+   * Tool Name
+   */
+  tool_name: string;
+  /**
+   * Arguments Text
+   */
+  arguments_text: string;
+  /**
+   * Arguments Json
+   */
+  arguments_json?: {
+    [key: string]: unknown;
+  } | null;
 };
 
 /**
@@ -4336,6 +4757,238 @@ export type ToolCatalogResponse = {
   per_agent?: {
     [key: string]: Array<string>;
   };
+};
+
+/**
+ * ToolCodeDeltaEvent
+ */
+export type ToolCodeDeltaEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Kind
+   */
+  kind: "tool.code.delta";
+  /**
+   * Tool Call Id
+   */
+  tool_call_id: string;
+  /**
+   * Delta
+   */
+  delta: string;
+};
+
+/**
+ * ToolCodeDoneEvent
+ */
+export type ToolCodeDoneEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Kind
+   */
+  kind: "tool.code.done";
+  /**
+   * Tool Call Id
+   */
+  tool_call_id: string;
+  /**
+   * Code
+   */
+  code: string;
+};
+
+/**
+ * ToolOutputEvent
+ */
+export type ToolOutputEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Kind
+   */
+  kind: "tool.output";
+  /**
+   * Tool Call Id
+   */
+  tool_call_id: string;
+  /**
+   * Tool Type
+   */
+  tool_type:
+    | "web_search"
+    | "file_search"
+    | "code_interpreter"
+    | "image_generation"
+    | "function"
+    | "mcp";
+  /**
+   * Output
+   */
+  output: unknown;
+};
+
+/**
+ * ToolStatusEvent
+ */
+export type ToolStatusEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Kind
+   */
+  kind: "tool.status";
+  /**
+   * Tool
+   */
+  tool:
+    | WebSearchTool
+    | FileSearchTool
+    | CodeInterpreterTool
+    | ImageGenerationTool
+    | FunctionTool
+    | McpTool;
 };
 
 /**
@@ -5203,17 +5856,25 @@ export type VectorStoreSearchResultResponse = {
 };
 
 /**
- * WebSearchAction
+ * WebSearchTool
  */
-export type WebSearchAction = {
+export type WebSearchTool = {
   /**
-   * Type
+   * Tool Type
    */
-  type: "search";
+  tool_type: "web_search";
+  /**
+   * Tool Call Id
+   */
+  tool_call_id: string;
+  /**
+   * Status
+   */
+  status: "in_progress" | "searching" | "completed";
   /**
    * Query
    */
-  query: string;
+  query?: string | null;
   /**
    * Sources
    */
@@ -5221,22 +5882,37 @@ export type WebSearchAction = {
 };
 
 /**
- * WebSearchCall
+ * WorkflowContext
  */
-export type WebSearchCall = {
+export type WorkflowContext = {
   /**
-   * Id
+   * Workflow Key
    */
-  id: string;
+  workflow_key?: string | null;
   /**
-   * Type
+   * Workflow Run Id
    */
-  type: "web_search_call";
+  workflow_run_id?: string | null;
   /**
-   * Status
+   * Stage Name
    */
-  status: "in_progress" | "completed";
-  action?: WebSearchAction | null;
+  stage_name?: string | null;
+  /**
+   * Step Name
+   */
+  step_name?: string | null;
+  /**
+   * Step Agent
+   */
+  step_agent?: string | null;
+  /**
+   * Parallel Group
+   */
+  parallel_group?: string | null;
+  /**
+   * Branch Index
+   */
+  branch_index?: number | null;
 };
 
 /**

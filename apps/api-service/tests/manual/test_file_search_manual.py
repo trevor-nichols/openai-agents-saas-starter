@@ -26,7 +26,7 @@ from typing import Any
 import httpx
 import pytest
 
-from app.api.v1.shared.streaming import StreamingEvent
+from app.api.v1.shared.streaming import PublicSseEvent, PublicSseEventBase
 from tests.utils.stream_assertions import (
     assert_file_search_expectations,
     maybe_record_stream,
@@ -235,7 +235,7 @@ async def test_file_search_streaming_manual() -> None:
             body = (await resp.aread()).decode("utf-8", "ignore")
             assert resp.status_code == 200, f"status {resp.status_code}: {body}"
 
-            events: list[StreamingEvent] = []
+            events: list[PublicSseEventBase] = []
 
             async for line in resp.aiter_lines():
                 if not line or not line.startswith("data:"):
@@ -245,13 +245,21 @@ async def test_file_search_streaming_manual() -> None:
                 except json.JSONDecodeError:
                     continue
 
-                parsed = StreamingEvent.model_validate(event)
+                parsed = PublicSseEvent.model_validate(event).root
                 events.append(parsed)
 
-                if event.get("is_terminal"):
+                if getattr(parsed, "kind", None) in {"final", "error"}:
                     break
 
     assert_file_search_expectations(events, expected_store_id=store_openai_id)
 
-    default_path = Path(__file__).resolve().parent.parent / "fixtures" / "streams" / "file_search.ndjson"
+    repo_root = Path(__file__).resolve().parents[4]
+    default_path = (
+        repo_root
+        / "docs"
+        / "contracts"
+        / "public-sse-streaming"
+        / "examples"
+        / "chat-file-search.ndjson"
+    )
     maybe_record_stream(events, env_var="MANUAL_RECORD_STREAM_TO", default_path=default_path)

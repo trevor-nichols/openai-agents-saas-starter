@@ -57,7 +57,6 @@ export function ChatWorkspace() {
     toolsError,
     refetchTools,
     activeAgents,
-    guardrailEvents,
     hasOlderMessages,
     isFetchingOlderMessages,
     loadOlderMessages,
@@ -143,7 +142,6 @@ export function ChatWorkspace() {
               errorMessage={errorMessage}
               onClearHistory={clearHistoryError}
               onClearError={clearError}
-              guardrailEvents={guardrailEvents}
               headerProps={{
                 eyebrow: CHAT_COPY.header.eyebrow,
                 title: CHAT_COPY.header.title,
@@ -174,46 +172,45 @@ export function ChatWorkspace() {
         </div>
 
         {/* Right Sidebar (Collapsible) */}
-        <div 
-            className={cn(
-                "relative flex-shrink-0 transition-[width,opacity,transform] duration-300 ease-in-out",
-                isSidebarOpen ? "w-[320px] opacity-100 translate-x-0" : "w-0 opacity-0 translate-x-10"
-            )}
+        <div
+          className={cn(
+            'relative flex min-h-0 flex-shrink-0 flex-col overflow-hidden transition-[width,opacity,transform] duration-300 ease-in-out',
+            isSidebarOpen ? 'w-[320px] translate-x-0 opacity-100' : 'w-0 translate-x-10 opacity-0 pointer-events-none',
+          )}
+          aria-hidden={!isSidebarOpen}
         >
-           <div className="w-[320px] min-h-0 flex flex-1 flex-col">
-              <GlassPanel className="flex min-h-0 flex-1 flex-col overflow-hidden border-l border-white/10 bg-background/40 p-0 backdrop-blur-xl">
-                {/* Agent Switcher Section */}
-                <div className="p-4 border-b border-white/5">
-                  <AgentSwitcher
-                    className="w-full"
-                    agents={agents}
-                    selectedAgent={selectedAgent}
-                    onChange={setSelectedAgent}
-                    isLoading={isLoadingAgents}
-                    error={agentsError}
-                    onShowInsights={() => setToolDrawerOpen(true)}
-                    onShowDetails={() => setDetailDrawerOpen(true)}
-                    hasConversation={!!currentConversationId}
-                  />
-                </div>
+          <GlassPanel className="flex min-h-0 flex-1 flex-col overflow-hidden border-l border-white/10 bg-background/40 p-0 backdrop-blur-xl">
+            {/* Agent Switcher Section */}
+            <div className="border-b border-white/5 p-4">
+              <AgentSwitcher
+                className="w-full"
+                agents={agents}
+                selectedAgent={selectedAgent}
+                onChange={setSelectedAgent}
+                isLoading={isLoadingAgents}
+                error={agentsError}
+                onShowInsights={() => setToolDrawerOpen(true)}
+                onShowDetails={() => setDetailDrawerOpen(true)}
+                hasConversation={!!currentConversationId}
+              />
+            </div>
 
-                {/* Conversation List Section */}
-                <ConversationSidebar
-                  conversationList={conversationList}
-                  isLoadingConversations={isLoadingConversations}
-                  isFetchingMoreConversations={isFetchingMoreConversations}
-                  loadMoreConversations={loadMore}
-                  hasNextConversationPage={hasNextPage}
-                  currentConversationId={currentConversationId}
-                  onSelectConversation={handleSelectConversation}
-                  onNewConversation={handleNewConversation}
-                  onDeleteConversation={handleDeleteConversation}
-                  onRenameConversation={handleRenameConversation}
-                  className="min-h-0 flex-1 border-none bg-transparent"
-                  variant="embedded"
-                />
-              </GlassPanel>
-           </div>
+            {/* Conversation List Section */}
+            <ConversationSidebar
+              conversationList={conversationList}
+              isLoadingConversations={isLoadingConversations}
+              isFetchingMoreConversations={isFetchingMoreConversations}
+              loadMoreConversations={loadMore}
+              hasNextConversationPage={hasNextPage}
+              currentConversationId={currentConversationId}
+              onSelectConversation={handleSelectConversation}
+              onNewConversation={handleNewConversation}
+              onDeleteConversation={handleDeleteConversation}
+              onRenameConversation={handleRenameConversation}
+              className="min-h-0 flex-1 border-none bg-transparent"
+              variant="embedded"
+            />
+          </GlassPanel>
         </div>
       </div>
 

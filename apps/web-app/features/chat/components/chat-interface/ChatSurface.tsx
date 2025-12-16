@@ -13,8 +13,6 @@ import { ReasoningPanel } from './ReasoningPanel';
 import { PromptComposer } from './PromptComposer';
 import type { ChatMessage, ConversationLifecycleStatus, ToolEventAnchors, ToolState } from '@/lib/chat/types';
 import type { AttachmentState } from '../../hooks/useAttachmentResolver';
-import type { StreamingChatEvent } from '@/lib/api/client/types.gen';
-import { GuardrailEventsPanel } from './GuardrailEventsPanel';
 
 type MemoryModeOption = 'inherit' | 'none' | 'trim' | 'summarize' | 'compact';
 
@@ -27,7 +25,6 @@ interface ChatSurfaceProps {
   reasoningText?: string;
   tools: ToolState[];
   toolEventAnchors?: ToolEventAnchors;
-  guardrailEvents?: StreamingChatEvent[];
   chatStatus?: ChatStatus;
   lifecycleStatus?: ConversationLifecycleStatus;
   activeAgent?: string;
@@ -74,7 +71,6 @@ export function ChatSurface({
   reasoningText,
   tools,
   toolEventAnchors,
-  guardrailEvents = [],
   chatStatus,
   lifecycleStatus,
   activeAgent,
@@ -204,8 +200,6 @@ export function ChatSurface({
               />
 
               <ReasoningPanel reasoningText={reasoningText} isStreaming={isSending} />
-
-              <GuardrailEventsPanel events={guardrailEvents} />
             </>
           )}
         </ConversationContent>

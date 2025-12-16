@@ -16,6 +16,10 @@ class _DummyRegistry:
         self.seen_runtime_ctx = runtime_ctx
         return self.agent
 
+    def get_code_interpreter_mode(self, agent_key):  # pragma: no cover - simple stub
+        _ = agent_key
+        return None
+
 
 class _DummyAgent:
     def __init__(self, model: str):

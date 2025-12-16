@@ -53,6 +53,8 @@ async def test_strategy_session_emits_compaction_event():
                 "name": "weather",
                 "content": "rainy",
             },
+            {"role": "user", "content": "next", "type": "message"},
+            {"role": "assistant", "content": "ok", "type": "message"},
         ]
     )
 
@@ -64,6 +66,6 @@ async def test_strategy_session_emits_compaction_event():
     assert payload["compacted_call_ids"] == ["call-1"]
 
     items = await base.get_items()
-    assert len(items) == 2
+    assert len(items) == 4
     assert items[1].get("compacted") is True
     assert items[1].get("type") == "function_call_output"

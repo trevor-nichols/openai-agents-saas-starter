@@ -13,159 +13,112 @@ import {
 import { renderToolOutput } from '@/components/ui/ai/renderToolOutput';
 import { InlineTag } from '@/components/ui/foundation';
 import { cn } from '@/lib/utils';
-import type {
-  StreamingWorkflowEvent,
-  ToolCallPayload,
-  UrlCitation as ApiUrlCitation,
-  ContainerFileCitation as ApiContainerFileCitation,
-  FileCitation as ApiFileCitation,
-} from '@/lib/api/client/types.gen';
-import type { Annotation } from '@/lib/chat/types';
+import type { StreamingWorkflowEvent } from '@/lib/api/client/types.gen';
 
 interface WorkflowStreamLogProps {
   events: (StreamingWorkflowEvent & { receivedAt?: string })[];
 }
 
-const KIND_LABEL: Record<StreamingWorkflowEvent['kind'], string> = {
+type KnownKind = NonNullable<StreamingWorkflowEvent['kind']>;
+
+const KIND_LABEL: Record<KnownKind, string> = {
   lifecycle: 'Lifecycle',
-  run_item_stream_event: 'Run Item',
-  agent_updated_stream_event: 'Agent Update',
-  raw_response_event: 'Response',
-  guardrail_result: 'Guardrail',
-  usage: 'Usage',
+  'message.delta': 'Message',
+  'message.citation': 'Citation',
+  'reasoning_summary.delta': 'Reasoning Summary',
+  'refusal.delta': 'Refusal',
+  'refusal.done': 'Refusal',
+  'tool.status': 'Tool Status',
+  'tool.arguments.delta': 'Tool Args',
+  'tool.arguments.done': 'Tool Args',
+  'tool.code.delta': 'Tool Code',
+  'tool.code.done': 'Tool Code',
+  'tool.output': 'Tool Output',
+  'chunk.delta': 'Chunk',
+  'chunk.done': 'Chunk',
   error: 'Error',
+  final: 'Final',
 };
 
-type ToolViewModel =
-  | {
-      label: string;
-      state: 'input-streaming' | 'input-available' | 'output-available' | 'output-error';
-      input?: unknown;
-      output?: unknown;
-      errorText?: string | null;
-    }
-  | null;
+type ToolViewModel = {
+  label: string;
+  state: 'input-streaming' | 'input-available' | 'output-available' | 'output-error';
+  input?: unknown;
+  output?: unknown;
+  errorText?: string | null;
+};
 
-function mapAnnotations(
-  anns: (ApiUrlCitation | ApiContainerFileCitation | ApiFileCitation)[] | undefined,
-): Annotation[] | undefined {
-  if (!anns?.length) return undefined;
-  return anns.map((ann) => {
-    if (ann.type === 'url_citation') {
-      return ann as Annotation;
-    }
-    if (ann.type === 'container_file_citation') {
-      return ann as Annotation;
-    }
-    return ann as Annotation;
-  });
+function toolStateFromStatus(status: string): ToolViewModel['state'] {
+  if (status === 'completed') return 'output-available';
+  if (status === 'failed') return 'output-error';
+  return 'input-available';
 }
 
-function mapToolCall(toolCall: ToolCallPayload | Record<string, unknown> | null | undefined): ToolViewModel {
-  if (!toolCall || typeof toolCall !== 'object') return null;
-  const anyCall = toolCall as ToolCallPayload;
-
-  if (anyCall.web_search_call) {
-    const status = anyCall.web_search_call.status === 'completed' ? 'output-available' : 'input-available';
+function mapTool(tool: Extract<StreamingWorkflowEvent, { kind?: 'tool.status' }>['tool']): ToolViewModel {
+  if (tool.tool_type === 'web_search') {
     return {
       label: 'web_search',
-      state: status,
-      input: anyCall.web_search_call.action ?? null,
-      output: anyCall.web_search_call.action ?? null,
+      state: toolStateFromStatus(tool.status),
+      input: tool.query ?? undefined,
+      output: tool.sources ?? undefined,
     };
   }
-  if (anyCall.code_interpreter_call) {
-    const status =
-      anyCall.code_interpreter_call.status === 'completed'
-        ? 'output-available'
-        : anyCall.code_interpreter_call.status === 'interpreting'
-          ? 'input-available'
-          : 'input-streaming';
+
+  if (tool.tool_type === 'file_search') {
+    return {
+      label: 'file_search',
+      state: toolStateFromStatus(tool.status),
+      input: tool.queries ?? undefined,
+      output: tool.results ?? undefined,
+    };
+  }
+
+  if (tool.tool_type === 'code_interpreter') {
     return {
       label: 'code_interpreter',
-      state: status,
-      input: anyCall.code_interpreter_call.code,
-      output: {
-        outputs: anyCall.code_interpreter_call.outputs,
-        container_id: anyCall.code_interpreter_call.container_id,
-        container_mode: anyCall.code_interpreter_call.container_mode,
-        annotations: anyCall.code_interpreter_call.annotations,
+      state: toolStateFromStatus(tool.status),
+      input: {
+        container_id: tool.container_id ?? null,
+        container_mode: tool.container_mode ?? null,
       },
     };
   }
-  if (anyCall.file_search_call) {
-    const status =
-      anyCall.file_search_call.status === 'completed'
-        ? 'output-available'
-        : anyCall.file_search_call.status === 'searching'
-          ? 'input-available'
-          : 'input-streaming';
-    return {
-      label: 'file_search',
-      state: status,
-      input: anyCall.file_search_call.queries,
-      output: anyCall.file_search_call.results,
-    };
-  }
-  if (anyCall.image_generation_call) {
-    const status =
-      anyCall.image_generation_call.status === 'completed'
-        ? 'output-available'
-        : anyCall.image_generation_call.status === 'partial_image'
-          ? 'input-available'
-          : 'input-streaming';
+
+  if (tool.tool_type === 'image_generation') {
     return {
       label: 'image_generation',
-      state: status,
-      input: anyCall.image_generation_call.revised_prompt ?? null,
-      output: [anyCall.image_generation_call],
+      state: toolStateFromStatus(tool.status),
+      input: {
+        revised_prompt: tool.revised_prompt ?? null,
+        format: tool.format ?? null,
+        size: tool.size ?? null,
+        quality: tool.quality ?? null,
+        background: tool.background ?? null,
+        partial_image_index: tool.partial_image_index ?? null,
+      },
     };
   }
 
-    const fallbackType = (anyCall as { tool_type?: string }).tool_type ?? 'tool_call';
+  if (tool.tool_type === 'function') {
+    return {
+      label: tool.name,
+      state: toolStateFromStatus(tool.status),
+      input: tool.arguments_json ?? tool.arguments_text ?? undefined,
+      output: tool.output ?? undefined,
+      errorText: tool.status === 'failed' ? 'Tool failed' : undefined,
+    };
+  }
+
   return {
-    label: fallbackType,
-    state: 'input-available',
-    input: anyCall,
+    label: tool.tool_name,
+    state: toolStateFromStatus(tool.status),
+    input: {
+      server_label: tool.server_label ?? null,
+      arguments: tool.arguments_json ?? tool.arguments_text ?? null,
+    },
+    output: tool.output ?? undefined,
+    errorText: tool.status === 'failed' ? 'Tool failed' : undefined,
   };
-}
-
-function GuardrailDetails({ event }: { event: StreamingWorkflowEvent }) {
-  if (event.kind !== 'guardrail_result') return null;
-
-  const booleanTag = (label: string, value: boolean | null | undefined) => {
-    if (value === null || value === undefined) return null;
-    return <InlineTag tone={value ? 'warning' : 'default'}>{`${label}: ${value ? 'yes' : 'no'}`}</InlineTag>;
-  };
-
-  const confidence =
-    event.guardrail_confidence !== null && event.guardrail_confidence !== undefined
-      ? event.guardrail_confidence
-      : null;
-
-  return (
-    <div className="mt-3 space-y-2">
-      <div className="flex flex-wrap gap-2">
-        {event.guardrail_stage ? <InlineTag tone="default">Stage: {event.guardrail_stage}</InlineTag> : null}
-        {event.guardrail_key ? <InlineTag tone="default">Key: {event.guardrail_key}</InlineTag> : null}
-        {event.guardrail_name ? <InlineTag tone="default">Name: {event.guardrail_name}</InlineTag> : null}
-        {event.guardrail_summary ? <InlineTag tone="default">Summary</InlineTag> : null}
-        {booleanTag('Tripwire', event.guardrail_tripwire_triggered)}
-        {booleanTag('Flagged', event.guardrail_flagged)}
-        {booleanTag('Suppressed', event.guardrail_suppressed)}
-        {confidence !== null ? <InlineTag tone="default">Confidence: {confidence.toFixed(2)}</InlineTag> : null}
-      </div>
-      {event.guardrail_masked_content ? (
-        <CodeBlock code={event.guardrail_masked_content} language="text" />
-      ) : null}
-      {event.guardrail_details ? (
-        <CodeBlock code={JSON.stringify(event.guardrail_details, null, 2)} language="json" />
-      ) : null}
-      {event.guardrail_token_usage ? (
-        <CodeBlock code={JSON.stringify(event.guardrail_token_usage, null, 2)} language="json" />
-      ) : null}
-    </div>
-  );
 }
 
 export function WorkflowStreamLog({ events }: WorkflowStreamLogProps) {
@@ -178,16 +131,21 @@ export function WorkflowStreamLog({ events }: WorkflowStreamLogProps) {
   return (
     <div className="space-y-3">
       {grouped.map((evt, idx) => {
-        const label = KIND_LABEL[evt.kind] ?? evt.kind;
-        const isTerminal = Boolean(evt.is_terminal);
+        const kind = evt.kind;
+        const isTerminal = kind === 'final' || kind === 'error';
+        const label = kind ? (KIND_LABEL[kind] ?? kind) : 'Unknown';
+
         const displayTime = evt.server_timestamp
           ? new Date(evt.server_timestamp).toLocaleTimeString()
           : evt.receivedAt
             ? new Date(evt.receivedAt).toLocaleTimeString()
             : null;
+
+        const workflow = evt.workflow ?? null;
+
         return (
           <div
-            key={`${evt.kind}-${evt.sequence_number ?? idx}-${idx}`}
+            key={`${evt.stream_id}-${evt.event_id}-${idx}`}
             className={cn(
               'rounded-lg border border-white/5 bg-white/5 p-3 shadow-sm',
               isTerminal ? 'ring-1 ring-primary/40' : undefined,
@@ -195,24 +153,23 @@ export function WorkflowStreamLog({ events }: WorkflowStreamLogProps) {
             tabIndex={0}
           >
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={isTerminal ? 'default' : 'outline'}>{label}</Badge>
-                {evt.event ? (
-                  <Badge variant="secondary" className="text-[11px] uppercase tracking-wide">
-                    {evt.event}
-                  </Badge>
+
+                {workflow?.stage_name ? <InlineTag tone="default">Stage: {workflow.stage_name}</InlineTag> : null}
+                {workflow?.step_name ? <InlineTag tone="default">Step: {workflow.step_name}</InlineTag> : null}
+                {workflow?.parallel_group ? (
+                  <InlineTag tone="default">Group: {workflow.parallel_group}</InlineTag>
                 ) : null}
-                {evt.raw_type ? (
-                  <span className="text-[11px] uppercase tracking-wide text-foreground/50">{evt.raw_type}</span>
+                {typeof workflow?.branch_index === 'number' ? (
+                  <InlineTag tone="default">Branch: {workflow.branch_index}</InlineTag>
                 ) : null}
-                {evt.stage_name ? <InlineTag tone="default">Stage: {evt.stage_name}</InlineTag> : null}
-                {evt.parallel_group ? (
-                  <InlineTag tone="default">Group: {evt.parallel_group}</InlineTag>
+                {workflow?.workflow_run_id ? (
+                  <InlineTag tone="default">Run: {workflow.workflow_run_id.slice(-8)}</InlineTag>
                 ) : null}
-                {evt.agent_used || evt.agent ? (
-                  <InlineTag tone="default">Agent: {evt.agent_used ?? evt.agent}</InlineTag>
-                ) : null}
+                {evt.agent ? <InlineTag tone="default">Agent: {evt.agent}</InlineTag> : null}
               </div>
+
               <div className="flex items-center gap-2 text-[11px] text-foreground/60">
                 {displayTime ? <span>{displayTime}</span> : null}
                 {isTerminal ? <span className="text-primary">Terminal</span> : null}
@@ -220,41 +177,176 @@ export function WorkflowStreamLog({ events }: WorkflowStreamLogProps) {
             </div>
 
             {(() => {
-              const content = evt.response_text ?? evt.text_delta;
-              if (!content) return null;
-              const annotations = mapAnnotations(
-                evt.annotations as (ApiUrlCitation | ApiContainerFileCitation | ApiFileCitation)[] | undefined,
-              );
-              return (
-                <div className="mt-3">
-                  <Response citations={annotations}>{content}</Response>
-                </div>
-              );
+              switch (evt.kind) {
+                case 'lifecycle':
+                  return (
+                    <div className="mt-3">
+                      <CodeBlock
+                        code={JSON.stringify(
+                          { status: evt.status, reason: evt.reason ?? null },
+                          null,
+                          2,
+                        )}
+                        language="json"
+                      />
+                    </div>
+                  );
+                case 'message.delta':
+                  return (
+                    <div className="mt-3">
+                      <Response>{evt.delta}</Response>
+                    </div>
+                  );
+                case 'message.citation':
+                  return (
+                    <div className="mt-3">
+                      <CodeBlock code={JSON.stringify(evt.citation, null, 2)} language="json" />
+                    </div>
+                  );
+                case 'reasoning_summary.delta':
+                  return (
+                    <div className="mt-3">
+                      <Response>{evt.delta}</Response>
+                    </div>
+                  );
+                case 'refusal.delta':
+                  return (
+                    <div className="mt-3">
+                      <Response>{evt.delta}</Response>
+                    </div>
+                  );
+                case 'refusal.done':
+                  return (
+                    <div className="mt-3">
+                      <Response>{evt.refusal_text}</Response>
+                    </div>
+                  );
+                case 'tool.status': {
+                  const tool = mapTool(evt.tool);
+                  return (
+                    <div className="mt-3">
+                      <Tool defaultOpen={tool.state !== 'output-available'}>
+                        <ToolHeader type={`tool-${tool.label}` as const} state={tool.state} />
+                        <ToolContent>
+                          {tool.input !== undefined ? <ToolInput input={tool.input} /> : null}
+                          <ToolOutput
+                            output={renderToolOutput(tool)}
+                            errorText={tool.errorText ?? undefined}
+                          />
+                        </ToolContent>
+                      </Tool>
+                    </div>
+                  );
+                }
+                case 'tool.arguments.delta':
+                  return (
+                    <div className="mt-3">
+                      <CodeBlock
+                        code={JSON.stringify(
+                          {
+                            tool_call_id: evt.tool_call_id,
+                            tool_type: evt.tool_type,
+                            tool_name: evt.tool_name,
+                            delta: evt.delta,
+                          },
+                          null,
+                          2,
+                        )}
+                        language="json"
+                      />
+                    </div>
+                  );
+                case 'tool.arguments.done':
+                  return (
+                    <div className="mt-3">
+                      <CodeBlock
+                        code={JSON.stringify(
+                          {
+                            tool_call_id: evt.tool_call_id,
+                            tool_type: evt.tool_type,
+                            tool_name: evt.tool_name,
+                            arguments_text: evt.arguments_text,
+                            arguments_json: evt.arguments_json ?? null,
+                          },
+                          null,
+                          2,
+                        )}
+                        language="json"
+                      />
+                    </div>
+                  );
+                case 'tool.code.delta':
+                  return (
+                    <div className="mt-3">
+                      <CodeBlock code={evt.delta} language="python" />
+                    </div>
+                  );
+                case 'tool.code.done':
+                  return (
+                    <div className="mt-3">
+                      <CodeBlock code={evt.code} language="python" />
+                    </div>
+                  );
+                case 'tool.output': {
+                  const tool: ToolViewModel = {
+                    label: evt.tool_type,
+                    state: 'output-available',
+                    output: evt.output,
+                  };
+                  return (
+                    <div className="mt-3">
+                      <Tool defaultOpen={false}>
+                        <ToolHeader type={`tool-${tool.label}` as const} state={tool.state} />
+                        <ToolContent>
+                          <ToolOutput output={renderToolOutput(tool)} errorText={undefined} />
+                        </ToolContent>
+                      </Tool>
+                    </div>
+                  );
+                }
+                case 'chunk.delta':
+                  return (
+                    <div className="mt-3">
+                      <CodeBlock
+                        code={JSON.stringify(
+                          {
+                            target: evt.target,
+                            encoding: evt.encoding ?? null,
+                            chunk_index: evt.chunk_index,
+                            bytes: evt.data.length,
+                          },
+                          null,
+                          2,
+                        )}
+                        language="json"
+                      />
+                    </div>
+                  );
+                case 'chunk.done':
+                  return (
+                    <div className="mt-3">
+                      <CodeBlock
+                        code={JSON.stringify({ target: evt.target }, null, 2)}
+                        language="json"
+                      />
+                    </div>
+                  );
+                case 'error':
+                  return (
+                    <div className="mt-3">
+                      <CodeBlock code={JSON.stringify(evt.error, null, 2)} language="json" />
+                    </div>
+                  );
+                case 'final':
+                  return (
+                    <div className="mt-3">
+                      <CodeBlock code={JSON.stringify(evt.final, null, 2)} language="json" />
+                    </div>
+                  );
+                default:
+                  return null;
+              }
             })()}
-
-            {evt.structured_output !== undefined && evt.structured_output !== null ? (
-              <div className="mt-2">
-                <CodeBlock code={JSON.stringify(evt.structured_output, null, 2)} language="json" />
-              </div>
-            ) : null}
-
-            {evt.kind === 'guardrail_result' ? <GuardrailDetails event={evt} /> : null}
-
-            {evt.tool_call ? (
-              (() => {
-                const tool = mapToolCall(evt.tool_call as ToolCallPayload);
-                if (!tool) return null;
-                return (
-                  <Tool>
-                    <ToolHeader type={`tool-${tool.label}` as const} state={tool.state} />
-                    <ToolContent>
-                      {tool.input !== undefined ? <ToolInput input={tool.input} /> : null}
-                      <ToolOutput output={renderToolOutput(tool)} errorText={tool.errorText ?? undefined} />
-                    </ToolContent>
-                  </Tool>
-                );
-              })()
-            ) : null}
           </div>
         );
       })}

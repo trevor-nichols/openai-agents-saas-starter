@@ -172,7 +172,6 @@ function ChatPage({ status, streamStatus, billingStatus = 'open', includeAttachm
         onShareLocationChange={() => {}}
         locationHint={baseLocation}
         onLocationHintChange={() => {}}
-        guardrailEvents={[]}
         onMessageInputChange={(value: string) => {
           console.log('input change', value);
         }}

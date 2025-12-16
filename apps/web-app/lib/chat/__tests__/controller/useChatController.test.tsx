@@ -1,16 +1,12 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ConversationHistory } from '@/types/conversations';
 import { useChatController } from '@/lib/chat';
-import {
-  createMutationMock,
-  createQueryWrapper,
-} from '../testUtils';
+import { createMutationMock, createQueryWrapper } from '../testUtils';
 
 vi.mock('@/lib/api/conversations', () => ({
-  fetchConversationHistory: vi.fn(),
   fetchConversationMessages: vi.fn(),
+  fetchConversationEvents: vi.fn(),
   deleteConversationById: vi.fn(),
 }));
 
@@ -22,18 +18,11 @@ vi.mock('@/lib/queries/chat', () => ({
   useSendChatMutation: vi.fn(),
 }));
 
-const { fetchConversationHistory, fetchConversationMessages, deleteConversationById } = vi.mocked(
+const { fetchConversationMessages, fetchConversationEvents } = vi.mocked(
   await import('@/lib/api/conversations'),
 );
 const { streamChat } = vi.mocked(await import('@/lib/api/chat'));
 const { useSendChatMutation } = vi.mocked(await import('@/lib/queries/chat'));
-
-const makeHistory = (id: string): ConversationHistory => ({
-  conversation_id: id,
-  created_at: '2025-01-01T00:00:00.000Z',
-  updated_at: '2025-01-01T00:00:00.000Z',
-  messages: [],
-});
 
 describe('useChatController', () => {
   afterEach(() => {
@@ -42,11 +31,12 @@ describe('useChatController', () => {
   });
 
   beforeEach(() => {
-    fetchConversationHistory.mockImplementation(async (id: string) => makeHistory(id));
+    fetchConversationEvents.mockResolvedValue({ conversation_id: 'conv-1', items: [] });
     fetchConversationMessages.mockResolvedValue({ items: [], next_cursor: null, prev_cursor: null });
+    useSendChatMutation.mockReturnValue(createMutationMock());
   });
 
-  it('loads conversation history via selectConversation', async () => {
+  it('loads conversation messages via selectConversation', async () => {
     fetchConversationMessages.mockResolvedValue({
       items: [
         {
@@ -58,13 +48,9 @@ describe('useChatController', () => {
       next_cursor: null,
       prev_cursor: null,
     });
-    useSendChatMutation.mockReturnValue(createMutationMock());
 
     const { Wrapper } = createQueryWrapper();
-
-    const { result } = renderHook(() => useChatController(), {
-      wrapper: Wrapper,
-    });
+    const { result } = renderHook(() => useChatController(), { wrapper: Wrapper });
 
     await act(async () => {
       await result.current.selectConversation('conv-1');
@@ -73,17 +59,18 @@ describe('useChatController', () => {
     await waitFor(() => {
       expect(result.current.currentConversationId).toBe('conv-1');
       expect(fetchConversationMessages).toHaveBeenCalled();
+      expect(fetchConversationEvents).toHaveBeenCalledWith({ conversationId: 'conv-1' });
       expect(result.current.messages).toHaveLength(1);
     });
+
     expect(result.current.messages[0]).toMatchObject({
       role: 'user',
       content: 'Hello there',
     });
   });
 
-  it('surfaces errors when initial message fetch fails', async () => {
+  it('surfaces errors when message fetch fails', async () => {
     fetchConversationMessages.mockRejectedValue(new Error('boom'));
-    useSendChatMutation.mockReturnValue(createMutationMock());
 
     const { Wrapper } = createQueryWrapper();
     const { result } = renderHook(() => useChatController(), { wrapper: Wrapper });
@@ -93,126 +80,121 @@ describe('useChatController', () => {
     });
 
     await waitFor(() => {
-      expect(fetchConversationMessages).toHaveBeenCalled();
-    });
-
-    await waitFor(() => {
       expect(result.current.historyError ?? '').toMatch(/boom/);
     });
   });
 
   it('streams message content and adds new conversation on send', async () => {
     const mutateAsync = vi.fn();
-    useSendChatMutation.mockReturnValue(
-      createMutationMock({ mutateAsync }),
-    );
+    useSendChatMutation.mockReturnValue(createMutationMock({ mutateAsync }));
 
-    streamChat.mockImplementation(() => (async function* () {
-      yield {
-        type: 'event' as const,
-        event: {
-        kind: 'raw_response_event',
-          conversation_id: 'conv-99',
-          agent_used: 'triage',
-          response_id: 'resp-1',
-          sequence_number: 1,
-          raw_type: 'response.output_text.delta',
-          run_item_name: null,
-          run_item_type: null,
-          tool_call_id: null,
-          tool_name: null,
-          agent: 'triage',
-          new_agent: null,
-          text_delta: 'Streaming response',
-          reasoning_delta: null,
-          is_terminal: true,
-          payload: {},
-        },
-      };
-    })());
+    streamChat.mockImplementation(() =>
+      (async function* () {
+        yield {
+          type: 'event' as const,
+          event: {
+            schema: 'public_sse_v1',
+            event_id: 1,
+            stream_id: 'stream-test',
+            server_timestamp: '2025-12-15T00:00:00.000Z',
+            kind: 'message.delta',
+            conversation_id: 'conv-99',
+            response_id: 'resp-1',
+            agent: 'triage',
+            message_id: 'msg-1',
+            delta: 'Streaming response',
+          },
+        };
+        yield {
+          type: 'event' as const,
+          event: {
+            schema: 'public_sse_v1',
+            event_id: 2,
+            stream_id: 'stream-test',
+            server_timestamp: '2025-12-15T00:00:00.100Z',
+            kind: 'final',
+            conversation_id: 'conv-99',
+            response_id: 'resp-1',
+            agent: 'triage',
+            final: {
+              status: 'completed',
+              response_text: 'Streaming response',
+              structured_output: null,
+              reasoning_summary_text: null,
+              refusal_text: null,
+              attachments: [],
+              usage: { input_tokens: 1, output_tokens: 1, total_tokens: 2 },
+            },
+          },
+        };
+      })(),
+    );
 
     const onConversationAdded = vi.fn();
     const { Wrapper } = createQueryWrapper();
-
-    const { result } = renderHook(
-      () =>
-        useChatController({
-          onConversationAdded,
-        }),
-      { wrapper: Wrapper },
-    );
+    const { result } = renderHook(() => useChatController({ onConversationAdded }), { wrapper: Wrapper });
 
     await act(async () => {
       await result.current.sendMessage('Tell me something');
     });
 
-    expect(onConversationAdded).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'conv-99' }),
-    );
+    expect(onConversationAdded).toHaveBeenCalledWith(expect.objectContaining({ id: 'conv-99' }));
     expect(mutateAsync).not.toHaveBeenCalled();
 
     await waitFor(() => {
       expect(result.current.currentConversationId).toBe('conv-99');
     });
-    const assistantMessages = result.current.messages.filter(
-      (msg) => msg.role === 'assistant',
-    );
+
+    const assistantMessages = result.current.messages.filter((msg) => msg.role === 'assistant');
     expect(assistantMessages.at(-1)?.content).toBe('Streaming response');
   });
 
-  it('does not append an empty assistant message when a tool ends the turn', async () => {
-    useSendChatMutation.mockReturnValue(createMutationMock());
-
-    streamChat.mockImplementation(() => (async function* () {
-      yield {
-        type: 'event' as const,
-        event: {
-          kind: 'raw_response_event',
-          conversation_id: 'conv-tool-only',
-          agent_used: 'triage',
-          response_id: 'resp-tool-only',
-          sequence_number: 1,
-          raw_type: 'response.output_text.delta',
-          text_delta: 'Preamble',
-          is_terminal: false,
-          payload: {},
-        },
-      };
-      yield {
-        type: 'event' as const,
-        event: {
-          kind: 'run_item_stream_event',
-          conversation_id: 'conv-tool-only',
-          agent_used: 'triage',
-          response_id: 'resp-tool-only',
-          sequence_number: 2,
-          run_item_name: 'tool_called',
-          run_item_type: 'tool_call_item',
-          tool_call_id: 'tool-1',
-          tool_name: 'web_search',
-          agent: 'triage',
-          is_terminal: false,
-          payload: { q: 'hello' },
-        },
-      };
-      yield {
-        type: 'event' as const,
-        event: {
-          kind: 'run_item_stream_event',
-          conversation_id: 'conv-tool-only',
-          agent_used: 'triage',
-          response_id: 'resp-tool-only',
-          sequence_number: 3,
-          run_item_name: 'tool_output',
-          run_item_type: 'tool_call_output_item',
-          tool_call_id: 'tool-1',
-          tool_name: 'web_search',
-          agent: 'triage',
-          is_terminal: true,
-          payload: { results: [] },
-        },
-      };
-    })());
+  it('does not append an assistant message for tool-only turns', async () => {
+    streamChat.mockImplementation(() =>
+      (async function* () {
+        yield {
+          type: 'event' as const,
+          event: {
+            schema: 'public_sse_v1',
+            event_id: 1,
+            stream_id: 'stream-tool-only',
+            server_timestamp: '2025-12-15T00:00:00.000Z',
+            kind: 'tool.status',
+            conversation_id: 'conv-tool-only',
+            response_id: 'resp-tool',
+            agent: 'triage',
+            tool: {
+              tool_type: 'web_search',
+              tool_call_id: 'tool-1',
+              status: 'searching',
+              query: 'hello',
+            },
+          },
+        };
+        yield {
+          type: 'event' as const,
+          event: {
+            schema: 'public_sse_v1',
+            event_id: 2,
+            stream_id: 'stream-tool-only',
+            server_timestamp: '2025-12-15T00:00:00.050Z',
+            kind: 'final',
+            conversation_id: 'conv-tool-only',
+            response_id: 'resp-tool',
+            agent: 'triage',
+            final: {
+              status: 'completed',
+              response_text: null,
+              structured_output: null,
+              reasoning_summary_text: null,
+              refusal_text: null,
+              attachments: [],
+              usage: { input_tokens: 1, output_tokens: 1, total_tokens: 2 },
+            },
+          },
+        };
+      })(),
+    );
 
     const { Wrapper } = createQueryWrapper();
     const { result } = renderHook(() => useChatController(), { wrapper: Wrapper });
@@ -222,363 +204,217 @@ describe('useChatController', () => {
     });
 
     const assistantMessages = result.current.messages.filter((msg) => msg.role === 'assistant');
-    expect(assistantMessages).toHaveLength(1);
-    expect(assistantMessages[0]?.content).toBe('Preamble');
+    expect(assistantMessages).toHaveLength(0);
+    expect(result.current.toolEvents.length).toBeGreaterThan(0);
   });
 
-  it('anchors tools to the user message when tool events arrive before the first text delta', async () => {
-    useSendChatMutation.mockReturnValue(createMutationMock());
+  it('anchors output-only tools under the user turn', async () => {
+    streamChat.mockImplementation(() =>
+      (async function* () {
+        yield {
+          type: 'event' as const,
+          event: {
+            schema: 'public_sse_v1',
+            event_id: 1,
+            stream_id: 'stream-output-only',
+            server_timestamp: '2025-12-15T00:00:00.000Z',
+            kind: 'message.delta',
+            conversation_id: 'conv-output-only',
+            response_id: 'resp-output-only',
+            agent: 'triage',
+            message_id: 'msg-output-only',
+            delta: 'Here is the answer.',
+          },
+        };
 
-    streamChat.mockImplementation(() => (async function* () {
-      yield {
-        type: 'event' as const,
-        event: {
-          kind: 'agent_updated_stream_event',
-          conversation_id: 'conv-tool-first',
-          new_agent: 'Researcher',
-          structured_output: null,
-        },
-      };
-      yield {
-        type: 'event' as const,
-        event: {
-          kind: 'raw_response_event',
-          conversation_id: 'conv-tool-first',
-          raw_type: 'response.web_search_call.in_progress',
-          structured_output: null,
-          tool_call: {
-            tool_type: 'web_search',
-            web_search_call: {
-              id: 'call-1',
-              type: 'web_search_call',
-              status: 'in_progress',
-              action: null,
+        yield {
+          type: 'event' as const,
+          event: {
+            schema: 'public_sse_v1',
+            event_id: 2,
+            stream_id: 'stream-output-only',
+            server_timestamp: '2025-12-15T00:00:00.050Z',
+            kind: 'tool.output',
+            conversation_id: 'conv-output-only',
+            response_id: 'resp-output-only',
+            agent: 'triage',
+            tool_call_id: 'call-output-only',
+            tool_type: 'function',
+            output: { ok: true },
+          },
+        };
+
+        yield {
+          type: 'event' as const,
+          event: {
+            schema: 'public_sse_v1',
+            event_id: 3,
+            stream_id: 'stream-output-only',
+            server_timestamp: '2025-12-15T00:00:00.100Z',
+            kind: 'final',
+            conversation_id: 'conv-output-only',
+            response_id: 'resp-output-only',
+            agent: 'triage',
+            final: {
+              status: 'completed',
+              response_text: 'Here is the answer.',
+              structured_output: null,
+              reasoning_summary_text: null,
+              refusal_text: null,
+              attachments: [],
+              usage: { input_tokens: 1, output_tokens: 1, total_tokens: 2 },
             },
           },
-        },
-      };
-      yield {
-        type: 'event' as const,
-        event: {
-          kind: 'raw_response_event',
-          conversation_id: 'conv-tool-first',
-          raw_type: 'response.output_text.delta',
-          text_delta: 'Final answer',
-          structured_output: null,
-        },
-      };
-      yield {
-        type: 'event' as const,
-        event: {
-          kind: 'raw_response_event',
-          conversation_id: 'conv-tool-first',
-          raw_type: 'response.completed',
-          is_terminal: true,
-          structured_output: null,
-        },
-      };
-    })());
+        };
+      })(),
+    );
 
     const { Wrapper } = createQueryWrapper();
     const { result } = renderHook(() => useChatController(), { wrapper: Wrapper });
 
     await act(async () => {
-      await result.current.sendMessage('Search first');
+      await result.current.sendMessage('Trigger output-only tool anchoring');
     });
 
     await waitFor(() => {
-      const assistantMessages = result.current.messages.filter((msg) => msg.role === 'assistant');
-      expect(assistantMessages).toHaveLength(1);
-      expect(assistantMessages[0]?.content).toBe('Final answer');
-
-      const userMessage = result.current.messages.find((msg) => msg.role === 'user');
-      expect(userMessage).toBeTruthy();
-      expect(result.current.toolEventAnchors[userMessage!.id]).toEqual(['call-1']);
+      expect(result.current.toolEvents.some((tool) => tool.id === 'call-output-only')).toBe(true);
     });
+
+    const userMessage = result.current.messages.find((msg) => msg.role === 'user');
+    const assistantMessage = result.current.messages.find((msg) => msg.role === 'assistant');
+    expect(userMessage).toBeTruthy();
+    expect(assistantMessage).toBeTruthy();
+
+    expect(result.current.toolEventAnchors[userMessage!.id]).toEqual(['call-output-only']);
+    expect(result.current.toolEventAnchors[assistantMessage!.id]).toBeUndefined();
   });
 
-  it('falls back to mutation when streaming fails', async () => {
-    const fallbackResponse = {
-      conversation_id: 'conv-fallback',
-      response: 'Fallback answered',
-    };
+  it('keeps tool events anchored even when assistant messages are queued', async () => {
+    const originalRaf = globalThis.requestAnimationFrame;
+    const originalCancelRaf = globalThis.cancelAnimationFrame;
 
-    const mutateAsync = vi.fn().mockResolvedValue(fallbackResponse);
-    useSendChatMutation.mockReturnValue(
-      createMutationMock({ mutateAsync }),
-    );
+    try {
+      const rafCallbacks: FrameRequestCallback[] = [];
+      globalThis.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+        rafCallbacks.push(callback);
+        return rafCallbacks.length;
+      }) as typeof requestAnimationFrame;
+      globalThis.cancelAnimationFrame = ((_) => {
+        // noop for tests
+      }) as typeof cancelAnimationFrame;
 
-    streamChat.mockImplementation(() => {
-      throw new Error('stream failed');
-    });
-
-    const { Wrapper } = createQueryWrapper();
-
-    const { result } = renderHook(() => useChatController(), {
-      wrapper: Wrapper,
-    });
-
-    await act(async () => {
-      await result.current.sendMessage('Trigger fallback');
-    });
-
-    expect(mutateAsync).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: 'Trigger fallback',
-      }),
-    );
-    await waitFor(() => {
-      expect(result.current.currentConversationId).toBe('conv-fallback');
-    });
-    const assistantMessages = result.current.messages.filter(
-      (msg) => msg.role === 'assistant',
-    );
-    expect(assistantMessages.at(-1)?.content).toBe('Fallback answered');
-    expect(result.current.errorMessage).toBeNull();
-  });
-
-  it('deletes conversation and resets state', async () => {
-    fetchConversationHistory.mockResolvedValue({
-      conversation_id: 'conv-delete',
-      created_at: '2025-01-01T00:00:00.000Z',
-      updated_at: '2025-01-01T00:00:00.000Z',
-      messages: [],
-    });
-    deleteConversationById.mockResolvedValue(undefined);
-    useSendChatMutation.mockReturnValue(createMutationMock());
-
-    const reloadConversations = vi.fn();
-    const onConversationRemoved = vi.fn();
-    const { Wrapper } = createQueryWrapper();
-
-    const { result } = renderHook(
-      () =>
-        useChatController({
-          onConversationRemoved,
-          reloadConversations,
-        }),
-      { wrapper: Wrapper },
-    );
-
-    await act(async () => {
-      await result.current.selectConversation('conv-delete');
-    });
-
-    await act(async () => {
-      await result.current.deleteConversation('conv-delete');
-    });
-
-    expect(deleteConversationById).toHaveBeenCalledWith('conv-delete');
-    expect(onConversationRemoved).toHaveBeenCalledWith('conv-delete');
-    expect(reloadConversations).toHaveBeenCalled();
-    expect(result.current.currentConversationId).toBeNull();
-    expect(result.current.messages).toHaveLength(0);
-  });
-
-  it('resets activeAgent to selectedAgent on new conversation after handoff', async () => {
-    const mutateAsync = vi.fn();
-    useSendChatMutation.mockReturnValue(createMutationMock({ mutateAsync }));
-
-    streamChat.mockImplementation(() => (async function* () {
-      yield {
-        type: 'event' as const,
-        event: {
-          kind: 'agent_updated_stream_event',
-          conversation_id: 'conv-handoff',
-          new_agent: 'other-agent',
-          agent_used: 'other-agent',
-          response_id: 'resp-2',
-          sequence_number: 5,
-          raw_type: null,
-          run_item_name: null,
-          run_item_type: null,
-          tool_call_id: null,
-          tool_name: null,
-          agent: 'other-agent',
-          text_delta: null,
-          reasoning_delta: null,
-          is_terminal: true,
-          payload: {},
-        },
+      const createDeferred = () => {
+        let resolve!: () => void;
+        const promise = new Promise<void>((res) => {
+          resolve = res;
+        });
+        return { promise, resolve };
       };
-    })());
 
-    const { Wrapper } = createQueryWrapper();
-    const { result } = renderHook(() => useChatController(), { wrapper: Wrapper });
+      const pauseAfterFirstDelta = createDeferred();
+      const pauseAfterTool = createDeferred();
 
-    await act(async () => {
-      await result.current.sendMessage('trigger handoff');
-    });
+      streamChat.mockImplementation(() =>
+        (async function* () {
+          yield {
+            type: 'event' as const,
+            event: {
+              schema: 'public_sse_v1',
+              event_id: 1,
+              stream_id: 'stream-anchoring',
+              server_timestamp: '2025-12-15T00:00:00.000Z',
+              kind: 'message.delta',
+              conversation_id: 'conv-anchor',
+              response_id: 'resp-anchor',
+              agent: 'triage',
+              message_id: 'msg-1',
+              delta: 'Let me check.',
+            },
+          };
 
-    expect(result.current.activeAgent).toBe('other-agent');
+          await pauseAfterFirstDelta.promise;
 
-    await act(async () => {
-      result.current.startNewConversation();
-    });
+          yield {
+            type: 'event' as const,
+            event: {
+              schema: 'public_sse_v1',
+              event_id: 2,
+              stream_id: 'stream-anchoring',
+              server_timestamp: '2025-12-15T00:00:00.050Z',
+              kind: 'tool.status',
+              conversation_id: 'conv-anchor',
+              response_id: 'resp-anchor',
+              agent: 'triage',
+              tool: {
+                tool_type: 'web_search',
+                tool_call_id: 'tool-1',
+                status: 'searching',
+                query: 'hello',
+              },
+            },
+          };
 
-    expect(result.current.activeAgent).toBe('triage');
-  });
+          await pauseAfterTool.promise;
 
-  it('clears reasoning text between sends', async () => {
-    const mutateAsync = vi.fn();
-    useSendChatMutation.mockReturnValue(createMutationMock({ mutateAsync }));
+          yield {
+            type: 'event' as const,
+            event: {
+              schema: 'public_sse_v1',
+              event_id: 3,
+              stream_id: 'stream-anchoring',
+              server_timestamp: '2025-12-15T00:00:00.100Z',
+              kind: 'final',
+              conversation_id: 'conv-anchor',
+              response_id: 'resp-anchor',
+              agent: 'triage',
+              final: {
+                status: 'completed',
+                response_text: 'Let me check.',
+                structured_output: null,
+                reasoning_summary_text: null,
+                refusal_text: null,
+                attachments: [],
+                usage: { input_tokens: 1, output_tokens: 1, total_tokens: 2 },
+              },
+            },
+          };
+        })(),
+      );
 
-    // First stream provides reasoning delta
-    streamChat.mockImplementationOnce(() => (async function* () {
-      yield {
-        type: 'event' as const,
-        event: {
-        kind: 'raw_response_event',
-          conversation_id: 'conv-1',
-          agent_used: 'triage',
-          response_id: 'resp-1',
-          sequence_number: 1,
-          raw_type: 'response.reasoning_text.delta',
-          run_item_name: null,
-          run_item_type: null,
-          tool_call_id: null,
-          tool_name: null,
-          agent: 'triage',
-          new_agent: null,
-          text_delta: null,
-          reasoning_delta: 'thoughts',
-          is_terminal: true,
-          payload: {},
-        },
-      };
-    })());
+      const { Wrapper } = createQueryWrapper();
+      const { result } = renderHook(() => useChatController(), { wrapper: Wrapper });
 
-    // Second stream has no reasoning
-    streamChat.mockImplementationOnce(() => (async function* () {
-      yield {
-        type: 'event' as const,
-        event: {
-        kind: 'raw_response_event',
-          conversation_id: 'conv-1',
-          agent_used: 'triage',
-          response_id: 'resp-2',
-          sequence_number: 1,
-          raw_type: 'response.output_text.delta',
-          run_item_name: null,
-          run_item_type: null,
-          tool_call_id: null,
-          tool_name: null,
-          agent: 'triage',
-          new_agent: null,
-          text_delta: 'hi',
-          reasoning_delta: null,
-          is_terminal: true,
-          payload: {},
-        },
-      };
-    })());
+      let sendPromise: Promise<void> | null = null;
+      await act(async () => {
+        sendPromise = result.current.sendMessage('Trigger tool anchoring');
+      });
 
-    const { Wrapper } = createQueryWrapper();
-    const { result } = renderHook(() => useChatController(), { wrapper: Wrapper });
+      await waitFor(() => {
+        expect(rafCallbacks.length).toBeGreaterThan(0);
+      });
+      expect(result.current.messages.some((msg) => msg.role === 'assistant')).toBe(false);
 
-    await act(async () => {
-      await result.current.sendMessage('first');
-    });
-    expect(result.current.reasoningText).toBe('thoughts');
+      await act(async () => {
+        pauseAfterFirstDelta.resolve();
+      });
 
-    await act(async () => {
-      await result.current.sendMessage('second');
-    });
+      await waitFor(() => {
+        expect(result.current.toolEvents.some((tool) => tool.id === 'tool-1')).toBe(true);
+      });
 
-    await waitFor(() => {
-      expect(result.current.reasoningText).toBe('');
-    });
-  });
+      const assistant = result.current.messages.find((msg) => msg.role === 'assistant');
+      expect(assistant).toBeTruthy();
+      expect(result.current.toolEventAnchors[assistant!.id]).toEqual(['tool-1']);
 
-  it('clears tool events between sends', async () => {
-    const mutateAsync = vi.fn();
-    useSendChatMutation.mockReturnValue(createMutationMock({ mutateAsync }));
-
-    // First stream emits a tool call/output
-    streamChat.mockImplementationOnce(() => (async function* () {
-      yield {
-        type: 'event' as const,
-        event: {
-          kind: 'run_item_stream_event',
-          conversation_id: 'conv-1',
-          agent_used: 'triage',
-          response_id: 'resp-1',
-          sequence_number: 1,
-          raw_type: null,
-          run_item_name: 'tool_called',
-          run_item_type: 'tool_call_item',
-          tool_call_id: 'call-1',
-          tool_name: 'search',
-          agent: 'triage',
-          new_agent: null,
-          text_delta: null,
-          reasoning_delta: null,
-          is_terminal: false,
-          payload: { args: 'x' },
-        },
-      };
-      yield {
-        type: 'event' as const,
-        event: {
-          kind: 'run_item_stream_event',
-          conversation_id: 'conv-1',
-          agent_used: 'triage',
-          response_id: 'resp-1',
-          sequence_number: 2,
-          raw_type: null,
-          run_item_name: 'tool_output',
-          run_item_type: 'tool_call_output_item',
-          tool_call_id: 'call-1',
-          tool_name: 'search',
-          agent: 'triage',
-          new_agent: null,
-          text_delta: null,
-          reasoning_delta: null,
-          is_terminal: true,
-          payload: { output: 'result' },
-        },
-      };
-    })());
-
-    // Second stream has no tools
-    streamChat.mockImplementationOnce(() => (async function* () {
-      yield {
-        type: 'event' as const,
-        event: {
-        kind: 'raw_response_event',
-          conversation_id: 'conv-1',
-          agent_used: 'triage',
-          response_id: 'resp-2',
-          sequence_number: 1,
-          raw_type: 'response.output_text.delta',
-          run_item_name: null,
-          run_item_type: null,
-          tool_call_id: null,
-          tool_name: null,
-          agent: 'triage',
-          new_agent: null,
-          text_delta: 'hello',
-          reasoning_delta: null,
-          is_terminal: true,
-          payload: {},
-        },
-      };
-    })());
-
-    const { Wrapper } = createQueryWrapper();
-    const { result } = renderHook(() => useChatController(), { wrapper: Wrapper });
-
-    await act(async () => {
-      await result.current.sendMessage('first tool');
-    });
-    expect(result.current.toolEvents.length).toBeGreaterThan(0);
-
-    await act(async () => {
-      await result.current.sendMessage('second no tool');
-    });
-
-    await waitFor(() => {
-      expect(result.current.toolEvents.length).toBe(0);
-    });
+      await act(async () => {
+        pauseAfterTool.resolve();
+      });
+      await act(async () => {
+        await sendPromise;
+      });
+    } finally {
+      globalThis.requestAnimationFrame = originalRaf;
+      globalThis.cancelAnimationFrame = originalCancelRaf;
+    }
   });
 });

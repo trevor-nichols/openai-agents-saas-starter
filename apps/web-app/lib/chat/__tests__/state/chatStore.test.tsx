@@ -21,7 +21,6 @@ function createController(overrides: Partial<UseChatControllerReturn> = {}): Use
     agentNotices: [],
     toolEvents: [],
     toolEventAnchors: {},
-    guardrailEvents: [],
     reasoningText: '',
     lifecycleStatus: 'idle',
     hasOlderMessages: false,

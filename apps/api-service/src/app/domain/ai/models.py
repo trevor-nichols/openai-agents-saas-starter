@@ -143,6 +143,7 @@ class AgentStreamEvent:
     # Structured output / text equivalents for final outputs when present
     structured_output: Any | None = None
     response_text: str | None = None
+    usage: AgentRunUsage | None = None
 
     # Typed enrichments for downstream consumers
     output_schema: Mapping[str, Any] | None = None

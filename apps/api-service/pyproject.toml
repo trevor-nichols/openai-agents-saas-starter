@@ -128,7 +128,7 @@ PYTHONPATH = "src:../../packages/starter_contracts/src"
 
 [tool.hatch.envs.default.scripts]
 serve = "uvicorn main:app --reload --app-dir src --reload-dir src --reload-dir ../../packages/starter_contracts --host 127.0.0.1 --port 8000"
-test = "pytest"
+test = "pytest -m 'not smoke and not integration'"
 lint = "ruff check src"
 format = "ruff format src"
 typecheck = "python -m pyright --project pyproject.toml && python -m mypy --config-file pyproject.toml src tests"

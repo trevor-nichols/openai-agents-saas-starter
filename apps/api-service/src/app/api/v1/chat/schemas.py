@@ -4,19 +4,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from app.api.v1.shared.streaming import (
-    CodeInterpreterCall,
-    ContainerFileCitation,
-    FileCitation,
-    FileSearchCall,
-    ImageGenerationCall,
-    MessageAttachment,
-    StreamingEvent,
-    ToolCallPayload,
-    UrlCitation,
-    WebSearchAction,
-    WebSearchCall,
-)
+from app.api.v1.shared.streaming import MessageAttachment, PublicSseEvent
 
 
 class AgentRunOptions(BaseModel):
@@ -62,7 +50,7 @@ class LocationHint(BaseModel):
     timezone: str | None = None
 
 
-class StreamingChatEvent(StreamingEvent):
+class StreamingChatEvent(PublicSseEvent):
     model_config = ConfigDict(title="StreamingChatEvent")
 
 
@@ -89,16 +77,7 @@ __all__ = [
     "AgentChatRequest",
     "AgentChatResponse",
     "StreamingChatEvent",
-    "ToolCallPayload",
-    "UrlCitation",
-    "ContainerFileCitation",
-    "FileCitation",
     "MessageAttachment",
-    "WebSearchAction",
-    "WebSearchCall",
-    "CodeInterpreterCall",
-    "FileSearchCall",
-    "ImageGenerationCall",
     "LocationHint",
     "AgentRunOptions",
     "MemoryStrategyRequest",

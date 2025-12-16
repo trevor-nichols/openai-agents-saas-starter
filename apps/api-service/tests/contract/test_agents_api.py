@@ -35,12 +35,12 @@ from app.api.dependencies import usage as usage_dependencies  # noqa: E402
 from app.api.dependencies.auth import require_current_user  # noqa: E402
 from app.api.v1.chat import router as chat_router  # noqa: E402
 from app.api.v1.chat.schemas import AgentChatResponse  # noqa: E402
-from app.api.v1.shared.streaming import StreamingEvent  # noqa: E402
+from app.api.v1.shared.streaming import FinalEvent, PublicSseEvent  # noqa: E402
 from app.bootstrap.container import get_container  # noqa: E402
 from app.core import settings as config_module  # noqa: E402
 from app.domain.ai import AgentRunResult, AgentStreamEvent  # noqa: E402
 from app.domain.conversations import ConversationMessage, ConversationMetadata  # noqa: E402
-from tests.utils.stream_assertions import assert_output_schema_persistent  # noqa: E402
+from tests.utils.stream_assertions import assert_common_stream  # noqa: E402
 from tests.utils.agent_contract import (  # noqa: E402
     default_agent_key,
     expected_output_schema,
@@ -330,12 +330,12 @@ def test_chat_stream_persists_assistant_message(mock_run_stream, client: TestCli
             lines.append(data)
 
     assert lines, "stream returned no events"
-    events = [StreamingEvent.model_validate(line) for line in lines]
-    assert_output_schema_persistent(events)
-    conversation_id = events[-1].conversation_id
+    events = [PublicSseEvent.model_validate(line).root for line in lines]
+    assert_common_stream(events)
+    terminal = events[-1]
+    assert isinstance(terminal, FinalEvent)
+    conversation_id = terminal.conversation_id
     assert conversation_id
-    expected_schema = expected_output_schema(schema_key)
-    assert events[-1].output_schema == expected_schema
 
     history_response = client.get(f"/api/v1/conversations/{conversation_id}")
     assert history_response.status_code == 200
@@ -376,11 +376,11 @@ def test_chat_stream_handoff_updates_schema(mock_run_stream, client: TestClient)
             lines.append(json.loads(line[len("data: ") :]))
 
     assert lines, "stream returned no events"
-    events = [StreamingEvent.model_validate(line) for line in lines]
-    assert_output_schema_persistent(events)
-    expected_schema = expected_output_schema(schema_key)
-    assert events[-1].output_schema == expected_schema
-    assert events[-1].structured_output == {"foo": "bar"}
+    events = [PublicSseEvent.model_validate(line).root for line in lines]
+    assert_common_stream(events)
+    terminal = events[-1]
+    assert isinstance(terminal, FinalEvent)
+    assert terminal.final.structured_output == {"foo": "bar"}
 
 
 @patch("app.infrastructure.providers.openai.runtime.OpenAIAgentRuntime.run_stream")
@@ -417,15 +417,14 @@ def test_chat_stream_handoff_final_output_keeps_schema(
             lines.append(json.loads(line[len("data: ") :]))
 
     assert lines, "stream returned no events"
-    events = [StreamingEvent.model_validate(line) for line in lines]
-    assert_output_schema_persistent(events)
-    expected_schema = expected_output_schema(schema_key)
-    assert events[-1].output_schema == expected_schema
-    assert events[-1].is_terminal
-    assert events[-1].structured_output == {"foo": "bar"}
+    events = [PublicSseEvent.model_validate(line).root for line in lines]
+    assert_common_stream(events)
+    terminal = events[-1]
+    assert isinstance(terminal, FinalEvent)
+    assert terminal.final.structured_output == {"foo": "bar"}
 
 
-def test_chat_stream_emits_guardrail_events_from_pipeline(
+def test_chat_stream_does_not_emit_guardrail_events_to_public_stream(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     async def _fake_chat_stream(*args, **kwargs):
@@ -460,14 +459,15 @@ def test_chat_stream_emits_guardrail_events_from_pipeline(
             line = raw
             if not line.startswith("data: "):
                 continue
-            events.append(json.loads(line[len("data: ") :]))
+            parsed = PublicSseEvent.model_validate_json(line[len("data: ") :]).root
+            events.append(parsed)
+            if getattr(parsed, "kind", None) in {"final", "error"}:
+                break
 
-    guardrail_events = [e for e in events if e.get("kind") == "guardrail_result"]
-    assert guardrail_events, "Expected guardrail_result event from guardrail pipeline"
-    assert all(e.get("response_id") == "resp-guardrail-pipeline" for e in guardrail_events)
+    assert_common_stream(events)
 
 
-def test_chat_stream_emits_tool_guardrail_events_from_pipeline(
+def test_chat_stream_does_not_emit_tool_guardrail_events_to_public_stream(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     async def _fake_chat_stream(*args, **kwargs):
@@ -504,12 +504,12 @@ def test_chat_stream_emits_tool_guardrail_events_from_pipeline(
             line = raw
             if not line.startswith("data: "):
                 continue
-            events.append(json.loads(line[len("data: ") :]))
+            parsed = PublicSseEvent.model_validate_json(line[len("data: ") :]).root
+            events.append(parsed)
+            if getattr(parsed, "kind", None) in {"final", "error"}:
+                break
 
-    guardrail_events = [e for e in events if e.get("kind") == "guardrail_result"]
-    assert guardrail_events, "Expected guardrail_result event from tool guardrail pipeline"
-    assert all(e.get("response_id") == "resp-tool-guardrail" for e in guardrail_events)
-    assert any(e.get("tool_call_id") == "tool-call-123" for e in guardrail_events)
+    assert_common_stream(events)
 
 
 def _register_guardrail_provider(engine, pipeline) -> None:
@@ -688,7 +688,8 @@ def test_chat_blocks_when_usage_guardrail_hits(
     try:
         assert response.status_code == 429
         payload = response.json()
-        assert payload["detail"]["feature_key"] == "messages"
+        assert payload["error"] == "usage_limit_exceeded"
+        assert payload["details"]["feature_key"] == "messages"
     finally:
         container.usage_policy_service = previous_service
 

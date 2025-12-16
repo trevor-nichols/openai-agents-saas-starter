@@ -85,27 +85,31 @@ export function useWorkflowRunStream(options?: Options) {
           setStreamStatus((current) => (current === 'connecting' ? 'streaming' : current));
           setLastUpdated(enriched.receivedAt);
 
-          if (!autoSelectedRef.current && evt.workflow_run_id) {
-            options?.onRunCreated?.(evt.workflow_run_id, evt.workflow_key ?? input.workflowKey);
+          const workflowRunId = evt.workflow?.workflow_run_id ?? null;
+          const workflowKey = evt.workflow?.workflow_key ?? null;
+
+          if (!autoSelectedRef.current && workflowRunId) {
+            options?.onRunCreated?.(workflowRunId, workflowKey ?? input.workflowKey);
             autoSelectedRef.current = true;
           }
 
           if (evt.kind === 'error') {
-            const maybeMessage =
-              typeof (evt as { payload?: { message?: string } }).payload?.message === 'string'
-                ? (evt as { payload?: { message?: string } }).payload?.message
-                : undefined;
-            setError(maybeMessage ?? 'Workflow reported an error.');
+            setError(evt.error.message ?? 'Workflow reported an error.');
           }
 
           setLastSummary((prev) => ({
-            workflowKey: prev?.workflowKey ?? input.workflowKey,
-            runId: prev?.runId ?? evt.workflow_run_id ?? null,
+            workflowKey: prev?.workflowKey ?? workflowKey ?? input.workflowKey,
+            runId: prev?.runId ?? workflowRunId ?? null,
             message: prev?.message ?? input.message,
           }));
 
-          if (evt.is_terminal) {
-            setStreamStatus(evt.kind === 'error' ? 'error' : 'completed');
+          if (evt.kind === 'error' || evt.kind === 'final') {
+            if (evt.kind === 'final' && evt.final.status !== 'completed') {
+              setError(`Workflow finished with status: ${evt.final.status}`);
+              setStreamStatus('error');
+            } else {
+              setStreamStatus(evt.kind === 'error' ? 'error' : 'completed');
+            }
             break;
           }
         }

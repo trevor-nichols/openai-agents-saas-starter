@@ -6,7 +6,6 @@ export {
   useChatMessages,
   useChatToolEventAnchors,
   useChatToolEvents,
-  useChatGuardrailEvents,
   useChatLifecycle,
   useChatAgentNotices,
   memoSelector,

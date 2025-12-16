@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import type { ImageGenerationCall } from '@/lib/api/client/types.gen';
+import type { GeneratedImageFrame } from '@/lib/streams/imageFrames';
 
 import { Image } from '../../ai/image';
 
@@ -31,32 +31,26 @@ const square = (color: string) => {
   return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="${encodedColor}"/></svg>`;
 };
 
-const streamingFrames: ImageGenerationCall[] = [
+const streamingFrames: GeneratedImageFrame[] = [
   {
     id: 'frame-1',
-    type: 'image_generation_call',
     status: 'in_progress',
-    result: square('#fcd34d'),
-    format: 'svg+xml',
-    revised_prompt: 'Generating draft…',
+    src: square('#fcd34d'),
+    revisedPrompt: 'Generating draft…',
   },
   {
     id: 'frame-2',
-    type: 'image_generation_call',
     status: 'partial_image',
-    result: square('#60a5fa'),
-    format: 'svg+xml',
-    output_index: 0,
-    revised_prompt: 'Adding details…',
+    src: square('#60a5fa'),
+    outputIndex: 0,
+    revisedPrompt: 'Adding details…',
   },
   {
     id: 'frame-3',
-    type: 'image_generation_call',
     status: 'completed',
-    result: square('#0ea5e9'),
-    format: 'svg+xml',
-    output_index: 0,
-    revised_prompt: 'Final frame',
+    src: square('#0ea5e9'),
+    outputIndex: 0,
+    revisedPrompt: 'Final frame',
   },
 ];
 

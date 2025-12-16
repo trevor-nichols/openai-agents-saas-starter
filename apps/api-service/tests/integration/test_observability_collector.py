@@ -112,6 +112,8 @@ def test_bundled_collector_receives_backend_logs(tmp_path):
             {
                 "APP_NAME": "collector-smoke",
                 "ENVIRONMENT": "test",
+                # Override local .env.local defaults (LOGGING_SINKS=stdout,file) for this test.
+                "LOGGING_SINKS": "otlp",
                 "LOGGING_SINK": "otlp",
                 "LOGGING_OTLP_ENDPOINT": f"http://127.0.0.1:{host_http_port}/v1/logs",
             }

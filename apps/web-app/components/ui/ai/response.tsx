@@ -3,7 +3,7 @@
 import { cn } from '@/lib/utils';
 import type { ComponentProps, HTMLAttributes } from 'react';
 import { isValidElement, memo } from 'react';
-import type { Annotation, ContainerFileCitation } from '@/lib/chat/types';
+import type { Annotation, ContainerFileCitation, FileCitation, UrlCitation } from '@/lib/chat/types';
 import { Sources, SourcesContent, SourcesTrigger, Source } from './source';
 import ReactMarkdown, { type Options } from 'react-markdown';
 import rehypeKatex from 'rehype-katex';
@@ -368,6 +368,19 @@ function buildDownloadHref(entry: { file_id?: string | null; container_id?: stri
   return null;
 }
 
+function isUrlCitation(cite: Annotation): cite is UrlCitation {
+  return typeof (cite as { url?: unknown }).url === 'string';
+}
+
+function isContainerFileCitation(cite: Annotation): cite is ContainerFileCitation {
+  const record = cite as { container_id?: unknown; file_id?: unknown };
+  return typeof record.container_id === 'string' && typeof record.file_id === 'string';
+}
+
+function isFileCitation(cite: Annotation): cite is FileCitation {
+  return typeof (cite as { file_id?: unknown }).file_id === 'string';
+}
+
 function injectFootnotes(text: string, citations: Annotation[]): FootnoteInjectionResult {
   if (!citations.length) {
     return { markdown: text, sources: [] };
@@ -386,7 +399,7 @@ function injectFootnotes(text: string, citations: Annotation[]): FootnoteInjecti
   });
 
   const sources = sorted.map((cite, idx) => {
-    if (cite.type === 'url_citation') {
+    if (isUrlCitation(cite)) {
       return {
         label: String(idx + 1),
         title: cite.title,
@@ -396,26 +409,37 @@ function injectFootnotes(text: string, citations: Annotation[]): FootnoteInjecti
         container_id: null,
       };
     }
-    if (cite.type === 'container_file_citation') {
-      const cf = cite as ContainerFileCitation;
-      const href = cf.url ?? buildDownloadHref({ file_id: cf.file_id, container_id: cf.container_id });
+
+    if (isContainerFileCitation(cite)) {
+      const href = cite.url ?? buildDownloadHref({ file_id: cite.file_id, container_id: cite.container_id });
       return {
         label: String(idx + 1),
-        title: cf.filename ?? `container file ${cf.file_id}`,
+        title: cite.filename ?? `container file ${cite.file_id}`,
         url: href,
-        filename: cf.filename ?? null,
-        file_id: cf.file_id,
-        container_id: cf.container_id,
+        filename: cite.filename ?? null,
+        file_id: cite.file_id,
+        container_id: cite.container_id,
       };
     }
-    // file_citation fallback
-    const href = buildDownloadHref({ file_id: cite.file_id });
+
+    if (isFileCitation(cite)) {
+      const href = buildDownloadHref({ file_id: cite.file_id });
+      return {
+        label: String(idx + 1),
+        title: cite.filename ?? `file ${cite.file_id}`,
+        url: href,
+        filename: cite.filename ?? null,
+        file_id: cite.file_id,
+        container_id: null,
+      };
+    }
+
     return {
       label: String(idx + 1),
-      title: cite.filename ?? `file ${cite.file_id}`,
-      url: href,
-      filename: cite.filename ?? null,
-      file_id: cite.file_id,
+      title: 'Unknown citation',
+      url: null,
+      filename: null,
+      file_id: null,
       container_id: null,
     };
   });

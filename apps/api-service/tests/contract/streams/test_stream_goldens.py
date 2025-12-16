@@ -8,22 +8,39 @@ import pytest
 from tests.utils.stream_assertions import (
     assert_code_interpreter_expectations,
     assert_file_search_expectations,
+    assert_function_tool_expectations,
     assert_image_generation_expectations,
+    assert_mcp_tool_expectations,
+    assert_provider_error_expectations,
+    assert_reasoning_summary_expectations,
+    assert_refusal_expectations,
     assert_web_search_expectations,
+    assert_workflow_expectations,
     load_stream_fixture,
 )
 
-BASE = Path(__file__).resolve().parent.parent.parent / "fixtures" / "streams"
+REPO_ROOT = Path(__file__).resolve().parents[5]
+BASE = REPO_ROOT / "docs" / "contracts" / "public-sse-streaming" / "examples"
 
 
 @pytest.mark.contract
 @pytest.mark.parametrize(
     "fixture_name,assert_fn,kwargs",
     [
-        ("web_search.ndjson", assert_web_search_expectations, {}),
-        ("code_interpreter.ndjson", assert_code_interpreter_expectations, {}),
-        ("file_search.ndjson", assert_file_search_expectations, {"expected_store_id": "vs_primary"}),
-        ("image_generation.ndjson", assert_image_generation_expectations, {}),
+        ("chat-web-search.ndjson", assert_web_search_expectations, {}),
+        ("chat-code-interpreter.ndjson", assert_code_interpreter_expectations, {}),
+        ("chat-file-search.ndjson", assert_file_search_expectations, {"expected_store_id": "vs_primary"}),
+        ("chat-function-tool.ndjson", assert_function_tool_expectations, {}),
+        ("chat-image-generation-partials.ndjson", assert_image_generation_expectations, {}),
+        ("chat-mcp-tool.ndjson", assert_mcp_tool_expectations, {}),
+        ("chat-refusal.ndjson", assert_refusal_expectations, {}),
+        ("chat-reasoning-summary.ndjson", assert_reasoning_summary_expectations, {}),
+        ("chat-provider-error.ndjson", assert_provider_error_expectations, {}),
+        (
+            "workflow-analysis-code.ndjson",
+            assert_workflow_expectations,
+            {"expected_workflow_key": "analysis_code", "expected_steps": {"analysis", "code"}},
+        ),
     ],
 )
 def test_stream_goldens(

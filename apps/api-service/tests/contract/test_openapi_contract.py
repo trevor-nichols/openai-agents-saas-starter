@@ -52,6 +52,14 @@ def test_openapi_declares_sse_streams(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "Heartbeats" in billing_response.get("description", "")
     assert "data:" in billing_response.get("description", "")
 
+    chat_stream_response = schema["paths"]["/api/v1/chat/stream"]["post"]["responses"]["200"]
+    assert "text/event-stream" in chat_stream_response["content"]
+
+    workflow_stream_response = schema["paths"]["/api/v1/workflows/{workflow_key}/run-stream"]["post"][
+        "responses"
+    ]["200"]
+    assert "text/event-stream" in workflow_stream_response["content"]
+
 
 def test_openapi_declares_binary_downloads(monkeypatch: pytest.MonkeyPatch) -> None:
     schema = _build_openapi_schema(monkeypatch)
@@ -89,7 +97,10 @@ def test_openapi_declares_raw_body_endpoints(monkeypatch: pytest.MonkeyPatch) ->
     assert logs["requestBody"]["required"] is True
     assert "application/json" in logs["requestBody"]["content"]
     log_header_params = [p for p in logs.get("parameters", []) if p.get("in") == "header"]
-    assert any(p.get("name") == "x-log-signature" and p.get("required") for p in log_header_params)
+    assert any(
+        p.get("name") == "x-log-signature" and p.get("required") is False
+        for p in log_header_params
+    )
 
 
 def test_openapi_tools_and_vector_search_are_typed(monkeypatch: pytest.MonkeyPatch) -> None:

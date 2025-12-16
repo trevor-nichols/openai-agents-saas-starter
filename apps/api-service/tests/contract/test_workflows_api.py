@@ -21,6 +21,7 @@ pytestmark = pytest.mark.auto_migrations(enabled=True)
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # noqa: E402
 
 from app.api.dependencies.auth import require_current_user  # noqa: E402
+from app.api.v1.shared.streaming import PublicSseEventBase  # noqa: E402
 from app.api.v1.workflows.schemas import StreamingWorkflowEvent  # noqa: E402
 from app.domain.ai import AgentRunResult  # noqa: E402
 from app.domain.ai.models import AgentStreamEvent  # noqa: E402
@@ -31,6 +32,7 @@ from app.infrastructure.persistence.models.base import Base as ModelBase  # noqa
 from app.infrastructure.persistence.workflows import models as _workflow_models  # noqa: F401,E402
 from app.infrastructure.db.engine import get_engine  # noqa: E402
 from main import app  # noqa: E402
+from tests.utils.stream_assertions import assert_common_stream  # noqa: E402
 
 TEST_TENANT_ID = str(uuid4())
 
@@ -151,7 +153,7 @@ def test_run_workflow_stream(mock_run_stream: AsyncMock, client: TestClient) -> 
 
     mock_run_stream.return_value = _gen()
 
-    events: list[StreamingWorkflowEvent] = []
+    events: list[PublicSseEventBase] = []
     with client.stream(
         "POST", "/api/v1/workflows/analysis_code/run-stream", json={"message": "hello"}
     ) as response:
@@ -161,14 +163,15 @@ def test_run_workflow_stream(mock_run_stream: AsyncMock, client: TestClient) -> 
                 continue
             text = line if isinstance(line, str) else str(line)
             if text.startswith("data: "):
-                payload = StreamingWorkflowEvent.model_validate_json(text[6:])
+                payload = StreamingWorkflowEvent.model_validate_json(text[6:]).root
                 events.append(payload)
-                if payload.is_terminal:
+                if getattr(payload, "kind", None) in {"final", "error"}:
                     break
 
-    assert events
-    assert events[-1].workflow_key == "analysis_code"
-    assert events[-1].workflow_run_id == "run-1"
+    assert_common_stream(events)
+    assert events[-1].workflow is not None
+    assert events[-1].workflow.workflow_key == "analysis_code"
+    assert events[-1].workflow.workflow_run_id == "run-1"
 
 
 def test_get_workflow_run(client: TestClient) -> None:

@@ -141,7 +141,24 @@ class AgentService:
                     "agent": ctx.descriptor.key,
                 },
             )
-            runtime_conversation_id = ctx.provider_conversation_id or ctx.conversation_id
+            # For non-stream runs we keep a stable, local conversation id for trace
+            # grouping. Continuation is driven by the persisted SDK session items.
+            runtime_conversation_id = ctx.conversation_id
+            run_options = build_run_options(request.run_options)
+            if (
+                run_options is not None
+                and ctx.session_handle is not None
+                and run_options.previous_response_id
+            ):
+                logger.debug(
+                    "agent.chat.ignoring_previous_response_id_with_session",
+                    extra={
+                        "tenant_id": actor.tenant_id,
+                        "conversation_id": ctx.conversation_id,
+                        "agent": ctx.descriptor.key,
+                    },
+                )
+                run_options.previous_response_id = None
             with trace(workflow_name="Agent Chat", group_id=ctx.conversation_id):
                 result = await ctx.provider.runtime.run(
                     ctx.descriptor.key,
@@ -149,7 +166,7 @@ class AgentService:
                     session=ctx.session_handle,
                     conversation_id=runtime_conversation_id,
                     metadata={"prompt_runtime_ctx": ctx.runtime_ctx},
-                    options=build_run_options(request.run_options),
+                    options=run_options,
                 )
         finally:
             reset_current_actor(token)
@@ -292,9 +309,27 @@ class AgentService:
                     "agent": ctx.descriptor.key,
                 },
             )
-            # Disable provider-side conversation state when sessions are in use to
-            # prevent duplicate items being sent (Responses API 400 on duplicate ids).
-            runtime_conversation_id = None
+            # When SDK sessions are in use, we rely on persisted session items for
+            # continuation and disable provider-side conversation state to prevent
+            # duplicate item ids being re-sent to the Responses API.
+            runtime_conversation_id = None if ctx.session_handle is not None else (
+                ctx.provider_conversation_id or ctx.conversation_id
+            )
+            run_options = build_run_options(request.run_options, hook_sink=lifecycle_bus)
+            if (
+                run_options is not None
+                and ctx.session_handle is not None
+                and run_options.previous_response_id
+            ):
+                logger.debug(
+                    "agent.chat_stream.ignoring_previous_response_id_with_session",
+                    extra={
+                        "tenant_id": actor.tenant_id,
+                        "conversation_id": ctx.conversation_id,
+                        "agent": ctx.descriptor.key,
+                    },
+                )
+                run_options.previous_response_id = None
 
             with trace(workflow_name="Agent Chat Stream", group_id=ctx.conversation_id):
                 stream_handle = ctx.provider.runtime.run_stream(
@@ -303,9 +338,17 @@ class AgentService:
                     session=ctx.session_handle,
                     conversation_id=runtime_conversation_id,
                     metadata={"prompt_runtime_ctx": ctx.runtime_ctx},
-                    options=build_run_options(request.run_options, hook_sink=lifecycle_bus),
+                    options=run_options,
                 )
+                terminal_event: AgentStreamEvent | None = None
                 async for event in processor.iter_events(stream_handle):
+                    if event.is_terminal and event.kind != "error":
+                        # Defer emitting the terminal event until after we persist the
+                        # assistant message + sync session state. This keeps the public
+                        # SSE `final` event aligned with durable storage and prevents
+                        # client-side stream cancellation from skipping persistence.
+                        terminal_event = event
+                        break
                     yield event
         finally:
             reset_current_actor(token)
@@ -356,6 +399,8 @@ class AgentService:
             else None,
             usage=getattr(stream_handle, "usage", None) if stream_handle is not None else None,
         )
+        if terminal_event is not None:
+            yield terminal_event
 
     @property
     def conversation_repository(self):

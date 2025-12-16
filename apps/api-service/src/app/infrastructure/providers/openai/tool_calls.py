@@ -26,8 +26,8 @@ def build_web_search_tool_call(
     action: Mapping[str, Any] | None = None,
 ) -> Mapping[str, Any]:
     normalized_status = "in_progress"
-    if status == "completed":
-        normalized_status = "completed"
+    if status in {"searching", "completed"}:
+        normalized_status = status
     return {
         "tool_type": "web_search",
         "web_search_call": {

@@ -13,8 +13,8 @@ from typing import Any, get_args
 
 import pytest
 
-# tests live under apps/api-service/tests/**, so repo root is four levels up
-ROOT = Path(__file__).resolve().parents[4]
+# tests live under apps/api-service/tests/**, so repo root is five levels up
+ROOT = Path(__file__).resolve().parents[5]
 CONTRACTS_DIR = ROOT / "docs" / "contracts"
 
 

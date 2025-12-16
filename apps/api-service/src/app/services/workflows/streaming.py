@@ -88,8 +88,13 @@ async def stream_sequential_stage(
                 text_buffer.append(event.text_delta)
             if event.structured_output is not None:
                 last_structured = event.structured_output
+
+            is_provider_terminal = event.is_terminal
+            if is_provider_terminal:
+                # Step-level terminal events must not terminate the *workflow* stream.
+                event.is_terminal = False
             yield event
-            if event.is_terminal:
+            if is_provider_terminal:
                 break
 
         if not last_text and text_buffer:
@@ -241,8 +246,12 @@ async def stream_parallel_stage(
                     text_buffer.append(event.text_delta)
                 if event.structured_output is not None:
                     last_structured = event.structured_output
+                is_provider_terminal = event.is_terminal
+                if is_provider_terminal:
+                    # Step-level terminal events must not terminate the *workflow* stream.
+                    event.is_terminal = False
                 await queue.put(event)
-                if event.is_terminal:
+                if is_provider_terminal:
                     break
 
             if not last_text and text_buffer:

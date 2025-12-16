@@ -95,7 +95,6 @@ export function useChatSelector<T>(
 export const useChatMessages = () => useChatSelector((s) => s.messages);
 export const useChatToolEvents = () => useChatSelector((s) => s.toolEvents, shallowEqual);
 export const useChatToolEventAnchors = () => useChatSelector((s) => s.toolEventAnchors, shallowEqual);
-export const useChatGuardrailEvents = () => useChatSelector((s) => s.guardrailEvents, shallowEqual);
 export const useChatLifecycle = () => useChatSelector((s) => s.lifecycleStatus);
 export const useChatAgentNotices = () => useChatSelector((s) => s.agentNotices, shallowEqual);
 

@@ -95,35 +95,68 @@ function createMockChatStream(): Response {
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      const event = {
-        kind: 'raw_response_event' as const,
-        conversation_id: 'mock-conversation',
-        agent_used: 'mock-agent',
-        response_id: 'resp-mock',
-        sequence_number: 1,
-        raw_type: 'response.output_text.delta',
-        run_item_name: null,
-        run_item_type: null,
-        tool_call_id: null,
-        tool_name: null,
-        agent: 'mock-agent',
-        new_agent: null,
-        text_delta: 'Hello from mock agent! ',
-        reasoning_delta: null,
-        is_terminal: false,
-        payload: {},
-      };
+      const server_timestamp = new Date().toISOString();
+      const conversation_id = 'mock-conversation';
+      const response_id = 'resp_mock';
+      const stream_id = 'stream_mock_chat';
 
-      const terminal = {
-        ...event,
-        text_delta: '',
-        raw_type: 'response.completed',
-        is_terminal: true,
-        sequence_number: 2,
-      };
+      controller.enqueue(
+        encoder.encode(
+          `data: ${JSON.stringify({
+            schema: 'public_sse_v1',
+            event_id: 1,
+            stream_id,
+            server_timestamp,
+            kind: 'lifecycle',
+            conversation_id,
+            response_id,
+            agent: 'mock-agent',
+            status: 'in_progress',
+          })}\n\n`,
+        ),
+      );
 
-      controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
-      controller.enqueue(encoder.encode(`data: ${JSON.stringify(terminal)}\n\n`));
+      controller.enqueue(
+        encoder.encode(
+          `data: ${JSON.stringify({
+            schema: 'public_sse_v1',
+            event_id: 2,
+            stream_id,
+            server_timestamp,
+            kind: 'message.delta',
+            conversation_id,
+            response_id,
+            agent: 'mock-agent',
+            message_id: 'msg_mock_1',
+            delta: 'Hello from mock agent! ',
+          })}\n\n`,
+        ),
+      );
+
+      controller.enqueue(
+        encoder.encode(
+          `data: ${JSON.stringify({
+            schema: 'public_sse_v1',
+            event_id: 3,
+            stream_id,
+            server_timestamp,
+            kind: 'final',
+            conversation_id,
+            response_id,
+            agent: 'mock-agent',
+            final: {
+              status: 'completed',
+              response_text: 'Hello from mock agent! ',
+              structured_output: null,
+              reasoning_summary_text: null,
+              refusal_text: null,
+              attachments: [],
+              usage: { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
+            },
+          })}\n\n`,
+        ),
+      );
+
       controller.close();
     },
   });

@@ -2,10 +2,41 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, RootModel
+
+PUBLIC_SSE_SCHEMA_VERSION = "public_sse_v1"
+
+
+# -----------------------------------------------------------------------------
+# Shared primitives
+# -----------------------------------------------------------------------------
+
+
+class StreamNotice(BaseModel):
+    """Explicit markers for UX when content is altered for safety/stability."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal["redacted", "truncated"]
+    path: str
+    message: str
+
+
+class WorkflowContext(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    workflow_key: str | None = None
+    workflow_run_id: str | None = None
+    stage_name: str | None = None
+    step_name: str | None = None
+    step_agent: str | None = None
+    parallel_group: str | None = None
+    branch_index: int | None = None
 
 
 class MessageAttachment(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     object_id: str = Field(description="Storage object identifier")
     filename: str = Field(description="Object filename")
     mime_type: str | None = Field(default=None, description="Mime type of the attachment")
@@ -14,70 +45,20 @@ class MessageAttachment(BaseModel):
     tool_call_id: str | None = Field(default=None, description="Originating tool call id")
 
 
-# ---------- Tool & annotation payloads ----------
+class PublicUsage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
-
-class WebSearchAction(BaseModel):
-    type: Literal["search"]
-    query: str
-    sources: list[str] | None = None
-
-
-class WebSearchCall(BaseModel):
-    id: str
-    type: Literal["web_search_call"]
-    status: Literal["in_progress", "completed"]
-    action: WebSearchAction | None = None
-
-
-class CodeInterpreterCall(BaseModel):
-    id: str
-    type: Literal["code_interpreter_call"]
-    status: Literal["in_progress", "interpreting", "completed"]
-    code: str | None = None
-    outputs: list[Any] | None = None
-    container_id: str | None = None
-    container_mode: Literal["auto", "explicit"] | None = None
-    annotations: list[ContainerFileCitation] | None = None
-
-
-class FileSearchCall(BaseModel):
-    id: str
-    type: Literal["file_search_call"]
-    status: Literal["in_progress", "searching", "completed"]
-    queries: list[str] | None = None
-    results: list[FileSearchResult] | None = None
-
-
-class ImageGenerationCall(BaseModel):
-    id: str
-    type: Literal["image_generation_call"]
-    status: Literal["in_progress", "generating", "partial_image", "completed"]
-    # Final outputs
-    result: str | None = None  # base64 image (final)
-    revised_prompt: str | None = None
-    format: str | None = None
-    size: str | None = None
-    quality: str | None = None
-    background: str | None = None
-    output_index: int | None = None
-    # Partial outputs
-    partial_image_index: int | None = None
-    partial_image_b64: str | None = None
-    b64_json: str | None = None  # alias used by Responses API for partials
-
-
-class ToolCallPayload(BaseModel):
-    model_config = ConfigDict(extra="allow")
-
-    tool_type: str
-    web_search_call: WebSearchCall | None = None
-    code_interpreter_call: CodeInterpreterCall | None = None
-    file_search_call: FileSearchCall | None = None
-    image_generation_call: ImageGenerationCall | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    total_tokens: int | None = None
+    cached_input_tokens: int | None = None
+    reasoning_output_tokens: int | None = None
+    requests: int | None = None
 
 
 class UrlCitation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     type: Literal["url_citation"] = "url_citation"
     start_index: int
     end_index: int
@@ -86,16 +67,20 @@ class UrlCitation(BaseModel):
 
 
 class ContainerFileCitation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     type: Literal["container_file_citation"] = "container_file_citation"
     start_index: int
     end_index: int
     container_id: str
     file_id: str
     filename: str | None = None
-    url: str | None = None  # optional presigned URL if provided upstream
+    url: str | None = None
 
 
 class FileCitation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     type: Literal["file_citation"] = "file_citation"
     start_index: int | None = None
     end_index: int | None = None
@@ -104,7 +89,27 @@ class FileCitation(BaseModel):
     filename: str | None = None
 
 
+PublicCitation = UrlCitation | ContainerFileCitation | FileCitation
+
+
+# -----------------------------------------------------------------------------
+# Tool payloads (derived-only, UX-oriented)
+# -----------------------------------------------------------------------------
+
+
+class WebSearchTool(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tool_type: Literal["web_search"]
+    tool_call_id: str
+    status: Literal["in_progress", "searching", "completed"]
+    query: str | None = None
+    sources: list[str] | None = None
+
+
 class FileSearchResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     file_id: str
     filename: str | None = None
     score: float | None = None
@@ -113,86 +118,297 @@ class FileSearchResult(BaseModel):
     text: str | None = None
 
 
-class StreamingEvent(BaseModel):
-    kind: Literal[
-        "raw_response_event",
-        "run_item_stream_event",
-        "agent_updated_stream_event",
-        "guardrail_result",
-        "usage",
-        "error",
-        "lifecycle",
-    ]
-    # Workflow metadata (optional for agent streams)
-    workflow_key: str | None = None
-    workflow_run_id: str | None = None
-    step_name: str | None = None
-    step_agent: str | None = None
-    stage_name: str | None = None
-    parallel_group: str | None = None
-    branch_index: int | None = None
+class FileSearchTool(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
-    # Conversation/agent metadata
-    conversation_id: str | None = None
-    agent_used: str | None = None
+    tool_type: Literal["file_search"]
+    tool_call_id: str
+    status: Literal["in_progress", "searching", "completed"]
+    queries: list[str] | None = None
+    results: list[FileSearchResult] | None = None
+
+
+class CodeInterpreterTool(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tool_type: Literal["code_interpreter"]
+    tool_call_id: str
+    status: Literal["in_progress", "interpreting", "completed"]
+    container_id: str | None = None
+    container_mode: Literal["auto", "explicit"] | None = None
+
+
+class ImageGenerationTool(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tool_type: Literal["image_generation"]
+    tool_call_id: str
+    status: Literal["in_progress", "generating", "partial_image", "completed"]
+    revised_prompt: str | None = None
+    format: str | None = None
+    size: str | None = None
+    quality: str | None = None
+    background: str | None = None
+    partial_image_index: int | None = None
+
+
+class FunctionTool(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tool_type: Literal["function"]
+    tool_call_id: str
+    status: Literal["in_progress", "completed", "failed"]
+    name: str
+    arguments_text: str | None = None
+    arguments_json: dict[str, Any] | None = None
+    output: Any | None = None
+
+
+class McpTool(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tool_type: Literal["mcp"]
+    tool_call_id: str
+    status: Literal["awaiting_approval", "in_progress", "completed", "failed"]
+    tool_name: str
+    server_label: str | None = None
+    arguments_text: str | None = None
+    arguments_json: dict[str, Any] | None = None
+    output: Any | None = None
+
+
+PublicTool = (
+    WebSearchTool
+    | FileSearchTool
+    | CodeInterpreterTool
+    | ImageGenerationTool
+    | FunctionTool
+    | McpTool
+)
+
+
+# -----------------------------------------------------------------------------
+# Events (discriminated by `kind`)
+# -----------------------------------------------------------------------------
+
+
+class PublicSseEventBase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    # `schema` is part of the public wire contract, but `BaseModel` already has a
+    # `.schema()` helper; keep the JSON field name while avoiding attribute shadowing.
+    schema_: Literal["public_sse_v1"] = Field(alias="schema")
+    event_id: int
+    stream_id: str
+    server_timestamp: str
+
+    conversation_id: str
     response_id: str | None = None
-    sequence_number: int | None = None
-    raw_type: str | None = None
-    run_item_name: str | None = None
-    run_item_type: str | None = None
-    tool_call_id: str | None = None
-    tool_name: str | None = None
     agent: str | None = None
-    new_agent: str | None = None
-    display_name: str | None = None
+    workflow: WorkflowContext | None = None
 
-    # Content
-    text_delta: str | None = None
-    reasoning_delta: str | None = None
+    provider_sequence_number: int | None = None
+    notices: list[StreamNotice] | None = None
+
+
+class LifecycleEvent(PublicSseEventBase):
+    kind: Literal["lifecycle"]
+    status: Literal["queued", "in_progress", "completed", "failed", "incomplete", "cancelled"]
+    reason: str | None = None
+
+
+class MessageDeltaEvent(PublicSseEventBase):
+    kind: Literal["message.delta"]
+    message_id: str
+    delta: str
+
+
+class MessageCitationEvent(PublicSseEventBase):
+    kind: Literal["message.citation"]
+    message_id: str
+    citation: PublicCitation
+
+
+class ReasoningSummaryDeltaEvent(PublicSseEventBase):
+    kind: Literal["reasoning_summary.delta"]
+    delta: str
+
+
+class RefusalDeltaEvent(PublicSseEventBase):
+    kind: Literal["refusal.delta"]
+    message_id: str
+    delta: str
+
+
+class RefusalDoneEvent(PublicSseEventBase):
+    kind: Literal["refusal.done"]
+    message_id: str
+    refusal_text: str
+
+
+class ToolStatusEvent(PublicSseEventBase):
+    kind: Literal["tool.status"]
+    tool: PublicTool
+
+
+class ToolArgumentsDeltaEvent(PublicSseEventBase):
+    kind: Literal["tool.arguments.delta"]
+    tool_call_id: str
+    tool_type: Literal["function", "mcp"]
+    tool_name: str
+    delta: str
+
+
+class ToolArgumentsDoneEvent(PublicSseEventBase):
+    kind: Literal["tool.arguments.done"]
+    tool_call_id: str
+    tool_type: Literal["function", "mcp"]
+    tool_name: str
+    arguments_text: str
+    arguments_json: dict[str, Any] | None = None
+
+
+class ToolCodeDeltaEvent(PublicSseEventBase):
+    kind: Literal["tool.code.delta"]
+    tool_call_id: str
+    delta: str
+
+
+class ToolCodeDoneEvent(PublicSseEventBase):
+    kind: Literal["tool.code.done"]
+    tool_call_id: str
+    code: str
+
+
+class ToolOutputEvent(PublicSseEventBase):
+    kind: Literal["tool.output"]
+    tool_call_id: str
+    tool_type: Literal[
+        "web_search",
+        "file_search",
+        "code_interpreter",
+        "image_generation",
+        "function",
+        "mcp",
+    ]
+    output: Any
+
+
+class ChunkTarget(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    entity_kind: Literal["tool_call", "message"]
+    entity_id: str
+    field: str
+    part_index: int | None = None
+
+
+class ChunkDeltaEvent(PublicSseEventBase):
+    kind: Literal["chunk.delta"]
+    target: ChunkTarget
+    encoding: Literal["base64", "utf8"] = "utf8"
+    chunk_index: int
+    data: str
+
+
+class ChunkDoneEvent(PublicSseEventBase):
+    kind: Literal["chunk.done"]
+    target: ChunkTarget
+
+
+class ErrorPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    code: str | None = None
+    message: str
+    source: Literal["provider", "server"]
+    is_retryable: bool
+
+
+class ErrorEvent(PublicSseEventBase):
+    kind: Literal["error"]
+    error: ErrorPayload
+
+
+class FinalPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["completed", "failed", "incomplete", "refused", "cancelled"]
     response_text: str | None = None
     structured_output: Any | None = None
-    output_schema: dict[str, Any] | None = None
-    is_terminal: bool = False
-    event: str | None = None
-    payload: dict[str, Any] | None = None
-    attachments: list[MessageAttachment | dict[str, Any]] | None = None
-    raw_event: dict[str, Any] | None = None
-    tool_call: ToolCallPayload | dict[str, Any] | None = None
-    annotations: list[UrlCitation | ContainerFileCitation | FileCitation] | None = None
-    server_timestamp: str | None = None
+    reasoning_summary_text: str | None = None
+    refusal_text: str | None = None
+    attachments: list[MessageAttachment] = Field(default_factory=list)
+    usage: PublicUsage | None = None
 
-    # Guardrail metadata (present when kind == "guardrail_result")
-    guardrail_stage: Literal[
-        "pre_flight",
-        "input",
-        "output",
-        "tool_input",
-        "tool_output",
-        "summary",
-    ] | None = None
-    guardrail_key: str | None = None
-    guardrail_name: str | None = None
-    guardrail_tripwire_triggered: bool | None = None
-    guardrail_suppressed: bool | None = None
-    guardrail_flagged: bool | None = None
-    guardrail_confidence: float | None = None
-    guardrail_masked_content: str | None = None
-    guardrail_token_usage: dict[str, Any] | None = None
-    guardrail_details: dict[str, Any] | None = None
-    guardrail_summary: bool | None = None
+
+class FinalEvent(PublicSseEventBase):
+    kind: Literal["final"]
+    final: FinalPayload
+
+
+PublicSseEventUnion = (
+    LifecycleEvent
+    | MessageDeltaEvent
+    | MessageCitationEvent
+    | ReasoningSummaryDeltaEvent
+    | RefusalDeltaEvent
+    | RefusalDoneEvent
+    | ToolStatusEvent
+    | ToolArgumentsDeltaEvent
+    | ToolArgumentsDoneEvent
+    | ToolCodeDeltaEvent
+    | ToolCodeDoneEvent
+    | ToolOutputEvent
+    | ChunkDeltaEvent
+    | ChunkDoneEvent
+    | ErrorEvent
+    | FinalEvent
+)
+
+
+class PublicSseEvent(RootModel[PublicSseEventUnion]):
+    """Root model so the wire format is the event object itself (not nested)."""
+
+    model_config = ConfigDict(title="PublicSseEvent")
 
 
 __all__ = [
-    "StreamingEvent",
-    "MessageAttachment",
-    "WebSearchAction",
-    "WebSearchCall",
-    "CodeInterpreterCall",
-    "FileSearchCall",
-    "ImageGenerationCall",
-    "ToolCallPayload",
-    "UrlCitation",
+    "PUBLIC_SSE_SCHEMA_VERSION",
+    "ChunkDeltaEvent",
+    "ChunkDoneEvent",
+    "ChunkTarget",
+    "CodeInterpreterTool",
     "ContainerFileCitation",
+    "ErrorEvent",
+    "ErrorPayload",
     "FileCitation",
     "FileSearchResult",
+    "FileSearchTool",
+    "FinalEvent",
+    "FinalPayload",
+    "FunctionTool",
+    "ImageGenerationTool",
+    "LifecycleEvent",
+    "McpTool",
+    "MessageAttachment",
+    "MessageCitationEvent",
+    "MessageDeltaEvent",
+    "PublicCitation",
+    "PublicSseEvent",
+    "PublicTool",
+    "PublicUsage",
+    "ReasoningSummaryDeltaEvent",
+    "RefusalDeltaEvent",
+    "RefusalDoneEvent",
+    "StreamNotice",
+    "ToolArgumentsDeltaEvent",
+    "ToolArgumentsDoneEvent",
+    "ToolCodeDeltaEvent",
+    "ToolCodeDoneEvent",
+    "ToolOutputEvent",
+    "ToolStatusEvent",
+    "UrlCitation",
+    "WebSearchTool",
+    "WorkflowContext",
 ]

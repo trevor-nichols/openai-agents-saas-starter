@@ -25,7 +25,7 @@ import type {
   ToolState,
 } from '../types';
 import type { ConversationEvents, ConversationMessagesPage } from '@/types/conversations';
-import type { LocationHint, StreamingChatEvent } from '@/lib/api/client/types.gen';
+import type { LocationHint } from '@/lib/api/client/types.gen';
 
 import { createLogger } from '@/lib/logging';
 import { consumeChatStream } from '../adapters/chatStreamAdapter';
@@ -69,7 +69,6 @@ export interface UseChatControllerReturn {
   agentNotices: AgentNotice[];
   toolEvents: ToolState[];
   toolEventAnchors: ToolEventAnchors;
-  guardrailEvents: StreamingChatEvent[];
   reasoningText: string;
   lifecycleStatus: ConversationLifecycleStatus;
   hasOlderMessages: boolean;
@@ -113,7 +112,6 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
   const [agentNotices, setAgentNotices] = useState<AgentNotice[]>([]);
   const [toolEvents, setToolEvents] = useState<ToolState[]>([]);
   const [toolEventAnchors, setToolEventAnchors] = useState<ToolEventAnchors>({});
-  const [guardrailEvents, setGuardrailEvents] = useState<StreamingChatEvent[]>([]);
   const [reasoningText, setReasoningText] = useState('');
   const [lifecycleStatus, setLifecycleStatus] = useState<ConversationLifecycleStatus>('idle');
   const lastActiveAgentRef = useRef<string>('triage');
@@ -122,6 +120,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
   const assistantSegmentStartOffsetRef = useRef<number>(0);
   const latestAssistantAccumulatedRef = useRef<string>('');
   const lastToolAnchorMessageIdRef = useRef<string | null>(null);
+  const turnUserMessageIdRef = useRef<string | null>(null);
   const toolAnchorByIdRef = useRef<Map<string, string>>(new Map());
   const assistantIdNonceRef = useRef<number>(0);
 
@@ -261,7 +260,6 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
     setHistoryError(null);
     setToolEvents([]);
     setToolEventAnchors({});
-    setGuardrailEvents([]);
     setReasoningText('');
     setAgentNotices([]);
     setLifecycleStatus('idle');
@@ -272,6 +270,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
     assistantSegmentStartOffsetRef.current = 0;
     latestAssistantAccumulatedRef.current = '';
     lastToolAnchorMessageIdRef.current = null;
+    turnUserMessageIdRef.current = null;
     toolAnchorByIdRef.current = new Map();
   }, [selectedAgent]);
 
@@ -279,12 +278,12 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
     setReasoningText('');
     setToolEvents([]);
     setToolEventAnchors({});
-    setGuardrailEvents([]);
     setLifecycleStatus('idle');
     assistantMessageIdRef.current = null;
     assistantSegmentStartOffsetRef.current = 0;
     latestAssistantAccumulatedRef.current = '';
     lastToolAnchorMessageIdRef.current = null;
+    turnUserMessageIdRef.current = null;
     toolAnchorByIdRef.current = new Map();
   }, []);
 
@@ -335,7 +334,6 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
 
       // Reset per-turn streaming state
       resetTurnState();
-      setGuardrailEvents([]);
 
       setIsSending(true);
       setErrorMessage(null);
@@ -360,6 +358,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       assistantSegmentStartOffsetRef.current = 0;
       latestAssistantAccumulatedRef.current = '';
       lastToolAnchorMessageIdRef.current = userMessage.id;
+      turnUserMessageIdRef.current = userMessage.id;
       toolAnchorByIdRef.current = new Map();
       setToolEventAnchors({});
 
@@ -415,39 +414,62 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
           onToolStates: (tools) => {
             setToolEvents(tools);
 
-            const newlySeenToolIds: string[] = [];
-            for (const tool of tools) {
-              if (!toolAnchorByIdRef.current.has(tool.id)) {
-                newlySeenToolIds.push(tool.id);
+            const newlySeenTools = tools.filter((tool) => !toolAnchorByIdRef.current.has(tool.id));
+            if (newlySeenTools.length === 0) return;
+
+            // Ensure any pending assistant/user message actions are committed before we anchor
+            // tool cards. Without this, tool events can arrive while the assistant message is
+            // still queued (requestAnimationFrame) which makes the anchor id "invisible" and
+            // causes tool cards to fall into the unanchored panel (breaking chronology).
+            flushQueuedMessages();
+
+            const defaultAnchorId = lastToolAnchorMessageIdRef.current;
+            const userAnchorId = turnUserMessageIdRef.current;
+            const resolvedFallbackAnchorId = defaultAnchorId ?? userAnchorId;
+            if (!resolvedFallbackAnchorId) return;
+
+            const anchorAssignments = new Map<string, string[]>();
+            for (const tool of newlySeenTools) {
+              const shouldAnchorToUser =
+                (tool.status === 'output-available' || tool.status === 'output-error') &&
+                (tool.input === undefined || tool.input === null);
+
+              const targetAnchorId =
+                shouldAnchorToUser && userAnchorId ? userAnchorId : resolvedFallbackAnchorId;
+
+              toolAnchorByIdRef.current.set(tool.id, targetAnchorId);
+              const existing = anchorAssignments.get(targetAnchorId);
+              if (existing) {
+                existing.push(tool.id);
+              } else {
+                anchorAssignments.set(targetAnchorId, [tool.id]);
               }
             }
 
-            if (newlySeenToolIds.length === 0) {
-              return;
-            }
-
-            const anchorId = lastToolAnchorMessageIdRef.current;
-            if (!anchorId) {
-              return;
-            }
+            if (anchorAssignments.size === 0) return;
 
             setToolEventAnchors((prev) => {
-              const existing = prev[anchorId] ?? [];
-              const nextIds = [...existing];
               let changed = false;
+              const next: ToolEventAnchors = { ...prev };
 
-              for (const toolId of newlySeenToolIds) {
-                if (toolAnchorByIdRef.current.has(toolId)) continue;
-                toolAnchorByIdRef.current.set(toolId, anchorId);
-                nextIds.push(toolId);
-                changed = true;
+              for (const [anchorId, toolIds] of anchorAssignments.entries()) {
+                const existing = next[anchorId] ?? [];
+                const deduped = new Set(existing);
+                const nextIds = [...existing];
+
+                for (const toolId of toolIds) {
+                  if (!toolId || deduped.has(toolId)) continue;
+                  deduped.add(toolId);
+                  nextIds.push(toolId);
+                  changed = true;
+                }
+
+                if (nextIds.length > existing.length) {
+                  next[anchorId] = nextIds;
+                }
               }
 
-              if (!changed) return prev;
-              return {
-                ...prev,
-                [anchorId]: nextIds,
-              };
+              return changed ? next : prev;
             });
 
             // Close the current assistant segment when a tool starts so tool cards render inline
@@ -473,7 +495,6 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
               assistantSegmentStartOffsetRef.current = latestAssistantAccumulatedRef.current.length;
             }
           },
-          onGuardrailEvents: setGuardrailEvents,
           onLifecycle: setLifecycleStatus,
           onAgentChange: (agent) => {
             setActiveAgent(agent);
@@ -485,14 +506,20 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
             appendAgentNotice(notice);
           },
           onAttachments: (attachments) => {
-            const assistantMessageId = ensureAssistantMessage();
+            const normalized = attachments ?? null;
+            const hasAny = Array.isArray(normalized) && normalized.length > 0;
+            const existingId = assistantMessageIdRef.current;
+            if (!existingId && !hasAny) return;
+
+            const assistantMessageId = existingId ?? ensureAssistantMessage();
             enqueueMessageAction({
               type: 'updateById',
               id: assistantMessageId,
-              patch: { attachments: attachments ?? null },
+              patch: { attachments: normalized },
             });
           },
           onStructuredOutput: (structuredOutput) => {
+            if (structuredOutput === null || structuredOutput === undefined) return;
             const assistantMessageId = ensureAssistantMessage();
             enqueueMessageAction({
               type: 'updateById',
@@ -762,7 +789,6 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       agentNotices,
       toolEvents: combinedToolEvents,
       toolEventAnchors: combinedToolEventAnchors,
-      guardrailEvents,
       reasoningText,
       lifecycleStatus,
       hasOlderMessages: Boolean(hasNextPage),
@@ -795,7 +821,6 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       agentNotices,
       combinedToolEvents,
       combinedToolEventAnchors,
-      guardrailEvents,
       reasoningText,
       lifecycleStatus,
       hasNextPage,

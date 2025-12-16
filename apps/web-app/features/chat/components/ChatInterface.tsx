@@ -22,7 +22,6 @@ import type {
   ToolEventAnchors,
   ToolState,
 } from '@/lib/chat/types';
-import type { StreamingChatEvent } from '@/lib/api/client/types.gen';
 import { useUpdateConversationMemory } from '@/lib/queries/conversations';
 import type { ConversationMemoryConfigInput } from '@/types/conversations';
 
@@ -37,7 +36,6 @@ interface ChatInterfaceProps {
   tools?: ToolState[];
   toolEventAnchors?: ToolEventAnchors;
   agentNotices?: { id: string; text: string }[];
-  guardrailEvents?: StreamingChatEvent[];
   reasoningText?: string;
   activeAgent?: string;
   lifecycleStatus?: ConversationLifecycleStatus;
@@ -75,7 +73,6 @@ export function ChatInterface({
   tools: toolsProp,
   toolEventAnchors: toolEventAnchorsProp,
   agentNotices: agentNoticesProp,
-  guardrailEvents: guardrailEventsProp,
   reasoningText: reasoningTextProp,
   activeAgent: activeAgentProp,
   lifecycleStatus: lifecycleStatusProp,
@@ -101,7 +98,6 @@ export function ChatInterface({
   const toolEventsFromStore = useChatToolEvents();
   const toolEventAnchorsFromStore = useChatToolEventAnchors();
   const agentNoticesFromStore = useChatAgentNotices();
-  const guardrailEventsFromStore = useChatSelector((s) => s.guardrailEvents);
   const lifecycleFromStore = useChatLifecycle();
   const activeAgentFromStore = useChatSelector((s) => s.activeAgent);
   const reasoningFromStore = useChatSelector((s) => s.reasoningText);
@@ -115,7 +111,6 @@ export function ChatInterface({
   const toolEvents = toolsProp ?? toolEventsFromStore;
   const toolEventAnchors = toolEventAnchorsProp ?? toolEventAnchorsFromStore;
   const agentNotices = agentNoticesProp ?? agentNoticesFromStore;
-  const guardrailEvents = guardrailEventsProp ?? guardrailEventsFromStore ?? [];
   const lifecycleStatus = lifecycleStatusProp ?? lifecycleFromStore;
   const activeAgent = activeAgentProp ?? activeAgentFromStore;
   const reasoningText = reasoningTextProp ?? reasoningFromStore;
@@ -247,7 +242,6 @@ export function ChatInterface({
       reasoningText={reasoningText}
       tools={toolEvents}
       toolEventAnchors={toolEventAnchors}
-      guardrailEvents={guardrailEvents}
       chatStatus={chatStatus}
       lifecycleStatus={lifecycleStatus}
       activeAgent={activeAgent}

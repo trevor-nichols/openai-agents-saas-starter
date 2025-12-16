@@ -92,7 +92,8 @@ async def test_compact_replaces_old_tool_results(engine: AsyncEngine):
     # Oldest turn (u1 + tool) should be compacted, latest turn untouched
     first_tool = stored[2]
     assert first_tool.get("compacted") is True
-    assert "removed: tool result" in first_tool.get("content", "")
+    assert "removed:" in first_tool.get("content", "")
+    assert "tool output" in first_tool.get("content", "")
 
     # Last turn's result should remain intact
     last_tool = stored[4]
@@ -142,13 +143,15 @@ async def test_compact_token_budget_forces_compaction(engine: AsyncEngine):
         {"role": "user", "content": "u1"},
         {"type": "function_call_output", "call_id": "c1", "content": "A" * 200},
         {"role": "assistant", "content": "done"},
+        {"role": "user", "content": "u2"},
+        {"role": "assistant", "content": "ok"},
     ]
 
     await session.add_items(items)
     stored = await session.get_items()
 
     # Despite trigger_turns not being reached, token budget should compact the tool output
-    assert any(it.get("compacted") for it in stored)
+    assert any(it.get("compacted") and it.get("call_id") == "c1" for it in stored)
 
 
 @pytest.mark.asyncio

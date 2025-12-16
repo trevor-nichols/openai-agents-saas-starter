@@ -20,6 +20,7 @@ import {
 } from '@/lib/workflows/mock';
 import type { WorkflowRunInput, WorkflowRunListFilters } from '@/lib/workflows/types';
 import { apiV1Path } from '@/lib/apiPaths';
+import { parseSseStream } from '@/lib/streams/sseParser';
 
 export async function listWorkflows(params?: {
   search?: string | null;
@@ -172,28 +173,26 @@ export async function* streamWorkflowRun(
   if (!response.ok || !response.body) {
     throw new Error('Workflow stream response missing body');
   }
+  let terminalSeen = false;
 
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const segments = buffer.split('\n\n');
-      buffer = segments.pop() ?? '';
-
-      for (const segment of segments) {
-        if (!segment.trim() || !segment.startsWith('data: ')) continue;
-        const data = JSON.parse(segment.slice(6)) as StreamingWorkflowEvent;
-        yield data;
-        if (data.is_terminal) return;
-      }
+  for await (const evt of parseSseStream(response.body)) {
+    const parsed = JSON.parse(evt.data) as unknown;
+    if (typeof parsed !== 'object' || parsed === null || !('kind' in parsed)) {
+      throw new Error('Unknown stream payload shape');
     }
-  } finally {
-    reader.releaseLock();
+    const event = parsed as StreamingWorkflowEvent;
+    if (!event.kind) {
+      throw new Error('Stream event missing kind');
+    }
+    yield event;
+    if (event.kind === 'final' || event.kind === 'error') {
+      terminalSeen = true;
+      return;
+    }
+  }
+
+  if (!terminalSeen) {
+    throw new Error('Workflow stream ended without a terminal event.');
   }
 }
 

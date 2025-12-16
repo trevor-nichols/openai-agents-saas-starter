@@ -155,6 +155,11 @@ async def _configure_agent_provider(
         # Populate ORM metadata (includes workflow tables via imports above)
         await conn.run_sync(Base.metadata.create_all)
 
+    container = get_container()
+    container.session_factory = sqla_async.async_sessionmaker(
+        _provider_engine, expire_on_commit=False
+    )
+
     registry = get_provider_registry()
     registry.clear()
     registry.register(
@@ -169,7 +174,7 @@ async def _configure_agent_provider(
         set_default=True,
     )
     # Ensure AgentService will be rebuilt against the freshly populated registry
-    get_container().agent_service = None
+    container.agent_service = None
     yield
 
 

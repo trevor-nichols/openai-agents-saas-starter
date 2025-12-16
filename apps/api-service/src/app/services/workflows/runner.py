@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import AsyncIterator
 from types import SimpleNamespace
@@ -10,7 +11,7 @@ from uuid import uuid4
 
 from agents import trace
 
-from app.domain.ai.models import AgentStreamEvent
+from app.domain.ai.models import AgentRunUsage, AgentStreamEvent
 from app.domain.conversations import ConversationMessage, ConversationMetadata
 from app.domain.workflows import WorkflowRunRepository
 from app.services.agents.context import ConversationActorContext
@@ -28,6 +29,36 @@ from app.workflows._shared.schema_utils import schema_to_json_schema, validate_a
 from app.workflows._shared.specs import WorkflowSpec
 
 logger = logging.getLogger(__name__)
+
+
+def _aggregate_usage(usages: list[AgentRunUsage | None]) -> AgentRunUsage | None:
+    totals: dict[str, int] = {}
+    saw_any = False
+    for usage in usages:
+        if usage is None:
+            continue
+        for field_name in (
+            "input_tokens",
+            "output_tokens",
+            "total_tokens",
+            "cached_input_tokens",
+            "reasoning_output_tokens",
+            "requests",
+        ):
+            value = getattr(usage, field_name, None)
+            if isinstance(value, int):
+                totals[field_name] = totals.get(field_name, 0) + value
+                saw_any = True
+    if not saw_any:
+        return None
+    return AgentRunUsage(
+        input_tokens=totals.get("input_tokens"),
+        output_tokens=totals.get("output_tokens"),
+        total_tokens=totals.get("total_tokens"),
+        cached_input_tokens=totals.get("cached_input_tokens"),
+        reasoning_output_tokens=totals.get("reasoning_output_tokens"),
+        requests=totals.get("requests"),
+    )
 
 
 class WorkflowRunner:
@@ -397,6 +428,39 @@ class WorkflowRunner:
                 final_output=validated_output,
                 actor=actor,
                 workflow_key=workflow.key,
+            )
+
+            last_step = prior_steps[-1] if prior_steps else None
+            response_text: str | None = None
+            structured_output: Any | None = None
+            if validated_output is not None:
+                if isinstance(validated_output, str):
+                    response_text = validated_output
+                else:
+                    structured_output = validated_output
+                    try:
+                        response_text = json.dumps(validated_output, ensure_ascii=False)
+                    except Exception:  # pragma: no cover - defensive
+                        response_text = str(validated_output)
+
+            yield AgentStreamEvent(
+                kind="run_item_stream_event",
+                conversation_id=conversation_id,
+                response_id=last_step.response.response_id if last_step else None,
+                agent=last_step.agent_key if last_step else _first_agent_key(workflow),
+                is_terminal=True,
+                response_text=response_text,
+                structured_output=structured_output,
+                usage=_aggregate_usage([step.response.usage for step in prior_steps]),
+                metadata={
+                    "workflow_key": workflow.key,
+                    "workflow_run_id": run_id,
+                    "step_name": last_step.name if last_step else None,
+                    "step_agent": last_step.agent_key if last_step else None,
+                    "stage_name": last_step.stage_name if last_step else None,
+                    "parallel_group": last_step.parallel_group if last_step else None,
+                    "branch_index": last_step.branch_index if last_step else None,
+                },
             )
         except _WorkflowCancelled:
             await self._recorder.end(

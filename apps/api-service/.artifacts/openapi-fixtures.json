@@ -22347,16 +22347,278 @@
         "title": "ChatMessage",
         "description": "Single conversational message."
       },
-      "CodeInterpreterCall": {
+      "ChunkDeltaEvent": {
         "properties": {
-          "id": {
+          "schema": {
             "type": "string",
-            "title": "Id"
+            "const": "public_sse_v1",
+            "title": "Schema"
           },
-          "type": {
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id"
+          },
+          "stream_id": {
             "type": "string",
-            "const": "code_interpreter_call",
-            "title": "Type"
+            "title": "Stream Id"
+          },
+          "server_timestamp": {
+            "type": "string",
+            "title": "Server Timestamp"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "workflow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider_sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Sequence Number"
+          },
+          "notices": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StreamNotice"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notices"
+          },
+          "kind": {
+            "type": "string",
+            "const": "chunk.delta",
+            "title": "Kind"
+          },
+          "target": {
+            "$ref": "#/components/schemas/ChunkTarget"
+          },
+          "encoding": {
+            "type": "string",
+            "enum": [
+              "base64",
+              "utf8"
+            ],
+            "title": "Encoding",
+            "default": "utf8"
+          },
+          "chunk_index": {
+            "type": "integer",
+            "title": "Chunk Index"
+          },
+          "data": {
+            "type": "string",
+            "title": "Data"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema",
+          "event_id",
+          "stream_id",
+          "server_timestamp",
+          "conversation_id",
+          "kind",
+          "target",
+          "chunk_index",
+          "data"
+        ],
+        "title": "ChunkDeltaEvent"
+      },
+      "ChunkDoneEvent": {
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "public_sse_v1",
+            "title": "Schema"
+          },
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id"
+          },
+          "stream_id": {
+            "type": "string",
+            "title": "Stream Id"
+          },
+          "server_timestamp": {
+            "type": "string",
+            "title": "Server Timestamp"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "workflow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider_sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Sequence Number"
+          },
+          "notices": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StreamNotice"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notices"
+          },
+          "kind": {
+            "type": "string",
+            "const": "chunk.done",
+            "title": "Kind"
+          },
+          "target": {
+            "$ref": "#/components/schemas/ChunkTarget"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema",
+          "event_id",
+          "stream_id",
+          "server_timestamp",
+          "conversation_id",
+          "kind",
+          "target"
+        ],
+        "title": "ChunkDoneEvent"
+      },
+      "ChunkTarget": {
+        "properties": {
+          "entity_kind": {
+            "type": "string",
+            "enum": [
+              "tool_call",
+              "message"
+            ],
+            "title": "Entity Kind"
+          },
+          "entity_id": {
+            "type": "string",
+            "title": "Entity Id"
+          },
+          "field": {
+            "type": "string",
+            "title": "Field"
+          },
+          "part_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Part Index"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "entity_kind",
+          "entity_id",
+          "field"
+        ],
+        "title": "ChunkTarget"
+      },
+      "CodeInterpreterTool": {
+        "properties": {
+          "tool_type": {
+            "type": "string",
+            "const": "code_interpreter",
+            "title": "Tool Type"
+          },
+          "tool_call_id": {
+            "type": "string",
+            "title": "Tool Call Id"
           },
           "status": {
             "type": "string",
@@ -22366,29 +22628,6 @@
               "completed"
             ],
             "title": "Status"
-          },
-          "code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Code"
-          },
-          "outputs": {
-            "anyOf": [
-              {
-                "items": {},
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Outputs"
           },
           "container_id": {
             "anyOf": [
@@ -22415,29 +22654,16 @@
               }
             ],
             "title": "Container Mode"
-          },
-          "annotations": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/ContainerFileCitation"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Annotations"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
-          "id",
-          "type",
+          "tool_type",
+          "tool_call_id",
           "status"
         ],
-        "title": "CodeInterpreterCall"
+        "title": "CodeInterpreterTool"
       },
       "ConsentRequest": {
         "properties": {
@@ -22777,6 +23003,7 @@
             "title": "Url"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "start_index",
@@ -23827,6 +24054,147 @@
         ],
         "title": "EmailVerificationTokenResponse"
       },
+      "ErrorEvent": {
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "public_sse_v1",
+            "title": "Schema"
+          },
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id"
+          },
+          "stream_id": {
+            "type": "string",
+            "title": "Stream Id"
+          },
+          "server_timestamp": {
+            "type": "string",
+            "title": "Server Timestamp"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "workflow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider_sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Sequence Number"
+          },
+          "notices": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StreamNotice"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notices"
+          },
+          "kind": {
+            "type": "string",
+            "const": "error",
+            "title": "Kind"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorPayload"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema",
+          "event_id",
+          "stream_id",
+          "server_timestamp",
+          "conversation_id",
+          "kind",
+          "error"
+        ],
+        "title": "ErrorEvent"
+      },
+      "ErrorPayload": {
+        "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "provider",
+              "server"
+            ],
+            "title": "Source"
+          },
+          "is_retryable": {
+            "type": "boolean",
+            "title": "Is Retryable"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "message",
+          "source",
+          "is_retryable"
+        ],
+        "title": "ErrorPayload"
+      },
       "FileCitation": {
         "properties": {
           "type": {
@@ -23884,68 +24252,12 @@
             "title": "Filename"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "file_id"
         ],
         "title": "FileCitation"
-      },
-      "FileSearchCall": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "type": {
-            "type": "string",
-            "const": "file_search_call",
-            "title": "Type"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "in_progress",
-              "searching",
-              "completed"
-            ],
-            "title": "Status"
-          },
-          "queries": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Queries"
-          },
-          "results": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/FileSearchResult"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Results"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "type",
-          "status"
-        ],
-        "title": "FileSearchCall"
       },
       "FileSearchResult": {
         "properties": {
@@ -24010,11 +24322,252 @@
             "title": "Text"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "file_id"
         ],
         "title": "FileSearchResult"
+      },
+      "FileSearchTool": {
+        "properties": {
+          "tool_type": {
+            "type": "string",
+            "const": "file_search",
+            "title": "Tool Type"
+          },
+          "tool_call_id": {
+            "type": "string",
+            "title": "Tool Call Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "in_progress",
+              "searching",
+              "completed"
+            ],
+            "title": "Status"
+          },
+          "queries": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queries"
+          },
+          "results": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/FileSearchResult"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Results"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tool_type",
+          "tool_call_id",
+          "status"
+        ],
+        "title": "FileSearchTool"
+      },
+      "FinalEvent": {
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "public_sse_v1",
+            "title": "Schema"
+          },
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id"
+          },
+          "stream_id": {
+            "type": "string",
+            "title": "Stream Id"
+          },
+          "server_timestamp": {
+            "type": "string",
+            "title": "Server Timestamp"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "workflow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider_sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Sequence Number"
+          },
+          "notices": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StreamNotice"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notices"
+          },
+          "kind": {
+            "type": "string",
+            "const": "final",
+            "title": "Kind"
+          },
+          "final": {
+            "$ref": "#/components/schemas/FinalPayload"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema",
+          "event_id",
+          "stream_id",
+          "server_timestamp",
+          "conversation_id",
+          "kind",
+          "final"
+        ],
+        "title": "FinalEvent"
+      },
+      "FinalPayload": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "failed",
+              "incomplete",
+              "refused",
+              "cancelled"
+            ],
+            "title": "Status"
+          },
+          "response_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Text"
+          },
+          "structured_output": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Structured Output"
+          },
+          "reasoning_summary_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Summary Text"
+          },
+          "refusal_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refusal Text"
+          },
+          "attachments": {
+            "items": {
+              "$ref": "#/components/schemas/MessageAttachment"
+            },
+            "type": "array",
+            "title": "Attachments"
+          },
+          "usage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicUsage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "FinalPayload"
       },
       "FixtureApplyResult": {
         "properties": {
@@ -24348,6 +24901,73 @@
         ],
         "title": "FixtureUserResult"
       },
+      "FunctionTool": {
+        "properties": {
+          "tool_type": {
+            "type": "string",
+            "const": "function",
+            "title": "Tool Type"
+          },
+          "tool_call_id": {
+            "type": "string",
+            "title": "Tool Call Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "in_progress",
+              "completed",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "arguments_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arguments Text"
+          },
+          "arguments_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arguments Json"
+          },
+          "output": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tool_type",
+          "tool_call_id",
+          "status",
+          "name"
+        ],
+        "title": "FunctionTool"
+      },
       "GuardrailCheckConfigSchema": {
         "properties": {
           "guardrail_key": {
@@ -24554,16 +25174,16 @@
         "title": "HealthResponse",
         "description": "Health check response payload."
       },
-      "ImageGenerationCall": {
+      "ImageGenerationTool": {
         "properties": {
-          "id": {
+          "tool_type": {
             "type": "string",
-            "title": "Id"
+            "const": "image_generation",
+            "title": "Tool Type"
           },
-          "type": {
+          "tool_call_id": {
             "type": "string",
-            "const": "image_generation_call",
-            "title": "Type"
+            "title": "Tool Call Id"
           },
           "status": {
             "type": "string",
@@ -24574,17 +25194,6 @@
               "completed"
             ],
             "title": "Status"
-          },
-          "result": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Result"
           },
           "revised_prompt": {
             "anyOf": [
@@ -24641,17 +25250,6 @@
             ],
             "title": "Background"
           },
-          "output_index": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Output Index"
-          },
           "partial_image_index": {
             "anyOf": [
               {
@@ -24662,37 +25260,16 @@
               }
             ],
             "title": "Partial Image Index"
-          },
-          "partial_image_b64": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Partial Image B64"
-          },
-          "b64_json": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "B64 Json"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
-          "id",
-          "type",
+          "tool_type",
+          "tool_call_id",
           "status"
         ],
-        "title": "ImageGenerationCall"
+        "title": "ImageGenerationTool"
       },
       "IncidentSchema": {
         "properties": {
@@ -24732,6 +25309,128 @@
           "state"
         ],
         "title": "IncidentSchema"
+      },
+      "LifecycleEvent": {
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "public_sse_v1",
+            "title": "Schema"
+          },
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id"
+          },
+          "stream_id": {
+            "type": "string",
+            "title": "Stream Id"
+          },
+          "server_timestamp": {
+            "type": "string",
+            "title": "Server Timestamp"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "workflow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider_sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Sequence Number"
+          },
+          "notices": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StreamNotice"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notices"
+          },
+          "kind": {
+            "type": "string",
+            "const": "lifecycle",
+            "title": "Kind"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "in_progress",
+              "completed",
+              "failed",
+              "incomplete",
+              "cancelled"
+            ],
+            "title": "Status"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema",
+          "event_id",
+          "stream_id",
+          "server_timestamp",
+          "conversation_id",
+          "kind",
+          "status"
+        ],
+        "title": "LifecycleEvent"
       },
       "LocationHint": {
         "properties": {
@@ -24844,6 +25543,85 @@
           "message"
         ],
         "title": "LogoutSessionSuccessResponse"
+      },
+      "McpTool": {
+        "properties": {
+          "tool_type": {
+            "type": "string",
+            "const": "mcp",
+            "title": "Tool Type"
+          },
+          "tool_call_id": {
+            "type": "string",
+            "title": "Tool Call Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "awaiting_approval",
+              "in_progress",
+              "completed",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "tool_name": {
+            "type": "string",
+            "title": "Tool Name"
+          },
+          "server_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Server Label"
+          },
+          "arguments_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arguments Text"
+          },
+          "arguments_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arguments Json"
+          },
+          "output": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tool_type",
+          "tool_call_id",
+          "status",
+          "tool_name"
+        ],
+        "title": "McpTool"
       },
       "MemoryStrategyRequest": {
         "properties": {
@@ -25094,12 +25872,239 @@
             "description": "Originating tool call id"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "object_id",
           "filename"
         ],
         "title": "MessageAttachment"
+      },
+      "MessageCitationEvent": {
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "public_sse_v1",
+            "title": "Schema"
+          },
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id"
+          },
+          "stream_id": {
+            "type": "string",
+            "title": "Stream Id"
+          },
+          "server_timestamp": {
+            "type": "string",
+            "title": "Server Timestamp"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "workflow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider_sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Sequence Number"
+          },
+          "notices": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StreamNotice"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notices"
+          },
+          "kind": {
+            "type": "string",
+            "const": "message.citation",
+            "title": "Kind"
+          },
+          "message_id": {
+            "type": "string",
+            "title": "Message Id"
+          },
+          "citation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UrlCitation"
+              },
+              {
+                "$ref": "#/components/schemas/ContainerFileCitation"
+              },
+              {
+                "$ref": "#/components/schemas/FileCitation"
+              }
+            ],
+            "title": "Citation"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema",
+          "event_id",
+          "stream_id",
+          "server_timestamp",
+          "conversation_id",
+          "kind",
+          "message_id",
+          "citation"
+        ],
+        "title": "MessageCitationEvent"
+      },
+      "MessageDeltaEvent": {
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "public_sse_v1",
+            "title": "Schema"
+          },
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id"
+          },
+          "stream_id": {
+            "type": "string",
+            "title": "Stream Id"
+          },
+          "server_timestamp": {
+            "type": "string",
+            "title": "Server Timestamp"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "workflow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider_sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Sequence Number"
+          },
+          "notices": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StreamNotice"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notices"
+          },
+          "kind": {
+            "type": "string",
+            "const": "message.delta",
+            "title": "Kind"
+          },
+          "message_id": {
+            "type": "string",
+            "title": "Message Id"
+          },
+          "delta": {
+            "type": "string",
+            "title": "Delta"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema",
+          "event_id",
+          "stream_id",
+          "server_timestamp",
+          "conversation_id",
+          "kind",
+          "message_id",
+          "delta"
+        ],
+        "title": "MessageDeltaEvent"
       },
       "MfaChallengeCompleteRequest": {
         "properties": {
@@ -25608,6 +26613,182 @@
         "title": "PresetSummary",
         "description": "Lightweight representation of a guardrail preset."
       },
+      "PublicUsage": {
+        "properties": {
+          "input_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Tokens"
+          },
+          "output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Tokens"
+          },
+          "total_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Tokens"
+          },
+          "cached_input_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cached Input Tokens"
+          },
+          "reasoning_output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Output Tokens"
+          },
+          "requests": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requests"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PublicUsage"
+      },
+      "ReasoningSummaryDeltaEvent": {
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "public_sse_v1",
+            "title": "Schema"
+          },
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id"
+          },
+          "stream_id": {
+            "type": "string",
+            "title": "Stream Id"
+          },
+          "server_timestamp": {
+            "type": "string",
+            "title": "Server Timestamp"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "workflow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider_sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Sequence Number"
+          },
+          "notices": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StreamNotice"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notices"
+          },
+          "kind": {
+            "type": "string",
+            "const": "reasoning_summary.delta",
+            "title": "Kind"
+          },
+          "delta": {
+            "type": "string",
+            "title": "Delta"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema",
+          "event_id",
+          "stream_id",
+          "server_timestamp",
+          "conversation_id",
+          "kind",
+          "delta"
+        ],
+        "title": "ReasoningSummaryDeltaEvent"
+      },
       "ReceiptResponse": {
         "properties": {
           "unread_count": {
@@ -25635,6 +26816,222 @@
           "codes"
         ],
         "title": "RecoveryCodesResponse"
+      },
+      "RefusalDeltaEvent": {
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "public_sse_v1",
+            "title": "Schema"
+          },
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id"
+          },
+          "stream_id": {
+            "type": "string",
+            "title": "Stream Id"
+          },
+          "server_timestamp": {
+            "type": "string",
+            "title": "Server Timestamp"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "workflow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider_sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Sequence Number"
+          },
+          "notices": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StreamNotice"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notices"
+          },
+          "kind": {
+            "type": "string",
+            "const": "refusal.delta",
+            "title": "Kind"
+          },
+          "message_id": {
+            "type": "string",
+            "title": "Message Id"
+          },
+          "delta": {
+            "type": "string",
+            "title": "Delta"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema",
+          "event_id",
+          "stream_id",
+          "server_timestamp",
+          "conversation_id",
+          "kind",
+          "message_id",
+          "delta"
+        ],
+        "title": "RefusalDeltaEvent"
+      },
+      "RefusalDoneEvent": {
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "public_sse_v1",
+            "title": "Schema"
+          },
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id"
+          },
+          "stream_id": {
+            "type": "string",
+            "title": "Stream Id"
+          },
+          "server_timestamp": {
+            "type": "string",
+            "title": "Server Timestamp"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "workflow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider_sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Sequence Number"
+          },
+          "notices": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StreamNotice"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notices"
+          },
+          "kind": {
+            "type": "string",
+            "const": "refusal.done",
+            "title": "Kind"
+          },
+          "message_id": {
+            "type": "string",
+            "title": "Message Id"
+          },
+          "refusal_text": {
+            "type": "string",
+            "title": "Refusal Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema",
+          "event_id",
+          "stream_id",
+          "server_timestamp",
+          "conversation_id",
+          "kind",
+          "message_id",
+          "refusal_text"
+        ],
+        "title": "RefusalDoneEvent"
       },
       "ServiceAccountIssueRequest": {
         "properties": {
@@ -27336,1059 +28733,138 @@
         ],
         "title": "StoragePresignUploadResponse"
       },
-      "StreamingChatEvent": {
+      "StreamNotice": {
         "properties": {
-          "kind": {
+          "type": {
             "type": "string",
             "enum": [
-              "raw_response_event",
-              "run_item_stream_event",
-              "agent_updated_stream_event",
-              "guardrail_result",
-              "usage",
-              "error",
-              "lifecycle"
+              "redacted",
+              "truncated"
             ],
-            "title": "Kind"
+            "title": "Type"
           },
-          "workflow_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Workflow Key"
+          "path": {
+            "type": "string",
+            "title": "Path"
           },
-          "workflow_run_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Workflow Run Id"
-          },
-          "step_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Step Name"
-          },
-          "step_agent": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Step Agent"
-          },
-          "stage_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Stage Name"
-          },
-          "parallel_group": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parallel Group"
-          },
-          "branch_index": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Branch Index"
-          },
-          "conversation_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Conversation Id"
-          },
-          "agent_used": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Agent Used"
-          },
-          "response_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Response Id"
-          },
-          "sequence_number": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sequence Number"
-          },
-          "raw_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Raw Type"
-          },
-          "run_item_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Run Item Name"
-          },
-          "run_item_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Run Item Type"
-          },
-          "tool_call_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tool Call Id"
-          },
-          "tool_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tool Name"
-          },
-          "agent": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Agent"
-          },
-          "new_agent": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "New Agent"
-          },
-          "display_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Display Name"
-          },
-          "text_delta": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Text Delta"
-          },
-          "reasoning_delta": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reasoning Delta"
-          },
-          "response_text": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Response Text"
-          },
-          "structured_output": {
-            "anyOf": [
-              {},
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Structured Output"
-          },
-          "output_schema": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Output Schema"
-          },
-          "is_terminal": {
-            "type": "boolean",
-            "title": "Is Terminal",
-            "default": false
-          },
-          "event": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Event"
-          },
-          "payload": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Payload"
-          },
-          "attachments": {
-            "anyOf": [
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/components/schemas/MessageAttachment"
-                    },
-                    {
-                      "additionalProperties": true,
-                      "type": "object"
-                    }
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Attachments"
-          },
-          "raw_event": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Raw Event"
-          },
-          "tool_call": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ToolCallPayload"
-              },
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tool Call"
-          },
-          "annotations": {
-            "anyOf": [
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/components/schemas/UrlCitation"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContainerFileCitation"
-                    },
-                    {
-                      "$ref": "#/components/schemas/FileCitation"
-                    }
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Annotations"
-          },
-          "server_timestamp": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Server Timestamp"
-          },
-          "guardrail_stage": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "pre_flight",
-                  "input",
-                  "output",
-                  "tool_input",
-                  "tool_output",
-                  "summary"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Guardrail Stage"
-          },
-          "guardrail_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Guardrail Key"
-          },
-          "guardrail_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Guardrail Name"
-          },
-          "guardrail_tripwire_triggered": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Guardrail Tripwire Triggered"
-          },
-          "guardrail_suppressed": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Guardrail Suppressed"
-          },
-          "guardrail_flagged": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Guardrail Flagged"
-          },
-          "guardrail_confidence": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Guardrail Confidence"
-          },
-          "guardrail_masked_content": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Guardrail Masked Content"
-          },
-          "guardrail_token_usage": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Guardrail Token Usage"
-          },
-          "guardrail_details": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Guardrail Details"
-          },
-          "guardrail_summary": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Guardrail Summary"
+          "message": {
+            "type": "string",
+            "title": "Message"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
-          "kind"
+          "type",
+          "path",
+          "message"
+        ],
+        "title": "StreamNotice",
+        "description": "Explicit markers for UX when content is altered for safety/stability."
+      },
+      "StreamingChatEvent": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/LifecycleEvent"
+          },
+          {
+            "$ref": "#/components/schemas/MessageDeltaEvent"
+          },
+          {
+            "$ref": "#/components/schemas/MessageCitationEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ReasoningSummaryDeltaEvent"
+          },
+          {
+            "$ref": "#/components/schemas/RefusalDeltaEvent"
+          },
+          {
+            "$ref": "#/components/schemas/RefusalDoneEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ToolStatusEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ToolArgumentsDeltaEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ToolArgumentsDoneEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ToolCodeDeltaEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ToolCodeDoneEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ToolOutputEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ChunkDeltaEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ChunkDoneEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ErrorEvent"
+          },
+          {
+            "$ref": "#/components/schemas/FinalEvent"
+          }
         ],
         "title": "StreamingChatEvent"
       },
       "StreamingWorkflowEvent": {
-        "properties": {
-          "kind": {
-            "type": "string",
-            "enum": [
-              "raw_response_event",
-              "run_item_stream_event",
-              "agent_updated_stream_event",
-              "guardrail_result",
-              "usage",
-              "error",
-              "lifecycle"
-            ],
-            "title": "Kind"
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/LifecycleEvent"
           },
-          "workflow_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Workflow Key"
+          {
+            "$ref": "#/components/schemas/MessageDeltaEvent"
           },
-          "workflow_run_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Workflow Run Id"
+          {
+            "$ref": "#/components/schemas/MessageCitationEvent"
           },
-          "step_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Step Name"
+          {
+            "$ref": "#/components/schemas/ReasoningSummaryDeltaEvent"
           },
-          "step_agent": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Step Agent"
+          {
+            "$ref": "#/components/schemas/RefusalDeltaEvent"
           },
-          "stage_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Stage Name"
+          {
+            "$ref": "#/components/schemas/RefusalDoneEvent"
           },
-          "parallel_group": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parallel Group"
+          {
+            "$ref": "#/components/schemas/ToolStatusEvent"
           },
-          "branch_index": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Branch Index"
+          {
+            "$ref": "#/components/schemas/ToolArgumentsDeltaEvent"
           },
-          "conversation_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Conversation Id"
+          {
+            "$ref": "#/components/schemas/ToolArgumentsDoneEvent"
           },
-          "agent_used": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Agent Used"
+          {
+            "$ref": "#/components/schemas/ToolCodeDeltaEvent"
           },
-          "response_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Response Id"
+          {
+            "$ref": "#/components/schemas/ToolCodeDoneEvent"
           },
-          "sequence_number": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sequence Number"
+          {
+            "$ref": "#/components/schemas/ToolOutputEvent"
           },
-          "raw_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Raw Type"
+          {
+            "$ref": "#/components/schemas/ChunkDeltaEvent"
           },
-          "run_item_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Run Item Name"
+          {
+            "$ref": "#/components/schemas/ChunkDoneEvent"
           },
-          "run_item_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Run Item Type"
+          {
+            "$ref": "#/components/schemas/ErrorEvent"
           },
-          "tool_call_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tool Call Id"
-          },
-          "tool_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tool Name"
-          },
-          "agent": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Agent"
-          },
-          "new_agent": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "New Agent"
-          },
-          "display_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Display Name"
-          },
-          "text_delta": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Text Delta"
-          },
-          "reasoning_delta": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reasoning Delta"
-          },
-          "response_text": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Response Text"
-          },
-          "structured_output": {
-            "anyOf": [
-              {},
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Structured Output"
-          },
-          "output_schema": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Output Schema"
-          },
-          "is_terminal": {
-            "type": "boolean",
-            "title": "Is Terminal",
-            "default": false
-          },
-          "event": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Event"
-          },
-          "payload": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Payload"
-          },
-          "attachments": {
-            "anyOf": [
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/components/schemas/MessageAttachment"
-                    },
-                    {
-                      "additionalProperties": true,
-                      "type": "object"
-                    }
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Attachments"
-          },
-          "raw_event": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Raw Event"
-          },
-          "tool_call": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ToolCallPayload"
-              },
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tool Call"
-          },
-          "annotations": {
-            "anyOf": [
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/components/schemas/UrlCitation"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContainerFileCitation"
-                    },
-                    {
-                      "$ref": "#/components/schemas/FileCitation"
-                    }
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Annotations"
-          },
-          "server_timestamp": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Server Timestamp"
-          },
-          "guardrail_stage": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "pre_flight",
-                  "input",
-                  "output",
-                  "tool_input",
-                  "tool_output",
-                  "summary"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Guardrail Stage"
-          },
-          "guardrail_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Guardrail Key"
-          },
-          "guardrail_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Guardrail Name"
-          },
-          "guardrail_tripwire_triggered": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Guardrail Tripwire Triggered"
-          },
-          "guardrail_suppressed": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Guardrail Suppressed"
-          },
-          "guardrail_flagged": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Guardrail Flagged"
-          },
-          "guardrail_confidence": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Guardrail Confidence"
-          },
-          "guardrail_masked_content": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Guardrail Masked Content"
-          },
-          "guardrail_token_usage": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Guardrail Token Usage"
-          },
-          "guardrail_details": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Guardrail Details"
-          },
-          "guardrail_summary": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Guardrail Summary"
+          {
+            "$ref": "#/components/schemas/FinalEvent"
           }
-        },
-        "type": "object",
-        "required": [
-          "kind"
         ],
         "title": "StreamingWorkflowEvent"
       },
@@ -28648,59 +29124,261 @@
         ],
         "title": "TenantSubscriptionResponse"
       },
-      "ToolCallPayload": {
+      "ToolArgumentsDeltaEvent": {
         "properties": {
+          "schema": {
+            "type": "string",
+            "const": "public_sse_v1",
+            "title": "Schema"
+          },
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id"
+          },
+          "stream_id": {
+            "type": "string",
+            "title": "Stream Id"
+          },
+          "server_timestamp": {
+            "type": "string",
+            "title": "Server Timestamp"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "workflow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider_sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Sequence Number"
+          },
+          "notices": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StreamNotice"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notices"
+          },
+          "kind": {
+            "type": "string",
+            "const": "tool.arguments.delta",
+            "title": "Kind"
+          },
+          "tool_call_id": {
+            "type": "string",
+            "title": "Tool Call Id"
+          },
           "tool_type": {
             "type": "string",
+            "enum": [
+              "function",
+              "mcp"
+            ],
             "title": "Tool Type"
           },
-          "web_search_call": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/WebSearchCall"
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "tool_name": {
+            "type": "string",
+            "title": "Tool Name"
           },
-          "code_interpreter_call": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/CodeInterpreterCall"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "file_search_call": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/FileSearchCall"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "image_generation_call": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ImageGenerationCall"
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "delta": {
+            "type": "string",
+            "title": "Delta"
           }
         },
-        "additionalProperties": true,
+        "additionalProperties": false,
         "type": "object",
         "required": [
-          "tool_type"
+          "schema",
+          "event_id",
+          "stream_id",
+          "server_timestamp",
+          "conversation_id",
+          "kind",
+          "tool_call_id",
+          "tool_type",
+          "tool_name",
+          "delta"
         ],
-        "title": "ToolCallPayload"
+        "title": "ToolArgumentsDeltaEvent"
+      },
+      "ToolArgumentsDoneEvent": {
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "public_sse_v1",
+            "title": "Schema"
+          },
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id"
+          },
+          "stream_id": {
+            "type": "string",
+            "title": "Stream Id"
+          },
+          "server_timestamp": {
+            "type": "string",
+            "title": "Server Timestamp"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "workflow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider_sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Sequence Number"
+          },
+          "notices": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StreamNotice"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notices"
+          },
+          "kind": {
+            "type": "string",
+            "const": "tool.arguments.done",
+            "title": "Kind"
+          },
+          "tool_call_id": {
+            "type": "string",
+            "title": "Tool Call Id"
+          },
+          "tool_type": {
+            "type": "string",
+            "enum": [
+              "function",
+              "mcp"
+            ],
+            "title": "Tool Type"
+          },
+          "tool_name": {
+            "type": "string",
+            "title": "Tool Name"
+          },
+          "arguments_text": {
+            "type": "string",
+            "title": "Arguments Text"
+          },
+          "arguments_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arguments Json"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema",
+          "event_id",
+          "stream_id",
+          "server_timestamp",
+          "conversation_id",
+          "kind",
+          "tool_call_id",
+          "tool_type",
+          "tool_name",
+          "arguments_text"
+        ],
+        "title": "ToolArgumentsDoneEvent"
       },
       "ToolCatalogResponse": {
         "properties": {
@@ -28740,6 +29418,464 @@
         ],
         "title": "ToolCatalogResponse",
         "description": "Stable, typed shape for the tool catalog response."
+      },
+      "ToolCodeDeltaEvent": {
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "public_sse_v1",
+            "title": "Schema"
+          },
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id"
+          },
+          "stream_id": {
+            "type": "string",
+            "title": "Stream Id"
+          },
+          "server_timestamp": {
+            "type": "string",
+            "title": "Server Timestamp"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "workflow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider_sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Sequence Number"
+          },
+          "notices": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StreamNotice"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notices"
+          },
+          "kind": {
+            "type": "string",
+            "const": "tool.code.delta",
+            "title": "Kind"
+          },
+          "tool_call_id": {
+            "type": "string",
+            "title": "Tool Call Id"
+          },
+          "delta": {
+            "type": "string",
+            "title": "Delta"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema",
+          "event_id",
+          "stream_id",
+          "server_timestamp",
+          "conversation_id",
+          "kind",
+          "tool_call_id",
+          "delta"
+        ],
+        "title": "ToolCodeDeltaEvent"
+      },
+      "ToolCodeDoneEvent": {
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "public_sse_v1",
+            "title": "Schema"
+          },
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id"
+          },
+          "stream_id": {
+            "type": "string",
+            "title": "Stream Id"
+          },
+          "server_timestamp": {
+            "type": "string",
+            "title": "Server Timestamp"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "workflow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider_sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Sequence Number"
+          },
+          "notices": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StreamNotice"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notices"
+          },
+          "kind": {
+            "type": "string",
+            "const": "tool.code.done",
+            "title": "Kind"
+          },
+          "tool_call_id": {
+            "type": "string",
+            "title": "Tool Call Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema",
+          "event_id",
+          "stream_id",
+          "server_timestamp",
+          "conversation_id",
+          "kind",
+          "tool_call_id",
+          "code"
+        ],
+        "title": "ToolCodeDoneEvent"
+      },
+      "ToolOutputEvent": {
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "public_sse_v1",
+            "title": "Schema"
+          },
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id"
+          },
+          "stream_id": {
+            "type": "string",
+            "title": "Stream Id"
+          },
+          "server_timestamp": {
+            "type": "string",
+            "title": "Server Timestamp"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "workflow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider_sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Sequence Number"
+          },
+          "notices": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StreamNotice"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notices"
+          },
+          "kind": {
+            "type": "string",
+            "const": "tool.output",
+            "title": "Kind"
+          },
+          "tool_call_id": {
+            "type": "string",
+            "title": "Tool Call Id"
+          },
+          "tool_type": {
+            "type": "string",
+            "enum": [
+              "web_search",
+              "file_search",
+              "code_interpreter",
+              "image_generation",
+              "function",
+              "mcp"
+            ],
+            "title": "Tool Type"
+          },
+          "output": {
+            "title": "Output"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema",
+          "event_id",
+          "stream_id",
+          "server_timestamp",
+          "conversation_id",
+          "kind",
+          "tool_call_id",
+          "tool_type",
+          "output"
+        ],
+        "title": "ToolOutputEvent"
+      },
+      "ToolStatusEvent": {
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "public_sse_v1",
+            "title": "Schema"
+          },
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id"
+          },
+          "stream_id": {
+            "type": "string",
+            "title": "Stream Id"
+          },
+          "server_timestamp": {
+            "type": "string",
+            "title": "Server Timestamp"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "workflow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider_sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Sequence Number"
+          },
+          "notices": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StreamNotice"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notices"
+          },
+          "kind": {
+            "type": "string",
+            "const": "tool.status",
+            "title": "Kind"
+          },
+          "tool": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WebSearchTool"
+              },
+              {
+                "$ref": "#/components/schemas/FileSearchTool"
+              },
+              {
+                "$ref": "#/components/schemas/CodeInterpreterTool"
+              },
+              {
+                "$ref": "#/components/schemas/ImageGenerationTool"
+              },
+              {
+                "$ref": "#/components/schemas/FunctionTool"
+              },
+              {
+                "$ref": "#/components/schemas/McpTool"
+              }
+            ],
+            "title": "Tool"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema",
+          "event_id",
+          "stream_id",
+          "server_timestamp",
+          "conversation_id",
+          "kind",
+          "tool"
+        ],
+        "title": "ToolStatusEvent"
       },
       "TotpEnrollResponse": {
         "properties": {
@@ -28901,6 +30037,7 @@
             "title": "Url"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "start_index",
@@ -30028,15 +31165,35 @@
         ],
         "title": "VectorStoreSearchResultResponse"
       },
-      "WebSearchAction": {
+      "WebSearchTool": {
         "properties": {
-          "type": {
+          "tool_type": {
             "type": "string",
-            "const": "search",
-            "title": "Type"
+            "const": "web_search",
+            "title": "Tool Type"
+          },
+          "tool_call_id": {
+            "type": "string",
+            "title": "Tool Call Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "in_progress",
+              "searching",
+              "completed"
+            ],
+            "title": "Status"
           },
           "query": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Query"
           },
           "sources": {
@@ -30054,50 +31211,98 @@
             "title": "Sources"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
-          "type",
-          "query"
+          "tool_type",
+          "tool_call_id",
+          "status"
         ],
-        "title": "WebSearchAction"
+        "title": "WebSearchTool"
       },
-      "WebSearchCall": {
+      "WorkflowContext": {
         "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "type": {
-            "type": "string",
-            "const": "web_search_call",
-            "title": "Type"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "in_progress",
-              "completed"
-            ],
-            "title": "Status"
-          },
-          "action": {
+          "workflow_key": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/WebSearchAction"
+                "type": "string"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "title": "Workflow Key"
+          },
+          "workflow_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workflow Run Id"
+          },
+          "stage_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage Name"
+          },
+          "step_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step Name"
+          },
+          "step_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step Agent"
+          },
+          "parallel_group": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parallel Group"
+          },
+          "branch_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Index"
           }
         },
+        "additionalProperties": false,
         "type": "object",
-        "required": [
-          "id",
-          "type",
-          "status"
-        ],
-        "title": "WebSearchCall"
+        "title": "WorkflowContext"
       },
       "WorkflowDescriptorResponse": {
         "properties": {

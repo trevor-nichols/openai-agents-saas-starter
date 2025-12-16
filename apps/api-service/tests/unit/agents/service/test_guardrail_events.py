@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from app.api.v1.shared.stream_normalizer import normalize_stream_event
-from app.api.v1.shared.streaming import StreamingEvent
+from app.api.v1.shared.public_stream_projector import PublicStreamProjector
 from app.domain.ai.models import AgentStreamEvent
 from app.services.agents.streaming_pipeline import build_guardrail_summary
 
 
-def test_normalize_guardrail_event():
-    event = AgentStreamEvent(
+def test_public_stream_projector_does_not_emit_guardrail_events():
+    internal_event = AgentStreamEvent(
         kind="guardrail_result",
         conversation_id="conv1",
         agent="triage",
@@ -23,18 +22,16 @@ def test_normalize_guardrail_event():
         guardrail_details={"flagged": True},
     )
 
-    normalized: StreamingEvent = normalize_stream_event(event)
-
-    assert normalized.kind == "guardrail_result"
-    assert normalized.guardrail_stage == "input"
-    assert normalized.guardrail_key == "pii_detection_input"
-    assert normalized.guardrail_tripwire_triggered is True
-    assert normalized.guardrail_suppressed is False
-    assert normalized.guardrail_flagged is True
-    assert normalized.guardrail_confidence == 0.9
-    assert normalized.guardrail_masked_content == "[redacted]"
-    assert normalized.guardrail_token_usage == {"total_tokens": 12}
-    assert normalized.guardrail_details == {"flagged": True}
+    projector = PublicStreamProjector(stream_id="test_stream")
+    public_events = projector.project(
+        internal_event,
+        conversation_id="conv1",
+        response_id="resp1",
+        agent="triage",
+        workflow_meta=None,
+        server_timestamp="2025-12-15T00:00:00Z",
+    )
+    assert public_events == []
 
 
 def test_guardrail_summary_builder():

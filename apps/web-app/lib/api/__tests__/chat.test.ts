@@ -82,12 +82,12 @@ describe('chat API helpers', () => {
       start(controller) {
         controller.enqueue(
           encoder.encode(
-            'data: {"kind":"raw_response_event","conversation_id":"conv-1","raw_type":"response.output_text.delta","text_delta":"Hello","is_terminal":false,"attachments":[{"object_id":"obj-1","filename":"image.png"}],"structured_output":{"foo":"bar"}}\n\n',
+            'data: {"schema":"public_sse_v1","event_id":1,"stream_id":"stream-test","server_timestamp":"2025-12-15T00:00:00.000Z","kind":"message.delta","conversation_id":"conv-1","response_id":"resp-1","agent":"triage","message_id":"msg-1","delta":"Hello"}\n\n',
           ),
         );
         controller.enqueue(
           encoder.encode(
-            'data: {"kind":"raw_response_event","conversation_id":"conv-1","raw_type":"response.completed","text_delta":"","is_terminal":true}\n\n',
+            'data: {"schema":"public_sse_v1","event_id":2,"stream_id":"stream-test","server_timestamp":"2025-12-15T00:00:00.050Z","kind":"final","conversation_id":"conv-1","response_id":"resp-1","agent":"triage","final":{"status":"completed","response_text":"Hello","structured_output":{"foo":"bar"},"reasoning_summary_text":null,"refusal_text":null,"attachments":[{"object_id":"obj-1","filename":"image.png","mime_type":"image/png","url":"https://example.com/image.png"}],"usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}}\n\n',
           ),
         );
         controller.close();
@@ -120,24 +120,22 @@ describe('chat API helpers', () => {
     expect(first?.type).toBe('event');
     if (first?.type === 'event') {
       expect(first.event).toMatchObject({
-        kind: 'raw_response_event',
+        kind: 'message.delta',
         conversation_id: 'conv-1',
-        text_delta: 'Hello',
-        attachments: [
-          {
-            object_id: 'obj-1',
-            filename: 'image.png',
-          },
-        ],
-        structured_output: {
-          foo: 'bar',
-        },
+        delta: 'Hello',
       });
     }
 
     expect(second?.type).toBe('event');
     if (second?.type === 'event') {
-      expect(second.event.is_terminal).toBe(true);
+      expect(second.event.kind).toBe('final');
+      if (second.event.kind === 'final') {
+        expect(second.event.final.structured_output).toEqual({ foo: 'bar' });
+        expect(second.event.final.attachments?.[0]).toMatchObject({
+          object_id: 'obj-1',
+          filename: 'image.png',
+        });
+      }
     }
   });
 
