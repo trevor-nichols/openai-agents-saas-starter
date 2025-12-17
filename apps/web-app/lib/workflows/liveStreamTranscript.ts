@@ -2,25 +2,15 @@ import type {
   StreamingWorkflowEvent,
   WorkflowContext,
 } from '@/lib/api/client/types.gen';
-import type { GeneratedImageFrame } from '@/lib/streams/imageFrames';
-import {
-  applyChunkDelta as applyChunkDeltaShared,
-  asDataUrlOrRawText,
-  mimeFromImageFormat,
-  takeChunk,
-  type ChunkAccumulator,
-  type ChunkKey,
-} from '@/lib/streams/publicSseV1/chunks';
 import { assembledText, appendDelta, replaceText, type TextParts } from '@/lib/streams/publicSseV1/textParts';
-import { uiToolStatusFromProviderStatus } from '@/lib/streams/publicSseV1/toolStatus';
+import { applyReasoningEvent, createReasoningPartsState, getReasoningParts, type ReasoningPart } from '@/lib/streams/publicSseV1/reasoningParts';
+import { applyCitationEvent, createCitationsState, getCitationsForItem } from '@/lib/streams/publicSseV1/citations';
+import { asPublicSseEvent, createPublicSseToolAccumulator, type PublicSseToolState } from '@/lib/streams/publicSseV1/tools';
+import type { Annotation } from '@/lib/chat/types';
 
-type ToolState = {
-  label: string;
-  state: 'input-streaming' | 'input-available' | 'output-available' | 'output-error';
-  input?: unknown;
-  output?: unknown;
-  errorText?: string | null;
-};
+type WorkflowLifecycle = { status: string; reason: string | null };
+type WorkflowAgentUpdate = { fromAgent: string | null; toAgent: string; handoffIndex: number | null };
+type WorkflowMemoryCheckpoint = { checkpoint: unknown; timestamp: string | null; id: string };
 
 export type WorkflowLiveTranscriptItem =
   | {
@@ -29,6 +19,7 @@ export type WorkflowLiveTranscriptItem =
       outputIndex: number;
       text: string;
       isDone: boolean;
+      citations: Annotation[] | null;
     }
   | {
       kind: 'refusal';
@@ -41,7 +32,7 @@ export type WorkflowLiveTranscriptItem =
       kind: 'tool';
       itemId: string;
       outputIndex: number;
-      tool: ToolState;
+      tool: PublicSseToolState;
     };
 
 export type WorkflowLiveTranscriptSegment = {
@@ -50,6 +41,10 @@ export type WorkflowLiveTranscriptSegment = {
   agent: string | null;
   workflow: WorkflowContext | null;
   reasoningSummaryText: string | null;
+  reasoningParts: ReasoningPart[] | null;
+  lifecycle: WorkflowLifecycle | null;
+  agentUpdates: WorkflowAgentUpdate[];
+  memoryCheckpoints: WorkflowMemoryCheckpoint[];
   items: WorkflowLiveTranscriptItem[];
 };
 
@@ -58,7 +53,13 @@ type SegmentState = {
   responseId: string | null;
   agent: string | null;
   workflow: WorkflowContext | null;
-  reasoningSummaryText: string;
+  reasoningSummaryText: string; // legacy single-string view; derived from reasoningParts.
+  reasoningParts: ReturnType<typeof createReasoningPartsState>;
+  citations: ReturnType<typeof createCitationsState>;
+  toolAccumulator: ReturnType<typeof createPublicSseToolAccumulator>;
+  lifecycle: WorkflowLifecycle | null;
+  agentUpdates: WorkflowAgentUpdate[];
+  memoryCheckpoints: WorkflowMemoryCheckpoint[];
   itemOrder: { itemId: string; outputIndex: number }[];
   itemMeta: Map<
     string,
@@ -66,12 +67,6 @@ type SegmentState = {
   >;
   messageTextByItemId: Map<string, TextParts>;
   refusalTextByItemId: Map<string, TextParts>;
-  toolByItemId: Map<string, ToolState>;
-  toolArgsTextById: Map<string, string>;
-  toolCodeById: Map<string, string>;
-  imageMetaByToolId: Map<string, { format?: string | null; revisedPrompt?: string | null }>;
-  imageFramesByToolId: Map<string, Map<number, GeneratedImageFrame>>;
-  chunkAccumulators: Map<ChunkKey, ChunkAccumulator>;
 };
 
 function ensureItemOrder(
@@ -88,37 +83,6 @@ function ensureItemOrder(
   const insertAt = segment.itemOrder.findIndex((entry) => entry.outputIndex > outputIndex);
   if (insertAt === -1) segment.itemOrder.push({ itemId, outputIndex });
   else segment.itemOrder.splice(insertAt, 0, { itemId, outputIndex });
-}
-
-function upsertTool(segment: SegmentState, itemId: string, patch: Partial<ToolState>) {
-  const existing =
-    segment.toolByItemId.get(itemId) ??
-    ({
-      label: patch.label ?? 'tool',
-      state: 'input-streaming',
-      errorText: null,
-    } satisfies ToolState);
-
-  const next: ToolState = {
-    ...existing,
-    ...patch,
-    label: patch.label ?? existing.label,
-    state: patch.state ?? existing.state,
-    input: patch.input ?? existing.input,
-    output: patch.output ?? existing.output,
-    errorText: patch.errorText ?? existing.errorText,
-  };
-  segment.toolByItemId.set(itemId, next);
-}
-
-function updateToolImageFrames(segment: SegmentState, toolId: string) {
-  const framesMap = segment.imageFramesByToolId.get(toolId);
-  if (!framesMap) return;
-  const frames = Array.from(framesMap.entries())
-    .sort(([a], [b]) => a - b)
-    .map(([, frame]) => frame);
-  if (frames.length === 0) return;
-  upsertTool(segment, toolId, { output: frames, label: 'image_generation' });
 }
 
 export function buildWorkflowLiveTranscript(
@@ -143,16 +107,16 @@ export function buildWorkflowLiveTranscript(
       agent: event.agent ?? null,
       workflow: event.workflow ?? null,
       reasoningSummaryText: '',
+      reasoningParts: createReasoningPartsState(),
+      citations: createCitationsState(),
+      toolAccumulator: createPublicSseToolAccumulator(),
+      lifecycle: null,
+      agentUpdates: [],
+      memoryCheckpoints: [],
       itemOrder: [],
       itemMeta: new Map(),
       messageTextByItemId: new Map(),
       refusalTextByItemId: new Map(),
-      toolByItemId: new Map(),
-      toolArgsTextById: new Map(),
-      toolCodeById: new Map(),
-      imageMetaByToolId: new Map(),
-      imageFramesByToolId: new Map(),
-      chunkAccumulators: new Map(),
     };
     segments.set(key, created);
     segmentOrder.push(key);
@@ -168,9 +132,33 @@ export function buildWorkflowLiveTranscript(
     }
 
     const segment = ensureSegment(event);
+    const asPublic = asPublicSseEvent(event);
 
     if ('output_index' in event && 'item_id' in event && typeof event.output_index === 'number') {
       ensureItemOrder(segment, { itemId: event.item_id, outputIndex: event.output_index });
+    }
+
+    if (kind === 'lifecycle') {
+      segment.lifecycle = { status: event.status, reason: event.reason ?? null };
+      continue;
+    }
+
+    if (kind === 'memory.checkpoint') {
+      segment.memoryCheckpoints.push({
+        id: `memory-checkpoint-${event.stream_id}-${event.event_id}`,
+        checkpoint: event.checkpoint,
+        timestamp: event.server_timestamp ?? null,
+      });
+      continue;
+    }
+
+    if (kind === 'agent.updated') {
+      segment.agentUpdates.push({
+        fromAgent: event.from_agent ?? null,
+        toAgent: event.to_agent,
+        handoffIndex: typeof event.handoff_index === 'number' ? event.handoff_index : null,
+      });
+      continue;
     }
 
     if (kind === 'output_item.added' || kind === 'output_item.done') {
@@ -180,6 +168,9 @@ export function buildWorkflowLiveTranscript(
       meta.status = event.status ?? null;
       meta.done = kind === 'output_item.done';
       segment.itemMeta.set(event.item_id, meta);
+      if (kind === 'output_item.added') {
+        segment.toolAccumulator.apply(asPublic);
+      }
       continue;
     }
 
@@ -189,6 +180,11 @@ export function buildWorkflowLiveTranscript(
         contentIndex: event.content_index,
         delta: event.delta,
       });
+      continue;
+    }
+
+    if (kind === 'message.citation') {
+      applyCitationEvent(segment.citations, asPublic);
       continue;
     }
 
@@ -214,195 +210,31 @@ export function buildWorkflowLiveTranscript(
     }
 
     if (kind === 'reasoning_summary.delta') {
-      segment.reasoningSummaryText += event.delta;
+      applyReasoningEvent(segment.reasoningParts, asPublic);
+      const parts = getReasoningParts(segment.reasoningParts);
+      segment.reasoningSummaryText = parts.map((part) => part.text).join('');
       continue;
     }
 
-    if (kind === 'tool.status') {
-      const tool = event.tool;
-      const itemId = event.item_id;
-
-      if (tool.tool_type === 'web_search') {
-        upsertTool(segment, itemId, {
-          label: 'web_search',
-          state: uiToolStatusFromProviderStatus(tool.status),
-          input: tool.query ?? undefined,
-          output: tool.sources ?? undefined,
-        });
-        continue;
-      }
-
-      if (tool.tool_type === 'file_search') {
-        upsertTool(segment, itemId, {
-          label: 'file_search',
-          state: uiToolStatusFromProviderStatus(tool.status),
-          input: tool.queries ?? undefined,
-          output: tool.results ?? undefined,
-        });
-        continue;
-      }
-
-      if (tool.tool_type === 'code_interpreter') {
-        const code = segment.toolCodeById.get(itemId);
-        upsertTool(segment, itemId, {
-          label: 'code_interpreter',
-          state: uiToolStatusFromProviderStatus(tool.status),
-          input: code ?? undefined,
-          output: tool.container_id || tool.container_mode
-            ? { container_id: tool.container_id ?? null, container_mode: tool.container_mode ?? null }
-            : undefined,
-        });
-        continue;
-      }
-
-      if (tool.tool_type === 'image_generation') {
-        segment.imageMetaByToolId.set(itemId, {
-          format: tool.format ?? null,
-          revisedPrompt: tool.revised_prompt ?? null,
-        });
-        upsertTool(segment, itemId, {
-          label: 'image_generation',
-          state: uiToolStatusFromProviderStatus(tool.status),
-          input: tool.revised_prompt ?? undefined,
-        });
-        updateToolImageFrames(segment, itemId);
-        continue;
-      }
-
-      if (tool.tool_type === 'function') {
-        const argsText = tool.arguments_text ?? segment.toolArgsTextById.get(itemId);
-        upsertTool(segment, itemId, {
-          label: tool.name,
-          state: uiToolStatusFromProviderStatus(tool.status),
-          input:
-            argsText || tool.arguments_json
-              ? {
-                  tool_type: 'function',
-                  tool_name: tool.name,
-                  arguments_text: argsText ?? undefined,
-                  arguments_json: tool.arguments_json ?? undefined,
-                }
-              : undefined,
-          output: tool.output ?? undefined,
-          errorText: tool.status === 'failed' ? 'Tool failed' : undefined,
-        });
-        continue;
-      }
-
-      // MCP
-      const argsText = tool.arguments_text ?? segment.toolArgsTextById.get(itemId);
-      upsertTool(segment, itemId, {
-        label: tool.tool_name,
-        state: uiToolStatusFromProviderStatus(tool.status),
-        input:
-          argsText || tool.arguments_json
-            ? {
-                tool_type: 'mcp',
-                tool_name: tool.tool_name,
-                server_label: tool.server_label ?? null,
-                arguments_text: argsText ?? undefined,
-                arguments_json: tool.arguments_json ?? undefined,
-              }
-            : undefined,
-        output: tool.output ?? undefined,
-        errorText: tool.status === 'failed' ? 'Tool failed' : undefined,
-      });
+    if (
+      kind === 'tool.status' ||
+      kind === 'tool.arguments.delta' ||
+      kind === 'tool.arguments.done' ||
+      kind === 'tool.code.delta' ||
+      kind === 'tool.code.done' ||
+      kind === 'tool.output' ||
+      kind === 'tool.approval' ||
+      kind === 'chunk.delta' ||
+      kind === 'chunk.done'
+    ) {
+      segment.toolAccumulator.apply(asPublic);
       continue;
     }
 
-    if (kind === 'tool.arguments.delta') {
-      const existing = segment.toolArgsTextById.get(event.item_id) ?? '';
-      const next = `${existing}${event.delta}`;
-      segment.toolArgsTextById.set(event.item_id, next);
-      upsertTool(segment, event.item_id, {
-        label: event.tool_name,
-        state: 'input-streaming',
-        input: { tool_type: event.tool_type, tool_name: event.tool_name, arguments_text: next },
-      });
-      continue;
-    }
-
-    if (kind === 'tool.arguments.done') {
-      segment.toolArgsTextById.set(event.item_id, event.arguments_text);
-      upsertTool(segment, event.item_id, {
-        label: event.tool_name,
-        state: 'input-available',
-        input: {
-          tool_type: event.tool_type,
-          tool_name: event.tool_name,
-          arguments_text: event.arguments_text,
-          arguments_json: event.arguments_json ?? undefined,
-        },
-      });
-      continue;
-    }
-
-    if (kind === 'tool.code.delta') {
-      const existing = segment.toolCodeById.get(event.item_id) ?? '';
-      const next = `${existing}${event.delta}`;
-      segment.toolCodeById.set(event.item_id, next);
-      upsertTool(segment, event.item_id, {
-        label: 'code_interpreter',
-        state: 'input-streaming',
-        input: next,
-      });
-      continue;
-    }
-
-    if (kind === 'tool.code.done') {
-      segment.toolCodeById.set(event.item_id, event.code);
-      upsertTool(segment, event.item_id, {
-        label: 'code_interpreter',
-        state: 'input-available',
-        input: event.code,
-      });
-      continue;
-    }
-
-    if (kind === 'tool.output') {
-      upsertTool(segment, event.item_id, {
-        state: 'output-available',
-        output: event.output,
-      });
-      continue;
-    }
-
-    if (kind === 'chunk.delta') {
-      applyChunkDeltaShared(segment.chunkAccumulators, {
-        target: event.target,
-        encoding: event.encoding,
-        chunkIndex: event.chunk_index,
-        data: event.data,
-      });
-      continue;
-    }
-
-    if (kind === 'chunk.done') {
-      const chunk = takeChunk(segment.chunkAccumulators, event.target);
-      if (!chunk) continue;
-
-      if (
-        event.target.entity_kind === 'tool_call' &&
-        event.target.field === 'partial_image_b64' &&
-        typeof event.target.part_index === 'number'
-      ) {
-        const toolId = event.target.entity_id;
-        const partIndex = event.target.part_index;
-        const meta = segment.imageMetaByToolId.get(toolId);
-        const mime = mimeFromImageFormat(meta?.format ?? null);
-        const src = asDataUrlOrRawText({ encoding: chunk.encoding, data: chunk.data, mimeType: mime });
-
-        const frames = segment.imageFramesByToolId.get(toolId) ?? new Map<number, GeneratedImageFrame>();
-        frames.set(partIndex, {
-          id: `${toolId}:${partIndex}`,
-          src,
-          status: 'partial_image',
-          outputIndex: partIndex,
-          revisedPrompt: meta?.revisedPrompt ?? undefined,
-        });
-        segment.imageFramesByToolId.set(toolId, frames);
-        updateToolImageFrames(segment, toolId);
-      }
+    if (kind === 'reasoning_summary.part.added' || kind === 'reasoning_summary.part.done') {
+      applyReasoningEvent(segment.reasoningParts, asPublic);
+      const parts = getReasoningParts(segment.reasoningParts);
+      segment.reasoningSummaryText = parts.map((part) => part.text).join('');
       continue;
     }
   }
@@ -419,7 +251,7 @@ export function buildWorkflowLiveTranscript(
       const done = Boolean(meta.done);
       const messageText = assembledText(seg.messageTextByItemId.get(entry.itemId));
       const refusalText = assembledText(seg.refusalTextByItemId.get(entry.itemId));
-      const tool = seg.toolByItemId.get(entry.itemId);
+      const tool = seg.toolAccumulator.getToolById(entry.itemId);
 
       if (tool) {
         items.push({
@@ -449,12 +281,15 @@ export function buildWorkflowLiveTranscript(
           outputIndex: entry.outputIndex,
           text: done ? messageText : `${messageText}▋`,
           isDone: done,
+          citations: getCitationsForItem(seg.citations, entry.itemId),
         });
         continue;
       }
     }
 
-    if (items.length === 0 && seg.reasoningSummaryText.length === 0) continue;
+    const reasoningParts = getReasoningParts(seg.reasoningParts);
+    const hasReasoning = reasoningParts.length > 0 || seg.reasoningSummaryText.length > 0;
+    if (items.length === 0 && !hasReasoning && seg.agentUpdates.length === 0 && seg.memoryCheckpoints.length === 0) continue;
 
     out.push({
       key: seg.key,
@@ -462,6 +297,10 @@ export function buildWorkflowLiveTranscript(
       agent: seg.agent,
       workflow: seg.workflow,
       reasoningSummaryText: seg.reasoningSummaryText.length ? seg.reasoningSummaryText : null,
+      reasoningParts: reasoningParts.length ? reasoningParts : null,
+      lifecycle: seg.lifecycle,
+      agentUpdates: seg.agentUpdates,
+      memoryCheckpoints: seg.memoryCheckpoints,
       items,
     });
   }

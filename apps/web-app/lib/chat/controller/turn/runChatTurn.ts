@@ -17,6 +17,8 @@ import type { MessagesAction } from '../../state/messagesReducer';
 import { beginTurnRuntime, type TurnRuntimeRefs } from './turnRuntime';
 import { computeToolEventAnchors } from './toolAnchoring';
 import { createTurnMessageCoordinator } from './turnMessageCoordinator';
+import type { PublicSseEvent } from '@/lib/api/client/types.gen';
+import type { ReasoningPart } from '@/lib/streams/publicSseV1/reasoningParts';
 
 export interface RunChatTurnParams {
   messageText: string;
@@ -34,9 +36,11 @@ export interface RunChatTurnParams {
   setToolEvents: (tools: ToolState[]) => void;
   setToolEventAnchors: (anchors: ToolEventAnchors) => void;
   setReasoningText: (updater: (prev: string) => string) => void;
+  setReasoningParts: (parts: ReasoningPart[]) => void;
   setLifecycleStatus: (status: ConversationLifecycleStatus) => void;
   setActiveAgent: (agent: string) => void;
   appendAgentNotice: (notice: string) => void;
+  appendStreamEvent: (event: PublicSseEvent) => void;
 
   refs: TurnRuntimeRefs;
 
@@ -69,9 +73,11 @@ export async function runChatTurn(params: RunChatTurnParams): Promise<void> {
     setToolEvents,
     setToolEventAnchors,
     setReasoningText,
+    setReasoningParts,
     setLifecycleStatus,
     setActiveAgent,
     appendAgentNotice,
+    appendStreamEvent,
     refs,
     queryClient,
     setCurrentConversationId,
@@ -124,6 +130,7 @@ export async function runChatTurn(params: RunChatTurnParams): Promise<void> {
     });
 
     const streamResult = await consumeChatStream(stream, {
+      onEvent: appendStreamEvent,
       onOutputItemAdded: (update) => {
         if (update.itemType === 'message' && update.role === 'assistant') {
           coordinator.ensureAssistantMessageForItem(update.itemId, update.outputIndex);
@@ -142,6 +149,7 @@ export async function runChatTurn(params: RunChatTurnParams): Promise<void> {
         });
       },
       onReasoningDelta: (delta) => setReasoningText((prev) => `${prev}${delta}`),
+      onReasoningParts: setReasoningParts,
       onToolStates: (tools) => {
         setToolEvents(tools);
         flushQueuedMessages();
@@ -149,11 +157,19 @@ export async function runChatTurn(params: RunChatTurnParams): Promise<void> {
       },
       onLifecycle: setLifecycleStatus,
       onAgentChange: (agent) => {
-        const previousAgent = refs.lastActiveAgentRef.current;
+        // Context-only: do not treat this as the authoritative handoff signal.
         setActiveAgent(agent);
-        refs.lastActiveAgentRef.current = agent;
-        if (previousAgent && previousAgent !== agent) {
-          appendAgentNotice(`Switched to ${agent}`);
+      },
+      onAgentUpdated: (evt) => {
+        const from = evt.from_agent ?? refs.lastActiveAgentRef.current ?? null;
+        const to = evt.to_agent ?? null;
+        if (!to) return;
+        refs.lastActiveAgentRef.current = to;
+        setActiveAgent(to);
+        if (from && from !== to) {
+          appendAgentNotice(`Handoff: ${from} → ${to}`);
+        } else {
+          appendAgentNotice(`Switched to ${to}`);
         }
       },
       onMemoryCheckpoint: (checkpointEvent) => {

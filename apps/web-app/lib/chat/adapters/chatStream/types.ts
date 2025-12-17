@@ -1,4 +1,6 @@
 import type { MessageAttachment, StreamingChatEvent } from '@/lib/api/client/types.gen';
+import type { PublicSseEvent } from '@/lib/api/client/types.gen';
+import type { ReasoningPart } from '@/lib/streams/publicSseV1/reasoningParts';
 
 import type { ConversationLifecycleStatus, StreamChunk, ToolState, Annotation } from '../../types';
 
@@ -20,13 +22,16 @@ export type TextDeltaUpdate = {
 };
 
 export interface StreamConsumeHandlers {
+  onEvent?: (event: PublicSseEvent) => void;
   onOutputItemAdded?: (update: OutputItemUpdate) => void;
   onOutputItemDone?: (update: OutputItemUpdate) => void;
   onTextDelta?: (update: TextDeltaUpdate) => void;
   onReasoningDelta?: (delta: string) => void;
+  onReasoningParts?: (parts: ReasoningPart[]) => void;
   onToolStates?: (toolStates: ToolState[]) => void;
   onLifecycle?: (status: ConversationLifecycleStatus) => void;
   onAgentChange?: (agent: string) => void;
+  onAgentUpdated?: (event: Extract<StreamingChatEvent, { kind?: 'agent.updated' }>) => void;
   onMemoryCheckpoint?: (
     event: Extract<StreamingChatEvent, { kind?: 'memory.checkpoint' }>,
   ) => void;
@@ -52,4 +57,3 @@ export type ConsumeChatStreamParams = {
   stream: AsyncIterable<StreamChunk>;
   handlers: StreamConsumeHandlers;
 };
-

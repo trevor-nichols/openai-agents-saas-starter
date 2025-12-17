@@ -93,10 +93,12 @@ export function useChatSelector<T>(
 }
 
 export const useChatMessages = () => useChatSelector((s) => s.messages);
+export const useChatStreamEvents = () => useChatSelector((s) => s.streamEvents, shallowEqual);
 export const useChatToolEvents = () => useChatSelector((s) => s.toolEvents, shallowEqual);
 export const useChatToolEventAnchors = () => useChatSelector((s) => s.toolEventAnchors, shallowEqual);
 export const useChatLifecycle = () => useChatSelector((s) => s.lifecycleStatus);
 export const useChatAgentNotices = () => useChatSelector((s) => s.agentNotices, shallowEqual);
+export const useChatReasoningParts = () => useChatSelector((s) => s.reasoningParts, shallowEqual);
 
 // Small memo helper for components that consume selectors with no props
 export const memoSelector = <P extends object>(component: React.FC<P>) => memo(component);

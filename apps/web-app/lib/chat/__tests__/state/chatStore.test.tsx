@@ -9,6 +9,7 @@ import type { ChatMessage } from '../../types';
 function createController(overrides: Partial<UseChatControllerReturn> = {}): UseChatControllerReturn {
   return {
     messages: [],
+    streamEvents: [],
     isSending: false,
     isLoadingHistory: false,
     isClearingConversation: false,
@@ -23,6 +24,7 @@ function createController(overrides: Partial<UseChatControllerReturn> = {}): Use
     toolEvents: [],
     toolEventAnchors: {},
     reasoningText: '',
+    reasoningParts: [],
     lifecycleStatus: 'idle',
     hasOlderMessages: false,
     isFetchingOlderMessages: false,

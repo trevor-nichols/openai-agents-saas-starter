@@ -1,21 +1,27 @@
 import { assembledText, appendDelta, replaceText, type TextParts } from '@/lib/streams/publicSseV1/textParts';
+import {
+  applyReasoningEvent,
+  appendReasoningSuffix,
+  createReasoningPartsState,
+  getReasoningParts,
+  getReasoningSummaryText,
+} from '@/lib/streams/publicSseV1/reasoningParts';
+import { createPublicSseToolAccumulator, asPublicSseEvent } from '@/lib/streams/publicSseV1/tools';
 
 import type { ConversationLifecycleStatus, StreamChunk, Annotation } from '../../types';
-import { createToolStateTracker } from './toolStateTracker';
 import type { StreamConsumeResult, StreamConsumeHandlers, OutputItemUpdate } from './types';
 
 export async function consumeChatStream(
   stream: AsyncIterable<StreamChunk>,
   handlers: StreamConsumeHandlers,
-): Promise<StreamConsumeResult> {
-  const messageTextByItemId = new Map<string, TextParts>();
-  const refusalTextByItemId = new Map<string, TextParts>();
-  let activeTextChannel: 'message' | 'refusal' = 'message';
-  let lastTextItemId: string | null = null;
+	): Promise<StreamConsumeResult> {
+	  const messageTextByItemId = new Map<string, TextParts>();
+	  const refusalTextByItemId = new Map<string, TextParts>();
+	  let activeTextChannel: 'message' | 'refusal' = 'message';
+	  let lastTextItemId: string | null = null;
 
-  let reasoningSummaryText = '';
-
-  const toolTracker = createToolStateTracker({ onToolStates: handlers.onToolStates });
+	  const toolTracker = createPublicSseToolAccumulator({ onToolStates: handlers.onToolStates });
+	  const reasoningState = createReasoningPartsState();
 
   let terminalSeen = false;
   let streamErrored = false;
@@ -43,6 +49,7 @@ export async function consumeChatStream(
     }
 
     const event = chunk.event;
+    handlers.onEvent?.(asPublicSseEvent(event));
     const kind = event.kind;
     if (!kind) {
       terminalSeen = true;
@@ -79,6 +86,11 @@ export async function consumeChatStream(
       continue;
     }
 
+    if (kind === 'agent.updated') {
+      handlers.onAgentUpdated?.(event);
+      continue;
+    }
+
     if (kind === 'output_item.added' || kind === 'output_item.done') {
       const update: OutputItemUpdate = {
         itemId: event.item_id,
@@ -89,11 +101,7 @@ export async function consumeChatStream(
       };
       if (kind === 'output_item.added') {
         handlers.onOutputItemAdded?.(update);
-        toolTracker.ensurePlaceholderForOutputItem({
-          itemId: event.item_id,
-          itemType: event.item_type,
-          outputIndex: event.output_index,
-        });
+        toolTracker.apply(asPublicSseEvent(event));
       } else {
         handlers.onOutputItemDone?.(update);
       }
@@ -125,9 +133,16 @@ export async function consumeChatStream(
       continue;
     }
 
-    if (kind === 'reasoning_summary.delta') {
-      reasoningSummaryText += event.delta;
-      handlers.onReasoningDelta?.(event.delta);
+	    if (kind === 'reasoning_summary.delta') {
+	      applyReasoningEvent(reasoningState, asPublicSseEvent(event));
+	      handlers.onReasoningParts?.(getReasoningParts(reasoningState));
+	      handlers.onReasoningDelta?.(event.delta);
+	      continue;
+    }
+
+    if (kind === 'reasoning_summary.part.added' || kind === 'reasoning_summary.part.done') {
+      applyReasoningEvent(reasoningState, asPublicSseEvent(event));
+      handlers.onReasoningParts?.(getReasoningParts(reasoningState));
       continue;
     }
 
@@ -174,42 +189,47 @@ export async function consumeChatStream(
     }
 
     if (kind === 'tool.status') {
-      toolTracker.applyToolStatus(event);
+      toolTracker.apply(asPublicSseEvent(event));
       continue;
     }
 
     if (kind === 'tool.arguments.delta') {
-      toolTracker.applyToolArgumentsDelta(event);
+      toolTracker.apply(asPublicSseEvent(event));
       continue;
     }
 
     if (kind === 'tool.arguments.done') {
-      toolTracker.applyToolArgumentsDone(event);
+      toolTracker.apply(asPublicSseEvent(event));
       continue;
     }
 
     if (kind === 'tool.code.delta') {
-      toolTracker.applyToolCodeDelta(event);
+      toolTracker.apply(asPublicSseEvent(event));
       continue;
     }
 
     if (kind === 'tool.code.done') {
-      toolTracker.applyToolCodeDone(event);
+      toolTracker.apply(asPublicSseEvent(event));
       continue;
     }
 
     if (kind === 'tool.output') {
-      toolTracker.applyToolOutput(event);
+      toolTracker.apply(asPublicSseEvent(event));
+      continue;
+    }
+
+    if (kind === 'tool.approval') {
+      toolTracker.apply(asPublicSseEvent(event));
       continue;
     }
 
     if (kind === 'chunk.delta') {
-      toolTracker.applyChunkDelta(event);
+      toolTracker.apply(asPublicSseEvent(event));
       continue;
     }
 
     if (kind === 'chunk.done') {
-      toolTracker.applyChunkDone(event);
+      toolTracker.apply(asPublicSseEvent(event));
       continue;
     }
 
@@ -221,34 +241,37 @@ export async function consumeChatStream(
       break;
     }
 
-    if (kind === 'final') {
-      terminalSeen = true;
-      lifecycleStatus = event.final.status;
+	    if (kind === 'final') {
+	      terminalSeen = true;
+	      lifecycleStatus = event.final.status;
 
       responseTextOverride =
         event.final.response_text ??
         (event.final.status === 'refused' ? event.final.refusal_text : null) ??
         null;
 
-      streamedStructuredOutput =
-        event.final.structured_output !== undefined ? event.final.structured_output : null;
-      streamedAttachments = event.final.attachments ?? null;
+	      streamedStructuredOutput =
+	        event.final.structured_output !== undefined ? event.final.structured_output : null;
+	      streamedAttachments = event.final.attachments ?? null;
 
-      if (
-        event.final.reasoning_summary_text &&
-        event.final.reasoning_summary_text.length > reasoningSummaryText.length
-      ) {
-        const delta = event.final.reasoning_summary_text.slice(reasoningSummaryText.length);
-        if (delta) {
-          reasoningSummaryText = event.final.reasoning_summary_text;
-          handlers.onReasoningDelta?.(delta);
-        }
-      }
+	      const finalReasoningText = event.final.reasoning_summary_text;
+	      if (finalReasoningText) {
+	        const currentReasoningText = getReasoningSummaryText(reasoningState);
+	        if (
+	          finalReasoningText.length > currentReasoningText.length &&
+	          finalReasoningText.startsWith(currentReasoningText)
+	        ) {
+	          const delta = finalReasoningText.slice(currentReasoningText.length);
+	          appendReasoningSuffix(reasoningState, delta);
+	          handlers.onReasoningParts?.(getReasoningParts(reasoningState));
+	          handlers.onReasoningDelta?.(delta);
+	        }
+	      }
 
-      handlers.onStructuredOutput?.(streamedStructuredOutput);
-      handlers.onAttachments?.(streamedAttachments);
-      break;
-    }
+	      handlers.onStructuredOutput?.(streamedStructuredOutput);
+	      handlers.onAttachments?.(streamedAttachments);
+	      break;
+	    }
   }
 
   if (streamErrored) {

@@ -1,4 +1,6 @@
-import { FormEvent } from 'react';
+'use client';
+
+import { FormEvent, useState } from 'react';
 import type { ChatStatus } from 'ai';
 
 import { InlineTag, SectionHeader, type SectionHeaderProps } from '@/components/ui/foundation';
@@ -6,12 +8,16 @@ import { Banner, BannerClose, BannerTitle } from '@/components/ui/banner';
 import { Conversation, ConversationContent, ConversationScrollButton } from '@/components/ui/ai/conversation';
 import { EmptyState, SkeletonPanel } from '@/components/ui/states';
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
+import { PublicSseStreamLog } from '@/components/ui/ai/public-sse-stream-log';
 
 import { MessageList } from './MessageList';
 import { ReasoningPanel } from './ReasoningPanel';
 import { PromptComposer } from './PromptComposer';
 import type { ChatMessage, ConversationLifecycleStatus, ToolEventAnchors, ToolState } from '@/lib/chat/types';
+import type { PublicSseEvent } from '@/lib/api/client/types.gen';
+import type { ReasoningPart } from '@/lib/streams/publicSseV1/reasoningParts';
 import type { AttachmentState } from '../../hooks/useAttachmentResolver';
 
 type MemoryModeOption = 'inherit' | 'none' | 'trim' | 'summarize' | 'compact';
@@ -23,6 +29,8 @@ interface ChatSurfaceProps {
   isLoadingHistory: boolean;
   messages: ChatMessage[];
   reasoningText?: string;
+  reasoningParts?: ReasoningPart[];
+  debugEvents?: PublicSseEvent[];
   tools: ToolState[];
   toolEventAnchors?: ToolEventAnchors;
   chatStatus?: ChatStatus;
@@ -71,6 +79,8 @@ export function ChatSurface({
   isLoadingHistory,
   messages,
   reasoningText,
+  reasoningParts,
+  debugEvents,
   tools,
   toolEventAnchors,
   chatStatus,
@@ -108,6 +118,7 @@ export function ChatSurface({
 }: ChatSurfaceProps) {
   const showEmpty = !isLoadingHistory && messages.length === 0;
   const isBusy = isSending || Boolean(isDeletingMessage) || isLoadingHistory;
+  const [debugOpen, setDebugOpen] = useState(false);
 
   return (
     <div className={cn('relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background', className)}>
@@ -204,7 +215,25 @@ export function ChatSurface({
                 onDeleteMessage={onDeleteMessage}
               />
 
-              <ReasoningPanel reasoningText={reasoningText} isStreaming={isSending} />
+              <ReasoningPanel reasoningText={reasoningText} reasoningParts={reasoningParts} isStreaming={isSending} />
+
+              {debugEvents ? (
+                <Collapsible open={debugOpen} onOpenChange={setDebugOpen}>
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-foreground/60">
+                      Debug events
+                    </div>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-7 text-xs">
+                        {debugOpen ? 'Hide' : 'Show'}
+                      </Button>
+                    </CollapsibleTrigger>
+                  </div>
+                  <CollapsibleContent className="mt-3">
+                    <PublicSseStreamLog events={debugEvents} />
+                  </CollapsibleContent>
+                </Collapsible>
+              ) : null}
             </>
           )}
         </ConversationContent>

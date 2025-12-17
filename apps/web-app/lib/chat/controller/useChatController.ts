@@ -20,7 +20,8 @@ import type {
   ToolEventAnchors,
   ToolState,
 } from '../types';
-import type { LocationHint } from '@/lib/api/client/types.gen';
+import type { LocationHint, PublicSseEvent } from '@/lib/api/client/types.gen';
+import type { ReasoningPart } from '@/lib/streams/publicSseV1/reasoningParts';
 
 import { createLogger } from '@/lib/logging';
 import {
@@ -47,6 +48,7 @@ type UseChatControllerOptions = ChatControllerCallbacks;
 
 export interface UseChatControllerReturn {
   messages: ChatMessage[];
+  streamEvents: PublicSseEvent[];
   isSending: boolean;
   isLoadingHistory: boolean;
   isClearingConversation: boolean;
@@ -61,6 +63,7 @@ export interface UseChatControllerReturn {
   toolEvents: ToolState[];
   toolEventAnchors: ToolEventAnchors;
   reasoningText: string;
+  reasoningParts: ReasoningPart[];
   lifecycleStatus: ConversationLifecycleStatus;
   hasOlderMessages: boolean;
   isFetchingOlderMessages: boolean;
@@ -94,6 +97,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
   const queryClient = useQueryClient();
 
   const [messages, dispatchMessages] = useReducer(messagesReducer, []);
+  const [streamEvents, setStreamEvents] = useState<PublicSseEvent[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [isClearingConversation, setIsClearingConversation] = useState(false);
   const [isDeletingMessage, setIsDeletingMessage] = useState(false);
@@ -105,6 +109,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
   const [toolEvents, setToolEvents] = useState<ToolState[]>([]);
   const [toolEventAnchors, setToolEventAnchors] = useState<ToolEventAnchors>({});
   const [reasoningText, setReasoningText] = useState('');
+  const [reasoningParts, setReasoningParts] = useState<ReasoningPart[]>([]);
   const [lifecycleStatus, setLifecycleStatus] = useState<ConversationLifecycleStatus>('idle');
   const lastActiveAgentRef = useRef<string>('triage');
   const lastResponseIdRef = useRef<string | null>(null);
@@ -196,11 +201,13 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
 
   const resetViewState = useCallback(() => {
     dispatchMessages({ type: 'reset' });
+    setStreamEvents([]);
     setErrorMessage(null);
     clearHistoryError();
     setToolEvents([]);
     setToolEventAnchors({});
     setReasoningText('');
+    setReasoningParts([]);
     setAgentNotices([]);
     setLifecycleStatus('idle');
     setActiveAgent(selectedAgent);
@@ -208,7 +215,9 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
   }, [clearHistoryError, selectedAgent, turnRuntimeRefs]);
 
   const resetTurnState = useCallback(() => {
+    setStreamEvents([]);
     setReasoningText('');
+    setReasoningParts([]);
     setToolEvents([]);
     setToolEventAnchors({});
     setLifecycleStatus('idle');
@@ -217,6 +226,15 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
 
   const appendAgentNotice = useCallback((text: string) => {
     setAgentNotices((prev) => [...prev, { id: `agent-${Date.now()}`, text }]);
+  }, []);
+
+  const appendStreamEvent = useCallback((event: PublicSseEvent) => {
+    setStreamEvents((prev) => {
+      const next = [...prev, event];
+      // Guard: prevent unbounded growth during very long streams.
+      if (next.length <= 2000) return next;
+      return next.slice(next.length - 2000);
+    });
   }, []);
 
   const selectConversation = useCallback(
@@ -303,9 +321,11 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
           setToolEvents,
           setToolEventAnchors,
           setReasoningText,
+          setReasoningParts,
           setLifecycleStatus,
           setActiveAgent,
           appendAgentNotice,
+          appendStreamEvent,
           refs: turnRuntimeRefs,
           queryClient,
           setCurrentConversationId,
@@ -325,6 +345,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       isSending,
       isClearingConversation,
       isDeletingMessage,
+      appendStreamEvent,
       appendAgentNotice,
       enqueueMessageAction,
       flushQueuedMessages,
@@ -339,6 +360,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       setActiveAgent,
       setLifecycleStatus,
       setReasoningText,
+      setReasoningParts,
       setToolEventAnchors,
       setToolEvents,
       turnRuntimeRefs,
@@ -447,6 +469,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
   return useMemo(
     () => ({
       messages: mergedMessages,
+      streamEvents,
       isSending,
       isLoadingHistory,
       isClearingConversation,
@@ -461,6 +484,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       toolEvents: combinedToolEvents,
       toolEventAnchors: combinedToolEventAnchors,
       reasoningText,
+      reasoningParts,
       lifecycleStatus,
       hasOlderMessages,
       isFetchingOlderMessages,
@@ -476,6 +500,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
     }),
     [
       mergedMessages,
+      streamEvents,
       isSending,
       isLoadingHistory,
       isClearingConversation,
@@ -496,6 +521,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       combinedToolEvents,
       combinedToolEventAnchors,
       reasoningText,
+      reasoningParts,
       lifecycleStatus,
       hasOlderMessages,
       isFetchingOlderMessages,

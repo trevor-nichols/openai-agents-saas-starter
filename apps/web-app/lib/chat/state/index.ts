@@ -4,9 +4,11 @@ export {
   ChatControllerProvider,
   useChatSelector,
   useChatMessages,
+  useChatStreamEvents,
   useChatToolEventAnchors,
   useChatToolEvents,
   useChatLifecycle,
   useChatAgentNotices,
+  useChatReasoningParts,
   memoSelector,
 } from './chatStore';

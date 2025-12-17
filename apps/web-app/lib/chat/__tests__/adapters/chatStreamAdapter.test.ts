@@ -137,6 +137,89 @@ describe('consumeChatStream (public_sse_v1)', () => {
     expect(result.errored).toBe(false);
   });
 
+  it('reconciles final reasoning summary text into reasoning parts', async () => {
+    const onReasoningDelta = vi.fn();
+    const onReasoningParts = vi.fn();
+
+    const events: StreamingChatEvent[] = [
+      {
+        schema: 'public_sse_v1',
+        event_id: 1,
+        stream_id: 'stream_reasoning_suffix',
+        server_timestamp: '2025-12-15T00:00:00.000Z',
+        kind: 'output_item.added',
+        conversation_id: 'c_reason_suffix',
+        response_id: 'resp_reason_suffix',
+        agent: 'triage',
+        output_index: 0,
+        item_id: 'rs_0',
+        item_type: 'reasoning_summary',
+        status: 'in_progress',
+      },
+      {
+        schema: 'public_sse_v1',
+        event_id: 2,
+        stream_id: 'stream_reasoning_suffix',
+        server_timestamp: '2025-12-15T00:00:00.010Z',
+        kind: 'reasoning_summary.part.added',
+        conversation_id: 'c_reason_suffix',
+        response_id: 'resp_reason_suffix',
+        agent: 'triage',
+        output_index: 0,
+        item_id: 'rs_0',
+        summary_index: 0,
+        part_type: 'summary_text',
+        text: '',
+      },
+      {
+        schema: 'public_sse_v1',
+        event_id: 3,
+        stream_id: 'stream_reasoning_suffix',
+        server_timestamp: '2025-12-15T00:00:00.020Z',
+        kind: 'reasoning_summary.delta',
+        conversation_id: 'c_reason_suffix',
+        response_id: 'resp_reason_suffix',
+        agent: 'triage',
+        output_index: 0,
+        item_id: 'rs_0',
+        summary_index: 0,
+        delta: 'Hello',
+      },
+      {
+        schema: 'public_sse_v1',
+        event_id: 4,
+        stream_id: 'stream_reasoning_suffix',
+        server_timestamp: '2025-12-15T00:00:00.030Z',
+        kind: 'final',
+        conversation_id: 'c_reason_suffix',
+        response_id: 'resp_reason_suffix',
+        agent: 'triage',
+        final: {
+          status: 'completed',
+          response_text: 'Hi',
+          structured_output: null,
+          reasoning_summary_text: 'Hello world',
+          refusal_text: null,
+          attachments: [],
+          usage: { input_tokens: 1, output_tokens: 1, total_tokens: 2 },
+        },
+      },
+    ];
+
+    const chunks: StreamChunk[] = events.map((event) => ({ type: 'event', event }));
+    await consumeChatStream(chunkStream(chunks), { onReasoningDelta, onReasoningParts });
+
+    const lastParts = onReasoningParts.mock.calls.at(-1)?.[0];
+    expect(lastParts).toBeTruthy();
+    expect(lastParts?.[0]).toMatchObject({
+      summaryIndex: 0,
+      text: 'Hello world',
+    });
+
+    expect(onReasoningDelta).toHaveBeenNthCalledWith(1, 'Hello');
+    expect(onReasoningDelta).toHaveBeenNthCalledWith(2, ' world');
+  });
+
   it('treats refusals as first-class terminal state (contract example)', async () => {
     const onTextDelta = vi.fn();
     const events = loadContractExample('chat-refusal.ndjson');

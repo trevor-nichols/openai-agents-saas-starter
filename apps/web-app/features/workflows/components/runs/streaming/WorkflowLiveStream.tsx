@@ -37,6 +37,8 @@ export function WorkflowLiveStream({
         const workflow = segment.workflow ?? null;
         const headerLabel = workflow?.step_name ?? workflow?.stage_name ?? 'Workflow';
         const reasoningText = segment.reasoningSummaryText;
+        const reasoningParts = segment.reasoningParts?.filter((part) => part.text.trim().length > 0) ?? null;
+        const lifecycle = segment.lifecycle;
 
         return (
           <div
@@ -55,6 +57,7 @@ export function WorkflowLiveStream({
                   <InlineTag tone="default">Branch: {workflow.branch_index}</InlineTag>
                 ) : null}
                 {segment.agent ? <InlineTag tone="default">Agent: {segment.agent}</InlineTag> : null}
+                {lifecycle ? <InlineTag tone="default">Status: {lifecycle.status}</InlineTag> : null}
               </div>
               {segment.responseId ? (
                 <span className="text-[11px] text-foreground/60 font-mono">
@@ -63,7 +66,51 @@ export function WorkflowLiveStream({
               ) : null}
             </div>
 
-            {reasoningText ? (
+            {segment.agentUpdates.length ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {segment.agentUpdates.map((update, idx) => (
+                  <InlineTag key={`${segment.key}:agent-update:${idx}`} tone="default">
+                    Handoff: {(update.fromAgent ?? 'unknown')} → {update.toAgent}
+                  </InlineTag>
+                ))}
+              </div>
+            ) : null}
+
+            {segment.memoryCheckpoints.length ? (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {segment.memoryCheckpoints.map((marker) => {
+                  const strategy = (marker.checkpoint as any)?.strategy ?? 'checkpoint';
+                  return (
+                    <InlineTag key={marker.id} tone="default">
+                      Memory: {String(strategy)}
+                    </InlineTag>
+                  );
+                })}
+              </div>
+            ) : null}
+
+            {reasoningParts?.length ? (
+              <Collapsible>
+                <div className="mt-3 flex items-center justify-between">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-foreground/60">
+                    Thinking
+                  </div>
+                  <CollapsibleTrigger className="text-[11px] text-foreground/70 underline underline-offset-4">
+                    Show
+                  </CollapsibleTrigger>
+                </div>
+                <CollapsibleContent className="mt-2 rounded-md border border-white/10 bg-white/5 p-2">
+                  <ul className="grid gap-2">
+                    {reasoningParts.map((part) => (
+                      <li key={part.summaryIndex} className="flex items-start gap-2">
+                        <span className="mt-[6px] size-1.5 shrink-0 rounded-full bg-foreground/40" />
+                        <Response className="flex-1">{part.text}</Response>
+                      </li>
+                    ))}
+                  </ul>
+                </CollapsibleContent>
+              </Collapsible>
+            ) : reasoningText ? (
               <Collapsible>
                 <div className="mt-3 flex items-center justify-between">
                   <div className="text-[11px] font-semibold uppercase tracking-wide text-foreground/60">
@@ -83,12 +130,13 @@ export function WorkflowLiveStream({
               {segment.items.map((item) => {
                 if (item.kind === 'tool') {
                   const tool = item.tool;
+                  const label = tool.name || 'call';
                   return (
-                    <Tool key={`tool:${item.itemId}`} defaultOpen={tool.state !== 'output-available'}>
-                      <ToolHeader type={`tool-${tool.label}` as const} state={tool.state} />
+                    <Tool key={`tool:${item.itemId}`} defaultOpen={tool.status !== 'output-available'}>
+                      <ToolHeader type={`tool-${label}` as const} state={tool.status} />
                       <ToolContent>
                         {tool.input !== undefined ? <ToolInput input={tool.input} /> : null}
-                        <ToolOutput output={renderToolOutput({ label: tool.label, output: tool.output })} errorText={tool.errorText ?? undefined} />
+                        <ToolOutput output={renderToolOutput({ label, output: tool.output })} errorText={tool.errorText ?? undefined} />
                       </ToolContent>
                     </Tool>
                   );
@@ -104,7 +152,7 @@ export function WorkflowLiveStream({
 
                 return (
                   <div key={`msg:${item.itemId}`} className="rounded-md border border-white/10 bg-white/5 p-2">
-                    <Response>{item.text}</Response>
+                    <Response citations={item.citations}>{item.text}</Response>
                   </div>
                 );
               })}

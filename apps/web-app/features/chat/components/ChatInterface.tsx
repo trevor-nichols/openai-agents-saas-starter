@@ -13,6 +13,8 @@ import {
   useChatLifecycle,
   useChatMessages,
   useChatSelector,
+  useChatReasoningParts,
+  useChatStreamEvents,
   useChatToolEventAnchors,
   useChatToolEvents,
 } from '@/lib/chat';
@@ -99,12 +101,14 @@ export function ChatInterface({
   headerProps,
 }: ChatInterfaceProps) {
   const messagesFromStore = useChatMessages();
+  const streamEventsFromStore = useChatStreamEvents();
   const toolEventsFromStore = useChatToolEvents();
   const toolEventAnchorsFromStore = useChatToolEventAnchors();
   const agentNoticesFromStore = useChatAgentNotices();
   const lifecycleFromStore = useChatLifecycle();
   const activeAgentFromStore = useChatSelector((s) => s.activeAgent);
   const reasoningFromStore = useChatSelector((s) => s.reasoningText);
+  const reasoningPartsFromStore = useChatReasoningParts();
   const isSendingFromStore = useChatSelector((s) => s.isSending);
   const isDeletingMessageFromStore = useChatSelector((s) => s.isDeletingMessage);
   const isClearingFromStore = useChatSelector((s) => s.isClearingConversation);
@@ -114,12 +118,14 @@ export function ChatInterface({
   const deleteMessageFromStore = useChatSelector((s) => s.deleteMessage);
 
   const messages = messagesProp ?? messagesFromStore;
+  const streamEvents = streamEventsFromStore;
   const toolEvents = toolsProp ?? toolEventsFromStore;
   const toolEventAnchors = toolEventAnchorsProp ?? toolEventAnchorsFromStore;
   const agentNotices = agentNoticesProp ?? agentNoticesFromStore;
   const lifecycleStatus = lifecycleStatusProp ?? lifecycleFromStore;
   const activeAgent = activeAgentProp ?? activeAgentFromStore;
   const reasoningText = reasoningTextProp ?? reasoningFromStore;
+  const reasoningParts = reasoningPartsFromStore;
   const isSending = isSendingProp ?? isSendingFromStore;
   const isDeletingMessage = isDeletingMessageProp ?? isDeletingMessageFromStore;
   const isClearingConversation = isClearingConversationProp ?? isClearingFromStore;
@@ -249,6 +255,8 @@ export function ChatInterface({
       isLoadingHistory={isLoadingHistory}
       messages={messages}
       reasoningText={reasoningText}
+      reasoningParts={reasoningParts}
+      debugEvents={streamEvents}
       tools={toolEvents}
       toolEventAnchors={toolEventAnchors}
       chatStatus={chatStatus}
