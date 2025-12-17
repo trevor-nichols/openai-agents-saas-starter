@@ -27260,6 +27260,264 @@
         ],
         "title": "ReasoningSummaryDeltaEvent"
       },
+      "ReasoningSummaryPartAddedEvent": {
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "public_sse_v1",
+            "title": "Schema"
+          },
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id"
+          },
+          "stream_id": {
+            "type": "string",
+            "title": "Stream Id"
+          },
+          "server_timestamp": {
+            "type": "string",
+            "title": "Server Timestamp"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "workflow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider_sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Sequence Number"
+          },
+          "notices": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StreamNotice"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notices"
+          },
+          "output_index": {
+            "type": "integer",
+            "title": "Output Index",
+            "description": "Index into the provider response.output[] array."
+          },
+          "item_id": {
+            "type": "string",
+            "title": "Item Id",
+            "description": "Stable identifier of the provider output item."
+          },
+          "kind": {
+            "type": "string",
+            "const": "reasoning_summary.part.added",
+            "title": "Kind"
+          },
+          "summary_index": {
+            "type": "integer",
+            "title": "Summary Index"
+          },
+          "part_type": {
+            "type": "string",
+            "const": "summary_text",
+            "title": "Part Type",
+            "default": "summary_text"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema",
+          "event_id",
+          "stream_id",
+          "server_timestamp",
+          "conversation_id",
+          "output_index",
+          "item_id",
+          "kind",
+          "summary_index"
+        ],
+        "title": "ReasoningSummaryPartAddedEvent"
+      },
+      "ReasoningSummaryPartDoneEvent": {
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "public_sse_v1",
+            "title": "Schema"
+          },
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id"
+          },
+          "stream_id": {
+            "type": "string",
+            "title": "Stream Id"
+          },
+          "server_timestamp": {
+            "type": "string",
+            "title": "Server Timestamp"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "workflow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider_sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Sequence Number"
+          },
+          "notices": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StreamNotice"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notices"
+          },
+          "output_index": {
+            "type": "integer",
+            "title": "Output Index",
+            "description": "Index into the provider response.output[] array."
+          },
+          "item_id": {
+            "type": "string",
+            "title": "Item Id",
+            "description": "Stable identifier of the provider output item."
+          },
+          "kind": {
+            "type": "string",
+            "const": "reasoning_summary.part.done",
+            "title": "Kind"
+          },
+          "summary_index": {
+            "type": "integer",
+            "title": "Summary Index"
+          },
+          "part_type": {
+            "type": "string",
+            "const": "summary_text",
+            "title": "Part Type",
+            "default": "summary_text"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema",
+          "event_id",
+          "stream_id",
+          "server_timestamp",
+          "conversation_id",
+          "output_index",
+          "item_id",
+          "kind",
+          "summary_index",
+          "text"
+        ],
+        "title": "ReasoningSummaryPartDoneEvent"
+      },
       "ReceiptResponse": {
         "properties": {
           "unread_count": {
@@ -29281,6 +29539,12 @@
             "$ref": "#/components/schemas/ReasoningSummaryDeltaEvent"
           },
           {
+            "$ref": "#/components/schemas/ReasoningSummaryPartAddedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ReasoningSummaryPartDoneEvent"
+          },
+          {
             "$ref": "#/components/schemas/RefusalDeltaEvent"
           },
           {
@@ -29344,6 +29608,12 @@
           },
           {
             "$ref": "#/components/schemas/ReasoningSummaryDeltaEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ReasoningSummaryPartAddedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ReasoningSummaryPartDoneEvent"
           },
           {
             "$ref": "#/components/schemas/RefusalDeltaEvent"

@@ -22,6 +22,8 @@ from app.api.v1.shared.streaming import (
     PublicSseEventBase,
     PublicSseEvent,
     ReasoningSummaryDeltaEvent,
+    ReasoningSummaryPartAddedEvent,
+    ReasoningSummaryPartDoneEvent,
     RefusalDeltaEvent,
     RefusalDoneEvent,
     ToolArgumentsDeltaEvent,
@@ -282,10 +284,38 @@ def assert_provider_error_expectations(events: Sequence[PublicSseEventBase]) -> 
 def assert_reasoning_summary_expectations(events: Sequence[PublicSseEventBase]) -> None:
     assert_common_stream(events)
 
+    parts_added = [e for e in events if isinstance(e, ReasoningSummaryPartAddedEvent)]
+    parts_done = [e for e in events if isinstance(e, ReasoningSummaryPartDoneEvent)]
+    assert parts_added, "Expected reasoning_summary.part.added events"
+    assert parts_done, "Expected reasoning_summary.part.done events"
+
     deltas = [e for e in events if isinstance(e, ReasoningSummaryDeltaEvent)]
     assert deltas, "Expected reasoning_summary.delta events"
     summary_text = "".join(e.delta for e in deltas).strip()
     assert summary_text, "Reasoning summary deltas were empty"
+
+    index_by_event_id = {id(ev): idx for idx, ev in enumerate(events)}
+    for added in parts_added:
+        done = next(
+            (
+                d
+                for d in parts_done
+                if d.item_id == added.item_id and d.summary_index == added.summary_index
+            ),
+            None,
+        )
+        assert done is not None, "Missing reasoning_summary.part.done for a part.added event"
+        assert index_by_event_id[id(added)] < index_by_event_id[id(done)], (
+            "Expected reasoning_summary.part.added to occur before reasoning_summary.part.done"
+        )
+
+        delta_text = "".join(
+            d.delta for d in deltas if d.summary_index == added.summary_index
+        ).strip()
+        if delta_text:
+            assert done.text.strip() == delta_text, (
+                "reasoning_summary.part.done text did not match streamed deltas"
+            )
 
     terminal = events[-1]
     assert isinstance(terminal, FinalEvent), "Reasoning summary streams should end with final"

@@ -29,6 +29,8 @@ const KIND_LABEL: Record<KnownKind, string> = {
   'message.delta': 'Message',
   'message.citation': 'Citation',
   'reasoning_summary.delta': 'Reasoning Summary',
+  'reasoning_summary.part.added': 'Reasoning Summary Part',
+  'reasoning_summary.part.done': 'Reasoning Summary Part',
   'refusal.delta': 'Refusal',
   'refusal.done': 'Refusal',
   'tool.status': 'Tool Status',
@@ -228,6 +230,40 @@ export function WorkflowStreamLog({ events }: WorkflowStreamLogProps) {
                   return (
                     <div className="mt-3">
                       <Response>{evt.delta}</Response>
+                    </div>
+                  );
+                case 'reasoning_summary.part.added':
+                  return (
+                    <div className="mt-3">
+                      <CodeBlock
+                        code={JSON.stringify(
+                          {
+                            summary_index: evt.summary_index,
+                            part_type: evt.part_type,
+                            text: evt.text ?? null,
+                          },
+                          null,
+                          2,
+                        )}
+                        language="json"
+                      />
+                    </div>
+                  );
+                case 'reasoning_summary.part.done':
+                  return (
+                    <div className="mt-3">
+                      <CodeBlock
+                        code={JSON.stringify(
+                          {
+                            summary_index: evt.summary_index,
+                            part_type: evt.part_type,
+                            text: evt.text,
+                          },
+                          null,
+                          2,
+                        )}
+                        language="json"
+                      />
                     </div>
                   );
                 case 'refusal.delta':

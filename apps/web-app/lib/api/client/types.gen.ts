@@ -3459,6 +3459,148 @@ export type ReasoningSummaryDeltaEvent = {
 };
 
 /**
+ * ReasoningSummaryPartAddedEvent
+ */
+export type ReasoningSummaryPartAddedEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
+   * Kind
+   */
+  kind: "reasoning_summary.part.added";
+  /**
+   * Summary Index
+   */
+  summary_index: number;
+  /**
+   * Part Type
+   */
+  part_type?: "summary_text";
+  /**
+   * Text
+   */
+  text?: string | null;
+};
+
+/**
+ * ReasoningSummaryPartDoneEvent
+ */
+export type ReasoningSummaryPartDoneEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
+   * Kind
+   */
+  kind: "reasoning_summary.part.done";
+  /**
+   * Summary Index
+   */
+  summary_index: number;
+  /**
+   * Part Type
+   */
+  part_type?: "summary_text";
+  /**
+   * Text
+   */
+  text: string;
+};
+
+/**
  * ReceiptResponse
  */
 export type ReceiptResponse = {
@@ -4714,6 +4856,8 @@ export type StreamingChatEvent =
   | MessageDeltaEvent
   | MessageCitationEvent
   | ReasoningSummaryDeltaEvent
+  | ReasoningSummaryPartAddedEvent
+  | ReasoningSummaryPartDoneEvent
   | RefusalDeltaEvent
   | RefusalDoneEvent
   | ToolStatusEvent
@@ -4739,6 +4883,8 @@ export type StreamingWorkflowEvent =
   | MessageDeltaEvent
   | MessageCitationEvent
   | ReasoningSummaryDeltaEvent
+  | ReasoningSummaryPartAddedEvent
+  | ReasoningSummaryPartDoneEvent
   | RefusalDeltaEvent
   | RefusalDoneEvent
   | ToolStatusEvent

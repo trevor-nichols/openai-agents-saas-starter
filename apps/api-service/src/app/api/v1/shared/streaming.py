@@ -265,6 +265,20 @@ class ReasoningSummaryDeltaEvent(PublicSseItemEventBase):
     delta: str
 
 
+class ReasoningSummaryPartAddedEvent(PublicSseItemEventBase):
+    kind: Literal["reasoning_summary.part.added"]
+    summary_index: int
+    part_type: Literal["summary_text"] = "summary_text"
+    text: str | None = None
+
+
+class ReasoningSummaryPartDoneEvent(PublicSseItemEventBase):
+    kind: Literal["reasoning_summary.part.done"]
+    summary_index: int
+    part_type: Literal["summary_text"] = "summary_text"
+    text: str
+
+
 class RefusalDeltaEvent(PublicSseItemEventBase):
     kind: Literal["refusal.delta"]
     content_index: int
@@ -399,6 +413,8 @@ PublicSseEventUnion = (
     | MessageDeltaEvent
     | MessageCitationEvent
     | ReasoningSummaryDeltaEvent
+    | ReasoningSummaryPartAddedEvent
+    | ReasoningSummaryPartDoneEvent
     | RefusalDeltaEvent
     | RefusalDoneEvent
     | ToolStatusEvent
@@ -450,6 +466,8 @@ __all__ = [
     "PublicTool",
     "PublicUsage",
     "ReasoningSummaryDeltaEvent",
+    "ReasoningSummaryPartAddedEvent",
+    "ReasoningSummaryPartDoneEvent",
     "RefusalDeltaEvent",
     "RefusalDoneEvent",
     "StreamNotice",
