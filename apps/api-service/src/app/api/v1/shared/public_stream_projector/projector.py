@@ -15,6 +15,7 @@ from ..streaming import (
     FinalPayload,
     PublicSseEventBase,
 )
+from .agent_updates import project_event as project_agent_update_event
 from .builders import EventBuilder
 from .raw import apply_attachments, terminal_final_status
 from .raw import project_event as project_raw_event
@@ -69,6 +70,10 @@ class PublicStreamProjector:
         apply_attachments(self._state, event)
 
         out: list[PublicSseEventBase] = []
+        if agent and self._state.current_agent is None:
+            self._state.current_agent = agent
+
+        out.extend(project_agent_update_event(self._state, builder, event))
         out.extend(
             project_raw_event(
                 self._state,
@@ -81,6 +86,9 @@ class PublicStreamProjector:
             return out
 
         out.extend(project_run_item_event(self._state, builder, event))
+
+        if agent:
+            self._state.current_agent = agent
 
         if event.is_terminal:
             out.append(

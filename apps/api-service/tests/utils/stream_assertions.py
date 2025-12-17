@@ -7,6 +7,7 @@ from typing import Any, Iterable, Sequence
 from urllib.parse import urlsplit, urlunsplit
 
 from app.api.v1.shared.streaming import (
+    AgentUpdatedEvent,
     ChunkDeltaEvent,
     ChunkDoneEvent,
     ContainerFileCitation,
@@ -25,6 +26,7 @@ from app.api.v1.shared.streaming import (
     RefusalDoneEvent,
     ToolArgumentsDeltaEvent,
     ToolArgumentsDoneEvent,
+    ToolApprovalEvent,
     ToolCodeDoneEvent,
     ToolOutputEvent,
     ToolStatusEvent,
@@ -300,6 +302,9 @@ def assert_mcp_tool_expectations(events: Sequence[PublicSseEventBase]) -> None:
     assert any(e.tool.status == "awaiting_approval" for e in statuses), "MCP approval not surfaced"
     assert any(e.tool.status == "completed" for e in statuses), "MCP tool never completed"
 
+    approvals = [e for e in events if isinstance(e, ToolApprovalEvent)]
+    assert approvals, "Expected tool.approval event for MCP tool call"
+
     args_done = [e for e in events if isinstance(e, ToolArgumentsDoneEvent) and e.tool_type == "mcp"]
     assert args_done, "Expected tool.arguments.done for MCP tool args"
 
@@ -308,6 +313,26 @@ def assert_mcp_tool_expectations(events: Sequence[PublicSseEventBase]) -> None:
 
     full_text = assembled_text(events)
     assert full_text, "No assistant text returned"
+
+
+def assert_handoff_expectations(
+    events: Sequence[PublicSseEventBase],
+    *,
+    expected_from: str | None = None,
+    expected_to: str | None = None,
+) -> None:
+    assert_common_stream(events)
+
+    updates = [e for e in events if isinstance(e, AgentUpdatedEvent)]
+    assert updates, "Expected agent.updated event"
+    if expected_from is not None:
+        assert any(e.from_agent == expected_from for e in updates), "from_agent did not match"
+    if expected_to is not None:
+        assert any(e.to_agent == expected_to for e in updates), "to_agent did not match"
+
+    terminal = events[-1]
+    assert isinstance(terminal, FinalEvent), "Handoff streams should end with final"
+    assert terminal.final.response_text or terminal.final.structured_output, "Expected final output"
 
 
 def assert_workflow_expectations(

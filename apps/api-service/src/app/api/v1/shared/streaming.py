@@ -224,6 +224,15 @@ class LifecycleEvent(PublicSseEventBase):
     reason: str | None = None
 
 
+class AgentUpdatedEvent(PublicSseEventBase):
+    """Indicates the active agent changed (handoff/routing)."""
+
+    kind: Literal["agent.updated"]
+    from_agent: str | None = None
+    to_agent: str
+    handoff_index: int | None = None
+
+
 class OutputItemAddedEvent(PublicSseItemEventBase):
     kind: Literal["output_item.added"]
     item_type: str
@@ -316,6 +325,19 @@ class ToolOutputEvent(PublicSseItemEventBase):
     output: Any
 
 
+class ToolApprovalEvent(PublicSseItemEventBase):
+    """Approval decision for an MCP tool call."""
+
+    kind: Literal["tool.approval"]
+    tool_call_id: str
+    tool_type: Literal["mcp"] = "mcp"
+    tool_name: str
+    server_label: str | None = None
+    approval_request_id: str | None = None
+    approved: bool
+    reason: str | None = None
+
+
 class ChunkTarget(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -371,6 +393,7 @@ class FinalEvent(PublicSseEventBase):
 
 PublicSseEventUnion = (
     LifecycleEvent
+    | AgentUpdatedEvent
     | OutputItemAddedEvent
     | OutputItemDoneEvent
     | MessageDeltaEvent
@@ -384,6 +407,7 @@ PublicSseEventUnion = (
     | ToolCodeDeltaEvent
     | ToolCodeDoneEvent
     | ToolOutputEvent
+    | ToolApprovalEvent
     | ChunkDeltaEvent
     | ChunkDoneEvent
     | ErrorEvent
@@ -399,6 +423,7 @@ class PublicSseEvent(RootModel[PublicSseEventUnion]):
 
 __all__ = [
     "PUBLIC_SSE_SCHEMA_VERSION",
+    "AgentUpdatedEvent",
     "ChunkDeltaEvent",
     "ChunkDoneEvent",
     "ChunkTarget",
@@ -433,6 +458,7 @@ __all__ = [
     "ToolCodeDeltaEvent",
     "ToolCodeDoneEvent",
     "ToolOutputEvent",
+    "ToolApprovalEvent",
     "ToolStatusEvent",
     "UrlCitation",
     "WebSearchTool",

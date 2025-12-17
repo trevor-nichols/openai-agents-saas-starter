@@ -23,6 +23,7 @@ type KnownKind = NonNullable<StreamingWorkflowEvent['kind']>;
 
 const KIND_LABEL: Record<KnownKind, string> = {
   lifecycle: 'Lifecycle',
+  'agent.updated': 'Agent Updated',
   'output_item.added': 'Output Item',
   'output_item.done': 'Output Item',
   'message.delta': 'Message',
@@ -36,6 +37,7 @@ const KIND_LABEL: Record<KnownKind, string> = {
   'tool.code.delta': 'Tool Code',
   'tool.code.done': 'Tool Code',
   'tool.output': 'Tool Output',
+  'tool.approval': 'Tool Approval',
   'chunk.delta': 'Chunk',
   'chunk.done': 'Chunk',
   error: 'Error',
@@ -193,6 +195,23 @@ export function WorkflowStreamLog({ events }: WorkflowStreamLogProps) {
                       />
                     </div>
                   );
+                case 'agent.updated':
+                  return (
+                    <div className="mt-3">
+                      <CodeBlock
+                        code={JSON.stringify(
+                          {
+                            from_agent: evt.from_agent ?? null,
+                            to_agent: evt.to_agent,
+                            handoff_index: evt.handoff_index ?? null,
+                          },
+                          null,
+                          2,
+                        )}
+                        language="json"
+                      />
+                    </div>
+                  );
                 case 'message.delta':
                   return (
                     <div className="mt-3">
@@ -306,6 +325,27 @@ export function WorkflowStreamLog({ events }: WorkflowStreamLogProps) {
                     </div>
                   );
                 }
+                case 'tool.approval':
+                  return (
+                    <div className="mt-3">
+                      <CodeBlock
+                        code={JSON.stringify(
+                          {
+                            tool_call_id: evt.tool_call_id,
+                            tool_type: evt.tool_type,
+                            tool_name: evt.tool_name,
+                            server_label: evt.server_label ?? null,
+                            approval_request_id: evt.approval_request_id ?? null,
+                            approved: evt.approved,
+                            reason: evt.reason ?? null,
+                          },
+                          null,
+                          2,
+                        )}
+                        language="json"
+                      />
+                    </div>
+                  );
                 case 'chunk.delta':
                   return (
                     <div className="mt-3">

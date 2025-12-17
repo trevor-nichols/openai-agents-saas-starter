@@ -328,6 +328,67 @@ export type AgentSummary = {
 };
 
 /**
+ * AgentUpdatedEvent
+ *
+ * Indicates the active agent changed (handoff/routing).
+ */
+export type AgentUpdatedEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Kind
+   */
+  kind: "agent.updated";
+  /**
+   * From Agent
+   */
+  from_agent?: string | null;
+  /**
+   * To Agent
+   */
+  to_agent: string;
+  /**
+   * Handoff Index
+   */
+  handoff_index?: number | null;
+};
+
+/**
  * BillingContactModel
  */
 export type BillingContactModel = {
@@ -4647,6 +4708,7 @@ export type StreamNotice = {
  */
 export type StreamingChatEvent =
   | LifecycleEvent
+  | AgentUpdatedEvent
   | OutputItemAddedEvent
   | OutputItemDoneEvent
   | MessageDeltaEvent
@@ -4660,6 +4722,7 @@ export type StreamingChatEvent =
   | ToolCodeDeltaEvent
   | ToolCodeDoneEvent
   | ToolOutputEvent
+  | ToolApprovalEvent
   | ChunkDeltaEvent
   | ChunkDoneEvent
   | ErrorEvent
@@ -4670,6 +4733,7 @@ export type StreamingChatEvent =
  */
 export type StreamingWorkflowEvent =
   | LifecycleEvent
+  | AgentUpdatedEvent
   | OutputItemAddedEvent
   | OutputItemDoneEvent
   | MessageDeltaEvent
@@ -4683,6 +4747,7 @@ export type StreamingWorkflowEvent =
   | ToolCodeDeltaEvent
   | ToolCodeDoneEvent
   | ToolOutputEvent
+  | ToolApprovalEvent
   | ChunkDeltaEvent
   | ChunkDoneEvent
   | ErrorEvent
@@ -4833,6 +4898,95 @@ export type TenantSubscriptionResponse = {
   metadata?: {
     [key: string]: string;
   };
+};
+
+/**
+ * ToolApprovalEvent
+ *
+ * Approval decision for an MCP tool call.
+ */
+export type ToolApprovalEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
+   * Kind
+   */
+  kind: "tool.approval";
+  /**
+   * Tool Call Id
+   */
+  tool_call_id: string;
+  /**
+   * Tool Type
+   */
+  tool_type?: "mcp";
+  /**
+   * Tool Name
+   */
+  tool_name: string;
+  /**
+   * Server Label
+   */
+  server_label?: string | null;
+  /**
+   * Approval Request Id
+   */
+  approval_request_id?: string | null;
+  /**
+   * Approved
+   */
+  approved: boolean;
+  /**
+   * Reason
+   */
+  reason?: string | null;
 };
 
 /**

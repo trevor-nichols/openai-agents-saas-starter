@@ -21777,6 +21777,132 @@
         "title": "AgentSummary",
         "description": "Lightweight representation of an available agent."
       },
+      "AgentUpdatedEvent": {
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "public_sse_v1",
+            "title": "Schema"
+          },
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id"
+          },
+          "stream_id": {
+            "type": "string",
+            "title": "Stream Id"
+          },
+          "server_timestamp": {
+            "type": "string",
+            "title": "Server Timestamp"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "workflow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider_sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Sequence Number"
+          },
+          "notices": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StreamNotice"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notices"
+          },
+          "kind": {
+            "type": "string",
+            "const": "agent.updated",
+            "title": "Kind"
+          },
+          "from_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Agent"
+          },
+          "to_agent": {
+            "type": "string",
+            "title": "To Agent"
+          },
+          "handoff_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Handoff Index"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema",
+          "event_id",
+          "stream_id",
+          "server_timestamp",
+          "conversation_id",
+          "kind",
+          "to_agent"
+        ],
+        "title": "AgentUpdatedEvent",
+        "description": "Indicates the active agent changed (handoff/routing)."
+      },
       "BillingContactModel": {
         "properties": {
           "name": {
@@ -29137,6 +29263,9 @@
             "$ref": "#/components/schemas/LifecycleEvent"
           },
           {
+            "$ref": "#/components/schemas/AgentUpdatedEvent"
+          },
+          {
             "$ref": "#/components/schemas/OutputItemAddedEvent"
           },
           {
@@ -29174,6 +29303,9 @@
           },
           {
             "$ref": "#/components/schemas/ToolOutputEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ToolApprovalEvent"
           },
           {
             "$ref": "#/components/schemas/ChunkDeltaEvent"
@@ -29196,6 +29328,9 @@
             "$ref": "#/components/schemas/LifecycleEvent"
           },
           {
+            "$ref": "#/components/schemas/AgentUpdatedEvent"
+          },
+          {
             "$ref": "#/components/schemas/OutputItemAddedEvent"
           },
           {
@@ -29233,6 +29368,9 @@
           },
           {
             "$ref": "#/components/schemas/ToolOutputEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ToolApprovalEvent"
           },
           {
             "$ref": "#/components/schemas/ChunkDeltaEvent"
@@ -29504,6 +29642,171 @@
           "starts_at"
         ],
         "title": "TenantSubscriptionResponse"
+      },
+      "ToolApprovalEvent": {
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "public_sse_v1",
+            "title": "Schema"
+          },
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id"
+          },
+          "stream_id": {
+            "type": "string",
+            "title": "Stream Id"
+          },
+          "server_timestamp": {
+            "type": "string",
+            "title": "Server Timestamp"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "workflow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider_sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Sequence Number"
+          },
+          "notices": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StreamNotice"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notices"
+          },
+          "output_index": {
+            "type": "integer",
+            "title": "Output Index",
+            "description": "Index into the provider response.output[] array."
+          },
+          "item_id": {
+            "type": "string",
+            "title": "Item Id",
+            "description": "Stable identifier of the provider output item."
+          },
+          "kind": {
+            "type": "string",
+            "const": "tool.approval",
+            "title": "Kind"
+          },
+          "tool_call_id": {
+            "type": "string",
+            "title": "Tool Call Id"
+          },
+          "tool_type": {
+            "type": "string",
+            "const": "mcp",
+            "title": "Tool Type",
+            "default": "mcp"
+          },
+          "tool_name": {
+            "type": "string",
+            "title": "Tool Name"
+          },
+          "server_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Server Label"
+          },
+          "approval_request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Request Id"
+          },
+          "approved": {
+            "type": "boolean",
+            "title": "Approved"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema",
+          "event_id",
+          "stream_id",
+          "server_timestamp",
+          "conversation_id",
+          "output_index",
+          "item_id",
+          "kind",
+          "tool_call_id",
+          "tool_name",
+          "approved"
+        ],
+        "title": "ToolApprovalEvent",
+        "description": "Approval decision for an MCP tool call."
       },
       "ToolArgumentsDeltaEvent": {
         "properties": {

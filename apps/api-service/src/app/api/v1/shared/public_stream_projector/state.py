@@ -56,11 +56,13 @@ class ToolState:
 class ProjectionState:
     event_id: int = 0
     lifecycle_status: LifecycleStatus | None = None
+    current_agent: str | None = None
+    handoff_count: int = 0
     reasoning_summary_text: str = ""
     refusal_text: str = ""
     tool_state: dict[str, ToolState] = field(default_factory=dict)
+    mcp_approval_requests: dict[str, str] = field(default_factory=dict)
     last_web_search_tool_call_id: str | None = None
     attachments: list[MessageAttachment] = field(default_factory=list)
     seen_attachment_ids: set[str] = field(default_factory=set)
     terminal_emitted: bool = False
-

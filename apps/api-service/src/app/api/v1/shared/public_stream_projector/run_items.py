@@ -8,16 +8,33 @@ from ..streaming import (
     FunctionTool,
     McpTool,
     PublicSseEventBase,
+    ToolApprovalEvent,
     ToolOutputEvent,
     ToolStatusEvent,
     WebSearchTool,
 )
 from .builders import EventBuilder
-from .sanitize import sanitize_json
+from .sanitize import sanitize_json, truncate_string
 from .scopes import tool_scope
 from .state import ProjectionState, ToolState, ToolType
 from .tooling import tool_name_from_run_item
 from .utils import as_dict, coerce_str, extract_urls
+
+
+def _coerce_bool(value: object) -> bool | None:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        if value in {0, 1}:
+            return bool(value)
+        return None
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "yes", "y", "1", "approve", "approved"}:
+            return True
+        if normalized in {"false", "no", "n", "0", "deny", "denied"}:
+            return False
+    return None
 
 
 def project_event(
@@ -29,6 +46,7 @@ def project_event(
         "tool_called",
         "tool_output",
         "mcp_approval_requested",
+        "mcp_approval_response",
     }:
         return []
 
@@ -48,7 +66,10 @@ def project_event(
     tool_name = inferred_name or event.tool_name or raw_item_name or "unknown"
 
     tool_type: ToolType = "function"
-    if event.run_item_name == "mcp_approval_requested" or raw_item_type == "mcp_call":
+    if (
+        event.run_item_name in {"mcp_approval_requested", "mcp_approval_response"}
+        or raw_item_type == "mcp_call"
+    ):
         tool_type = "mcp"
     else:
         builtin_tool: str | None = None
@@ -97,6 +118,10 @@ def project_event(
     out: list[PublicSseEventBase] = []
 
     if event.run_item_name == "mcp_approval_requested" and tool_type == "mcp":
+        approval_request_id = coerce_str((raw_item or {}).get("id"))
+        call_id = coerce_str((raw_item or {}).get("call_id"))
+        if approval_request_id and call_id:
+            state.mcp_approval_requests[approval_request_id] = call_id
         if tool_state.last_status != "awaiting_approval":
             tool_state.last_status = "awaiting_approval"
             if scope:
@@ -117,6 +142,72 @@ def project_event(
                         ),
                     )
                 )
+
+    if event.run_item_name == "mcp_approval_response" and tool_type == "mcp":
+        approve_raw = (raw_item or {}).get("approve")
+        if approve_raw is None:
+            approve_raw = (raw_item or {}).get("approved")
+        approved = _coerce_bool(approve_raw)
+        if approved is None:
+            return []
+
+        approval_request_id = coerce_str((raw_item or {}).get("approval_request_id"))
+        call_id = coerce_str((raw_item or {}).get("call_id"))
+        if not call_id and approval_request_id:
+            call_id = state.mcp_approval_requests.get(approval_request_id)
+
+        tool_call_id_for_event = call_id or tool_call_id
+        tool_state = state.tool_state.setdefault(
+            tool_call_id_for_event,
+            ToolState(tool_type="mcp"),
+        )
+        if tool_state.tool_type != "mcp":
+            tool_state.tool_type = "mcp"
+        if tool_name and tool_name != "unknown":
+            tool_state.tool_name = tool_name
+        tool_state.server_label = (
+            coerce_str((raw_item or {}).get("server_label"))
+            or coerce_str((raw_item or {}).get("server"))
+            or tool_state.server_label
+        )
+
+        if approval_request_id and call_id:
+            state.mcp_approval_requests.setdefault(approval_request_id, call_id)
+
+        scope = tool_scope(tool_call_id_for_event, state=state)
+        if not scope:
+            return []
+        item_id, output_index = scope
+
+        reason = coerce_str((raw_item or {}).get("reason"))
+        notices = []
+        reason_text = None
+        if reason:
+            reason_text, notice = truncate_string(
+                value=reason,
+                path="reason",
+                max_chars=2_000,
+            )
+            if notice:
+                notices.append(notice)
+
+        out.append(
+            ToolApprovalEvent(
+                **builder.item(
+                    kind="tool.approval",
+                    item_id=item_id,
+                    output_index=output_index,
+                    notices=notices or None,
+                ),
+                tool_call_id=tool_call_id_for_event,
+                tool_name=tool_state.tool_name or tool_name or "unknown",
+                server_label=tool_state.server_label,
+                approval_request_id=approval_request_id,
+                approved=approved,
+                reason=reason_text,
+            )
+        )
+        return out
 
     if event.run_item_name == "tool_called" and tool_type == "function":
         if tool_state.last_status != "in_progress":
