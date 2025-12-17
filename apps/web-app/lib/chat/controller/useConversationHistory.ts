@@ -12,6 +12,7 @@ import type { ConversationMessagesPage } from '@/types/conversations';
 import type { ChatMessage } from '../types';
 import { dedupeAndSortMessages, mapMessagesToChatMessages } from '../mappers/chatRequestMappers';
 import { extractMemoryCheckpointMarkers } from '../mappers/ledgerReplayMappers';
+import { enrichChatMessagesFromLedger } from '../mappers/ledgerTranscriptMappers';
 
 export interface UseConversationHistoryResult {
   historyMessagesWithMarkers: ChatMessage[];
@@ -78,14 +79,19 @@ export function useConversationHistory(conversationId: string | null): UseConver
     return dedupeAndSortMessages(mapMessagesToChatMessages(flattened, conversationId ?? undefined));
   }, [conversationId, messagesPages]);
 
+  const historyMessagesWithLedger = useMemo(() => {
+    if (!ledgerEvents?.length) return historyMessages;
+    return enrichChatMessagesFromLedger(ledgerEvents, historyMessages);
+  }, [historyMessages, ledgerEvents]);
+
   const checkpointMarkers = useMemo(
     () => (ledgerEvents?.length ? extractMemoryCheckpointMarkers(ledgerEvents) : []),
     [ledgerEvents],
   );
 
   const historyMessagesWithMarkers = useMemo(
-    () => dedupeAndSortMessages([...historyMessages, ...checkpointMarkers]),
-    [historyMessages, checkpointMarkers],
+    () => dedupeAndSortMessages([...historyMessagesWithLedger, ...checkpointMarkers]),
+    [historyMessagesWithLedger, checkpointMarkers],
   );
 
   const isLoadingHistory = Boolean(conversationId) && isLoadingMessages && !messagesPages;
