@@ -30,6 +30,7 @@ import { useAttachmentResolver } from '../hooks/useAttachmentResolver';
 
 interface ChatInterfaceProps {
   onSendMessage: (messageText: string) => Promise<void>;
+  onDeleteMessage?: (messageId: string) => void | Promise<void>;
   currentConversationId: string | null;
   onClearConversation?: () => void | Promise<void>;
   messages?: ChatMessage[];
@@ -40,6 +41,7 @@ interface ChatInterfaceProps {
   activeAgent?: string;
   lifecycleStatus?: ConversationLifecycleStatus;
   isSending?: boolean;
+  isDeletingMessage?: boolean;
   isClearingConversation?: boolean;
   isLoadingHistory?: boolean;
   hasOlderMessages?: boolean;
@@ -67,6 +69,7 @@ type MemoryModeOption = 'inherit' | 'none' | 'trim' | 'summarize' | 'compact';
 
 export function ChatInterface({
   onSendMessage,
+  onDeleteMessage,
   currentConversationId,
   onClearConversation,
   messages: messagesProp,
@@ -77,6 +80,7 @@ export function ChatInterface({
   activeAgent: activeAgentProp,
   lifecycleStatus: lifecycleStatusProp,
   isSending: isSendingProp,
+  isDeletingMessage: isDeletingMessageProp,
   isClearingConversation: isClearingConversationProp,
   isLoadingHistory: isLoadingHistoryProp,
   hasOlderMessages: hasOlderMessagesProp,
@@ -102,10 +106,12 @@ export function ChatInterface({
   const activeAgentFromStore = useChatSelector((s) => s.activeAgent);
   const reasoningFromStore = useChatSelector((s) => s.reasoningText);
   const isSendingFromStore = useChatSelector((s) => s.isSending);
+  const isDeletingMessageFromStore = useChatSelector((s) => s.isDeletingMessage);
   const isClearingFromStore = useChatSelector((s) => s.isClearingConversation);
   const isLoadingHistoryFromStore = useChatSelector((s) => s.isLoadingHistory);
   const hasOlderMessagesFromStore = useChatSelector((s) => s.hasOlderMessages);
   const isLoadingOlderMessagesFromStore = useChatSelector((s) => s.isFetchingOlderMessages);
+  const deleteMessageFromStore = useChatSelector((s) => s.deleteMessage);
 
   const messages = messagesProp ?? messagesFromStore;
   const toolEvents = toolsProp ?? toolEventsFromStore;
@@ -115,6 +121,7 @@ export function ChatInterface({
   const activeAgent = activeAgentProp ?? activeAgentFromStore;
   const reasoningText = reasoningTextProp ?? reasoningFromStore;
   const isSending = isSendingProp ?? isSendingFromStore;
+  const isDeletingMessage = isDeletingMessageProp ?? isDeletingMessageFromStore;
   const isClearingConversation = isClearingConversationProp ?? isClearingFromStore;
   const isLoadingHistory = isLoadingHistoryProp ?? isLoadingHistoryFromStore;
   const hasOlderMessages = hasOlderMessagesProp ?? hasOlderMessagesFromStore;
@@ -146,16 +153,18 @@ export function ChatInterface({
     return memoryByConversation[currentConversationId] ?? defaultMemoryState;
   }, [currentConversationId, defaultMemoryState, memoryByConversation]);
 
+  const resolvedDeleteMessage = onDeleteMessage ?? deleteMessageFromStore;
+
   const chatStatus = useMemo<ChatStatus | undefined>(() => {
-    if (isClearingConversation || isLoadingHistory) return 'submitted';
+    if (isClearingConversation || isDeletingMessage || isLoadingHistory) return 'submitted';
     if (isSending) return 'streaming';
     return undefined;
-  }, [isClearingConversation, isLoadingHistory, isSending]);
+  }, [isClearingConversation, isDeletingMessage, isLoadingHistory, isSending]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const value = messageInput.trim();
-    if (!value || isSending || isLoadingHistory) return;
+    if (!value || isSending || isDeletingMessage || isLoadingHistory) return;
     setMessageInput('');
     await onSendMessage(value);
   };
@@ -246,11 +255,13 @@ export function ChatInterface({
       lifecycleStatus={lifecycleStatus}
       activeAgent={activeAgent}
       isSending={isSending}
+      isDeletingMessage={isDeletingMessage}
       isClearingConversation={isClearingConversation}
       historyError={resolvedHistoryError}
       errorMessage={resolvedErrorMessage}
       onClearError={onClearError}
       onClearHistory={resolvedClearHistory}
+      onDeleteMessage={resolvedDeleteMessage}
       currentConversationId={currentConversationId}
       hasOlderMessages={hasOlderMessages}
       isLoadingOlderMessages={isLoadingOlderMessages}

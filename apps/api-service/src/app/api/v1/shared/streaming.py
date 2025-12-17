@@ -224,6 +224,43 @@ class LifecycleEvent(PublicSseEventBase):
     reason: str | None = None
 
 
+class MemoryCheckpointPayload(BaseModel):
+    """Snapshot of a memory strategy mutation applied during a run.
+
+    This is a UX marker only: it must not change the visible transcript, but
+    helps users understand why the model may have lost context.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    strategy: Literal["compact", "summarize", "trim"]
+    trigger_reason: str | None = None
+
+    tokens_before: int | None = None
+    tokens_after: int | None = None
+
+    compacted_count: int | None = None
+    compacted_inputs: int | None = None
+    compacted_outputs: int | None = None
+
+    keep_turns: int | None = None
+    trigger_turns: int | None = None
+    clear_tool_inputs: bool | None = None
+
+    excluded_tools: list[str] | None = None
+    included_tools: list[str] | None = None
+
+    total_items_before: int | None = None
+    total_items_after: int | None = None
+    turns_before: int | None = None
+    turns_after: int | None = None
+
+
+class MemoryCheckpointEvent(PublicSseEventBase):
+    kind: Literal["memory.checkpoint"]
+    checkpoint: MemoryCheckpointPayload
+
+
 class AgentUpdatedEvent(PublicSseEventBase):
     """Indicates the active agent changed (handoff/routing)."""
 
@@ -407,6 +444,7 @@ class FinalEvent(PublicSseEventBase):
 
 PublicSseEventUnion = (
     LifecycleEvent
+    | MemoryCheckpointEvent
     | AgentUpdatedEvent
     | OutputItemAddedEvent
     | OutputItemDoneEvent
@@ -457,6 +495,8 @@ __all__ = [
     "FunctionTool",
     "ImageGenerationTool",
     "LifecycleEvent",
+    "MemoryCheckpointEvent",
+    "MemoryCheckpointPayload",
     "McpTool",
     "MessageAttachment",
     "MessageCitationEvent",

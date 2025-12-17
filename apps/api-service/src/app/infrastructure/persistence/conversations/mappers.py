@@ -80,6 +80,8 @@ def serialize_attachments(attachments: list[ConversationAttachment]) -> list[dic
 
 def message_from_row(row: AgentMessage) -> ConversationMessage:
     return ConversationMessage(
+        message_id=str(row.id) if getattr(row, "id", None) is not None else None,
+        position=int(row.position) if getattr(row, "position", None) is not None else None,
         role=coerce_role(row.role),
         content=extract_message_content(row.content),
         attachments=extract_attachments(row.attachments),

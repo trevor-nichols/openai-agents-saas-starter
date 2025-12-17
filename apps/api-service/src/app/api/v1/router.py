@@ -9,6 +9,7 @@ from app.api.v1.billing.router import router as billing_router
 from app.api.v1.chat.router import router as chat_router
 from app.api.v1.contact.router import router as contact_router
 from app.api.v1.containers.router import router as containers_router
+from app.api.v1.conversations.ledger_router import router as conversation_ledger_router
 from app.api.v1.conversations.router import router as conversations_router
 from app.api.v1.guardrails.router import router as guardrails_router
 from app.api.v1.logs.router import router as logs_router
@@ -32,6 +33,7 @@ router.include_router(agents_router)
 router.include_router(guardrails_router)
 router.include_router(workflows_router)
 router.include_router(conversations_router)
+router.include_router(conversation_ledger_router)
 router.include_router(tools_router)
 router.include_router(activity_router)
 router.include_router(containers_router)

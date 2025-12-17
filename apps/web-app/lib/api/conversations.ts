@@ -14,12 +14,14 @@ import type {
   ConversationListPage,
   ConversationSearchPage,
   ConversationEvents,
+  ConversationLedgerEventsPage,
   ConversationMessagesPage,
   ConversationMemoryConfig,
   ConversationMemoryConfigInput,
   ConversationTitleUpdate,
 } from '@/types/conversations';
 import { apiV1Path } from '@/lib/apiPaths';
+import type { ConversationMessageDeleteResponse, PublicSseEvent } from '@/lib/api/client/types.gen';
 
 /**
  * Fetch paginated conversations for the current user
@@ -210,6 +212,64 @@ export async function fetchConversationEvents(params: {
   return body.data;
 }
 
+export async function fetchConversationLedgerEventsPage(params: {
+  conversationId: string;
+  limit?: number;
+  cursor?: string | null;
+}): Promise<ConversationLedgerEventsPage> {
+  const { conversationId, limit, cursor } = params;
+
+  const searchParams = new URLSearchParams();
+  if (limit) searchParams.set('limit', String(limit));
+  if (cursor) searchParams.set('cursor', cursor);
+
+  const response = await fetch(
+    `${apiV1Path(`/conversations/${encodeURIComponent(conversationId)}/ledger/events`)}${
+      searchParams.toString() ? `?${searchParams.toString()}` : ''
+    }`,
+    {
+      method: 'GET',
+      cache: 'no-store',
+    },
+  );
+
+  if (!response.ok) {
+    const errorPayload = (await response.json().catch(() => ({}))) as { message?: string };
+    throw new Error(errorPayload.message || 'Failed to load conversation ledger events');
+  }
+
+  return (await response.json()) as ConversationLedgerEventsPage;
+}
+
+export async function fetchConversationLedgerEvents(params: {
+  conversationId: string;
+  pageSize?: number;
+}): Promise<PublicSseEvent[]> {
+  const conversationId = params.conversationId;
+  const pageSize = Math.min(Math.max(params.pageSize ?? 1000, 1), 1000);
+
+  const events: PublicSseEvent[] = [];
+  let cursor: string | null = null;
+
+  // Safety guard: prevents accidental infinite loops due to a backend bug.
+  const maxPages = 100;
+  for (let pageIndex = 0; pageIndex < maxPages; pageIndex += 1) {
+    const page = await fetchConversationLedgerEventsPage({
+      conversationId,
+      limit: pageSize,
+      cursor,
+    });
+    events.push(...(page.items ?? []));
+
+    cursor = page.next_cursor ?? null;
+    if (!cursor) {
+      return events;
+    }
+  }
+
+  throw new Error('Conversation ledger replay exceeded maximum page limit');
+}
+
 /**
  * Delete a stored conversation by id.
  */
@@ -222,6 +282,28 @@ export async function deleteConversationById(conversationId: string): Promise<vo
     const errorPayload = (await response.json().catch(() => ({}))) as { message?: string };
     throw new Error(errorPayload.message || 'Failed to delete conversation');
   }
+}
+
+/**
+ * Delete a user message and truncate all subsequent content in the visible line.
+ */
+export async function deleteConversationMessage(params: {
+  conversationId: string;
+  messageId: string;
+}): Promise<ConversationMessageDeleteResponse> {
+  const response = await fetch(
+    apiV1Path(
+      `/conversations/${encodeURIComponent(params.conversationId)}/messages/${encodeURIComponent(params.messageId)}`,
+    ),
+    { method: 'DELETE' },
+  );
+
+  if (!response.ok) {
+    const errorPayload = (await response.json().catch(() => ({}))) as { message?: string };
+    throw new Error(errorPayload.message || 'Failed to delete message');
+  }
+
+  return (await response.json()) as ConversationMessageDeleteResponse;
 }
 
 /**

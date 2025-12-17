@@ -14,7 +14,10 @@ export function mapHistoryToChatMessages(history: ConversationHistory): ChatMess
       const normalizedRole: ChatMessage['role'] = message.role === 'user' ? 'user' : 'assistant';
       const content = message.role === 'system' ? `[system] ${message.content}` : message.content;
       return {
-        id: message.timestamp ?? `${normalizedRole}-${history.conversation_id}-${index}`,
+        id:
+          message.message_id ??
+          message.timestamp ??
+          `${normalizedRole}-${history.conversation_id}-${index}`,
         role: normalizedRole,
         content,
         timestamp: message.timestamp ?? undefined,
@@ -33,7 +36,10 @@ export function mapMessagesToChatMessages(
       const normalizedRole: ChatMessage['role'] = message.role === 'user' ? 'user' : 'assistant';
       const content = message.role === 'system' ? `[system] ${message.content}` : message.content;
       return {
-        id: message.timestamp ?? `${normalizedRole}-${conversationId ?? 'conversation'}-${index}`,
+        id:
+          message.message_id ??
+          message.timestamp ??
+          `${normalizedRole}-${conversationId ?? 'conversation'}-${index}`,
         role: normalizedRole,
         content,
         timestamp: message.timestamp ?? undefined,
@@ -50,6 +56,32 @@ export function dedupeAndSortMessages(messages: ChatMessage[]): ChatMessage[] {
   const normalizeContent = (content: string) =>
     content.replace(new RegExp(`${CURSOR_TOKEN}\\s*$`), '').trim();
 
+  const byId = new Map<string, ChatMessage>();
+  const orderedIds: string[] = [];
+
+  const prefer = (existing: ChatMessage, incoming: ChatMessage): ChatMessage => {
+    if (existing.isStreaming && !incoming.isStreaming) return incoming;
+    if (!existing.isStreaming && incoming.isStreaming) return existing;
+    const existingLen = normalizeContent(existing.content).length;
+    const incomingLen = normalizeContent(incoming.content).length;
+    if (incomingLen > existingLen) return incoming;
+    return existing;
+  };
+
+  for (const message of messages) {
+    const existing = byId.get(message.id);
+    if (!existing) {
+      byId.set(message.id, message);
+      orderedIds.push(message.id);
+      continue;
+    }
+    byId.set(message.id, prefer(existing, message));
+  }
+
+  const uniqueMessages = orderedIds
+    .map((id) => byId.get(id))
+    .filter((msg): msg is ChatMessage => Boolean(msg));
+
   type Indexed = {
     message: ChatMessage;
     index: number;
@@ -58,11 +90,11 @@ export function dedupeAndSortMessages(messages: ChatMessage[]): ChatMessage[] {
     timestampMs: number | null;
   };
 
-  const indexed: Indexed[] = messages.map((message, index) => ({
+  const indexed: Indexed[] = uniqueMessages.map((message, index) => ({
     message,
     index,
     isPlaceholder: typeof message.id === 'string' && PLACEHOLDER_ID_RE.test(message.id),
-    signature: `${message.role}:${normalizeContent(message.content)}`,
+    signature: `${message.kind ?? 'message'}:${message.role}:${normalizeContent(message.content)}`,
     timestampMs: parseTimestampMs(message.timestamp),
   }));
 

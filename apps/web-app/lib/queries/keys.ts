@@ -19,6 +19,8 @@ export const queryKeys = {
     messages: (id: string) => [...queryKeys.conversations.all, 'messages', id] as const,
     events: (id: string, filters?: Record<string, unknown>) =>
       [...queryKeys.conversations.all, 'events', id, filters ?? {}] as const,
+    ledger: (id: string, filters?: Record<string, unknown>) =>
+      [...queryKeys.conversations.all, 'ledger', id, filters ?? {}] as const,
   },
   billing: {
     all: ['billing'] as const,

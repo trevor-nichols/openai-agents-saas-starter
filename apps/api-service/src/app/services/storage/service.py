@@ -1,9 +1,10 @@
 """Service layer for storage orchestration."""
-# ruff: noqa: I001
 
 from __future__ import annotations
 
+import hashlib
 import re
+import time
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -15,9 +16,9 @@ from app.domain.storage import (
     StorageProviderLiteral,
     StorageProviderProtocol,
 )
-from app.observability import metrics
 from app.infrastructure.persistence.storage.postgres import StorageRepository
 from app.infrastructure.storage.registry import get_storage_provider
+from app.observability import metrics
 from app.services.activity import activity_service
 
 _SAFE_CHARS = re.compile(r"[^A-Za-z0-9._-]+")
@@ -174,6 +175,45 @@ class StorageService:
             checksum_sha256=obj.checksum_sha256,
         )
 
+    async def get_object_bytes(
+        self,
+        *,
+        tenant_id: uuid.UUID,
+        object_id: uuid.UUID,
+        verify_sha256: bool = True,
+    ) -> bytes:
+        """Download an object directly on the server.
+
+        This is intended for internal server-side consumers that need the raw bytes
+        (e.g., replaying spilled conversation ledger events). Browser clients should
+        use presigned downloads instead.
+        """
+
+        started = time.perf_counter()
+        settings = self._settings_provider()
+        provider = self._provider_resolver(settings)
+
+        obj = await self._repository.get_object_for_tenant(tenant_id=tenant_id, object_id=object_id)
+        if obj is None or obj.deleted_at is not None:
+            raise FileNotFoundError("Object not found")
+
+        data = await provider.get_object_bytes(bucket=obj.bucket.bucket_name, key=obj.object_key)
+
+        checksum = obj.checksum_sha256 or ""
+        if verify_sha256 and len(checksum) == 64:
+            actual = hashlib.sha256(data).hexdigest()
+            if actual != checksum:
+                raise ValueError("Object checksum mismatch")
+
+        metrics.observe_storage_operation(
+            operation="get_object_bytes",
+            provider=settings.storage_provider.value,
+            result="success",
+            duration_seconds=time.perf_counter() - started,
+        )
+
+        return data
+
     async def list_objects(
         self,
         *,
@@ -248,6 +288,7 @@ class StorageService:
         data: bytes,
         filename: str,
         mime_type: str | None,
+        checksum_sha256: str | None = None,
         agent_key: str | None = None,
         conversation_id: uuid.UUID | None = None,
         metadata: dict[str, object] | None = None,
@@ -288,6 +329,7 @@ class StorageService:
             data=data,
             content_type=mime_type,
         )
+        final_checksum = checksum_sha256 or getattr(obj_ref, "checksum_sha256", None)
 
         await self._repository.create_object(
             tenant_id=tenant_id,
@@ -297,8 +339,7 @@ class StorageService:
             filename=filename,
             mime_type=mime_type,
             size_bytes=size_bytes,
-            checksum_sha256=
-            obj_ref.checksum_sha256 if hasattr(obj_ref, "checksum_sha256") else None,
+            checksum_sha256=final_checksum,
             status="ready",
             created_by_user_id=user_id,
             agent_key=agent_key,
@@ -325,8 +366,7 @@ class StorageService:
             created_at=obj_ref.created_at if hasattr(obj_ref, "created_at") else None,
             conversation_id=conversation_id,
             agent_key=agent_key,
-            checksum_sha256=
-            obj_ref.checksum_sha256 if hasattr(obj_ref, "checksum_sha256") else None,
+            checksum_sha256=final_checksum,
         )
 
     def _enforce_size(self, size_bytes: int | None, settings: Settings) -> None:

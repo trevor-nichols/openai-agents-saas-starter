@@ -29,6 +29,7 @@ from app.api.v1.workflows.schemas import (
 )
 from app.domain.workflows import WorkflowStatus
 from app.services.agents.context import ConversationActorContext
+from app.services.conversations.ledger_recorder import get_conversation_ledger_recorder
 from app.services.workflows.catalog import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.services.workflows.service import WorkflowRunRequest, get_workflow_service
 from app.workflows._shared.schema_utils import schema_to_json_schema
@@ -349,6 +350,7 @@ async def run_workflow_stream(
         projector = PublicStreamProjector(
             stream_id=PublicStreamProjector.new_stream_id(prefix="workflow")
         )
+        ledger_recorder = get_conversation_ledger_recorder()
         last_conversation_id = request.conversation_id or "unknown"
         last_response_id: str | None = None
         terminal_sent = False
@@ -380,6 +382,20 @@ async def run_workflow_stream(
                     server_timestamp=now_iso,
                 )
                 if not terminal_sent:
+                    try:
+                        await ledger_recorder.record_public_events(
+                            tenant_id=tenant_context.tenant_id,
+                            conversation_id=last_conversation_id,
+                            events=public_events,
+                        )
+                    except Exception:
+                        logger.exception(
+                            "workflows.stream.ledger_persist_failed",
+                            extra={
+                                "workflow_key": workflow_key,
+                                "conversation_id": last_conversation_id,
+                            },
+                        )
                     for ev in public_events:
                         yield f"data: {ev.model_dump_json(by_alias=True)}\n\n"
                     if any(
@@ -416,6 +432,20 @@ async def run_workflow_stream(
                 is_retryable=False,
                 server_timestamp=datetime.now(tz=UTC).isoformat().replace("+00:00", "Z"),
             )
+            try:
+                await ledger_recorder.record_public_events(
+                    tenant_id=tenant_context.tenant_id,
+                    conversation_id=last_conversation_id,
+                    events=[error_event],
+                )
+            except Exception:
+                logger.exception(
+                    "workflows.stream.ledger_error_event_persist_failed",
+                    extra={
+                        "workflow_key": workflow_key,
+                        "conversation_id": last_conversation_id,
+                    },
+                )
             yield f"data: {error_event.model_dump_json(by_alias=True)}\n\n"
 
     headers = {

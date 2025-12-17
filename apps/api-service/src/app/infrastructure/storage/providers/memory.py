@@ -83,6 +83,14 @@ class MemoryStorageProvider(StorageProviderProtocol):
             checksum_sha256=checksum,
         )
 
+    async def get_object_bytes(self, *, bucket: str, key: str) -> bytes:
+        bucket_data = self._buckets.get(bucket)
+        if not bucket_data:
+            raise FileNotFoundError(f"Bucket {bucket} is missing")
+        if key not in bucket_data:
+            raise FileNotFoundError(f"Object {key} not found")
+        return bucket_data[key]
+
     async def delete_object(self, *, bucket: str, key: str) -> None:
         if bucket in self._buckets and key in self._buckets[bucket]:
             del self._buckets[bucket][key]

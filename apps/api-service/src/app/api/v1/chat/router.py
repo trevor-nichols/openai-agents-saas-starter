@@ -15,6 +15,7 @@ from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse, Streami
 from app.api.v1.shared.public_stream_projector import PublicStreamProjector
 from app.core.settings import get_settings
 from app.services.agent_service import ConversationActorContext, agent_service
+from app.services.conversations.ledger_recorder import get_conversation_ledger_recorder
 from app.services.shared.rate_limit_service import (
     ConcurrencyQuota,
     RateLimitExceeded,
@@ -112,6 +113,7 @@ async def stream_chat_with_agent(
             projector = PublicStreamProjector(
                 stream_id=PublicStreamProjector.new_stream_id(prefix="chat")
             )
+            ledger_recorder = get_conversation_ledger_recorder()
             last_heartbeat = datetime.now(tz=UTC)
             last_conversation_id = request.conversation_id or "unknown"
             last_response_id: str | None = None
@@ -136,6 +138,20 @@ async def stream_chat_with_agent(
                         server_timestamp=now_iso,
                     )
                     if not terminal_sent:
+                        try:
+                            await ledger_recorder.record_public_events(
+                                tenant_id=tenant_context.tenant_id,
+                                conversation_id=last_conversation_id,
+                                events=public_events,
+                            )
+                        except Exception:
+                            logger.exception(
+                                "chat.stream.ledger_persist_failed",
+                                extra={
+                                    "conversation_id": last_conversation_id,
+                                    "agent": last_agent,
+                                },
+                            )
                         for ev in public_events:
                             yield f"data: {ev.model_dump_json(by_alias=True)}\n\n"
                         if any(
@@ -173,6 +189,20 @@ async def stream_chat_with_agent(
                     is_retryable=False,
                     server_timestamp=datetime.now(tz=UTC).isoformat().replace("+00:00", "Z"),
                 )
+                try:
+                    await ledger_recorder.record_public_events(
+                        tenant_id=tenant_context.tenant_id,
+                        conversation_id=last_conversation_id,
+                        events=[error_event],
+                    )
+                except Exception:
+                    logger.exception(
+                        "chat.stream.ledger_error_event_persist_failed",
+                        extra={
+                            "conversation_id": last_conversation_id,
+                            "agent": last_agent,
+                        },
+                    )
                 yield f"data: {error_event.model_dump_json(by_alias=True)}\n\n"
 
     headers = {

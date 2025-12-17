@@ -64,6 +64,19 @@ from app.domain.conversations import (
     MessagePage,
 )
 from app.infrastructure.persistence.models.base import Base
+from app.infrastructure.persistence.activity import models as _activity_models  # noqa: F401
+from app.infrastructure.persistence.auth import models as _auth_models  # noqa: F401
+from app.infrastructure.persistence.billing import models as _billing_models  # noqa: F401
+from app.infrastructure.persistence.containers import models as _container_models  # noqa: F401
+from app.infrastructure.persistence.conversations import models as _conversation_models  # noqa: F401
+from app.infrastructure.persistence.conversations import (  # noqa: F401
+    ledger_models as _conversation_ledger_models,
+)
+from app.infrastructure.persistence.status import models as _status_models  # noqa: F401
+from app.infrastructure.persistence.storage import models as _storage_models  # noqa: F401
+from app.infrastructure.persistence.stripe import models as _stripe_models  # noqa: F401
+from app.infrastructure.persistence.tenants import models as _tenant_models  # noqa: F401
+from app.infrastructure.persistence.vector_stores import models as _vector_store_models  # noqa: F401
 from app.infrastructure.persistence.workflows import models as _workflow_models  # noqa: F401
 from app.infrastructure.providers.openai import build_openai_provider
 from app.services.agents.provider_registry import get_provider_registry

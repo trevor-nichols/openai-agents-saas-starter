@@ -155,11 +155,17 @@ class AgentMessage(Base):
             "conversation_id",
             "created_at",
         ),
+        Index("ix_agent_messages_segment_id", "segment_id"),
     )
 
     id: Mapped[int] = mapped_column(INT_PK_TYPE, primary_key=True, autoincrement=True)
     conversation_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("agent_conversations.id", ondelete="CASCADE"), nullable=False
+    )
+    segment_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("conversation_ledger_segments.id", ondelete="CASCADE"),
+        nullable=False,
     )
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     role: Mapped[str] = mapped_column(String(16), nullable=False)

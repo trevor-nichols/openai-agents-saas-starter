@@ -6,8 +6,9 @@ import { createMutationMock, createQueryWrapper } from '../testUtils';
 
 vi.mock('@/lib/api/conversations', () => ({
   fetchConversationMessages: vi.fn(),
-  fetchConversationEvents: vi.fn(),
+  fetchConversationLedgerEvents: vi.fn(),
   deleteConversationById: vi.fn(),
+  deleteConversationMessage: vi.fn(),
 }));
 
 vi.mock('@/lib/api/chat', () => ({
@@ -18,7 +19,7 @@ vi.mock('@/lib/queries/chat', () => ({
   useSendChatMutation: vi.fn(),
 }));
 
-const { fetchConversationMessages, fetchConversationEvents } = vi.mocked(
+const { fetchConversationMessages, fetchConversationLedgerEvents, deleteConversationMessage } = vi.mocked(
   await import('@/lib/api/conversations'),
 );
 const { streamChat } = vi.mocked(await import('@/lib/api/chat'));
@@ -31,7 +32,7 @@ describe('useChatController', () => {
   });
 
   beforeEach(() => {
-    fetchConversationEvents.mockResolvedValue({ conversation_id: 'conv-1', items: [] });
+    fetchConversationLedgerEvents.mockResolvedValue([]);
     fetchConversationMessages.mockResolvedValue({ items: [], next_cursor: null, prev_cursor: null });
     useSendChatMutation.mockReturnValue(createMutationMock());
   });
@@ -59,13 +60,53 @@ describe('useChatController', () => {
     await waitFor(() => {
       expect(result.current.currentConversationId).toBe('conv-1');
       expect(fetchConversationMessages).toHaveBeenCalled();
-      expect(fetchConversationEvents).toHaveBeenCalledWith({ conversationId: 'conv-1' });
+      expect(fetchConversationLedgerEvents).toHaveBeenCalledWith({ conversationId: 'conv-1' });
       expect(result.current.messages).toHaveLength(1);
     });
 
     expect(result.current.messages[0]).toMatchObject({
       role: 'user',
       content: 'Hello there',
+    });
+  });
+
+  it('deletes a persisted user message', async () => {
+    fetchConversationMessages.mockResolvedValueOnce({
+      items: [
+        {
+          message_id: '123',
+          role: 'user',
+          content: 'Hello there',
+          timestamp: '2025-01-01T00:00:00.000Z',
+        },
+      ],
+      next_cursor: null,
+      prev_cursor: null,
+    });
+
+    deleteConversationMessage.mockResolvedValueOnce({
+      conversation_id: 'conv-1',
+      deleted_message_id: '123',
+    });
+
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useChatController(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.selectConversation('conv-1');
+    });
+
+    await waitFor(() => {
+      expect(result.current.messages).toHaveLength(1);
+    });
+
+    await act(async () => {
+      await result.current.deleteMessage('123');
+    });
+
+    expect(deleteConversationMessage).toHaveBeenCalledWith({
+      conversationId: 'conv-1',
+      messageId: '123',
     });
   });
 

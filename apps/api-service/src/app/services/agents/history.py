@@ -31,10 +31,7 @@ class ConversationHistoryService:
         )
         if record is None:
             raise ConversationNotFoundError(f"Conversation {conversation_id} not found")
-
         messages = record.messages
-        if not messages:
-            raise ConversationNotFoundError(f"Conversation {conversation_id} not found")
 
         await self._attachments.presign_message_attachments(
             messages, tenant_id=actor.tenant_id
@@ -143,6 +140,7 @@ class ConversationHistoryService:
     @staticmethod
     def _to_chat_message(message) -> ChatMessage:
         return ChatMessage(
+            message_id=getattr(message, "message_id", None),
             role=message.role,
             content=message.content,
             timestamp=message.timestamp.isoformat(),

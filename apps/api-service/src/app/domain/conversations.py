@@ -12,12 +12,22 @@ class ConversationNotFoundError(RuntimeError):
     """Raised when a conversation lookup fails for the given tenant."""
 
 
+class ConversationMessageNotFoundError(RuntimeError):
+    """Raised when a message lookup fails for the given conversation."""
+
+
+class ConversationMessageNotDeletableError(RuntimeError):
+    """Raised when a requested message cannot be deleted (e.g., not a user message)."""
+
+
 @dataclass(slots=True)
 class ConversationMessage:
     """Domain representation of a single conversational message."""
 
     role: Literal["user", "assistant", "system"]
     content: str
+    message_id: str | None = None
+    position: int | None = None
     timestamp: datetime = field(default_factory=datetime.utcnow)
     attachments: list[ConversationAttachment] = field(default_factory=list)
 
@@ -373,6 +383,8 @@ __all__ = [
     "ConversationMessage",
     "ConversationMetadata",
     "ConversationNotFoundError",
+    "ConversationMessageNotDeletableError",
+    "ConversationMessageNotFoundError",
     "ConversationPage",
     "ConversationRecord",
     "ConversationRepository",

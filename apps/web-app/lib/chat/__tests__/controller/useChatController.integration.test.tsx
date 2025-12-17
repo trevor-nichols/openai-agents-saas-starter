@@ -12,15 +12,16 @@ const originalFetch = global.fetch;
 
 vi.mock('@/lib/api/conversations', () => ({
   fetchConversationMessages: vi.fn(),
-  fetchConversationEvents: vi.fn(),
+  fetchConversationLedgerEvents: vi.fn(),
   deleteConversationById: vi.fn(),
+  deleteConversationMessage: vi.fn(),
 }));
 
 vi.mock('@/lib/queries/chat', () => ({
   useSendChatMutation: vi.fn(),
 }));
 
-const { fetchConversationEvents, fetchConversationMessages } = vi.mocked(
+const { fetchConversationLedgerEvents, fetchConversationMessages } = vi.mocked(
   await import('@/lib/api/conversations'),
 );
 const { useSendChatMutation } = vi.mocked(
@@ -40,10 +41,9 @@ describe('useChatController (integration)', () => {
       createMutationMock({ mutateAsync }),
     );
 
-    fetchConversationEvents.mockImplementation(async ({ conversationId }: { conversationId: string }) => ({
-      conversation_id: conversationId,
-      items: [],
-    }));
+    fetchConversationLedgerEvents.mockImplementation(
+      async ({ conversationId: _conversationId }: { conversationId: string }) => [],
+    );
     fetchConversationMessages.mockResolvedValue({
       items: [],
       next_cursor: null,
@@ -104,7 +104,7 @@ describe('useChatController (integration)', () => {
       expect(result.current.currentConversationId).toBe('conv-integration');
     });
     await waitFor(() => {
-      expect(fetchConversationEvents).toHaveBeenCalledWith({ conversationId: 'conv-integration' });
+      expect(fetchConversationLedgerEvents).toHaveBeenCalledWith({ conversationId: 'conv-integration' });
     });
 
     const assistantMessages = result.current.messages.filter(

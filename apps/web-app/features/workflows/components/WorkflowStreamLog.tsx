@@ -23,6 +23,7 @@ type KnownKind = NonNullable<StreamingWorkflowEvent['kind']>;
 
 const KIND_LABEL: Record<KnownKind, string> = {
   lifecycle: 'Lifecycle',
+  'memory.checkpoint': 'Memory Checkpoint',
   'agent.updated': 'Agent Updated',
   'output_item.added': 'Output Item',
   'output_item.done': 'Output Item',

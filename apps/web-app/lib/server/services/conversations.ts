@@ -2,11 +2,14 @@
 
 import {
   deleteConversationApiV1ConversationsConversationIdDelete,
+  deleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDelete,
   getConversationApiV1ConversationsConversationIdGet,
   getConversationEventsApiV1ConversationsConversationIdEventsGet,
+  getConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGet,
   getConversationMessagesApiV1ConversationsConversationIdMessagesGet,
   listConversationsApiV1ConversationsGet,
   searchConversationsApiV1ConversationsSearchGet,
+  streamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGet,
   streamConversationMetadataApiV1ConversationsConversationIdStreamGet,
   updateConversationMemoryApiV1ConversationsConversationIdMemoryPatch,
   updateConversationTitleApiV1ConversationsConversationIdTitlePatch,
@@ -14,7 +17,9 @@ import {
 import type {
   ConversationHistory,
   ConversationEventsResponse,
+  ConversationLedgerEventsResponse,
   ConversationListResponse as BackendConversationListResponse,
+  ConversationMessageDeleteResponse,
   ConversationSearchResponse as BackendConversationSearchResponse,
   PaginatedMessagesResponse,
   ConversationMemoryConfigRequest,
@@ -134,8 +139,7 @@ export async function listConversationsPage(params?: {
 }
 
 /**
- * Search conversations by text. Uses direct fetch to the backend search endpoint to
- * avoid SDK staleness while OpenAPI spec catches up.
+ * Search conversations by text.
  */
 export async function searchConversationsPage(params: {
   query: string;
@@ -148,7 +152,7 @@ export async function searchConversationsPage(params: {
   const response = await searchConversationsApiV1ConversationsSearchGet({
     client,
     auth,
-    responseStyle: 'data',
+    responseStyle: 'fields',
     throwOnError: true,
     query: {
       q: params.query,
@@ -158,7 +162,10 @@ export async function searchConversationsPage(params: {
     },
   });
 
-  const data = response.data as BackendConversationSearchResponse;
+  const data = response.data as BackendConversationSearchResponse | null;
+  if (!data) {
+    return { items: [], next_cursor: null };
+  }
 
   return {
     items:
@@ -240,6 +247,38 @@ export async function getConversationEvents(
   return events;
 }
 
+export async function getConversationLedgerEventsPage(
+  conversationId: string,
+  options?: { cursor?: string | null; limit?: number },
+): Promise<ConversationLedgerEventsResponse> {
+  if (!conversationId) {
+    throw new Error('Conversation id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+
+  const response = await getConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGet({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    path: {
+      conversation_id: conversationId,
+    },
+    query: {
+      cursor: options?.cursor ?? undefined,
+      limit: options?.limit,
+    },
+  });
+
+  const page = response.data as ConversationLedgerEventsResponse | null;
+  if (!page) {
+    throw new Error('Conversation ledger events not found.');
+  }
+
+  return page;
+}
+
 /**
  * Retrieve a paginated slice of messages for a conversation.
  */
@@ -300,6 +339,40 @@ export async function deleteConversation(conversationId: string): Promise<void> 
       conversation_id: conversationId,
     },
   });
+}
+
+/**
+ * Delete a user message and truncate subsequent content.
+ */
+export async function deleteConversationMessage(params: {
+  conversationId: string;
+  messageId: string;
+}): Promise<ConversationMessageDeleteResponse> {
+  if (!params.conversationId) {
+    throw new Error('Conversation id is required.');
+  }
+  if (!params.messageId) {
+    throw new Error('Message id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+
+  const response = await deleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDelete({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    path: {
+      conversation_id: params.conversationId,
+      message_id: params.messageId,
+    },
+  });
+
+  const payload = response.data as ConversationMessageDeleteResponse | null | undefined;
+  if (!payload) {
+    throw new Error('Failed to delete message.');
+  }
+  return payload;
 }
 
 /**
@@ -389,6 +462,60 @@ export interface ConversationTitleStreamOptions {
   conversationId: string;
   signal: AbortSignal;
   tenantRole?: string | null;
+}
+
+export interface ConversationLedgerStreamOptions {
+  conversationId: string;
+  cursor?: string | null;
+  signal: AbortSignal;
+  tenantRole?: string | null;
+}
+
+export async function openConversationLedgerStream(
+  options: ConversationLedgerStreamOptions,
+): Promise<Response> {
+  if (!options.conversationId) {
+    throw new Error('Conversation id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+
+  const headers = new Headers({
+    Accept: 'text/event-stream',
+    ...(options.tenantRole ? { 'X-Tenant-Role': options.tenantRole } : {}),
+  });
+
+  const upstream = await streamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGet({
+    client,
+    auth,
+    signal: options.signal,
+    cache: 'no-store',
+    headers,
+    path: { conversation_id: options.conversationId },
+    query: {
+      cursor: options.cursor ?? undefined,
+    },
+    parseAs: 'stream',
+    responseStyle: 'fields',
+    throwOnError: true,
+  });
+
+  const stream = upstream.data;
+  if (!stream || !upstream.response) {
+    throw new Error('Conversation ledger stream returned no data.');
+  }
+
+  const responseHeaders = new Headers(STREAM_HEADERS);
+  const contentType = upstream.response.headers.get('Content-Type');
+  if (contentType) {
+    responseHeaders.set('Content-Type', contentType);
+  }
+
+  return new Response(stream as unknown as BodyInit, {
+    status: upstream.response.status,
+    statusText: upstream.response.statusText,
+    headers: responseHeaders,
+  });
 }
 
 /**

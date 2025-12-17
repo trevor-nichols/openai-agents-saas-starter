@@ -12,6 +12,7 @@ from tests.utils.stream_assertions import (
     assert_handoff_expectations,
     assert_image_generation_expectations,
     assert_mcp_tool_expectations,
+    assert_memory_checkpoint_expectations,
     assert_provider_error_expectations,
     assert_reasoning_summary_expectations,
     assert_refusal_expectations,
@@ -37,6 +38,7 @@ BASE = REPO_ROOT / "docs" / "contracts" / "public-sse-streaming" / "examples"
         ("chat-mcp-tool.ndjson", assert_mcp_tool_expectations, {}),
         ("chat-refusal.ndjson", assert_refusal_expectations, {}),
         ("chat-reasoning-summary.ndjson", assert_reasoning_summary_expectations, {}),
+        ("chat-memory-checkpoint.ndjson", assert_memory_checkpoint_expectations, {}),
         ("chat-provider-error.ndjson", assert_provider_error_expectations, {}),
         (
             "workflow-analysis-code.ndjson",

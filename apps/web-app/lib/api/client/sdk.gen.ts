@@ -67,6 +67,9 @@ import type {
   DeleteConversationApiV1ConversationsConversationIdDeleteData,
   DeleteConversationApiV1ConversationsConversationIdDeleteErrors,
   DeleteConversationApiV1ConversationsConversationIdDeleteResponses,
+  DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteData,
+  DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteErrors,
+  DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteResponses,
   DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteData,
   DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteErrors,
   DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteResponses,
@@ -100,6 +103,9 @@ import type {
   GetConversationEventsApiV1ConversationsConversationIdEventsGetData,
   GetConversationEventsApiV1ConversationsConversationIdEventsGetErrors,
   GetConversationEventsApiV1ConversationsConversationIdEventsGetResponses,
+  GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetData,
+  GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetErrors,
+  GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetResponses,
   GetConversationMessagesApiV1ConversationsConversationIdMessagesGetData,
   GetConversationMessagesApiV1ConversationsConversationIdMessagesGetErrors,
   GetConversationMessagesApiV1ConversationsConversationIdMessagesGetResponses,
@@ -316,6 +322,9 @@ import type {
   StreamChatWithAgentApiV1ChatStreamPostData,
   StreamChatWithAgentApiV1ChatStreamPostErrors,
   StreamChatWithAgentApiV1ChatStreamPostResponses,
+  StreamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGetData,
+  StreamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGetErrors,
+  StreamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGetResponses,
   StreamConversationMetadataApiV1ConversationsConversationIdStreamGetData,
   StreamConversationMetadataApiV1ConversationsConversationIdStreamGetErrors,
   StreamConversationMetadataApiV1ConversationsConversationIdStreamGetResponses,
@@ -1884,6 +1893,34 @@ export const getConversationMessagesApiV1ConversationsConversationIdMessagesGet 
   };
 
 /**
+ * Delete Conversation Message
+ *
+ * Delete a user message and truncate all subsequent visible content.
+ */
+export const deleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDelete =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).delete<
+      DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteResponses,
+      DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/conversations/{conversation_id}/messages/{message_id}",
+      ...options,
+    });
+  };
+
+/**
  * Update Conversation Memory
  *
  * Set or clear memory strategy defaults for a conversation.
@@ -1998,6 +2035,62 @@ export const streamConversationMetadataApiV1ConversationsConversationIdStreamGet
         },
       ],
       url: "/api/v1/conversations/{conversation_id}/stream",
+      ...options,
+    });
+  };
+
+/**
+ * Get Conversation Ledger Events
+ *
+ * Return persisted public_sse_v1 frames for deterministic UI replay.
+ */
+export const getConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGet =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).get<
+      GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetResponses,
+      GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/conversations/{conversation_id}/ledger/events",
+      ...options,
+    });
+  };
+
+/**
+ * Stream Conversation Ledger Events
+ *
+ * SSE replay of persisted public_sse_v1 frames (exactly as originally emitted).
+ */
+export const streamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGet =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      StreamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGetData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).get<
+      StreamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGetResponses,
+      StreamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGetErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/conversations/{conversation_id}/ledger/stream",
       ...options,
     });
   };

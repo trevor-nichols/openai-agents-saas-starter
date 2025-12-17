@@ -3,6 +3,7 @@ import type {
   ConversationHistory as BackendConversationHistory,
   ConversationEventItem as BackendConversationEventItem,
   ConversationEventsResponse as BackendConversationEventsResponse,
+  ConversationLedgerEventsResponse as BackendConversationLedgerEventsResponse,
   PaginatedMessagesResponse,
   ConversationMemoryConfigRequest,
   ConversationMemoryConfigResponse,
@@ -65,6 +66,8 @@ export type ConversationMessagesPage = PaginatedMessagesResponse;
 export type ConversationEvent = BackendConversationEventItem;
 
 export type ConversationEvents = BackendConversationEventsResponse;
+
+export type ConversationLedgerEventsPage = BackendConversationLedgerEventsResponse;
 
 export type ConversationMemoryConfig = ConversationMemoryConfigResponse;
 export type ConversationMemoryConfigInput = ConversationMemoryConfigRequest;

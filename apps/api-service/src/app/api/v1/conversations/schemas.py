@@ -5,12 +5,17 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator
 
 from app.api.v1.chat.schemas import MessageAttachment
+from app.api.v1.shared.streaming import PublicSseEvent
 from app.domain.conversation_titles import normalize_display_name
 
 
 class ChatMessage(BaseModel):
     """Single conversational message."""
 
+    message_id: str | None = Field(
+        default=None,
+        description="Stable identifier for this message (opaque string; safe for JS).",
+    )
     role: Literal["user", "assistant", "system"] = Field(
         description="Originator of the message.",
     )
@@ -142,6 +147,14 @@ class ConversationTitleUpdateResponse(BaseModel):
     display_name: str = Field(description="Updated conversation title.")
 
 
+class ConversationMessageDeleteResponse(BaseModel):
+    """Response payload after truncating a conversation from a user message."""
+
+    conversation_id: str = Field(description="Conversation identifier.")
+    deleted_message_id: str = Field(description="User message id that triggered truncation.")
+    success: bool = Field(default=True, description="Whether the truncation was applied.")
+
+
 class ConversationSearchResponse(BaseModel):
     """Paginated search results."""
 
@@ -184,6 +197,17 @@ class ConversationEventsResponse(BaseModel):
     items: list[ConversationEventItem]
 
 
+class ConversationLedgerEventsResponse(BaseModel):
+    """Paged list of persisted public_sse_v1 frames for deterministic UI replay."""
+
+    conversation_id: str = Field(description="Conversation identifier.")
+    items: list[PublicSseEvent]
+    next_cursor: str | None = Field(
+        default=None,
+        description="Opaque cursor for fetching the next page.",
+    )
+
+
 __all__ = [
     "ChatMessage",
     "ConversationHistory",
@@ -194,6 +218,8 @@ __all__ = [
     "ConversationSearchResponse",
     "ConversationTitleUpdateRequest",
     "ConversationTitleUpdateResponse",
+    "ConversationMessageDeleteResponse",
     "ConversationEventItem",
     "ConversationEventsResponse",
+    "ConversationLedgerEventsResponse",
 ]

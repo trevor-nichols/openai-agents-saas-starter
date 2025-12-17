@@ -16,6 +16,7 @@ from app.api.v1.shared.streaming import (
     FunctionTool,
     FinalEvent,
     ErrorEvent,
+    MemoryCheckpointEvent,
     MessageCitationEvent,
     MessageDeltaEvent,
     McpTool,
@@ -320,6 +321,17 @@ def assert_reasoning_summary_expectations(events: Sequence[PublicSseEventBase]) 
     terminal = events[-1]
     assert isinstance(terminal, FinalEvent), "Reasoning summary streams should end with final"
     assert terminal.final.reasoning_summary_text, "Expected reasoning_summary_text in terminal payload"
+
+
+def assert_memory_checkpoint_expectations(events: Sequence[PublicSseEventBase]) -> None:
+    assert_common_stream(events)
+
+    checkpoints = [e for e in events if isinstance(e, MemoryCheckpointEvent)]
+    assert checkpoints, "Expected at least one memory.checkpoint event"
+    assert any(e.checkpoint.strategy == "compact" for e in checkpoints), "No compact checkpoint recorded"
+
+    terminal = events[-1]
+    assert isinstance(terminal, FinalEvent), "Memory checkpoint streams should end with final"
 
 
 def assert_mcp_tool_expectations(events: Sequence[PublicSseEventBase]) -> None:

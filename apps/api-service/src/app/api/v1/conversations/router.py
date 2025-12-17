@@ -7,8 +7,9 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, 
 from fastapi.responses import StreamingResponse
 
 from app.api.dependencies.auth import CurrentUser, require_verified_scopes
-from app.api.dependencies.tenant import TenantContext, TenantRole, get_tenant_context
+from app.api.dependencies.tenant import TenantRole
 from app.api.v1.chat.schemas import MessageAttachment
+from app.api.v1.conversations.dependencies import conversation_actor, resolve_tenant_context
 from app.api.v1.conversations.schemas import (
     ConversationEventItem,
     ConversationEventsResponse,
@@ -16,17 +17,23 @@ from app.api.v1.conversations.schemas import (
     ConversationListResponse,
     ConversationMemoryConfigRequest,
     ConversationMemoryConfigResponse,
+    ConversationMessageDeleteResponse,
     ConversationSearchResponse,
     ConversationSearchResult,
     ConversationTitleUpdateRequest,
     ConversationTitleUpdateResponse,
     PaginatedMessagesResponse,
 )
-from app.domain.conversations import ConversationMemoryConfig, ConversationNotFoundError
-from app.services.agents.context import ConversationActorContext
+from app.domain.conversations import (
+    ConversationMemoryConfig,
+    ConversationMessageNotDeletableError,
+    ConversationMessageNotFoundError,
+    ConversationNotFoundError,
+)
 from app.services.agents.query import get_conversation_query_service
 from app.services.conversation_service import get_conversation_service
 from app.services.conversations.title_service import get_title_service
+from app.services.conversations.truncation_service import get_conversation_truncation_service
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
@@ -51,13 +58,13 @@ async def list_conversations(
 ) -> ConversationListResponse:
     """List stored conversations ordered by recency."""
 
-    tenant_context = await _resolve_tenant_context(
+    tenant_context = await resolve_tenant_context(
         current_user,
         tenant_id_header,
         tenant_role_header,
         min_role=TenantRole.VIEWER,
     )
-    actor = _conversation_actor(current_user, tenant_context)
+    actor = conversation_actor(current_user, tenant_context)
     try:
         summaries, next_cursor = await get_conversation_query_service().list_summaries(
             actor=actor,
@@ -85,13 +92,13 @@ async def search_conversations(
 ) -> ConversationSearchResponse:
     """Search conversations by message text."""
 
-    tenant_context = await _resolve_tenant_context(
+    tenant_context = await resolve_tenant_context(
         current_user,
         tenant_id_header,
         tenant_role_header,
         min_role=TenantRole.VIEWER,
     )
-    actor = _conversation_actor(current_user, tenant_context)
+    actor = conversation_actor(current_user, tenant_context)
 
     try:
         results, next_cursor = await get_conversation_query_service().search(
@@ -136,13 +143,13 @@ async def get_conversation(
 ) -> ConversationHistory:
     """Return the full conversation history for a specific conversation."""
 
-    tenant_context = await _resolve_tenant_context(
+    tenant_context = await resolve_tenant_context(
         current_user,
         tenant_id_header,
         tenant_role_header,
         min_role=TenantRole.VIEWER,
     )
-    actor = _conversation_actor(current_user, tenant_context)
+    actor = conversation_actor(current_user, tenant_context)
     try:
         return await get_conversation_query_service().get_history(conversation_id, actor=actor)
     except ConversationNotFoundError as exc:  # pragma: no cover - mapped to HTTP below
@@ -172,13 +179,13 @@ async def get_conversation_messages(
 ) -> PaginatedMessagesResponse:
     """Return a paginated slice of messages for a conversation."""
 
-    tenant_context = await _resolve_tenant_context(
+    tenant_context = await resolve_tenant_context(
         current_user,
         tenant_id_header,
         tenant_role_header,
         min_role=TenantRole.VIEWER,
     )
-    actor = _conversation_actor(current_user, tenant_context)
+    actor = conversation_actor(current_user, tenant_context)
     try:
         messages, next_cursor = await get_conversation_query_service().get_messages_page(
             conversation_id,
@@ -201,6 +208,52 @@ async def get_conversation_messages(
     return PaginatedMessagesResponse(items=messages, next_cursor=next_cursor, prev_cursor=None)
 
 
+@router.delete(
+    "/{conversation_id}/messages/{message_id}",
+    response_model=ConversationMessageDeleteResponse,
+)
+async def delete_conversation_message(
+    conversation_id: str,
+    message_id: str,
+    current_user: CurrentUser = Depends(require_verified_scopes("conversations:write")),
+    tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
+    tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
+) -> ConversationMessageDeleteResponse:
+    """Delete a user message and truncate all subsequent visible content."""
+
+    tenant_context = await resolve_tenant_context(
+        current_user,
+        tenant_id_header,
+        tenant_role_header,
+        min_role=TenantRole.VIEWER,
+    )
+    actor = conversation_actor(current_user, tenant_context)
+
+    try:
+        result = await get_conversation_truncation_service().truncate_from_user_message(
+            conversation_id,
+            tenant_id=tenant_context.tenant_id,
+            actor_user_id=actor.user_id,
+            message_id=message_id,
+        )
+    except ConversationNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ConversationMessageNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ConversationMessageNotDeletableError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    return ConversationMessageDeleteResponse(
+        conversation_id=result.conversation_id,
+        deleted_message_id=result.deleted_message_id,
+        success=True,
+    )
+
+
 @router.patch("/{conversation_id}/memory", response_model=ConversationMemoryConfigResponse)
 async def update_conversation_memory(
     conversation_id: str,
@@ -211,7 +264,7 @@ async def update_conversation_memory(
 ):
     """Set or clear memory strategy defaults for a conversation."""
 
-    tenant_context = await _resolve_tenant_context(
+    tenant_context = await resolve_tenant_context(
         current_user,
         tenant_id_header,
         tenant_role_header,
@@ -273,7 +326,7 @@ async def update_conversation_title(
 ) -> ConversationTitleUpdateResponse:
     """Rename a conversation title (manual override of auto-generated titles)."""
 
-    tenant_context = await _resolve_tenant_context(
+    tenant_context = await resolve_tenant_context(
         current_user,
         tenant_id_header,
         tenant_role_header,
@@ -311,13 +364,13 @@ async def get_conversation_events(
     tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
     tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
 ) -> ConversationEventsResponse:
-    tenant_context = await _resolve_tenant_context(
+    tenant_context = await resolve_tenant_context(
         current_user,
         tenant_id_header,
         tenant_role_header,
         min_role=TenantRole.VIEWER,
     )
-    actor = _conversation_actor(current_user, tenant_context)
+    actor = conversation_actor(current_user, tenant_context)
     try:
         events = await get_conversation_query_service().get_events(
             conversation_id,
@@ -385,7 +438,7 @@ async def stream_conversation_metadata(
 ) -> StreamingResponse:
     """SSE stream of the conversation title generated from the first user message."""
 
-    tenant_context = await _resolve_tenant_context(
+    tenant_context = await resolve_tenant_context(
         current_user,
         tenant_id_header,
         tenant_role_header,
@@ -475,48 +528,12 @@ async def delete_conversation(
 ) -> Response:
     """Remove all stored messages for the given conversation."""
 
-    tenant_context = await _resolve_tenant_context(
+    tenant_context = await resolve_tenant_context(
         current_user,
         tenant_id_header,
         tenant_role_header,
         min_role=TenantRole.ADMIN,
     )
-    actor = _conversation_actor(current_user, tenant_context)
+    actor = conversation_actor(current_user, tenant_context)
     await get_conversation_query_service().clear(conversation_id, actor=actor)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-async def _resolve_tenant_context(
-    current_user: CurrentUser,
-    tenant_id_header: str | None,
-    tenant_role_header: str | None,
-    *,
-    min_role: TenantRole,
-) -> TenantContext:
-    context = await get_tenant_context(
-        tenant_id_header=tenant_id_header,
-        tenant_role_header=tenant_role_header,
-        current_user=current_user,
-    )
-    context.ensure_role(*_allowed_roles(min_role))
-    return context
-
-
-def _conversation_actor(
-    current_user: CurrentUser, tenant_context: TenantContext
-) -> ConversationActorContext:
-    payload_obj = current_user.get("payload") if isinstance(current_user, dict) else None
-    payload = payload_obj if isinstance(payload_obj, dict) else {}
-    user_id = str(current_user.get("user_id") or payload.get("sub") or "anonymous")
-    return ConversationActorContext(
-        tenant_id=tenant_context.tenant_id,
-        user_id=user_id,
-    )
-
-
-def _allowed_roles(min_role: TenantRole) -> tuple[TenantRole, ...]:
-    if min_role is TenantRole.VIEWER:
-        return (TenantRole.VIEWER, TenantRole.ADMIN, TenantRole.OWNER)
-    if min_role is TenantRole.ADMIN:
-        return (TenantRole.ADMIN, TenantRole.OWNER)
-    return (TenantRole.OWNER,)

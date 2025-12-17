@@ -1,10 +1,8 @@
 """Object storage provider settings (MinIO, GCS, memory)."""
-# ruff: noqa: I001
 
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
-
 from starter_contracts.storage.models import (
     GCSProviderConfig,
     MinioProviderConfig,
@@ -35,6 +33,7 @@ class StorageSettingsMixin(BaseModel):
     storage_allowed_mime_types: list[str] = Field(
         default_factory=lambda: [
             "application/json",
+            "application/gzip",
             "application/pdf",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "application/vnd.openxmlformats-officedocument.presentationml.presentation",

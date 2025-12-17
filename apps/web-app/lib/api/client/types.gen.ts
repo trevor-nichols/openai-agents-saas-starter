@@ -693,6 +693,12 @@ export type CancelSubscriptionRequest = {
  */
 export type ChatMessage = {
   /**
+   * Message Id
+   *
+   * Stable identifier for this message (opaque string; safe for JS).
+   */
+  message_id?: string | null;
+  /**
    * Role
    *
    * Originator of the message.
@@ -1333,6 +1339,30 @@ export type ConversationHistory = {
 };
 
 /**
+ * ConversationLedgerEventsResponse
+ *
+ * Paged list of persisted public_sse_v1 frames for deterministic UI replay.
+ */
+export type ConversationLedgerEventsResponse = {
+  /**
+   * Conversation Id
+   *
+   * Conversation identifier.
+   */
+  conversation_id: string;
+  /**
+   * Items
+   */
+  items: Array<PublicSseEvent>;
+  /**
+   * Next Cursor
+   *
+   * Opaque cursor for fetching the next page.
+   */
+  next_cursor?: string | null;
+};
+
+/**
  * ConversationListResponse
  *
  * Paginated list of conversation summaries.
@@ -1416,6 +1446,32 @@ export type ConversationMemoryConfigResponse = {
    * Memory Injection
    */
   memory_injection?: boolean | null;
+};
+
+/**
+ * ConversationMessageDeleteResponse
+ *
+ * Response payload after truncating a conversation from a user message.
+ */
+export type ConversationMessageDeleteResponse = {
+  /**
+   * Conversation Id
+   *
+   * Conversation identifier.
+   */
+  conversation_id: string;
+  /**
+   * Deleted Message Id
+   *
+   * User message id that triggered truncation.
+   */
+  deleted_message_id: string;
+  /**
+   * Success
+   *
+   * Whether the truncation was applied.
+   */
+  success?: boolean;
 };
 
 /**
@@ -2627,6 +2683,129 @@ export type McpTool = {
 };
 
 /**
+ * MemoryCheckpointEvent
+ */
+export type MemoryCheckpointEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Kind
+   */
+  kind: "memory.checkpoint";
+  checkpoint: MemoryCheckpointPayload;
+};
+
+/**
+ * MemoryCheckpointPayload
+ *
+ * Snapshot of a memory strategy mutation applied during a run.
+ *
+ * This is a UX marker only: it must not change the visible transcript, but
+ * helps users understand why the model may have lost context.
+ */
+export type MemoryCheckpointPayload = {
+  /**
+   * Strategy
+   */
+  strategy: "compact" | "summarize" | "trim";
+  /**
+   * Trigger Reason
+   */
+  trigger_reason?: string | null;
+  /**
+   * Tokens Before
+   */
+  tokens_before?: number | null;
+  /**
+   * Tokens After
+   */
+  tokens_after?: number | null;
+  /**
+   * Compacted Count
+   */
+  compacted_count?: number | null;
+  /**
+   * Compacted Inputs
+   */
+  compacted_inputs?: number | null;
+  /**
+   * Compacted Outputs
+   */
+  compacted_outputs?: number | null;
+  /**
+   * Keep Turns
+   */
+  keep_turns?: number | null;
+  /**
+   * Trigger Turns
+   */
+  trigger_turns?: number | null;
+  /**
+   * Clear Tool Inputs
+   */
+  clear_tool_inputs?: boolean | null;
+  /**
+   * Excluded Tools
+   */
+  excluded_tools?: Array<string> | null;
+  /**
+   * Included Tools
+   */
+  included_tools?: Array<string> | null;
+  /**
+   * Total Items Before
+   */
+  total_items_before?: number | null;
+  /**
+   * Total Items After
+   */
+  total_items_after?: number | null;
+  /**
+   * Turns Before
+   */
+  turns_before?: number | null;
+  /**
+   * Turns After
+   */
+  turns_after?: number | null;
+};
+
+/**
  * MemoryStrategyRequest
  */
 export type MemoryStrategyRequest = {
@@ -3360,6 +3539,36 @@ export type PresetSummary = {
    */
   guardrail_count: number;
 };
+
+/**
+ * PublicSseEvent
+ *
+ * Root model so the wire format is the event object itself (not nested).
+ */
+export type PublicSseEvent =
+  | LifecycleEvent
+  | MemoryCheckpointEvent
+  | AgentUpdatedEvent
+  | OutputItemAddedEvent
+  | OutputItemDoneEvent
+  | MessageDeltaEvent
+  | MessageCitationEvent
+  | ReasoningSummaryDeltaEvent
+  | ReasoningSummaryPartAddedEvent
+  | ReasoningSummaryPartDoneEvent
+  | RefusalDeltaEvent
+  | RefusalDoneEvent
+  | ToolStatusEvent
+  | ToolArgumentsDeltaEvent
+  | ToolArgumentsDoneEvent
+  | ToolCodeDeltaEvent
+  | ToolCodeDoneEvent
+  | ToolOutputEvent
+  | ToolApprovalEvent
+  | ChunkDeltaEvent
+  | ChunkDoneEvent
+  | ErrorEvent
+  | FinalEvent;
 
 /**
  * PublicUsage
@@ -4850,6 +5059,7 @@ export type StreamNotice = {
  */
 export type StreamingChatEvent =
   | LifecycleEvent
+  | MemoryCheckpointEvent
   | AgentUpdatedEvent
   | OutputItemAddedEvent
   | OutputItemDoneEvent
@@ -4877,6 +5087,7 @@ export type StreamingChatEvent =
  */
 export type StreamingWorkflowEvent =
   | LifecycleEvent
+  | MemoryCheckpointEvent
   | AgentUpdatedEvent
   | OutputItemAddedEvent
   | OutputItemDoneEvent
@@ -11575,6 +11786,99 @@ export type GetConversationMessagesApiV1ConversationsConversationIdMessagesGetRe
 export type GetConversationMessagesApiV1ConversationsConversationIdMessagesGetResponse =
   GetConversationMessagesApiV1ConversationsConversationIdMessagesGetResponses[keyof GetConversationMessagesApiV1ConversationsConversationIdMessagesGetResponses];
 
+export type DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Conversation Id
+       */
+      conversation_id: string;
+      /**
+       * Message Id
+       */
+      message_id: string;
+    };
+    query?: never;
+    url: "/api/v1/conversations/{conversation_id}/messages/{message_id}";
+  };
+
+export type DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteError =
+  DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteErrors[keyof DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteErrors];
+
+export type DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: ConversationMessageDeleteResponse;
+  };
+
+export type DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteResponse =
+  DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteResponses[keyof DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteResponses];
+
 export type UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchData =
   {
     body: ConversationMemoryConfigRequest;
@@ -11931,6 +12235,199 @@ export type StreamConversationMetadataApiV1ConversationsConversationIdStreamGetR
   {
     /**
      * Server-sent events stream of the generated conversation title.
+     */
+    200: unknown;
+  };
+
+export type GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Conversation Id
+       */
+      conversation_id: string;
+    };
+    query?: {
+      /**
+       * Limit
+       */
+      limit?: number;
+      /**
+       * Cursor
+       *
+       * Opaque pagination cursor.
+       */
+      cursor?: string | null;
+    };
+    url: "/api/v1/conversations/{conversation_id}/ledger/events";
+  };
+
+export type GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetError =
+  GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetErrors[keyof GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetErrors];
+
+export type GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: ConversationLedgerEventsResponse;
+  };
+
+export type GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetResponse =
+  GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetResponses[keyof GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetResponses];
+
+export type StreamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGetData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Conversation Id
+       */
+      conversation_id: string;
+    };
+    query?: {
+      /**
+       * Cursor
+       *
+       * Opaque pagination cursor.
+       */
+      cursor?: string | null;
+    };
+    url: "/api/v1/conversations/{conversation_id}/ledger/stream";
+  };
+
+export type StreamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGetErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type StreamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGetError =
+  StreamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGetErrors[keyof StreamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGetErrors];
+
+export type StreamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGetResponses =
+  {
+    /**
+     * Server-sent events replay stream of persisted public_sse_v1 frames.
      */
     200: unknown;
   };

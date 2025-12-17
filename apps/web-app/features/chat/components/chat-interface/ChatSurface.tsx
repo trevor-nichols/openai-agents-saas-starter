@@ -29,6 +29,7 @@ interface ChatSurfaceProps {
   lifecycleStatus?: ConversationLifecycleStatus;
   activeAgent?: string;
   isSending: boolean;
+  isDeletingMessage?: boolean;
   isClearingConversation: boolean;
   currentConversationId: string | null;
   hasOlderMessages: boolean;
@@ -39,6 +40,7 @@ interface ChatSurfaceProps {
   errorMessage?: string | null;
   onClearError?: () => void;
   onClearHistory?: () => void;
+  onDeleteMessage?: (messageId: string) => void | Promise<void>;
   messageInput: string;
   onMessageInputChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void> | void;
@@ -75,6 +77,7 @@ export function ChatSurface({
   lifecycleStatus,
   activeAgent,
   isSending,
+  isDeletingMessage,
   isClearingConversation,
   currentConversationId,
   hasOlderMessages,
@@ -85,6 +88,7 @@ export function ChatSurface({
   errorMessage,
   onClearError,
   onClearHistory,
+  onDeleteMessage,
   messageInput,
   onMessageInputChange,
   onSubmit,
@@ -103,7 +107,7 @@ export function ChatSurface({
   isUpdatingMemory,
 }: ChatSurfaceProps) {
   const showEmpty = !isLoadingHistory && messages.length === 0;
-  const isBusy = isSending || isLoadingHistory;
+  const isBusy = isSending || Boolean(isDeletingMessage) || isLoadingHistory;
 
   return (
     <div className={cn('relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background', className)}>
@@ -197,6 +201,7 @@ export function ChatSurface({
                 onResolveAttachment={resolveAttachment}
                 isBusy={isBusy}
                 onCopyMessage={onCopyMessage}
+                onDeleteMessage={onDeleteMessage}
               />
 
               <ReasoningPanel reasoningText={reasoningText} isStreaming={isSending} />
@@ -214,6 +219,7 @@ export function ChatSurface({
         isClearingConversation={isClearingConversation}
         isLoadingHistory={isLoadingHistory}
         isSending={isSending}
+        isDeletingMessage={Boolean(isDeletingMessage)}
         chatStatus={chatStatus}
         lifecycleStatus={lifecycleStatus}
         activeAgent={activeAgent}

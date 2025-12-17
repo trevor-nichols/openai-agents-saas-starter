@@ -37,6 +37,7 @@ export interface StreamConsumeHandlers {
   onLifecycle?: (status: ConversationLifecycleStatus) => void;
   onAgentChange?: (agent: string) => void;
   onAgentNotice?: (notice: string) => void;
+  onMemoryCheckpoint?: (event: Extract<StreamingChatEvent, { kind?: 'memory.checkpoint' }>) => void;
   onAttachments?: (attachments: MessageAttachment[] | null) => void;
   onStructuredOutput?: (data: unknown) => void;
   onError?: (errorText: string) => void;
@@ -474,6 +475,11 @@ export async function consumeChatStream(
     if (kind === 'lifecycle') {
       lifecycleStatus = event.status;
       handlers.onLifecycle?.(lifecycleStatus);
+      continue;
+    }
+
+    if (kind === 'memory.checkpoint') {
+      handlers.onMemoryCheckpoint?.(event);
       continue;
     }
 

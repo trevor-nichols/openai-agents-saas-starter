@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.domain.conversations import ConversationNotFoundError
 from app.infrastructure.persistence.conversations.message_store import ConversationMessageStore
+from app.infrastructure.persistence.conversations.ledger_models import ConversationLedgerSegment
 from app.infrastructure.persistence.conversations.models import AgentConversation, AgentMessage
 from app.infrastructure.persistence.conversations import ids as ids_helpers
 from app.infrastructure.persistence.models.base import Base
@@ -42,10 +43,20 @@ def _seed_conversation(session: AsyncSession, *, tenant_id: UUID) -> None:
         created_at=base_ts,
         updated_at=base_ts,
     )
+    segment_id = UUID("11111111-1111-1111-1111-111111111111")
+    segment = ConversationLedgerSegment(
+        id=segment_id,
+        tenant_id=tenant_id,
+        conversation_id=conv_uuid,
+        segment_index=0,
+        created_at=base_ts,
+        updated_at=base_ts,
+    )
     messages = [
         AgentMessage(
             id=i + 1,
             conversation_id=conv_uuid,
+            segment_id=segment_id,
             position=i,
             role="assistant",
             content={"text": f"msg-{i}"},
@@ -54,6 +65,7 @@ def _seed_conversation(session: AsyncSession, *, tenant_id: UUID) -> None:
         for i in range(3)
     ]
     session.add(conversation)
+    session.add(segment)
     session.add_all(messages)
 
 

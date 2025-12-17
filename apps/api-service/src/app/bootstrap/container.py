@@ -54,6 +54,9 @@ if TYPE_CHECKING:  # pragma: no cover - type hints only
     from app.services.agent_service import AgentService
     from app.services.agents.query import ConversationQueryService
     from app.services.auth_service import AuthService
+    from app.services.conversations.ledger_reader import ConversationLedgerReader
+    from app.services.conversations.ledger_recorder import ConversationLedgerRecorder
+    from app.services.conversations.truncation_service import ConversationTruncationService
     from app.services.signup.invite_service import InviteService
     from app.services.signup.signup_request_service import SignupRequestService
     from app.services.signup.signup_service import SignupService
@@ -97,6 +100,9 @@ class ApplicationContainer:
         default_factory=TenantSettingsService
     )
     conversation_query_service: ConversationQueryService | None = None
+    conversation_ledger_recorder: ConversationLedgerRecorder | None = None
+    conversation_ledger_reader: ConversationLedgerReader | None = None
+    conversation_truncation_service: ConversationTruncationService | None = None
     vector_limit_resolver: VectorLimitResolver | None = None
     vector_store_service: VectorStoreService | None = None
     vector_store_sync_worker: VectorStoreSyncWorker | None = None
@@ -139,6 +145,9 @@ class ApplicationContainer:
         self.agent_service = None
         self.title_service = None
         self.conversation_query_service = None
+        self.conversation_ledger_recorder = None
+        self.conversation_ledger_reader = None
+        self.conversation_truncation_service = None
         self.mfa_service = None
         self.security_event_service = None
         self.consent_service = None
@@ -241,6 +250,48 @@ def wire_title_service(container: ApplicationContainer) -> None:
         container.title_service = TitleService(container.conversation_service)
 
 
+def wire_conversation_ledger_recorder(container: ApplicationContainer) -> None:
+    """Initialize the conversation ledger recorder (public_sse_v1 capture)."""
+
+    if container.conversation_ledger_recorder is not None:
+        return
+    if container.session_factory is None:
+        raise RuntimeError("Session factory must be configured before conversation ledger recorder")
+    if container.storage_service is None:
+        wire_storage_service(container)
+    if container.storage_service is None:  # pragma: no cover - defensive
+        raise RuntimeError("Storage service must be configured before conversation ledger recorder")
+
+    from app.services.conversations.ledger_recorder import ConversationLedgerRecorder
+
+    storage_service = cast(StorageService, container.storage_service)
+    container.conversation_ledger_recorder = ConversationLedgerRecorder(
+        session_factory=container.session_factory,
+        storage_service=storage_service,
+    )
+
+
+def wire_conversation_ledger_reader(container: ApplicationContainer) -> None:
+    """Initialize the conversation ledger reader (public_sse_v1 replay)."""
+
+    if container.conversation_ledger_reader is not None:
+        return
+    if container.session_factory is None:
+        raise RuntimeError("Session factory must be configured before conversation ledger reader")
+    if container.storage_service is None:
+        wire_storage_service(container)
+    if container.storage_service is None:  # pragma: no cover - defensive
+        raise RuntimeError("Storage service must be configured before conversation ledger reader")
+
+    from app.services.conversations.ledger_reader import ConversationLedgerReader
+
+    storage_service = cast(StorageService, container.storage_service)
+    container.conversation_ledger_reader = ConversationLedgerReader(
+        session_factory=container.session_factory,
+        storage_service=storage_service,
+    )
+
+
 def wire_conversation_query_service(container: ApplicationContainer) -> None:
     """Initialize the conversation query service with history + attachments."""
 
@@ -300,6 +351,8 @@ __all__ = [
     "wire_container_service",
     "wire_storage_service",
     "wire_conversation_query_service",
+    "wire_conversation_ledger_recorder",
+    "wire_conversation_ledger_reader",
     "wire_workflow_services",
     "VectorLimitResolver",
     "VectorStoreSyncWorker",

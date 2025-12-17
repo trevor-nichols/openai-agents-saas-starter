@@ -11,7 +11,8 @@ import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-quer
 
 import {
   deleteConversationById,
-  fetchConversationEvents,
+  deleteConversationMessage,
+  fetchConversationLedgerEvents,
   fetchConversationMessages,
 } from '@/lib/api/conversations';
 import { streamChat } from '@/lib/api/chat';
@@ -24,8 +25,8 @@ import type {
   ToolEventAnchors,
   ToolState,
 } from '../types';
-import type { ConversationEvents, ConversationMessagesPage } from '@/types/conversations';
-import type { LocationHint } from '@/lib/api/client/types.gen';
+import type { ConversationMessagesPage } from '@/types/conversations';
+import type { LocationHint, PublicSseEvent } from '@/lib/api/client/types.gen';
 
 import { createLogger } from '@/lib/logging';
 import { consumeChatStream } from '../adapters/chatStreamAdapter';
@@ -36,11 +37,14 @@ import {
   normalizeLocationPayload,
 } from '../mappers/chatRequestMappers';
 import {
-  mapConversationEventsToToolTimeline,
   mergeToolEventAnchors,
   mergeToolStates,
   reanchorToolEventAnchors,
 } from '../mappers/toolTimelineMappers';
+import {
+  extractMemoryCheckpointMarkers,
+  mapLedgerEventsToToolTimeline,
+} from '../mappers/ledgerReplayMappers';
 import { upsertConversationCaches } from '../cache/conversationCache';
 import { messagesReducer, type MessagesAction } from '../state/messagesReducer';
 
@@ -60,6 +64,7 @@ export interface UseChatControllerReturn {
   isSending: boolean;
   isLoadingHistory: boolean;
   isClearingConversation: boolean;
+  isDeletingMessage: boolean;
   errorMessage: string | null;
   historyError: string | null;
   currentConversationId: string | null;
@@ -80,6 +85,7 @@ export interface UseChatControllerReturn {
   selectConversation: (conversationId: string) => Promise<void>;
   startNewConversation: () => void;
   deleteConversation: (conversationId: string) => Promise<void>;
+  deleteMessage: (messageId: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -104,6 +110,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
   const [messages, dispatchMessages] = useReducer(messagesReducer, []);
   const [isSending, setIsSending] = useState(false);
   const [isClearingConversation, setIsClearingConversation] = useState(false);
+  const [isDeletingMessage, setIsDeletingMessage] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
@@ -137,15 +144,15 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
     [queryClient],
   );
 
-  const invalidateEventsCache = useCallback(
+  const invalidateLedgerCache = useCallback(
     async (conversationId: string | null) => {
       if (!conversationId) return;
       try {
         await queryClient.invalidateQueries({
-          queryKey: queryKeys.conversations.events(conversationId),
+          queryKey: queryKeys.conversations.ledger(conversationId),
         });
       } catch (error) {
-        console.warn('[useChatController] Failed to invalidate events cache', error);
+        console.warn('[useChatController] Failed to invalidate ledger cache', error);
       }
     },
     [queryClient],
@@ -155,8 +162,8 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
     () => queryKeys.conversations.messages(currentConversationId ?? 'preview'),
     [currentConversationId],
   );
-  const eventsQueryKey = useMemo(
-    () => queryKeys.conversations.events(currentConversationId ?? 'preview'),
+  const ledgerQueryKey = useMemo(
+    () => queryKeys.conversations.ledger(currentConversationId ?? 'preview'),
     [currentConversationId],
   );
 
@@ -184,13 +191,10 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
     retry: false,
   });
 
-  const { data: conversationEvents } = useQuery<ConversationEvents>({
-    queryKey: eventsQueryKey,
+  const { data: ledgerEvents } = useQuery<PublicSseEvent[]>({
+    queryKey: ledgerQueryKey,
     enabled: Boolean(currentConversationId),
-    queryFn: () =>
-      fetchConversationEvents({
-        conversationId: currentConversationId as string,
-      }),
+    queryFn: () => fetchConversationLedgerEvents({ conversationId: currentConversationId as string }),
     staleTime: 30 * 1000,
     retry: false,
   });
@@ -219,20 +223,30 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
     );
   }, [messagesPages?.pages, currentConversationId]);
 
+  const checkpointMarkers = useMemo(
+    () => (ledgerEvents?.length ? extractMemoryCheckpointMarkers(ledgerEvents) : []),
+    [ledgerEvents],
+  );
+
+  const historyMessagesWithMarkers = useMemo(
+    () => dedupeAndSortMessages([...historyMessages, ...checkpointMarkers]),
+    [historyMessages, checkpointMarkers],
+  );
+
   const mergedMessages = useMemo(
-    () => dedupeAndSortMessages([...historyMessages, ...messages]),
-    [historyMessages, messages],
+    () => dedupeAndSortMessages([...historyMessagesWithMarkers, ...messages]),
+    [historyMessagesWithMarkers, messages],
   );
 
   const persistedToolTimeline = useMemo(() => {
-    if (!conversationEvents?.items?.length) {
+    if (!ledgerEvents?.length) {
       return { tools: [] as ToolState[], anchors: {} as ToolEventAnchors };
     }
-    if (historyMessages.length === 0) {
+    if (historyMessagesWithMarkers.length === 0) {
       return { tools: [] as ToolState[], anchors: {} as ToolEventAnchors };
     }
-    return mapConversationEventsToToolTimeline(conversationEvents.items, historyMessages);
-  }, [conversationEvents?.items, historyMessages]);
+    return mapLedgerEventsToToolTimeline(ledgerEvents, historyMessagesWithMarkers);
+  }, [ledgerEvents, historyMessagesWithMarkers]);
 
   const combinedToolEvents = useMemo(
     () => mergeToolStates(persistedToolTimeline.tools, toolEvents),
@@ -290,7 +304,12 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
 
   const selectConversation = useCallback(
     async (conversationId: string) => {
-      if (!conversationId || conversationId === currentConversationId) {
+      if (
+        !conversationId ||
+        conversationId === currentConversationId ||
+        isDeletingMessage ||
+        isClearingConversation
+      ) {
         return;
       }
 
@@ -305,7 +324,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
 
       setCurrentConversationId(conversationId);
     },
-    [currentConversationId, resetTurnState, selectedAgent],
+    [currentConversationId, isClearingConversation, isDeletingMessage, resetTurnState, selectedAgent],
   );
 
   const setSelectedAgent = useCallback((agentName: string) => {
@@ -322,7 +341,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
 
   const sendMessage = useCallback(
     async (messageText: string, options?: SendMessageOptions) => {
-      if (!messageText.trim() || isSending) {
+      if (!messageText.trim() || isSending || isDeletingMessage || isClearingConversation) {
         return;
       }
 
@@ -496,6 +515,20 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
             if (notice.endsWith(current)) return;
             appendAgentNotice(notice);
           },
+          onMemoryCheckpoint: (checkpointEvent) => {
+            enqueueMessageAction({
+              type: 'append',
+              message: {
+                id: `memory-checkpoint-${checkpointEvent.stream_id}-${checkpointEvent.event_id}`,
+                role: 'assistant',
+                kind: 'memory_checkpoint',
+                content: '',
+                timestamp: checkpointEvent.server_timestamp,
+                checkpoint: checkpointEvent.checkpoint,
+              },
+            });
+            flushQueuedMessages();
+          },
           onAttachments: (attachments) => {
             const normalized = attachments ?? null;
             const hasAny = Array.isArray(normalized) && normalized.length > 0;
@@ -597,7 +630,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
           });
           // Ensure paginated messages refresh picks up the new turn
           void invalidateMessagesCache(resolvedConversationId);
-          void invalidateEventsCache(resolvedConversationId);
+          void invalidateLedgerCache(resolvedConversationId);
         }
       } catch (error) {
         console.error('[useChatController] Streaming failed, falling back to mutation:', error);
@@ -669,7 +702,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
               onConversationUpdated,
             });
             void invalidateMessagesCache(resolvedConversationId);
-            void invalidateEventsCache(resolvedConversationId);
+            void invalidateLedgerCache(resolvedConversationId);
           }
         } catch (fallbackError) {
           console.error('[useChatController] Fallback send failed:', fallbackError);
@@ -692,6 +725,8 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
     [
       currentConversationId,
       isSending,
+      isClearingConversation,
+      isDeletingMessage,
       appendAgentNotice,
       enqueueMessageAction,
       flushQueuedMessages,
@@ -702,7 +737,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       selectedAgent,
       sendChatMutation,
       invalidateMessagesCache,
-      invalidateEventsCache,
+      invalidateLedgerCache,
     ],
   );
 
@@ -751,6 +786,58 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
     ],
   );
 
+  const deleteMessage = useCallback(
+    async (messageId: string) => {
+      const conversationId = currentConversationId;
+      if (!conversationId || !messageId || isSending || isClearingConversation || isDeletingMessage) {
+        return;
+      }
+
+      if (!/^[0-9]+$/.test(messageId)) {
+        setErrorMessage('Only saved user messages can be deleted.');
+        return;
+      }
+
+      log.debug('Deleting message', { conversationId, messageId });
+      setIsDeletingMessage(true);
+      setErrorMessage(null);
+
+      try {
+        await deleteConversationMessage({ conversationId, messageId });
+
+        resetViewState();
+
+        queryClient.removeQueries({ queryKey: queryKeys.conversations.messages(conversationId) });
+        queryClient.removeQueries({ queryKey: queryKeys.conversations.ledger(conversationId) });
+        queryClient.removeQueries({ queryKey: queryKeys.conversations.detail(conversationId) });
+
+        void invalidateMessagesCache(conversationId);
+        void invalidateLedgerCache(conversationId);
+        void queryClient.invalidateQueries({ queryKey: queryKeys.conversations.lists() });
+
+        reloadConversations?.();
+      } catch (error) {
+        console.error('[useChatController] Failed to delete message:', error);
+        const message = error instanceof Error ? error.message : 'Failed to delete message.';
+        setErrorMessage(message);
+        log.debug('Delete message failed', { conversationId, messageId, error });
+      } finally {
+        setIsDeletingMessage(false);
+      }
+    },
+    [
+      currentConversationId,
+      invalidateLedgerCache,
+      invalidateMessagesCache,
+      isClearingConversation,
+      isDeletingMessage,
+      isSending,
+      queryClient,
+      reloadConversations,
+      resetViewState,
+    ],
+  );
+
   const clearError = useCallback(() => setErrorMessage(null), []);
   const clearHistoryError = useCallback(() => setHistoryError(null), []);
 
@@ -777,6 +864,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       isSending,
       isLoadingHistory,
       isClearingConversation,
+      isDeletingMessage,
       errorMessage,
       historyError,
       currentConversationId,
@@ -797,6 +885,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       selectConversation,
       startNewConversation,
       deleteConversation,
+      deleteMessage,
       clearError,
     }),
     [
@@ -804,6 +893,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       isSending,
       isLoadingHistory,
       isClearingConversation,
+      isDeletingMessage,
       errorMessage,
       historyError,
       currentConversationId,
@@ -813,6 +903,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       selectConversation,
       startNewConversation,
       deleteConversation,
+      deleteMessage,
       clearError,
       activeAgent,
       agentNotices,

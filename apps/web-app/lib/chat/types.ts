@@ -1,5 +1,6 @@
 import type {
   AgentRunOptions,
+  MemoryCheckpointPayload,
   MessageAttachment,
   StreamingChatEvent,
   UrlCitation,
@@ -54,9 +55,11 @@ export type Annotation = UrlCitation | ContainerFileCitation | FileCitation;
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
+  kind?: 'message' | 'memory_checkpoint';
   content: string;
   timestamp?: string;
   isStreaming?: boolean;
+  checkpoint?: MemoryCheckpointPayload;
   attachments?: MessageAttachment[] | null;
   structuredOutput?: unknown | null;
   citations?: Annotation[] | null;

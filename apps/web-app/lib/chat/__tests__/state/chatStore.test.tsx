@@ -12,6 +12,7 @@ function createController(overrides: Partial<UseChatControllerReturn> = {}): Use
     isSending: false,
     isLoadingHistory: false,
     isClearingConversation: false,
+    isDeletingMessage: false,
     errorMessage: null,
     historyError: null,
     currentConversationId: null,
@@ -32,6 +33,7 @@ function createController(overrides: Partial<UseChatControllerReturn> = {}): Use
     selectConversation: vi.fn(),
     startNewConversation: vi.fn(),
     deleteConversation: vi.fn(),
+    deleteMessage: vi.fn(),
     clearError: vi.fn(),
     ...overrides,
   };

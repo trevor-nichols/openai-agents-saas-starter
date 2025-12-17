@@ -39,6 +39,7 @@ interface PromptComposerProps {
   isClearingConversation: boolean;
   isLoadingHistory: boolean;
   isSending: boolean;
+  isDeletingMessage: boolean;
   chatStatus?: ChatStatus;
   lifecycleStatus?: ConversationLifecycleStatus;
   activeAgent?: string;
@@ -70,6 +71,7 @@ export function PromptComposer({
   isClearingConversation,
   isLoadingHistory,
   isSending,
+  isDeletingMessage,
   chatStatus,
   activeAgent,
   currentConversationId,
@@ -83,7 +85,7 @@ export function PromptComposer({
   onMemoryInjectionChange,
   isUpdatingMemory,
 }: PromptComposerProps) {
-  const disabled = isSending || isLoadingHistory;
+  const disabled = isSending || isDeletingMessage || isLoadingHistory;
   const memoryDisabled = disabled || !currentConversationId || isUpdatingMemory;
 
   return (
@@ -193,7 +195,7 @@ export function PromptComposer({
                 onClick={() => {
                   void onClearConversation();
                 }}
-                disabled={isClearingConversation || isLoadingHistory}
+                disabled={isClearingConversation || isDeletingMessage || isLoadingHistory}
                 title="Clear conversation"
               >
                 <TrashIcon className="size-4" />
