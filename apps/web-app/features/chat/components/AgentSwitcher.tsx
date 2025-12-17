@@ -12,6 +12,8 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectItemTitle,
+  SelectItemDescription,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -148,11 +150,9 @@ export function AgentSwitcher({
           {agents.map((agent) => (
             <SelectItem key={agent.name} value={agent.name} className="capitalize">
               <div className="flex flex-col items-start text-left gap-0.5 py-0.5">
-                <span className="font-medium leading-none">{agent.name.replace('_', ' ')}</span>
+                <SelectItemTitle>{agent.name.replace('_', ' ')}</SelectItemTitle>
                 {agent.description && (
-                  <span className="text-xs text-muted-foreground line-clamp-1">
-                    {agent.description}
-                  </span>
+                  <SelectItemDescription>{agent.description}</SelectItemDescription>
                 )}
               </div>
             </SelectItem>

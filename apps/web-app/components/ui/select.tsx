@@ -7,6 +7,11 @@ import { Check, ChevronDown, ChevronUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { MarqueeContent } from "./marquee"
 
+// Context to share focus state from SelectItem to children
+const SelectItemContext = React.createContext<{ isFocused: boolean }>({
+  isFocused: false,
+})
+
 const Select = SelectPrimitive.Root
 
 const SelectGroup = SelectPrimitive.Group
@@ -117,20 +122,9 @@ const SelectItem = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item>
 >(({ className, children, ...props }, ref) => {
   const [isFocused, setIsFocused] = React.useState(false)
-  const [shouldMarquee, setShouldMarquee] = React.useState(false)
-  const textRef = React.useRef<HTMLSpanElement>(null)
 
-  const handleFocus = () => {
-    setIsFocused(true)
-    if (textRef.current) {
-      setShouldMarquee(textRef.current.scrollWidth > textRef.current.clientWidth)
-    }
-  }
-
-  const handleBlur = () => {
-    setIsFocused(false)
-    setShouldMarquee(false)
-  }
+  const handleFocus = () => setIsFocused(true)
+  const handleBlur = () => setIsFocused(false)
 
   return (
     <SelectPrimitive.Item
@@ -152,28 +146,66 @@ const SelectItem = React.forwardRef<
       </span>
       <SelectPrimitive.ItemText asChild>
         <div className="w-full overflow-hidden">
-          {isFocused && shouldMarquee ? (
-            <MarqueeContent
-              delay={0.5}
-              speed={20}
-              autoFill={false}
-              gradient={false}
-              pauseOnHover={false}
-              className="py-0"
-            >
-              <span className="pr-4">{children}</span>
-            </MarqueeContent>
-          ) : (
-            <span ref={textRef} className="block w-full truncate">
-              {children}
-            </span>
-          )}
+          <SelectItemContext.Provider value={{ isFocused }}>
+            {children}
+          </SelectItemContext.Provider>
         </div>
       </SelectPrimitive.ItemText>
     </SelectPrimitive.Item>
   )
 })
 SelectItem.displayName = SelectPrimitive.Item.displayName
+
+const SelectItemTitle = React.forwardRef<
+  HTMLSpanElement,
+  React.HTMLAttributes<HTMLSpanElement>
+>(({ className, ...props }, ref) => (
+  <span
+    ref={ref}
+    className={cn("block truncate font-medium", className)}
+    {...props}
+  />
+))
+SelectItemTitle.displayName = "SelectItemTitle"
+
+const SelectItemDescription = React.forwardRef<
+  HTMLSpanElement,
+  React.HTMLAttributes<HTMLSpanElement>
+>(({ className, children, ...props }, ref) => {
+  const { isFocused } = React.useContext(SelectItemContext)
+  const [shouldMarquee, setShouldMarquee] = React.useState(false)
+  const textRef = React.useRef<HTMLSpanElement>(null)
+
+  React.useEffect(() => {
+    if (isFocused && textRef.current) {
+      setShouldMarquee(textRef.current.scrollWidth > textRef.current.clientWidth)
+    } else {
+      setShouldMarquee(false)
+    }
+  }, [isFocused])
+
+  return (
+    <span ref={ref} className={cn("block w-full overflow-hidden", className)} {...props}>
+      {isFocused && shouldMarquee ? (
+        <MarqueeContent
+          delay={0.5}
+          speed={20}
+          autoFill={false}
+          gradient={false}
+          pauseOnHover={false}
+          className="py-0"
+        >
+          <span className="pr-4 text-xs text-muted-foreground">{children}</span>
+        </MarqueeContent>
+      ) : (
+        <span ref={textRef} className="block w-full truncate text-xs text-muted-foreground">
+          {children}
+        </span>
+      )}
+    </span>
+  )
+})
+SelectItemDescription.displayName = "SelectItemDescription"
 
 const SelectSeparator = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Separator>,
@@ -195,6 +227,8 @@ export {
   SelectContent,
   SelectLabel,
   SelectItem,
+  SelectItemTitle,
+  SelectItemDescription,
   SelectSeparator,
   SelectScrollUpButton,
   SelectScrollDownButton,
