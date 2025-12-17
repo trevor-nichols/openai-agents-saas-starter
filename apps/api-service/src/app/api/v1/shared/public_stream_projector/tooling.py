@@ -181,3 +181,9 @@ def tool_name_from_run_item(raw_item: dict[str, Any] | None) -> str | None:
     if raw_type == "image_generation_call":
         return "image_generation"
     return None
+
+
+def set_output_index_if_missing(tool_state: ToolState, raw: Mapping[str, Any]) -> None:
+    raw_output_index = raw.get("output_index")
+    if isinstance(raw_output_index, int) and tool_state.output_index is None:
+        tool_state.output_index = raw_output_index
