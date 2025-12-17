@@ -3,8 +3,16 @@ import type {
   WorkflowContext,
 } from '@/lib/api/client/types.gen';
 import type { GeneratedImageFrame } from '@/lib/streams/imageFrames';
-
-type TextParts = Map<number, string>;
+import {
+  applyChunkDelta as applyChunkDeltaShared,
+  asDataUrlOrRawText,
+  mimeFromImageFormat,
+  takeChunk,
+  type ChunkAccumulator,
+  type ChunkKey,
+} from '@/lib/streams/publicSseV1/chunks';
+import { assembledText, appendDelta, replaceText, type TextParts } from '@/lib/streams/publicSseV1/textParts';
+import { uiToolStatusFromProviderStatus } from '@/lib/streams/publicSseV1/toolStatus';
 
 type ToolState = {
   label: string;
@@ -63,63 +71,8 @@ type SegmentState = {
   toolCodeById: Map<string, string>;
   imageMetaByToolId: Map<string, { format?: string | null; revisedPrompt?: string | null }>;
   imageFramesByToolId: Map<string, Map<number, GeneratedImageFrame>>;
-  chunkAccumulators: Map<string, { encoding: 'base64' | 'utf8' | undefined; parts: Map<number, string> }>;
+  chunkAccumulators: Map<ChunkKey, ChunkAccumulator>;
 };
-
-function assembledText(parts: TextParts | undefined): string {
-  if (!parts || parts.size === 0) return '';
-  return Array.from(parts.entries())
-    .sort(([a], [b]) => a - b)
-    .map(([, value]) => value)
-    .join('');
-}
-
-function appendDelta(
-  store: Map<string, TextParts>,
-  update: { itemId: string; contentIndex: number; delta: string },
-): string {
-  const { itemId, contentIndex, delta } = update;
-  const parts = store.get(itemId) ?? new Map<number, string>();
-  const existing = parts.get(contentIndex) ?? '';
-  parts.set(contentIndex, `${existing}${delta}`);
-  store.set(itemId, parts);
-  return assembledText(parts);
-}
-
-function replaceText(
-  store: Map<string, TextParts>,
-  update: { itemId: string; contentIndex: number; text: string },
-): string {
-  const { itemId, contentIndex, text } = update;
-  const parts = store.get(itemId) ?? new Map<number, string>();
-  parts.set(contentIndex, text);
-  store.set(itemId, parts);
-  return assembledText(parts);
-}
-
-function toolStateFromStatus(status: string): ToolState['state'] {
-  if (status === 'completed') return 'output-available';
-  if (status === 'failed') return 'output-error';
-  return 'input-available';
-}
-
-function mimeFromImageFormat(format: string | null | undefined): string {
-  if (!format) return 'image/png';
-  const normalized = format.toLowerCase();
-  if (normalized.includes('png')) return 'image/png';
-  if (normalized.includes('jpg') || normalized.includes('jpeg')) return 'image/jpeg';
-  if (normalized.includes('webp')) return 'image/webp';
-  return `image/${normalized}`;
-}
-
-function chunkKeyFor(target: {
-  entity_kind: string;
-  entity_id: string;
-  field: string;
-  part_index?: number | null;
-}): string {
-  return `${target.entity_kind}:${target.entity_id}:${target.field}:${target.part_index ?? ''}`;
-}
 
 function ensureItemOrder(
   segment: SegmentState,
@@ -272,7 +225,7 @@ export function buildWorkflowLiveTranscript(
       if (tool.tool_type === 'web_search') {
         upsertTool(segment, itemId, {
           label: 'web_search',
-          state: toolStateFromStatus(tool.status),
+          state: uiToolStatusFromProviderStatus(tool.status),
           input: tool.query ?? undefined,
           output: tool.sources ?? undefined,
         });
@@ -282,7 +235,7 @@ export function buildWorkflowLiveTranscript(
       if (tool.tool_type === 'file_search') {
         upsertTool(segment, itemId, {
           label: 'file_search',
-          state: toolStateFromStatus(tool.status),
+          state: uiToolStatusFromProviderStatus(tool.status),
           input: tool.queries ?? undefined,
           output: tool.results ?? undefined,
         });
@@ -293,7 +246,7 @@ export function buildWorkflowLiveTranscript(
         const code = segment.toolCodeById.get(itemId);
         upsertTool(segment, itemId, {
           label: 'code_interpreter',
-          state: toolStateFromStatus(tool.status),
+          state: uiToolStatusFromProviderStatus(tool.status),
           input: code ?? undefined,
           output: tool.container_id || tool.container_mode
             ? { container_id: tool.container_id ?? null, container_mode: tool.container_mode ?? null }
@@ -309,7 +262,7 @@ export function buildWorkflowLiveTranscript(
         });
         upsertTool(segment, itemId, {
           label: 'image_generation',
-          state: toolStateFromStatus(tool.status),
+          state: uiToolStatusFromProviderStatus(tool.status),
           input: tool.revised_prompt ?? undefined,
         });
         updateToolImageFrames(segment, itemId);
@@ -320,7 +273,7 @@ export function buildWorkflowLiveTranscript(
         const argsText = tool.arguments_text ?? segment.toolArgsTextById.get(itemId);
         upsertTool(segment, itemId, {
           label: tool.name,
-          state: toolStateFromStatus(tool.status),
+          state: uiToolStatusFromProviderStatus(tool.status),
           input:
             argsText || tool.arguments_json
               ? {
@@ -340,7 +293,7 @@ export function buildWorkflowLiveTranscript(
       const argsText = tool.arguments_text ?? segment.toolArgsTextById.get(itemId);
       upsertTool(segment, itemId, {
         label: tool.tool_name,
-        state: toolStateFromStatus(tool.status),
+        state: uiToolStatusFromProviderStatus(tool.status),
         input:
           argsText || tool.arguments_json
             ? {
@@ -415,27 +368,18 @@ export function buildWorkflowLiveTranscript(
     }
 
     if (kind === 'chunk.delta') {
-      const key = chunkKeyFor(event.target);
-      const existing = segment.chunkAccumulators.get(key) ?? {
+      applyChunkDeltaShared(segment.chunkAccumulators, {
+        target: event.target,
         encoding: event.encoding,
-        parts: new Map<number, string>(),
-      };
-      if (!existing.encoding) existing.encoding = event.encoding;
-      existing.parts.set(event.chunk_index, event.data);
-      segment.chunkAccumulators.set(key, existing);
+        chunkIndex: event.chunk_index,
+        data: event.data,
+      });
       continue;
     }
 
     if (kind === 'chunk.done') {
-      const key = chunkKeyFor(event.target);
-      const acc = segment.chunkAccumulators.get(key);
-      if (!acc) continue;
-      segment.chunkAccumulators.delete(key);
-
-      const assembled = Array.from(acc.parts.entries())
-        .sort(([a], [b]) => a - b)
-        .map(([, value]) => value)
-        .join('');
+      const chunk = takeChunk(segment.chunkAccumulators, event.target);
+      if (!chunk) continue;
 
       if (
         event.target.entity_kind === 'tool_call' &&
@@ -446,7 +390,7 @@ export function buildWorkflowLiveTranscript(
         const partIndex = event.target.part_index;
         const meta = segment.imageMetaByToolId.get(toolId);
         const mime = mimeFromImageFormat(meta?.format ?? null);
-        const src = acc.encoding === 'base64' ? `data:${mime};base64,${assembled}` : assembled;
+        const src = asDataUrlOrRawText({ encoding: chunk.encoding, data: chunk.data, mimeType: mime });
 
         const frames = segment.imageFramesByToolId.get(toolId) ?? new Map<number, GeneratedImageFrame>();
         frames.set(partIndex, {

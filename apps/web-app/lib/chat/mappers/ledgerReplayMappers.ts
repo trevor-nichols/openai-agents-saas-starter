@@ -1,5 +1,14 @@
 import type { PublicSseEvent } from '@/lib/api/client/types.gen';
 import type { GeneratedImageFrame } from '@/lib/streams/imageFrames';
+import {
+  applyChunkDelta as applyChunkDeltaShared,
+  asDataUrlOrRawText,
+  mimeFromImageFormat,
+  takeChunk,
+  type ChunkAccumulator,
+  type ChunkKey,
+} from '@/lib/streams/publicSseV1/chunks';
+import { upgradeToolStatus, uiToolStatusFromProviderStatus, type UiToolStatus } from '@/lib/streams/publicSseV1/toolStatus';
 import { parseTimestampMs } from '@/lib/utils/time';
 
 import type { ChatMessage, ToolEventAnchors, ToolState } from '../types';
@@ -7,44 +16,6 @@ import type { ChatMessage, ToolEventAnchors, ToolState } from '../types';
 type ToolTimeline = {
   tools: ToolState[];
   anchors: ToolEventAnchors;
-};
-
-const statusRank: Record<ToolState['status'], number> = {
-  'input-streaming': 0,
-  'input-available': 1,
-  'output-available': 2,
-  'output-error': 3,
-};
-
-const upgradeStatus = (
-  current: ToolState['status'],
-  next: ToolState['status'],
-): ToolState['status'] => (statusRank[next] > statusRank[current] ? next : current);
-
-function toolUiStatusFromProviderStatus(status: string): ToolState['status'] {
-  if (status === 'completed') return 'output-available';
-  if (status === 'failed') return 'output-error';
-  return 'input-available';
-}
-
-function mimeFromImageFormat(format: string | null | undefined): string {
-  if (!format) return 'image/png';
-  const normalized = format.toLowerCase();
-  if (normalized.includes('png')) return 'image/png';
-  if (normalized.includes('jpg') || normalized.includes('jpeg')) return 'image/jpeg';
-  if (normalized.includes('webp')) return 'image/webp';
-  return `image/${normalized}`;
-}
-
-type ChunkKey = string;
-
-function chunkKeyFor(target: { entity_kind: string; entity_id: string; field: string; part_index?: number | null }): ChunkKey {
-  return `${target.entity_kind}:${target.entity_id}:${target.field}:${target.part_index ?? ''}`;
-}
-
-type ChunkAccumulator = {
-  encoding: 'base64' | 'utf8' | undefined;
-  parts: Map<number, string>;
 };
 
 type MessageTimeIndex = {
@@ -148,7 +119,9 @@ export function mapLedgerEventsToToolTimeline(events: PublicSseEvent[], messages
       output: patch.output ?? existing.output,
       outputIndex: patch.outputIndex ?? existing.outputIndex,
       errorText: patch.errorText ?? existing.errorText,
-      status: patch.status ? upgradeStatus(existing.status, patch.status) : existing.status,
+      status: patch.status
+        ? upgradeToolStatus(existing.status as UiToolStatus, patch.status as UiToolStatus)
+        : existing.status,
     };
 
     toolMap.set(toolId, next);
@@ -165,15 +138,8 @@ export function mapLedgerEventsToToolTimeline(events: PublicSseEvent[], messages
   };
 
   const applyChunkDone = (event: Extract<PublicSseEvent, { kind: 'chunk.done' }>) => {
-    const key = chunkKeyFor(event.target);
-    const acc = chunksByTarget.get(key);
-    if (!acc) return;
-    chunksByTarget.delete(key);
-
-    const assembled = Array.from(acc.parts.entries())
-      .sort(([a], [b]) => a - b)
-      .map(([, value]) => value)
-      .join('');
+    const chunk = takeChunk(chunksByTarget, event.target);
+    if (!chunk) return;
 
     if (
       event.target.entity_kind === 'tool_call' &&
@@ -184,7 +150,7 @@ export function mapLedgerEventsToToolTimeline(events: PublicSseEvent[], messages
       const partIndex = event.target.part_index;
       const meta = imageMetaByToolId.get(toolId);
       const mime = mimeFromImageFormat(meta?.format ?? null);
-      const src = acc.encoding === 'base64' ? `data:${mime};base64,${assembled}` : assembled;
+      const src = asDataUrlOrRawText({ encoding: chunk.encoding, data: chunk.data, mimeType: mime });
 
       const frames = imageFramesByToolId.get(toolId) ?? new Map<number, GeneratedImageFrame>();
       frames.set(partIndex, {
@@ -206,7 +172,7 @@ export function mapLedgerEventsToToolTimeline(events: PublicSseEvent[], messages
         const toolId = tool.tool_call_id;
         noteFirstSeen(firstSeenMs, toolId, event.server_timestamp);
 
-        const status = toolUiStatusFromProviderStatus(tool.status);
+        const status = uiToolStatusFromProviderStatus(tool.status);
         const outputIndex = event.output_index;
 
         if (tool.tool_type === 'web_search') {
@@ -382,14 +348,12 @@ export function mapLedgerEventsToToolTimeline(events: PublicSseEvent[], messages
         break;
       }
       case 'chunk.delta': {
-        const key = chunkKeyFor(event.target);
-        const existing = chunksByTarget.get(key) ?? {
+        applyChunkDeltaShared(chunksByTarget, {
+          target: event.target,
           encoding: event.encoding,
-          parts: new Map<number, string>(),
-        };
-        if (!existing.encoding) existing.encoding = event.encoding;
-        existing.parts.set(event.chunk_index, event.data);
-        chunksByTarget.set(key, existing);
+          chunkIndex: event.chunk_index,
+          data: event.data,
+        });
         break;
       }
       case 'chunk.done': {

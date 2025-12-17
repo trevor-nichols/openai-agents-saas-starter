@@ -138,7 +138,7 @@ export async function runChatTurn(params: RunChatTurnParams): Promise<void> {
         enqueueMessageAction({
           type: 'updateById',
           id: assistantMessageId,
-          patch: { content: update.textWithCursor, isStreaming: true },
+          patch: { content: `${update.accumulatedText}▋`, isStreaming: true },
         });
       },
       onReasoningDelta: (delta) => setReasoningText((prev) => `${prev}${delta}`),
@@ -149,13 +149,12 @@ export async function runChatTurn(params: RunChatTurnParams): Promise<void> {
       },
       onLifecycle: setLifecycleStatus,
       onAgentChange: (agent) => {
+        const previousAgent = refs.lastActiveAgentRef.current;
         setActiveAgent(agent);
         refs.lastActiveAgentRef.current = agent;
-      },
-      onAgentNotice: (notice) => {
-        const current = refs.lastActiveAgentRef.current;
-        if (notice.endsWith(current)) return;
-        appendAgentNotice(notice);
+        if (previousAgent && previousAgent !== agent) {
+          appendAgentNotice(`Switched to ${agent}`);
+        }
       },
       onMemoryCheckpoint: (checkpointEvent) => {
         enqueueMessageAction({
@@ -364,4 +363,3 @@ export async function runChatTurn(params: RunChatTurnParams): Promise<void> {
     }
   }
 }
-
