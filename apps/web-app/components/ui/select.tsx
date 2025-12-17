@@ -5,6 +5,7 @@ import * as SelectPrimitive from "@radix-ui/react-select"
 import { Check, ChevronDown, ChevronUp } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { MarqueeContent } from "./marquee"
 
 const Select = SelectPrimitive.Root
 
@@ -75,7 +76,7 @@ const SelectContent = React.forwardRef<
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
-        "relative z-50 max-h-[--radix-select-content-available-height] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-2xl border bg-popover text-popover-foreground shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-select-content-transform-origin]",
+        "relative z-50 max-h-[--radix-select-content-available-height] min-w-[8rem] max-w-[var(--radix-select-trigger-width)] overflow-y-auto overflow-x-hidden rounded-2xl border bg-popover text-popover-foreground shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-select-content-transform-origin]",
         position === "popper" &&
           "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
         className
@@ -114,23 +115,64 @@ SelectLabel.displayName = SelectPrimitive.Label.displayName
 const SelectItem = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item>
->(({ className, children, ...props }, ref) => (
-  <SelectPrimitive.Item
-    ref={ref}
-    className={cn(
-      "relative flex w-full cursor-pointer select-none items-center rounded-xl py-2.5 pl-4 pr-8 text-sm outline-none focus:bg-accent/50 focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-      className
-    )}
-    {...props}
-  >
-    <span className="absolute right-2 flex h-3.5 w-3.5 items-center justify-center">
-      <SelectPrimitive.ItemIndicator>
-        <Check className="h-4 w-4" />
-      </SelectPrimitive.ItemIndicator>
-    </span>
-    <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
-  </SelectPrimitive.Item>
-))
+>(({ className, children, ...props }, ref) => {
+  const [isFocused, setIsFocused] = React.useState(false)
+  const [shouldMarquee, setShouldMarquee] = React.useState(false)
+  const textRef = React.useRef<HTMLSpanElement>(null)
+
+  const handleFocus = () => {
+    setIsFocused(true)
+    if (textRef.current) {
+      setShouldMarquee(textRef.current.scrollWidth > textRef.current.clientWidth)
+    }
+  }
+
+  const handleBlur = () => {
+    setIsFocused(false)
+    setShouldMarquee(false)
+  }
+
+  return (
+    <SelectPrimitive.Item
+      ref={ref}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      onPointerEnter={handleFocus}
+      onPointerLeave={handleBlur}
+      className={cn(
+        "relative flex w-full cursor-pointer select-none items-center rounded-xl py-2.5 pl-4 pr-8 text-sm outline-none focus:bg-accent/50 focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        className
+      )}
+      {...props}
+    >
+      <span className="absolute right-2 flex h-3.5 w-3.5 items-center justify-center">
+        <SelectPrimitive.ItemIndicator>
+          <Check className="h-4 w-4" />
+        </SelectPrimitive.ItemIndicator>
+      </span>
+      <SelectPrimitive.ItemText asChild>
+        <div className="w-full overflow-hidden">
+          {isFocused && shouldMarquee ? (
+            <MarqueeContent
+              delay={0.5}
+              speed={20}
+              autoFill={false}
+              gradient={false}
+              pauseOnHover={false}
+              className="py-0"
+            >
+              <span className="pr-4">{children}</span>
+            </MarqueeContent>
+          ) : (
+            <span ref={textRef} className="block w-full truncate">
+              {children}
+            </span>
+          )}
+        </div>
+      </SelectPrimitive.ItemText>
+    </SelectPrimitive.Item>
+  )
+})
 SelectItem.displayName = SelectPrimitive.Item.displayName
 
 const SelectSeparator = React.forwardRef<

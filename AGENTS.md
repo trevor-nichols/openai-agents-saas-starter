@@ -36,6 +36,17 @@ You are a professional engineer and developer in charge of the OpenAI Agent SaaS
 - `WorkflowSpec` (`api-service/src/app/workflows/<name>/spec.py`) stitches existing agents into deterministic chains or fan-out/fan-in stages. It reuses agent prompts and only controls sequencing via guards, input mappers, and reducers; the workflow registry validates referenced agent keys.
 - Reach for an agent spec when you need a single conversational entrypoint with tools or handoffs. Choose a workflow spec when you need a repeatable, auditable sequence where ordering and branching stay outside the model.
 
+### Public SSE streaming contract (`public_sse_v1`)
+- **Goal:** expose a stable, browser-safe SSE event stream for the web app while insulating it from raw provider event churn.
+- **Inbound (provider → normalized):** OpenAI Agents SDK stream events are normalized into `AgentStreamEvent` (`apps/api-service/src/app/domain/ai/models.py`) by `OpenAIStreamingHandle` (`apps/api-service/src/app/infrastructure/providers/openai/streaming.py`).
+- **Outbound (normalized → public):** `PublicStreamProjector` (`apps/api-service/src/app/api/v1/shared/public_stream_projector/projector.py`) projects internal events into the public contract `PublicSseEvent` (`apps/api-service/src/app/api/v1/shared/streaming.py`, `schema=public_sse_v1`).
+- **Endpoints:** chat streaming (`apps/api-service/src/app/api/v1/chat/router.py`) and workflow run streaming (`apps/api-service/src/app/api/v1/workflows/router.py`) emit `data: <PublicSseEvent JSON>\n\n` frames and stop emitting after `kind=final|error`.
+- **Contract docs + goldens:** the spec lives in `docs/contracts/public-sse-streaming/v1.md`; examples live in `docs/contracts/public-sse-streaming/examples/*.ndjson` and are enforced by `apps/api-service/tests/contract/streams/test_stream_goldens.py` (assertions in `apps/api-service/tests/utils/stream_assertions.py`).
+- **Coverage tracking:** `docs/integrations/openai-responses-api/streaming-events/coverage-matrix.md` tracks raw provider events → public SSE events, usage, and fixture coverage.
+- **When changing streaming:** update schema (`apps/api-service/src/app/api/v1/shared/streaming.py`) + projector(s) (`apps/api-service/src/app/api/v1/shared/public_stream_projector/**`), add/adjust a golden NDJSON fixture + assertions, then regenerate OpenAPI + TS client:
+  - `cd packages/starter_cli && python -m starter_cli.app api export-openapi --output apps/api-service/.artifacts/openapi-fixtures.json --enable-billing --enable-test-fixtures`
+  - `cd apps/web-app && OPENAPI_INPUT=../api-service/.artifacts/openapi-fixtures.json pnpm generate:fixtures`
+
 ## Frontend
 - The frontend uses the HeyAPI SDK to generate the API client. The API client is generated into the `lib/api/client` directory.
 - All hooks use TanStack Query
@@ -195,4 +206,3 @@ openai-agents-saas-starter/
 ├── pnpm-workspace.yaml            # pnpm workspace definition
 └── tsconfig.scripts.json          # TS config for repo-level scripts beside each app/package
 </patterns>
-

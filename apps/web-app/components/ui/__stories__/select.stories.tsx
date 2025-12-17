@@ -30,7 +30,7 @@ export const Default: Story = {
         <SelectValue placeholder="Select a fruit" />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="apple">Apple</SelectItem>
+        <SelectItem value="long">This is a long example to show you what a long example would look like. We made it very long</SelectItem>
         <SelectItem value="banana">Banana</SelectItem>
         <SelectItem value="orange">Orange</SelectItem>
         <SelectItem value="grape">Grape</SelectItem>
@@ -48,7 +48,7 @@ export const WithLabel: Story = {
           <SelectValue placeholder="Select a fruit" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="apple">Apple</SelectItem>
+          <SelectItem value="long">This is a long example to show you what a long example would look like. We made it very long</SelectItem>
           <SelectItem value="banana">Banana</SelectItem>
           <SelectItem value="orange">Orange</SelectItem>
         </SelectContent>
