@@ -1,21 +1,16 @@
 import {
   useCallback,
-  useEffect,
   useMemo,
   useReducer,
   useRef,
   useState,
-  type Dispatch,
 } from 'react';
-import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 
 import {
   deleteConversationById,
   deleteConversationMessage,
-  fetchConversationLedgerEvents,
-  fetchConversationMessages,
 } from '@/lib/api/conversations';
-import { streamChat } from '@/lib/api/chat';
 import { useSendChatMutation } from '@/lib/queries/chat';
 import { queryKeys } from '@/lib/queries/keys';
 import type { ConversationListItem } from '@/types/conversations';
@@ -25,28 +20,19 @@ import type {
   ToolEventAnchors,
   ToolState,
 } from '../types';
-import type { ConversationMessagesPage } from '@/types/conversations';
-import type { LocationHint, PublicSseEvent } from '@/lib/api/client/types.gen';
+import type { LocationHint } from '@/lib/api/client/types.gen';
 
 import { createLogger } from '@/lib/logging';
-import { consumeChatStream } from '../adapters/chatStreamAdapter';
 import {
-  createConversationListEntry,
   dedupeAndSortMessages,
-  mapMessagesToChatMessages,
   normalizeLocationPayload,
 } from '../mappers/chatRequestMappers';
-import {
-  mergeToolEventAnchors,
-  mergeToolStates,
-  reanchorToolEventAnchors,
-} from '../mappers/toolTimelineMappers';
-import {
-  extractMemoryCheckpointMarkers,
-  mapLedgerEventsToToolTimeline,
-} from '../mappers/ledgerReplayMappers';
-import { upsertConversationCaches } from '../cache/conversationCache';
-import { messagesReducer, type MessagesAction } from '../state/messagesReducer';
+import { messagesReducer } from '../state/messagesReducer';
+import { useMessageDispatchQueue } from './useMessageDispatchQueue';
+import { useConversationHistory } from './useConversationHistory';
+import { useToolTimeline } from './useToolTimeline';
+import { runChatTurn } from './turn/runChatTurn';
+import { resetTurnRuntimeRefs, resetViewRuntimeRefs, type TurnRuntimeRefs } from './turn/turnRuntime';
 
 const log = createLogger('chat-controller');
 
@@ -112,7 +98,6 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
   const [isClearingConversation, setIsClearingConversation] = useState(false);
   const [isDeletingMessage, setIsDeletingMessage] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [historyError, setHistoryError] = useState<string | null>(null);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [selectedAgent, setSelectedAgentState] = useState<string>('triage');
   const [activeAgent, setActiveAgent] = useState<string>('triage');
@@ -129,6 +114,29 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
   const assistantTurnMessagesRef = useRef<Array<{ itemId: string; uiId: string; outputIndex: number }>>([]);
   const lastAssistantMessageUiIdRef = useRef<string | null>(null);
   const latestAssistantTextByUiIdRef = useRef<Map<string, string>>(new Map());
+
+  const turnRuntimeRefs = useMemo<TurnRuntimeRefs>(
+    () => ({
+      lastActiveAgentRef,
+      lastResponseIdRef,
+      turnUserMessageIdRef,
+      assistantIdNonceRef,
+      messageItemToUiIdRef,
+      assistantTurnMessagesRef,
+      lastAssistantMessageUiIdRef,
+      latestAssistantTextByUiIdRef,
+    }),
+    [
+      assistantIdNonceRef,
+      assistantTurnMessagesRef,
+      lastActiveAgentRef,
+      lastAssistantMessageUiIdRef,
+      lastResponseIdRef,
+      latestAssistantTextByUiIdRef,
+      messageItemToUiIdRef,
+      turnUserMessageIdRef,
+    ],
+  );
 
   const invalidateMessagesCache = useCallback(
     async (conversationId: string | null) => {
@@ -158,145 +166,54 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
     [queryClient],
   );
 
-  const messagesQueryKey = useMemo(
-    () => queryKeys.conversations.messages(currentConversationId ?? 'preview'),
-    [currentConversationId],
-  );
-  const ledgerQueryKey = useMemo(
-    () => queryKeys.conversations.ledger(currentConversationId ?? 'preview'),
-    [currentConversationId],
-  );
-
   const {
-    data: messagesPages,
-    isLoading: isLoadingMessages,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    error: messagesError,
-    refetch: refetchMessages,
-  } = useInfiniteQuery<ConversationMessagesPage>({
-    queryKey: messagesQueryKey,
-    enabled: Boolean(currentConversationId),
-    queryFn: ({ pageParam }) =>
-      fetchConversationMessages({
-        conversationId: currentConversationId as string,
-        limit: 50,
-        cursor: (pageParam as string | null) ?? null,
-        direction: 'desc',
-      }),
-    getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
-    initialPageParam: null as string | null,
-    staleTime: 30 * 1000,
-    retry: false,
-  });
-
-  const { data: ledgerEvents } = useQuery<PublicSseEvent[]>({
-    queryKey: ledgerQueryKey,
-    enabled: Boolean(currentConversationId),
-    queryFn: () => fetchConversationLedgerEvents({ conversationId: currentConversationId as string }),
-    staleTime: 30 * 1000,
-    retry: false,
-  });
-
-  useEffect(() => {
-    if (messagesError) {
-      const message =
-        messagesError instanceof Error
-          ? messagesError.message
-          : 'Failed to load conversation messages.';
-      setHistoryError(message);
-    }
-  }, [messagesError, setHistoryError]);
-
-  useEffect(() => {
-    if (messagesPages) {
-      setHistoryError(null);
-    }
-  }, [messagesPages, setHistoryError]);
-
-  const historyMessages = useMemo(() => {
-    if (!messagesPages?.pages) return [] as ChatMessage[];
-    const flattened = messagesPages.pages.flatMap((page: ConversationMessagesPage) => page.items ?? []);
-    return dedupeAndSortMessages(
-      mapMessagesToChatMessages(flattened, currentConversationId ?? undefined),
-    );
-  }, [messagesPages?.pages, currentConversationId]);
-
-  const checkpointMarkers = useMemo(
-    () => (ledgerEvents?.length ? extractMemoryCheckpointMarkers(ledgerEvents) : []),
-    [ledgerEvents],
-  );
-
-  const historyMessagesWithMarkers = useMemo(
-    () => dedupeAndSortMessages([...historyMessages, ...checkpointMarkers]),
-    [historyMessages, checkpointMarkers],
-  );
+    historyMessagesWithMarkers,
+    ledgerEvents,
+    isLoadingHistory,
+    historyError,
+    hasOlderMessages,
+    isFetchingOlderMessages,
+    loadOlderMessages,
+    retryMessages,
+    clearHistoryError,
+  } = useConversationHistory(currentConversationId);
 
   const mergedMessages = useMemo(
     () => dedupeAndSortMessages([...historyMessagesWithMarkers, ...messages]),
     [historyMessagesWithMarkers, messages],
   );
-
-  const persistedToolTimeline = useMemo(() => {
-    if (!ledgerEvents?.length) {
-      return { tools: [] as ToolState[], anchors: {} as ToolEventAnchors };
-    }
-    if (historyMessagesWithMarkers.length === 0) {
-      return { tools: [] as ToolState[], anchors: {} as ToolEventAnchors };
-    }
-    return mapLedgerEventsToToolTimeline(ledgerEvents, historyMessagesWithMarkers);
-  }, [ledgerEvents, historyMessagesWithMarkers]);
-
-  const combinedToolEvents = useMemo(
-    () => mergeToolStates(persistedToolTimeline.tools, toolEvents),
-    [persistedToolTimeline.tools, toolEvents],
-  );
-
-  const reanchoredToolEventAnchors = useMemo(
-    () => reanchorToolEventAnchors(toolEventAnchors, messages, mergedMessages),
-    [toolEventAnchors, messages, mergedMessages],
-  );
-
-  const combinedToolEventAnchors = useMemo(
-    () => mergeToolEventAnchors(persistedToolTimeline.anchors, reanchoredToolEventAnchors),
-    [persistedToolTimeline.anchors, reanchoredToolEventAnchors],
-  );
-
-  const isLoadingHistory = Boolean(currentConversationId) && isLoadingMessages && !messagesPages;
+  const { toolEvents: combinedToolEvents, toolEventAnchors: combinedToolEventAnchors } =
+    useToolTimeline({
+      ledgerEvents,
+      historyMessagesWithMarkers,
+      liveToolEvents: toolEvents,
+      liveToolEventAnchors: toolEventAnchors,
+      liveMessages: messages,
+      mergedMessages,
+    });
 
   const { enqueueMessageAction, flushQueuedMessages } = useMessageDispatchQueue(dispatchMessages);
 
   const resetViewState = useCallback(() => {
     dispatchMessages({ type: 'reset' });
     setErrorMessage(null);
-    setHistoryError(null);
+    clearHistoryError();
     setToolEvents([]);
     setToolEventAnchors({});
     setReasoningText('');
     setAgentNotices([]);
     setLifecycleStatus('idle');
     setActiveAgent(selectedAgent);
-    lastActiveAgentRef.current = selectedAgent;
-    lastResponseIdRef.current = null;
-    turnUserMessageIdRef.current = null;
-    messageItemToUiIdRef.current = new Map();
-    assistantTurnMessagesRef.current = [];
-    lastAssistantMessageUiIdRef.current = null;
-    latestAssistantTextByUiIdRef.current = new Map();
-  }, [selectedAgent]);
+    resetViewRuntimeRefs(turnRuntimeRefs, selectedAgent);
+  }, [clearHistoryError, selectedAgent, turnRuntimeRefs]);
 
   const resetTurnState = useCallback(() => {
     setReasoningText('');
     setToolEvents([]);
     setToolEventAnchors({});
     setLifecycleStatus('idle');
-    turnUserMessageIdRef.current = null;
-    messageItemToUiIdRef.current = new Map();
-    assistantTurnMessagesRef.current = [];
-    lastAssistantMessageUiIdRef.current = null;
-    latestAssistantTextByUiIdRef.current = new Map();
-  }, []);
+    resetTurnRuntimeRefs(turnRuntimeRefs);
+  }, [turnRuntimeRefs]);
 
   const appendAgentNotice = useCallback((text: string) => {
     setAgentNotices((prev) => [...prev, { id: `agent-${Date.now()}`, text }]);
@@ -316,7 +233,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       log.debug('Selecting conversation', { conversationId });
       dispatchMessages({ type: 'reset' });
       setErrorMessage(null);
-      setHistoryError(null);
+      clearHistoryError();
       resetTurnState();
       setAgentNotices([]);
       setActiveAgent(selectedAgent);
@@ -324,7 +241,14 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
 
       setCurrentConversationId(conversationId);
     },
-    [currentConversationId, isClearingConversation, isDeletingMessage, resetTurnState, selectedAgent],
+    [
+      clearHistoryError,
+      currentConversationId,
+      isClearingConversation,
+      isDeletingMessage,
+      resetTurnState,
+      selectedAgent,
+    ],
   );
 
   const setSelectedAgent = useCallback((agentName: string) => {
@@ -346,7 +270,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       }
 
       const shareLocation = options?.shareLocation ?? false;
-      const locationPayload = normalizeLocationPayload(shareLocation, options?.location);
+      const locationPayload = normalizeLocationPayload(shareLocation, options?.location) ?? null;
 
       // Reset per-turn streaming state
       resetTurnState();
@@ -362,362 +286,36 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
         ? { previous_response_id: lastResponseIdRef.current }
         : undefined;
 
-      const userMessage: ChatMessage = {
-        id: `user-${Date.now()}`,
-        role: 'user',
-        content: messageText,
-        timestamp: new Date().toISOString(),
-      };
-      dispatchMessages({ type: 'append', message: userMessage });
-
-      turnUserMessageIdRef.current = userMessage.id;
-      messageItemToUiIdRef.current = new Map();
-      assistantTurnMessagesRef.current = [];
-      lastAssistantMessageUiIdRef.current = null;
-      latestAssistantTextByUiIdRef.current = new Map();
-      setToolEventAnchors({});
-
       const previousConversationId = currentConversationId;
 
-      const stripCursor = (content: string) => content.replace(/▋\s*$/, '');
-
-      const ensureFallbackAssistantMessage = () => {
-        const existing = lastAssistantMessageUiIdRef.current;
-        if (existing) return existing;
-        assistantIdNonceRef.current += 1;
-        const assistantMessageId = `assistant-${Date.now()}-${assistantIdNonceRef.current}`;
-        lastAssistantMessageUiIdRef.current = assistantMessageId;
-        enqueueMessageAction({
-          type: 'insertAfterId',
-          anchorId: userMessage.id,
-          message: {
-            id: assistantMessageId,
-            role: 'assistant',
-            content: '▋',
-            timestamp: new Date().toISOString(),
-            isStreaming: true,
-          },
-        });
-        return assistantMessageId;
-      };
-
-      const ensureAssistantMessageForItem = (itemId: string, outputIndex: number) => {
-        const existing = messageItemToUiIdRef.current.get(itemId);
-        if (existing) return existing;
-
-        flushQueuedMessages();
-
-        assistantIdNonceRef.current += 1;
-        const uiId = `assistant-${Date.now()}-${assistantIdNonceRef.current}`;
-        const message: ChatMessage = {
-          id: uiId,
-          role: 'assistant',
-          content: '▋',
-          timestamp: new Date().toISOString(),
-          isStreaming: true,
-        };
-
-        const order = assistantTurnMessagesRef.current;
-        const insertAt = order.findIndex((entry) => entry.outputIndex > outputIndex);
-        if (insertAt === -1) {
-          const anchorId = order.length > 0 ? order[order.length - 1]?.uiId : userMessage.id;
-          enqueueMessageAction({
-            type: 'insertAfterId',
-            anchorId: anchorId ?? userMessage.id,
-            message,
-          });
-          order.push({ itemId, uiId, outputIndex });
-        } else {
-          const beforeId = order[insertAt]?.uiId;
-          enqueueMessageAction({
-            type: 'insertBeforeId',
-            anchorId: beforeId ?? userMessage.id,
-            message,
-          });
-          order.splice(insertAt, 0, { itemId, uiId, outputIndex });
-        }
-
-        messageItemToUiIdRef.current.set(itemId, uiId);
-        lastAssistantMessageUiIdRef.current = uiId;
-        return uiId;
-      };
-
-      const recomputeToolAnchors = (tools: ToolState[]) => {
-        const userAnchorId = turnUserMessageIdRef.current;
-        if (!userAnchorId) return;
-
-        const messageOrder = [...assistantTurnMessagesRef.current].sort(
-          (a, b) => a.outputIndex - b.outputIndex,
-        );
-        const sortedTools = [...tools].sort(
-          (a, b) =>
-            (a.outputIndex ?? Number.POSITIVE_INFINITY) -
-            (b.outputIndex ?? Number.POSITIVE_INFINITY),
-        );
-
-        const nextAnchors: ToolEventAnchors = {};
-        for (const tool of sortedTools) {
-          const toolIndex = tool.outputIndex ?? Number.POSITIVE_INFINITY;
-          let anchorId = userAnchorId;
-          for (const msg of messageOrder) {
-            if (msg.outputIndex < toolIndex) {
-              anchorId = msg.uiId;
-            } else {
-              break;
-            }
-          }
-          const ids = nextAnchors[anchorId];
-          if (ids) ids.push(tool.id);
-          else nextAnchors[anchorId] = [tool.id];
-        }
-
-        setToolEventAnchors(nextAnchors);
-      };
-
       try {
-        const stream = streamChat({
-          message: messageText,
-          conversationId: previousConversationId,
-          agentType: selectedAgent,
-          shareLocation,
-          location: locationPayload,
-          runOptions,
-        });
-
-        const streamResult = await consumeChatStream(stream, {
-          onOutputItemAdded: (update) => {
-            if (update.itemType === 'message' && update.role === 'assistant') {
-              ensureAssistantMessageForItem(update.itemId, update.outputIndex);
-            }
-          },
-          onTextDelta: (update) => {
-            const assistantMessageId = ensureAssistantMessageForItem(update.itemId, update.outputIndex);
-            latestAssistantTextByUiIdRef.current.set(assistantMessageId, update.accumulatedText);
-            enqueueMessageAction({
-              type: 'updateById',
-              id: assistantMessageId,
-              patch: { content: update.textWithCursor, isStreaming: true },
-            });
-          },
-          onReasoningDelta: (delta) => setReasoningText((prev) => `${prev}${delta}`),
-          onToolStates: (tools) => {
-            setToolEvents(tools);
-            flushQueuedMessages();
-            recomputeToolAnchors(tools);
-          },
-          onLifecycle: setLifecycleStatus,
-          onAgentChange: (agent) => {
-            setActiveAgent(agent);
-            lastActiveAgentRef.current = agent;
-          },
-          onAgentNotice: (notice) => {
-            const current = lastActiveAgentRef.current;
-            if (notice.endsWith(current)) return;
-            appendAgentNotice(notice);
-          },
-          onMemoryCheckpoint: (checkpointEvent) => {
-            enqueueMessageAction({
-              type: 'append',
-              message: {
-                id: `memory-checkpoint-${checkpointEvent.stream_id}-${checkpointEvent.event_id}`,
-                role: 'assistant',
-                kind: 'memory_checkpoint',
-                content: '',
-                timestamp: checkpointEvent.server_timestamp,
-                checkpoint: checkpointEvent.checkpoint,
-              },
-            });
-            flushQueuedMessages();
-          },
-          onAttachments: (attachments) => {
-            const normalized = attachments ?? null;
-            const hasAny = Array.isArray(normalized) && normalized.length > 0;
-            const existingId = lastAssistantMessageUiIdRef.current;
-            if (!existingId && !hasAny) return;
-
-            const assistantMessageId = existingId ?? ensureFallbackAssistantMessage();
-            enqueueMessageAction({
-              type: 'updateById',
-              id: assistantMessageId,
-              patch: { attachments: normalized },
-            });
-          },
-          onStructuredOutput: (structuredOutput) => {
-            if (structuredOutput === null || structuredOutput === undefined) return;
-            const assistantMessageId = lastAssistantMessageUiIdRef.current ?? ensureFallbackAssistantMessage();
-            enqueueMessageAction({
-              type: 'updateById',
-              id: assistantMessageId,
-              patch: { structuredOutput },
-            });
-          },
-          onError: (errorText) => {
-            setErrorMessage(errorText);
-            const assistantMessageId = lastAssistantMessageUiIdRef.current ?? ensureFallbackAssistantMessage();
-            enqueueMessageAction({
-              type: 'updateById',
-              id: assistantMessageId,
-              patch: { content: `Error: ${errorText}`, isStreaming: false },
-            });
-          },
-        });
-
-        if (streamResult.errored) {
-          flushQueuedMessages();
-          return;
-        }
-
-        const finalText = stripCursor(streamResult.finalContent);
-        const hasFinalText = finalText.trim().length > 0;
-        const hasAttachments = (streamResult.attachments?.length ?? 0) > 0;
-        const hasStructuredOutput =
-          streamResult.structuredOutput !== null && streamResult.structuredOutput !== undefined;
-        const hasFinalPayload =
-          Boolean(lastAssistantMessageUiIdRef.current) || hasFinalText || hasAttachments || hasStructuredOutput;
-
-        if (hasFinalPayload) {
-          const assistantMessageId = lastAssistantMessageUiIdRef.current ?? ensureFallbackAssistantMessage();
-          enqueueMessageAction({
-            type: 'updateById',
-            id: assistantMessageId,
-            patch: {
-              content: finalText,
-              isStreaming: false,
-              attachments: streamResult.attachments ?? null,
-              structuredOutput: streamResult.structuredOutput ?? null,
-              citations: streamResult.citations ?? null,
-            },
-          });
-        }
-
-        const finalAssistantId = lastAssistantMessageUiIdRef.current;
-        for (const entry of assistantTurnMessagesRef.current) {
-          const latest = latestAssistantTextByUiIdRef.current.get(entry.uiId) ?? '';
-          const content =
-            entry.uiId === finalAssistantId && hasFinalPayload ? finalText : stripCursor(latest);
-          const patch: Partial<ChatMessage> = { isStreaming: false };
-          if (content) patch.content = content;
-          enqueueMessageAction({
-            type: 'updateById',
-            id: entry.uiId,
-            patch,
-          });
-        }
-        flushQueuedMessages();
-
-        setLifecycleStatus(streamResult.lifecycleStatus);
-
-        if (streamResult.responseId) {
-          lastResponseIdRef.current = streamResult.responseId;
-        }
-
-        if (streamResult.conversationId) {
-          const resolvedConversationId = streamResult.conversationId;
-          log.debug('Stream completed', {
-            conversationId: resolvedConversationId,
-            createdNew: !previousConversationId,
-          });
-          const entry = createConversationListEntry(messageText, resolvedConversationId);
-          // Fire-and-forget cache refresh to keep composer responsive
-          void upsertConversationCaches({
-            queryClient,
-            resolvedConversationId,
-            previousConversationId,
-            entry,
-            setCurrentConversationId,
-            onConversationAdded,
-            onConversationUpdated,
-          });
-          // Ensure paginated messages refresh picks up the new turn
-          void invalidateMessagesCache(resolvedConversationId);
-          void invalidateLedgerCache(resolvedConversationId);
-        }
-      } catch (error) {
-        console.error('[useChatController] Streaming failed, falling back to mutation:', error);
-        log.debug('Stream failed, attempting fallback', {
-          error,
+        await runChatTurn({
+          messageText,
           previousConversationId,
+          selectedAgent,
+          shareLocation,
+          locationPayload,
+          runOptions,
+          dispatchMessages,
+          enqueueMessageAction,
+          flushQueuedMessages,
+          setErrorMessage,
+          setToolEvents,
+          setToolEventAnchors,
+          setReasoningText,
+          setLifecycleStatus,
+          setActiveAgent,
+          appendAgentNotice,
+          refs: turnRuntimeRefs,
+          queryClient,
+          setCurrentConversationId,
+          onConversationAdded,
+          onConversationUpdated,
+          invalidateMessagesCache,
+          invalidateLedgerCache,
+          sendChatFallback: sendChatMutation.mutateAsync,
+          log,
         });
-        try {
-          const fallbackResponse = await sendChatMutation.mutateAsync({
-            message: messageText,
-            conversation_id: previousConversationId ?? undefined,
-            agent_type: selectedAgent,
-            context: null,
-            share_location: shareLocation,
-            location: locationPayload,
-            run_options: runOptions,
-          });
-
-          const fallbackAssistantId = (() => {
-            const existingId = lastAssistantMessageUiIdRef.current;
-            if (existingId) return existingId;
-            assistantIdNonceRef.current += 1;
-            const nextId = `assistant-${Date.now()}-${assistantIdNonceRef.current}`;
-            lastAssistantMessageUiIdRef.current = nextId;
-            dispatchMessages({
-              type: 'append',
-              message: {
-                id: nextId,
-                role: 'assistant',
-                content: fallbackResponse.response,
-                timestamp: new Date().toISOString(),
-                isStreaming: false,
-                attachments: fallbackResponse.attachments ?? null,
-                structuredOutput: fallbackResponse.structured_output ?? null,
-              },
-            });
-            return nextId;
-          })();
-
-          dispatchMessages({
-            type: 'updateById',
-            id: fallbackAssistantId,
-            patch: {
-              content: fallbackResponse.response,
-              isStreaming: false,
-              attachments: fallbackResponse.attachments ?? null,
-              structuredOutput: fallbackResponse.structured_output ?? null,
-            },
-          });
-
-          const fallbackConversationId = fallbackResponse.conversation_id;
-          if (fallbackConversationId) {
-            lastResponseIdRef.current = null;
-            const resolvedConversationId = fallbackConversationId;
-            log.debug('Fallback succeeded', {
-              conversationId: resolvedConversationId,
-              createdNew:
-                !previousConversationId || previousConversationId !== resolvedConversationId,
-            });
-            const entry = createConversationListEntry(messageText, resolvedConversationId);
-            // Fire-and-forget cache refresh to keep composer responsive
-            void upsertConversationCaches({
-              queryClient,
-              resolvedConversationId,
-              previousConversationId,
-              entry,
-              setCurrentConversationId,
-              onConversationAdded,
-              onConversationUpdated,
-            });
-            void invalidateMessagesCache(resolvedConversationId);
-            void invalidateLedgerCache(resolvedConversationId);
-          }
-        } catch (fallbackError) {
-          console.error('[useChatController] Fallback send failed:', fallbackError);
-          const message =
-            fallbackError instanceof Error ? fallbackError.message : 'Fallback send failed.';
-          setErrorMessage(message);
-          log.debug('Fallback send failed', {
-            error: fallbackError,
-          });
-          dispatchMessages({
-            type: 'updateById',
-            id: userMessage.id,
-            patch: { content: `${userMessage.content} (Error sending)` },
-          });
-        }
       } finally {
         setIsSending(false);
       }
@@ -738,6 +336,12 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       sendChatMutation,
       invalidateMessagesCache,
       invalidateLedgerCache,
+      setActiveAgent,
+      setLifecycleStatus,
+      setReasoningText,
+      setToolEventAnchors,
+      setToolEvents,
+      turnRuntimeRefs,
     ],
   );
 
@@ -839,24 +443,6 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
   );
 
   const clearError = useCallback(() => setErrorMessage(null), []);
-  const clearHistoryError = useCallback(() => setHistoryError(null), []);
-
-  const loadOlderMessages = useCallback(async () => {
-    if (!hasNextPage) return;
-    try {
-      await fetchNextPage();
-    } catch (error) {
-      console.error('[useChatController] Failed to load older messages:', error);
-      setHistoryError(
-        error instanceof Error ? error.message : 'Failed to load older messages.',
-      );
-    }
-  }, [fetchNextPage, hasNextPage]);
-
-  const retryMessages = useCallback(() => {
-    setHistoryError(null);
-    void refetchMessages();
-  }, [refetchMessages]);
 
   return useMemo(
     () => ({
@@ -876,8 +462,8 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       toolEventAnchors: combinedToolEventAnchors,
       reasoningText,
       lifecycleStatus,
-      hasOlderMessages: Boolean(hasNextPage),
-      isFetchingOlderMessages: isFetchingNextPage,
+      hasOlderMessages,
+      isFetchingOlderMessages,
       loadOlderMessages,
       retryMessages,
       clearHistoryError,
@@ -911,48 +497,12 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       combinedToolEventAnchors,
       reasoningText,
       lifecycleStatus,
-      hasNextPage,
-      isFetchingNextPage,
+      hasOlderMessages,
+      isFetchingOlderMessages,
       loadOlderMessages,
       retryMessages,
       clearHistoryError,
     ],
   );
 
-}
-
-function useMessageDispatchQueue(dispatch: Dispatch<MessagesAction>) {
-  const queueRef = useRef<MessagesAction[]>([]);
-  const frameRef = useRef<number | null>(null);
-
-  const flushQueuedMessages = useCallback(() => {
-    if (!queueRef.current.length) {
-      frameRef.current = null;
-      return;
-    }
-    dispatch({ type: 'batch', actions: queueRef.current });
-    queueRef.current = [];
-    frameRef.current = null;
-  }, [dispatch]);
-
-  const enqueueMessageAction = useCallback(
-    (action: MessagesAction) => {
-      queueRef.current.push(action);
-      if (frameRef.current === null) {
-        frameRef.current = requestAnimationFrame(flushQueuedMessages);
-      }
-    },
-    [flushQueuedMessages],
-  );
-
-  useEffect(() => {
-    return () => {
-      if (frameRef.current !== null) {
-        cancelAnimationFrame(frameRef.current);
-      }
-      queueRef.current = [];
-    };
-  }, []);
-
-  return { enqueueMessageAction, flushQueuedMessages };
 }
