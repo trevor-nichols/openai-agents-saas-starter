@@ -122,7 +122,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent SaaS
   - Prod/CI: build wheels and install non-editable (`pip wheel packages/starter_contracts packages/starter_cli -w dist` then `pip install dist/starter_contracts-*.whl dist/starter_cli-*.whl`).
 
 # Development Guidelines
-- You must maintain a professional clean architecture, referring to the documentations of the OpenAI Agents SDK and the `docs/openai-agents-sdk` directory whenever needed in order to ensure you abide by the latest API framework. 
+- You must maintain a professional clean architecture, referring to the documentations of the OpenAI Agents SDK and the `docs/openai-agents-sdk` and `docs/integrations/openai-responses-api` directories during development in order to ensure you abide by the latest API framework. 
 - Avoid feature gates/flags and any backwards compability changes - since our app is still unreleased
 - **After Your Edits**
   - **Backend**: Run `hatch run lint` and `hatch run typecheck` (Pyright + Mypy) after all edits in backend; CI blocks merges on `hatch run typecheck`, so keep it green locally.
