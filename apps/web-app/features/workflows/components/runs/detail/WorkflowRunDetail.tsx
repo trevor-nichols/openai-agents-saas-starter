@@ -4,6 +4,7 @@ import { CodeBlock } from '@/components/ui/ai/code-block';
 import { SkeletonPanel, EmptyState } from '@/components/ui/states';
 import { InlineTag } from '@/components/ui/foundation';
 import type { WorkflowRunDetailView } from '@/lib/workflows/types';
+import { workflowRunStatusVariant } from '../../../constants';
 
 interface WorkflowRunDetailProps {
   run: WorkflowRunDetailView | null;
@@ -11,13 +12,6 @@ interface WorkflowRunDetailProps {
   onCancel?: () => void;
   canceling?: boolean;
 }
-
-const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
-  running: 'default',
-  succeeded: 'secondary',
-  failed: 'destructive',
-  cancelled: 'outline',
-};
 
 export function WorkflowRunDetail({ run, isLoading, onCancel, canceling }: WorkflowRunDetailProps) {
   if (isLoading) {
@@ -28,7 +22,7 @@ export function WorkflowRunDetail({ run, isLoading, onCancel, canceling }: Workf
     return <EmptyState title="Select a run" description="Pick a run from history to inspect details." />;
   }
 
-  const statusVariant = STATUS_VARIANT[run.status] ?? 'outline';
+  const statusVariant = workflowRunStatusVariant(run.status);
 
   return (
     <div className="space-y-4">

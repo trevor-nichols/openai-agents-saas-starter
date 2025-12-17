@@ -18,13 +18,11 @@ import { cn } from '@/lib/utils';
 import type { StreamingWorkflowEvent } from '@/lib/api/client/types.gen';
 import { buildWorkflowLiveTranscript } from '@/lib/workflows/liveStreamTranscript';
 
-type StreamEventWithMeta = StreamingWorkflowEvent & { receivedAt?: string };
-
 export function WorkflowLiveStream({
   events,
   className,
 }: {
-  events: StreamEventWithMeta[];
+  events: StreamingWorkflowEvent[];
   className?: string;
 }) {
   const transcript = useMemo(() => buildWorkflowLiveTranscript(events), [events]);

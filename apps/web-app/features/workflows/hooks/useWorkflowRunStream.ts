@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type {
-  StreamingWorkflowEvent,
   WorkflowRunRequestBody,
   LocationHint,
 } from '@/lib/api/client/types.gen';
@@ -11,8 +10,7 @@ import { streamWorkflowRun } from '@/lib/api/workflows';
 import { mockWorkflowStream } from '@/lib/workflows/mock';
 import { USE_API_MOCK } from '@/lib/config';
 import type { StreamStatus } from '../constants';
-
-type StreamEventWithMeta = StreamingWorkflowEvent & { receivedAt: string };
+import type { WorkflowRunSummary, WorkflowStreamEventWithReceivedAt } from '../types';
 
 type StartRunInput = {
   workflowKey: string;
@@ -21,22 +19,16 @@ type StartRunInput = {
   location?: LocationHint | null;
 };
 
-type RunSummary = {
-  workflowKey: string;
-  runId?: string | null;
-  message?: string;
-};
-
 type Options = {
   onRunCreated?: (runId: string, workflowKey?: string | null) => void;
 };
 
 export function useWorkflowRunStream(options?: Options) {
-  const [events, setEvents] = useState<StreamEventWithMeta[]>([]);
+  const [events, setEvents] = useState<WorkflowStreamEventWithReceivedAt[]>([]);
   const [status, setStatus] = useState<StreamStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [lastSummary, setLastSummary] = useState<RunSummary | null>(null);
+  const [lastSummary, setLastSummary] = useState<WorkflowRunSummary | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const abortRef = useRef(false);
@@ -80,7 +72,7 @@ export function useWorkflowRunStream(options?: Options) {
       try {
         for await (const evt of streamWorkflowRun(input.workflowKey, body)) {
           if (abortRef.current) break;
-          const enriched: StreamEventWithMeta = { ...evt, receivedAt: new Date().toISOString() };
+          const enriched: WorkflowStreamEventWithReceivedAt = { ...evt, receivedAt: new Date().toISOString() };
           setEvents((prev) => [...prev, enriched]);
           setStreamStatus((current) => (current === 'connecting' ? 'streaming' : current));
           setLastUpdated(enriched.receivedAt);
@@ -134,7 +126,7 @@ export function useWorkflowRunStream(options?: Options) {
     setEvents([]);
     const runId = `mock_run_${Date.now()}`;
     for await (const evt of mockWorkflowStream(runId)) {
-      const enriched: StreamEventWithMeta = { ...evt, receivedAt: new Date().toISOString() };
+      const enriched: WorkflowStreamEventWithReceivedAt = { ...evt, receivedAt: new Date().toISOString() };
       setEvents((prev) => [...prev, enriched]);
     }
   }, []);

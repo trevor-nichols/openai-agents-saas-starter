@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 
-import { WorkflowSidebar } from '../components/WorkflowSidebar';
+import { WorkflowSidebar } from '../components';
 import { mockWorkflows } from '@/lib/workflows/mock';
 import type { WorkflowSummaryView } from '@/lib/workflows/types';
 

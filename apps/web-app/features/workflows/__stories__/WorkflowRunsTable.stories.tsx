@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 
-import { WorkflowRunsTable } from '../components/WorkflowRunsTable';
+import { WorkflowRunsTable } from '../components/runs/history/WorkflowRunsTable';
 import { mockWorkflowRunList } from '@/lib/workflows/mock';
 import type { WorkflowRunListItemView } from '@/lib/workflows/types';
 

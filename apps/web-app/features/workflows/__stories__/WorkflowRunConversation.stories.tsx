@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 
-import { WorkflowRunConversation } from '../components/WorkflowRunConversation';
+import { WorkflowRunConversation } from '../components/runs/transcript/WorkflowRunConversation';
 import { mockWorkflowRunDetail } from '@/lib/workflows/mock';
 import type { ConversationEvents } from '@/types/conversations';
 

@@ -5,7 +5,8 @@ import { SkeletonPanel, EmptyState } from '@/components/ui/states';
 import { cn } from '@/lib/utils';
 import type { WorkflowRunListItemView } from '@/lib/workflows/types';
 import type { WorkflowSummary } from '@/lib/api/client/types.gen';
-import { WorkflowRunDeleteButton } from './WorkflowRunDeleteButton';
+import { workflowRunStatusVariant } from '../../../constants';
+import { WorkflowRunDeleteButton } from '../actions/WorkflowRunDeleteButton';
 
 interface WorkflowRunsListProps {
   runs: WorkflowRunListItemView[];
@@ -20,13 +21,6 @@ interface WorkflowRunsListProps {
   onDeleteRun?: (runId: string, conversationId?: string | null) => void | Promise<void>;
   deletingRunId?: string | null;
 }
-
-const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
-  running: 'default',
-  succeeded: 'secondary',
-  failed: 'destructive',
-  cancelled: 'outline',
-};
 
 function formatTimestamp(value?: string | null) {
   if (!value) return '—';
@@ -76,7 +70,7 @@ export function WorkflowRunsList({
     <div className="space-y-2">
       {runs.map((run) => {
         const active = run.workflow_run_id === selectedRunId;
-        const variant = STATUS_VARIANT[run.status] ?? 'outline';
+        const variant = workflowRunStatusVariant(run.status);
         const workflowLabel = workflows?.find((w) => w.key === run.workflow_key)?.display_name ?? run.workflow_key;
         return (
           <div

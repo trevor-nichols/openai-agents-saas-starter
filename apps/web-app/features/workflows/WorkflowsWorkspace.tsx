@@ -13,9 +13,7 @@ import {
 } from '@/lib/queries/workflows';
 import type { LocationHint } from '@/lib/api/client/types.gen';
 
-import { WorkflowCanvas } from './components/WorkflowCanvas';
-import { WorkflowRunFeed } from './components/WorkflowRunFeed';
-import { WorkflowSidebar } from './components/WorkflowSidebar';
+import { WorkflowCanvas, WorkflowRunFeed, WorkflowSidebar } from './components';
 import type { WorkflowStatusFilter } from './constants';
 import {
   useWorkflowRunActions,

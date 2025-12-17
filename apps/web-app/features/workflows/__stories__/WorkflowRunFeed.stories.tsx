@@ -2,11 +2,11 @@
 
 import type { Meta, StoryObj } from '@storybook/react';
 
-import { RunConsole } from '../components/RunConsole';
+import { WorkflowRunFeed } from '../components/runs/WorkflowRunFeed';
 import { mockWorkflowRunDetail, mockWorkflows } from '@/lib/workflows/mock';
 import type { WorkflowSummaryView } from '@/lib/workflows/types';
 import type { ConversationEvents } from '@/types/conversations';
-import type { StreamingWorkflowEvent } from '@/lib/api/client/types.gen';
+import type { WorkflowStreamEventWithReceivedAt } from '../types';
 
 const now = new Date().toISOString();
 const workflowContext = {
@@ -19,7 +19,7 @@ const workflowContext = {
   branch_index: null,
 } as const;
 
-const streamEvents: (StreamingWorkflowEvent & { receivedAt: string })[] = [
+const streamEvents: WorkflowStreamEventWithReceivedAt[] = [
   {
     schema: 'public_sse_v1',
     event_id: 1,
@@ -96,14 +96,14 @@ const runEvents: ConversationEvents = {
   ],
 };
 
-const meta: Meta<typeof RunConsole> = {
-  title: 'Workflows/Run Console',
-  component: RunConsole,
+const meta: Meta<typeof WorkflowRunFeed> = {
+  title: 'Workflows/Run Feed',
+  component: WorkflowRunFeed,
 };
 
 export default meta;
 
-type Story = StoryObj<typeof RunConsole>;
+type Story = StoryObj<typeof WorkflowRunFeed>;
 
 const defaultWorkflow: WorkflowSummaryView = {
   key: 'placeholder',
@@ -119,17 +119,11 @@ const runDetail = mockWorkflowRunDetail('run-stream-1');
 export const Streaming: Story = {
   args: {
     workflows: mockWorkflows.length ? mockWorkflows : [primaryWorkflow],
-    selectedWorkflowKey: primaryWorkflow.key,
-    onRun: async (payload: { workflowKey: string; message: string }) => {
-      console.log('run', payload);
-    },
-    isRunning: true,
-    isLoadingWorkflows: false,
-    runError: null,
+    streamEvents,
     streamStatus: 'streaming',
+    runError: null,
     isMockMode: true,
     onSimulate: () => console.log('simulate stream'),
-    streamEvents,
     lastRunSummary: { workflowKey: primaryWorkflow.key, runId: 'run-stream-1', message: 'Summarize customer issues' },
     lastUpdated: new Date().toISOString(),
     selectedRunId: 'run-stream-1',
@@ -141,23 +135,26 @@ export const Streaming: Story = {
     cancelPending: false,
     onDeleteRun: (runId) => console.log('delete', runId),
     deletingRunId: null,
+    historyRuns: [],
+    historyStatusFilter: 'all',
+    onHistoryStatusChange: () => {},
+    onHistoryRefresh: () => {},
+    onHistoryLoadMore: undefined,
+    historyHasMore: false,
+    isHistoryLoading: false,
+    isHistoryFetchingMore: false,
+    onSelectRun: () => {},
   },
 };
 
 export const Completed: Story = {
   args: {
     workflows: mockWorkflows.length ? mockWorkflows : [primaryWorkflow],
-    selectedWorkflowKey: primaryWorkflow.key,
-    onRun: async (payload: { workflowKey: string; message: string }) => {
-      console.log('run', payload);
-    },
-    isRunning: false,
-    isLoadingWorkflows: false,
-    runError: null,
+    streamEvents,
     streamStatus: 'completed',
+    runError: null,
     isMockMode: false,
     onSimulate: undefined,
-    streamEvents,
     lastRunSummary: { workflowKey: primaryWorkflow.key, runId: 'run-stream-1', message: 'Summarize customer issues' },
     lastUpdated: new Date().toISOString(),
     selectedRunId: 'run-stream-1',
@@ -169,23 +166,26 @@ export const Completed: Story = {
     cancelPending: false,
     onDeleteRun: (runId) => console.log('delete', runId),
     deletingRunId: null,
+    historyRuns: [],
+    historyStatusFilter: 'all',
+    onHistoryStatusChange: () => {},
+    onHistoryRefresh: () => {},
+    onHistoryLoadMore: undefined,
+    historyHasMore: false,
+    isHistoryLoading: false,
+    isHistoryFetchingMore: false,
+    onSelectRun: () => {},
   },
 };
 
 export const EmptyState: Story = {
   args: {
     workflows: mockWorkflows.length ? mockWorkflows : [primaryWorkflow],
-    selectedWorkflowKey: null,
-    onRun: async (payload: { workflowKey: string; message: string }) => {
-      console.log('run', payload);
-    },
-    isRunning: false,
-    isLoadingWorkflows: false,
-    runError: null,
+    streamEvents: [],
     streamStatus: 'idle',
+    runError: null,
     isMockMode: false,
     onSimulate: undefined,
-    streamEvents: [],
     lastRunSummary: null,
     lastUpdated: null,
     selectedRunId: null,
@@ -197,5 +197,14 @@ export const EmptyState: Story = {
     cancelPending: false,
     onDeleteRun: () => {},
     deletingRunId: null,
+    historyRuns: [],
+    historyStatusFilter: 'all',
+    onHistoryStatusChange: () => {},
+    onHistoryRefresh: () => {},
+    onHistoryLoadMore: undefined,
+    historyHasMore: false,
+    isHistoryLoading: false,
+    isHistoryFetchingMore: false,
+    onSelectRun: () => {},
   },
 };

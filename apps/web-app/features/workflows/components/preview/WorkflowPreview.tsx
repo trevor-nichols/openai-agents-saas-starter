@@ -7,10 +7,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import type { WorkflowDescriptor } from '@/lib/workflows/types';
 
-import type { WorkflowPreviewMode } from '../hooks/useWorkflowPreviewMode';
-import { useWorkflowPreviewMode } from '../hooks/useWorkflowPreviewMode';
-import { WorkflowDescriptorOutline } from './WorkflowDescriptorOutline';
-import { WorkflowGraphViewport } from './WorkflowGraphViewport';
+import type { WorkflowPreviewMode } from '../../hooks/useWorkflowPreviewMode';
+import { useWorkflowPreviewMode } from '../../hooks/useWorkflowPreviewMode';
+import { WorkflowDescriptorOutline } from './outline/WorkflowDescriptorOutline';
+import { WorkflowGraphViewport } from './graph/WorkflowGraphViewport';
 
 interface WorkflowPreviewProps {
   descriptor: WorkflowDescriptor | null;
@@ -70,4 +70,3 @@ export function WorkflowPreview({ descriptor, activeStep, className }: WorkflowP
     </Tabs>
   );
 }
-

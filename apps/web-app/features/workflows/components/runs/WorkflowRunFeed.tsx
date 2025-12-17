@@ -12,37 +12,30 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Conversation, ConversationContent, ConversationScrollButton } from '@/components/ui/ai/conversation';
 import type {
-  StreamingWorkflowEvent,
   WorkflowRunDetail,
   WorkflowSummary,
 } from '@/lib/api/client/types.gen';
 import type { ConversationEvents } from '@/types/conversations';
-import type { StreamStatus, WorkflowStatusFilter } from '../constants';
+import { WORKFLOW_STATUS_FILTERS, type StreamStatus, type WorkflowStatusFilter } from '../../constants';
 import type { WorkflowRunListItemView } from '@/lib/workflows/types';
 
-import { WorkflowStreamLog } from './WorkflowStreamLog';
-import { WorkflowLiveStream } from './WorkflowLiveStream';
-import { WorkflowRunsList } from './WorkflowRunsList';
-import { WorkflowRunConversation } from './WorkflowRunConversation';
-import { WorkflowRunDeleteButton } from './WorkflowRunDeleteButton';
+import type { WorkflowRunSummary, WorkflowStreamEventWithReceivedAt } from '../../types';
 
-type StreamEventWithMeta = StreamingWorkflowEvent & { receivedAt: string };
-
-type RunSummary = {
-  workflowKey: string;
-  runId?: string | null;
-  message?: string;
-};
+import { WorkflowStreamLog } from './streaming/WorkflowStreamLog';
+import { WorkflowLiveStream } from './streaming/WorkflowLiveStream';
+import { WorkflowRunsList } from './history/WorkflowRunsList';
+import { WorkflowRunConversation } from './transcript/WorkflowRunConversation';
+import { WorkflowRunDeleteButton } from './actions/WorkflowRunDeleteButton';
 
 interface WorkflowRunFeedProps {
   // Console Props
   workflows: WorkflowSummary[];
-  streamEvents: StreamEventWithMeta[];
+  streamEvents: WorkflowStreamEventWithReceivedAt[];
   streamStatus: StreamStatus;
   runError: string | null;
   isMockMode: boolean;
   onSimulate?: () => void;
-  lastRunSummary: RunSummary | null;
+  lastRunSummary: WorkflowRunSummary | null;
   lastUpdated: string | null;
   selectedRunId: string | null;
   
@@ -134,11 +127,11 @@ export function WorkflowRunFeed({
                     </Button>
                 </SheetTrigger>
                 <SheetContent side="right" className="flex w-full flex-col overflow-hidden sm:max-w-xl">
-                    <SheetHeader>
-                        <SheetTitle>Run transcript</SheetTitle>
-                        <SheetDescription>Displays step outputs as a conversation.</SheetDescription>
-                    </SheetHeader>
-                    {/* Transcript Content - Copied from RunConsole */}
+                <SheetHeader>
+                    <SheetTitle>Run transcript</SheetTitle>
+                    <SheetDescription>Displays step outputs as a conversation.</SheetDescription>
+                </SheetHeader>
+                    {/* Transcript content */}
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                         {selectedRunId ? <InlineTag tone="default">Run: {selectedRunId}</InlineTag> : null}
                         {runDetail?.status ? <InlineTag tone="default">Status: {runDetail.status}</InlineTag> : null}
@@ -246,10 +239,11 @@ export function WorkflowRunFeed({
                         <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="running">Running</SelectItem>
-                        <SelectItem value="succeeded">Succeeded</SelectItem>
-                        <SelectItem value="failed">Failed</SelectItem>
+                        {WORKFLOW_STATUS_FILTERS.map((value) => (
+                          <SelectItem key={value} value={value}>
+                            {value === 'all' ? 'All' : value.charAt(0).toUpperCase() + value.slice(1)}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                 </Select>
                 <Button variant="ghost" size="sm" onClick={onHistoryRefresh} className="h-7 text-xs ml-auto">

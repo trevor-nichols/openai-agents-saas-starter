@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 
-import { WorkflowDescriptorCard } from '../components/WorkflowDescriptorCard';
-import { WorkflowRunDetail } from '../components/WorkflowRunDetail';
+import { WorkflowDescriptorCard } from '../components/preview/outline/WorkflowDescriptorCard';
+import { WorkflowRunDetail } from '../components/runs/detail/WorkflowRunDetail';
 import { mockWorkflowDescriptor, mockWorkflowRunDetail } from '@/lib/workflows/mock';
 
 const descriptor = mockWorkflowDescriptor('triage-and-summary');

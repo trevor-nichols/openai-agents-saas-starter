@@ -4,6 +4,7 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import { SkeletonPanel, EmptyState } from '@/components/ui/states';
 import { cn } from '@/lib/utils';
 import type { WorkflowRunListItemView } from '@/lib/workflows/types';
+import { workflowRunStatusVariant } from '../../../constants';
 
 interface WorkflowRunsTableProps {
   runs: WorkflowRunListItemView[];
@@ -15,13 +16,6 @@ interface WorkflowRunsTableProps {
   selectedRunId?: string | null;
   onRefresh?: () => void;
 }
-
-const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
-  running: 'default',
-  succeeded: 'secondary',
-  failed: 'destructive',
-  cancelled: 'outline',
-};
 
 function formatDurationMs(ms?: number | null) {
   if (!ms && ms !== 0) return '—';
@@ -75,7 +69,7 @@ export function WorkflowRunsTable({
         </TableHeader>
         <TableBody>
           {runs.map((run) => {
-            const variant = STATUS_VARIANT[run.status] ?? 'outline';
+            const variant = workflowRunStatusVariant(run.status);
             return (
               <TableRow
                 key={run.workflow_run_id}

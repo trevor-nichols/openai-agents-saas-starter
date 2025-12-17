@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 
-import { WorkflowStreamLog } from '../components/WorkflowStreamLog';
+import { WorkflowStreamLog } from '../components/runs/streaming/WorkflowStreamLog';
 import type { StreamingWorkflowEvent } from '@/lib/api/client/types.gen';
 import type { GeneratedImageFrame } from '@/lib/streams/imageFrames';
 

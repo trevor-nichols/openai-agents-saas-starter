@@ -1,13 +1,14 @@
 'use client';
 
-import type { WorkflowDescriptorResponse, LocationHint } from '@/lib/api/client/types.gen';
+import type { LocationHint } from '@/lib/api/client/types.gen';
+import type { WorkflowDescriptor } from '@/lib/workflows/types';
 
 import { WorkflowRunPanel } from './WorkflowRunPanel';
 import { Separator } from '@/components/ui/separator';
-import { WorkflowPreview } from './WorkflowPreview';
+import { WorkflowPreview } from '../preview/WorkflowPreview';
 
 interface WorkflowCanvasProps {
-  descriptor: WorkflowDescriptorResponse | null;
+  descriptor: WorkflowDescriptor | null;
   activeStep: {
     stageName: string | null;
     parallelGroup: string | null;

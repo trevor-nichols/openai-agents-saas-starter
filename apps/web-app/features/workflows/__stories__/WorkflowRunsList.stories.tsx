@@ -1,8 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 
-import { RunHistoryPanel } from '../components/RunHistoryPanel';
+import { WorkflowRunsList } from '../components/runs/history/WorkflowRunsList';
 import { mockWorkflowRunList, mockWorkflows } from '@/lib/workflows/mock';
-import type { WorkflowStatusFilter } from '../constants';
 import type { WorkflowSummaryView, WorkflowRunListItemView } from '@/lib/workflows/types';
 
 const runs = mockWorkflowRunList().items;
@@ -31,28 +30,26 @@ const defaultWorkflow: WorkflowSummaryView = {
 
 const [primaryWorkflow = defaultWorkflow] = mockWorkflows;
 
-const meta: Meta<typeof RunHistoryPanel> = {
-  title: 'Workflows/Run History Panel',
-  component: RunHistoryPanel,
+const meta: Meta<typeof WorkflowRunsList> = {
+  title: 'Workflows/Workflow Runs List',
+  component: WorkflowRunsList,
 };
 
 export default meta;
 
-type Story = StoryObj<typeof RunHistoryPanel>;
+type Story = StoryObj<typeof WorkflowRunsList>;
 
 const baseArgs = {
   workflows: mockWorkflows.length ? mockWorkflows : [primaryWorkflow],
-  statusFilter: 'all' as WorkflowStatusFilter,
-  onStatusChange: (value: WorkflowStatusFilter) => console.log('filter', value),
-  onRefresh: () => console.log('refresh'),
-  onLoadMore: () => console.log('load more'),
   hasMore: true,
   isLoading: false,
   isFetchingMore: false,
+  onLoadMore: () => console.log('load more'),
   onSelectRun: (runId: string) => console.log('select', runId),
-  selectedRunId: null,
+  selectedRunId: null as string | null,
+  onRefresh: () => console.log('refresh'),
   onDeleteRun: (runId: string) => console.log('delete', runId),
-  deletingRunId: null,
+  deletingRunId: null as string | null,
 };
 
 export const Default: Story = {

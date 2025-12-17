@@ -2,7 +2,7 @@
 
 import type { Meta, StoryObj } from '@storybook/react';
 
-import { WorkflowRunPanel } from '../components/WorkflowRunPanel';
+import { WorkflowRunPanel } from '../components/canvas/WorkflowRunPanel';
 
 const meta: Meta<typeof WorkflowRunPanel> = {
   title: 'Workflows/Workflow Run Panel',

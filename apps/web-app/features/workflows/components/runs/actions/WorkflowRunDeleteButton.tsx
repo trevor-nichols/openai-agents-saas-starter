@@ -82,5 +82,3 @@ export function WorkflowRunDeleteButton({
     </AlertDialog>
   );
 }
-
-export default WorkflowRunDeleteButton;

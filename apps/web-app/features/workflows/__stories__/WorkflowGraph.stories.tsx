@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 
-import { WorkflowGraph } from '../components/WorkflowGraph';
+import { WorkflowGraph } from '../components/preview/graph/WorkflowGraph';
 import type { WorkflowDescriptor } from '@/lib/workflows/types';
 
 const demoDescriptor: WorkflowDescriptor = {

@@ -2,17 +2,15 @@
 
 import type { Meta, StoryObj } from '@storybook/react';
 
-import { RunConsole } from '../components/RunConsole';
-import { RunHistoryPanel } from '../components/RunHistoryPanel';
-import { WorkflowSidebar } from '../components/WorkflowSidebar';
-import { mockWorkflowRunDetail, mockWorkflowRunList, mockWorkflows } from '@/lib/workflows/mock';
+import { WorkflowCanvas, WorkflowRunFeed, WorkflowSidebar } from '../components';
+import { mockWorkflowDescriptor, mockWorkflowRunDetail, mockWorkflowRunList, mockWorkflows } from '@/lib/workflows/mock';
 import type {
   WorkflowSummaryView,
   WorkflowRunListItemView,
 } from '@/lib/workflows/types';
 import type { ConversationEvents } from '@/types/conversations';
-import type { StreamingWorkflowEvent } from '@/lib/api/client/types.gen';
 import type { StreamStatus } from '../constants';
+import type { WorkflowStreamEventWithReceivedAt } from '../types';
 
 const defaultWorkflow: WorkflowSummaryView = {
   key: 'placeholder',
@@ -54,7 +52,7 @@ const workflowContext = {
   branch_index: null,
 } as const;
 
-const streamEvents: (StreamingWorkflowEvent & { receivedAt: string })[] = [
+const streamEvents: WorkflowStreamEventWithReceivedAt[] = [
   {
     schema: 'public_sse_v1',
     event_id: 1,
@@ -138,114 +136,73 @@ type WorkspacePreviewProps = {
 };
 
 function WorkspacePreview({ streamStatus, isRunning, runError = null }: WorkspacePreviewProps) {
+  const descriptor = mockWorkflowDescriptor(primaryWorkflow.key);
+  const activeStep = {
+    stageName: workflowContext.stage_name,
+    parallelGroup: workflowContext.parallel_group,
+    branchIndex: workflowContext.branch_index,
+  };
+
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <RunConsole
-        workflows={workflows}
-        selectedWorkflowKey={primaryWorkflow.key}
-        onRun={async (payload: { workflowKey: string; message: string }) => {
-          console.log('run', payload);
-        }}
-        isRunning={isRunning}
-        isLoadingWorkflows={false}
-        runError={runError}
-        streamStatus={streamStatus}
-        isMockMode={false}
-        onSimulate={undefined}
-        streamEvents={streamEvents}
-        lastRunSummary={{
-          workflowKey: primaryWorkflow.key,
-          runId: runDetail.workflow_run_id,
-          message: 'Summarize customer issues',
-        }}
-        lastUpdated={new Date().toISOString()}
-        selectedRunId={runDetail.workflow_run_id}
-        runDetail={runDetail}
-        runEvents={runEvents}
-        isLoadingRun={false}
-        isLoadingEvents={false}
-        onCancelRun={() => console.log('cancel run')}
-        cancelPending={false}
-        onDeleteRun={(runId) => console.log('delete', runId)}
-        deletingRunId={null}
-      />
+    <div className="grid min-h-[700px] gap-4 lg:grid-cols-[320px_minmax(0,1fr)_380px]">
+      <div className="min-h-0">
+        <WorkflowSidebar
+          workflows={workflows}
+          isLoadingWorkflows={false}
+          selectedKey={primaryWorkflow.key}
+          onSelect={(key) => console.log('select', key)}
+        />
+      </div>
 
-      <RunHistoryPanel
-        runs={runs.length ? runs : [primaryRun]}
-        workflows={workflows}
-        statusFilter="all"
-        onStatusChange={(status) => console.log('filter', status)}
-        onRefresh={() => console.log('refresh')}
-        onLoadMore={() => console.log('load more')}
-        hasMore={false}
-        isLoading={false}
-        isFetchingMore={false}
-        onSelectRun={(runId) => console.log('select', runId)}
-        selectedRunId={runDetail.workflow_run_id}
-        onDeleteRun={(runId) => console.log('delete', runId)}
-        deletingRunId={null}
-      />
-    </div>
-  );
-}
+      <div className="min-h-0 overflow-hidden rounded-lg border border-white/5">
+        <WorkflowCanvas
+          descriptor={descriptor}
+          activeStep={activeStep}
+          selectedKey={primaryWorkflow.key}
+          onRun={async (payload) => {
+            console.log('run', payload);
+          }}
+          isRunning={isRunning}
+          isLoadingWorkflows={false}
+          runError={runError}
+          streamStatus={streamStatus}
+        />
+      </div>
 
-type WorkspacePreviewWithSidebarProps = WorkspacePreviewProps;
-
-function WorkspacePreviewWithSidebar({ streamStatus, isRunning, runError = null }: WorkspacePreviewWithSidebarProps) {
-  return (
-    <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)_320px]">
-      <WorkflowSidebar
-        workflows={workflows}
-        isLoadingWorkflows={false}
-        selectedKey={primaryWorkflow.key}
-        onSelect={(key) => console.log('select', key)}
-      />
-
-      <RunConsole
-        workflows={workflows}
-        selectedWorkflowKey={primaryWorkflow.key}
-        onRun={async (payload: { workflowKey: string; message: string }) => {
-          console.log('run', payload);
-        }}
-        isRunning={isRunning}
-        isLoadingWorkflows={false}
-        runError={runError}
-        streamStatus={streamStatus}
-        isMockMode={false}
-        onSimulate={undefined}
-        streamEvents={streamEvents}
-        lastRunSummary={{
-          workflowKey: primaryWorkflow.key,
-          runId: runDetail.workflow_run_id,
-          message: 'Summarize customer issues',
-        }}
-        lastUpdated={new Date().toISOString()}
-        selectedRunId={runDetail.workflow_run_id}
-        runDetail={runDetail}
-        runEvents={runEvents}
-        isLoadingRun={false}
-        isLoadingEvents={false}
-        onCancelRun={() => console.log('cancel run')}
-        cancelPending={false}
-        onDeleteRun={(runId) => console.log('delete', runId)}
-        deletingRunId={null}
-      />
-
-      <RunHistoryPanel
-        runs={runs.length ? runs : [primaryRun]}
-        workflows={workflows}
-        statusFilter="all"
-        onStatusChange={(status) => console.log('filter', status)}
-        onRefresh={() => console.log('refresh')}
-        onLoadMore={() => console.log('load more')}
-        hasMore={false}
-        isLoading={false}
-        isFetchingMore={false}
-        onSelectRun={(runId) => console.log('select', runId)}
-        selectedRunId={runDetail.workflow_run_id}
-        onDeleteRun={(runId) => console.log('delete', runId)}
-        deletingRunId={null}
-      />
+      <div className="min-h-0 overflow-hidden rounded-lg border border-white/5">
+        <WorkflowRunFeed
+          workflows={workflows}
+          streamEvents={streamEvents}
+          streamStatus={streamStatus}
+          runError={runError}
+          isMockMode={false}
+          onSimulate={undefined}
+          lastRunSummary={{
+            workflowKey: primaryWorkflow.key,
+            runId: runDetail.workflow_run_id,
+            message: 'Summarize customer issues',
+          }}
+          lastUpdated={new Date().toISOString()}
+          selectedRunId={runDetail.workflow_run_id}
+          runDetail={runDetail}
+          runEvents={runEvents}
+          isLoadingRun={false}
+          isLoadingEvents={false}
+          onCancelRun={() => console.log('cancel run')}
+          cancelPending={false}
+          onDeleteRun={(runId) => console.log('delete', runId)}
+          deletingRunId={null}
+          historyRuns={runs.length ? runs : [primaryRun]}
+          historyStatusFilter="all"
+          onHistoryStatusChange={(status) => console.log('filter', status)}
+          onHistoryRefresh={() => console.log('refresh')}
+          onHistoryLoadMore={() => console.log('load more')}
+          historyHasMore={false}
+          isHistoryLoading={false}
+          isHistoryFetchingMore={false}
+          onSelectRun={(runId) => console.log('select', runId)}
+        />
+      </div>
     </div>
   );
 }
@@ -279,22 +236,4 @@ export const ErrorState: Story = {
     isRunning: false,
     runError: 'Workflow run ended with an error.',
   },
-};
-
-type SidebarStory = StoryObj<typeof WorkspacePreviewWithSidebar>;
-
-export const WithSidebarStreaming: SidebarStory = {
-  args: {
-    streamStatus: 'streaming',
-    isRunning: true,
-  },
-  render: (args) => <WorkspacePreviewWithSidebar {...args} />,
-};
-
-export const WithSidebarCompleted: SidebarStory = {
-  args: {
-    streamStatus: 'completed',
-    isRunning: false,
-  },
-  render: (args) => <WorkspacePreviewWithSidebar {...args} />,
 };
