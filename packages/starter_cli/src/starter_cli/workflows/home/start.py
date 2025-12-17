@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import atexit
 import datetime
 import os
 import signal
@@ -30,6 +31,7 @@ class LaunchResult:
     label: str
     command: Sequence[str]
     process: subprocess.Popen[Any] | None
+    isolated: bool = False
     pgid: int | None = None
     error: str | None = None
     log_tail: deque[str] = field(default_factory=lambda: deque(maxlen=50))
@@ -67,6 +69,7 @@ class StartRunner:
 
     def run(self) -> int:
         self._install_signal_handlers()
+        self._install_exit_handler()
 
         try:
             # Guard: prevent two stacks running concurrently unless forced.
@@ -224,6 +227,7 @@ class StartRunner:
                 log_path, stdout_target = self._open_log(label)
             else:
                 stdout_target = subprocess.PIPE
+            start_opts = self._subprocess_start_opts()
             proc = subprocess.Popen(
                 command,
                 cwd=cwd or PROJECT_ROOT,
@@ -231,10 +235,10 @@ class StartRunner:
                 stdout=stdout_target,
                 stderr=subprocess.STDOUT,
                 text=not self.detach,
-                **self._subprocess_start_opts(),
+                **start_opts,
             )
             pgid = None
-            if hasattr(os, "getpgid"):
+            if start_opts and hasattr(os, "getpgid"):
                 try:
                     pgid = os.getpgid(proc.pid)
                 except OSError:
@@ -244,6 +248,7 @@ class StartRunner:
                 label=label,
                 command=command,
                 process=proc,
+                isolated=bool(start_opts),
                 pgid=pgid,
                 log_path=log_path,
             )
@@ -370,10 +375,23 @@ class StartRunner:
         self._stop_event.set()
         for launch in self._launches:
             self._terminate_launch(launch, force=False)
-        # Give them a beat to exit
-        time.sleep(0.2)
+
+        deadline = time.time() + 2.0
+        while time.time() < deadline:
+            still_running = False
+            for launch in self._launches:
+                proc = launch.process
+                if proc and proc.poll() is None:
+                    still_running = True
+                    break
+            if not still_running:
+                break
+            time.sleep(0.1)
+
         for launch in self._launches:
-            self._terminate_launch(launch, force=True)
+            proc = launch.process
+            if proc and proc.poll() is None:
+                self._terminate_launch(launch, force=True)
         self._close_logs()
 
     def _terminate_launch(self, launch: LaunchResult, *, force: bool) -> None:
@@ -383,9 +401,12 @@ class StartRunner:
         before cleanup), then falls back to the live Popen handle.
         """
 
-        sig = signal.SIGKILL if force else signal.SIGTERM
+        if launch.isolated:
+            sig = signal.SIGKILL if force else signal.SIGTERM
+        else:
+            sig = signal.SIGKILL if force else signal.SIGINT
 
-        if launch.pgid and os.name != "nt":
+        if launch.isolated and launch.pgid and os.name != "nt":
             try:
                 os.killpg(launch.pgid, sig)
                 return
@@ -405,9 +426,12 @@ class StartRunner:
         # same pgid. When pgid is missing (Windows or earlier failure), send the
         # signal to the leader pid as a last resort.
         if proc.poll() is None:
-            self._terminate_process(proc, force=force)
+            if launch.isolated:
+                self._terminate_process(proc, force=force)
+            else:
+                self._terminate_process_tree(proc.pid, sig)
             return
-        if os.name != "nt":
+        if launch.isolated and os.name != "nt":
             try:
                 pgid = os.getpgid(proc.pid)
             except OSError:
@@ -421,9 +445,20 @@ class StartRunner:
         def _handler(signum, frame):
             console.warn(f"Received signal {signum}; cleaning up started processes...")
             self._stop_event.set()
+            raise KeyboardInterrupt
 
         signal.signal(signal.SIGINT, _handler)
         signal.signal(signal.SIGTERM, _handler)
+
+    def _install_exit_handler(self) -> None:
+        if self.detach:
+            return
+
+        def _cleanup() -> None:
+            if self._launches and not self._stop_event.is_set():
+                self._cleanup_processes()
+
+        atexit.register(_cleanup)
 
     # ------------------------------------------------------------------
     # Detached + port guard helpers
@@ -579,11 +614,17 @@ class StartRunner:
 
     def _subprocess_start_opts(self) -> dict[str, Any]:
         """
-        Ensure each child becomes its own process group so we can tear down all
-        descendants (pnpm -> node, hatch -> uvicorn reloaders) without leaving
-        orphaned listeners on ports 3000/8000.
+        In detached mode, ensure each child becomes its own process group so the
+        CLI can stop it later via recorded PIDs without relying on the terminal
+        foreground process group.
+
+        In foreground mode, keep children attached to the terminal process group
+        so Ctrl+C reliably reaches the dev servers even if intermediate wrappers
+        (just/hatch) terminate quickly.
         """
 
+        if not self.detach:
+            return {}
         if os.name == "nt":
             return {"creationflags": getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)}
         return {"start_new_session": True}
@@ -611,6 +652,45 @@ class StartRunner:
             except Exception:
                 pass
 
+    def _terminate_process_tree(self, root_pid: int, sig: int) -> None:
+        """
+        Best-effort process-tree teardown (POSIX + Windows).
+
+        Foreground mode intentionally avoids creating new sessions/process groups
+        so Ctrl+C can reach children. When we need to stop early (health failure,
+        error, etc.), we fall back to killing the spawned process tree by PID.
+        """
+
+        if root_pid <= 0:
+            return
+
+        if os.name == "nt":
+            # /T terminates the child process tree; /F forces.
+            cmd = ["taskkill", "/PID", str(root_pid), "/T"]
+            if sig == getattr(signal, "SIGKILL", None):
+                cmd.append("/F")
+            try:
+                subprocess.run(
+                    cmd,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                )
+            except Exception:
+                return
+            return
+
+        pids = _collect_descendant_pids(root_pid)
+        for pid in pids:
+            try:
+                os.kill(pid, sig)
+            except ProcessLookupError:
+                continue
+            except PermissionError:
+                continue
+            except Exception:
+                continue
+
 
 def _parse_host_port(url: str, *, default_port: int) -> tuple[str, int]:
     from urllib.parse import urlparse
@@ -622,7 +702,57 @@ def _parse_host_port(url: str, *, default_port: int) -> tuple[str, int]:
 
 
 def _is_local_host(host: str) -> bool:
-    return host in {"localhost", "127.0.0.1", "::1"} or host.endswith(".local")
+    if host in {"localhost", "::1", "0.0.0.0"}:
+        return True
+    # IPv4 loopback range (RFC 1122) is 127.0.0.0/8, not just 127.0.0.1.
+    if host.startswith("127."):
+        return True
+    return host.endswith(".local")
+
+
+def _collect_descendant_pids(root_pid: int) -> list[int]:
+    """
+    Return a post-order list of PIDs: children first, then root.
+
+    Uses `ps` to avoid adding runtime dependencies (psutil) to the CLI.
+    """
+
+    try:
+        result = subprocess.run(
+            ["ps", "-Ao", "pid=,ppid="],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        )
+    except Exception:
+        return [root_pid]
+
+    children_by_ppid: dict[int, list[int]] = {}
+    for line in result.stdout.splitlines():
+        parts = line.strip().split(None, 1)
+        if len(parts) != 2:
+            continue
+        try:
+            pid = int(parts[0])
+            ppid = int(parts[1])
+        except ValueError:
+            continue
+        children_by_ppid.setdefault(ppid, []).append(pid)
+
+    order: list[int] = []
+    stack: list[int] = [root_pid]
+    seen: set[int] = set()
+    while stack:
+        pid = stack.pop()
+        if pid in seen:
+            continue
+        seen.add(pid)
+        order.append(pid)
+        stack.extend(children_by_ppid.get(pid, ()))
+
+    # Reverse pre-order => children before parents.
+    return list(reversed(order))
 
 
 __all__ = ["LaunchResult", "StartRunner"]
