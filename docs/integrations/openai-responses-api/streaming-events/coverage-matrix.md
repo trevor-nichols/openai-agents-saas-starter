@@ -12,6 +12,10 @@ Legend for **Used?** (suggested): `yes` · `partial` · `no` · `tbd`
 - **Status ✅** → Implemented and exercised by at least one contract fixture (`docs/contracts/public-sse-streaming/examples/*.ndjson`).
 - **Status 🟨** → Implemented but not currently exercised by a contract fixture (or not yet validated end-to-end).
 
+**Related frontend tracker (public contract capture)**
+- This matrix is keyed by **raw Responses API event types** (provider protocol).
+- For a web-app-focused view keyed by **public SSE contract `kind`** (what chat/workflows capture + surface), see: `docs/trackers/evaluations/web-app/public-sse-streaming/00-public-sse-v1-capture-matrix.md`.
+
 **API-service implementation notes (used when filling the matrix)**
 - Inbound: OpenAI Agents SDK stream events are normalized into `AgentStreamEvent` (`apps/api-service/src/app/domain/ai/models.py`) by `OpenAIStreamingHandle` (`apps/api-service/src/app/infrastructure/providers/openai/streaming.py`).
 - Outbound: the API service emits a stable public SSE contract `PublicSseEvent` (`apps/api-service/src/app/api/v1/shared/streaming.py`, `schema=public_sse_v1`) projected by `PublicStreamProjector` (`apps/api-service/src/app/api/v1/shared/public_stream_projector/projector.py`).
