@@ -24,6 +24,10 @@ from app.infrastructure.persistence.conversations.ledger_query_store import (
     ConversationLedgerQueryStore,
 )
 from app.services.containers import ContainerNotFoundError, ContainerService
+from app.services.containers.files_gateway import (
+    ContainerFilesGateway,
+    OpenAIContainerFilesGateway,
+)
 from app.services.vector_stores import VectorStoreNotFoundError
 from app.utils.filenames import sanitize_download_filename
 
@@ -53,6 +57,10 @@ def _container_service() -> ContainerService:
     if container.container_service is None:
         raise RuntimeError("ContainerService is not configured")
     return container.container_service
+
+
+def _container_files_gateway() -> ContainerFilesGateway:
+    return OpenAIContainerFilesGateway(get_settings)
 
 
 def _ledger_query_store() -> ConversationLedgerQueryStore:
@@ -116,9 +124,9 @@ async def download_openai_container_file(
     tenant_context: TenantContext = Depends(
         require_tenant_role(TenantRole.VIEWER, TenantRole.ADMIN, TenantRole.OWNER)
     ),
-    client: AsyncOpenAI = Depends(_client),
     containers: ContainerService = Depends(_container_service),
     ledger: ConversationLedgerQueryStore = Depends(_ledger_query_store),
+    container_files_gateway: ContainerFilesGateway = Depends(_container_files_gateway),
 ):
     # Access control for downloads:
     # - Explicit containers: require a matching local Container row
@@ -168,7 +176,8 @@ async def download_openai_container_file(
             ) from None
 
     try:
-        resp = await cast(Any, client).containers.files.content(
+        content = await container_files_gateway.download_file_content(
+            tenant_id=tenant_uuid,
             container_id=container_id,
             file_id=file_id,
         )
@@ -184,8 +193,8 @@ async def download_openai_container_file(
         ) from exc
 
     preferred_filename = sanitize_download_filename(filename)
-    filename = preferred_filename or getattr(resp, "filename", None) or f"{file_id}.bin"
-    content_bytes = await resp.aread()
+    filename = preferred_filename or content.filename or f"{file_id}.bin"
+    content_bytes = content.data
     return Response(
         content=content_bytes,
         media_type="application/octet-stream",

@@ -9,7 +9,6 @@ from uuid import UUID, uuid4
 
 import pytest
 from fastapi import HTTPException
-from openai import AsyncOpenAI
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
 from app.api.dependencies.tenant import TenantContext, TenantRole
@@ -21,33 +20,22 @@ from app.infrastructure.persistence.conversations.ledger_models import (
 from app.infrastructure.persistence.conversations.ledger_query_store import ConversationLedgerQueryStore
 from app.infrastructure.persistence.conversations.models import AgentConversation, TenantAccount
 from app.infrastructure.persistence.models.base import Base
+from app.services.containers.files_gateway import (
+    ContainerFileContent,
+    ContainerFilesGateway,
+)
 from app.services.containers.service import ContainerService
 from app.services.containers.service import ContainerNotFoundError
 
 
-class _DummyContainerFilesClient:
+class _DummyContainerFilesGateway:
     def __init__(self, payload: bytes) -> None:
         self._payload = payload
 
-    async def content(self, *, container_id: str, file_id: str):  # pragma: no cover - shape only
-        return _DummyContentResponse(self._payload)
-
-
-class _DummyContentResponse:
-    def __init__(self, payload: bytes) -> None:
-        self._payload = payload
-
-    async def aread(self) -> bytes:
-        return self._payload
-
-
-class _DummyOpenAIClient:
-    def __init__(self, payload: bytes) -> None:
-        self.containers = type(
-            "_Containers",
-            (),
-            {"files": _DummyContainerFilesClient(payload)},
-        )()
+    async def download_file_content(
+        self, *, tenant_id, container_id, file_id
+    ) -> ContainerFileContent:
+        return ContainerFileContent(data=self._payload, filename=None)
 
 
 class _AlwaysMissingContainerService:
@@ -187,7 +175,7 @@ async def test_download_container_file_allows_ledger_citation_when_container_mis
             role=TenantRole.VIEWER,
             user={"user_id": "u"},
         ),
-        client=cast(AsyncOpenAI, _DummyOpenAIClient(b"hello")),
+        container_files_gateway=cast(ContainerFilesGateway, _DummyContainerFilesGateway(b"hello")),
         containers=cast(ContainerService, _AlwaysMissingContainerService()),
         ledger=ConversationLedgerQueryStore(session_factory),
     )
@@ -225,7 +213,9 @@ async def test_download_container_file_denies_without_conversation_id_when_conta
                 role=TenantRole.VIEWER,
                 user={"user_id": "u"},
             ),
-            client=cast(AsyncOpenAI, _DummyOpenAIClient(b"hello")),
+            container_files_gateway=cast(
+                ContainerFilesGateway, _DummyContainerFilesGateway(b"hello")
+            ),
             containers=cast(ContainerService, _AlwaysMissingContainerService()),
             ledger=ConversationLedgerQueryStore(session_factory),
         )

@@ -66,13 +66,28 @@ class OpenAIContainerFilesGateway:
         file_id: str,
     ) -> ContainerFileContent:
         client = self._client(tenant_id)
-        resp = await cast(Any, client).containers.files.content(
+        resp = await _fetch_container_file_content(
+            client,
             container_id=container_id,
             file_id=file_id,
         )
         filename = getattr(resp, "filename", None)
         data = await resp.aread()
         return ContainerFileContent(data=data, filename=filename)
+
+
+async def _fetch_container_file_content(
+    client: AsyncOpenAI, *, container_id: str, file_id: str
+) -> Any:
+    """Fetch container file content with compatibility across OpenAI SDK versions."""
+
+    content_resource = cast(Any, client).containers.files.content
+    retrieve = getattr(content_resource, "retrieve", None)
+    if callable(retrieve):
+        return await cast(Any, retrieve)(file_id, container_id=container_id)
+    if callable(content_resource):
+        return await cast(Any, content_resource)(container_id=container_id, file_id=file_id)
+    raise RuntimeError("OpenAI client does not support container file downloads")
 
 
 __all__ = [

@@ -485,6 +485,8 @@ export const Response = memo(function Response({
       typeof baseContent === 'string' && shouldParseIncompleteMarkdown
         ? parseIncompleteMarkdown(baseContent)
         : baseContent;
+    const resolvedOrigin =
+      defaultOrigin ?? (typeof window !== 'undefined' ? window.location.origin : '');
 
     return (
       <div
@@ -498,7 +500,7 @@ export const Response = memo(function Response({
           allowedImagePrefixes={allowedImagePrefixes ?? ['*']}
           allowedLinkPrefixes={allowedLinkPrefixes ?? ['*']}
           components={components}
-          defaultOrigin={defaultOrigin}
+          defaultOrigin={resolvedOrigin}
           rehypePlugins={[rehypeKatex]}
           remarkPlugins={[remarkGfm, remarkMath]}
           {...options}
