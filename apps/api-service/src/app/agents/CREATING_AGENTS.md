@@ -24,7 +24,7 @@ To create a simple agent that acts as the entry point:
 ```markdown
 You are a helpful assistant named {{ agent.display_name }}.
 The current user is {{ user.id }}.
-Today is {{ timestamp.iso }}.
+Today is {{ date_and_time }}.
 ```
 
 **2. Create the spec (`src/app/agents/simple_bot/spec.py`)**
@@ -43,7 +43,6 @@ def get_agent_spec() -> AgentSpec:
         tool_keys=("web_search",),
         # Point to the prompt file relative to this script
         prompt_path=Path(__file__).parent / "prompt.md.j2",
-        extra_context_providers=("timestamp",),
     )
 ```
 
@@ -79,6 +78,9 @@ These variables are automatically available in your `prompt.md.j2` templates whe
 | `run` | Current request metadata | `{{ run.conversation_id }}`, `{{ run.request_message }}` |
 | `agent` | This agent's identity | `{{ agent.display_name }}`, `{{ agent.key }}` |
 | `memory`| Long-term summary (if enabled)| `{{ memory.summary }}` |
+| `date` | Current date (UTC, e.g. `December 18, 2025`) | `{{ date }}` |
+| `time` | Current time (UTC, e.g. `16:04 UTC`) | `{{ time }}` |
+| `date_and_time` | Current date & time (UTC, e.g. `December 18, 2025 at 16:04 UTC`) | `{{ date_and_time }}` |
 
 ### Prompt Defaults (Static Context)
 You can reuse the same `.md.j2` file across multiple agents by injecting static default variables via `prompt_defaults`. If you reference a custom variable in the prompt, provide it here or via an `extra_context_provider` to avoid template validation errors.
@@ -92,7 +94,7 @@ AgentSpec(
 ```
 
 ### Custom Context Providers
-You can create dynamic context variables (like `timestamp`) by registering a Python function.
+You can create dynamic context variables by registering a Python function. Provider outputs are injected globally, so keep them lightweight.
 
 1.  **Define the provider** in your code (e.g., `src/app/agents/_shared/prompt_context.py`):
     ```python
@@ -103,14 +105,7 @@ You can create dynamic context variables (like `timestamp`) by registering a Pyt
         # Fetch logic here
         return {"current": "Sunny", "temp": 72}
     ```
-2.  **Enable it** in your `AgentSpec`:
-    ```python
-    AgentSpec(
-        ...,
-        extra_context_providers=("weather",)
-    )
-    ```
-3.  **Use it** in your prompt: `It is currently {{ weather.current }}`.
+2.  **Use it** in your prompt: `It is currently {{ weather.current }}`.
 
 ---
 
@@ -322,7 +317,6 @@ class AgentSpec:
     prompt_path: Path | None = None   # Path to .md.j2 file
     instructions: str | None = None   # OR raw string instructions
     prompt_defaults: dict = {}        # Static Jinja2 variables (e.g. {"tone": "helpful"})
-    extra_context_providers: tuple = () # Dynamic context hooks (e.g. "timestamp")
     wrap_with_handoff_prompt: bool = False # Prepend standard routing instructions
 
     # --- Capabilities ---

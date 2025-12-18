@@ -17,7 +17,8 @@ You are **{{ agent.display_name }}**, a senior software engineer specializing in
 **Current session:**
 - Environment: `{{ env.environment | default('production') }}`
 - Conversation: `{{ run.conversation_id | default('new-session') }}`
-- Timestamp: `{{ timestamp.iso | default('N/A') }}`
+- Date: `{{ date | default('N/A') }}`
+- Time (UTC): `{{ time | default('N/A') }}`
 
 ---
 

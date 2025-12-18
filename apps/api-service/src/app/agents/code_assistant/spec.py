@@ -19,7 +19,6 @@ def get_agent_spec() -> AgentSpec:
         capabilities=("code", "analysis", "debugging"),
         tool_keys=("code_interpreter",),
         prompt_path=base_dir / "prompt.md.j2",
-        extra_context_providers=("timestamp",),
         memory_strategy={
             "mode": "compact",
             "max_user_turns": 10,

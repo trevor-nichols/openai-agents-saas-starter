@@ -42,7 +42,10 @@ _PROVIDER_REGISTRY: dict[str, ContextProvider] = {}
 
 
 def register_context_provider(name: str) -> Callable[[ContextProvider], ContextProvider]:
-    """Decorator to register a named context provider."""
+    """Decorator to register a named context provider.
+
+    Provider outputs are merged into the prompt context for all agents.
+    """
 
     def decorator(func: ContextProvider) -> ContextProvider:
         _PROVIDER_REGISTRY[name] = func
@@ -62,6 +65,20 @@ def _run_provider(name: str, ctx: PromptRuntimeContext, spec) -> dict[str, Any]:
     return provider(ctx, spec)
 
 
+def _merge_provider_context(
+    ctx: dict[str, Any],
+    provider_name: str,
+    provided: dict[str, Any],
+) -> None:
+    for key, value in provided.items():
+        if key in ctx:
+            raise ValueError(
+                f"Context provider '{provider_name}' attempted to overwrite '{key}'. "
+                "Choose a distinct key or remove the default value."
+            )
+        ctx[key] = value
+
+
 def build_prompt_context(
     *,
     spec,
@@ -73,6 +90,7 @@ def build_prompt_context(
     - spec: AgentSpec
     - runtime_ctx: PromptRuntimeContext (may be None at boot)
     - base: optional seed dict merged first
+    - registered providers: merged into the context for every agent
     """
 
     ctx = dict(base or {})
@@ -110,13 +128,12 @@ def build_prompt_context(
                 for inner_k, inner_v in v.items():
                     ctx[k].setdefault(inner_k, inner_v)
 
-    # Run extra providers declared on the spec
-    for provider_name in getattr(spec, "extra_context_providers", ()):
-        if runtime_ctx is None:
-            continue  # can't execute without runtime data
-        provided = _run_provider(provider_name, runtime_ctx, spec)
-        if provided:
-            ctx[provider_name] = provided
+    # Run all registered providers (global prompt variables).
+    if runtime_ctx is not None:
+        for provider_name in _PROVIDER_REGISTRY:
+            provided = _run_provider(provider_name, runtime_ctx, spec)
+            if provided:
+                _merge_provider_context(ctx, provider_name, provided)
 
     return ctx
 
@@ -126,11 +143,18 @@ def build_prompt_context(
 # ---------------------------------------------------------------------------
 
 
-@register_context_provider("timestamp")
-def _timestamp_provider(ctx: PromptRuntimeContext, spec) -> dict[str, Any]:  # pragma: no cover
+@register_context_provider("datetime")
+def _datetime_provider(ctx: PromptRuntimeContext, spec) -> dict[str, Any]:  # pragma: no cover
     import datetime
 
-    return {"iso": datetime.datetime.utcnow().isoformat() + "Z"}
+    now = datetime.datetime.now(datetime.UTC)
+    date = f"{now.strftime('%B')} {now.day}, {now.year}"
+    time = now.strftime("%H:%M UTC")
+    return {
+        "date": date,
+        "time": time,
+        "date_and_time": f"{date} at {time}",
+    }
 
 
 __all__ = [
