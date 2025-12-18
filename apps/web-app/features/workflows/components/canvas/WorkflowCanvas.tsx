@@ -10,6 +10,7 @@ import { WorkflowPreview } from '../preview/WorkflowPreview';
 interface WorkflowCanvasProps {
   descriptor: WorkflowDescriptor | null;
   activeStep: {
+    stepName: string | null;
     stageName: string | null;
     parallelGroup: string | null;
     branchIndex: number | null;

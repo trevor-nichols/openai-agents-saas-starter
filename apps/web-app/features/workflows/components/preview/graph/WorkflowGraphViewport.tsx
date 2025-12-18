@@ -1,23 +1,25 @@
 'use client';
 
-import { useCallback, useRef, useState, type WheelEvent } from 'react';
-import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
-import { motion, useMotionValue } from 'framer-motion';
+import { useEffect, useMemo } from 'react';
+import {
+  Background,
+  BackgroundVariant,
+  Controls,
+  MarkerType,
+  ReactFlow,
+  ReactFlowProvider,
+  useReactFlow,
+  type Edge,
+  type NodeTypes,
+} from '@xyflow/react';
 
-import { Button } from '@/components/ui/button';
-import { InlineTag } from '@/components/ui/foundation';
 import { cn } from '@/lib/utils';
 import type { WorkflowDescriptor } from '@/lib/workflows/types';
 
-import { WorkflowGraph } from './WorkflowGraph';
-
-const MIN_SCALE = 0.6;
-const MAX_SCALE = 2.2;
-const ZOOM_STEP = 0.12;
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
+import {
+  WorkflowAgentNode,
+  type WorkflowAgentFlowNode,
+} from './nodes/WorkflowAgentNode';
 
 interface WorkflowGraphViewportProps {
   descriptor: WorkflowDescriptor | null;
@@ -30,80 +32,190 @@ interface WorkflowGraphViewportProps {
   className?: string;
 }
 
-export function WorkflowGraphViewport({ descriptor, activeStep, className }: WorkflowGraphViewportProps) {
-  const scale = useMotionValue(1);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const viewportRef = useRef<HTMLDivElement | null>(null);
-  const [zoomPct, setZoomPct] = useState(100);
-  const zoomLabel = `${zoomPct}%`;
+type WorkflowStepKey = `${number}:${number}`;
 
-  const setScale = useCallback(
-    (next: number) => {
-      const clamped = clamp(next, MIN_SCALE, MAX_SCALE);
-      scale.set(clamped);
-      setZoomPct(Math.round(clamped * 100));
-    },
-    [scale],
-  );
+const NODE_WIDTH = 360;
+const NODE_COL_PADDING = 80;
+const COL_GAP_X = NODE_WIDTH + NODE_COL_PADDING;
+const NODE_HEIGHT_ESTIMATE = 210;
+const PARALLEL_ROW_PADDING = 72;
+const PARALLEL_ROW_GAP_Y = NODE_HEIGHT_ESTIMATE + PARALLEL_ROW_PADDING;
 
-  const zoomIn = useCallback(() => setScale(scale.get() + ZOOM_STEP), [scale, setScale]);
-  const zoomOut = useCallback(() => setScale(scale.get() - ZOOM_STEP), [scale, setScale]);
-  const reset = useCallback(() => {
-    scale.set(1);
-    x.set(0);
-    y.set(0);
-    setZoomPct(100);
-  }, [scale, x, y]);
+function stepKey(stageIndex: number, stepIndex: number): WorkflowStepKey {
+  return `${stageIndex}:${stepIndex}`;
+}
 
-  const handleWheel = useCallback(
-    (event: WheelEvent) => {
-      const shouldZoom = event.ctrlKey || event.metaKey;
-      if (!shouldZoom) return;
-      event.preventDefault();
-      const direction = event.deltaY > 0 ? -1 : 1;
-      const next = scale.get() + direction * ZOOM_STEP;
-      setScale(next);
-    },
-    [scale, setScale],
-  );
+function computeActiveStepKey(descriptor: WorkflowDescriptor | null, activeStep: WorkflowGraphViewportProps['activeStep']) {
+  if (!descriptor?.stages?.length || !activeStep) return null;
+
+  const match = descriptor.stages.flatMap((stage, stageIndex) =>
+    stage.steps.map((step, stepIndex) => ({
+      stage,
+      stageIndex,
+      step,
+      stepIndex,
+      key: stepKey(stageIndex, stepIndex),
+    })),
+  ).find((candidate) => {
+    const branchMatches = activeStep.branchIndex == null || activeStep.branchIndex === candidate.stepIndex;
+    if (activeStep.stepName) {
+      return candidate.step.name === activeStep.stepName && branchMatches;
+    }
+    if (activeStep.stageName) {
+      return candidate.stage.name === activeStep.stageName && branchMatches;
+    }
+    if (activeStep.parallelGroup) {
+      return candidate.stage.name === activeStep.parallelGroup && branchMatches;
+    }
+    return false;
+  });
+
+  return match?.key ?? null;
+}
+
+function buildFlow(descriptor: WorkflowDescriptor | null, activeKey: WorkflowStepKey | null) {
+  if (!descriptor?.stages?.length) return { nodes: [] as WorkflowAgentFlowNode[], edges: [] as Edge[] };
+
+  const stageSpans = descriptor.stages.map((stage) => (stage.mode === 'sequential' ? stage.steps.length : 1));
+  const stageStartCols: number[] = [];
+  let cursor = 0;
+  for (const span of stageSpans) {
+    stageStartCols.push(cursor);
+    cursor += span;
+  }
+
+  const nodes: WorkflowAgentFlowNode[] = [];
+  const edges: Edge[] = [];
+
+  descriptor.stages.forEach((stage, stageIndex) => {
+    const startCol = stageStartCols[stageIndex] ?? 0;
+
+    stage.steps.forEach((step, stepIndex) => {
+      const col = stage.mode === 'sequential' ? startCol + stepIndex : startCol;
+      const y =
+        stage.mode === 'parallel'
+          ? (stepIndex - (stage.steps.length - 1) / 2) * PARALLEL_ROW_GAP_Y
+          : 0;
+
+      const id = stepKey(stageIndex, stepIndex);
+      const status = activeKey === id ? 'loading' : 'initial';
+
+      nodes.push({
+        id,
+        type: 'workflowAgent',
+        position: { x: col * COL_GAP_X, y },
+        data: {
+          title: step.name,
+          agentKey: step.agent_key,
+          stageName: stage.name,
+          stageMode: stage.mode,
+          status,
+        },
+      });
+
+      if (stage.mode === 'sequential' && stepIndex > 0) {
+        const source = stepKey(stageIndex, stepIndex - 1);
+        const target = id;
+        edges.push({
+          id: `e:${source}->${target}`,
+          source,
+          target,
+          animated: activeKey === target,
+        });
+      }
+    });
+
+    const nextStage = descriptor.stages[stageIndex + 1];
+    if (!nextStage) return;
+
+    const fromKeys =
+      stage.mode === 'parallel'
+        ? stage.steps.map((_, idx) => stepKey(stageIndex, idx))
+        : [stepKey(stageIndex, stage.steps.length - 1)];
+
+    const toKeys =
+      nextStage.mode === 'parallel'
+        ? nextStage.steps.map((_, idx) => stepKey(stageIndex + 1, idx))
+        : [stepKey(stageIndex + 1, 0)];
+
+    fromKeys.forEach((source) => {
+      toKeys.forEach((target) => {
+        edges.push({
+          id: `e:${source}->${target}`,
+          source,
+          target,
+          animated: activeKey === target,
+        });
+      });
+    });
+  });
+
+  return { nodes, edges };
+}
+
+const nodeTypes: NodeTypes = {
+  workflowAgent: WorkflowAgentNode,
+};
+
+function WorkflowGraphViewportInner({ descriptor, activeStep, className }: WorkflowGraphViewportProps) {
+  const activeKey = useMemo(() => computeActiveStepKey(descriptor, activeStep), [descriptor, activeStep]);
+  const flow = useMemo(() => buildFlow(descriptor, activeKey), [descriptor, activeKey]);
+  const { fitView } = useReactFlow();
+
+  useEffect(() => {
+    if (!flow.nodes.length) return;
+    const handle = requestAnimationFrame(() => {
+      fitView({ padding: 0.2, duration: 200 });
+    });
+    return () => cancelAnimationFrame(handle);
+  }, [descriptor?.key, fitView, flow.nodes.length]);
+
+  if (!descriptor) {
+    return (
+      <div className={cn('flex h-full w-full items-center justify-center p-6', className)}>
+        <div className="rounded-lg border border-white/5 bg-white/5 p-4">
+          <p className="text-sm text-foreground/70">Select a workflow to preview its structure.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div
-      ref={viewportRef}
-      onDoubleClick={reset}
-      onWheel={handleWheel}
-      className={cn('relative h-full w-full overflow-hidden', className)}
-    >
-      <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
-        <InlineTag tone="default" className="bg-background/60">
-          {zoomLabel}
-        </InlineTag>
-        <Button size="icon" variant="outline" onClick={zoomOut} title="Zoom out" type="button">
-          <ZoomOut className="h-4 w-4" />
-        </Button>
-        <Button size="icon" variant="outline" onClick={zoomIn} title="Zoom in" type="button">
-          <ZoomIn className="h-4 w-4" />
-        </Button>
-        <Button size="icon" variant="outline" onClick={reset} title="Reset view" type="button">
-          <RotateCcw className="h-4 w-4" />
-        </Button>
-      </div>
-
-      <div className="absolute inset-0 flex items-center justify-center p-6">
-        <motion.div
-          style={{ x, y, scale }}
-          drag
-          dragMomentum={false}
-          className="cursor-grab active:cursor-grabbing"
-        >
-          <WorkflowGraph
-            descriptor={descriptor}
-            activeStep={activeStep}
-            className="w-full max-w-5xl border-none bg-transparent shadow-none"
-          />
-        </motion.div>
-      </div>
+    <div className={cn('h-full w-full', className)}>
+      <ReactFlow
+        nodes={flow.nodes}
+        edges={flow.edges}
+        nodeTypes={nodeTypes}
+        fitView
+        nodesDraggable={false}
+        nodesConnectable={false}
+        elementsSelectable
+        className="bg-transparent"
+        defaultEdgeOptions={{
+          type: 'smoothstep',
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: {
+            strokeWidth: 2,
+          },
+        }}
+      >
+        <Controls className="bg-background/60" />
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={24}
+          size={1}
+          color="hsl(var(--border))"
+          className="opacity-60"
+        />
+      </ReactFlow>
     </div>
+  );
+}
+
+export function WorkflowGraphViewport(props: WorkflowGraphViewportProps) {
+  return (
+    <ReactFlowProvider>
+      <WorkflowGraphViewportInner {...props} />
+    </ReactFlowProvider>
   );
 }

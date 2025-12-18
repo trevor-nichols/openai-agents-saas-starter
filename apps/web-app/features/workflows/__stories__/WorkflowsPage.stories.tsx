@@ -135,13 +135,14 @@ type WorkspacePreviewProps = {
   runError?: string | null;
 };
 
-function WorkspacePreview({ streamStatus, isRunning, runError = null }: WorkspacePreviewProps) {
-  const descriptor = mockWorkflowDescriptor(primaryWorkflow.key);
-  const activeStep = {
-    stageName: workflowContext.stage_name,
-    parallelGroup: workflowContext.parallel_group,
-    branchIndex: workflowContext.branch_index,
-  };
+  function WorkspacePreview({ streamStatus, isRunning, runError = null }: WorkspacePreviewProps) {
+    const descriptor = mockWorkflowDescriptor(primaryWorkflow.key);
+    const activeStep = {
+      stepName: workflowContext.step_name ?? null,
+      stageName: workflowContext.stage_name,
+      parallelGroup: workflowContext.parallel_group,
+      branchIndex: workflowContext.branch_index,
+    };
 
   return (
     <div className="grid min-h-[700px] gap-4 lg:grid-cols-[320px_minmax(0,1fr)_380px]">

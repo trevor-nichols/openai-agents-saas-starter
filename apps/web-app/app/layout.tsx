@@ -13,6 +13,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 
 import { cn } from '@/lib/utils';
 
+import '@xyflow/react/dist/style.css';
 import './globals.css'; // Import global styles
 import { Providers } from './providers';
 
