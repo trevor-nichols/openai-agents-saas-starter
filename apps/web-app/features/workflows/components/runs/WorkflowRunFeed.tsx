@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Terminal, History, Activity } from 'lucide-react';
+import { Terminal, History, Activity, FileText } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { InlineTag } from '@/components/ui/foundation';
@@ -26,6 +26,7 @@ import { WorkflowLiveStream } from './streaming/WorkflowLiveStream';
 import { WorkflowRunsList } from './history/WorkflowRunsList';
 import { WorkflowRunConversation } from './transcript/WorkflowRunConversation';
 import { WorkflowRunDeleteButton } from './actions/WorkflowRunDeleteButton';
+import { WorkflowFinalOutput } from './final/WorkflowFinalOutput';
 
 interface WorkflowRunFeedProps {
   // Console Props
@@ -89,7 +90,7 @@ export function WorkflowRunFeed({
   isHistoryFetchingMore,
   onSelectRun,
 }: WorkflowRunFeedProps) {
-  const [activeTab, setActiveTab] = useState<'console' | 'history'>('console');
+  const [activeTab, setActiveTab] = useState<'console' | 'final' | 'history'>('console');
   const [isTranscriptOpen, setIsTranscriptOpen] = useState(false);
   const [debugOpen, setDebugOpen] = useState(false);
 
@@ -106,12 +107,20 @@ export function WorkflowRunFeed({
 
   return (
     <div className="flex h-full flex-col bg-background">
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'console' | 'history')} className="flex h-full flex-col">
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as 'console' | 'final' | 'history')}
+        className="flex h-full flex-col"
+      >
         <div className="px-4 pt-3 pb-2 border-b flex items-center justify-between bg-muted/5">
           <TabsList className="h-8">
             <TabsTrigger value="console" className="h-7 text-xs gap-2">
               <Terminal className="h-3.5 w-3.5" />
               Console
+            </TabsTrigger>
+            <TabsTrigger value="final" className="h-7 text-xs gap-2">
+              <FileText className="h-3.5 w-3.5" />
+              Final
             </TabsTrigger>
             <TabsTrigger value="history" className="h-7 text-xs gap-2">
               <History className="h-3.5 w-3.5" />
@@ -119,7 +128,7 @@ export function WorkflowRunFeed({
             </TabsTrigger>
           </TabsList>
           
-          {activeTab === 'console' && (
+          {activeTab !== 'history' && (
              <Sheet open={transcriptOpen} onOpenChange={handleTranscriptToggle}>
                 <SheetTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-7 text-xs" disabled={!selectedRunId}>
@@ -229,6 +238,13 @@ export function WorkflowRunFeed({
                 </ConversationContent>
                 <ConversationScrollButton />
             </Conversation>
+        </TabsContent>
+
+        {/* FINAL OUTPUT TAB */}
+        <TabsContent value="final" className="flex-1 min-h-0 data-[state=active]:flex flex-col m-0 p-0">
+          <ScrollArea className="flex-1 min-h-0">
+            <WorkflowFinalOutput selectedRunId={selectedRunId} runDetail={runDetail} streamEvents={streamEvents} />
+          </ScrollArea>
         </TabsContent>
 
         {/* HISTORY TAB */}
