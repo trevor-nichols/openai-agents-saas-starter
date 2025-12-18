@@ -15,14 +15,17 @@ import {
 
 import { cn } from '@/lib/utils';
 import type { WorkflowDescriptor } from '@/lib/workflows/types';
+import type { WorkflowNodeStreamStore } from '@/lib/workflows/streaming';
 
 import {
   WorkflowAgentNode,
   type WorkflowAgentFlowNode,
 } from './nodes/WorkflowAgentNode';
+import { WorkflowNodeStreamProvider } from './nodeStreamContext';
 
 interface WorkflowGraphViewportProps {
   descriptor: WorkflowDescriptor | null;
+  nodeStreamStore?: WorkflowNodeStreamStore | null;
   activeStep?: {
     stepName?: string | null;
     stageName?: string | null;
@@ -214,8 +217,10 @@ function WorkflowGraphViewportInner({ descriptor, activeStep, className }: Workf
 
 export function WorkflowGraphViewport(props: WorkflowGraphViewportProps) {
   return (
-    <ReactFlowProvider>
-      <WorkflowGraphViewportInner {...props} />
-    </ReactFlowProvider>
+    <WorkflowNodeStreamProvider store={props.nodeStreamStore ?? null}>
+      <ReactFlowProvider>
+        <WorkflowGraphViewportInner {...props} />
+      </ReactFlowProvider>
+    </WorkflowNodeStreamProvider>
   );
 }

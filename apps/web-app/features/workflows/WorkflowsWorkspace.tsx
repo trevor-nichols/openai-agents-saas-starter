@@ -18,6 +18,7 @@ import type { WorkflowStatusFilter } from './constants';
 import {
   useWorkflowRunActions,
   useWorkflowRunStream,
+  useWorkflowNodeStreamStore,
   useWorkflowRunsInfinite,
   useWorkflowSelection,
 } from './hooks';
@@ -57,6 +58,11 @@ export function WorkflowsWorkspace() {
     simulate,
   } = useWorkflowRunStream({
     onRunCreated: (runId, workflowKey) => setRun(runId, workflowKey ?? selectedWorkflowKey),
+  });
+
+  const nodeStreamStore = useWorkflowNodeStreamStore({
+    descriptor: descriptorQuery.data ?? null,
+    events: streamEvents,
   });
 
   const activeStreamStep = useMemo(() => {
@@ -120,6 +126,7 @@ export function WorkflowsWorkspace() {
             <ResizablePanel defaultSize={55} minSize={30} className="min-h-0 bg-muted/5 relative">
                 <WorkflowCanvas
                     descriptor={descriptorQuery.data ?? null}
+                    nodeStreamStore={nodeStreamStore}
                     activeStep={activeStreamStep}
                     selectedKey={selectedWorkflowKey}
                     onRun={handleRun}

@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import type { WorkflowDescriptor } from '@/lib/workflows/types';
+import type { WorkflowNodeStreamStore } from '@/lib/workflows/streaming';
 
 import type { WorkflowPreviewMode } from '../../hooks/useWorkflowPreviewMode';
 import { useWorkflowPreviewMode } from '../../hooks/useWorkflowPreviewMode';
@@ -14,6 +15,7 @@ import { WorkflowGraphViewport } from './graph/WorkflowGraphViewport';
 
 interface WorkflowPreviewProps {
   descriptor: WorkflowDescriptor | null;
+  nodeStreamStore?: WorkflowNodeStreamStore | null;
   activeStep?: {
     stepName?: string | null;
     stageName?: string | null;
@@ -23,7 +25,7 @@ interface WorkflowPreviewProps {
   className?: string;
 }
 
-export function WorkflowPreview({ descriptor, activeStep, className }: WorkflowPreviewProps) {
+export function WorkflowPreview({ descriptor, nodeStreamStore, activeStep, className }: WorkflowPreviewProps) {
   const { mode, setMode } = useWorkflowPreviewMode('graph');
 
   return (
@@ -56,7 +58,12 @@ export function WorkflowPreview({ descriptor, activeStep, className }: WorkflowP
         value="graph"
         className="m-0 mt-0 flex-1 min-h-0 overflow-hidden data-[state=active]:block"
       >
-        <WorkflowGraphViewport descriptor={descriptor} activeStep={activeStep} className="h-full" />
+        <WorkflowGraphViewport
+          descriptor={descriptor}
+          nodeStreamStore={nodeStreamStore ?? null}
+          activeStep={activeStep}
+          className="h-full"
+        />
       </TabsContent>
 
       <TabsContent

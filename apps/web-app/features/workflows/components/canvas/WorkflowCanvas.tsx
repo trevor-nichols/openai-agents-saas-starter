@@ -2,6 +2,7 @@
 
 import type { LocationHint } from '@/lib/api/client/types.gen';
 import type { WorkflowDescriptor } from '@/lib/workflows/types';
+import type { WorkflowNodeStreamStore } from '@/lib/workflows/streaming';
 
 import { WorkflowRunPanel } from './WorkflowRunPanel';
 import { Separator } from '@/components/ui/separator';
@@ -9,6 +10,7 @@ import { WorkflowPreview } from '../preview/WorkflowPreview';
 
 interface WorkflowCanvasProps {
   descriptor: WorkflowDescriptor | null;
+  nodeStreamStore?: WorkflowNodeStreamStore | null;
   activeStep: {
     stepName: string | null;
     stageName: string | null;
@@ -30,6 +32,7 @@ interface WorkflowCanvasProps {
 
 export function WorkflowCanvas({
   descriptor,
+  nodeStreamStore,
   activeStep,
   selectedKey,
   onRun,
@@ -43,7 +46,12 @@ export function WorkflowCanvas({
       {/* Canvas Area */}
       <div className="flex-1 min-h-0 overflow-hidden relative">
         <div className="absolute inset-0">
-          <WorkflowPreview descriptor={descriptor} activeStep={activeStep} className="h-full" />
+          <WorkflowPreview
+            descriptor={descriptor}
+            nodeStreamStore={nodeStreamStore ?? null}
+            activeStep={activeStep}
+            className="h-full"
+          />
         </div>
         
         {/* Dot pattern background effect */}
