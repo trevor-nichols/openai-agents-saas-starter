@@ -148,6 +148,9 @@ import type {
   GetWorkflowRunApiV1WorkflowsRunsRunIdGetData,
   GetWorkflowRunApiV1WorkflowsRunsRunIdGetErrors,
   GetWorkflowRunApiV1WorkflowsRunsRunIdGetResponses,
+  GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetData,
+  GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetErrors,
+  GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetResponses,
   HandleStripeWebhookWebhooksStripePostData,
   HandleStripeWebhookWebhooksStripePostErrors,
   HandleStripeWebhookWebhooksStripePostResponses,
@@ -328,6 +331,9 @@ import type {
   StreamConversationMetadataApiV1ConversationsConversationIdStreamGetData,
   StreamConversationMetadataApiV1ConversationsConversationIdStreamGetErrors,
   StreamConversationMetadataApiV1ConversationsConversationIdStreamGetResponses,
+  StreamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGetData,
+  StreamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGetErrors,
+  StreamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGetResponses,
   SubmitAccessRequestApiV1AuthRequestAccessPostData,
   SubmitAccessRequestApiV1AuthRequestAccessPostErrors,
   SubmitAccessRequestApiV1AuthRequestAccessPostResponses,
@@ -1750,6 +1756,62 @@ export const getWorkflowDescriptorApiV1WorkflowsWorkflowKeyGet = <
     ...options,
   });
 };
+
+/**
+ * Get Workflow Run Replay Events
+ *
+ * Return persisted public_sse_v1 frames for deterministic workflow run UI replay.
+ */
+export const getWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGet =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).get<
+      GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetResponses,
+      GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/workflows/runs/{run_id}/replay/events",
+      ...options,
+    });
+  };
+
+/**
+ * Stream Workflow Run Replay Events
+ *
+ * SSE replay of persisted public_sse_v1 frames for a workflow run (exactly as emitted).
+ */
+export const streamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGet =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      StreamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGetData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).get<
+      StreamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGetResponses,
+      StreamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGetErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/workflows/runs/{run_id}/replay/stream",
+      ...options,
+    });
+  };
 
 /**
  * List Conversations

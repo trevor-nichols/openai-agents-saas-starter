@@ -116,12 +116,14 @@ class ConversationLedgerQueryStore:
         tenant_id: str,
         limit: int,
         cursor: str | None,
+        workflow_run_id: str | None = None,
     ) -> tuple[list[ConversationLedgerEventRef], str | None]:
         conversation_uuid = coerce_conversation_uuid(conversation_id)
         tenant_uuid = parse_tenant_id(tenant_id)
 
         limit = max(1, min(int(limit), 1000))
         start_after_id = decode_ledger_event_cursor(cursor) if cursor else 0
+        workflow_run_id = (workflow_run_id or "").strip() or None
 
         async with self._session_factory() as session:
             conversation = await session.get(AgentConversation, conversation_uuid)
@@ -138,14 +140,38 @@ class ConversationLedgerQueryStore:
 
             visibility_predicate = self._segment_visibility_predicate(segments)
 
+            if start_after_id and workflow_run_id is not None:
+                # Cursor scoping: when slicing by workflow_run_id, ensure the cursor belongs to the
+                # same visible run slice so callers cannot accidentally (or maliciously) skip
+                # or overlap
+                # pages by providing a cursor from another run in the same conversation.
+                cursor_stmt = (
+                    select(ConversationLedgerEvent.id)
+                    .where(
+                        ConversationLedgerEvent.tenant_id == tenant_uuid,
+                        ConversationLedgerEvent.conversation_id == conversation_uuid,
+                        ConversationLedgerEvent.id == start_after_id,
+                        visibility_predicate,
+                        ConversationLedgerEvent.workflow_run_id == workflow_run_id,
+                    )
+                    .limit(1)
+                )
+                found = await session.execute(cursor_stmt)
+                if found.scalar_one_or_none() is None:
+                    raise ValueError("Invalid pagination cursor")
+
+            where_clauses = [
+                ConversationLedgerEvent.tenant_id == tenant_uuid,
+                ConversationLedgerEvent.conversation_id == conversation_uuid,
+                ConversationLedgerEvent.id > start_after_id,
+                visibility_predicate,
+            ]
+            if workflow_run_id is not None:
+                where_clauses.append(ConversationLedgerEvent.workflow_run_id == workflow_run_id)
+
             stmt = (
                 select(ConversationLedgerEvent)
-                .where(
-                    ConversationLedgerEvent.tenant_id == tenant_uuid,
-                    ConversationLedgerEvent.conversation_id == conversation_uuid,
-                    ConversationLedgerEvent.id > start_after_id,
-                    visibility_predicate,
-                )
+                .where(*where_clauses)
                 .order_by(ConversationLedgerEvent.id.asc())
                 .limit(limit + 1)
             )

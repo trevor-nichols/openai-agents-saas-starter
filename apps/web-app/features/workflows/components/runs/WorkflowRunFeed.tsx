@@ -12,10 +12,10 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Conversation, ConversationContent, ConversationScrollButton } from '@/components/ui/ai/conversation';
 import type {
+  PublicSseEvent,
   WorkflowRunDetail,
   WorkflowSummary,
 } from '@/lib/api/client/types.gen';
-import type { ConversationEvents } from '@/types/conversations';
 import { WORKFLOW_STATUS_FILTERS, type StreamStatus, type WorkflowStatusFilter } from '../../constants';
 import type { WorkflowRunListItemView } from '@/lib/workflows/types';
 
@@ -42,12 +42,12 @@ interface WorkflowRunFeedProps {
   
   // Transcript/Detail Props
   runDetail: WorkflowRunDetail | null;
-  runEvents: ConversationEvents | null | undefined;
+  runReplayEvents: PublicSseEvent[] | null | undefined;
   isLoadingRun: boolean;
-  isLoadingEvents: boolean;
+  isLoadingReplay: boolean;
   onCancelRun: () => void;
   cancelPending: boolean;
-  onDeleteRun: (runId: string, conversationId?: string | null) => void;
+  onDeleteRun: (runId: string) => void;
   deletingRunId: string | null;
 
   // History Props
@@ -73,9 +73,9 @@ export function WorkflowRunFeed({
   lastUpdated,
   selectedRunId,
   runDetail,
-  runEvents,
+  runReplayEvents,
   isLoadingRun,
-  isLoadingEvents,
+  isLoadingReplay,
   onCancelRun,
   cancelPending,
   onDeleteRun,
@@ -151,7 +151,7 @@ export function WorkflowRunFeed({
                         ) : null}
                         {runDetail ? (
                         <WorkflowRunDeleteButton
-                            onConfirm={() => onDeleteRun(runDetail.workflow_run_id, runDetail.conversation_id ?? null)}
+                            onConfirm={() => onDeleteRun(runDetail.workflow_run_id)}
                             pending={deletingRunId === runDetail.workflow_run_id}
                             tooltip="Delete run"
                         />
@@ -160,9 +160,9 @@ export function WorkflowRunFeed({
                     <div className="mt-4 flex min-h-0 flex-1 pr-2">
                       <WorkflowRunConversation
                         run={runDetail ?? null}
-                        events={runEvents ?? null}
+                        replayEvents={runReplayEvents ?? null}
                         isLoadingRun={isLoadingRun}
-                        isLoadingEvents={isLoadingEvents}
+                        isLoadingReplay={isLoadingReplay}
                         className="min-h-0 flex-1"
                       />
                     </div>
@@ -243,7 +243,12 @@ export function WorkflowRunFeed({
         {/* FINAL OUTPUT TAB */}
         <TabsContent value="final" className="flex-1 min-h-0 data-[state=active]:flex flex-col m-0 p-0">
           <ScrollArea className="flex-1 min-h-0">
-            <WorkflowFinalOutput selectedRunId={selectedRunId} runDetail={runDetail} streamEvents={streamEvents} />
+            <WorkflowFinalOutput
+              selectedRunId={selectedRunId}
+              runDetail={runDetail}
+              replayEvents={runReplayEvents ?? null}
+              streamEvents={streamEvents}
+            />
           </ScrollArea>
         </TabsContent>
 

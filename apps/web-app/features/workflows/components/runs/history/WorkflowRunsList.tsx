@@ -18,7 +18,7 @@ interface WorkflowRunsListProps {
   onSelectRun: (runId: string, workflowKey: string) => void;
   selectedRunId?: string | null;
   onRefresh?: () => void;
-  onDeleteRun?: (runId: string, conversationId?: string | null) => void | Promise<void>;
+  onDeleteRun?: (runId: string) => void | Promise<void>;
   deletingRunId?: string | null;
 }
 
@@ -100,7 +100,7 @@ export function WorkflowRunsList({
                 <span className="text-xs text-foreground/60">{formatTimestamp(run.started_at)}</span>
                 {onDeleteRun ? (
                   <WorkflowRunDeleteButton
-                    onConfirm={() => onDeleteRun(run.workflow_run_id, run.conversation_id ?? null)}
+                    onConfirm={() => onDeleteRun(run.workflow_run_id)}
                     pending={deletingRunId === run.workflow_run_id}
                     tooltip="Delete run"
                     stopPropagation

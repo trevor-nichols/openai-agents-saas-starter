@@ -60,6 +60,11 @@ def test_openapi_declares_sse_streams(monkeypatch: pytest.MonkeyPatch) -> None:
     ]["200"]
     assert "text/event-stream" in workflow_stream_response["content"]
 
+    workflow_replay_stream_response = schema["paths"][
+        "/api/v1/workflows/runs/{run_id}/replay/stream"
+    ]["get"]["responses"]["200"]
+    assert "text/event-stream" in workflow_replay_stream_response["content"]
+
 
 def test_openapi_declares_binary_downloads(monkeypatch: pytest.MonkeyPatch) -> None:
     schema = _build_openapi_schema(monkeypatch)
@@ -75,6 +80,15 @@ def test_openapi_declares_binary_downloads(monkeypatch: pytest.MonkeyPatch) -> N
         headers = resp.get("headers") or {}
         assert "Content-Disposition" in headers
         assert "Cache-Control" in headers
+
+
+def test_openapi_declares_workflow_run_replay_events(monkeypatch: pytest.MonkeyPatch) -> None:
+    schema = _build_openapi_schema(monkeypatch)
+
+    replay = schema["paths"]["/api/v1/workflows/runs/{run_id}/replay/events"]["get"]["responses"][
+        "200"
+    ]["content"]["application/json"]["schema"]
+    assert replay == {"$ref": "#/components/schemas/WorkflowRunReplayEventsResponse"}
 
 
 def test_openapi_declares_rss(monkeypatch: pytest.MonkeyPatch) -> None:

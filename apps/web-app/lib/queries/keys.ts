@@ -93,8 +93,8 @@ export const queryKeys = {
     all: ['workflows'] as const,
     list: () => [...queryKeys.workflows.all, 'list'] as const,
     run: (runId: string) => [...queryKeys.workflows.all, 'run', runId] as const,
-    runEvents: (runId: string | null, conversationId: string | null) =>
-      [...queryKeys.workflows.all, 'run-events', runId ?? 'none', conversationId ?? 'none'] as const,
+    runReplay: (runId: string | null) =>
+      [...queryKeys.workflows.all, 'run-replay', runId ?? 'none'] as const,
     descriptor: (workflowKey: string | null) =>
       [...queryKeys.workflows.all, 'descriptor', workflowKey ?? 'none'] as const,
     runs: (filters?: Record<string, unknown>) =>

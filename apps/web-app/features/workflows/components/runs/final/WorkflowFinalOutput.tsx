@@ -2,13 +2,16 @@
 
 import { CodeBlock } from '@/components/ui/ai/code-block';
 import { Response } from '@/components/ui/ai/response';
+import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/states';
 import { InlineTag } from '@/components/ui/foundation';
 import type {
   MessageAttachment,
+  PublicSseEvent,
   StreamingWorkflowEvent,
   WorkflowRunDetail,
 } from '@/lib/api/client/types.gen';
+import { useAttachmentResolver } from '@/hooks/useAttachmentResolver';
 import { cn } from '@/lib/utils';
 
 type FinalFromStream = {
@@ -42,11 +45,19 @@ function toNonEmptyString(value: unknown): string | null {
   return trimmed.length ? trimmed : null;
 }
 
-function getLatestFinalFromStream(streamEvents: StreamingWorkflowEvent[]): FinalFromStream | null {
-  for (let i = streamEvents.length - 1; i >= 0; i -= 1) {
-    const evt = streamEvents[i];
+function getLatestFinalFromReplay(replayEvents: PublicSseEvent[], runId?: string | null): FinalFromStream | null {
+  return getLatestFinalFromEvents(replayEvents as StreamingWorkflowEvent[], runId);
+}
+
+function getLatestFinalFromEvents(
+  events: StreamingWorkflowEvent[],
+  runId?: string | null,
+): FinalFromStream | null {
+  for (let i = events.length - 1; i >= 0; i -= 1) {
+    const evt = events[i];
     if (!evt) continue;
     if (!isTerminalFinal(evt)) continue;
+    if (runId && evt.workflow?.workflow_run_id && evt.workflow.workflow_run_id !== runId) continue;
 
     return {
       source: 'stream',
@@ -63,19 +74,25 @@ function getLatestFinalFromStream(streamEvents: StreamingWorkflowEvent[]): Final
 export function WorkflowFinalOutput({
   selectedRunId,
   runDetail,
+  replayEvents,
   streamEvents,
   className,
 }: {
   selectedRunId: string | null;
   runDetail: WorkflowRunDetail | null;
+  replayEvents: PublicSseEvent[] | null;
   streamEvents: StreamingWorkflowEvent[];
   className?: string;
 }) {
-  const latestFinalFromStream = getLatestFinalFromStream(streamEvents);
+  const { attachmentState, resolveAttachment } = useAttachmentResolver();
+  const latestFinalFromReplay =
+    selectedRunId && replayEvents?.length ? getLatestFinalFromReplay(replayEvents, selectedRunId) : null;
+  const latestFinalFromStream = getLatestFinalFromEvents(streamEvents, selectedRunId);
 
-  // Prefer the selected run (history) since the stream buffer may contain a different run.
+  // Prefer ledger replay (authoritative), then run detail (history), then stream fallback.
   const model: FinalViewModel | null =
-    selectedRunId && runDetail && runDetail.workflow_run_id === selectedRunId
+    latestFinalFromReplay ??
+    (selectedRunId && runDetail && runDetail.workflow_run_id === selectedRunId
       ? {
           source: 'run_detail',
           status: runDetail.status ?? null,
@@ -85,7 +102,7 @@ export function WorkflowFinalOutput({
           usage: null,
           outputSchema: runDetail.output_schema ?? null,
         }
-      : latestFinalFromStream;
+      : latestFinalFromStream);
 
   if (!model) {
     return (
@@ -155,18 +172,40 @@ export function WorkflowFinalOutput({
                   </div>
                 </div>
 
-                {att.url ? (
-                  <a
-                    className="shrink-0 font-semibold text-primary hover:underline"
-                    href={att.url}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Download
-                  </a>
-                ) : (
-                  <span className="shrink-0 text-foreground/60">Link unavailable</span>
-                )}
+                {(() => {
+                  const resolved = attachmentState[att.object_id];
+                  const url = att.url ?? resolved?.url;
+                  if (url) {
+                    return (
+                      <a
+                        className="shrink-0 font-semibold text-primary hover:underline"
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Download
+                      </a>
+                    );
+                  }
+
+                  const loading = Boolean(resolved?.loading);
+                  const errorText = resolved?.error;
+                  return (
+                    <div className="flex items-center gap-2">
+                      {errorText ? <span className="text-destructive/80">{errorText}</span> : null}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-[10px]"
+                        disabled={loading}
+                        onClick={() => resolveAttachment(att.object_id)}
+                      >
+                        {loading ? 'Fetching…' : 'Get link'}
+                      </Button>
+                    </div>
+                  );
+                })()}
               </div>
             ))}
           </div>

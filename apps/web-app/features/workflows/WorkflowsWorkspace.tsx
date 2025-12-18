@@ -7,8 +7,8 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/componen
 import { USE_API_MOCK } from '@/lib/config';
 import {
   useWorkflowDescriptorQuery,
-  useWorkflowRunEventsQuery,
   useWorkflowRunQuery,
+  useWorkflowRunReplayEventsQuery,
   useWorkflowsQuery,
 } from '@/lib/queries/workflows';
 import type { LocationHint } from '@/lib/api/client/types.gen';
@@ -44,10 +44,7 @@ export function WorkflowsWorkspace() {
   const runs = useWorkflowRunsInfinite(runFilters);
 
   const runDetailQuery = useWorkflowRunQuery(selectedRunId ?? '', Boolean(selectedRunId));
-  const runEventsQuery = useWorkflowRunEventsQuery(
-    selectedRunId ?? null,
-    runDetailQuery.data?.conversation_id ?? null,
-  );
+  const runReplayQuery = useWorkflowRunReplayEventsQuery(selectedRunId ?? null);
 
   const {
     events: streamEvents,
@@ -88,7 +85,7 @@ export function WorkflowsWorkspace() {
     onAfterDelete: async () => {
       await runs.refetch();
       await runDetailQuery.refetch();
-      await runEventsQuery.refetch();
+      await runReplayQuery.refetch();
     },
   });
 
@@ -148,9 +145,9 @@ export function WorkflowsWorkspace() {
                     selectedRunId={selectedRunId}
                     
                     runDetail={runDetailQuery.data ?? null}
-                    runEvents={runEventsQuery.data ?? null}
+                    runReplayEvents={runReplayQuery.data ?? null}
                     isLoadingRun={runDetailQuery.isLoading}
-                    isLoadingEvents={runEventsQuery.isLoading}
+                    isLoadingReplay={runReplayQuery.isLoading}
                     onCancelRun={cancelRun}
                     cancelPending={cancelPending}
                     onDeleteRun={deleteRun}

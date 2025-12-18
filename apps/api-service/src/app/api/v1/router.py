@@ -23,6 +23,7 @@ from app.api.v1.usage.router import router as usage_router
 from app.api.v1.users.routes_consents import router as user_consents_router
 from app.api.v1.users.routes_notifications import router as user_notifications_router
 from app.api.v1.vector_stores.router import router as vector_stores_router
+from app.api.v1.workflows.replay_router import router as workflows_replay_router
 from app.api.v1.workflows.router import router as workflows_router
 from app.core.settings import get_settings
 
@@ -32,6 +33,7 @@ router.include_router(chat_router)
 router.include_router(agents_router)
 router.include_router(guardrails_router)
 router.include_router(workflows_router)
+router.include_router(workflows_replay_router)
 router.include_router(conversations_router)
 router.include_router(conversation_ledger_router)
 router.include_router(tools_router)

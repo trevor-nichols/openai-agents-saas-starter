@@ -6935,6 +6935,36 @@ export type WorkflowRunListResponse = {
 };
 
 /**
+ * WorkflowRunReplayEventsResponse
+ *
+ * Paged list of persisted public_sse_v1 frames for deterministic workflow run replay.
+ */
+export type WorkflowRunReplayEventsResponse = {
+  /**
+   * Workflow Run Id
+   *
+   * Workflow run identifier.
+   */
+  workflow_run_id: string;
+  /**
+   * Conversation Id
+   *
+   * Conversation backing this workflow run.
+   */
+  conversation_id: string;
+  /**
+   * Items
+   */
+  items: Array<PublicSseEvent>;
+  /**
+   * Next Cursor
+   *
+   * Opaque cursor for fetching the next page.
+   */
+  next_cursor?: string | null;
+};
+
+/**
  * WorkflowRunRequestBody
  */
 export type WorkflowRunRequestBody = {
@@ -11308,6 +11338,199 @@ export type GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetResponses = {
 
 export type GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetResponse =
   GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetResponses[keyof GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetResponses];
+
+export type GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Run Id
+       */
+      run_id: string;
+    };
+    query?: {
+      /**
+       * Limit
+       */
+      limit?: number;
+      /**
+       * Cursor
+       *
+       * Opaque pagination cursor.
+       */
+      cursor?: string | null;
+    };
+    url: "/api/v1/workflows/runs/{run_id}/replay/events";
+  };
+
+export type GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetError =
+  GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetErrors[keyof GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetErrors];
+
+export type GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: WorkflowRunReplayEventsResponse;
+  };
+
+export type GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetResponse =
+  GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetResponses[keyof GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetResponses];
+
+export type StreamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGetData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Run Id
+       */
+      run_id: string;
+    };
+    query?: {
+      /**
+       * Cursor
+       *
+       * Opaque pagination cursor.
+       */
+      cursor?: string | null;
+    };
+    url: "/api/v1/workflows/runs/{run_id}/replay/stream";
+  };
+
+export type StreamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGetErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type StreamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGetError =
+  StreamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGetErrors[keyof StreamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGetErrors];
+
+export type StreamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGetResponses =
+  {
+    /**
+     * Server-sent events replay stream of persisted public_sse_v1 frames for a workflow run.
+     */
+    200: unknown;
+  };
 
 export type ListConversationsApiV1ConversationsGetData = {
   body?: never;

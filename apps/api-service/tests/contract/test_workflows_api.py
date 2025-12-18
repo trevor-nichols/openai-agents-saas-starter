@@ -229,6 +229,257 @@ def test_get_workflow_run(client: TestClient) -> None:
     assert body["steps"][0]["agent_key"] == "researcher"
 
 
+def test_workflow_run_replay_events_are_scoped_to_run(client: TestClient) -> None:
+    from uuid import UUID
+
+    from app.infrastructure.db import get_async_sessionmaker
+    from app.infrastructure.persistence.conversations.ledger_models import (
+        ConversationLedgerEvent,
+        ConversationLedgerSegment,
+    )
+    from app.infrastructure.persistence.conversations.models import AgentConversation, TenantAccount
+
+    service = get_workflow_service()
+    repo = getattr(service._runner, "_run_repository", None)
+    assert repo is not None
+
+    async def _ensure_tables():
+        engine = get_engine()
+        assert engine is not None
+        async with engine.begin() as conn:  # pragma: no cover - test setup
+            await conn.run_sync(ModelBase.metadata.create_all)
+
+    anyio.run(_ensure_tables)
+
+    tenant_uuid = UUID(TEST_TENANT_ID)
+    conversation_uuid = uuid4()
+
+    run_a = "run-replay-a"
+    run_b = "run-replay-b"
+
+    async def _seed_ledger():
+        session_factory = get_async_sessionmaker()
+        async with session_factory() as session:
+            existing_tenant = await session.get(TenantAccount, tenant_uuid)
+            if existing_tenant is None:
+                session.add(
+                    TenantAccount(
+                        id=tenant_uuid,
+                        slug=f"tenant-{conversation_uuid}",
+                        name="Tenant",
+                    )
+                )
+
+            session.add(
+                AgentConversation(
+                    id=conversation_uuid,
+                    conversation_key=str(conversation_uuid),
+                    tenant_id=tenant_uuid,
+                    agent_entrypoint="triage",
+                )
+            )
+            segment = ConversationLedgerSegment(
+                tenant_id=tenant_uuid,
+                conversation_id=conversation_uuid,
+                segment_index=0,
+                parent_segment_id=None,
+            )
+            session.add(segment)
+            await session.flush()
+
+            def lifecycle_payload(*, stream_id: str, event_id: int, run_id: str) -> dict[str, object]:
+                return {
+                    "schema": "public_sse_v1",
+                    "kind": "lifecycle",
+                    "event_id": event_id,
+                    "stream_id": stream_id,
+                    "server_timestamp": "2025-12-18T00:00:00.000Z",
+                    "conversation_id": str(conversation_uuid),
+                    "response_id": None,
+                    "agent": "triage",
+                    "workflow": {"workflow_run_id": run_id},
+                    "status": "in_progress",
+                }
+
+            def final_payload(*, stream_id: str, event_id: int, run_id: str) -> dict[str, object]:
+                return {
+                    "schema": "public_sse_v1",
+                    "kind": "final",
+                    "event_id": event_id,
+                    "stream_id": stream_id,
+                    "server_timestamp": "2025-12-18T00:00:01.000Z",
+                    "conversation_id": str(conversation_uuid),
+                    "response_id": None,
+                    "agent": "triage",
+                    "workflow": {"workflow_run_id": run_id},
+                    "final": {"status": "completed", "response_text": f"done:{run_id}"},
+                }
+
+            events = [
+                ConversationLedgerEvent(
+                    tenant_id=tenant_uuid,
+                    conversation_id=conversation_uuid,
+                    segment_id=segment.id,
+                    schema_version="public_sse_v1",
+                    kind="lifecycle",
+                    stream_id="stream_a",
+                    event_id=1,
+                    server_timestamp=datetime.now(tz=UTC),
+                    workflow_run_id=run_a,
+                    payload_size_bytes=1,
+                    payload_json=lifecycle_payload(stream_id="stream_a", event_id=1, run_id=run_a),
+                ),
+                ConversationLedgerEvent(
+                    tenant_id=tenant_uuid,
+                    conversation_id=conversation_uuid,
+                    segment_id=segment.id,
+                    schema_version="public_sse_v1",
+                    kind="lifecycle",
+                    stream_id="stream_b",
+                    event_id=1,
+                    server_timestamp=datetime.now(tz=UTC),
+                    workflow_run_id=run_b,
+                    payload_size_bytes=1,
+                    payload_json=lifecycle_payload(stream_id="stream_b", event_id=1, run_id=run_b),
+                ),
+                ConversationLedgerEvent(
+                    tenant_id=tenant_uuid,
+                    conversation_id=conversation_uuid,
+                    segment_id=segment.id,
+                    schema_version="public_sse_v1",
+                    kind="final",
+                    stream_id="stream_a",
+                    event_id=2,
+                    server_timestamp=datetime.now(tz=UTC),
+                    workflow_run_id=run_a,
+                    payload_size_bytes=1,
+                    payload_json=final_payload(stream_id="stream_a", event_id=2, run_id=run_a),
+                ),
+                ConversationLedgerEvent(
+                    tenant_id=tenant_uuid,
+                    conversation_id=conversation_uuid,
+                    segment_id=segment.id,
+                    schema_version="public_sse_v1",
+                    kind="final",
+                    stream_id="stream_b",
+                    event_id=2,
+                    server_timestamp=datetime.now(tz=UTC),
+                    workflow_run_id=run_b,
+                    payload_size_bytes=1,
+                    payload_json=final_payload(stream_id="stream_b", event_id=2, run_id=run_b),
+                ),
+            ]
+
+            session.add_all(events)
+            await session.commit()
+
+    anyio.run(_seed_ledger)
+
+    started_at = datetime.now(tz=UTC)
+    ended_at = datetime.now(tz=UTC)
+
+    anyio.run(
+        repo.create_run,
+        WorkflowRun(
+            id=run_a,
+            workflow_key="analysis_code",
+            tenant_id=TEST_TENANT_ID,
+            user_id="test-user",
+            status="succeeded",
+            started_at=started_at,
+            ended_at=ended_at,
+            final_output_text="done",
+            final_output_structured=None,
+            trace_id=None,
+            request_message="hello",
+            conversation_id=str(conversation_uuid),
+            metadata=None,
+        ),
+    )
+    anyio.run(
+        repo.create_run,
+        WorkflowRun(
+            id=run_b,
+            workflow_key="analysis_code",
+            tenant_id=TEST_TENANT_ID,
+            user_id="test-user",
+            status="succeeded",
+            started_at=started_at,
+            ended_at=ended_at,
+            final_output_text="done",
+            final_output_structured=None,
+            trace_id=None,
+            request_message="hello",
+            conversation_id=str(conversation_uuid),
+            metadata=None,
+        ),
+    )
+
+    response = client.get(f"/api/v1/workflows/runs/{run_a}/replay/events")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["workflow_run_id"] == run_a
+    assert payload["conversation_id"] == str(conversation_uuid)
+    assert len(payload["items"]) == 2
+    assert all(item.get("workflow", {}).get("workflow_run_id") == run_a for item in payload["items"])
+
+    # Ensure cursors are scoped to a single run slice.
+    page1 = client.get(
+        f"/api/v1/workflows/runs/{run_a}/replay/events",
+        params={"limit": 1},
+    )
+    assert page1.status_code == 200
+    cursor = page1.json().get("next_cursor")
+    assert cursor
+
+    cross = client.get(
+        f"/api/v1/workflows/runs/{run_b}/replay/events",
+        params={"cursor": cursor},
+    )
+    assert cross.status_code == 400
+
+
+def test_workflow_run_replay_returns_404_when_conversation_missing(client: TestClient) -> None:
+    service = get_workflow_service()
+    repo = getattr(service._runner, "_run_repository", None)
+    assert repo is not None
+
+    async def _ensure_tables():
+        engine = get_engine()
+        assert engine is not None
+        async with engine.begin() as conn:  # pragma: no cover - test setup
+            await conn.run_sync(ModelBase.metadata.create_all)
+
+    anyio.run(_ensure_tables)
+
+    missing_conversation_id = str(uuid4())
+    run_id = "run-replay-missing-conversation"
+    anyio.run(
+        repo.create_run,
+        WorkflowRun(
+            id=run_id,
+            workflow_key="analysis_code",
+            tenant_id=TEST_TENANT_ID,
+            user_id="test-user",
+            status="succeeded",
+            started_at=datetime.now(tz=UTC),
+            ended_at=datetime.now(tz=UTC),
+            final_output_text="done",
+            final_output_structured=None,
+            trace_id=None,
+            request_message="hello",
+            conversation_id=missing_conversation_id,
+            metadata=None,
+        ),
+    )
+
+    response = client.get(f"/api/v1/workflows/runs/{run_id}/replay/events")
+    assert response.status_code == 404
+
+    stream = client.get(f"/api/v1/workflows/runs/{run_id}/replay/stream")
+    assert stream.status_code == 404
+
+
 @pytest.mark.auto_migrations(enabled=True)
 def test_get_workflow_run_via_db(client: TestClient, _provider_engine) -> None:
     # Create a real run/step in the DB using the SQLAlchemy repo

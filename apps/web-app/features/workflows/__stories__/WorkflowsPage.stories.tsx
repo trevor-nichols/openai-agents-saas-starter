@@ -8,7 +8,7 @@ import type {
   WorkflowSummaryView,
   WorkflowRunListItemView,
 } from '@/lib/workflows/types';
-import type { ConversationEvents } from '@/types/conversations';
+import type { PublicSseEvent } from '@/lib/api/client/types.gen';
 import type { StreamStatus } from '../constants';
 import type { WorkflowStreamEventWithReceivedAt } from '../types';
 
@@ -105,29 +105,7 @@ const streamEvents: WorkflowStreamEventWithReceivedAt[] = [
   },
 ];
 
-const runEvents: ConversationEvents = {
-  conversation_id: runDetail.conversation_id ?? 'conv-story',
-  items: [
-    {
-      sequence_no: 0,
-      run_item_type: 'message',
-      run_item_name: 'assistant',
-      role: 'assistant',
-      agent: 'triage',
-      tool_call_id: null,
-      tool_name: null,
-      model: 'gpt-5.1',
-      content_text: 'Workflow response text.',
-      reasoning_text: null,
-      call_arguments: null,
-      call_output: null,
-      attachments: [],
-      response_id: 'resp-1',
-      workflow_run_id: runDetail.workflow_run_id,
-      timestamp: new Date().toISOString(),
-    },
-  ],
-};
+const runReplayEvents: PublicSseEvent[] = streamEvents.map(({ receivedAt: _receivedAt, ...evt }) => evt);
 
 type WorkspacePreviewProps = {
   streamStatus: StreamStatus;
@@ -186,9 +164,9 @@ type WorkspacePreviewProps = {
           lastUpdated={new Date().toISOString()}
           selectedRunId={runDetail.workflow_run_id}
           runDetail={runDetail}
-          runEvents={runEvents}
+          runReplayEvents={runReplayEvents}
           isLoadingRun={false}
-          isLoadingEvents={false}
+          isLoadingReplay={false}
           onCancelRun={() => console.log('cancel run')}
           cancelPending={false}
           onDeleteRun={(runId) => console.log('delete', runId)}

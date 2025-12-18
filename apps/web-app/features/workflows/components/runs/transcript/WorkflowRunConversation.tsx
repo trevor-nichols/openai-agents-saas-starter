@@ -8,14 +8,15 @@ import { Response } from '@/components/ui/ai/response';
 import { cn } from '@/lib/utils';
 import type { WorkflowRunDetailView } from '@/lib/workflows/types';
 import type { Annotation } from '@/lib/chat/types';
-import type { ConversationEvents } from '@/types/conversations';
 import { SkeletonPanel, EmptyState } from '@/components/ui/states';
+import type { PublicSseEvent, StreamingWorkflowEvent } from '@/lib/api/client/types.gen';
+import { WorkflowLiveStream } from '../streaming/WorkflowLiveStream';
 
 interface WorkflowRunConversationProps {
   run: WorkflowRunDetailView | null;
-  events: ConversationEvents | null | undefined;
+  replayEvents: PublicSseEvent[] | null | undefined;
   isLoadingRun?: boolean;
-  isLoadingEvents?: boolean;
+  isLoadingReplay?: boolean;
   className?: string;
 }
 
@@ -30,29 +31,13 @@ type ConversationEntry = {
 
 export function WorkflowRunConversation({
   run,
-  events,
+  replayEvents,
   isLoadingRun,
-  isLoadingEvents,
+  isLoadingReplay,
   className,
 }: WorkflowRunConversationProps) {
   const entries = useMemo<ConversationEntry[]>(() => {
-    // Prefer conversation events when present
-    if (events?.items?.length) {
-      return events.items.map((item, idx) => ({
-        id: `${item.response_id ?? idx}`,
-        role: item.role === 'user' ? 'user' : 'assistant',
-        content: item.content_text ?? item.reasoning_text ?? '[no content]',
-        meta: compactMeta([
-          item.run_item_type,
-          item.run_item_name,
-          item.tool_name ? `tool:${item.tool_name}` : null,
-          item.agent ? `agent:${item.agent}` : null,
-        ]),
-        structured: item.call_output ?? item.call_arguments,
-      }));
-    }
-
-    // Fallback to run detail steps
+    // Fallback to run detail steps when no replay ledger exists (or hasn't loaded yet).
     const base: ConversationEntry[] = [];
     if (!run) return base;
 
@@ -78,7 +63,7 @@ export function WorkflowRunConversation({
       });
     });
     return base;
-  }, [events, run]);
+  }, [run]);
 
   if (isLoadingRun) {
     return <SkeletonPanel lines={8} />;
@@ -88,40 +73,64 @@ export function WorkflowRunConversation({
     return <EmptyState title="Select a run" description="Choose a run to view its transcript." />;
   }
 
-  if (isLoadingEvents && !entries.length) {
+  if (isLoadingReplay && !replayEvents?.length && !entries.length) {
     return <SkeletonPanel lines={6} />;
   }
 
   return (
     <Conversation className={cn('rounded-xl border border-white/5 bg-white/5', className)}>
       <ConversationContent className="space-y-4 p-4">
-        {entries.length === 0 ? (
-          <p className="text-sm text-foreground/60">No messages recorded for this run.</p>
-        ) : (
-          entries.map((entry) => (
-            <Message key={entry.id} from={entry.role}>
-              <MessageContent>
-                <div className="flex flex-wrap items-center gap-2">
-                  <InlineTag tone={entry.role === 'user' ? 'positive' : 'default'}>
-                    {entry.role === 'user' ? 'User' : 'Workflow'}
-                  </InlineTag>
-                  {entry.meta?.map((m) => (
-                    <InlineTag key={m} tone="default">
-                      {m}
+        {run.request_message ? (
+          <Message from="user">
+            <MessageContent>
+              <div className="flex flex-wrap items-center gap-2">
+                <InlineTag tone="positive">User</InlineTag>
+                <InlineTag tone="default">Prompt</InlineTag>
+              </div>
+              <div className="mt-2">
+                <Response parseIncompleteMarkdown={false}>{run.request_message}</Response>
+              </div>
+            </MessageContent>
+          </Message>
+        ) : null}
+
+        {replayEvents?.length ? (
+          <WorkflowLiveStream
+            events={replayEvents as StreamingWorkflowEvent[]}
+            className="mt-2"
+          />
+        ) : entries.length ? (
+          <div className="space-y-4">
+            <div className="text-xs text-foreground/60">
+              Replay stream is not available for this run; showing step summaries instead.
+            </div>
+            {entries.map((entry) => (
+              <Message key={entry.id} from={entry.role}>
+                <MessageContent>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <InlineTag tone={entry.role === 'user' ? 'positive' : 'default'}>
+                      {entry.role === 'user' ? 'User' : 'Workflow'}
                     </InlineTag>
-                  ))}
-                </div>
-                <div className="mt-2">
-                  <Response citations={entry.citations}>{entry.content}</Response>
-                </div>
-                {entry.structured ? (
-                  <div className="mt-2">
-                    <CodeBlock code={JSON.stringify(entry.structured, null, 2)} language="json" />
+                    {entry.meta?.map((m) => (
+                      <InlineTag key={m} tone="default">
+                        {m}
+                      </InlineTag>
+                    ))}
                   </div>
-                ) : null}
-              </MessageContent>
-            </Message>
-          ))
+                  <div className="mt-2">
+                    <Response citations={entry.citations}>{entry.content}</Response>
+                  </div>
+                  {entry.structured ? (
+                    <div className="mt-2">
+                      <CodeBlock code={JSON.stringify(entry.structured, null, 2)} language="json" />
+                    </div>
+                  ) : null}
+                </MessageContent>
+              </Message>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-foreground/60">No messages recorded for this run.</p>
         )}
       </ConversationContent>
     </Conversation>

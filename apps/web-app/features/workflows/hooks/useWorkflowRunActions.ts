@@ -21,11 +21,11 @@ export function useWorkflowRunActions(options: {
   }, [cancelMutation, options.selectedRunId]);
 
   const deleteRun = useCallback(
-    async (runId: string, conversationId?: string | null) => {
+    async (runId: string) => {
       setDeletingRunId(runId);
       const wasSelected = options.selectedRunId === runId;
       try {
-        await deleteMutation.mutateAsync({ runId, conversationId });
+        await deleteMutation.mutateAsync({ runId });
         if (wasSelected) {
           options.onRunDeselected?.();
         }

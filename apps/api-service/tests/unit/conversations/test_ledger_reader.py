@@ -24,6 +24,7 @@ class _FakeStore:
         tenant_id: str,
         limit: int,
         cursor: str | None,
+        workflow_run_id: str | None = None,
     ) -> tuple[list[ConversationLedgerEventRef], str | None]:
         return [self._ref], None
 

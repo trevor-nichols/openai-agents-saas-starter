@@ -5,7 +5,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { WorkflowRunFeed } from '../components/runs/WorkflowRunFeed';
 import { mockWorkflowRunDetail, mockWorkflows } from '@/lib/workflows/mock';
 import type { WorkflowSummaryView } from '@/lib/workflows/types';
-import type { ConversationEvents } from '@/types/conversations';
+import type { PublicSseEvent } from '@/lib/api/client/types.gen';
 import type { WorkflowStreamEventWithReceivedAt } from '../types';
 
 const now = new Date().toISOString();
@@ -72,29 +72,7 @@ const streamEvents: WorkflowStreamEventWithReceivedAt[] = [
   },
 ];
 
-const runEvents: ConversationEvents = {
-  conversation_id: 'conv-123',
-  items: [
-    {
-      sequence_no: 0,
-      run_item_type: 'message',
-      run_item_name: 'assistant',
-      role: 'assistant',
-      agent: 'triage',
-      tool_call_id: null,
-      tool_name: null,
-      model: 'gpt-5.1',
-      content_text: 'Workflow response text.',
-      reasoning_text: null,
-      call_arguments: null,
-      call_output: null,
-      attachments: [],
-      response_id: 'resp-1',
-      workflow_run_id: 'run-stream-1',
-      timestamp: new Date().toISOString(),
-    },
-  ],
-};
+const runReplayEvents: PublicSseEvent[] = streamEvents.map(({ receivedAt: _receivedAt, ...evt }) => evt);
 
 const meta: Meta<typeof WorkflowRunFeed> = {
   title: 'Workflows/Run Feed',
@@ -128,9 +106,9 @@ export const Streaming: Story = {
     lastUpdated: new Date().toISOString(),
     selectedRunId: 'run-stream-1',
     runDetail,
-    runEvents,
+    runReplayEvents,
     isLoadingRun: false,
-    isLoadingEvents: false,
+    isLoadingReplay: false,
     onCancelRun: () => console.log('cancel run'),
     cancelPending: false,
     onDeleteRun: (runId) => console.log('delete', runId),
@@ -159,9 +137,9 @@ export const Completed: Story = {
     lastUpdated: new Date().toISOString(),
     selectedRunId: 'run-stream-1',
     runDetail: { ...runDetail, status: 'succeeded' },
-    runEvents,
+    runReplayEvents,
     isLoadingRun: false,
-    isLoadingEvents: false,
+    isLoadingReplay: false,
     onCancelRun: () => console.log('cancel run'),
     cancelPending: false,
     onDeleteRun: (runId) => console.log('delete', runId),
@@ -190,9 +168,9 @@ export const EmptyState: Story = {
     lastUpdated: null,
     selectedRunId: null,
     runDetail: null,
-    runEvents: null,
+    runReplayEvents: null,
     isLoadingRun: false,
-    isLoadingEvents: false,
+    isLoadingReplay: false,
     onCancelRun: () => console.log('cancel run'),
     cancelPending: false,
     onDeleteRun: () => {},

@@ -35,6 +35,7 @@ class ConversationLedgerReader:
         *,
         tenant_id: str,
         conversation_id: str,
+        workflow_run_id: str | None = None,
         limit: int,
         cursor: str | None,
     ) -> tuple[list[PublicSseEvent], str | None]:
@@ -47,6 +48,7 @@ class ConversationLedgerReader:
             tenant_id=tenant_id,
             limit=limit,
             cursor=cursor,
+            workflow_run_id=workflow_run_id,
         )
 
         tenant_uuid = parse_tenant_id(tenant_id)
@@ -62,6 +64,7 @@ class ConversationLedgerReader:
         *,
         tenant_id: str,
         conversation_id: str,
+        workflow_run_id: str | None = None,
         cursor: str | None,
         page_size: int = 500,
     ) -> AsyncIterator[str]:
@@ -79,6 +82,7 @@ class ConversationLedgerReader:
                 tenant_id=tenant_id,
                 limit=page_size,
                 cursor=next_cursor,
+                workflow_run_id=workflow_run_id,
             )
             if not refs:
                 return

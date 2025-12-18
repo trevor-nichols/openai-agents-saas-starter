@@ -1,7 +1,9 @@
 import type {
+  PublicSseEvent,
   WorkflowDescriptorResponse,
   WorkflowRunDetail,
   WorkflowRunListResponse,
+  WorkflowRunReplayEventsResponse,
   WorkflowRunRequestBody,
   WorkflowRunResponse,
   WorkflowListResponse,
@@ -228,4 +230,68 @@ export async function deleteWorkflowRun(runId: string, opts?: { hard?: boolean }
     (error as any).status = response.status;
     throw error;
   }
+}
+
+export async function fetchWorkflowRunReplayEventsPage(params: {
+  runId: string;
+  limit?: number;
+  cursor?: string | null;
+}): Promise<WorkflowRunReplayEventsResponse> {
+  const { runId, limit, cursor } = params;
+
+  if (USE_API_MOCK) {
+    return {
+      workflow_run_id: runId,
+      conversation_id: 'mock',
+      items: [],
+      next_cursor: null,
+    };
+  }
+
+  const searchParams = new URLSearchParams();
+  if (limit) searchParams.set('limit', String(limit));
+  if (cursor) searchParams.set('cursor', cursor);
+
+  const response = await fetch(
+    `${apiV1Path(`/workflows/runs/${encodeURIComponent(runId)}/replay/events`)}${
+      searchParams.toString() ? `?${searchParams.toString()}` : ''
+    }`,
+    { method: 'GET', cache: 'no-store' },
+  );
+
+  if (!response.ok) {
+    const errorPayload = (await response.json().catch(() => ({}))) as { message?: string };
+    throw new Error(errorPayload.message || 'Failed to load workflow run replay events');
+  }
+
+  return (await response.json()) as WorkflowRunReplayEventsResponse;
+}
+
+export async function fetchWorkflowRunReplayEvents(params: {
+  runId: string;
+  pageSize?: number;
+}): Promise<PublicSseEvent[]> {
+  const runId = params.runId;
+  const pageSize = Math.min(Math.max(params.pageSize ?? 1000, 1), 1000);
+
+  if (USE_API_MOCK) {
+    return [];
+  }
+
+  const events: PublicSseEvent[] = [];
+  let cursor: string | null = null;
+
+  // Safety guard: prevents accidental infinite loops due to a backend bug.
+  const maxPages = 100;
+  for (let pageIndex = 0; pageIndex < maxPages; pageIndex += 1) {
+    const page = await fetchWorkflowRunReplayEventsPage({ runId, limit: pageSize, cursor });
+    events.push(...(page.items ?? []));
+
+    cursor = page.next_cursor ?? null;
+    if (!cursor) {
+      return events;
+    }
+  }
+
+  throw new Error('Workflow run replay exceeded maximum page limit');
 }

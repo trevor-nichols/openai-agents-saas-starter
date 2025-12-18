@@ -10,9 +10,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 
 from app.api.dependencies.auth import CurrentUser, require_verified_scopes
-from app.api.dependencies.tenant import TenantContext, TenantRole, require_tenant_role
+from app.api.dependencies.tenant import TenantContext
 from app.api.v1.shared.public_stream_projector import PublicStreamProjector
 from app.api.v1.shared.streaming import MessageAttachment
+from app.api.v1.workflows.dependencies import (
+    require_workflow_admin_role,
+    require_workflow_viewer_role,
+)
 from app.api.v1.workflows.schemas import (
     StreamingWorkflowEvent,
     WorkflowDescriptorResponse,
@@ -37,12 +41,6 @@ from app.workflows._shared.schema_utils import schema_to_json_schema
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
 logger = logging.getLogger(__name__)
-_ALLOWED_ROLES: tuple[TenantRole, ...] = (
-    TenantRole.VIEWER,
-    TenantRole.ADMIN,
-    TenantRole.OWNER,
-)
-_ADMIN_ROLES: tuple[TenantRole, ...] = (TenantRole.ADMIN, TenantRole.OWNER)
 
 
 @router.get("", response_model=WorkflowListResponse)
@@ -64,7 +62,7 @@ async def list_workflows(
         description="Case-insensitive match against key, display_name, or description.",
     ),
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:read")),
-    tenant_context: TenantContext = Depends(require_tenant_role(*_ALLOWED_ROLES)),
+    tenant_context: TenantContext = Depends(require_workflow_viewer_role),
 ):
     service = get_workflow_service()
     try:
@@ -90,7 +88,7 @@ async def run_workflow(
     workflow_key: str,
     request: WorkflowRunRequestBody,
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:write")),
-    tenant_context: TenantContext = Depends(require_tenant_role(*_ALLOWED_ROLES)),
+    tenant_context: TenantContext = Depends(require_workflow_viewer_role),
 ):
     service = get_workflow_service()
     user_id = current_user.get("user_id") or current_user.get("subject")
@@ -173,7 +171,7 @@ async def list_workflow_runs(
     cursor: str | None = Query(None, description="Opaque pagination cursor."),
     limit: int = Query(20, ge=1, le=100, description="Maximum runs to return."),
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:read")),
-    tenant_context: TenantContext = Depends(require_tenant_role(*_ALLOWED_ROLES)),
+    tenant_context: TenantContext = Depends(require_workflow_viewer_role),
 ):
     service = get_workflow_service()
     try:
@@ -212,7 +210,7 @@ async def list_workflow_runs(
 async def get_workflow_run(
     run_id: str,
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:read")),
-    tenant_context: TenantContext = Depends(require_tenant_role(*_ALLOWED_ROLES)),
+    tenant_context: TenantContext = Depends(require_workflow_viewer_role),
 ):
     service = get_workflow_service()
     try:
@@ -268,7 +266,7 @@ async def get_workflow_run(
 async def cancel_workflow_run(
     run_id: str,
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:write")),
-    tenant_context: TenantContext = Depends(require_tenant_role(*_ALLOWED_ROLES)),
+    tenant_context: TenantContext = Depends(require_workflow_viewer_role),
 ):
     service = get_workflow_service()
     try:
@@ -292,7 +290,7 @@ async def delete_workflow_run(
         description="Optional audit reason for deletion.",
     ),
     current_user: CurrentUser = Depends(require_verified_scopes("workflows:delete")),
-    tenant_context: TenantContext = Depends(require_tenant_role(*_ADMIN_ROLES)),
+    tenant_context: TenantContext = Depends(require_workflow_admin_role),
 ):
     service = get_workflow_service()
     user_id = str(current_user.get("user_id") or current_user.get("subject") or "unknown")
@@ -327,7 +325,7 @@ async def run_workflow_stream(
     workflow_key: str,
     request: WorkflowRunRequestBody,
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:write")),
-    tenant_context: TenantContext = Depends(require_tenant_role(*_ALLOWED_ROLES)),
+    tenant_context: TenantContext = Depends(require_workflow_viewer_role),
 ):
     service = get_workflow_service()
     user_id = current_user.get("user_id") or current_user.get("subject")
@@ -478,7 +476,7 @@ async def run_workflow_stream(
 async def get_workflow_descriptor(
     workflow_key: str,
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:read")),
-    tenant_context: TenantContext = Depends(require_tenant_role(*_ALLOWED_ROLES)),
+    tenant_context: TenantContext = Depends(require_workflow_viewer_role),
 ):
     service = get_workflow_service()
     try:

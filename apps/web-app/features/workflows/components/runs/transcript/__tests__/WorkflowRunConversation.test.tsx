@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 
 import { WorkflowRunConversation } from '../WorkflowRunConversation';
 import type { WorkflowRunDetailView } from '@/lib/workflows/types';
-import type { ConversationEvents } from '@/types/conversations';
+import type { PublicSseEvent } from '@/lib/api/client/types.gen';
 
 const run: WorkflowRunDetailView = {
   workflow_key: 'triage_workflow',
@@ -20,55 +20,78 @@ const run: WorkflowRunDetailView = {
   steps: [],
 };
 
-const events: ConversationEvents = {
-  conversation_id: 'conv-123',
-  items: [
-    {
-      sequence_no: 0,
-      run_item_type: 'message',
-      run_item_name: 'assistant',
-      role: 'assistant',
-      agent: 'triage',
-      tool_call_id: null,
-      tool_name: null,
-      model: null,
-      content_text: 'Hello from workflow',
-      reasoning_text: null,
-      call_arguments: null,
-      call_output: null,
-      attachments: [],
-      response_id: 'resp-1',
+const replayEvents: PublicSseEvent[] = [
+  {
+    schema: 'public_sse_v1',
+    kind: 'lifecycle',
+    event_id: 1,
+    stream_id: 'stream-replay-test',
+    server_timestamp: new Date().toISOString(),
+    conversation_id: 'conv-123',
+    response_id: 'resp-1',
+    agent: 'analysis',
+    workflow: {
+      workflow_key: 'triage_workflow',
       workflow_run_id: 'run-1',
-      timestamp: new Date().toISOString(),
+      stage_name: 'main',
+      step_name: 'analysis',
+      step_agent: 'researcher',
+      parallel_group: null,
+      branch_index: null,
     },
-  ],
-};
+    status: 'in_progress',
+    reason: null,
+    provider_sequence_number: null,
+    notices: null,
+  },
+  {
+    schema: 'public_sse_v1',
+    kind: 'message.delta',
+    event_id: 2,
+    stream_id: 'stream-replay-test',
+    server_timestamp: new Date().toISOString(),
+    conversation_id: 'conv-123',
+    response_id: 'resp-1',
+    agent: 'analysis',
+    workflow: {
+      workflow_key: 'triage_workflow',
+      workflow_run_id: 'run-1',
+      stage_name: 'main',
+      step_name: 'analysis',
+      step_agent: 'researcher',
+      parallel_group: null,
+      branch_index: null,
+    },
+    output_index: 0,
+    item_id: 'msg-1',
+    content_index: 0,
+    delta: 'Hello from replay',
+    provider_sequence_number: null,
+    notices: null,
+  },
+];
 
 describe('WorkflowRunConversation', () => {
-  it('renders conversation events as transcript entries', () => {
+  it('renders ledger replay events as transcript entries', () => {
     render(
       <WorkflowRunConversation
         run={run}
-        events={events}
+        replayEvents={replayEvents}
         isLoadingRun={false}
-        isLoadingEvents={false}
+        isLoadingReplay={false}
       />,
     );
 
-    expect(screen.getByText(/hello from workflow/i)).toBeInTheDocument();
-    // Agent chip renders as "agent:triage" with no space; match flexibly
-    expect(
-      screen.getByText((content) => content.toLowerCase() === 'agent:triage'),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/hello from replay/i)).toBeInTheDocument();
   });
 
   it('shows empty state when no run and no events', () => {
     render(
       <WorkflowRunConversation
         run={null}
-        events={null}
+        replayEvents={null}
         isLoadingRun={false}
-        isLoadingEvents={false}
+        isLoadingReplay={false}
       />,
     );
 

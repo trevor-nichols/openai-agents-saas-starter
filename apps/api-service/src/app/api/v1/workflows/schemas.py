@@ -102,6 +102,18 @@ class WorkflowRunCancelResponse(BaseModel):
     success: bool = Field(..., description="True if the cancel request succeeded.")
 
 
+class WorkflowRunReplayEventsResponse(BaseModel):
+    """Paged list of persisted public_sse_v1 frames for deterministic workflow run replay."""
+
+    workflow_run_id: str = Field(description="Workflow run identifier.")
+    conversation_id: str = Field(description="Conversation backing this workflow run.")
+    items: list[PublicSseEvent]
+    next_cursor: str | None = Field(
+        default=None,
+        description="Opaque cursor for fetching the next page.",
+    )
+
+
 class WorkflowStepDescriptor(BaseModel):
     name: str
     agent_key: str
@@ -144,6 +156,7 @@ __all__ = [
     "WorkflowRunListItem",
     "WorkflowRunListResponse",
     "WorkflowRunCancelResponse",
+    "WorkflowRunReplayEventsResponse",
     "WorkflowStepDescriptor",
     "WorkflowStageDescriptor",
     "WorkflowDescriptorResponse",
