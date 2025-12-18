@@ -67,7 +67,6 @@ class AgentSpec:
     handoff_keys: tuple[str, ...] = ()
     default: bool = False
     wrap_with_handoff_prompt: bool = False
-    prompt_context_keys: tuple[str, ...] = ()
     prompt_defaults: dict[str, Any] = field(default_factory=dict)
     extra_context_providers: tuple[str, ...] = ()
     # Explicit tool assignment (mirrors Agents SDK: Agent(..., tools=[...])).

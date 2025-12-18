@@ -43,8 +43,6 @@ def get_agent_spec() -> AgentSpec:
         tool_keys=("web_search",),
         # Point to the prompt file relative to this script
         prompt_path=Path(__file__).parent / "prompt.md.j2",
-        # Data to inject into the Jinja2 template
-        prompt_context_keys=("user", "agent", "env"),
         extra_context_providers=("timestamp",),
     )
 ```
@@ -71,7 +69,7 @@ When an agent runs, it needs context. You control handoff history via `handoff_c
 *   **`last_turn`**: The target agent sees only the user's most recent message.
 
 ### Prompt Context Variables
-These variables are automatically available in your `prompt.md.j2` templates. They are injected by the runtime regardless of `prompt_context_keys`, so you do **not** need to declare them for validation:
+These variables are automatically available in your `prompt.md.j2` templates when a runtime context exists:
 
 | Key | Description | Example Access |
 | :--- | :--- | :--- |
@@ -323,7 +321,6 @@ class AgentSpec:
     
     prompt_path: Path | None = None   # Path to .md.j2 file
     instructions: str | None = None   # OR raw string instructions
-    prompt_context_keys: tuple = ()   # Currently unused by runtime; context is injected automatically
     prompt_defaults: dict = {}        # Static Jinja2 variables (e.g. {"tone": "helpful"})
     extra_context_providers: tuple = () # Dynamic context hooks (e.g. "timestamp")
     wrap_with_handoff_prompt: bool = False # Prepend standard routing instructions

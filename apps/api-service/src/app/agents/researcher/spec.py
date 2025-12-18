@@ -16,7 +16,6 @@ def get_agent_spec() -> AgentSpec:
         # Web-first research and synthesis; code/image handled by other specialists.
         tool_keys=("web_search",),
         prompt_path=base_dir / "prompt.md.j2",
-        prompt_context_keys=("user", "tenant", "agent", "run", "env"),
         memory_strategy={
             "mode": "summarize",
             "max_user_turns": 12,

@@ -50,7 +50,6 @@ def get_agent_spec() -> AgentSpec:
             ),
         },
         prompt_path=base_dir / "prompt.md.j2",
-        prompt_context_keys=("user", "tenant", "agent", "run", "env"),
         # Keep history lean for tool-style workflows.
         memory_strategy={
             "mode": "trim",

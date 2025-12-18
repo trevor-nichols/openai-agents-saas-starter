@@ -24,7 +24,6 @@ def get_agent_spec() -> AgentSpec:
             "ranking_options": {"score_threshold": 0.4},
         },
         prompt_path=base_dir / "prompt.md.j2",
-        prompt_context_keys=("user", "tenant", "agent", "run", "env"),
         memory_strategy={
             "mode": "trim",
             "max_user_turns": 8,

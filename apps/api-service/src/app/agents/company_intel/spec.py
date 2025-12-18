@@ -15,7 +15,6 @@ def get_agent_spec() -> AgentSpec:
         capabilities=("research", "structured_output"),
         tool_keys=("web_search",),
         prompt_path=base_dir / "prompt.md.j2",
-        prompt_context_keys=("user", "tenant", "agent", "run", "env"),
         output=OutputSpec(
             mode="json_schema",
             type_path="app.agents.company_intel.types.CompanyIntelBrief",

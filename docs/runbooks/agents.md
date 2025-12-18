@@ -102,8 +102,8 @@ registration; the OpenAI Agents SDK runtime is unchanged.
   - `agent.key`, `agent.display_name`
   - `run.conversation_id`, `run.request_message`
   - `env.environment`
+  - `memory.summary`
 - Each `AgentSpec` can declare:
-  - `prompt_context_keys`: expected top-level keys (helps readability; validation uses StrictUndefined).
   - `prompt_defaults`: seed values for missing fields.
   - `extra_context_providers`: tuple of provider names to enrich context.
 - Register custom providers in `app/agents/_shared/prompt_context.py` via:

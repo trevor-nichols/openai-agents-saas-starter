@@ -10,14 +10,14 @@ Operational guide for declaring and running agents with the OpenAI Agents SDK in
 
 ## AgentSpec fields (TL;DR)
 - Identity & model: `key` (dir name), `display_name`, `description`, optional `model` (spec default), optional `model_key` (→ settings bucket), `capabilities` (catalog metadata), `default` (provider default).
-- Prompt: `prompt_path` **or** `instructions` (Jinja allowed), `wrap_with_handoff_prompt`, `prompt_context_keys`, `prompt_defaults`, `extra_context_providers`.
+- Prompt: `prompt_path` **or** `instructions` (Jinja allowed), `wrap_with_handoff_prompt`, `prompt_defaults`, `extra_context_providers`.
 - Tools: `tool_keys` (ordered, explicit) + `tool_configs` (per-tool knobs).
 - Handoffs: `handoff_keys`, `handoff_context` (`full`|`fresh`|`last_turn`), `handoff_overrides` (tool_name/description, input_filter, input_type, is_enabled).
 - Agents-as-tools: `agent_tool_keys`, `agent_tool_overrides` (tool_name/description, custom_output_extractor, is_enabled, run_config, max_turns).
 - Retrieval: `vector_store_binding` (`tenant_default`|`static`|`required`), optional `vector_store_ids`, `file_search_options` (max_num_results, filters, ranking_options, include_search_results).
 - Outputs & validation: `output` (text | json_schema via `type_path` or `custom_schema_path`), `guardrails`, `tool_guardrails`, `tool_guardrail_overrides`, `guardrails_runtime` (suppress_tripwire, streaming_mode, concurrency, result_handler_path).
 - Memory defaults: `memory_strategy` (defaults applied after per-request and per-conversation overrides; supports trim/summarize/compact, token budgets, compact rules).
-- Misc: `prompt_context_keys`/`prompt_defaults`/`extra_context_providers` feed prompt rendering; `capabilities` are surfaced in catalogs.
+- Misc: `prompt_defaults`/`extra_context_providers` feed prompt rendering; `capabilities` are surfaced in catalogs.
 
 ## Tool inventory (where tools come from)
 - Registry (`app/utils/tools/registry.py::initialize_tools()`): registers hosted OpenAI tools (`web_search`, `code_interpreter`, `image_generation`, `file_search`) when `OPENAI_API_KEY` is set, plus hosted MCP tools from `mcp_tools` settings.
@@ -37,7 +37,6 @@ def get_agent_spec() -> AgentSpec:
         model_key=None,  # use agent_default_model
         tool_keys=("search_conversations", "web_search", "get_current_time"),
         prompt_path=base / "prompt.md.j2",
-        prompt_context_keys=("user", "tenant", "run", "env"),
     )
 ```
 
@@ -123,10 +122,11 @@ return AgentSpec(
 
 ## Prompt authoring
 - Prefer `prompt.md.j2`; keep logic minimal and declarative.
-- Available context keys when you include them in `prompt_context_keys`:
-  - `user.id`, `tenant.id`, `agent.key/display_name`, `run.conversation_id`, `run.request_message`, `env.environment`
-  - Custom providers via `extra_context_providers` (register in `_shared/prompt_context.py`).
-- `prompt_defaults` supply fallback values; Jinja runs with `StrictUndefined` at request time.
+- Always-available context keys (when runtime context exists):
+  - `user.id`, `tenant.id`, `agent.key/display_name`, `run.conversation_id`, `run.request_message`, `env.environment`, `memory.summary`
+- Add static variables via `prompt_defaults` in the spec.
+- Add dynamic variables by registering a provider in `_shared/prompt_context.py`, then list it in `extra_context_providers`.
+- Jinja runs with `StrictUndefined` at request time.
 
 ## Handoff controls (input_filter shortcuts)
 - `full` (default) – pass entire history.
