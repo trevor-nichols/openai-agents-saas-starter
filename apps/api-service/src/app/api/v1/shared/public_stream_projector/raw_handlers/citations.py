@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from urllib.parse import urlencode
+
 from app.domain.ai.models import AgentStreamEvent
 
 from ...streaming import (
@@ -78,6 +80,15 @@ def project_citations(
                         )
         elif citation_type == "container_file_citation":
             citation = ContainerFileCitation.model_validate(ann)
+            if not getattr(citation, "url", None) and citation.container_id and citation.file_id:
+                qs: dict[str, str] = {"conversation_id": builder.conversation_id}
+                if citation.filename:
+                    qs["filename"] = citation.filename
+                url = (
+                    f"/api/v1/openai/containers/{citation.container_id}"
+                    f"/files/{citation.file_id}/download"
+                )
+                citation = citation.model_copy(update={"url": f"{url}?{urlencode(qs)}"})
         else:
             citation = FileCitation.model_validate(ann)
 
@@ -100,4 +111,3 @@ def project_citations(
             )
 
     return out
-

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.domain.ai import AgentRunResult
+from app.domain.conversations import ConversationAttachment
 
 
 @dataclass(slots=True)
@@ -27,6 +28,7 @@ class WorkflowRunResult:
     steps: list[WorkflowStepResult]
     final_output: Any | None = None
     output_schema: dict[str, Any] | None = None
+    attachments: list[ConversationAttachment] | None = None
 
 
 __all__ = ["WorkflowStepResult", "WorkflowRunResult"]

@@ -15,6 +15,7 @@ from typing import Any
 from app.domain.ai.lifecycle import LifecycleEventSink
 from app.domain.ai.models import AgentStreamEvent
 from app.domain.conversations import ConversationAttachment
+from app.services.agents.attachment_utils import collect_container_file_citations_from_event
 from app.services.agents.attachments import AttachmentService
 from app.services.agents.context import ConversationActorContext
 
@@ -57,6 +58,12 @@ class AgentStreamProcessor:
             current_output_schema=entrypoint_output_schema,
         )
         self._seen_tool_calls: set[str] = set()
+        self._pending_container_file_citations: list[Mapping[str, Any]] = []
+        self._seen_container_files: set[str] = set()
+
+    @property
+    def pending_container_file_citations(self) -> list[Mapping[str, Any]]:
+        return list(self._pending_container_file_citations)
 
     async def iter_events(self, stream_handle: Any) -> AsyncIterator[AgentStreamEvent]:
         async for event in stream_handle.events():
@@ -107,6 +114,8 @@ class AgentStreamProcessor:
         elif event.response_text and not self.outcome.complete_response:
             self.outcome.complete_response = event.response_text
 
+        self._collect_container_file_citations(event)
+
         attachment_sources: list[Mapping[str, Any]] = []
         if event.payload and isinstance(event.payload, Mapping):
             attachment_sources.append(event.payload)
@@ -149,6 +158,10 @@ class AgentStreamProcessor:
             event.agent = self.outcome.current_agent
 
         return event
+
+    def _collect_container_file_citations(self, event: AgentStreamEvent) -> None:
+        new = collect_container_file_citations_from_event(event, seen=self._seen_container_files)
+        self._pending_container_file_citations.extend(new)
 
 
 class GuardrailStreamForwarder:

@@ -12,6 +12,7 @@ from fastapi.responses import StreamingResponse
 from app.api.dependencies.auth import CurrentUser, require_verified_scopes
 from app.api.dependencies.tenant import TenantContext, TenantRole, require_tenant_role
 from app.api.v1.shared.public_stream_projector import PublicStreamProjector
+from app.api.v1.shared.streaming import MessageAttachment
 from app.api.v1.workflows.schemas import (
     StreamingWorkflowEvent,
     WorkflowDescriptorResponse,
@@ -141,6 +142,20 @@ async def run_workflow(
         ],
         final_output=result.final_output,
         output_schema=result.output_schema,
+        attachments=(
+            [
+                MessageAttachment(
+                    object_id=att.object_id,
+                    filename=att.filename,
+                    mime_type=att.mime_type,
+                    size_bytes=att.size_bytes,
+                    url=att.presigned_url,
+                    tool_call_id=att.tool_call_id,
+                )
+                for att in (result.attachments or [])
+            ]
+            or None
+        ),
     )
 
 

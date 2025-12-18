@@ -29,6 +29,9 @@ class _StubAttachmentService:
     async def ingest_image_outputs(self, *args, **kwargs):
         return []
 
+    async def ingest_container_file_citations(self, *args, **kwargs):
+        return []
+
     def to_attachment_payload(self, att):
         return att
 

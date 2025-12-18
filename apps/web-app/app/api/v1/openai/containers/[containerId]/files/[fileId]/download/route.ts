@@ -5,7 +5,7 @@ import { getAccessTokenFromCookies } from '@/lib/auth/cookies';
 
 type RouteParams = { params: Promise<{ containerId: string; fileId: string }> };
 
-export async function GET(_request: Request, { params }: RouteParams) {
+export async function GET(request: Request, { params }: RouteParams) {
   const token = await getAccessTokenFromCookies();
   if (!token) {
     return NextResponse.json({ message: 'Missing access token.' }, { status: 401 });
@@ -17,9 +17,10 @@ export async function GET(_request: Request, { params }: RouteParams) {
   }
 
   const baseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+  const search = new URL(request.url).search;
 
   const upstream = await fetch(
-    `${baseUrl}/api/v1/openai/containers/${containerId}/files/${fileId}/download`,
+    `${baseUrl}/api/v1/openai/containers/${containerId}/files/${fileId}/download${search}`,
     {
       headers: {
         Authorization: `Bearer ${token}`,

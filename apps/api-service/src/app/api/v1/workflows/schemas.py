@@ -60,6 +60,7 @@ class WorkflowRunResponse(BaseModel):
     steps: list[WorkflowStepResultSchema]
     final_output: Any | None
     output_schema: dict[str, Any] | None = None
+    attachments: list[MessageAttachment] | None = None
 
 
 class WorkflowRunDetail(BaseModel):

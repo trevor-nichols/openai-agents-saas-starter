@@ -9,13 +9,14 @@ from __future__ import annotations
 import logging
 from collections.abc import AsyncGenerator, Mapping
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 from agents import trace
 
 from app.api.v1.agents.schemas import AgentStatus, AgentSummary
 from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse, MessageAttachment
 from app.bootstrap.container import wire_storage_service
+from app.core.settings import get_settings
 from app.domain.ai.lifecycle import LifecycleEventBus
 from app.domain.ai.models import AgentStreamEvent
 from app.domain.conversations import (
@@ -49,7 +50,11 @@ from app.services.agents.streaming_pipeline import (
     build_guardrail_summary,
 )
 from app.services.agents.usage import UsageService
-from app.services.containers import ContainerService
+from app.services.containers import (
+    ContainerFilesGateway,
+    ContainerService,
+    OpenAIContainerFilesGateway,
+)
 from app.services.conversation_service import ConversationService, get_conversation_service
 from app.services.storage.service import StorageService
 from app.services.usage_counters import UsageCounterService, get_usage_counter_service
@@ -71,6 +76,7 @@ class AgentService:
         usage_counter_service: UsageCounterService | None = None,
         provider_registry: AgentProviderRegistry | None = None,
         container_service: ContainerService | None = None,
+        container_files_gateway: ContainerFilesGateway | None = None,
         storage_service: StorageService | None = None,
         policy: AgentRuntimePolicy | None = None,
         interaction_builder: InteractionContextBuilder | None = None,
@@ -86,6 +92,7 @@ class AgentService:
 
         self._provider_registry = provider_registry or get_provider_registry()
         self._container_service = container_service
+        self._container_files_gateway = container_files_gateway
         self._storage_service = storage_service
         self._policy = policy or AgentRuntimePolicy.from_env()
 
@@ -93,7 +100,8 @@ class AgentService:
             self._conversation_service, self._policy
         )
         self._attachment_service = attachment_service or AttachmentService(
-            self._get_storage_service
+            self._get_storage_service,
+            container_files_gateway_resolver=self._get_container_files_gateway,
         )
         self._interaction_builder = interaction_builder or InteractionContextBuilder(
             container_service=self._container_service,
@@ -172,13 +180,21 @@ class AgentService:
             reset_current_actor(token)
 
         response_text = result.response_text or str(result.final_output)
-        attachments = await self._attachment_service.ingest_image_outputs(
+        image_attachments = await self._attachment_service.ingest_image_outputs(
             result.tool_outputs,
             actor=actor,
             conversation_id=ctx.conversation_id,
             agent_key=ctx.descriptor.key,
             response_id=result.response_id,
         )
+        container_attachments = await self._attachment_service.ingest_container_file_citations(
+            result.tool_outputs,
+            actor=actor,
+            conversation_id=ctx.conversation_id,
+            agent_key=ctx.descriptor.key,
+            response_id=result.response_id,
+        )
+        attachments = [*image_attachments, *container_attachments]
         await persist_assistant_message(
             ctx=ctx,
             conversation_service=self._conversation_service,
@@ -371,6 +387,28 @@ class AgentService:
                 summary_event.output_schema = processor.outcome.current_output_schema
             yield summary_event
 
+        if terminal_event is not None and processor.pending_container_file_citations:
+            container_attachments = await self._attachment_service.ingest_container_file_citations(
+                processor.pending_container_file_citations,
+                actor=actor,
+                conversation_id=ctx.conversation_id,
+                agent_key=ctx.descriptor.key,
+                response_id=terminal_event.response_id
+                or getattr(stream_handle, "last_response_id", None)
+                if stream_handle is not None
+                else None,
+            )
+            if container_attachments:
+                processor.outcome.attachments.extend(container_attachments)
+                payloads = [
+                    cast(Mapping[str, Any], self._attachment_service.to_attachment_payload(att))
+                    for att in container_attachments
+                ]
+                if terminal_event.attachments is None:
+                    terminal_event.attachments = payloads
+                else:
+                    terminal_event.attachments.extend(payloads)
+
         await persist_assistant_message(
             ctx=ctx,
             conversation_service=self._conversation_service,
@@ -459,6 +497,11 @@ class AgentService:
         if self._storage_service is None:
             raise RuntimeError("Storage service is not configured")
         return self._storage_service
+
+    def _get_container_files_gateway(self) -> ContainerFilesGateway:
+        if self._container_files_gateway is None:
+            self._container_files_gateway = OpenAIContainerFilesGateway(get_settings)
+        return self._container_files_gateway
 
     async def _sync_session_state(
         self,

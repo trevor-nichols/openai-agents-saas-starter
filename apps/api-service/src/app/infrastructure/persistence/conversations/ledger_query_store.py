@@ -51,6 +51,64 @@ class ConversationLedgerQueryStore:
     def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
         self._session_factory = session_factory
 
+    async def has_container_file_citation(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        container_id: str,
+        file_id: str,
+    ) -> bool:
+        """Return True if a visible ledger event cites the given container file.
+
+        This is used for access control when proxying downloads of Code Interpreter
+        container files created in auto containers (which may not be persisted as
+        explicit Container rows).
+        """
+
+        conversation_uuid = coerce_conversation_uuid(conversation_id)
+        tenant_uuid = parse_tenant_id(tenant_id)
+
+        container_id = (container_id or "").strip()
+        file_id = (file_id or "").strip()
+        if not container_id or not file_id:
+            return False
+
+        async with self._session_factory() as session:
+            conversation = await session.get(AgentConversation, conversation_uuid)
+            if conversation is None or conversation.tenant_id != tenant_uuid:
+                raise ConversationNotFoundError(
+                    f"Conversation {conversation_id} does not exist"
+                )
+
+            segments = await self._visible_segments(
+                session,
+                tenant_id=tenant_uuid,
+                conversation_id=conversation_uuid,
+            )
+            if not segments:
+                return False
+
+            visibility_predicate = self._segment_visibility_predicate(segments)
+
+            citation = ConversationLedgerEvent.payload_json["citation"]
+            stmt = (
+                select(ConversationLedgerEvent.id)
+                .where(
+                    ConversationLedgerEvent.tenant_id == tenant_uuid,
+                    ConversationLedgerEvent.conversation_id == conversation_uuid,
+                    ConversationLedgerEvent.kind == "message.citation",
+                    ConversationLedgerEvent.payload_json.is_not(None),
+                    visibility_predicate,
+                    citation["type"].as_string() == "container_file_citation",
+                    citation["container_id"].as_string() == container_id,
+                    citation["file_id"].as_string() == file_id,
+                )
+                .limit(1)
+            )
+            found = await session.execute(stmt)
+            return found.scalar_one_or_none() is not None
+
     async def list_events_page(
         self,
         conversation_id: str,

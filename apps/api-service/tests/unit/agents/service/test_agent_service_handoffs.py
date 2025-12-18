@@ -156,6 +156,9 @@ class _FakeAttachmentService:
         self.ingest_calls += 1
         return []
 
+    async def ingest_container_file_citations(self, *args, **kwargs):
+        return []
+
     def to_attachment_payload(self, attachment):
         return attachment
 

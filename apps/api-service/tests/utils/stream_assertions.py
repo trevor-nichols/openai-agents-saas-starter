@@ -159,7 +159,16 @@ def assert_code_interpreter_expectations(events: Sequence[PublicSseEventBase]) -
 
     full_text = assembled_text(events)
     assert full_text, "No assistant text returned"
-    assert any(token in full_text for token in ["1.414", "1.41", "1.415", "1.4142"]), "Result not mentioned"
+    assert "squares.csv" in full_text, "Expected the generated filename to be mentioned in assistant text"
+
+    citations = [c for c in collect_citations(events) if isinstance(c, ContainerFileCitation)]
+    assert citations, "Expected at least one container_file_citation annotation"
+    assert all(c.url for c in citations), "Container file citation missing URL"
+
+    terminal = events[-1]
+    assert isinstance(terminal, FinalEvent), "Expected final terminal event for code interpreter golden"
+    assert terminal.final.attachments, "No attachments were stored from the code interpreter call"
+    assert any(a.url for a in terminal.final.attachments), "Stored attachments missing URL"
 
 
 def assert_file_search_expectations(

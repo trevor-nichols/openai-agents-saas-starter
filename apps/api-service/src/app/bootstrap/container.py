@@ -321,6 +321,9 @@ def wire_workflow_services(container: ApplicationContainer) -> None:
     if container.session_factory is None:
         raise RuntimeError("Session factory must be configured before workflow services")
 
+    if container.container_service is None:
+        wire_container_service(container)
+
     if container.vector_store_service is None:
         wire_vector_store_service(container)
 
@@ -330,6 +333,19 @@ def wire_workflow_services(container: ApplicationContainer) -> None:
         )
 
     if container.workflow_service is None:
+        if container.storage_service is None:
+            wire_storage_service(container)
+        if container.storage_service is None:  # pragma: no cover - defensive
+            raise RuntimeError("Storage service must be configured before workflow services")
+
+        from app.services.agents.attachments import AttachmentService
+        from app.services.containers.files_gateway import OpenAIContainerFilesGateway
+
+        storage_service = cast(StorageService, container.storage_service)
+        attachment_service = AttachmentService(
+            lambda: storage_service,
+            container_files_gateway_resolver=lambda: OpenAIContainerFilesGateway(get_settings),
+        )
         container.workflow_service = WorkflowService(
             registry=None,
             provider_registry=None,
@@ -338,6 +354,7 @@ def wire_workflow_services(container: ApplicationContainer) -> None:
                 vector_store_service=container.vector_store_service,
             ),
             run_repository=container.workflow_run_repository,
+            attachment_service=attachment_service,
         )
 
 

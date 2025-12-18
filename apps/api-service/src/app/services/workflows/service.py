@@ -10,6 +10,7 @@ from typing import Any
 from app.core.settings import get_settings
 from app.domain.workflows import WorkflowRunListPage, WorkflowRunRepository, WorkflowStatus
 from app.observability.metrics import WORKFLOW_RUN_DELETES_TOTAL
+from app.services.agents.attachments import AttachmentService
 from app.services.agents.context import ConversationActorContext
 from app.services.agents.interaction_context import InteractionContextBuilder
 from app.services.agents.provider_registry import (
@@ -39,6 +40,7 @@ class WorkflowService:
         interaction_builder: InteractionContextBuilder | None = None,
         run_repository: WorkflowRunRepository | None = None,
         catalog_service: WorkflowCatalogService | None = None,
+        attachment_service: AttachmentService | None = None,
     ) -> None:
         self._registry = registry or get_workflow_registry()
         self._catalog_service = catalog_service or WorkflowCatalogService(self._registry)
@@ -48,6 +50,7 @@ class WorkflowService:
             interaction_builder=interaction_builder,
             run_repository=run_repository,
             cancellation_tracker=_CancellationTracker(),
+            attachment_service=attachment_service,
         )
 
     def list_workflows(self) -> Sequence[WorkflowDescriptor]:
@@ -292,6 +295,7 @@ def build_workflow_service(
     run_repository: WorkflowRunRepository | None = None,
     container_service=None,
     vector_store_service=None,
+    attachment_service: AttachmentService | None = None,
 ) -> WorkflowService:
     return WorkflowService(
         registry=get_workflow_registry(),
@@ -300,39 +304,17 @@ def build_workflow_service(
             container_service=container_service, vector_store_service=vector_store_service
         ),
         run_repository=run_repository,
+        attachment_service=attachment_service,
     )
 
 
 def get_workflow_service() -> WorkflowService:
-    from app.bootstrap.container import (
-        get_container,
-        wire_container_service,
-        wire_vector_store_service,
-    )
-    from app.infrastructure.persistence.workflows.repository import (
-        SqlAlchemyWorkflowRunRepository,
-    )
+    from app.bootstrap.container import get_container, wire_workflow_services
 
     container = get_container()
-    if container.workflow_run_repository is None:
-        if container.session_factory is None:
-            raise RuntimeError("Session factory must be configured before workflow services")
-        container.workflow_run_repository = SqlAlchemyWorkflowRunRepository(
-            container.session_factory
-        )
-
-    if container.container_service is None:
-        wire_container_service(container)
-
-    if container.vector_store_service is None:
-        wire_vector_store_service(container)
-
-    if container.workflow_service is None:
-        container.workflow_service = build_workflow_service(
-            run_repository=container.workflow_run_repository,
-            container_service=container.container_service,
-            vector_store_service=container.vector_store_service,
-        )
+    wire_workflow_services(container)
+    if container.workflow_service is None:  # pragma: no cover - defensive
+        raise RuntimeError("WorkflowService was not configured")
     return container.workflow_service
 
 

@@ -6992,6 +6992,10 @@ export type WorkflowRunResponse = {
   output_schema?: {
     [key: string]: unknown;
   } | null;
+  /**
+   * Attachments
+   */
+  attachments?: Array<MessageAttachment> | null;
 };
 
 /**
@@ -14933,7 +14937,16 @@ export type DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFile
        */
       file_id: string;
     };
-    query?: never;
+    query?: {
+      /**
+       * Conversation Id
+       */
+      conversation_id?: string | null;
+      /**
+       * Filename
+       */
+      filename?: string | null;
+    };
     url: "/api/v1/openai/containers/{container_id}/files/{file_id}/download";
   };
 

@@ -8,7 +8,12 @@ from collections.abc import Callable, Iterable, Mapping
 from typing import Any
 
 from app.domain.conversations import ConversationAttachment, ConversationMessage
+from app.services.agents.container_file_ingestor import (
+    ContainerFileCitationRef,
+    ingest_container_file_citation,
+)
 from app.services.agents.image_ingestor import ingest_image_output
+from app.services.containers.files_gateway import ContainerFilesGateway
 from app.services.storage.service import StorageService
 
 logger = logging.getLogger(__name__)
@@ -17,8 +22,14 @@ logger = logging.getLogger(__name__)
 class AttachmentService:
     """Handles persistence and presentation of tool-produced attachments."""
 
-    def __init__(self, storage_resolver: Callable[[], StorageService]) -> None:
+    def __init__(
+        self,
+        storage_resolver: Callable[[], StorageService],
+        *,
+        container_files_gateway_resolver: Callable[[], ContainerFilesGateway] | None = None,
+    ) -> None:
         self._storage_resolver = storage_resolver
+        self._container_files_gateway_resolver = container_files_gateway_resolver
 
     async def ingest_image_outputs(
         self,
@@ -97,6 +108,78 @@ class AttachmentService:
 
         return attachments
 
+    async def ingest_container_file_citations(
+        self,
+        tool_outputs: list[Mapping[str, Any]] | None,
+        *,
+        actor,
+        conversation_id: str,
+        agent_key: str,
+        response_id: str | None,
+        seen_citations: set[str] | None = None,
+    ) -> list[ConversationAttachment]:
+        if not tool_outputs:
+            return []
+        if self._container_files_gateway_resolver is None:
+            return []
+
+        storage = self._storage_resolver()
+        gateway = self._container_files_gateway_resolver()
+        attachments: list[ConversationAttachment] = []
+        dedupe = seen_citations if seen_citations is not None else set()
+
+        for output in tool_outputs:
+            if not isinstance(output, Mapping):
+                continue
+            for citation in _iter_container_file_citations(output):
+                container_id = citation.get("container_id")
+                file_id = citation.get("file_id")
+                if not isinstance(container_id, str) or not isinstance(file_id, str):
+                    continue
+                dedupe_key = f"{container_id}:{file_id}"
+                if dedupe_key in dedupe:
+                    continue
+
+                filename = citation.get("filename")
+                try:
+                    ingested = await ingest_container_file_citation(
+                        tenant_id=actor.tenant_id,
+                        user_id=getattr(actor, "user_id", None),
+                        conversation_id=conversation_id,
+                        agent_key=agent_key,
+                        tool_call_id=None,
+                        response_id=response_id,
+                        citation=ContainerFileCitationRef(
+                            container_id=container_id,
+                            file_id=file_id,
+                            filename=str(filename) if isinstance(filename, str) else None,
+                        ),
+                        gateway=gateway,
+                        storage_service=storage,
+                    )
+                    presigned, _ = await storage.get_presigned_download(
+                        tenant_id=uuid.UUID(actor.tenant_id),
+                        object_id=ingested.storage_object_id,
+                    )
+                    ingested.attachment.presigned_url = presigned.url
+                    dedupe.add(dedupe_key)
+                    attachments.append(ingested.attachment)
+                except Exception as exc:  # pragma: no cover
+                    logger.warning(
+                        "container_file.ingest_failed",
+                        extra={
+                            "tenant_id": actor.tenant_id,
+                            "conversation_id": conversation_id,
+                            "agent_key": agent_key,
+                            "container_id": container_id,
+                            "file_id": file_id,
+                        },
+                        exc_info=exc,
+                    )
+                    continue
+
+        return attachments
+
     async def presign_message_attachments(
         self, messages: list[ConversationMessage], *, tenant_id: str
     ) -> None:
@@ -166,3 +249,39 @@ def _iter_image_generation_calls(candidate: Mapping[str, Any]) -> Iterable[Mappi
     raw_item = candidate.get("raw_item")
     if isinstance(raw_item, Mapping):
         yield from _iter_image_generation_calls(raw_item)
+
+
+def _iter_container_file_citations(candidate: Mapping[str, Any]) -> Iterable[Mapping[str, Any]]:
+    """Yield any container_file_citation mappings contained in a payload."""
+
+    if candidate.get("type") == "container_file_citation":
+        yield candidate
+
+    annotations = candidate.get("annotations")
+    if isinstance(annotations, list):
+        for ann in annotations:
+            if isinstance(ann, Mapping) and ann.get("type") == "container_file_citation":
+                yield ann
+
+    # Tool-call wrapper (code_interpreter_call includes annotations)
+    ci = candidate.get("code_interpreter_call")
+    if isinstance(ci, Mapping):
+        yield from _iter_container_file_citations(ci)
+
+    # Nested message content parts (Responses output items)
+    content = candidate.get("content")
+    if isinstance(content, list):
+        for part in content:
+            if isinstance(part, Mapping):
+                yield from _iter_container_file_citations(part)
+
+    # Nested outputs list (e.g., response.completed payload)
+    outputs = candidate.get("output") or candidate.get("outputs")
+    if isinstance(outputs, list):
+        for item in outputs:
+            if isinstance(item, Mapping):
+                yield from _iter_container_file_citations(item)
+
+    raw_item = candidate.get("raw_item")
+    if isinstance(raw_item, Mapping):
+        yield from _iter_container_file_citations(raw_item)
