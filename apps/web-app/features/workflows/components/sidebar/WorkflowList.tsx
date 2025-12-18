@@ -37,19 +37,24 @@ export function WorkflowList({ items, isLoading, selectedKey, onSelect }: Workfl
             key={workflow.key}
             htmlFor={`workflow-${workflow.key}`}
             className={cn(
-              'flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 transition',
+              'flex min-w-0 cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 transition',
               'hover:border-primary/30 hover:bg-primary/5 focus-within:ring-2 focus-within:ring-primary/40',
               active
                 ? 'border-primary/60 bg-primary/10 shadow-sm'
                 : 'border-white/5 bg-white/5'
             )}
           >
-            <RadioGroupItem id={`workflow-${workflow.key}`} value={workflow.key} className="mt-1" />
+            <RadioGroupItem id={`workflow-${workflow.key}`} value={workflow.key} className="mt-1 shrink-0" />
             <div className="min-w-0 flex-1 space-y-1">
-              <div className="flex items-center gap-2">
-                <div className="truncate text-sm font-semibold">{workflow.display_name}</div>
+              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                <div className="min-w-0 flex-1 truncate text-sm font-semibold">
+                  {workflow.display_name}
+                </div>
                 {workflow.default ? (
-                  <InlineTag className="px-2 py-0.5 text-[10px] uppercase tracking-wide" tone="default">
+                  <InlineTag
+                    className="max-w-full shrink-0 px-2 py-0.5 text-[10px] uppercase tracking-wide"
+                    tone="default"
+                  >
                     Default
                   </InlineTag>
                 ) : null}
