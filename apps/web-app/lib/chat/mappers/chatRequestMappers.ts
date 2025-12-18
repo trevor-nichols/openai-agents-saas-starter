@@ -56,6 +56,23 @@ export function dedupeAndSortMessages(messages: ChatMessage[]): ChatMessage[] {
   const normalizeContent = (content: string) =>
     content.replace(new RegExp(`${CURSOR_TOKEN}\\s*$`), '').trim();
 
+  const mergePlaceholderMetadata = (persisted: ChatMessage, placeholder: ChatMessage): ChatMessage => {
+    const hasPersistedAttachments = Array.isArray(persisted.attachments) && persisted.attachments.length > 0;
+    const hasPlaceholderAttachments = Array.isArray(placeholder.attachments) && placeholder.attachments.length > 0;
+
+    return {
+      ...persisted,
+      citations: persisted.citations ?? placeholder.citations ?? null,
+      structuredOutput:
+        persisted.structuredOutput !== null && persisted.structuredOutput !== undefined
+          ? persisted.structuredOutput
+          : (placeholder.structuredOutput ?? null),
+      attachments: hasPersistedAttachments
+        ? persisted.attachments
+        : (hasPlaceholderAttachments ? placeholder.attachments : (persisted.attachments ?? placeholder.attachments ?? null)),
+    };
+  };
+
   const byId = new Map<string, ChatMessage>();
   const orderedIds: string[] = [];
 
@@ -106,6 +123,7 @@ export function dedupeAndSortMessages(messages: ChatMessage[]): ChatMessage[] {
   });
 
   const dropPlaceholderIndexes = new Set<number>();
+  const mergedMessagesByIndex = new Map<number, ChatMessage>();
 
   for (const group of groups.values()) {
     const placeholders = group
@@ -127,6 +145,10 @@ export function dedupeAndSortMessages(messages: ChatMessage[]): ChatMessage[] {
 
       if (placeholder.timestampMs === null || real.timestampMs === null) {
         dropPlaceholderIndexes.add(placeholder.index);
+        mergedMessagesByIndex.set(
+          real.index,
+          mergePlaceholderMetadata(real.message, placeholder.message),
+        );
         p += 1;
         r += 1;
         continue;
@@ -135,6 +157,10 @@ export function dedupeAndSortMessages(messages: ChatMessage[]): ChatMessage[] {
       const diff = Math.abs(placeholder.timestampMs - real.timestampMs);
       if (diff <= PLACEHOLDER_MATCH_WINDOW_MS) {
         dropPlaceholderIndexes.add(placeholder.index);
+        mergedMessagesByIndex.set(
+          real.index,
+          mergePlaceholderMetadata(real.message, placeholder.message),
+        );
         p += 1;
         r += 1;
         continue;
@@ -156,7 +182,7 @@ export function dedupeAndSortMessages(messages: ChatMessage[]): ChatMessage[] {
       if (aTime !== bTime) return aTime - bTime;
       return a.index - b.index;
     })
-    .map((entry) => entry.message);
+    .map((entry) => mergedMessagesByIndex.get(entry.index) ?? entry.message);
 }
 
 export function normalizeLocationPayload(
