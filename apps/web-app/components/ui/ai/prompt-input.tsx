@@ -21,14 +21,24 @@ import { Children } from 'react';
 
 export type PromptInputProps = HTMLAttributes<HTMLFormElement>;
 
-export const PromptInput = ({ className, ...props }: PromptInputProps) => (
-  <form
-    className={cn(
-      'w-full divide-y overflow-hidden rounded-xl border bg-background shadow-sm',
-      className
-    )}
-    {...props}
-  />
+export type PromptInputVariant = 'default' | 'composer';
+
+const promptInputVariants: Record<PromptInputVariant, string> = {
+  default: 'w-full divide-y overflow-hidden rounded-xl border bg-background shadow-sm',
+  composer:
+    'w-full divide-y-0 overflow-hidden rounded-xl border bg-background shadow-lg transition-all focus-within:ring-1 focus-within:ring-ring',
+};
+
+export type PromptInputWithVariantProps = PromptInputProps & {
+  variant?: PromptInputVariant;
+};
+
+export const PromptInput = ({
+  className,
+  variant = 'default',
+  ...props
+}: PromptInputWithVariantProps) => (
+  <form className={cn(promptInputVariants[variant], className)} {...props} />
 );
 
 export type PromptInputTextareaProps = ComponentProps<typeof Textarea> & {

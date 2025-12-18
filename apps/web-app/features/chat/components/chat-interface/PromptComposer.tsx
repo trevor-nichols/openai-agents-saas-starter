@@ -92,7 +92,7 @@ export function PromptComposer({
     <div className="mx-auto w-full max-w-3xl px-4 pb-4">
       <PromptInput
         onSubmit={onSubmit}
-        className="divide-y-0 overflow-hidden rounded-xl border bg-background shadow-lg transition-all focus-within:ring-1 focus-within:ring-ring"
+        variant="composer"
       >
         <PromptInputTextarea
           value={messageInput}
