@@ -14,6 +14,7 @@ import { DeleteAssetDialog } from './DeleteAssetDialog';
 
 interface AssetGalleryProps {
   assets: AssetResponse[];
+  thumbnailUrls?: Record<string, string>;
   onDownload: (asset: AssetResponse) => Promise<void>;
   onDelete: (asset: AssetResponse) => Promise<void>;
   onPreview: (asset: AssetResponse) => Promise<string | null>;
@@ -23,6 +24,7 @@ interface AssetGalleryProps {
 
 export function AssetGallery({
   assets,
+  thumbnailUrls,
   onDownload,
   onDelete,
   onPreview,
@@ -59,12 +61,22 @@ export function AssetGallery({
         {assets.map((asset) => {
           const isDownloading = downloadingId === asset.id;
           const isDeleting = deletingId === asset.id;
+          const thumbnailUrl = thumbnailUrls?.[asset.id];
           return (
             <Card key={asset.id} className="border-white/10 bg-white/5">
               <CardContent className="p-0">
                 <div className="relative flex h-40 items-center justify-center overflow-hidden rounded-t-xl bg-gradient-to-br from-slate-900/70 via-slate-800/70 to-slate-700/70 text-xs text-white/70">
+                  {thumbnailUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- presigned URLs are safe for previews
+                    <img
+                      src={thumbnailUrl}
+                      alt={asset.filename ?? 'thumbnail'}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  ) : null}
+                  <div className="absolute inset-0 bg-black/35" />
                   <div className="absolute inset-0 opacity-30 blur-2xl" />
-                  <span className="z-10">Image ready</span>
+                  <span className="z-10">{thumbnailUrl ? 'Preview ready' : 'Image ready'}</span>
                 </div>
                 <div className="space-y-2 px-4 py-3">
                   <div className="text-sm font-semibold text-foreground">

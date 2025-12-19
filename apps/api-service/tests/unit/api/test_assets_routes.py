@@ -39,6 +39,21 @@ class StubAssetService:
     async def delete_asset(self, **kwargs) -> None:
         self.deleted = True
 
+    async def get_thumbnail_urls(self, **kwargs):
+        item = type(
+            "Thumb",
+            (),
+            {
+                "asset_id": self._view.asset.id,
+                "storage_object_id": self._view.asset.storage_object_id,
+                "download_url": "https://example.com/thumb",
+                "method": "GET",
+                "headers": {},
+                "expires_in_seconds": 900,
+            },
+        )
+        return [item], [], []
+
     def signed_url_ttl(self) -> int:
         return 900
 
@@ -148,3 +163,17 @@ def test_delete_asset() -> None:
 
     assert response.status_code == 204
     assert stub.deleted is True
+
+
+def test_asset_thumbnail_urls() -> None:
+    view = _asset_view()
+    client, _ = _client_with_stub(view)
+
+    response = client.post(
+        "/api/v1/assets/thumbnail-urls",
+        json={"asset_ids": [str(view.asset.id)]},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["items"][0]["asset_id"] == str(view.asset.id)

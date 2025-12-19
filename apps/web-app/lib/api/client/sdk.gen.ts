@@ -103,6 +103,9 @@ import type {
   GetAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGetData,
   GetAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGetErrors,
   GetAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGetResponses,
+  GetAssetThumbnailUrlsApiV1AssetsThumbnailUrlsPostData,
+  GetAssetThumbnailUrlsApiV1AssetsThumbnailUrlsPostErrors,
+  GetAssetThumbnailUrlsApiV1AssetsThumbnailUrlsPostResponses,
   GetContainerByIdApiV1ContainersContainerIdGetData,
   GetContainerByIdApiV1ContainersContainerIdGetErrors,
   GetContainerByIdApiV1ContainersContainerIdGetResponses,
@@ -1541,6 +1544,37 @@ export const getAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGet = <
     ],
     url: "/api/v1/assets/{asset_id}/download-url",
     ...options,
+  });
+};
+
+/**
+ * Get Asset Thumbnail Urls
+ */
+export const getAssetThumbnailUrlsApiV1AssetsThumbnailUrlsPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    GetAssetThumbnailUrlsApiV1AssetsThumbnailUrlsPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    GetAssetThumbnailUrlsApiV1AssetsThumbnailUrlsPostResponses,
+    GetAssetThumbnailUrlsApiV1AssetsThumbnailUrlsPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/assets/thumbnail-urls",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
   });
 };
 

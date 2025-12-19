@@ -4,12 +4,14 @@ import {
   deleteAssetApiV1AssetsAssetIdDelete,
   getAssetApiV1AssetsAssetIdGet,
   getAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGet,
+  getAssetThumbnailUrlsApiV1AssetsThumbnailUrlsPost,
   listAssetsApiV1AssetsGet,
 } from '@/lib/api/client/sdk.gen';
 import type {
   AssetDownloadResponse,
   AssetListResponse,
   AssetResponse,
+  AssetThumbnailUrlsResponse,
 } from '@/lib/api/client/types.gen';
 
 import { getServerApiClient } from '../apiClient';
@@ -108,4 +110,23 @@ export async function deleteAsset(assetId: string): Promise<void> {
     throwOnError: true,
     path: { asset_id: assetId },
   });
+}
+
+export async function getAssetThumbnailUrls(
+  assetIds: string[],
+): Promise<AssetThumbnailUrlsResponse> {
+  if (!assetIds.length) {
+    return { items: [], missing_asset_ids: [], unsupported_asset_ids: [] };
+  }
+
+  const { client, auth } = await getServerApiClient();
+  const response = await getAssetThumbnailUrlsApiV1AssetsThumbnailUrlsPost({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    body: { asset_ids: assetIds },
+  });
+
+  return response.data ?? { items: [], missing_asset_ids: [], unsupported_asset_ids: [] };
 }

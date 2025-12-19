@@ -50,6 +50,25 @@ class AssetDownloadResponse(BaseModel):
     expires_in_seconds: int
 
 
+class AssetThumbnailUrlItem(BaseModel):
+    asset_id: uuid.UUID
+    storage_object_id: uuid.UUID
+    download_url: str
+    method: str
+    headers: dict[str, str]
+    expires_in_seconds: int
+
+
+class AssetThumbnailUrlsRequest(BaseModel):
+    asset_ids: list[uuid.UUID] = Field(min_length=1, max_length=200)
+
+
+class AssetThumbnailUrlsResponse(BaseModel):
+    items: list[AssetThumbnailUrlItem]
+    missing_asset_ids: list[uuid.UUID] = Field(default_factory=list)
+    unsupported_asset_ids: list[uuid.UUID] = Field(default_factory=list)
+
+
 class AssetListFilters(BaseModel):
     asset_type: AssetType | None = Field(default=None)
     source_tool: AssetSourceTool | None = Field(default=None)

@@ -8,7 +8,11 @@ import { EmptyState, ErrorState, SkeletonPanel } from '@/components/ui/states';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { getAssetDownloadUrl } from '@/lib/api/assets';
-import { useAssetsInfiniteQuery, useDeleteAsset } from '@/lib/queries/assets';
+import {
+  useAssetThumbnailUrls,
+  useAssetsInfiniteQuery,
+  useDeleteAsset,
+} from '@/lib/queries/assets';
 
 import { AssetFilters, AssetGallery, AssetTable } from './components';
 import { ASSET_LIBRARY_COPY } from './constants';
@@ -33,6 +37,15 @@ export function AssetLibrary() {
 
   const images = useMemo(() => assets.filter((asset) => asset.asset_type === 'image'), [assets]);
   const files = useMemo(() => assets.filter((asset) => asset.asset_type === 'file'), [assets]);
+  const imageIds = useMemo(() => images.map((asset) => asset.id), [images]);
+  const thumbnailsQuery = useAssetThumbnailUrls(imageIds);
+  const thumbnailUrls = useMemo(() => {
+    const items = thumbnailsQuery.data?.items ?? [];
+    return items.reduce<Record<string, string>>((acc, item) => {
+      acc[item.asset_id] = item.download_url;
+      return acc;
+    }, {});
+  }, [thumbnailsQuery.data]);
 
   const handleDownload = async (asset: { id: string }) => {
     setDownloadingId(asset.id);
@@ -136,6 +149,7 @@ export function AssetLibrary() {
               </div>
               <AssetGallery
                 assets={images}
+                thumbnailUrls={thumbnailUrls}
                 onDownload={handleDownload}
                 onDelete={handleDelete}
                 onPreview={handlePreview}
@@ -164,6 +178,7 @@ export function AssetLibrary() {
           <TabsContent value="images" className="space-y-4">
             <AssetGallery
               assets={images}
+              thumbnailUrls={thumbnailUrls}
               onDownload={handleDownload}
               onDelete={handleDelete}
               onPreview={handlePreview}

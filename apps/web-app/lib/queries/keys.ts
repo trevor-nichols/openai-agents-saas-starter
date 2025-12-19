@@ -112,6 +112,7 @@ export const queryKeys = {
     all: ['assets'] as const,
     list: (filters?: Record<string, unknown>) => [...queryKeys.assets.all, 'list', filters ?? {}] as const,
     detail: (assetId: string) => [...queryKeys.assets.all, 'detail', assetId] as const,
+    thumbnails: (assetIds: string[]) => [...queryKeys.assets.all, 'thumbnails', assetIds] as const,
   },
   vectorStores: {
     all: ['vector-stores'] as const,

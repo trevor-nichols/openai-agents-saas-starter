@@ -2,9 +2,12 @@ import type {
   AssetDownloadResponse,
   AssetListResponse,
   AssetResponse,
+  AssetThumbnailUrlsResponse,
 } from '@/lib/api/client/types.gen';
 import { USE_API_MOCK } from '@/lib/config';
 import { apiV1Path } from '@/lib/apiPaths';
+
+const THUMBNAIL_BATCH_SIZE = 200;
 
 function buildError(response: Response, fallback: string): Error {
   return new Error(fallback || `Request failed with ${response.status}`);
@@ -113,4 +116,52 @@ export async function deleteAsset(assetId: string) {
     method: 'DELETE',
   });
   if (!res.ok) throw buildError(res, 'Failed to delete asset');
+}
+
+export async function getAssetThumbnailUrls(
+  assetIds: string[],
+): Promise<AssetThumbnailUrlsResponse> {
+  if (USE_API_MOCK) {
+    return { items: [], missing_asset_ids: [], unsupported_asset_ids: [] };
+  }
+  const uniqueIds = Array.from(new Set(assetIds.filter(Boolean)));
+  if (!uniqueIds.length) {
+    return { items: [], missing_asset_ids: [], unsupported_asset_ids: [] };
+  }
+
+  const responses: AssetThumbnailUrlsResponse[] = [];
+  for (let i = 0; i < uniqueIds.length; i += THUMBNAIL_BATCH_SIZE) {
+    const chunk = uniqueIds.slice(i, i + THUMBNAIL_BATCH_SIZE);
+    const res = await fetch(apiV1Path('/assets/thumbnail-urls'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ asset_ids: chunk }),
+    });
+
+    if (!res.ok) throw buildError(res, 'Failed to load asset thumbnails');
+    responses.push(
+      await parseJson<AssetThumbnailUrlsResponse>(res, 'Failed to parse thumbnails response'),
+    );
+  }
+
+  type ThumbnailAccumulator = {
+    items: AssetThumbnailUrlsResponse['items'];
+    missing_asset_ids: string[];
+    unsupported_asset_ids: string[];
+  };
+
+  return responses.reduce<ThumbnailAccumulator>(
+    (acc, response) => ({
+      items: [...acc.items, ...response.items],
+      missing_asset_ids: [
+        ...acc.missing_asset_ids,
+        ...(response.missing_asset_ids ?? []),
+      ],
+      unsupported_asset_ids: [
+        ...acc.unsupported_asset_ids,
+        ...(response.unsupported_asset_ids ?? []),
+      ],
+    }),
+    { items: [], missing_asset_ids: [], unsupported_asset_ids: [] },
+  );
 }

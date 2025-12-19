@@ -14,6 +14,9 @@ from app.api.v1.assets.schemas import (
     AssetListResponse,
     AssetResponse,
     AssetSourceTool,
+    AssetThumbnailUrlItem,
+    AssetThumbnailUrlsRequest,
+    AssetThumbnailUrlsResponse,
     AssetType,
 )
 from app.bootstrap.container import get_container, wire_asset_service
@@ -162,6 +165,36 @@ async def get_asset_download_url(
         method=presign.method,
         headers=presign.headers,
         expires_in_seconds=ttl,
+    )
+
+
+@router.post("/thumbnail-urls", response_model=AssetThumbnailUrlsResponse)
+async def get_asset_thumbnail_urls(
+    payload: AssetThumbnailUrlsRequest,
+    _: CurrentUser = Depends(require_verified_user()),
+    tenant_context: TenantContext = Depends(
+        require_tenant_role(TenantRole.VIEWER, TenantRole.ADMIN, TenantRole.OWNER)
+    ),
+    service: AssetService = Depends(_svc),
+) -> AssetThumbnailUrlsResponse:
+    items, missing, unsupported = await service.get_thumbnail_urls(
+        tenant_id=_uuid(tenant_context.tenant_id),
+        asset_ids=payload.asset_ids,
+    )
+    return AssetThumbnailUrlsResponse(
+        items=[
+            AssetThumbnailUrlItem(
+                asset_id=item.asset_id,
+                storage_object_id=item.storage_object_id,
+                download_url=item.download_url,
+                method=item.method,
+                headers=item.headers,
+                expires_in_seconds=item.expires_in_seconds,
+            )
+            for item in items
+        ],
+        missing_asset_ids=missing,
+        unsupported_asset_ids=unsupported,
     )
 
 

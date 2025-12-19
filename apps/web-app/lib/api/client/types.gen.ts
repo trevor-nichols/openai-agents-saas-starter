@@ -524,6 +524,66 @@ export type AssetResponse = {
 };
 
 /**
+ * AssetThumbnailUrlItem
+ */
+export type AssetThumbnailUrlItem = {
+  /**
+   * Asset Id
+   */
+  asset_id: string;
+  /**
+   * Storage Object Id
+   */
+  storage_object_id: string;
+  /**
+   * Download Url
+   */
+  download_url: string;
+  /**
+   * Method
+   */
+  method: string;
+  /**
+   * Headers
+   */
+  headers: {
+    [key: string]: string;
+  };
+  /**
+   * Expires In Seconds
+   */
+  expires_in_seconds: number;
+};
+
+/**
+ * AssetThumbnailUrlsRequest
+ */
+export type AssetThumbnailUrlsRequest = {
+  /**
+   * Asset Ids
+   */
+  asset_ids: Array<string>;
+};
+
+/**
+ * AssetThumbnailUrlsResponse
+ */
+export type AssetThumbnailUrlsResponse = {
+  /**
+   * Items
+   */
+  items: Array<AssetThumbnailUrlItem>;
+  /**
+   * Missing Asset Ids
+   */
+  missing_asset_ids?: Array<string>;
+  /**
+   * Unsupported Asset Ids
+   */
+  unsupported_asset_ids?: Array<string>;
+};
+
+/**
  * BillingContactModel
  */
 export type BillingContactModel = {
@@ -10897,6 +10957,87 @@ export type GetAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGetResponses = {
 
 export type GetAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGetResponse =
   GetAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGetResponses[keyof GetAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGetResponses];
+
+export type GetAssetThumbnailUrlsApiV1AssetsThumbnailUrlsPostData = {
+  body: AssetThumbnailUrlsRequest;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path?: never;
+  query?: never;
+  url: "/api/v1/assets/thumbnail-urls";
+};
+
+export type GetAssetThumbnailUrlsApiV1AssetsThumbnailUrlsPostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type GetAssetThumbnailUrlsApiV1AssetsThumbnailUrlsPostError =
+  GetAssetThumbnailUrlsApiV1AssetsThumbnailUrlsPostErrors[keyof GetAssetThumbnailUrlsApiV1AssetsThumbnailUrlsPostErrors];
+
+export type GetAssetThumbnailUrlsApiV1AssetsThumbnailUrlsPostResponses = {
+  /**
+   * Successful Response
+   */
+  200: AssetThumbnailUrlsResponse;
+};
+
+export type GetAssetThumbnailUrlsApiV1AssetsThumbnailUrlsPostResponse =
+  GetAssetThumbnailUrlsApiV1AssetsThumbnailUrlsPostResponses[keyof GetAssetThumbnailUrlsApiV1AssetsThumbnailUrlsPostResponses];
 
 export type ListGuardrailsApiV1GuardrailsGetData = {
   body?: never;

@@ -130,6 +130,22 @@ class SqlAlchemyAssetRepository(AssetRepository):
             rows = result.fetchall()
             return [_to_view(asset_row, storage_row) for asset_row, storage_row in rows]
 
+    async def list_by_ids(
+        self, *, tenant_id: uuid.UUID, asset_ids: Sequence[uuid.UUID]
+    ) -> list[AssetView]:
+        if not asset_ids:
+            return []
+        async with self._session_factory() as session:
+            stmt = _base_view_query().where(
+                AgentAsset.tenant_id == tenant_id,
+                AgentAsset.id.in_(asset_ids),
+                AgentAsset.deleted_at.is_(None),
+                StorageObject.deleted_at.is_(None),
+            )
+            result = await session.execute(stmt)
+            rows = result.fetchall()
+            return [_to_view(asset_row, storage_row) for asset_row, storage_row in rows]
+
     async def mark_deleted(self, *, tenant_id: uuid.UUID, asset_id: uuid.UUID) -> None:
         async with self._session_factory() as session:
             stmt = select(AgentAsset).where(

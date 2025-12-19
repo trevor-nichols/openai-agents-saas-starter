@@ -46,6 +46,16 @@ class AssetView:
     storage_created_at: datetime | None
 
 
+@dataclass(slots=True)
+class AssetThumbnailUrl:
+    asset_id: uuid.UUID
+    storage_object_id: uuid.UUID
+    download_url: str
+    method: str
+    headers: dict[str, str]
+    expires_in_seconds: int
+
+
 class AssetRepository(Protocol):
     async def create(self, asset: AssetRecord) -> AssetRecord: ...
 
@@ -71,6 +81,10 @@ class AssetRepository(Protocol):
         created_before: datetime | None = None,
     ) -> list[AssetView]: ...
 
+    async def list_by_ids(
+        self, *, tenant_id: uuid.UUID, asset_ids: Sequence[uuid.UUID]
+    ) -> Sequence[AssetView]: ...
+
     async def mark_deleted(self, *, tenant_id: uuid.UUID, asset_id: uuid.UUID) -> None: ...
 
     async def link_message(
@@ -91,6 +105,7 @@ __all__ = [
     "AssetSourceTool",
     "AssetRecord",
     "AssetView",
+    "AssetThumbnailUrl",
     "AssetRepository",
     "AssetNotFoundError",
 ]

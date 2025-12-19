@@ -14,6 +14,8 @@ _Last updated: 2025-12-19_
 
 Provide a first-class, queryable asset catalog for generated images and files that is tenant-scoped, auditable, and linkable back to conversations/messages, plus a polished Asset Library UI for browsing, filtering, downloading, and deleting assets.
 
+Add a batch thumbnail URL flow (API endpoint + BFF proxy + client helper + hook) so the UI can fetch all thumbnail URLs in one call without N+1 requests.
+
 ---
 
 <!-- SECTION: Definition of Done -->
@@ -23,6 +25,8 @@ Provide a first-class, queryable asset catalog for generated images and files th
 - Assets are created for `image_generation` outputs and Code Interpreter container file citations.
 - Asset records are linkable to conversations and, when possible, to the specific message.
 - New API endpoints: list/filter assets, fetch details, delete, and presign download.
+- Batch thumbnail URL endpoint exposed via BFF proxy + client helper + query hook.
+- Asset Library UI uses the batch thumbnail hook for gallery rendering.
 - OpenAPI updated + frontend client regenerated (if schemas change).
 - Tests cover asset creation, list filtering, and delete flows.
 - `hatch run lint` and `hatch run typecheck` are green.
@@ -45,6 +49,7 @@ Provide a first-class, queryable asset catalog for generated images and files th
 - Optional message linkage (message_id) to support deep links from asset to chat.
 - Frontend Asset Library (single page with tabs for Images / Files) and supporting data-access layers.
 - BFF asset proxy routes + client fetch helpers + TanStack Query hooks.
+- Batch thumbnail URL flow (API + BFF + helper + hook).
 - High-end, accessible UI using existing Shadcn primitives + design system.
 
 ### Out of Scope
@@ -60,9 +65,9 @@ Provide a first-class, queryable asset catalog for generated images and files th
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Architecture/design | ✅ | Backend done; frontend design + UX plan in scope. |
-| Implementation | ✅ | Backend + frontend Asset Library implemented. |
-| Tests & QA | ✅ | Backend + frontend tests green with lint/type-check. |
+| Architecture/design | ✅ | Batch thumbnail URL flow planned. |
+| Implementation | ✅ | Batch thumbnail URL flow complete (API + UI wiring). |
+| Tests & QA | ✅ | Backend + frontend tests green for thumbnails. |
 | Docs & runbooks | ✅ | Milestone and UX notes updated. |
 
 ---
@@ -132,6 +137,17 @@ Provide a first-class, queryable asset catalog for generated images and files th
 | F3 | UI | Image gallery + file table + actions (download/delete). | Platform Foundations | ✅ |
 | F4 | QA | UI tests for filters/actions + states. | Platform Foundations | ✅ |
 
+### Workstream G – Batch Thumbnail URLs
+
+| ID | Area | Description | Owner | Status |
+|----|------|-------------|-------|--------|
+| G1 | API | Add batch thumbnail URL endpoint + schemas. | Platform Foundations | ✅ |
+| G2 | BFF | Add `/app/api/v1/assets/thumbnail-urls` proxy route. | Platform Foundations | ✅ |
+| G3 | Client | Add fetch helper + query hook + keys. | Platform Foundations | ✅ |
+| G4 | Tests | Add API/service + BFF tests for batch thumbnails. | Platform Foundations | ✅ |
+| G5 | OpenAPI | Regenerate OpenAPI + HeyAPI client. | Platform Foundations | ✅ |
+| G6 | UI | Wire batch thumbnail hook into Asset Library gallery. | Platform Foundations | ✅ |
+
 ---
 
 <!-- SECTION: Phases (optional if simple) -->
@@ -146,6 +162,7 @@ Provide a first-class, queryable asset catalog for generated images and files th
 | P4 – Frontend Plumbing | Workstream E | BFF + client helpers + queries | ✅ | 2025-12-19 |
 | P5 – Frontend UX | Workstream F1–F3 | Asset Library UI complete | ✅ | 2025-12-19 |
 | P6 – Frontend QA | Workstream F4 | UI tests + lint/type-check green | ✅ | 2025-12-19 |
+| P7 – Thumbnails | Workstream G | Batch thumbnail URLs end-to-end | ✅ | 2025-12-19 |
 
 ---
 
@@ -207,6 +224,13 @@ Provide a first-class, queryable asset catalog for generated images and files th
 - 2025-12-19 — Accepted non-UUID conversation_id filter for assets + regenerated SDK.
 - 2025-12-19 — Map missing storage objects to 404 for asset downloads; add service test.
 - 2025-12-19 — Make asset linking best-effort for agents/workflows; add unit coverage.
+- 2025-12-19 — Review pass: no new defects found in asset catalog integration.
+- 2025-12-19 — Planned batch thumbnail URL endpoint + BFF/helper/hook wiring.
+- 2025-12-19 — Implemented batch thumbnail API endpoint + schemas; added backend tests.
+- 2025-12-19 — Regenerated OpenAPI fixtures + HeyAPI client for thumbnail APIs.
+- 2025-12-19 — Added BFF proxy + client helper + hook for batch thumbnails; frontend tests green.
+- 2025-12-19 — Wired batch thumbnails into Asset Library gallery UI.
+- 2025-12-19 — Batched thumbnail requests client-side to respect 200-id limit; added tests.
 - 2025-12-19 — Expanded milestone to include frontend Asset Library delivery.
 - 2025-12-19 — Completed frontend plumbing (BFF routes, fetch helpers, queries) + API route tests.
 - 2025-12-19 — Added Asset Library shell page + nav entry scaffold.

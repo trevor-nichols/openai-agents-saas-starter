@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 from collections.abc import Iterable
 from datetime import datetime
@@ -11,12 +12,14 @@ from app.domain.assets import (
     AssetRecord,
     AssetRepository,
     AssetSourceTool,
+    AssetThumbnailUrl,
     AssetType,
     AssetView,
 )
 from app.infrastructure.persistence.assets.repository import SqlAlchemyAssetRepository
 from app.services.storage.service import StorageService
 
+logger = logging.getLogger(__name__)
 
 class AssetService:
     """Coordinates asset metadata with storage operations."""
@@ -111,6 +114,64 @@ class AssetService:
             )
         except FileNotFoundError as exc:
             raise AssetNotFoundError("Asset storage object not found") from exc
+
+    async def get_thumbnail_urls(
+        self,
+        *,
+        tenant_id: uuid.UUID,
+        asset_ids: Iterable[uuid.UUID],
+    ) -> tuple[list[AssetThumbnailUrl], list[uuid.UUID], list[uuid.UUID]]:
+        ids = [uuid.UUID(str(asset_id)) for asset_id in asset_ids]
+        if not ids:
+            return [], [], []
+        views = await self._repository.list_by_ids(tenant_id=tenant_id, asset_ids=ids)
+        view_by_id = {view.asset.id: view for view in views}
+        missing: list[uuid.UUID] = []
+        unsupported: list[uuid.UUID] = []
+        items: list[AssetThumbnailUrl] = []
+        ttl = self.signed_url_ttl()
+
+        for asset_id in ids:
+            view = view_by_id.get(asset_id)
+            if view is None:
+                missing.append(asset_id)
+                continue
+            if view.asset.asset_type != "image":
+                unsupported.append(asset_id)
+                continue
+            try:
+                presign, storage_obj = await self._storage_service.get_presigned_download(
+                    tenant_id=tenant_id,
+                    object_id=view.asset.storage_object_id,
+                )
+            except FileNotFoundError:
+                missing.append(asset_id)
+                continue
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.warning(
+                    "asset.thumbnail_presign_failed",
+                    extra={
+                        "tenant_id": str(tenant_id),
+                        "asset_id": str(asset_id),
+                    },
+                    exc_info=exc,
+                )
+                missing.append(asset_id)
+                continue
+            if storage_obj.id is None:
+                missing.append(asset_id)
+                continue
+            items.append(
+                AssetThumbnailUrl(
+                    asset_id=asset_id,
+                    storage_object_id=storage_obj.id,
+                    download_url=presign.url,
+                    method=presign.method,
+                    headers=presign.headers,
+                    expires_in_seconds=ttl,
+                )
+            )
+        return items, missing, unsupported
 
     def signed_url_ttl(self) -> int:
         return self._storage_service.signed_url_ttl()

@@ -1,6 +1,11 @@
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { deleteAsset, listAssets, type AssetListParams } from '@/lib/api/assets';
+import {
+  deleteAsset,
+  getAssetThumbnailUrls,
+  listAssets,
+  type AssetListParams,
+} from '@/lib/api/assets';
 
 import { queryKeys } from './keys';
 
@@ -30,5 +35,16 @@ export function useDeleteAsset() {
     onSuccess: () => {
       client.invalidateQueries({ queryKey: queryKeys.assets.all }).catch(() => {});
     },
+  });
+}
+
+export function useAssetThumbnailUrls(assetIds: string[]) {
+  const normalized = Array.from(new Set(assetIds.filter(Boolean))).sort();
+
+  return useQuery({
+    queryKey: queryKeys.assets.thumbnails(normalized),
+    queryFn: () => getAssetThumbnailUrls(normalized),
+    enabled: normalized.length > 0,
+    staleTime: 60_000,
   });
 }
