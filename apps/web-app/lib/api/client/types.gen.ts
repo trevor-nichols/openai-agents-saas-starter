@@ -128,6 +128,11 @@ export type AgentChatRequest = {
     [key: string]: unknown;
   } | null;
   run_options?: AgentRunOptions | null;
+  memory_strategy?: MemoryStrategyRequest | null;
+  /**
+   * Memory Injection
+   */
+  memory_injection?: boolean | null;
 };
 
 /**
@@ -163,11 +168,41 @@ export type AgentChatResponse = {
    */
   structured_output?: unknown | null;
   /**
+   * Output Schema
+   */
+  output_schema?: {
+    [key: string]: unknown;
+  } | null;
+  /**
    * Metadata
    */
   metadata?: {
     [key: string]: unknown;
   } | null;
+};
+
+/**
+ * AgentListResponse
+ *
+ * Paginated list of available agents.
+ */
+export type AgentListResponse = {
+  /**
+   * Items
+   */
+  items: Array<AgentSummary>;
+  /**
+   * Next Cursor
+   *
+   * Opaque cursor for fetching the next page.
+   */
+  next_cursor?: string | null;
+  /**
+   * Total
+   *
+   * Total number of agents matching the current filter.
+   */
+  total: number;
 };
 
 /**
@@ -219,6 +254,14 @@ export type AgentStatus = {
    */
   status: "active" | "inactive" | "error";
   /**
+   * Output Schema
+   *
+   * JSON Schema for the agent structured output, if declared.
+   */
+  output_schema?: {
+    [key: string]: unknown;
+  } | null;
+  /**
    * Last Used
    *
    * Last time the agent was invoked.
@@ -251,6 +294,14 @@ export type AgentSummary = {
    */
   status: "active" | "inactive" | "error";
   /**
+   * Output Schema
+   *
+   * JSON Schema for the agent structured output, if declared.
+   */
+  output_schema?: {
+    [key: string]: unknown;
+  } | null;
+  /**
    * Display Name
    *
    * Human-friendly display name for the agent.
@@ -274,6 +325,67 @@ export type AgentSummary = {
    * Last time the agent was observed handling a request.
    */
   last_seen_at?: string | null;
+};
+
+/**
+ * AgentUpdatedEvent
+ *
+ * Indicates the active agent changed (handoff/routing).
+ */
+export type AgentUpdatedEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Kind
+   */
+  kind: "agent.updated";
+  /**
+   * From Agent
+   */
+  from_agent?: string | null;
+  /**
+   * To Agent
+   */
+  to_agent: string;
+  /**
+   * Handoff Index
+   */
+  handoff_index?: number | null;
 };
 
 /**
@@ -581,6 +693,12 @@ export type CancelSubscriptionRequest = {
  */
 export type ChatMessage = {
   /**
+   * Message Id
+   *
+   * Stable identifier for this message (opaque string; safe for JS).
+   */
+  message_id?: string | null;
+  /**
    * Role
    *
    * Originator of the message.
@@ -607,29 +725,175 @@ export type ChatMessage = {
 };
 
 /**
- * CodeInterpreterCall
+ * ChunkDeltaEvent
  */
-export type CodeInterpreterCall = {
+export type ChunkDeltaEvent = {
   /**
-   * Id
+   * Schema
    */
-  id: string;
+  schema: "public_sse_v1";
   /**
-   * Type
+   * Event Id
    */
-  type: "code_interpreter_call";
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
+   * Kind
+   */
+  kind: "chunk.delta";
+  target: ChunkTarget;
+  /**
+   * Encoding
+   */
+  encoding?: "base64" | "utf8";
+  /**
+   * Chunk Index
+   */
+  chunk_index: number;
+  /**
+   * Data
+   */
+  data: string;
+};
+
+/**
+ * ChunkDoneEvent
+ */
+export type ChunkDoneEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
+   * Kind
+   */
+  kind: "chunk.done";
+  target: ChunkTarget;
+};
+
+/**
+ * ChunkTarget
+ */
+export type ChunkTarget = {
+  /**
+   * Entity Kind
+   */
+  entity_kind: "tool_call" | "message";
+  /**
+   * Entity Id
+   */
+  entity_id: string;
+  /**
+   * Field
+   */
+  field: string;
+  /**
+   * Part Index
+   */
+  part_index?: number | null;
+};
+
+/**
+ * CodeInterpreterTool
+ */
+export type CodeInterpreterTool = {
+  /**
+   * Tool Type
+   */
+  tool_type: "code_interpreter";
+  /**
+   * Tool Call Id
+   */
+  tool_call_id: string;
   /**
    * Status
    */
   status: "in_progress" | "interpreting" | "completed";
-  /**
-   * Code
-   */
-  code?: string | null;
-  /**
-   * Outputs
-   */
-  outputs?: Array<unknown> | null;
   /**
    * Container Id
    */
@@ -638,10 +902,46 @@ export type CodeInterpreterCall = {
    * Container Mode
    */
   container_mode?: "auto" | "explicit" | null;
+};
+
+/**
+ * ConsentRequest
+ */
+export type ConsentRequest = {
   /**
-   * Annotations
+   * Policy Key
    */
-  annotations?: Array<ContainerFileCitation> | null;
+  policy_key: string;
+  /**
+   * Version
+   */
+  version: string;
+  /**
+   * Ip Hash
+   */
+  ip_hash?: string | null;
+  /**
+   * User Agent Hash
+   */
+  user_agent_hash?: string | null;
+};
+
+/**
+ * ConsentView
+ */
+export type ConsentView = {
+  /**
+   * Policy Key
+   */
+  policy_key: string;
+  /**
+   * Version
+   */
+  version: string;
+  /**
+   * Accepted At
+   */
+  accepted_at: string;
 };
 
 /**
@@ -684,6 +984,58 @@ export type ContactSubmissionRequest = {
    * Spam trap field; should remain empty.
    */
   honeypot?: string | null;
+};
+
+/**
+ * ContactSubmissionResponse
+ */
+export type ContactSubmissionResponse = {
+  /**
+   * Reference Id
+   *
+   * Correlation identifier for the submission.
+   */
+  reference_id: string;
+  /**
+   * Delivered
+   *
+   * Whether the email was delivered via Resend.
+   */
+  delivered: boolean;
+  /**
+   * Message Id
+   *
+   * Resend message id when available.
+   */
+  message_id?: string | null;
+  /**
+   * Suppressed
+   *
+   * True when the submission was accepted but intentionally skipped (honeypot).
+   */
+  suppressed?: boolean;
+};
+
+/**
+ * ContactSubmissionSuccessResponse
+ */
+export type ContactSubmissionSuccessResponse = {
+  /**
+   * Success
+   *
+   * Operation success status flag.
+   */
+  success?: boolean;
+  /**
+   * Message
+   *
+   * Human-readable summary of the result.
+   */
+  message: string;
+  /**
+   * Contact submission result payload.
+   */
+  data?: ContactSubmissionResponse | null;
 };
 
 /**
@@ -953,6 +1305,12 @@ export type ConversationHistory = {
    */
   conversation_id: string;
   /**
+   * Display Name
+   *
+   * Generated or assigned title.
+   */
+  display_name?: string | null;
+  /**
    * Messages
    *
    * Complete message history.
@@ -981,6 +1339,30 @@ export type ConversationHistory = {
 };
 
 /**
+ * ConversationLedgerEventsResponse
+ *
+ * Paged list of persisted public_sse_v1 frames for deterministic UI replay.
+ */
+export type ConversationLedgerEventsResponse = {
+  /**
+   * Conversation Id
+   *
+   * Conversation identifier.
+   */
+  conversation_id: string;
+  /**
+   * Items
+   */
+  items: Array<PublicSseEvent>;
+  /**
+   * Next Cursor
+   *
+   * Opaque cursor for fetching the next page.
+   */
+  next_cursor?: string | null;
+};
+
+/**
  * ConversationListResponse
  *
  * Paginated list of conversation summaries.
@@ -996,6 +1378,100 @@ export type ConversationListResponse = {
    * Opaque cursor for fetching the next page.
    */
   next_cursor?: string | null;
+};
+
+/**
+ * ConversationMemoryConfigRequest
+ */
+export type ConversationMemoryConfigRequest = {
+  /**
+   * Mode
+   */
+  mode?: "none" | "trim" | "summarize" | "compact" | null;
+  /**
+   * Max User Turns
+   */
+  max_user_turns?: number | null;
+  /**
+   * Keep Last Turns
+   */
+  keep_last_turns?: number | null;
+  /**
+   * Compact Trigger Turns
+   */
+  compact_trigger_turns?: number | null;
+  /**
+   * Compact Keep
+   */
+  compact_keep?: number | null;
+  /**
+   * Clear Tool Inputs
+   */
+  clear_tool_inputs?: boolean | null;
+  /**
+   * Memory Injection
+   */
+  memory_injection?: boolean | null;
+};
+
+/**
+ * ConversationMemoryConfigResponse
+ */
+export type ConversationMemoryConfigResponse = {
+  /**
+   * Mode
+   */
+  mode?: "none" | "trim" | "summarize" | "compact" | null;
+  /**
+   * Max User Turns
+   */
+  max_user_turns?: number | null;
+  /**
+   * Keep Last Turns
+   */
+  keep_last_turns?: number | null;
+  /**
+   * Compact Trigger Turns
+   */
+  compact_trigger_turns?: number | null;
+  /**
+   * Compact Keep
+   */
+  compact_keep?: number | null;
+  /**
+   * Clear Tool Inputs
+   */
+  clear_tool_inputs?: boolean | null;
+  /**
+   * Memory Injection
+   */
+  memory_injection?: boolean | null;
+};
+
+/**
+ * ConversationMessageDeleteResponse
+ *
+ * Response payload after truncating a conversation from a user message.
+ */
+export type ConversationMessageDeleteResponse = {
+  /**
+   * Conversation Id
+   *
+   * Conversation identifier.
+   */
+  conversation_id: string;
+  /**
+   * Deleted Message Id
+   *
+   * User message id that triggered truncation.
+   */
+  deleted_message_id: string;
+  /**
+   * Success
+   *
+   * Whether the truncation was applied.
+   */
+  success?: boolean;
 };
 
 /**
@@ -1028,6 +1504,12 @@ export type ConversationSearchResult = {
    * Conversation identifier.
    */
   conversation_id: string;
+  /**
+   * Display Name
+   *
+   * Generated conversation title.
+   */
+  display_name?: string | null;
   /**
    * Agent Entrypoint
    *
@@ -1091,6 +1573,12 @@ export type ConversationSummary = {
    */
   conversation_id: string;
   /**
+   * Display Name
+   *
+   * Generated conversation title.
+   */
+  display_name?: string | null;
+  /**
    * Agent Entrypoint
    *
    * Agent entrypoint configured for this thread.
@@ -1141,6 +1629,164 @@ export type ConversationSummary = {
 };
 
 /**
+ * ConversationTitleUpdateRequest
+ *
+ * Request payload to rename a conversation title.
+ */
+export type ConversationTitleUpdateRequest = {
+  /**
+   * Display Name
+   *
+   * User-defined conversation title.
+   */
+  display_name: string;
+};
+
+/**
+ * ConversationTitleUpdateResponse
+ *
+ * Response payload after updating a conversation title.
+ */
+export type ConversationTitleUpdateResponse = {
+  /**
+   * Conversation Id
+   *
+   * Conversation identifier.
+   */
+  conversation_id: string;
+  /**
+   * Display Name
+   *
+   * Updated conversation title.
+   */
+  display_name: string;
+};
+
+/**
+ * CurrentUserInfoResponseData
+ */
+export type CurrentUserInfoResponseData = {
+  /**
+   * User Id
+   *
+   * Current authenticated user id.
+   */
+  user_id: string;
+  /**
+   * Token Payload
+   *
+   * Decoded access token claims.
+   */
+  token_payload: {
+    [key: string]: unknown;
+  };
+};
+
+/**
+ * CurrentUserInfoSuccessResponse
+ */
+export type CurrentUserInfoSuccessResponse = {
+  /**
+   * Success
+   *
+   * Operation success status flag.
+   */
+  success?: boolean;
+  /**
+   * Message
+   *
+   * Human-readable summary of the result.
+   */
+  message: string;
+  /**
+   * Current authenticated user info payload.
+   */
+  data?: CurrentUserInfoResponseData | null;
+};
+
+/**
+ * CurrentUserProfileResponseData
+ */
+export type CurrentUserProfileResponseData = {
+  /**
+   * User Id
+   *
+   * Current authenticated user id.
+   */
+  user_id: string;
+  /**
+   * Tenant Id
+   *
+   * Tenant id associated with the session.
+   */
+  tenant_id: string;
+  /**
+   * Email
+   *
+   * User email address.
+   */
+  email: string;
+  /**
+   * Display Name
+   *
+   * Preferred display name for the user, when available.
+   */
+  display_name?: string | null;
+  /**
+   * Given Name
+   *
+   * Optional given name for the user.
+   */
+  given_name?: string | null;
+  /**
+   * Family Name
+   *
+   * Optional family name for the user.
+   */
+  family_name?: string | null;
+  /**
+   * Avatar Url
+   *
+   * Optional avatar URL for the user.
+   */
+  avatar_url?: string | null;
+  /**
+   * Role
+   *
+   * Tenant role associated with the session.
+   */
+  role: string;
+  /**
+   * Email Verified
+   *
+   * Whether the user's email is verified.
+   */
+  email_verified: boolean;
+};
+
+/**
+ * CurrentUserProfileSuccessResponse
+ */
+export type CurrentUserProfileSuccessResponse = {
+  /**
+   * Success
+   *
+   * Operation success status flag.
+   */
+  success?: boolean;
+  /**
+   * Message
+   *
+   * Human-readable summary of the result.
+   */
+  message: string;
+  /**
+   * Current authenticated user profile payload.
+   */
+  data?: CurrentUserProfileResponseData | null;
+};
+
+/**
  * EmailVerificationConfirmRequest
  *
  * Payload for confirming the email verification token.
@@ -1155,39 +1801,107 @@ export type EmailVerificationConfirmRequest = {
 };
 
 /**
- * EmailVerificationTokenRequest
+ * EmailVerificationSendSuccessResponse
  */
-export type EmailVerificationTokenRequest = {
+export type EmailVerificationSendSuccessResponse = {
   /**
-   * Email
+   * Success
+   *
+   * Operation success status flag.
    */
-  email: string;
+  success?: boolean;
   /**
-   * Ip Address
+   * Message
+   *
+   * Human-readable summary of the result.
    */
-  ip_address?: string | null;
+  message: string;
   /**
-   * User Agent
+   * Email verification status payload.
    */
-  user_agent?: string | null;
+  data?: EmailVerificationStatusResponseData | null;
 };
 
 /**
- * EmailVerificationTokenResponse
+ * EmailVerificationStatusResponseData
  */
-export type EmailVerificationTokenResponse = {
+export type EmailVerificationStatusResponseData = {
   /**
-   * Token
+   * Email Verified
+   *
+   * Whether the user's email address is verified.
    */
-  token: string;
+  email_verified: boolean;
+};
+
+/**
+ * ErrorEvent
+ */
+export type ErrorEvent = {
   /**
-   * User Id
+   * Schema
    */
-  user_id: string;
+  schema: "public_sse_v1";
   /**
-   * Expires At
+   * Event Id
    */
-  expires_at: string;
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Kind
+   */
+  kind: "error";
+  error: ErrorPayload;
+};
+
+/**
+ * ErrorPayload
+ */
+export type ErrorPayload = {
+  /**
+   * Code
+   */
+  code?: string | null;
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Source
+   */
+  source: "provider" | "server";
+  /**
+   * Is Retryable
+   */
+  is_retryable: boolean;
 };
 
 /**
@@ -1218,32 +1932,6 @@ export type FileCitation = {
    * Filename
    */
   filename?: string | null;
-};
-
-/**
- * FileSearchCall
- */
-export type FileSearchCall = {
-  /**
-   * Id
-   */
-  id: string;
-  /**
-   * Type
-   */
-  type: "file_search_call";
-  /**
-   * Status
-   */
-  status: "in_progress" | "searching" | "completed";
-  /**
-   * Queries
-   */
-  queries?: Array<string> | null;
-  /**
-   * Results
-   */
-  results?: Array<FileSearchResult> | null;
 };
 
 /**
@@ -1279,213 +1967,288 @@ export type FileSearchResult = {
 };
 
 /**
- * FixtureApplyResult
+ * FileSearchTool
  */
-export type FixtureApplyResult = {
+export type FileSearchTool = {
   /**
-   * Tenants
+   * Tool Type
    */
-  tenants: {
-    [key: string]: FixtureTenantResult;
-  };
+  tool_type: "file_search";
   /**
-   * Generated At
+   * Tool Call Id
    */
-  generated_at: string;
-};
-
-/**
- * FixtureConversation
- */
-export type FixtureConversation = {
-  /**
-   * Key
-   */
-  key: string;
-  /**
-   * Agent Entrypoint
-   */
-  agent_entrypoint?: string;
+  tool_call_id: string;
   /**
    * Status
    */
-  status?: "active" | "archived";
+  status: "in_progress" | "searching" | "completed";
   /**
-   * User Email
+   * Queries
    */
-  user_email?: string | null;
+  queries?: Array<string> | null;
   /**
-   * Messages
+   * Results
    */
-  messages?: Array<FixtureConversationMessage>;
+  results?: Array<FileSearchResult> | null;
 };
 
 /**
- * FixtureConversationMessage
+ * FinalEvent
  */
-export type FixtureConversationMessage = {
+export type FinalEvent = {
   /**
-   * Role
+   * Schema
    */
-  role: "user" | "assistant" | "system";
+  schema: "public_sse_v1";
   /**
-   * Text
+   * Event Id
    */
-  text: string;
-};
-
-/**
- * FixtureConversationResult
- */
-export type FixtureConversationResult = {
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
   /**
    * Conversation Id
    */
   conversation_id: string;
   /**
-   * Status
+   * Response Id
    */
-  status: string;
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Kind
+   */
+  kind: "final";
+  final: FinalPayload;
 };
 
 /**
- * FixtureTenant
+ * FinalPayload
  */
-export type FixtureTenant = {
+export type FinalPayload = {
   /**
-   * Slug
+   * Status
    */
-  slug: string;
+  status: "completed" | "failed" | "incomplete" | "refused" | "cancelled";
+  /**
+   * Response Text
+   */
+  response_text?: string | null;
+  /**
+   * Structured Output
+   */
+  structured_output?: unknown | null;
+  /**
+   * Reasoning Summary Text
+   */
+  reasoning_summary_text?: string | null;
+  /**
+   * Refusal Text
+   */
+  refusal_text?: string | null;
+  /**
+   * Attachments
+   */
+  attachments?: Array<MessageAttachment>;
+  usage?: PublicUsage | null;
+};
+
+/**
+ * FunctionTool
+ */
+export type FunctionTool = {
+  /**
+   * Tool Type
+   */
+  tool_type: "function";
+  /**
+   * Tool Call Id
+   */
+  tool_call_id: string;
+  /**
+   * Status
+   */
+  status: "in_progress" | "completed" | "failed";
   /**
    * Name
    */
   name: string;
   /**
-   * Plan Code
+   * Arguments Text
    */
-  plan_code?: string | null;
+  arguments_text?: string | null;
   /**
-   * Billing Email
+   * Arguments Json
    */
-  billing_email?: string | null;
+  arguments_json?: {
+    [key: string]: unknown;
+  } | null;
   /**
-   * Users
+   * Output
    */
-  users?: Array<FixtureUser>;
-  /**
-   * Conversations
-   */
-  conversations?: Array<FixtureConversation>;
-  /**
-   * Usage
-   */
-  usage?: Array<FixtureUsageEntry>;
+  output?: unknown | null;
 };
 
 /**
- * FixtureTenantResult
+ * GuardrailCheckConfigSchema
+ *
+ * Configuration for a guardrail within a preset.
  */
-export type FixtureTenantResult = {
+export type GuardrailCheckConfigSchema = {
   /**
-   * Tenant Id
+   * Guardrail Key
+   *
+   * Key of the guardrail.
    */
-  tenant_id: string;
+  guardrail_key: string;
   /**
-   * Plan Code
+   * Enabled
+   *
+   * Whether this guardrail is enabled.
    */
-  plan_code: string | null;
+  enabled?: boolean;
   /**
-   * Users
+   * Config
+   *
+   * Configuration overrides for this guardrail.
    */
-  users: {
-    [key: string]: FixtureUserResult;
-  };
-  /**
-   * Conversations
-   */
-  conversations: {
-    [key: string]: FixtureConversationResult;
+  config?: {
+    [key: string]: unknown;
   };
 };
 
 /**
- * FixtureUsageEntry
+ * GuardrailDetail
+ *
+ * Detailed information about a guardrail specification.
  */
-export type FixtureUsageEntry = {
+export type GuardrailDetail = {
   /**
-   * Feature Key
+   * Key
+   *
+   * Unique identifier for the guardrail.
    */
-  feature_key: string;
-  /**
-   * Quantity
-   */
-  quantity: number;
-  /**
-   * Unit
-   */
-  unit?: string;
-  /**
-   * Period Start
-   */
-  period_start: string;
-  /**
-   * Period End
-   */
-  period_end?: string | null;
-  /**
-   * Idempotency Key
-   */
-  idempotency_key?: string | null;
-};
-
-/**
- * FixtureUser
- */
-export type FixtureUser = {
-  /**
-   * Email
-   */
-  email: string;
-  /**
-   * Password
-   */
-  password: string;
+  key: string;
   /**
    * Display Name
+   *
+   * Human-friendly display name.
    */
-  display_name?: string | null;
+  display_name: string;
   /**
-   * Role
+   * Description
+   *
+   * Short description of what the guardrail checks.
    */
-  role?: string;
+  description: string;
   /**
-   * Verify Email
+   * Stage
+   *
+   * Stage at which the guardrail executes.
    */
-  verify_email?: boolean;
+  stage: "pre_flight" | "input" | "output" | "tool_input" | "tool_output";
+  /**
+   * Engine
+   *
+   * Underlying engine type for the guardrail.
+   */
+  engine: "regex" | "llm" | "api" | "hybrid";
+  /**
+   * Supports Masking
+   *
+   * Whether the guardrail can mask/redact content instead of blocking.
+   */
+  supports_masking?: boolean;
+  /**
+   * Uses Conversation History
+   *
+   * Whether the guardrail requires conversation history context.
+   */
+  uses_conversation_history?: boolean;
+  /**
+   * Tripwire On Error
+   *
+   * Whether errors in the guardrail should trigger a tripwire.
+   */
+  tripwire_on_error?: boolean;
+  /**
+   * Default Config
+   *
+   * Default configuration values for this guardrail.
+   */
+  default_config?: {
+    [key: string]: unknown;
+  };
+  /**
+   * Config Schema
+   *
+   * JSON schema describing the configuration options.
+   */
+  config_schema?: {
+    [key: string]: unknown;
+  };
 };
 
 /**
- * FixtureUserResult
+ * GuardrailSummary
+ *
+ * Lightweight representation of a guardrail specification.
  */
-export type FixtureUserResult = {
+export type GuardrailSummary = {
   /**
-   * User Id
+   * Key
+   *
+   * Unique identifier for the guardrail.
    */
-  user_id: string;
+  key: string;
   /**
-   * Role
+   * Display Name
+   *
+   * Human-friendly display name.
    */
-  role: string;
-};
-
-/**
- * HTTPValidationError
- */
-export type HttpValidationError = {
+  display_name: string;
   /**
-   * Detail
+   * Description
+   *
+   * Short description of what the guardrail checks.
    */
-  detail?: Array<ValidationError>;
+  description: string;
+  /**
+   * Stage
+   *
+   * Stage at which the guardrail executes.
+   */
+  stage: "pre_flight" | "input" | "output" | "tool_input" | "tool_output";
+  /**
+   * Engine
+   *
+   * Underlying engine type for the guardrail.
+   */
+  engine: "regex" | "llm" | "api" | "hybrid";
+  /**
+   * Supports Masking
+   *
+   * Whether the guardrail can mask/redact content instead of blocking.
+   */
+  supports_masking?: boolean;
 };
 
 /**
@@ -1521,25 +2284,21 @@ export type HealthResponse = {
 };
 
 /**
- * ImageGenerationCall
+ * ImageGenerationTool
  */
-export type ImageGenerationCall = {
+export type ImageGenerationTool = {
   /**
-   * Id
+   * Tool Type
    */
-  id: string;
+  tool_type: "image_generation";
   /**
-   * Type
+   * Tool Call Id
    */
-  type: "image_generation_call";
+  tool_call_id: string;
   /**
    * Status
    */
   status: "in_progress" | "generating" | "partial_image" | "completed";
-  /**
-   * Result
-   */
-  result?: string | null;
   /**
    * Revised Prompt
    */
@@ -1561,21 +2320,9 @@ export type ImageGenerationCall = {
    */
   background?: string | null;
   /**
-   * Output Index
-   */
-  output_index?: number | null;
-  /**
    * Partial Image Index
    */
   partial_image_index?: number | null;
-  /**
-   * Partial Image B64
-   */
-  partial_image_b64?: string | null;
-  /**
-   * B64 Json
-   */
-  b64_json?: string | null;
 };
 
 /**
@@ -1615,6 +2362,67 @@ export type IncidentSchema = {
 };
 
 /**
+ * LifecycleEvent
+ */
+export type LifecycleEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Kind
+   */
+  kind: "lifecycle";
+  /**
+   * Status
+   */
+  status:
+    | "queued"
+    | "in_progress"
+    | "completed"
+    | "failed"
+    | "incomplete"
+    | "cancelled";
+  /**
+   * Reason
+   */
+  reason?: string | null;
+};
+
+/**
  * LocationHint
  */
 export type LocationHint = {
@@ -1634,6 +2442,283 @@ export type LocationHint = {
    * Timezone
    */
   timezone?: string | null;
+};
+
+/**
+ * LogoutAllSessionsSuccessResponse
+ */
+export type LogoutAllSessionsSuccessResponse = {
+  /**
+   * Success
+   *
+   * Operation success status flag.
+   */
+  success?: boolean;
+  /**
+   * Message
+   *
+   * Human-readable summary of the result.
+   */
+  message: string;
+  /**
+   * Logout-all result payload.
+   */
+  data?: SessionLogoutAllResponseData | null;
+};
+
+/**
+ * LogoutSessionSuccessResponse
+ */
+export type LogoutSessionSuccessResponse = {
+  /**
+   * Success
+   *
+   * Operation success status flag.
+   */
+  success?: boolean;
+  /**
+   * Message
+   *
+   * Human-readable summary of the result.
+   */
+  message: string;
+  /**
+   * Single-session logout result payload.
+   */
+  data?: SessionLogoutResponseData | null;
+};
+
+/**
+ * McpTool
+ */
+export type McpTool = {
+  /**
+   * Tool Type
+   */
+  tool_type: "mcp";
+  /**
+   * Tool Call Id
+   */
+  tool_call_id: string;
+  /**
+   * Status
+   */
+  status: "awaiting_approval" | "in_progress" | "completed" | "failed";
+  /**
+   * Tool Name
+   */
+  tool_name: string;
+  /**
+   * Server Label
+   */
+  server_label?: string | null;
+  /**
+   * Arguments Text
+   */
+  arguments_text?: string | null;
+  /**
+   * Arguments Json
+   */
+  arguments_json?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Output
+   */
+  output?: unknown | null;
+};
+
+/**
+ * MemoryCheckpointEvent
+ */
+export type MemoryCheckpointEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Kind
+   */
+  kind: "memory.checkpoint";
+  checkpoint: MemoryCheckpointPayload;
+};
+
+/**
+ * MemoryCheckpointPayload
+ *
+ * Snapshot of a memory strategy mutation applied during a run.
+ *
+ * This is a UX marker only: it must not change the visible transcript, but
+ * helps users understand why the model may have lost context.
+ */
+export type MemoryCheckpointPayload = {
+  /**
+   * Strategy
+   */
+  strategy: "compact" | "summarize" | "trim";
+  /**
+   * Trigger Reason
+   */
+  trigger_reason?: string | null;
+  /**
+   * Tokens Before
+   */
+  tokens_before?: number | null;
+  /**
+   * Tokens After
+   */
+  tokens_after?: number | null;
+  /**
+   * Compacted Count
+   */
+  compacted_count?: number | null;
+  /**
+   * Compacted Inputs
+   */
+  compacted_inputs?: number | null;
+  /**
+   * Compacted Outputs
+   */
+  compacted_outputs?: number | null;
+  /**
+   * Keep Turns
+   */
+  keep_turns?: number | null;
+  /**
+   * Trigger Turns
+   */
+  trigger_turns?: number | null;
+  /**
+   * Clear Tool Inputs
+   */
+  clear_tool_inputs?: boolean | null;
+  /**
+   * Excluded Tools
+   */
+  excluded_tools?: Array<string> | null;
+  /**
+   * Included Tools
+   */
+  included_tools?: Array<string> | null;
+  /**
+   * Total Items Before
+   */
+  total_items_before?: number | null;
+  /**
+   * Total Items After
+   */
+  total_items_after?: number | null;
+  /**
+   * Turns Before
+   */
+  turns_before?: number | null;
+  /**
+   * Turns After
+   */
+  turns_after?: number | null;
+};
+
+/**
+ * MemoryStrategyRequest
+ */
+export type MemoryStrategyRequest = {
+  /**
+   * Mode
+   */
+  mode?: "none" | "trim" | "summarize" | "compact";
+  /**
+   * Max User Turns
+   */
+  max_user_turns?: number | null;
+  /**
+   * Keep Last User Turns
+   */
+  keep_last_user_turns?: number | null;
+  /**
+   * Token Budget
+   */
+  token_budget?: number | null;
+  /**
+   * Token Soft Budget
+   */
+  token_soft_budget?: number | null;
+  /**
+   * Token Remaining Pct
+   */
+  token_remaining_pct?: number | null;
+  /**
+   * Token Soft Remaining Pct
+   */
+  token_soft_remaining_pct?: number | null;
+  /**
+   * Context Window Tokens
+   */
+  context_window_tokens?: number | null;
+  /**
+   * Compact Trigger Turns
+   */
+  compact_trigger_turns?: number | null;
+  /**
+   * Compact Keep
+   */
+  compact_keep?: number | null;
+  /**
+   * Compact Clear Tool Inputs
+   */
+  compact_clear_tool_inputs?: boolean | null;
+  /**
+   * Compact Exclude Tools
+   */
+  compact_exclude_tools?: Array<string> | null;
+  /**
+   * Compact Include Tools
+   */
+  compact_include_tools?: Array<string> | null;
+  /**
+   * Summarizer Model
+   */
+  summarizer_model?: string | null;
+  /**
+   * Summary Max Tokens
+   */
+  summary_max_tokens?: number | null;
+  /**
+   * Summary Max Chars
+   */
+  summary_max_chars?: number | null;
 };
 
 /**
@@ -1676,6 +2761,396 @@ export type MessageAttachment = {
    * Originating tool call id
    */
   tool_call_id?: string | null;
+};
+
+/**
+ * MessageCitationEvent
+ */
+export type MessageCitationEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
+   * Kind
+   */
+  kind: "message.citation";
+  /**
+   * Content Index
+   */
+  content_index: number;
+  /**
+   * Citation
+   */
+  citation: UrlCitation | ContainerFileCitation | FileCitation;
+};
+
+/**
+ * MessageDeltaEvent
+ */
+export type MessageDeltaEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
+   * Kind
+   */
+  kind: "message.delta";
+  /**
+   * Content Index
+   */
+  content_index: number;
+  /**
+   * Delta
+   */
+  delta: string;
+};
+
+/**
+ * MfaChallengeCompleteRequest
+ */
+export type MfaChallengeCompleteRequest = {
+  /**
+   * Challenge Token
+   */
+  challenge_token: string;
+  /**
+   * Method Id
+   */
+  method_id: string;
+  /**
+   * Code
+   */
+  code: string;
+};
+
+/**
+ * MfaChallengeResponse
+ */
+export type MfaChallengeResponse = {
+  /**
+   * Mfa Required
+   */
+  mfa_required?: boolean;
+  /**
+   * Challenge Token
+   */
+  challenge_token: string;
+  /**
+   * Methods
+   */
+  methods: Array<MfaMethodView>;
+};
+
+/**
+ * MfaMethodView
+ */
+export type MfaMethodView = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Method Type
+   */
+  method_type: string;
+  /**
+   * Label
+   */
+  label?: string | null;
+  /**
+   * Verified At
+   */
+  verified_at?: string | null;
+  /**
+   * Last Used At
+   */
+  last_used_at?: string | null;
+  /**
+   * Revoked At
+   */
+  revoked_at?: string | null;
+};
+
+/**
+ * NotificationPreferenceRequest
+ */
+export type NotificationPreferenceRequest = {
+  /**
+   * Channel
+   */
+  channel: string;
+  /**
+   * Category
+   */
+  category: string;
+  /**
+   * Enabled
+   */
+  enabled?: boolean;
+  /**
+   * Tenant Id
+   */
+  tenant_id?: string | null;
+};
+
+/**
+ * NotificationPreferenceView
+ */
+export type NotificationPreferenceView = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Channel
+   */
+  channel: string;
+  /**
+   * Category
+   */
+  category: string;
+  /**
+   * Enabled
+   */
+  enabled: boolean;
+  /**
+   * Tenant Id
+   */
+  tenant_id?: string | null;
+};
+
+/**
+ * OutputItemAddedEvent
+ */
+export type OutputItemAddedEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
+   * Kind
+   */
+  kind: "output_item.added";
+  /**
+   * Item Type
+   */
+  item_type: string;
+  /**
+   * Role
+   */
+  role?: string | null;
+  /**
+   * Status
+   */
+  status?: string | null;
+};
+
+/**
+ * OutputItemDoneEvent
+ */
+export type OutputItemDoneEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
+   * Kind
+   */
+  kind: "output_item.done";
+  /**
+   * Item Type
+   */
+  item_type: string;
+  /**
+   * Role
+   */
+  role?: string | null;
+  /**
+   * Status
+   */
+  status?: string | null;
 };
 
 /**
@@ -1832,13 +3307,342 @@ export type PlatformStatusResponse = {
 };
 
 /**
- * PlaywrightFixtureSpec
+ * PresetDetail
+ *
+ * Detailed information about a guardrail preset.
  */
-export type PlaywrightFixtureSpec = {
+export type PresetDetail = {
   /**
-   * Tenants
+   * Key
+   *
+   * Unique identifier for the preset.
    */
-  tenants?: Array<FixtureTenant>;
+  key: string;
+  /**
+   * Display Name
+   *
+   * Human-friendly display name.
+   */
+  display_name: string;
+  /**
+   * Description
+   *
+   * Description of what this preset provides.
+   */
+  description: string;
+  /**
+   * Guardrail Count
+   *
+   * Number of guardrails in this preset.
+   */
+  guardrail_count: number;
+  /**
+   * Guardrails
+   *
+   * List of guardrail configurations in this preset.
+   */
+  guardrails: Array<GuardrailCheckConfigSchema>;
+};
+
+/**
+ * PresetSummary
+ *
+ * Lightweight representation of a guardrail preset.
+ */
+export type PresetSummary = {
+  /**
+   * Key
+   *
+   * Unique identifier for the preset.
+   */
+  key: string;
+  /**
+   * Display Name
+   *
+   * Human-friendly display name.
+   */
+  display_name: string;
+  /**
+   * Description
+   *
+   * Description of what this preset provides.
+   */
+  description: string;
+  /**
+   * Guardrail Count
+   *
+   * Number of guardrails in this preset.
+   */
+  guardrail_count: number;
+};
+
+/**
+ * PublicSseEvent
+ *
+ * Root model so the wire format is the event object itself (not nested).
+ */
+export type PublicSseEvent =
+  | LifecycleEvent
+  | MemoryCheckpointEvent
+  | AgentUpdatedEvent
+  | OutputItemAddedEvent
+  | OutputItemDoneEvent
+  | MessageDeltaEvent
+  | MessageCitationEvent
+  | ReasoningSummaryDeltaEvent
+  | ReasoningSummaryPartAddedEvent
+  | ReasoningSummaryPartDoneEvent
+  | RefusalDeltaEvent
+  | RefusalDoneEvent
+  | ToolStatusEvent
+  | ToolArgumentsDeltaEvent
+  | ToolArgumentsDoneEvent
+  | ToolCodeDeltaEvent
+  | ToolCodeDoneEvent
+  | ToolOutputEvent
+  | ToolApprovalEvent
+  | ChunkDeltaEvent
+  | ChunkDoneEvent
+  | ErrorEvent
+  | FinalEvent;
+
+/**
+ * PublicUsage
+ */
+export type PublicUsage = {
+  /**
+   * Input Tokens
+   */
+  input_tokens?: number | null;
+  /**
+   * Output Tokens
+   */
+  output_tokens?: number | null;
+  /**
+   * Total Tokens
+   */
+  total_tokens?: number | null;
+  /**
+   * Cached Input Tokens
+   */
+  cached_input_tokens?: number | null;
+  /**
+   * Reasoning Output Tokens
+   */
+  reasoning_output_tokens?: number | null;
+  /**
+   * Requests
+   */
+  requests?: number | null;
+};
+
+/**
+ * ReasoningSummaryDeltaEvent
+ */
+export type ReasoningSummaryDeltaEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
+   * Kind
+   */
+  kind: "reasoning_summary.delta";
+  /**
+   * Summary Index
+   */
+  summary_index?: number | null;
+  /**
+   * Delta
+   */
+  delta: string;
+};
+
+/**
+ * ReasoningSummaryPartAddedEvent
+ */
+export type ReasoningSummaryPartAddedEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
+   * Kind
+   */
+  kind: "reasoning_summary.part.added";
+  /**
+   * Summary Index
+   */
+  summary_index: number;
+  /**
+   * Part Type
+   */
+  part_type?: "summary_text";
+  /**
+   * Text
+   */
+  text?: string | null;
+};
+
+/**
+ * ReasoningSummaryPartDoneEvent
+ */
+export type ReasoningSummaryPartDoneEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
+   * Kind
+   */
+  kind: "reasoning_summary.part.done";
+  /**
+   * Summary Index
+   */
+  summary_index: number;
+  /**
+   * Part Type
+   */
+  part_type?: "summary_text";
+  /**
+   * Text
+   */
+  text: string;
 };
 
 /**
@@ -1849,6 +3653,150 @@ export type ReceiptResponse = {
    * Unread Count
    */
   unread_count?: number;
+};
+
+/**
+ * RecoveryCodesResponse
+ */
+export type RecoveryCodesResponse = {
+  /**
+   * Codes
+   */
+  codes: Array<string>;
+};
+
+/**
+ * RefusalDeltaEvent
+ */
+export type RefusalDeltaEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
+   * Kind
+   */
+  kind: "refusal.delta";
+  /**
+   * Content Index
+   */
+  content_index: number;
+  /**
+   * Delta
+   */
+  delta: string;
+};
+
+/**
+ * RefusalDoneEvent
+ */
+export type RefusalDoneEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
+   * Kind
+   */
+  kind: "refusal.done";
+  /**
+   * Content Index
+   */
+  content_index: number;
+  /**
+   * Refusal Text
+   */
+  refusal_text: string;
 };
 
 /**
@@ -2072,6 +4020,40 @@ export type ServiceAccountTokenRevokeRequest = {
 };
 
 /**
+ * ServiceAccountTokenRevokeResponseData
+ */
+export type ServiceAccountTokenRevokeResponseData = {
+  /**
+   * Jti
+   *
+   * Refresh token identifier (JWT jti).
+   */
+  jti: string;
+};
+
+/**
+ * ServiceAccountTokenRevokeSuccessResponse
+ */
+export type ServiceAccountTokenRevokeSuccessResponse = {
+  /**
+   * Success
+   *
+   * Operation success status flag.
+   */
+  success?: boolean;
+  /**
+   * Message
+   *
+   * Human-readable summary of the result.
+   */
+  message: string;
+  /**
+   * Revoked token reference payload.
+   */
+  data?: ServiceAccountTokenRevokeResponseData | null;
+};
+
+/**
  * ServiceAccountTokenStatus
  */
 export type ServiceAccountTokenStatus = "active" | "revoked" | "all";
@@ -2168,6 +4150,52 @@ export type SessionLocationInfo = {
    * Country code derived from GeoIP.
    */
   country?: string | null;
+};
+
+/**
+ * SessionLogoutAllResponseData
+ */
+export type SessionLogoutAllResponseData = {
+  /**
+   * Revoked
+   *
+   * Number of sessions/tokens revoked by this request.
+   */
+  revoked: number;
+};
+
+/**
+ * SessionLogoutResponseData
+ */
+export type SessionLogoutResponseData = {
+  /**
+   * Revoked
+   *
+   * Whether the session/token was revoked by this request.
+   */
+  revoked: boolean;
+};
+
+/**
+ * SessionRevokeByIdSuccessResponse
+ */
+export type SessionRevokeByIdSuccessResponse = {
+  /**
+   * Success
+   *
+   * Operation success status flag.
+   */
+  success?: boolean;
+  /**
+   * Message
+   *
+   * Human-readable summary of the result.
+   */
+  message: string;
+  /**
+   * Session revocation result payload.
+   */
+  data?: SessionLogoutResponseData | null;
 };
 
 /**
@@ -2843,308 +4871,80 @@ export type StoragePresignUploadResponse = {
 };
 
 /**
+ * StreamNotice
+ *
+ * Explicit markers for UX when content is altered for safety/stability.
+ */
+export type StreamNotice = {
+  /**
+   * Type
+   */
+  type: "redacted" | "truncated";
+  /**
+   * Path
+   */
+  path: string;
+  /**
+   * Message
+   */
+  message: string;
+};
+
+/**
  * StreamingChatEvent
  */
-export type StreamingChatEvent = {
-  /**
-   * Kind
-   */
-  kind:
-    | "raw_response_event"
-    | "run_item_stream_event"
-    | "agent_updated_stream_event"
-    | "usage"
-    | "error"
-    | "lifecycle";
-  /**
-   * Workflow Key
-   */
-  workflow_key?: string | null;
-  /**
-   * Workflow Run Id
-   */
-  workflow_run_id?: string | null;
-  /**
-   * Step Name
-   */
-  step_name?: string | null;
-  /**
-   * Step Agent
-   */
-  step_agent?: string | null;
-  /**
-   * Stage Name
-   */
-  stage_name?: string | null;
-  /**
-   * Parallel Group
-   */
-  parallel_group?: string | null;
-  /**
-   * Branch Index
-   */
-  branch_index?: number | null;
-  /**
-   * Conversation Id
-   */
-  conversation_id?: string | null;
-  /**
-   * Agent Used
-   */
-  agent_used?: string | null;
-  /**
-   * Response Id
-   */
-  response_id?: string | null;
-  /**
-   * Sequence Number
-   */
-  sequence_number?: number | null;
-  /**
-   * Raw Type
-   */
-  raw_type?: string | null;
-  /**
-   * Run Item Name
-   */
-  run_item_name?: string | null;
-  /**
-   * Run Item Type
-   */
-  run_item_type?: string | null;
-  /**
-   * Tool Call Id
-   */
-  tool_call_id?: string | null;
-  /**
-   * Tool Name
-   */
-  tool_name?: string | null;
-  /**
-   * Agent
-   */
-  agent?: string | null;
-  /**
-   * New Agent
-   */
-  new_agent?: string | null;
-  /**
-   * Text Delta
-   */
-  text_delta?: string | null;
-  /**
-   * Reasoning Delta
-   */
-  reasoning_delta?: string | null;
-  /**
-   * Response Text
-   */
-  response_text?: string | null;
-  /**
-   * Structured Output
-   */
-  structured_output?: unknown | null;
-  /**
-   * Is Terminal
-   */
-  is_terminal?: boolean;
-  /**
-   * Event
-   */
-  event?: string | null;
-  /**
-   * Payload
-   */
-  payload?: {
-    [key: string]: unknown;
-  } | null;
-  /**
-   * Attachments
-   */
-  attachments?: Array<
-    | MessageAttachment
-    | {
-        [key: string]: unknown;
-      }
-  > | null;
-  /**
-   * Raw Event
-   */
-  raw_event?: {
-    [key: string]: unknown;
-  } | null;
-  /**
-   * Tool Call
-   */
-  tool_call?:
-    | ToolCallPayload
-    | {
-        [key: string]: unknown;
-      }
-    | null;
-  /**
-   * Annotations
-   */
-  annotations?: Array<
-    UrlCitation | ContainerFileCitation | FileCitation
-  > | null;
-  /**
-   * Server Timestamp
-   */
-  server_timestamp?: string | null;
-};
+export type StreamingChatEvent =
+  | LifecycleEvent
+  | MemoryCheckpointEvent
+  | AgentUpdatedEvent
+  | OutputItemAddedEvent
+  | OutputItemDoneEvent
+  | MessageDeltaEvent
+  | MessageCitationEvent
+  | ReasoningSummaryDeltaEvent
+  | ReasoningSummaryPartAddedEvent
+  | ReasoningSummaryPartDoneEvent
+  | RefusalDeltaEvent
+  | RefusalDoneEvent
+  | ToolStatusEvent
+  | ToolArgumentsDeltaEvent
+  | ToolArgumentsDoneEvent
+  | ToolCodeDeltaEvent
+  | ToolCodeDoneEvent
+  | ToolOutputEvent
+  | ToolApprovalEvent
+  | ChunkDeltaEvent
+  | ChunkDoneEvent
+  | ErrorEvent
+  | FinalEvent;
 
 /**
  * StreamingWorkflowEvent
  */
-export type StreamingWorkflowEvent = {
-  /**
-   * Kind
-   */
-  kind:
-    | "raw_response_event"
-    | "run_item_stream_event"
-    | "agent_updated_stream_event"
-    | "usage"
-    | "error"
-    | "lifecycle";
-  /**
-   * Workflow Key
-   */
-  workflow_key?: string | null;
-  /**
-   * Workflow Run Id
-   */
-  workflow_run_id?: string | null;
-  /**
-   * Step Name
-   */
-  step_name?: string | null;
-  /**
-   * Step Agent
-   */
-  step_agent?: string | null;
-  /**
-   * Stage Name
-   */
-  stage_name?: string | null;
-  /**
-   * Parallel Group
-   */
-  parallel_group?: string | null;
-  /**
-   * Branch Index
-   */
-  branch_index?: number | null;
-  /**
-   * Conversation Id
-   */
-  conversation_id?: string | null;
-  /**
-   * Agent Used
-   */
-  agent_used?: string | null;
-  /**
-   * Response Id
-   */
-  response_id?: string | null;
-  /**
-   * Sequence Number
-   */
-  sequence_number?: number | null;
-  /**
-   * Raw Type
-   */
-  raw_type?: string | null;
-  /**
-   * Run Item Name
-   */
-  run_item_name?: string | null;
-  /**
-   * Run Item Type
-   */
-  run_item_type?: string | null;
-  /**
-   * Tool Call Id
-   */
-  tool_call_id?: string | null;
-  /**
-   * Tool Name
-   */
-  tool_name?: string | null;
-  /**
-   * Agent
-   */
-  agent?: string | null;
-  /**
-   * New Agent
-   */
-  new_agent?: string | null;
-  /**
-   * Text Delta
-   */
-  text_delta?: string | null;
-  /**
-   * Reasoning Delta
-   */
-  reasoning_delta?: string | null;
-  /**
-   * Response Text
-   */
-  response_text?: string | null;
-  /**
-   * Structured Output
-   */
-  structured_output?: unknown | null;
-  /**
-   * Is Terminal
-   */
-  is_terminal?: boolean;
-  /**
-   * Event
-   */
-  event?: string | null;
-  /**
-   * Payload
-   */
-  payload?: {
-    [key: string]: unknown;
-  } | null;
-  /**
-   * Attachments
-   */
-  attachments?: Array<
-    | MessageAttachment
-    | {
-        [key: string]: unknown;
-      }
-  > | null;
-  /**
-   * Raw Event
-   */
-  raw_event?: {
-    [key: string]: unknown;
-  } | null;
-  /**
-   * Tool Call
-   */
-  tool_call?:
-    | ToolCallPayload
-    | {
-        [key: string]: unknown;
-      }
-    | null;
-  /**
-   * Annotations
-   */
-  annotations?: Array<
-    UrlCitation | ContainerFileCitation | FileCitation
-  > | null;
-  /**
-   * Server Timestamp
-   */
-  server_timestamp?: string | null;
-};
+export type StreamingWorkflowEvent =
+  | LifecycleEvent
+  | MemoryCheckpointEvent
+  | AgentUpdatedEvent
+  | OutputItemAddedEvent
+  | OutputItemDoneEvent
+  | MessageDeltaEvent
+  | MessageCitationEvent
+  | ReasoningSummaryDeltaEvent
+  | ReasoningSummaryPartAddedEvent
+  | ReasoningSummaryPartDoneEvent
+  | RefusalDeltaEvent
+  | RefusalDoneEvent
+  | ToolStatusEvent
+  | ToolArgumentsDeltaEvent
+  | ToolArgumentsDoneEvent
+  | ToolCodeDeltaEvent
+  | ToolCodeDoneEvent
+  | ToolOutputEvent
+  | ToolApprovalEvent
+  | ChunkDeltaEvent
+  | ChunkDoneEvent
+  | ErrorEvent
+  | FinalEvent;
 
 /**
  * StripeEventStatus
@@ -3152,11 +4952,11 @@ export type StreamingWorkflowEvent = {
 export type StripeEventStatus = "received" | "processed" | "failed";
 
 /**
- * SuccessResponse
+ * SuccessNoDataResponse
  *
- * Standard success response envelope.
+ * Success response where `data` is always null.
  */
-export type SuccessResponse = {
+export type SuccessNoDataResponse = {
   /**
    * Success
    *
@@ -3172,9 +4972,9 @@ export type SuccessResponse = {
   /**
    * Data
    *
-   * Optional payload containing the result.
+   * Always null for this response type.
    */
-  data?: unknown | null;
+  data?: null;
 };
 
 /**
@@ -3294,29 +5094,586 @@ export type TenantSubscriptionResponse = {
 };
 
 /**
- * ToolCallPayload
+ * ToolApprovalEvent
+ *
+ * Approval decision for an MCP tool call.
  */
-export type ToolCallPayload = {
+export type ToolApprovalEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
+   * Kind
+   */
+  kind: "tool.approval";
+  /**
+   * Tool Call Id
+   */
+  tool_call_id: string;
   /**
    * Tool Type
    */
-  tool_type: string;
-  web_search_call?: WebSearchCall | null;
-  code_interpreter_call?: CodeInterpreterCall | null;
-  file_search_call?: FileSearchCall | null;
-  image_generation_call?: ImageGenerationCall | null;
-  [key: string]:
-    | unknown
-    | string
-    | WebSearchCall
-    | null
-    | CodeInterpreterCall
-    | null
-    | FileSearchCall
-    | null
-    | ImageGenerationCall
-    | null
-    | undefined;
+  tool_type?: "mcp";
+  /**
+   * Tool Name
+   */
+  tool_name: string;
+  /**
+   * Server Label
+   */
+  server_label?: string | null;
+  /**
+   * Approval Request Id
+   */
+  approval_request_id?: string | null;
+  /**
+   * Approved
+   */
+  approved: boolean;
+  /**
+   * Reason
+   */
+  reason?: string | null;
+};
+
+/**
+ * ToolArgumentsDeltaEvent
+ */
+export type ToolArgumentsDeltaEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
+   * Kind
+   */
+  kind: "tool.arguments.delta";
+  /**
+   * Tool Call Id
+   */
+  tool_call_id: string;
+  /**
+   * Tool Type
+   */
+  tool_type: "function" | "mcp";
+  /**
+   * Tool Name
+   */
+  tool_name: string;
+  /**
+   * Delta
+   */
+  delta: string;
+};
+
+/**
+ * ToolArgumentsDoneEvent
+ */
+export type ToolArgumentsDoneEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
+   * Kind
+   */
+  kind: "tool.arguments.done";
+  /**
+   * Tool Call Id
+   */
+  tool_call_id: string;
+  /**
+   * Tool Type
+   */
+  tool_type: "function" | "mcp";
+  /**
+   * Tool Name
+   */
+  tool_name: string;
+  /**
+   * Arguments Text
+   */
+  arguments_text: string;
+  /**
+   * Arguments Json
+   */
+  arguments_json?: {
+    [key: string]: unknown;
+  } | null;
+};
+
+/**
+ * ToolCatalogResponse
+ *
+ * Stable, typed shape for the tool catalog response.
+ */
+export type ToolCatalogResponse = {
+  /**
+   * Total Tools
+   */
+  total_tools: number;
+  /**
+   * Tool Names
+   */
+  tool_names?: Array<string>;
+  /**
+   * Categories
+   */
+  categories?: Array<string>;
+  /**
+   * Per Agent
+   */
+  per_agent?: {
+    [key: string]: Array<string>;
+  };
+};
+
+/**
+ * ToolCodeDeltaEvent
+ */
+export type ToolCodeDeltaEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
+   * Kind
+   */
+  kind: "tool.code.delta";
+  /**
+   * Tool Call Id
+   */
+  tool_call_id: string;
+  /**
+   * Delta
+   */
+  delta: string;
+};
+
+/**
+ * ToolCodeDoneEvent
+ */
+export type ToolCodeDoneEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
+   * Kind
+   */
+  kind: "tool.code.done";
+  /**
+   * Tool Call Id
+   */
+  tool_call_id: string;
+  /**
+   * Code
+   */
+  code: string;
+};
+
+/**
+ * ToolOutputEvent
+ */
+export type ToolOutputEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
+   * Kind
+   */
+  kind: "tool.output";
+  /**
+   * Tool Call Id
+   */
+  tool_call_id: string;
+  /**
+   * Tool Type
+   */
+  tool_type:
+    | "web_search"
+    | "file_search"
+    | "code_interpreter"
+    | "image_generation"
+    | "function"
+    | "mcp";
+  /**
+   * Output
+   */
+  output: unknown;
+};
+
+/**
+ * ToolStatusEvent
+ */
+export type ToolStatusEvent = {
+  /**
+   * Schema
+   */
+  schema: "public_sse_v1";
+  /**
+   * Event Id
+   */
+  event_id: number;
+  /**
+   * Stream Id
+   */
+  stream_id: string;
+  /**
+   * Server Timestamp
+   */
+  server_timestamp: string;
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+  workflow?: WorkflowContext | null;
+  /**
+   * Provider Sequence Number
+   */
+  provider_sequence_number?: number | null;
+  /**
+   * Notices
+   */
+  notices?: Array<StreamNotice> | null;
+  /**
+   * Output Index
+   *
+   * Index into the provider response.output[] array.
+   */
+  output_index: number;
+  /**
+   * Item Id
+   *
+   * Stable identifier of the provider output item.
+   */
+  item_id: string;
+  /**
+   * Kind
+   */
+  kind: "tool.status";
+  /**
+   * Tool
+   */
+  tool:
+    | WebSearchTool
+    | FileSearchTool
+    | CodeInterpreterTool
+    | ImageGenerationTool
+    | FunctionTool
+    | McpTool;
+};
+
+/**
+ * TotpEnrollResponse
+ */
+export type TotpEnrollResponse = {
+  /**
+   * Secret
+   */
+  secret: string;
+  /**
+   * Method Id
+   */
+  method_id: string;
+  /**
+   * Otpauth Url
+   */
+  otpauth_url?: string | null;
+};
+
+/**
+ * TotpVerifyRequest
+ */
+export type TotpVerifyRequest = {
+  /**
+   * Method Id
+   */
+  method_id: string;
+  /**
+   * Code
+   */
+  code: string;
 };
 
 /**
@@ -3393,6 +5750,52 @@ export type UrlCitation = {
    * Url
    */
   url: string;
+};
+
+/**
+ * UsageCounterView
+ */
+export type UsageCounterView = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Tenant Id
+   */
+  tenant_id: string;
+  /**
+   * User Id
+   */
+  user_id?: string | null;
+  /**
+   * Period Start
+   */
+  period_start: string;
+  /**
+   * Granularity
+   */
+  granularity: string;
+  /**
+   * Input Tokens
+   */
+  input_tokens: number;
+  /**
+   * Output Tokens
+   */
+  output_tokens: number;
+  /**
+   * Requests
+   */
+  requests: number;
+  /**
+   * Storage Bytes
+   */
+  storage_bytes: number;
+  /**
+   * Updated At
+   */
+  updated_at: string;
 };
 
 /**
@@ -3804,24 +6207,6 @@ export type UserSessionResponse = {
 };
 
 /**
- * ValidationError
- */
-export type ValidationError = {
-  /**
-   * Location
-   */
-  loc: Array<string | number>;
-  /**
-   * Message
-   */
-  msg: string;
-  /**
-   * Error Type
-   */
-  type: string;
-};
-
-/**
  * VectorStoreCreateRequest
  */
 export type VectorStoreCreateRequest = {
@@ -4030,13 +6415,27 @@ export type VectorStoreResponse = {
 };
 
 /**
+ * VectorStoreSearchContentChunkResponse
+ */
+export type VectorStoreSearchContentChunkResponse = {
+  /**
+   * Type
+   */
+  type: "text";
+  /**
+   * Text
+   */
+  text: string;
+};
+
+/**
  * VectorStoreSearchRequest
  */
 export type VectorStoreSearchRequest = {
   /**
    * Query
    */
-  query: string;
+  query: string | Array<string>;
   /**
    * Filters
    */
@@ -4060,23 +6459,75 @@ export type VectorStoreSearchRequest = {
  */
 export type VectorStoreSearchResponse = {
   /**
+   * Object
+   */
+  object: string;
+  /**
+   * Search Query
+   */
+  search_query: string;
+  /**
    * Data
    */
-  data: unknown;
+  data?: Array<VectorStoreSearchResultResponse>;
+  /**
+   * Has More
+   */
+  has_more?: boolean;
+  /**
+   * Next Page
+   */
+  next_page?: string | null;
 };
 
 /**
- * WebSearchAction
+ * VectorStoreSearchResultResponse
  */
-export type WebSearchAction = {
+export type VectorStoreSearchResultResponse = {
   /**
-   * Type
+   * File Id
    */
-  type: "search";
+  file_id: string;
+  /**
+   * Filename
+   */
+  filename: string;
+  /**
+   * Score
+   */
+  score: number;
+  /**
+   * Attributes
+   */
+  attributes?: {
+    [key: string]: unknown;
+  };
+  /**
+   * Content
+   */
+  content?: Array<VectorStoreSearchContentChunkResponse>;
+};
+
+/**
+ * WebSearchTool
+ */
+export type WebSearchTool = {
+  /**
+   * Tool Type
+   */
+  tool_type: "web_search";
+  /**
+   * Tool Call Id
+   */
+  tool_call_id: string;
+  /**
+   * Status
+   */
+  status: "in_progress" | "searching" | "completed";
   /**
    * Query
    */
-  query: string;
+  query?: string | null;
   /**
    * Sources
    */
@@ -4084,22 +6535,37 @@ export type WebSearchAction = {
 };
 
 /**
- * WebSearchCall
+ * WorkflowContext
  */
-export type WebSearchCall = {
+export type WorkflowContext = {
   /**
-   * Id
+   * Workflow Key
    */
-  id: string;
+  workflow_key?: string | null;
   /**
-   * Type
+   * Workflow Run Id
    */
-  type: "web_search_call";
+  workflow_run_id?: string | null;
   /**
-   * Status
+   * Stage Name
    */
-  status: "in_progress" | "completed";
-  action?: WebSearchAction | null;
+  stage_name?: string | null;
+  /**
+   * Step Name
+   */
+  step_name?: string | null;
+  /**
+   * Step Agent
+   */
+  step_agent?: string | null;
+  /**
+   * Parallel Group
+   */
+  parallel_group?: string | null;
+  /**
+   * Branch Index
+   */
+  branch_index?: number | null;
 };
 
 /**
@@ -4140,6 +6606,48 @@ export type WorkflowDescriptorResponse = {
   output_schema?: {
     [key: string]: unknown;
   } | null;
+};
+
+/**
+ * WorkflowListResponse
+ *
+ * Paginated list of workflows.
+ */
+export type WorkflowListResponse = {
+  /**
+   * Items
+   */
+  items: Array<WorkflowSummary>;
+  /**
+   * Next Cursor
+   *
+   * Opaque cursor for fetching the next page.
+   */
+  next_cursor?: string | null;
+  /**
+   * Total
+   *
+   * Total number of workflows matching the current filter.
+   */
+  total: number;
+};
+
+/**
+ * WorkflowRunCancelResponse
+ */
+export type WorkflowRunCancelResponse = {
+  /**
+   * Workflow Run Id
+   *
+   * The workflow run id that was cancelled.
+   */
+  workflow_run_id: string;
+  /**
+   * Success
+   *
+   * True if the cancel request succeeded.
+   */
+  success: boolean;
 };
 
 /**
@@ -4263,6 +6771,36 @@ export type WorkflowRunListResponse = {
 };
 
 /**
+ * WorkflowRunReplayEventsResponse
+ *
+ * Paged list of persisted public_sse_v1 frames for deterministic workflow run replay.
+ */
+export type WorkflowRunReplayEventsResponse = {
+  /**
+   * Workflow Run Id
+   *
+   * Workflow run identifier.
+   */
+  workflow_run_id: string;
+  /**
+   * Conversation Id
+   *
+   * Conversation backing this workflow run.
+   */
+  conversation_id: string;
+  /**
+   * Items
+   */
+  items: Array<PublicSseEvent>;
+  /**
+   * Next Cursor
+   *
+   * Opaque cursor for fetching the next page.
+   */
+  next_cursor?: string | null;
+};
+
+/**
  * WorkflowRunRequestBody
  */
 export type WorkflowRunRequestBody = {
@@ -4320,6 +6858,10 @@ export type WorkflowRunResponse = {
   output_schema?: {
     [key: string]: unknown;
   } | null;
+  /**
+   * Attachments
+   */
+  attachments?: Array<MessageAttachment> | null;
 };
 
 /**
@@ -4454,12 +6996,112 @@ export type WorkflowSummary = {
   default?: boolean;
 };
 
+/**
+ * ErrorResponse
+ *
+ * Standard error response envelope.
+ */
+export type ErrorResponse = {
+  /**
+   * Operation success status flag.
+   */
+  success: boolean;
+  /**
+   * Short machine-readable error name.
+   */
+  error: string;
+  /**
+   * Human-readable error description.
+   */
+  message: string;
+  /**
+   * Additional error context for debugging.
+   */
+  details?: unknown;
+};
+
+/**
+ * ValidationErrorResponse
+ *
+ * Validation error envelope (RequestValidationError).
+ */
+export type ValidationErrorResponse = {
+  /**
+   * Operation success status flag.
+   */
+  success: boolean;
+  /**
+   * Short machine-readable error name.
+   */
+  error: string;
+  /**
+   * Human-readable error description.
+   */
+  message: string;
+  /**
+   * Pydantic validation errors list.
+   */
+  details: Array<{
+    [key: string]: unknown;
+  }>;
+};
+
 export type HealthCheckHealthGetData = {
   body?: never;
   path?: never;
   query?: never;
   url: "/health";
 };
+
+export type HealthCheckHealthGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type HealthCheckHealthGetError =
+  HealthCheckHealthGetErrors[keyof HealthCheckHealthGetErrors];
 
 export type HealthCheckHealthGetResponses = {
   /**
@@ -4478,6 +7120,56 @@ export type ReadinessCheckHealthReadyGetData = {
   url: "/health/ready";
 };
 
+export type ReadinessCheckHealthReadyGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ReadinessCheckHealthReadyGetError =
+  ReadinessCheckHealthReadyGetErrors[keyof ReadinessCheckHealthReadyGetErrors];
+
 export type ReadinessCheckHealthReadyGetResponses = {
   /**
    * Successful Response
@@ -4495,6 +7187,56 @@ export type StorageHealthHealthStorageGetData = {
   url: "/health/storage";
 };
 
+export type StorageHealthHealthStorageGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type StorageHealthHealthStorageGetError =
+  StorageHealthHealthStorageGetErrors[keyof StorageHealthHealthStorageGetErrors];
+
 export type StorageHealthHealthStorageGetResponses = {
   /**
    * Successful Response
@@ -4506,11 +7248,75 @@ export type StorageHealthHealthStorageGetResponse =
   StorageHealthHealthStorageGetResponses[keyof StorageHealthHealthStorageGetResponses];
 
 export type HandleStripeWebhookWebhooksStripePostData = {
-  body?: never;
+  body: {
+    [key: string]: unknown;
+  };
+  headers: {
+    /**
+     * Stripe-Signature
+     *
+     * Stripe signature header used to verify the webhook payload.
+     */
+    "stripe-signature": string | null;
+  };
   path?: never;
   query?: never;
   url: "/webhooks/stripe";
 };
+
+export type HandleStripeWebhookWebhooksStripePostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type HandleStripeWebhookWebhooksStripePostError =
+  HandleStripeWebhookWebhooksStripePostErrors[keyof HandleStripeWebhookWebhooksStripePostErrors];
 
 export type HandleStripeWebhookWebhooksStripePostResponses = {
   /**
@@ -4535,9 +7341,53 @@ export type LoginForAccessTokenApiV1AuthTokenPostData = {
 
 export type LoginForAccessTokenApiV1AuthTokenPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type LoginForAccessTokenApiV1AuthTokenPostError =
@@ -4545,9 +7395,15 @@ export type LoginForAccessTokenApiV1AuthTokenPostError =
 
 export type LoginForAccessTokenApiV1AuthTokenPostResponses = {
   /**
+   * Response Login For Access Token Api V1 Auth Token Post
+   *
    * Successful Response
    */
-  200: UserSessionResponse;
+  200: UserSessionResponse | MfaChallengeResponse;
+  /**
+   * MFA required; challenge token and available methods returned.
+   */
+  202: MfaChallengeResponse;
 };
 
 export type LoginForAccessTokenApiV1AuthTokenPostResponse =
@@ -4562,9 +7418,53 @@ export type RefreshAccessTokenApiV1AuthRefreshPostData = {
 
 export type RefreshAccessTokenApiV1AuthRefreshPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type RefreshAccessTokenApiV1AuthRefreshPostError =
@@ -4589,9 +7489,53 @@ export type LogoutSessionApiV1AuthLogoutPostData = {
 
 export type LogoutSessionApiV1AuthLogoutPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type LogoutSessionApiV1AuthLogoutPostError =
@@ -4601,7 +7545,7 @@ export type LogoutSessionApiV1AuthLogoutPostResponses = {
   /**
    * Successful Response
    */
-  200: SuccessResponse;
+  200: LogoutSessionSuccessResponse;
 };
 
 export type LogoutSessionApiV1AuthLogoutPostResponse =
@@ -4614,11 +7558,61 @@ export type LogoutAllSessionsApiV1AuthLogoutAllPostData = {
   url: "/api/v1/auth/logout/all";
 };
 
+export type LogoutAllSessionsApiV1AuthLogoutAllPostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type LogoutAllSessionsApiV1AuthLogoutAllPostError =
+  LogoutAllSessionsApiV1AuthLogoutAllPostErrors[keyof LogoutAllSessionsApiV1AuthLogoutAllPostErrors];
+
 export type LogoutAllSessionsApiV1AuthLogoutAllPostResponses = {
   /**
    * Successful Response
    */
-  200: SuccessResponse;
+  200: LogoutAllSessionsSuccessResponse;
 };
 
 export type LogoutAllSessionsApiV1AuthLogoutAllPostResponse =
@@ -4658,9 +7652,53 @@ export type ListUserSessionsApiV1AuthSessionsGetData = {
 
 export type ListUserSessionsApiV1AuthSessionsGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListUserSessionsApiV1AuthSessionsGetError =
@@ -4690,9 +7728,53 @@ export type RevokeUserSessionApiV1AuthSessionsSessionIdDeleteData = {
 
 export type RevokeUserSessionApiV1AuthSessionsSessionIdDeleteErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type RevokeUserSessionApiV1AuthSessionsSessionIdDeleteError =
@@ -4702,7 +7784,7 @@ export type RevokeUserSessionApiV1AuthSessionsSessionIdDeleteResponses = {
   /**
    * Successful Response
    */
-  200: SuccessResponse;
+  200: SessionRevokeByIdSuccessResponse;
 };
 
 export type RevokeUserSessionApiV1AuthSessionsSessionIdDeleteResponse =
@@ -4715,11 +7797,61 @@ export type GetCurrentUserInfoApiV1AuthMeGetData = {
   url: "/api/v1/auth/me";
 };
 
+export type GetCurrentUserInfoApiV1AuthMeGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type GetCurrentUserInfoApiV1AuthMeGetError =
+  GetCurrentUserInfoApiV1AuthMeGetErrors[keyof GetCurrentUserInfoApiV1AuthMeGetErrors];
+
 export type GetCurrentUserInfoApiV1AuthMeGetResponses = {
   /**
    * Successful Response
    */
-  200: SuccessResponse;
+  200: CurrentUserInfoSuccessResponse;
 };
 
 export type GetCurrentUserInfoApiV1AuthMeGetResponse =
@@ -4732,11 +7864,61 @@ export type SendEmailVerificationApiV1AuthEmailSendPostData = {
   url: "/api/v1/auth/email/send";
 };
 
+export type SendEmailVerificationApiV1AuthEmailSendPostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type SendEmailVerificationApiV1AuthEmailSendPostError =
+  SendEmailVerificationApiV1AuthEmailSendPostErrors[keyof SendEmailVerificationApiV1AuthEmailSendPostErrors];
+
 export type SendEmailVerificationApiV1AuthEmailSendPostResponses = {
   /**
    * Successful Response
    */
-  202: SuccessResponse;
+  202: EmailVerificationSendSuccessResponse;
 };
 
 export type SendEmailVerificationApiV1AuthEmailSendPostResponse =
@@ -4751,9 +7933,53 @@ export type VerifyEmailTokenApiV1AuthEmailVerifyPostData = {
 
 export type VerifyEmailTokenApiV1AuthEmailVerifyPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type VerifyEmailTokenApiV1AuthEmailVerifyPostError =
@@ -4763,7 +7989,7 @@ export type VerifyEmailTokenApiV1AuthEmailVerifyPostResponses = {
   /**
    * Successful Response
    */
-  200: SuccessResponse;
+  200: SuccessNoDataResponse;
 };
 
 export type VerifyEmailTokenApiV1AuthEmailVerifyPostResponse =
@@ -4778,9 +8004,53 @@ export type RequestPasswordResetApiV1AuthPasswordForgotPostData = {
 
 export type RequestPasswordResetApiV1AuthPasswordForgotPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type RequestPasswordResetApiV1AuthPasswordForgotPostError =
@@ -4790,7 +8060,7 @@ export type RequestPasswordResetApiV1AuthPasswordForgotPostResponses = {
   /**
    * Successful Response
    */
-  202: SuccessResponse;
+  202: SuccessNoDataResponse;
 };
 
 export type RequestPasswordResetApiV1AuthPasswordForgotPostResponse =
@@ -4805,9 +8075,53 @@ export type ConfirmPasswordResetApiV1AuthPasswordConfirmPostData = {
 
 export type ConfirmPasswordResetApiV1AuthPasswordConfirmPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ConfirmPasswordResetApiV1AuthPasswordConfirmPostError =
@@ -4817,7 +8131,7 @@ export type ConfirmPasswordResetApiV1AuthPasswordConfirmPostResponses = {
   /**
    * Successful Response
    */
-  200: SuccessResponse;
+  200: SuccessNoDataResponse;
 };
 
 export type ConfirmPasswordResetApiV1AuthPasswordConfirmPostResponse =
@@ -4832,9 +8146,53 @@ export type ChangePasswordApiV1AuthPasswordChangePostData = {
 
 export type ChangePasswordApiV1AuthPasswordChangePostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ChangePasswordApiV1AuthPasswordChangePostError =
@@ -4844,7 +8202,7 @@ export type ChangePasswordApiV1AuthPasswordChangePostResponses = {
   /**
    * Successful Response
    */
-  200: SuccessResponse;
+  200: SuccessNoDataResponse;
 };
 
 export type ChangePasswordApiV1AuthPasswordChangePostResponse =
@@ -4859,9 +8217,53 @@ export type AdminResetPasswordApiV1AuthPasswordResetPostData = {
 
 export type AdminResetPasswordApiV1AuthPasswordResetPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type AdminResetPasswordApiV1AuthPasswordResetPostError =
@@ -4871,7 +8273,7 @@ export type AdminResetPasswordApiV1AuthPasswordResetPostResponses = {
   /**
    * Successful Response
    */
-  200: SuccessResponse;
+  200: SuccessNoDataResponse;
 };
 
 export type AdminResetPasswordApiV1AuthPasswordResetPostResponse =
@@ -4896,9 +8298,53 @@ export type IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostData = {
 
 export type IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostError =
@@ -4944,9 +8390,53 @@ export type IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIs
 export type IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePostError =
@@ -5031,9 +8521,53 @@ export type ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetData = {
 
 export type ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetError =
@@ -5086,9 +8620,53 @@ export type RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePost
 export type RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostError =
@@ -5099,7 +8677,7 @@ export type RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePost
     /**
      * Successful Response
      */
-    200: SuccessResponse;
+    200: ServiceAccountTokenRevokeSuccessResponse;
   };
 
 export type RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostResponse =
@@ -5111,6 +8689,56 @@ export type GetSignupAccessPolicyApiV1AuthSignupPolicyGetData = {
   query?: never;
   url: "/api/v1/auth/signup-policy";
 };
+
+export type GetSignupAccessPolicyApiV1AuthSignupPolicyGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type GetSignupAccessPolicyApiV1AuthSignupPolicyGetError =
+  GetSignupAccessPolicyApiV1AuthSignupPolicyGetErrors[keyof GetSignupAccessPolicyApiV1AuthSignupPolicyGetErrors];
 
 export type GetSignupAccessPolicyApiV1AuthSignupPolicyGetResponses = {
   /**
@@ -5131,9 +8759,53 @@ export type RegisterTenantApiV1AuthRegisterPostData = {
 
 export type RegisterTenantApiV1AuthRegisterPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type RegisterTenantApiV1AuthRegisterPostError =
@@ -5158,9 +8830,53 @@ export type SubmitAccessRequestApiV1AuthRequestAccessPostData = {
 
 export type SubmitAccessRequestApiV1AuthRequestAccessPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type SubmitAccessRequestApiV1AuthRequestAccessPostError =
@@ -5198,9 +8914,53 @@ export type ListSignupRequestsApiV1AuthSignupRequestsGetData = {
 
 export type ListSignupRequestsApiV1AuthSignupRequestsGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListSignupRequestsApiV1AuthSignupRequestsGetError =
@@ -5232,9 +8992,53 @@ export type ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostData 
 export type ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostError =
@@ -5267,9 +9071,53 @@ export type RejectSignupRequestApiV1AuthSignupRequestsRequestIdRejectPostData =
 export type RejectSignupRequestApiV1AuthSignupRequestsRequestIdRejectPostErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type RejectSignupRequestApiV1AuthSignupRequestsRequestIdRejectPostError =
@@ -5316,9 +9164,53 @@ export type ListInvitesApiV1AuthInvitesGetData = {
 
 export type ListInvitesApiV1AuthInvitesGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListInvitesApiV1AuthInvitesGetError =
@@ -5343,9 +9235,53 @@ export type IssueInviteApiV1AuthInvitesPostData = {
 
 export type IssueInviteApiV1AuthInvitesPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type IssueInviteApiV1AuthInvitesPostError =
@@ -5375,9 +9311,53 @@ export type RevokeInviteApiV1AuthInvitesInviteIdRevokePostData = {
 
 export type RevokeInviteApiV1AuthInvitesInviteIdRevokePostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type RevokeInviteApiV1AuthInvitesInviteIdRevokePostError =
@@ -5392,6 +9372,437 @@ export type RevokeInviteApiV1AuthInvitesInviteIdRevokePostResponses = {
 
 export type RevokeInviteApiV1AuthInvitesInviteIdRevokePostResponse =
   RevokeInviteApiV1AuthInvitesInviteIdRevokePostResponses[keyof RevokeInviteApiV1AuthInvitesInviteIdRevokePostResponses];
+
+export type ListMfaMethodsApiV1AuthMfaGetData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/v1/auth/mfa";
+};
+
+export type ListMfaMethodsApiV1AuthMfaGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ListMfaMethodsApiV1AuthMfaGetError =
+  ListMfaMethodsApiV1AuthMfaGetErrors[keyof ListMfaMethodsApiV1AuthMfaGetErrors];
+
+export type ListMfaMethodsApiV1AuthMfaGetResponses = {
+  /**
+   * Response List Mfa Methods Api V1 Auth Mfa Get
+   *
+   * Successful Response
+   */
+  200: Array<MfaMethodView>;
+};
+
+export type ListMfaMethodsApiV1AuthMfaGetResponse =
+  ListMfaMethodsApiV1AuthMfaGetResponses[keyof ListMfaMethodsApiV1AuthMfaGetResponses];
+
+export type StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostData = {
+  body?: never;
+  path?: never;
+  query?: {
+    /**
+     * Label
+     */
+    label?: string | null;
+  };
+  url: "/api/v1/auth/mfa/totp/enroll";
+};
+
+export type StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostError =
+  StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostErrors[keyof StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostErrors];
+
+export type StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostResponses = {
+  /**
+   * Successful Response
+   */
+  201: TotpEnrollResponse;
+};
+
+export type StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostResponse =
+  StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostResponses[keyof StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostResponses];
+
+export type VerifyTotpApiV1AuthMfaTotpVerifyPostData = {
+  body: TotpVerifyRequest;
+  path?: never;
+  query?: never;
+  url: "/api/v1/auth/mfa/totp/verify";
+};
+
+export type VerifyTotpApiV1AuthMfaTotpVerifyPostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type VerifyTotpApiV1AuthMfaTotpVerifyPostError =
+  VerifyTotpApiV1AuthMfaTotpVerifyPostErrors[keyof VerifyTotpApiV1AuthMfaTotpVerifyPostErrors];
+
+export type VerifyTotpApiV1AuthMfaTotpVerifyPostResponses = {
+  /**
+   * Successful Response
+   */
+  200: SuccessNoDataResponse;
+};
+
+export type VerifyTotpApiV1AuthMfaTotpVerifyPostResponse =
+  VerifyTotpApiV1AuthMfaTotpVerifyPostResponses[keyof VerifyTotpApiV1AuthMfaTotpVerifyPostResponses];
+
+export type RevokeMfaMethodApiV1AuthMfaMethodIdDeleteData = {
+  body?: never;
+  path: {
+    /**
+     * Method Id
+     */
+    method_id: string;
+  };
+  query?: never;
+  url: "/api/v1/auth/mfa/{method_id}";
+};
+
+export type RevokeMfaMethodApiV1AuthMfaMethodIdDeleteErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type RevokeMfaMethodApiV1AuthMfaMethodIdDeleteError =
+  RevokeMfaMethodApiV1AuthMfaMethodIdDeleteErrors[keyof RevokeMfaMethodApiV1AuthMfaMethodIdDeleteErrors];
+
+export type RevokeMfaMethodApiV1AuthMfaMethodIdDeleteResponses = {
+  /**
+   * Successful Response
+   */
+  200: SuccessNoDataResponse;
+};
+
+export type RevokeMfaMethodApiV1AuthMfaMethodIdDeleteResponse =
+  RevokeMfaMethodApiV1AuthMfaMethodIdDeleteResponses[keyof RevokeMfaMethodApiV1AuthMfaMethodIdDeleteResponses];
+
+export type RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/v1/auth/mfa/recovery/regenerate";
+};
+
+export type RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostError =
+  RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostErrors[keyof RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostErrors];
+
+export type RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: RecoveryCodesResponse;
+  };
+
+export type RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostResponse =
+  RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostResponses[keyof RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostResponses];
+
+export type CompleteMfaChallengeApiV1AuthMfaCompletePostData = {
+  body: MfaChallengeCompleteRequest;
+  path?: never;
+  query?: never;
+  url: "/api/v1/auth/mfa/complete";
+};
+
+export type CompleteMfaChallengeApiV1AuthMfaCompletePostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type CompleteMfaChallengeApiV1AuthMfaCompletePostError =
+  CompleteMfaChallengeApiV1AuthMfaCompletePostErrors[keyof CompleteMfaChallengeApiV1AuthMfaCompletePostErrors];
+
+export type CompleteMfaChallengeApiV1AuthMfaCompletePostResponses = {
+  /**
+   * Successful Response
+   */
+  200: UserSessionResponse;
+};
+
+export type CompleteMfaChallengeApiV1AuthMfaCompletePostResponse =
+  CompleteMfaChallengeApiV1AuthMfaCompletePostResponses[keyof CompleteMfaChallengeApiV1AuthMfaCompletePostResponses];
 
 export type ChatWithAgentApiV1ChatPostData = {
   body: AgentChatRequest;
@@ -5412,9 +9823,53 @@ export type ChatWithAgentApiV1ChatPostData = {
 
 export type ChatWithAgentApiV1ChatPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ChatWithAgentApiV1ChatPostError =
@@ -5449,9 +9904,53 @@ export type StreamChatWithAgentApiV1ChatStreamPostData = {
 
 export type StreamChatWithAgentApiV1ChatStreamPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type StreamChatWithAgentApiV1ChatStreamPostError =
@@ -5470,17 +9969,88 @@ export type StreamChatWithAgentApiV1ChatStreamPostResponse =
 export type ListAvailableAgentsApiV1AgentsGetData = {
   body?: never;
   path?: never;
-  query?: never;
+  query?: {
+    /**
+     * Limit
+     *
+     * Maximum number of agents to return.
+     */
+    limit?: number;
+    /**
+     * Cursor
+     *
+     * Opaque pagination cursor from a previous page.
+     */
+    cursor?: string | null;
+    /**
+     * Search
+     *
+     * Case-insensitive match against name, display_name, or description.
+     */
+    search?: string | null;
+  };
   url: "/api/v1/agents";
 };
 
+export type ListAvailableAgentsApiV1AgentsGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ListAvailableAgentsApiV1AgentsGetError =
+  ListAvailableAgentsApiV1AgentsGetErrors[keyof ListAvailableAgentsApiV1AgentsGetErrors];
+
 export type ListAvailableAgentsApiV1AgentsGetResponses = {
   /**
-   * Response List Available Agents Api V1 Agents Get
-   *
    * Successful Response
    */
-  200: Array<AgentSummary>;
+  200: AgentListResponse;
 };
 
 export type ListAvailableAgentsApiV1AgentsGetResponse =
@@ -5500,9 +10070,53 @@ export type GetAgentStatusApiV1AgentsAgentNameStatusGetData = {
 
 export type GetAgentStatusApiV1AgentsAgentNameStatusGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type GetAgentStatusApiV1AgentsAgentNameStatusGetError =
@@ -5518,6 +10132,296 @@ export type GetAgentStatusApiV1AgentsAgentNameStatusGetResponses = {
 export type GetAgentStatusApiV1AgentsAgentNameStatusGetResponse =
   GetAgentStatusApiV1AgentsAgentNameStatusGetResponses[keyof GetAgentStatusApiV1AgentsAgentNameStatusGetResponses];
 
+export type ListGuardrailsApiV1GuardrailsGetData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/v1/guardrails";
+};
+
+export type ListGuardrailsApiV1GuardrailsGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ListGuardrailsApiV1GuardrailsGetError =
+  ListGuardrailsApiV1GuardrailsGetErrors[keyof ListGuardrailsApiV1GuardrailsGetErrors];
+
+export type ListGuardrailsApiV1GuardrailsGetResponses = {
+  /**
+   * Response List Guardrails Api V1 Guardrails Get
+   *
+   * Successful Response
+   */
+  200: Array<GuardrailSummary>;
+};
+
+export type ListGuardrailsApiV1GuardrailsGetResponse =
+  ListGuardrailsApiV1GuardrailsGetResponses[keyof ListGuardrailsApiV1GuardrailsGetResponses];
+
+export type ListPresetsApiV1GuardrailsPresetsGetData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/v1/guardrails/presets";
+};
+
+export type ListPresetsApiV1GuardrailsPresetsGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ListPresetsApiV1GuardrailsPresetsGetError =
+  ListPresetsApiV1GuardrailsPresetsGetErrors[keyof ListPresetsApiV1GuardrailsPresetsGetErrors];
+
+export type ListPresetsApiV1GuardrailsPresetsGetResponses = {
+  /**
+   * Response List Presets Api V1 Guardrails Presets Get
+   *
+   * Successful Response
+   */
+  200: Array<PresetSummary>;
+};
+
+export type ListPresetsApiV1GuardrailsPresetsGetResponse =
+  ListPresetsApiV1GuardrailsPresetsGetResponses[keyof ListPresetsApiV1GuardrailsPresetsGetResponses];
+
+export type GetGuardrailApiV1GuardrailsGuardrailKeyGetData = {
+  body?: never;
+  path: {
+    /**
+     * Guardrail Key
+     */
+    guardrail_key: string;
+  };
+  query?: never;
+  url: "/api/v1/guardrails/{guardrail_key}";
+};
+
+export type GetGuardrailApiV1GuardrailsGuardrailKeyGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type GetGuardrailApiV1GuardrailsGuardrailKeyGetError =
+  GetGuardrailApiV1GuardrailsGuardrailKeyGetErrors[keyof GetGuardrailApiV1GuardrailsGuardrailKeyGetErrors];
+
+export type GetGuardrailApiV1GuardrailsGuardrailKeyGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: GuardrailDetail;
+};
+
+export type GetGuardrailApiV1GuardrailsGuardrailKeyGetResponse =
+  GetGuardrailApiV1GuardrailsGuardrailKeyGetResponses[keyof GetGuardrailApiV1GuardrailsGuardrailKeyGetResponses];
+
+export type GetPresetApiV1GuardrailsPresetsPresetKeyGetData = {
+  body?: never;
+  path: {
+    /**
+     * Preset Key
+     */
+    preset_key: string;
+  };
+  query?: never;
+  url: "/api/v1/guardrails/presets/{preset_key}";
+};
+
+export type GetPresetApiV1GuardrailsPresetsPresetKeyGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type GetPresetApiV1GuardrailsPresetsPresetKeyGetError =
+  GetPresetApiV1GuardrailsPresetsPresetKeyGetErrors[keyof GetPresetApiV1GuardrailsPresetsPresetKeyGetErrors];
+
+export type GetPresetApiV1GuardrailsPresetsPresetKeyGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: PresetDetail;
+};
+
+export type GetPresetApiV1GuardrailsPresetsPresetKeyGetResponse =
+  GetPresetApiV1GuardrailsPresetsPresetKeyGetResponses[keyof GetPresetApiV1GuardrailsPresetsPresetKeyGetResponses];
+
 export type ListWorkflowsApiV1WorkflowsGetData = {
   body?: never;
   headers?: {
@@ -5531,15 +10435,78 @@ export type ListWorkflowsApiV1WorkflowsGetData = {
     "X-Tenant-Role"?: string | null;
   };
   path?: never;
-  query?: never;
+  query?: {
+    /**
+     * Limit
+     *
+     * Maximum number of workflows to return.
+     */
+    limit?: number;
+    /**
+     * Cursor
+     *
+     * Opaque pagination cursor from a previous page.
+     */
+    cursor?: string | null;
+    /**
+     * Search
+     *
+     * Case-insensitive match against key, display_name, or description.
+     */
+    search?: string | null;
+  };
   url: "/api/v1/workflows";
 };
 
 export type ListWorkflowsApiV1WorkflowsGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListWorkflowsApiV1WorkflowsGetError =
@@ -5547,11 +10514,9 @@ export type ListWorkflowsApiV1WorkflowsGetError =
 
 export type ListWorkflowsApiV1WorkflowsGetResponses = {
   /**
-   * Response List Workflows Api V1 Workflows Get
-   *
    * Successful Response
    */
-  200: Array<WorkflowSummary>;
+  200: WorkflowListResponse;
 };
 
 export type ListWorkflowsApiV1WorkflowsGetResponse =
@@ -5581,9 +10546,53 @@ export type RunWorkflowApiV1WorkflowsWorkflowKeyRunPostData = {
 
 export type RunWorkflowApiV1WorkflowsWorkflowKeyRunPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type RunWorkflowApiV1WorkflowsWorkflowKeyRunPostError =
@@ -5661,9 +10670,53 @@ export type ListWorkflowRunsApiV1WorkflowsRunsGetData = {
 
 export type ListWorkflowRunsApiV1WorkflowsRunsGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListWorkflowRunsApiV1WorkflowsRunsGetError =
@@ -5716,9 +10769,53 @@ export type DeleteWorkflowRunApiV1WorkflowsRunsRunIdDeleteData = {
 
 export type DeleteWorkflowRunApiV1WorkflowsRunsRunIdDeleteErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type DeleteWorkflowRunApiV1WorkflowsRunsRunIdDeleteError =
@@ -5758,9 +10855,53 @@ export type GetWorkflowRunApiV1WorkflowsRunsRunIdGetData = {
 
 export type GetWorkflowRunApiV1WorkflowsRunsRunIdGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type GetWorkflowRunApiV1WorkflowsRunsRunIdGetError =
@@ -5800,9 +10941,53 @@ export type CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostData = {
 
 export type CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostError =
@@ -5812,8 +10997,11 @@ export type CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostResponses = {
   /**
    * Successful Response
    */
-  202: unknown;
+  202: WorkflowRunCancelResponse;
 };
+
+export type CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostResponse =
+  CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostResponses[keyof CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostResponses];
 
 export type RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostData = {
   body: WorkflowRunRequestBody;
@@ -5839,9 +11027,53 @@ export type RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostData = {
 
 export type RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostError =
@@ -5881,9 +11113,53 @@ export type GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetData = {
 
 export type GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetError =
@@ -5898,6 +11174,199 @@ export type GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetResponses = {
 
 export type GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetResponse =
   GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetResponses[keyof GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetResponses];
+
+export type GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Run Id
+       */
+      run_id: string;
+    };
+    query?: {
+      /**
+       * Limit
+       */
+      limit?: number;
+      /**
+       * Cursor
+       *
+       * Opaque pagination cursor.
+       */
+      cursor?: string | null;
+    };
+    url: "/api/v1/workflows/runs/{run_id}/replay/events";
+  };
+
+export type GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetError =
+  GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetErrors[keyof GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetErrors];
+
+export type GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: WorkflowRunReplayEventsResponse;
+  };
+
+export type GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetResponse =
+  GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetResponses[keyof GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetResponses];
+
+export type StreamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGetData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Run Id
+       */
+      run_id: string;
+    };
+    query?: {
+      /**
+       * Cursor
+       *
+       * Opaque pagination cursor.
+       */
+      cursor?: string | null;
+    };
+    url: "/api/v1/workflows/runs/{run_id}/replay/stream";
+  };
+
+export type StreamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGetErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type StreamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGetError =
+  StreamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGetErrors[keyof StreamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGetErrors];
+
+export type StreamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGetResponses =
+  {
+    /**
+     * Server-sent events replay stream of persisted public_sse_v1 frames for a workflow run.
+     */
+    200: unknown;
+  };
 
 export type ListConversationsApiV1ConversationsGetData = {
   body?: never;
@@ -5935,9 +11404,53 @@ export type ListConversationsApiV1ConversationsGetData = {
 
 export type ListConversationsApiV1ConversationsGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListConversationsApiV1ConversationsGetError =
@@ -5995,9 +11508,53 @@ export type SearchConversationsApiV1ConversationsSearchGetData = {
 
 export type SearchConversationsApiV1ConversationsSearchGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type SearchConversationsApiV1ConversationsSearchGetError =
@@ -6037,9 +11594,53 @@ export type DeleteConversationApiV1ConversationsConversationIdDeleteData = {
 
 export type DeleteConversationApiV1ConversationsConversationIdDeleteErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type DeleteConversationApiV1ConversationsConversationIdDeleteError =
@@ -6080,9 +11681,53 @@ export type GetConversationApiV1ConversationsConversationIdGetData = {
 
 export type GetConversationApiV1ConversationsConversationIdGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type GetConversationApiV1ConversationsConversationIdGetError =
@@ -6141,9 +11786,53 @@ export type GetConversationMessagesApiV1ConversationsConversationIdMessagesGetDa
 export type GetConversationMessagesApiV1ConversationsConversationIdMessagesGetErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type GetConversationMessagesApiV1ConversationsConversationIdMessagesGetError =
@@ -6159,6 +11848,277 @@ export type GetConversationMessagesApiV1ConversationsConversationIdMessagesGetRe
 
 export type GetConversationMessagesApiV1ConversationsConversationIdMessagesGetResponse =
   GetConversationMessagesApiV1ConversationsConversationIdMessagesGetResponses[keyof GetConversationMessagesApiV1ConversationsConversationIdMessagesGetResponses];
+
+export type DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Conversation Id
+       */
+      conversation_id: string;
+      /**
+       * Message Id
+       */
+      message_id: string;
+    };
+    query?: never;
+    url: "/api/v1/conversations/{conversation_id}/messages/{message_id}";
+  };
+
+export type DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteError =
+  DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteErrors[keyof DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteErrors];
+
+export type DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: ConversationMessageDeleteResponse;
+  };
+
+export type DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteResponse =
+  DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteResponses[keyof DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteResponses];
+
+export type UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchData =
+  {
+    body: ConversationMemoryConfigRequest;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Conversation Id
+       */
+      conversation_id: string;
+    };
+    query?: never;
+    url: "/api/v1/conversations/{conversation_id}/memory";
+  };
+
+export type UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchError =
+  UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchErrors[keyof UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchErrors];
+
+export type UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: ConversationMemoryConfigResponse;
+  };
+
+export type UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchResponse =
+  UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchResponses[keyof UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchResponses];
+
+export type UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchData =
+  {
+    body: ConversationTitleUpdateRequest;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Conversation Id
+       */
+      conversation_id: string;
+    };
+    query?: never;
+    url: "/api/v1/conversations/{conversation_id}/title";
+  };
+
+export type UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchError =
+  UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchErrors[keyof UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchErrors];
+
+export type UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: ConversationTitleUpdateResponse;
+  };
+
+export type UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchResponse =
+  UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchResponses[keyof UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchResponses];
 
 export type GetConversationEventsApiV1ConversationsConversationIdEventsGetData =
   {
@@ -6193,9 +12153,53 @@ export type GetConversationEventsApiV1ConversationsConversationIdEventsGetData =
 export type GetConversationEventsApiV1ConversationsConversationIdEventsGetErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type GetConversationEventsApiV1ConversationsConversationIdEventsGetError =
@@ -6212,6 +12216,285 @@ export type GetConversationEventsApiV1ConversationsConversationIdEventsGetRespon
 export type GetConversationEventsApiV1ConversationsConversationIdEventsGetResponse =
   GetConversationEventsApiV1ConversationsConversationIdEventsGetResponses[keyof GetConversationEventsApiV1ConversationsConversationIdEventsGetResponses];
 
+export type StreamConversationMetadataApiV1ConversationsConversationIdStreamGetData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Conversation Id
+       */
+      conversation_id: string;
+    };
+    query?: never;
+    url: "/api/v1/conversations/{conversation_id}/stream";
+  };
+
+export type StreamConversationMetadataApiV1ConversationsConversationIdStreamGetErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type StreamConversationMetadataApiV1ConversationsConversationIdStreamGetError =
+  StreamConversationMetadataApiV1ConversationsConversationIdStreamGetErrors[keyof StreamConversationMetadataApiV1ConversationsConversationIdStreamGetErrors];
+
+export type StreamConversationMetadataApiV1ConversationsConversationIdStreamGetResponses =
+  {
+    /**
+     * Server-sent events stream of the generated conversation title.
+     */
+    200: unknown;
+  };
+
+export type GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Conversation Id
+       */
+      conversation_id: string;
+    };
+    query?: {
+      /**
+       * Limit
+       */
+      limit?: number;
+      /**
+       * Cursor
+       *
+       * Opaque pagination cursor.
+       */
+      cursor?: string | null;
+    };
+    url: "/api/v1/conversations/{conversation_id}/ledger/events";
+  };
+
+export type GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetError =
+  GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetErrors[keyof GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetErrors];
+
+export type GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: ConversationLedgerEventsResponse;
+  };
+
+export type GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetResponse =
+  GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetResponses[keyof GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetResponses];
+
+export type StreamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGetData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Conversation Id
+       */
+      conversation_id: string;
+    };
+    query?: {
+      /**
+       * Cursor
+       *
+       * Opaque pagination cursor.
+       */
+      cursor?: string | null;
+    };
+    url: "/api/v1/conversations/{conversation_id}/ledger/stream";
+  };
+
+export type StreamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGetErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type StreamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGetError =
+  StreamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGetErrors[keyof StreamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGetErrors];
+
+export type StreamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGetResponses =
+  {
+    /**
+     * Server-sent events replay stream of persisted public_sse_v1 frames.
+     */
+    200: unknown;
+  };
+
 export type ListAvailableToolsApiV1ToolsGetData = {
   body?: never;
   path?: never;
@@ -6219,15 +12502,61 @@ export type ListAvailableToolsApiV1ToolsGetData = {
   url: "/api/v1/tools";
 };
 
+export type ListAvailableToolsApiV1ToolsGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ListAvailableToolsApiV1ToolsGetError =
+  ListAvailableToolsApiV1ToolsGetErrors[keyof ListAvailableToolsApiV1ToolsGetErrors];
+
 export type ListAvailableToolsApiV1ToolsGetResponses = {
   /**
-   * Response List Available Tools Api V1 Tools Get
-   *
    * Successful Response
    */
-  200: {
-    [key: string]: unknown;
-  };
+  200: ToolCatalogResponse;
 };
 
 export type ListAvailableToolsApiV1ToolsGetResponse =
@@ -6307,9 +12636,53 @@ export type ListActivityEventsApiV1ActivityGetData = {
 
 export type ListActivityEventsApiV1ActivityGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListActivityEventsApiV1ActivityGetError =
@@ -6344,9 +12717,53 @@ export type StreamActivityEventsApiV1ActivityStreamGetData = {
 
 export type StreamActivityEventsApiV1ActivityStreamGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type StreamActivityEventsApiV1ActivityStreamGetError =
@@ -6354,10 +12771,19 @@ export type StreamActivityEventsApiV1ActivityStreamGetError =
 
 export type StreamActivityEventsApiV1ActivityStreamGetResponses = {
   /**
-   * Successful Response
+   * Server-sent events stream of activity updates.
+   *
+   * SSE framing:
+   * - Heartbeats are emitted as comments: `:\n\n`
+   * - Events are emitted as: `data: <json>\n\n`
+   *
+   * The `<json>` payload is a single ActivityEventItem object.
    */
-  200: unknown;
+  200: ActivityEventItem;
 };
+
+export type StreamActivityEventsApiV1ActivityStreamGetResponse =
+  StreamActivityEventsApiV1ActivityStreamGetResponses[keyof StreamActivityEventsApiV1ActivityStreamGetResponses];
 
 export type MarkActivityReadApiV1ActivityEventIdReadPostData = {
   body?: never;
@@ -6383,9 +12809,53 @@ export type MarkActivityReadApiV1ActivityEventIdReadPostData = {
 
 export type MarkActivityReadApiV1ActivityEventIdReadPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type MarkActivityReadApiV1ActivityEventIdReadPostError =
@@ -6425,9 +12895,53 @@ export type DismissActivityApiV1ActivityEventIdDismissPostData = {
 
 export type DismissActivityApiV1ActivityEventIdDismissPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type DismissActivityApiV1ActivityEventIdDismissPostError =
@@ -6462,9 +12976,53 @@ export type MarkAllActivityReadApiV1ActivityMarkAllReadPostData = {
 
 export type MarkAllActivityReadApiV1ActivityMarkAllReadPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type MarkAllActivityReadApiV1ActivityMarkAllReadPostError =
@@ -6508,9 +13066,53 @@ export type ListContainersApiV1ContainersGetData = {
 
 export type ListContainersApiV1ContainersGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListContainersApiV1ContainersGetError =
@@ -6545,9 +13147,53 @@ export type CreateContainerApiV1ContainersPostData = {
 
 export type CreateContainerApiV1ContainersPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type CreateContainerApiV1ContainersPostError =
@@ -6587,9 +13233,53 @@ export type DeleteContainerApiV1ContainersContainerIdDeleteData = {
 
 export type DeleteContainerApiV1ContainersContainerIdDeleteErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type DeleteContainerApiV1ContainersContainerIdDeleteError =
@@ -6629,9 +13319,53 @@ export type GetContainerByIdApiV1ContainersContainerIdGetData = {
 
 export type GetContainerByIdApiV1ContainersContainerIdGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type GetContainerByIdApiV1ContainersContainerIdGetError =
@@ -6673,9 +13407,53 @@ export type UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteData
 export type UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteError =
@@ -6717,9 +13495,53 @@ export type BindAgentContainerApiV1ContainersAgentsAgentKeyContainerPostData = {
 export type BindAgentContainerApiV1ContainersAgentsAgentKeyContainerPostErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type BindAgentContainerApiV1ContainersAgentsAgentKeyContainerPostError =
@@ -6764,9 +13586,53 @@ export type ListVectorStoresApiV1VectorStoresGetData = {
 
 export type ListVectorStoresApiV1VectorStoresGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListVectorStoresApiV1VectorStoresGetError =
@@ -6801,9 +13667,53 @@ export type CreateVectorStoreApiV1VectorStoresPostData = {
 
 export type CreateVectorStoreApiV1VectorStoresPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type CreateVectorStoreApiV1VectorStoresPostError =
@@ -6843,9 +13753,53 @@ export type DeleteVectorStoreApiV1VectorStoresVectorStoreIdDeleteData = {
 
 export type DeleteVectorStoreApiV1VectorStoresVectorStoreIdDeleteErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type DeleteVectorStoreApiV1VectorStoresVectorStoreIdDeleteError =
@@ -6885,9 +13839,53 @@ export type GetVectorStoreApiV1VectorStoresVectorStoreIdGetData = {
 
 export type GetVectorStoreApiV1VectorStoresVectorStoreIdGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type GetVectorStoreApiV1VectorStoresVectorStoreIdGetError =
@@ -6940,9 +13938,53 @@ export type ListFilesApiV1VectorStoresVectorStoreIdFilesGetData = {
 
 export type ListFilesApiV1VectorStoresVectorStoreIdFilesGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListFilesApiV1VectorStoresVectorStoreIdFilesGetError =
@@ -6982,9 +14024,53 @@ export type AttachFileApiV1VectorStoresVectorStoreIdFilesPostData = {
 
 export type AttachFileApiV1VectorStoresVectorStoreIdFilesPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type AttachFileApiV1VectorStoresVectorStoreIdFilesPostError =
@@ -7028,9 +14114,53 @@ export type DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteData = {
 
 export type DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteError =
@@ -7075,9 +14205,53 @@ export type GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetData = {
 
 export type GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetError =
@@ -7117,9 +14291,53 @@ export type SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostData = {
 
 export type SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostError =
@@ -7166,9 +14384,53 @@ export type UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgen
 export type UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDeleteErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDeleteError =
@@ -7215,9 +14477,53 @@ export type BindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKey
 export type BindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPostErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type BindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPostError =
@@ -7253,9 +14559,53 @@ export type CreatePresignedUploadApiV1StorageObjectsUploadUrlPostData = {
 
 export type CreatePresignedUploadApiV1StorageObjectsUploadUrlPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type CreatePresignedUploadApiV1StorageObjectsUploadUrlPostError =
@@ -7303,9 +14653,53 @@ export type ListObjectsApiV1StorageObjectsGetData = {
 
 export type ListObjectsApiV1StorageObjectsGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListObjectsApiV1StorageObjectsGetError =
@@ -7345,9 +14739,53 @@ export type GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetData = {
 
 export type GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetError =
@@ -7387,9 +14825,53 @@ export type DeleteObjectApiV1StorageObjectsObjectIdDeleteData = {
 
 export type DeleteObjectApiV1StorageObjectsObjectIdDeleteErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type DeleteObjectApiV1StorageObjectsObjectIdDeleteError =
@@ -7429,9 +14911,53 @@ export type DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetData = {
 
 export type DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetError =
@@ -7439,10 +14965,13 @@ export type DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetError =
 
 export type DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetResponses = {
   /**
-   * Successful Response
+   * Binary file download.
    */
-  200: unknown;
+  200: Blob | File;
 };
+
+export type DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetResponse =
+  DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetResponses[keyof DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetResponses];
 
 export type DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetData =
   {
@@ -7467,16 +14996,69 @@ export type DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFile
        */
       file_id: string;
     };
-    query?: never;
+    query?: {
+      /**
+       * Conversation Id
+       */
+      conversation_id?: string | null;
+      /**
+       * Filename
+       */
+      filename?: string | null;
+    };
     url: "/api/v1/openai/containers/{container_id}/files/{file_id}/download";
   };
 
 export type DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetError =
@@ -7485,10 +15067,13 @@ export type DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFile
 export type DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetResponses =
   {
     /**
-     * Successful Response
+     * Binary file download.
      */
-    200: unknown;
+    200: Blob | File;
   };
+
+export type DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetResponse =
+  DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetResponses[keyof DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetResponses];
 
 export type SubmitContactApiV1ContactPostData = {
   body: ContactSubmissionRequest;
@@ -7499,9 +15084,53 @@ export type SubmitContactApiV1ContactPostData = {
 
 export type SubmitContactApiV1ContactPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type SubmitContactApiV1ContactPostError =
@@ -7511,7 +15140,7 @@ export type SubmitContactApiV1ContactPostResponses = {
   /**
    * Successful Response
    */
-  202: SuccessResponse;
+  202: ContactSubmissionSuccessResponse;
 };
 
 export type SubmitContactApiV1ContactPostResponse =
@@ -7523,6 +15152,56 @@ export type GetPlatformStatusApiV1StatusGetData = {
   query?: never;
   url: "/api/v1/status";
 };
+
+export type GetPlatformStatusApiV1StatusGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type GetPlatformStatusApiV1StatusGetError =
+  GetPlatformStatusApiV1StatusGetErrors[keyof GetPlatformStatusApiV1StatusGetErrors];
 
 export type GetPlatformStatusApiV1StatusGetResponses = {
   /**
@@ -7541,12 +15220,65 @@ export type GetPlatformStatusRssApiV1StatusRssGetData = {
   url: "/api/v1/status/rss";
 };
 
+export type GetPlatformStatusRssApiV1StatusRssGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type GetPlatformStatusRssApiV1StatusRssGetError =
+  GetPlatformStatusRssApiV1StatusRssGetErrors[keyof GetPlatformStatusRssApiV1StatusRssGetErrors];
+
 export type GetPlatformStatusRssApiV1StatusRssGetResponses = {
   /**
-   * Successful Response
+   * RSS feed (XML).
    */
-  200: unknown;
+  200: string;
 };
+
+export type GetPlatformStatusRssApiV1StatusRssGetResponse =
+  GetPlatformStatusRssApiV1StatusRssGetResponses[keyof GetPlatformStatusRssApiV1StatusRssGetResponses];
 
 export type ListStatusSubscriptionsApiV1StatusSubscriptionsGetData = {
   body?: never;
@@ -7578,9 +15310,53 @@ export type ListStatusSubscriptionsApiV1StatusSubscriptionsGetData = {
 
 export type ListStatusSubscriptionsApiV1StatusSubscriptionsGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListStatusSubscriptionsApiV1StatusSubscriptionsGetError =
@@ -7605,9 +15381,53 @@ export type CreateStatusSubscriptionApiV1StatusSubscriptionsPostData = {
 
 export type CreateStatusSubscriptionApiV1StatusSubscriptionsPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type CreateStatusSubscriptionApiV1StatusSubscriptionsPostError =
@@ -7632,9 +15452,53 @@ export type VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostData = {
 
 export type VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostError =
@@ -7661,9 +15525,53 @@ export type ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostData = {
 export type ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostError =
@@ -7703,9 +15611,53 @@ export type RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDelete
 export type RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type RevokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDeleteError =
@@ -7737,9 +15689,53 @@ export type ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostData = {
 export type ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostError =
@@ -7775,9 +15771,53 @@ export type GetTenantSettingsApiV1TenantsSettingsGetData = {
 
 export type GetTenantSettingsApiV1TenantsSettingsGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type GetTenantSettingsApiV1TenantsSettingsGetError =
@@ -7812,9 +15852,53 @@ export type UpdateTenantSettingsApiV1TenantsSettingsPutData = {
 
 export type UpdateTenantSettingsApiV1TenantsSettingsPutErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type UpdateTenantSettingsApiV1TenantsSettingsPutError =
@@ -7830,12 +15914,522 @@ export type UpdateTenantSettingsApiV1TenantsSettingsPutResponses = {
 export type UpdateTenantSettingsApiV1TenantsSettingsPutResponse =
   UpdateTenantSettingsApiV1TenantsSettingsPutResponses[keyof UpdateTenantSettingsApiV1TenantsSettingsPutResponses];
 
+export type ListConsentsApiV1UsersConsentsGetData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/v1/users/consents";
+};
+
+export type ListConsentsApiV1UsersConsentsGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ListConsentsApiV1UsersConsentsGetError =
+  ListConsentsApiV1UsersConsentsGetErrors[keyof ListConsentsApiV1UsersConsentsGetErrors];
+
+export type ListConsentsApiV1UsersConsentsGetResponses = {
+  /**
+   * Response List Consents Api V1 Users Consents Get
+   *
+   * Successful Response
+   */
+  200: Array<ConsentView>;
+};
+
+export type ListConsentsApiV1UsersConsentsGetResponse =
+  ListConsentsApiV1UsersConsentsGetResponses[keyof ListConsentsApiV1UsersConsentsGetResponses];
+
+export type RecordConsentApiV1UsersConsentsPostData = {
+  body: ConsentRequest;
+  path?: never;
+  query?: never;
+  url: "/api/v1/users/consents";
+};
+
+export type RecordConsentApiV1UsersConsentsPostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type RecordConsentApiV1UsersConsentsPostError =
+  RecordConsentApiV1UsersConsentsPostErrors[keyof RecordConsentApiV1UsersConsentsPostErrors];
+
+export type RecordConsentApiV1UsersConsentsPostResponses = {
+  /**
+   * Successful Response
+   */
+  201: SuccessNoDataResponse;
+};
+
+export type RecordConsentApiV1UsersConsentsPostResponse =
+  RecordConsentApiV1UsersConsentsPostResponses[keyof RecordConsentApiV1UsersConsentsPostResponses];
+
+export type ListNotificationPreferencesApiV1UsersNotificationPreferencesGetData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: "/api/v1/users/notification-preferences";
+  };
+
+export type ListNotificationPreferencesApiV1UsersNotificationPreferencesGetErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type ListNotificationPreferencesApiV1UsersNotificationPreferencesGetError =
+  ListNotificationPreferencesApiV1UsersNotificationPreferencesGetErrors[keyof ListNotificationPreferencesApiV1UsersNotificationPreferencesGetErrors];
+
+export type ListNotificationPreferencesApiV1UsersNotificationPreferencesGetResponses =
+  {
+    /**
+     * Response List Notification Preferences Api V1 Users Notification Preferences Get
+     *
+     * Successful Response
+     */
+    200: Array<NotificationPreferenceView>;
+  };
+
+export type ListNotificationPreferencesApiV1UsersNotificationPreferencesGetResponse =
+  ListNotificationPreferencesApiV1UsersNotificationPreferencesGetResponses[keyof ListNotificationPreferencesApiV1UsersNotificationPreferencesGetResponses];
+
+export type UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutData =
+  {
+    body: NotificationPreferenceRequest;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: "/api/v1/users/notification-preferences";
+  };
+
+export type UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutError =
+  UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutErrors[keyof UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutErrors];
+
+export type UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: NotificationPreferenceView;
+  };
+
+export type UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutResponse =
+  UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutResponses[keyof UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutResponses];
+
+export type GetCurrentUserProfileApiV1UsersMeGetData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/v1/users/me";
+};
+
+export type GetCurrentUserProfileApiV1UsersMeGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type GetCurrentUserProfileApiV1UsersMeGetError =
+  GetCurrentUserProfileApiV1UsersMeGetErrors[keyof GetCurrentUserProfileApiV1UsersMeGetErrors];
+
+export type GetCurrentUserProfileApiV1UsersMeGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: CurrentUserProfileSuccessResponse;
+};
+
+export type GetCurrentUserProfileApiV1UsersMeGetResponse =
+  GetCurrentUserProfileApiV1UsersMeGetResponses[keyof GetCurrentUserProfileApiV1UsersMeGetResponses];
+
+export type ListUsageApiV1UsageGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path?: never;
+  query?: never;
+  url: "/api/v1/usage";
+};
+
+export type ListUsageApiV1UsageGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ListUsageApiV1UsageGetError =
+  ListUsageApiV1UsageGetErrors[keyof ListUsageApiV1UsageGetErrors];
+
+export type ListUsageApiV1UsageGetResponses = {
+  /**
+   * Response List Usage Api V1 Usage Get
+   *
+   * Successful Response
+   */
+  200: Array<UsageCounterView>;
+};
+
+export type ListUsageApiV1UsageGetResponse =
+  ListUsageApiV1UsageGetResponses[keyof ListUsageApiV1UsageGetResponses];
+
 export type ListBillingPlansApiV1BillingPlansGetData = {
   body?: never;
   path?: never;
   query?: never;
   url: "/api/v1/billing/plans";
 };
+
+export type ListBillingPlansApiV1BillingPlansGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ListBillingPlansApiV1BillingPlansGetError =
+  ListBillingPlansApiV1BillingPlansGetErrors[keyof ListBillingPlansApiV1BillingPlansGetErrors];
 
 export type ListBillingPlansApiV1BillingPlansGetResponses = {
   /**
@@ -7875,9 +16469,53 @@ export type GetTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGetData 
 export type GetTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGetErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type GetTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGetError =
@@ -7920,9 +16558,53 @@ export type UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchData =
 export type UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchError =
@@ -7964,9 +16646,53 @@ export type StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostData = {
 export type StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostError =
@@ -8009,9 +16735,53 @@ export type CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostD
 export type CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostErrors =
   {
     /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
      * Validation Error
      */
-    422: HttpValidationError;
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
   };
 
 export type CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostError =
@@ -8052,9 +16822,53 @@ export type RecordUsageApiV1BillingTenantsTenantIdUsagePostData = {
 
 export type RecordUsageApiV1BillingTenantsTenantIdUsagePostErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type RecordUsageApiV1BillingTenantsTenantIdUsagePostError =
@@ -8064,7 +16878,7 @@ export type RecordUsageApiV1BillingTenantsTenantIdUsagePostResponses = {
   /**
    * Successful Response
    */
-  202: SuccessResponse;
+  202: SuccessNoDataResponse;
 };
 
 export type RecordUsageApiV1BillingTenantsTenantIdUsagePostResponse =
@@ -8119,9 +16933,53 @@ export type ListBillingEventsApiV1BillingTenantsTenantIdEventsGetData = {
 
 export type ListBillingEventsApiV1BillingTenantsTenantIdEventsGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type ListBillingEventsApiV1BillingTenantsTenantIdEventsGetError =
@@ -8156,9 +17014,53 @@ export type BillingEventStreamApiV1BillingStreamGetData = {
 
 export type BillingEventStreamApiV1BillingStreamGetErrors = {
   /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
    * Validation Error
    */
-  422: HttpValidationError;
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
 };
 
 export type BillingEventStreamApiV1BillingStreamGetError =
@@ -8166,64 +17068,16 @@ export type BillingEventStreamApiV1BillingStreamGetError =
 
 export type BillingEventStreamApiV1BillingStreamGetResponses = {
   /**
-   * Successful Response
+   * Server-sent events stream of billing events.
+   *
+   * SSE framing:
+   * - Heartbeats are emitted as comments: `: ping\n\n`
+   * - Events are emitted as: `data: <json>\n\n`
+   *
+   * The `<json>` payload is a single BillingEventResponse object.
    */
-  200: unknown;
+  200: BillingEventResponse;
 };
 
-export type ApplyTestFixturesApiV1TestFixturesApplyPostData = {
-  body: PlaywrightFixtureSpec;
-  path?: never;
-  query?: never;
-  url: "/api/v1/test-fixtures/apply";
-};
-
-export type ApplyTestFixturesApiV1TestFixturesApplyPostErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
-};
-
-export type ApplyTestFixturesApiV1TestFixturesApplyPostError =
-  ApplyTestFixturesApiV1TestFixturesApplyPostErrors[keyof ApplyTestFixturesApiV1TestFixturesApplyPostErrors];
-
-export type ApplyTestFixturesApiV1TestFixturesApplyPostResponses = {
-  /**
-   * Successful Response
-   */
-  201: FixtureApplyResult;
-};
-
-export type ApplyTestFixturesApiV1TestFixturesApplyPostResponse =
-  ApplyTestFixturesApiV1TestFixturesApplyPostResponses[keyof ApplyTestFixturesApiV1TestFixturesApplyPostResponses];
-
-export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData =
-  {
-    body: EmailVerificationTokenRequest;
-    path?: never;
-    query?: never;
-    url: "/api/v1/test-fixtures/email-verification-token";
-  };
-
-export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors =
-  {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-  };
-
-export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostError =
-  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors[keyof IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors];
-
-export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses =
-  {
-    /**
-     * Successful Response
-     */
-    201: EmailVerificationTokenResponse;
-  };
-
-export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponse =
-  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses[keyof IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses];
+export type BillingEventStreamApiV1BillingStreamGetResponse =
+  BillingEventStreamApiV1BillingStreamGetResponses[keyof BillingEventStreamApiV1BillingStreamGetResponses];

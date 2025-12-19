@@ -114,6 +114,22 @@ class MinioStorageProvider(StorageProviderProtocol):
 
         return await asyncio.to_thread(_head)
 
+    async def get_object_bytes(self, *, bucket: str, key: str) -> bytes:
+        def _get() -> bytes:
+            try:
+                resp = self._client.get_object(Bucket=bucket, Key=key)
+            except ClientError as exc:
+                if exc.response.get("Error", {}).get("Code") in ("404", "NoSuchKey"):
+                    raise FileNotFoundError(f"Object {key} not found") from exc
+                raise
+
+            body = resp.get("Body")
+            if body is None:
+                return b""
+            return body.read()
+
+        return await asyncio.to_thread(_get)
+
     async def delete_object(self, *, bucket: str, key: str) -> None:
         await asyncio.to_thread(self._client.delete_object, Bucket=bucket, Key=key)
 

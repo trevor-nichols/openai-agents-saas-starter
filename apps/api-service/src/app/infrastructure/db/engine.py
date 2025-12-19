@@ -91,9 +91,13 @@ async def init_engine(*, run_migrations: bool = False) -> AsyncEngine | None:
             )
 
             if run_migrations:
+                logger.debug("init_engine: running migrations (run_migrations=%s)", run_migrations)
                 await run_migrations_if_configured(force=True)
+                logger.debug("init_engine: migrations complete")
 
+            logger.debug("init_engine: verifying database connection")
             await verify_database_connection()
+            logger.debug("init_engine: database connection verified")
 
     return _engine
 
@@ -157,11 +161,13 @@ async def run_migrations_if_configured(*, force: bool = False) -> None:
     alembic_cfg.set_main_option("script_location", str(_resolve_alembic_scripts()))
 
     logger.info("Running Alembic migrations (database_url=%s)", database_url)
+    logger.debug("run_migrations_if_configured: invoking alembic upgrade heads")
     # Use `heads` to advance all branches; this repo intentionally carries two
     # head revisions (activity + workflow). Using the singular `head` breaks
     # fresh databases once a branch diverges, because Alembic can't infer which
     # branch to pick and errors with "Multiple head revisions are present".
     await asyncio.to_thread(command.upgrade, alembic_cfg, "heads")
+    logger.debug("run_migrations_if_configured: alembic upgrade complete")
 
 
 def _resolve_alembic_ini() -> Path:
@@ -205,15 +211,24 @@ def _create_all_tables(connection) -> None:
 def _import_all_models() -> None:
     """Import all ORM models so they register with the Base metadata."""
 
-    # ruff: noqa: I001 - keep grouped first-party imports together inside function
     # Register ORM models so Base.metadata is populated (SQLite auto-migrate path).
+    from app.infrastructure.persistence.activity import models as _activity_models  # noqa: F401
     from app.infrastructure.persistence.auth import models as _auth_models  # noqa: F401
     from app.infrastructure.persistence.billing import models as _billing_models  # noqa: F401
-    from app.infrastructure.persistence.conversations import models as _conversation_models  # noqa: F401
+    from app.infrastructure.persistence.containers import models as _container_models  # noqa: F401
+    from app.infrastructure.persistence.conversations import (
+        ledger_models as _conversation_ledger_models,  # noqa: F401
+    )
+    from app.infrastructure.persistence.conversations import (
+        models as _conversation_models,  # noqa: F401
+    )
     from app.infrastructure.persistence.status import models as _status_models  # noqa: F401
+    from app.infrastructure.persistence.storage import models as _storage_models  # noqa: F401
     from app.infrastructure.persistence.stripe import models as _stripe_models  # noqa: F401
     from app.infrastructure.persistence.tenants import models as _tenant_models  # noqa: F401
-    from app.infrastructure.persistence.vector_stores import models as _vector_store_models  # noqa: F401
+    from app.infrastructure.persistence.vector_stores import (
+        models as _vector_store_models,  # noqa: F401
+    )
     from app.infrastructure.persistence.workflows import models as _workflow_models  # noqa: F401
 
 

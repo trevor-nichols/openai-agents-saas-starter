@@ -129,7 +129,13 @@ class _FakeBilling:
         return self.plan
 
 
-def _service(session_factory: async_sessionmaker[AsyncSession], settings: Settings, file_meta: _FakeFile):
+def _service(
+    session_factory: async_sessionmaker[AsyncSession],
+    settings: Settings,
+    file_meta: _FakeFile,
+    *,
+    limit_resolver: VectorLimitResolver | None = None,
+):
     remote_store = type("RemoteStore", (), {"id": "vs_123", "usage_bytes": 0, "status": "ready"})
     fake_client = _FakeOpenAI(remote_store, file_meta)
 
@@ -137,6 +143,7 @@ def _service(session_factory: async_sessionmaker[AsyncSession], settings: Settin
         session_factory,
         lambda: settings,
         client_factory=lambda _tenant_id: cast(AsyncOpenAI, fake_client),
+        limit_resolver=limit_resolver,
     )
 
 
@@ -252,8 +259,7 @@ async def test_limits_overridden_by_plan(session_factory, settings):
         settings_factory=lambda: settings,
     )
     meta = _FakeFile("file5", bytes=600)
-    svc = _service(session_factory, settings, meta)
-    svc._limit_resolver = resolver
+    svc = _service(session_factory, settings, meta, limit_resolver=resolver)
     tenant_id = uuid4()
     store = await svc.create_store(tenant_id=tenant_id, owner_user_id=None, name="primary")
 
@@ -329,7 +335,7 @@ async def test_bind_and_unbind_agent_store(session_factory, settings):
 
     fetched = await svc.get_agent_binding(tenant_id=tenant_id, agent_key="fs_agent")
     assert fetched is not None
-    assert fetched.id == store.id
+    assert fetched.vector_store_id == store.id
 
     await svc.unbind_agent_from_store(
         tenant_id=tenant_id, agent_key="fs_agent", vector_store_id=store.id
@@ -352,7 +358,7 @@ async def test_bind_agent_replaces_existing(session_factory, settings):
     # Should point to the latest store
     binding = await svc.get_agent_binding(tenant_id=tenant_id, agent_key="fs_agent")
     assert binding is not None
-    assert binding.id == second.id
+    assert binding.vector_store_id == second.id
 
     # Ensure only one row exists
     async with session_factory() as session:

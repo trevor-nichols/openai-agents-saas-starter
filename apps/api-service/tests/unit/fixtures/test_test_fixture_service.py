@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.bootstrap import ApplicationContainer, reset_container, set_container
 from app.infrastructure.persistence.auth import models as auth_models
 from app.infrastructure.persistence.billing import models as billing_models
+from app.infrastructure.persistence.conversations import ledger_models as conversation_ledger_models
 from app.infrastructure.persistence.conversations import models as conversation_models
 from app.infrastructure.persistence.tenants import models as tenant_models
 from app.services.test_fixtures import PlaywrightFixtureSpec, TestFixtureService
@@ -31,6 +32,7 @@ TABLES: tuple[Table, ...] = cast(
         billing_models.SubscriptionUsage.__table__,
         tenant_models.TenantSettingsModel.__table__,
         conversation_models.AgentConversation.__table__,
+        conversation_ledger_models.ConversationLedgerSegment.__table__,
         conversation_models.AgentMessage.__table__,
     ),
 )

@@ -122,6 +122,9 @@ def _user_record(user_id: UUID | None = None) -> UserRecord:
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
         display_name=None,
+        given_name=None,
+        family_name=None,
+        avatar_url=None,
         memberships=[membership],
         email_verified_at=None,
     )

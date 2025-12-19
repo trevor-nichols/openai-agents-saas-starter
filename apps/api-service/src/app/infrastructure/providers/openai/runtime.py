@@ -80,6 +80,15 @@ class OpenAIAgentRuntime(AgentRuntime):
                     if getattr(ev, "new_agent", None):
                         final_agent = ev.new_agent
 
+        # When upstream already returns an AgentRunResult (e.g., tests or alternate
+        # runtimes), respect its handoff metadata instead of re-deriving it from
+        # lifecycle events.
+        if isinstance(result, AgentRunResult):
+            if result.final_agent is not None:
+                final_agent = result.final_agent
+            if result.handoff_count is not None:
+                handoff_count = result.handoff_count
+
         usage, response_id, final_output, structured_output, response_text, tool_outputs = (
             self._normalize_run_result(result)
         )

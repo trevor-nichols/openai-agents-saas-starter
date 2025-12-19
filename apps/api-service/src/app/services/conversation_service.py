@@ -7,13 +7,16 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 
+from app.domain.conversation_titles import normalize_display_name
 from app.domain.conversations import (
     ConversationEvent,
+    ConversationMemoryConfig,
     ConversationMessage,
     ConversationMetadata,
     ConversationPage,
     ConversationRecord,
     ConversationRepository,
+    ConversationRunUsage,
     ConversationSessionState,
     MessagePage,
 )
@@ -26,6 +29,7 @@ class SearchResult:
     preview: str
     score: float | None = None
     updated_at: datetime | None = None
+    display_name: str | None = None
     agent_entrypoint: str | None = None
     active_agent: str | None = None
     topic_hint: str | None = None
@@ -238,6 +242,7 @@ class ConversationService:
             items.append(
                 SearchResult(
                     conversation_id=hit.record.conversation_id,
+                    display_name=hit.record.display_name,
                     preview=preview,
                     score=hit.score,
                     updated_at=hit.record.updated_at,
@@ -259,6 +264,92 @@ class ConversationService:
         normalized_tenant = _require_tenant_id(tenant_id)
         return await self._require_repository().get_session_state(
             conversation_id, tenant_id=normalized_tenant
+        )
+
+    async def get_memory_config(
+        self, conversation_id: str, *, tenant_id: str
+    ) -> ConversationMemoryConfig | None:
+        normalized_tenant = _require_tenant_id(tenant_id)
+        return await self._require_repository().get_memory_config(
+            conversation_id, tenant_id=normalized_tenant
+        )
+
+    async def set_memory_config(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        config: ConversationMemoryConfig,
+        provided_fields: set[str] | None = None,
+    ) -> None:
+        normalized_tenant = _require_tenant_id(tenant_id)
+        await self._require_repository().set_memory_config(
+            conversation_id,
+            tenant_id=normalized_tenant,
+            config=config,
+            provided_fields=provided_fields,
+        )
+
+    async def persist_summary(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        agent_key: str | None,
+        summary_text: str,
+        summary_model: str | None = None,
+        summary_length_tokens: int | None = None,
+        version: str | None = None,
+    ) -> None:
+        normalized_tenant = _require_tenant_id(tenant_id)
+        await self._require_repository().persist_summary(
+            conversation_id,
+            tenant_id=normalized_tenant,
+            agent_key=agent_key,
+            summary_text=summary_text,
+            summary_model=summary_model,
+            summary_length_tokens=summary_length_tokens,
+            version=version,
+        )
+
+    async def get_latest_summary(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        agent_key: str | None,
+        max_age_seconds: int | None = None,
+    ):
+        normalized_tenant = _require_tenant_id(tenant_id)
+        return await self._require_repository().get_latest_summary(
+            conversation_id,
+            tenant_id=normalized_tenant,
+            agent_key=agent_key,
+            max_age_seconds=max_age_seconds,
+        )
+
+    async def persist_run_usage(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        usage: ConversationRunUsage,
+    ) -> None:
+        normalized_tenant = _require_tenant_id(tenant_id)
+        await self._require_repository().add_run_usage(
+            conversation_id, tenant_id=normalized_tenant, usage=usage
+        )
+
+    async def list_run_usage(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        limit: int = 20,
+    ) -> list[ConversationRunUsage]:
+        normalized_tenant = _require_tenant_id(tenant_id)
+        return await self._require_repository().list_run_usage(
+            conversation_id, tenant_id=normalized_tenant, limit=limit
         )
 
     async def update_session_state(
@@ -304,6 +395,53 @@ class ConversationService:
             tenant_id=normalized_tenant,
             workflow_run_id=workflow_run_id,
         )
+
+    async def set_display_name(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        display_name: str,
+        generated_at: datetime | None = None,
+    ) -> bool:
+        normalized_tenant = _require_tenant_id(tenant_id)
+        return await self._require_repository().set_display_name(
+            conversation_id,
+            tenant_id=normalized_tenant,
+            display_name=display_name,
+            generated_at=generated_at,
+        )
+
+    async def update_display_name(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        display_name: str,
+    ) -> str:
+        normalized_tenant = _require_tenant_id(tenant_id)
+        normalized_title = normalize_display_name(display_name)
+        await self._require_repository().update_display_name(
+            conversation_id,
+            tenant_id=normalized_tenant,
+            display_name=normalized_title,
+        )
+
+        try:
+            await activity_service.record(
+                tenant_id=normalized_tenant,
+                action="conversation.title.updated",
+                object_type="conversation",
+                object_id=conversation_id,
+                source="api",
+                metadata={
+                    "conversation_id": conversation_id,
+                    "display_name_length": len(normalized_title),
+                },
+            )
+        except Exception:  # pragma: no cover - best effort
+            pass
+        return normalized_title
 
 
 def get_conversation_service() -> ConversationService:

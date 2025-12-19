@@ -57,7 +57,12 @@ api-service/
 We use [Hatch](https://hatch.pypa.io/) to manage virtual environments and scripts.
 
 ```bash
-pipx install hatch  # or: pip install --user hatch
+# Recommended (fast, reproducible):
+uv python install 3.11
+uv tool install --python 3.11 hatch
+
+# Alternative:
+pipx install hatch
 ```
 
 ### 2. Create the Development Environment
@@ -98,7 +103,7 @@ AUTH_SESSION_ENCRYPTION_KEY=   # required for encrypted session metadata in prod
 AUTH_SESSION_IP_HASH_SALT=
 
 # Persistence / Redis
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/saas_strarter_db
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/saas_starter_db
 REDIS_URL=redis://localhost:6379/0
 BILLING_EVENTS_REDIS_URL=
 ACTIVITY_EVENTS_REDIS_URL=
@@ -197,9 +202,9 @@ cd apps/api-service && hatch run serve
 The API will be available at `http://localhost:8000`
 
 > **Compose vs. application env files**
-> - `.env.compose` (tracked) holds the non-sensitive defaults that Docker Compose needs (ports, default credentials, project name). You should not edit this file.
+> - `.env.compose` (gitignored; copy from `.env.compose.example`) holds non-sensitive defaults that Docker Compose and local helpers consume (ports, default credentials, feature toggles). It is safe to edit locally.
 > - `apps/api-service/.env.local` (gitignored) contains your secrets and any overrides. The Make targets below source **both** files, so you never have to `export` variables manually.
-> - `.env.compose` now sets `DATABASE_URL`, so durable Postgres storage is the out-of-the-box behavior.
+> - For local development, `starter_cli setup wizard --profile local` keeps the Docker Postgres settings (`POSTGRES_*`) and `DATABASE_URL` consistent, and `just dev-up` respects `STARTER_LOCAL_DATABASE_MODE` (defaults to `compose`).
 
 ### 5. Database & Migrations
 
@@ -214,8 +219,19 @@ The API will be available at `http://localhost:8000`
    ```
 3. Generate new migrations as the schema evolves:
    ```bash
+   # Autogenerate from model diffs; review the file before committing.
    just migration-revision message="add widget table"
+
+   # If you truly need a hand-written migration, use Alembic directly:
+   cd apps/api-service && hatch run alembic revision -m "manual step"
+
+   # When concurrent work creates multiple heads, add a merge revision:
+   cd apps/api-service && hatch run alembic revision -m "merge heads" --head <head1> --splice --branch-label merge --from-version <head2>
    ```
+4. Migration guardrails:
+   - `just migrate` now checks `alembic_version` for multiple rows before running; fix duplicates (or recreate the DB) if it fails.
+   - Always run `alembic upgrade heads` (already wrapped by the Just/Hatch scripts); avoid manual `alembic_version` edits or `stamp`.
+   - Use `depends_on` in a revision when a change must wait on another branch, and prefer merge revisions over deleting history.
 
 ### 6. Seed a Local Admin User
 
@@ -246,7 +262,7 @@ Provision a Postgres instance (see step 5), then run:
 
 ```bash
 cd api-service
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/saas_strarter_db \
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/saas_starter_db \
 hatch run pytest tests/integration -m postgres
 ```
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Protocol
 from uuid import UUID, uuid4
@@ -11,8 +12,10 @@ from app.core.security import TokenVerifierError, get_token_signer, get_token_ve
 from app.core.settings import get_settings
 from app.domain.auth import UserSessionListResult, UserSessionTokens
 from app.domain.users import AuthenticatedUser
+from app.infrastructure.persistence.auth.models import UserMfaMethod
 from app.observability.logging import log_event
 from app.services.activity import activity_service
+from app.services.auth.mfa_service import MfaService, get_mfa_service
 from app.services.users import (
     InvalidCredentialsError,
     IpThrottledError,
@@ -23,7 +26,7 @@ from app.services.users import (
     UserService,
 )
 
-from .errors import UserAuthenticationError, UserLogoutError, UserRefreshError
+from .errors import MfaRequiredError, UserAuthenticationError, UserLogoutError, UserRefreshError
 from .refresh_token_manager import RefreshTokenManager
 from .session_store import SessionStore
 
@@ -39,6 +42,12 @@ class TokenVerifierCallable(Protocol):
     ) -> dict[str, object]: ...
 
 
+@dataclass
+class MfaChallenge:
+    token: str
+    methods: list[dict[str, object]]
+
+
 class UserSessionService:
     """Handles login, refresh, and lifecycle management for human sessions."""
 
@@ -49,11 +58,13 @@ class UserSessionService:
         session_store: SessionStore,
         user_service: UserService | None,
         token_verifier: TokenVerifierCallable | None = None,
+        mfa_service: MfaService | None = None,
     ) -> None:
         self._refresh_tokens = refresh_tokens
         self._session_store = session_store
         self._user_service = user_service
         self._token_verifier: TokenVerifierCallable | None = token_verifier
+        self._mfa_service = mfa_service
 
     def set_token_verifier(self, verifier: TokenVerifierCallable | None) -> None:
         self._token_verifier = verifier
@@ -86,6 +97,13 @@ class UserSessionService:
             IpThrottledError,
         ) as exc:
             raise UserAuthenticationError(str(exc)) from exc
+        challenge = await self._maybe_return_mfa_challenge(
+            auth_user,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        if challenge:
+            raise MfaRequiredError(challenge.token, challenge.methods)
         return await self._issue_user_tokens(
             auth_user,
             ip_address=ip_address,
@@ -261,6 +279,65 @@ class UserSessionService:
             )
         return revoked
 
+    async def complete_mfa_challenge(
+        self,
+        *,
+        challenge_token: str,
+        method_id: UUID,
+        code: str,
+        ip_address: str | None,
+        user_agent: str | None,
+        ip_hash: str | None = None,
+        user_agent_hash: str | None = None,
+    ) -> UserSessionTokens:
+        payload = self._default_verify_token(
+            challenge_token,
+            allow_expired=False,
+            error_cls=UserAuthenticationError,
+            error_message="MFA challenge token verification failed.",
+        )
+        if payload.get("token_use") != "mfa_challenge":
+            raise UserAuthenticationError("Invalid MFA challenge token.")
+        sub = payload.get("sub")
+        tenant_claim = payload.get("tenant_id")
+        session_id_claim = payload.get("sid")
+        if not isinstance(sub, str) or not sub.startswith("user:"):
+            raise UserAuthenticationError("Challenge token subject is malformed.")
+        if not isinstance(tenant_claim, str):
+            raise UserAuthenticationError("Challenge token missing tenant id.")
+        if not isinstance(session_id_claim, str):
+            raise UserAuthenticationError("Challenge token missing session id.")
+        user_id = self._parse_user_subject(sub)
+        tenant_id = self._parse_uuid(tenant_claim)
+        try:
+            session_id = UUID(session_id_claim)
+        except ValueError as exc:  # pragma: no cover - defensive
+            raise UserAuthenticationError("Challenge token session id is invalid.") from exc
+
+        service = self._get_mfa_service()
+        await service.verify_totp(
+            user_id=user_id,
+            method_id=method_id,
+            code=code,
+            ip_hash=ip_hash,
+            user_agent_hash=user_agent_hash,
+        )
+
+        user_service = self._require_user_service()
+        auth_user = await user_service.load_active_user(
+            user_id=user_id,
+            tenant_id=tenant_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        return await self._issue_user_tokens(
+            auth_user,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            reason="mfa",
+            session_id=session_id,
+        )
+
     async def _issue_user_tokens(
         self,
         auth_user: AuthenticatedUser,
@@ -419,6 +496,88 @@ class UserSessionService:
         material = f"{ip_address or ''}:{user_agent or ''}"
         encoded = base64.urlsafe_b64encode(material.encode("utf-8")).rstrip(b"=")
         return encoded.decode("utf-8")
+
+    async def _maybe_return_mfa_challenge(
+        self,
+        auth_user: AuthenticatedUser,
+        *,
+        ip_address: str | None,
+        user_agent: str | None,
+    ) -> MfaChallenge | None:
+        service = self._get_mfa_service()
+        if service is None:
+            return None
+        needs_mfa, methods = await self._requires_mfa(service, auth_user.user_id)
+        if not needs_mfa:
+            return None
+        return await self._issue_mfa_challenge(
+            auth_user,
+            methods,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+
+    async def _requires_mfa(
+        self, service: MfaService, user_id: UUID
+    ) -> tuple[bool, list[UserMfaMethod]]:
+        methods = await service.list_methods(user_id)
+        verified = [m for m in methods if m.verified_at and not m.revoked_at]
+        return bool(verified), verified
+
+    async def _issue_mfa_challenge(
+        self,
+        auth_user: AuthenticatedUser,
+        methods: list[UserMfaMethod],
+        *,
+        ip_address: str | None,
+        user_agent: str | None,
+    ) -> MfaChallenge:
+        settings = get_settings()
+        signer = get_token_signer(settings)
+        issued_at = datetime.now(UTC)
+        expires = issued_at + timedelta(minutes=settings.mfa_challenge_ttl_minutes)
+        session_uuid = uuid4()
+        payload = {
+            "sub": f"user:{auth_user.user_id}",
+            "tenant_id": str(auth_user.tenant_id),
+            "token_use": "mfa_challenge",
+            "iss": settings.app_name,
+            "aud": settings.auth_audience or [settings.app_name],
+            "jti": str(uuid4()),
+            "sid": str(session_uuid),
+            "iat": int(issued_at.timestamp()),
+            "nbf": int(issued_at.timestamp()),
+            "exp": int(expires.timestamp()),
+        }
+        token = signer.sign(payload).primary.token
+        method_payload = []
+        for m in methods:
+            method_payload.append(
+                {
+                    "id": m.id,
+                    "method_type": getattr(m.method_type, "value", str(m.method_type)),
+                    "label": m.label,
+                    "verified_at": m.verified_at.isoformat() if m.verified_at else None,
+                    "last_used_at": m.last_used_at.isoformat() if m.last_used_at else None,
+                    "revoked_at": m.revoked_at.isoformat() if m.revoked_at else None,
+                }
+            )
+        log_event(
+            "auth.mfa_challenge",
+            result="pending",
+            user_id=str(auth_user.user_id),
+            tenant_id=str(auth_user.tenant_id),
+        )
+        return MfaChallenge(token=token, methods=method_payload)
+
+    def _get_mfa_service(self) -> MfaService:
+        if self._mfa_service is not None:
+            return self._mfa_service
+        try:  # pragma: no cover - fallback
+            self._mfa_service = get_mfa_service()
+        except Exception as exc:  # pragma: no cover - defensive
+            raise UserAuthenticationError("MFA service unavailable.") from exc
+        return self._mfa_service
 
     def _user_account_key(self, user_id: UUID) -> str:
         return f"user:{user_id}"

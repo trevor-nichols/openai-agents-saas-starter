@@ -31,6 +31,7 @@ export function ChatWorkspace() {
   const {
     conversationList,
     isLoadingConversations,
+    isFetchingMoreConversations,
     loadMoreConversations: loadMore,
     hasNextConversationPage: hasNextPage,
     billingEvents,
@@ -44,6 +45,7 @@ export function ChatWorkspace() {
     clearError,
     retryMessages,
     currentConversationId,
+    currentConversationTitle,
     selectedAgent,
     selectedAgentLabel,
     toolDrawerOpen,
@@ -61,6 +63,7 @@ export function ChatWorkspace() {
     handleSelectConversation,
     handleNewConversation,
     handleDeleteConversation,
+    handleRenameConversation,
     handleWorkspaceError,
     sendMessage,
     shareLocation,
@@ -111,10 +114,10 @@ export function ChatWorkspace() {
       </Sheet>
 
       {/* Main Layout Container - Flex row to manage sidebar transition smoothly */}
-      <div className="flex min-h-[70vh] gap-6 overflow-hidden">
+      <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
         
         {/* Chat Interface (Flex Grow) */}
-        <div className="flex-1 min-w-0 flex flex-col gap-4 transition-all duration-300 ease-in-out">
+        <div className="flex min-h-0 flex-1 min-w-0 flex-col overflow-hidden transition-all duration-300 ease-in-out">
           <ChatControllerProvider value={chatController}>
             <ChatInterface
               onSendMessage={sendMessage}
@@ -130,7 +133,7 @@ export function ChatWorkspace() {
               onShareLocationChange={setShareLocation}
               locationHint={locationHint}
               onLocationHintChange={updateLocationField}
-              className="h-full min-h-[600px]"
+              className="h-full min-h-0"
               hasOlderMessages={hasOlderMessages}
               isLoadingOlderMessages={isFetchingOlderMessages}
               onLoadOlderMessages={loadOlderMessages}
@@ -142,7 +145,7 @@ export function ChatWorkspace() {
               headerProps={{
                 eyebrow: CHAT_COPY.header.eyebrow,
                 title: CHAT_COPY.header.title,
-                description: formatConversationLabel(currentConversationId),
+                description: formatConversationLabel(currentConversationId, currentConversationTitle),
                 actions: (
                   <div className="flex items-center gap-2">
                     <InlineTag tone={agentsError ? 'warning' : activeAgents ? 'positive' : 'default'}>
@@ -169,44 +172,45 @@ export function ChatWorkspace() {
         </div>
 
         {/* Right Sidebar (Collapsible) */}
-        <div 
-            className={cn(
-                "relative flex-shrink-0 transition-[width,opacity,transform] duration-300 ease-in-out",
-                isSidebarOpen ? "w-[320px] opacity-100 translate-x-0" : "w-0 opacity-0 translate-x-10"
-            )}
+        <div
+          className={cn(
+            'relative flex min-h-0 flex-shrink-0 flex-col overflow-hidden transition-[width,opacity,transform] duration-300 ease-in-out',
+            isSidebarOpen ? 'w-[320px] translate-x-0 opacity-100' : 'w-0 translate-x-10 opacity-0 pointer-events-none',
+          )}
+          aria-hidden={!isSidebarOpen}
         >
-           <div className="w-[320px] h-full flex flex-col">
-              <GlassPanel className="flex h-full flex-col p-0 overflow-hidden bg-background/40 backdrop-blur-xl border-l border-white/10">
-                {/* Agent Switcher Section */}
-                <div className="p-4 border-b border-white/5">
-                  <AgentSwitcher
-                    className="w-full"
-                    agents={agents}
-                    selectedAgent={selectedAgent}
-                    onChange={setSelectedAgent}
-                    isLoading={isLoadingAgents}
-                    error={agentsError}
-                    onShowInsights={() => setToolDrawerOpen(true)}
-                    onShowDetails={() => setDetailDrawerOpen(true)}
-                    hasConversation={!!currentConversationId}
-                  />
-                </div>
+          <GlassPanel className="flex min-h-0 flex-1 flex-col overflow-hidden border-l border-white/10 bg-background/40 p-0 backdrop-blur-xl">
+            {/* Agent Switcher Section */}
+            <div className="border-b border-white/5 p-4">
+              <AgentSwitcher
+                className="w-full"
+                agents={agents}
+                selectedAgent={selectedAgent}
+                onChange={setSelectedAgent}
+                isLoading={isLoadingAgents}
+                error={agentsError}
+                onShowInsights={() => setToolDrawerOpen(true)}
+                onShowDetails={() => setDetailDrawerOpen(true)}
+                hasConversation={!!currentConversationId}
+              />
+            </div>
 
-                {/* Conversation List Section */}
-                <ConversationSidebar
-                  conversationList={conversationList}
-                  isLoadingConversations={isLoadingConversations}
-                  loadMoreConversations={loadMore}
-                  hasNextConversationPage={hasNextPage}
-                  currentConversationId={currentConversationId}
-                  onSelectConversation={handleSelectConversation}
-                  onNewConversation={handleNewConversation}
-                  onDeleteConversation={handleDeleteConversation}
-                  className="flex-1 border-none bg-transparent"
-                  variant="embedded"
-                />
-              </GlassPanel>
-           </div>
+            {/* Conversation List Section */}
+            <ConversationSidebar
+              conversationList={conversationList}
+              isLoadingConversations={isLoadingConversations}
+              isFetchingMoreConversations={isFetchingMoreConversations}
+              loadMoreConversations={loadMore}
+              hasNextConversationPage={hasNextPage}
+              currentConversationId={currentConversationId}
+              onSelectConversation={handleSelectConversation}
+              onNewConversation={handleNewConversation}
+              onDeleteConversation={handleDeleteConversation}
+              onRenameConversation={handleRenameConversation}
+              className="min-h-0 flex-1 border-none bg-transparent"
+              variant="embedded"
+            />
+          </GlassPanel>
         </div>
       </div>
 

@@ -16,6 +16,8 @@ export async function POST(
     const upstream = await runWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPost({
       client,
       auth,
+      signal: request.signal,
+      cache: 'no-store',
       responseStyle: undefined,
       throwOnError: true,
       path: { workflow_key: workflowKey },
@@ -28,17 +30,25 @@ export async function POST(
     });
 
     const stream = upstream.response?.body;
-    if (!stream) {
+    if (!stream || !upstream.response) {
       return NextResponse.json({ message: 'Workflow stream missing body' }, { status: 500 });
     }
 
+    const headers = new Headers({
+      'Content-Type': 'text/event-stream',
+      Connection: 'keep-alive',
+      'Cache-Control': 'no-cache',
+    });
+
+    const contentType = upstream.response.headers.get('Content-Type');
+    if (contentType) {
+      headers.set('Content-Type', contentType);
+    }
+
     return new Response(stream, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/event-stream',
-        Connection: 'keep-alive',
-        'Cache-Control': 'no-cache',
-      },
+      status: upstream.response.status,
+      statusText: upstream.response.statusText,
+      headers,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to stream workflow';

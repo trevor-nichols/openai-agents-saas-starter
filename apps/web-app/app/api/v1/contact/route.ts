@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
-import { submitContact, MarketingServiceError } from '@/lib/server/services/marketing';
+import { submitContact } from '@/lib/server/services/marketing';
+import { MarketingServiceError } from '@/lib/server/services/marketing.errors';
 
 export async function POST(request: Request) {
   const payload = await request
@@ -58,4 +59,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

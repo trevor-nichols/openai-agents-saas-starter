@@ -5,13 +5,14 @@ import {
   verifyEmailTokenApiV1AuthEmailVerifyPost,
 } from '@/lib/api/client/sdk.gen';
 import type {
+  EmailVerificationSendSuccessResponse,
   EmailVerificationConfirmRequest,
-  SuccessResponse,
+  SuccessNoDataResponse,
 } from '@/lib/api/client/types.gen';
 
 import { getServerApiClient } from '../../apiClient';
 
-export async function sendVerificationEmail(): Promise<SuccessResponse> {
+export async function sendVerificationEmail(): Promise<EmailVerificationSendSuccessResponse> {
   const { client, auth } = await getServerApiClient();
 
   const response = await sendEmailVerificationApiV1AuthEmailSendPost({
@@ -31,7 +32,7 @@ export async function sendVerificationEmail(): Promise<SuccessResponse> {
 
 export async function verifyEmailToken(
   payload: EmailVerificationConfirmRequest,
-): Promise<SuccessResponse> {
+): Promise<SuccessNoDataResponse> {
   const { client, auth } = await getServerApiClient();
 
   const response = await verifyEmailTokenApiV1AuthEmailVerifyPost({
@@ -52,4 +53,3 @@ export async function verifyEmailToken(
 
   return result;
 }
-

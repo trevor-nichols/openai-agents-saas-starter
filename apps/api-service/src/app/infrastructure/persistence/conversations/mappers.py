@@ -80,6 +80,8 @@ def serialize_attachments(attachments: list[ConversationAttachment]) -> list[dic
 
 def message_from_row(row: AgentMessage) -> ConversationMessage:
     return ConversationMessage(
+        message_id=str(row.id) if getattr(row, "id", None) is not None else None,
+        position=int(row.position) if getattr(row, "position", None) is not None else None,
         role=coerce_role(row.role),
         content=extract_message_content(row.content),
         attachments=extract_attachments(row.attachments),
@@ -94,10 +96,12 @@ def record_from_model(
     return ConversationRecord(
         conversation_id=conversation.conversation_key,
         messages=message_objs,
+        display_name=conversation.display_name,
         agent_entrypoint=conversation.agent_entrypoint,
         active_agent=conversation.active_agent,
         topic_hint=conversation.topic_hint,
         status=conversation.status,
+        title_generated_at=conversation.title_generated_at,
         created_at_value=conversation.created_at,
         updated_at_value=conversation.updated_at,
     )

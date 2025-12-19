@@ -57,6 +57,20 @@ def decode_message_cursor(cursor: str) -> tuple[datetime, int]:
         raise ValueError("Invalid messages pagination cursor") from exc
 
 
+def encode_ledger_event_cursor(event_row_id: int) -> str:
+    payload = {"id": int(event_row_id)}
+    raw = json.dumps(payload).encode("utf-8")
+    return base64.urlsafe_b64encode(raw).decode("utf-8")
+
+
+def decode_ledger_event_cursor(cursor: str) -> int:
+    try:
+        data = json.loads(base64.urlsafe_b64decode(cursor.encode("utf-8")).decode("utf-8"))
+        return int(data["id"])
+    except Exception as exc:  # pragma: no cover - invalid cursor input
+        raise ValueError("Invalid ledger pagination cursor") from exc
+
+
 __all__ = [
     "encode_list_cursor",
     "decode_list_cursor",
@@ -64,4 +78,6 @@ __all__ = [
     "decode_search_cursor",
     "encode_message_cursor",
     "decode_message_cursor",
+    "encode_ledger_event_cursor",
+    "decode_ledger_event_cursor",
 ]

@@ -8,6 +8,7 @@ from dataclasses import dataclass
 
 from app.core.settings import get_settings
 from app.domain.conversations import ConversationAttachment
+from app.services.agents.attachment_utils import coerce_conversation_uuid
 from app.services.storage.service import StorageService
 
 
@@ -17,15 +18,6 @@ class IngestedImage:
     storage_object_id: uuid.UUID
     size_bytes: int
     mime_type: str | None
-
-
-def _coerce_conversation_uuid(conversation_id: str | None) -> uuid.UUID | None:
-    if not conversation_id:
-        return None
-    try:
-        return uuid.UUID(conversation_id)
-    except (TypeError, ValueError):
-        return uuid.uuid5(uuid.NAMESPACE_URL, f"api-service:conversation:{conversation_id}")
 
 
 def _infer_mime(fmt: str) -> str:
@@ -74,7 +66,7 @@ async def ingest_image_output(
         filename=file_name,
         mime_type=mime,
         agent_key=agent_key,
-        conversation_id=_coerce_conversation_uuid(conversation_id),
+        conversation_id=coerce_conversation_uuid(conversation_id),
         metadata={
             "tool_call_id": tool_call_id,
             "response_id": response_id,

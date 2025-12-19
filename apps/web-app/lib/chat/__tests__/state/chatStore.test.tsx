@@ -9,9 +9,11 @@ import type { ChatMessage } from '../../types';
 function createController(overrides: Partial<UseChatControllerReturn> = {}): UseChatControllerReturn {
   return {
     messages: [],
+    streamEvents: [],
     isSending: false,
     isLoadingHistory: false,
     isClearingConversation: false,
+    isDeletingMessage: false,
     errorMessage: null,
     historyError: null,
     currentConversationId: null,
@@ -20,7 +22,9 @@ function createController(overrides: Partial<UseChatControllerReturn> = {}): Use
     activeAgent: 'triage',
     agentNotices: [],
     toolEvents: [],
+    toolEventAnchors: {},
     reasoningText: '',
+    reasoningParts: [],
     lifecycleStatus: 'idle',
     hasOlderMessages: false,
     isFetchingOlderMessages: false,
@@ -31,6 +35,7 @@ function createController(overrides: Partial<UseChatControllerReturn> = {}): Use
     selectConversation: vi.fn(),
     startNewConversation: vi.fn(),
     deleteConversation: vi.fn(),
+    deleteMessage: vi.fn(),
     clearError: vi.fn(),
     ...overrides,
   };

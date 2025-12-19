@@ -1,4 +1,5 @@
 import type { LocationHint } from '@/lib/api/client/types.gen';
+import { parseTimestampMs } from '@/lib/utils/time';
 import type {
   ConversationHistory,
   ConversationListItem,
@@ -13,7 +14,10 @@ export function mapHistoryToChatMessages(history: ConversationHistory): ChatMess
       const normalizedRole: ChatMessage['role'] = message.role === 'user' ? 'user' : 'assistant';
       const content = message.role === 'system' ? `[system] ${message.content}` : message.content;
       return {
-        id: message.timestamp ?? `${normalizedRole}-${history.conversation_id}-${index}`,
+        id:
+          message.message_id ??
+          message.timestamp ??
+          `${normalizedRole}-${history.conversation_id}-${index}`,
         role: normalizedRole,
         content,
         timestamp: message.timestamp ?? undefined,
@@ -32,7 +36,10 @@ export function mapMessagesToChatMessages(
       const normalizedRole: ChatMessage['role'] = message.role === 'user' ? 'user' : 'assistant';
       const content = message.role === 'system' ? `[system] ${message.content}` : message.content;
       return {
-        id: message.timestamp ?? `${normalizedRole}-${conversationId ?? 'conversation'}-${index}`,
+        id:
+          message.message_id ??
+          message.timestamp ??
+          `${normalizedRole}-${conversationId ?? 'conversation'}-${index}`,
         role: normalizedRole,
         content,
         timestamp: message.timestamp ?? undefined,
@@ -42,50 +49,140 @@ export function mapMessagesToChatMessages(
 }
 
 export function dedupeAndSortMessages(messages: ChatMessage[]): ChatMessage[] {
-  const byKey = new Map<
-    string,
-    { message: ChatMessage; isPlaceholder: boolean }
-  >();
+  const PLACEHOLDER_ID_RE = /^(user|assistant)-\d+/;
+  const CURSOR_TOKEN = '▋';
+  const PLACEHOLDER_MATCH_WINDOW_MS = 2 * 60 * 1000;
 
-  messages.forEach((message, index) => {
-    const isPlaceholder =
-      typeof message.id === 'string' && /^(user|assistant)-\d+/.test(message.id);
-    const bucket =
-      message.timestamp !== undefined && message.timestamp !== null
-        ? Math.floor(Date.parse(message.timestamp) / 1000)
-        : 'no-ts';
-    const contentKey = `${bucket}-${message.role}-${message.content}`;
+  const normalizeContent = (content: string) =>
+    content.replace(new RegExp(`${CURSOR_TOKEN}\\s*$`), '').trim();
 
-    const existing = byKey.get(contentKey);
+  const mergePlaceholderMetadata = (persisted: ChatMessage, placeholder: ChatMessage): ChatMessage => {
+    const hasPersistedAttachments = Array.isArray(persisted.attachments) && persisted.attachments.length > 0;
+    const hasPlaceholderAttachments = Array.isArray(placeholder.attachments) && placeholder.attachments.length > 0;
+
+    return {
+      ...persisted,
+      citations: persisted.citations ?? placeholder.citations ?? null,
+      structuredOutput:
+        persisted.structuredOutput !== null && persisted.structuredOutput !== undefined
+          ? persisted.structuredOutput
+          : (placeholder.structuredOutput ?? null),
+      attachments: hasPersistedAttachments
+        ? persisted.attachments
+        : (hasPlaceholderAttachments ? placeholder.attachments : (persisted.attachments ?? placeholder.attachments ?? null)),
+    };
+  };
+
+  const byId = new Map<string, ChatMessage>();
+  const orderedIds: string[] = [];
+
+  const prefer = (existing: ChatMessage, incoming: ChatMessage): ChatMessage => {
+    if (existing.isStreaming && !incoming.isStreaming) return incoming;
+    if (!existing.isStreaming && incoming.isStreaming) return existing;
+    const existingLen = normalizeContent(existing.content).length;
+    const incomingLen = normalizeContent(incoming.content).length;
+    if (incomingLen > existingLen) return incoming;
+    return existing;
+  };
+
+  for (const message of messages) {
+    const existing = byId.get(message.id);
     if (!existing) {
-      byKey.set(contentKey, { message, isPlaceholder });
-      return;
+      byId.set(message.id, message);
+      orderedIds.push(message.id);
+      continue;
     }
+    byId.set(message.id, prefer(existing, message));
+  }
 
-    if (existing.isPlaceholder && !isPlaceholder) {
-      // Replace optimistic placeholder with persisted copy
-      byKey.set(contentKey, { message, isPlaceholder });
-      return;
-    }
+  const uniqueMessages = orderedIds
+    .map((id) => byId.get(id))
+    .filter((msg): msg is ChatMessage => Boolean(msg));
 
-    if (!existing.isPlaceholder && isPlaceholder) {
-      // Keep existing real message; drop placeholder
-      return;
-    }
+  type Indexed = {
+    message: ChatMessage;
+    index: number;
+    isPlaceholder: boolean;
+    signature: string;
+    timestampMs: number | null;
+  };
 
-    // Same kind (both real or both placeholder) with identical bucket/content:
-    // preserve distinct turns by giving them unique composite keys.
-    const altKey = `${contentKey}::${index}`;
-    byKey.set(altKey, { message, isPlaceholder });
+  const indexed: Indexed[] = uniqueMessages.map((message, index) => ({
+    message,
+    index,
+    isPlaceholder: typeof message.id === 'string' && PLACEHOLDER_ID_RE.test(message.id),
+    signature: `${message.kind ?? 'message'}:${message.role}:${normalizeContent(message.content)}`,
+    timestampMs: parseTimestampMs(message.timestamp),
+  }));
+
+  const groups = new Map<string, Indexed[]>();
+  indexed.forEach((entry) => {
+    const group = groups.get(entry.signature);
+    if (group) group.push(entry);
+    else groups.set(entry.signature, [entry]);
   });
 
-  return Array.from(byKey.values())
-    .map((entry) => entry.message)
+  const dropPlaceholderIndexes = new Set<number>();
+  const mergedMessagesByIndex = new Map<number, ChatMessage>();
+
+  for (const group of groups.values()) {
+    const placeholders = group
+      .filter((entry) => entry.isPlaceholder)
+      .sort((a, b) => (a.timestampMs ?? a.index) - (b.timestampMs ?? b.index));
+    const persisted = group
+      .filter((entry) => !entry.isPlaceholder)
+      .sort((a, b) => (a.timestampMs ?? a.index) - (b.timestampMs ?? b.index));
+
+    if (placeholders.length === 0 || persisted.length === 0) continue;
+
+    let p = 0;
+    let r = 0;
+
+    while (p < placeholders.length && r < persisted.length) {
+      const placeholder = placeholders[p];
+      const real = persisted[r];
+      if (!placeholder || !real) break;
+
+      if (placeholder.timestampMs === null || real.timestampMs === null) {
+        dropPlaceholderIndexes.add(placeholder.index);
+        mergedMessagesByIndex.set(
+          real.index,
+          mergePlaceholderMetadata(real.message, placeholder.message),
+        );
+        p += 1;
+        r += 1;
+        continue;
+      }
+
+      const diff = Math.abs(placeholder.timestampMs - real.timestampMs);
+      if (diff <= PLACEHOLDER_MATCH_WINDOW_MS) {
+        dropPlaceholderIndexes.add(placeholder.index);
+        mergedMessagesByIndex.set(
+          real.index,
+          mergePlaceholderMetadata(real.message, placeholder.message),
+        );
+        p += 1;
+        r += 1;
+        continue;
+      }
+
+      if (placeholder.timestampMs < real.timestampMs) {
+        p += 1;
+      } else {
+        r += 1;
+      }
+    }
+  }
+
+  return indexed
+    .filter((entry) => !(entry.isPlaceholder && dropPlaceholderIndexes.has(entry.index)))
     .sort((a, b) => {
-      const aTime = a.timestamp ? Date.parse(a.timestamp) : 0;
-      const bTime = b.timestamp ? Date.parse(b.timestamp) : 0;
-      return aTime - bTime;
-    });
+      const aTime = a.timestampMs ?? Number.POSITIVE_INFINITY;
+      const bTime = b.timestampMs ?? Number.POSITIVE_INFINITY;
+      if (aTime !== bTime) return aTime - bTime;
+      return a.index - b.index;
+    })
+    .map((entry) => mergedMessagesByIndex.get(entry.index) ?? entry.message);
 }
 
 export function normalizeLocationPayload(

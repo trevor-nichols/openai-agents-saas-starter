@@ -5,6 +5,7 @@ __pycache__/
 node_modules/
 .next/
 apps/web-app/.next/
+apps/web-app/storybook-static/
 GEMINI.md
 # Scratch CLI runs
 tmp-cli-test*
@@ -151,8 +152,8 @@ env.bak/
 venv.bak/
 .direnv/
 # allow env adapter package to be tracked
-!packages/starter_cli/adapters/env/
-!packages/starter_cli/adapters/env/**
+!packages/starter_cli/src/starter_cli/adapters/env/
+!packages/starter_cli/src/starter_cli/adapters/env/**
 
 # Spyder project settings
 .spyderproject
@@ -188,3 +189,5 @@ cython_debug/
 CLAUDE.md
 SNAPSHOT.md
 .mcp.json
+/.cursor
+/.claude

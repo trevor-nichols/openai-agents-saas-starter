@@ -1,7 +1,9 @@
 """Application-level configuration primitives."""
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from urllib.parse import urlparse
+
+from pydantic import BaseModel, Field, model_validator
 
 from .base import SAFE_ENVIRONMENTS
 
@@ -51,6 +53,16 @@ class ApplicationSettingsMixin(BaseModel):
         alias="USE_TEST_FIXTURES",
     )
 
+    @model_validator(mode="before")
+    @classmethod
+    def _default_debug_from_environment(cls, values: dict[str, object]) -> dict[str, object]:
+        # Derive debug automatically from environment when not explicitly set.
+        debug = values.get("debug")
+        environment = str(values.get("environment") or "").lower()
+        if debug is None:
+            values["debug"] = environment in SAFE_ENVIRONMENTS
+        return values
+
     def get_allowed_hosts_list(self) -> list[str]:
         normalized_hosts: list[str] = []
         for host in self.allowed_hosts.split(","):
@@ -69,7 +81,25 @@ class ApplicationSettingsMixin(BaseModel):
         return normalized_hosts
 
     def get_allowed_origins_list(self) -> list[str]:
-        return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]
+        origins: list[str] = []
+
+        def _append_origin(raw: str | None) -> None:
+            if not raw:
+                return
+            parsed = urlparse(raw.strip())
+            candidate = raw.strip()
+            if parsed.scheme and parsed.netloc:
+                candidate = f"{parsed.scheme}://{parsed.netloc}"
+            if candidate and candidate not in origins:
+                origins.append(candidate)
+
+        for origin in self.allowed_origins.split(","):
+            _append_origin(origin)
+
+        # Ensure the primary frontend URL is always allowed for CORS.
+        _append_origin(self.app_public_url)
+
+        return origins
 
     def get_allowed_methods_list(self) -> list[str]:
         return [method.strip() for method in self.allowed_methods.split(",") if method.strip()]

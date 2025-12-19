@@ -4,19 +4,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from app.api.v1.shared.streaming import (
-    CodeInterpreterCall,
-    ContainerFileCitation,
-    FileCitation,
-    FileSearchCall,
-    ImageGenerationCall,
-    MessageAttachment,
-    StreamingEvent,
-    ToolCallPayload,
-    UrlCitation,
-    WebSearchAction,
-    WebSearchCall,
-)
+from app.api.v1.shared.streaming import MessageAttachment, PublicSseEvent
 
 
 class AgentRunOptions(BaseModel):
@@ -39,6 +27,8 @@ class AgentChatRequest(BaseModel):
     location: LocationHint | None = None
     context: dict[str, Any] | None = None
     run_options: AgentRunOptions | None = None
+    memory_strategy: MemoryStrategyRequest | None = None
+    memory_injection: bool | None = None
 
 
 class AgentChatResponse(BaseModel):
@@ -49,6 +39,7 @@ class AgentChatResponse(BaseModel):
     handoff_occurred: bool | None = None
     attachments: list[MessageAttachment] | None = None
     structured_output: Any | None = None
+    output_schema: dict[str, Any] | None = None
     metadata: dict[str, Any] | None = None
 
 
@@ -59,24 +50,35 @@ class LocationHint(BaseModel):
     timezone: str | None = None
 
 
-class StreamingChatEvent(StreamingEvent):
+class StreamingChatEvent(PublicSseEvent):
     model_config = ConfigDict(title="StreamingChatEvent")
+
+
+class MemoryStrategyRequest(BaseModel):
+    mode: Literal["none", "trim", "summarize", "compact"] = "none"
+    max_user_turns: int | None = None
+    keep_last_user_turns: int | None = None
+    token_budget: int | None = None
+    token_soft_budget: int | None = None
+    token_remaining_pct: float | None = None
+    token_soft_remaining_pct: float | None = None
+    context_window_tokens: int | None = None
+    compact_trigger_turns: int | None = None
+    compact_keep: int | None = None
+    compact_clear_tool_inputs: bool | None = None
+    compact_exclude_tools: list[str] | None = None
+    compact_include_tools: list[str] | None = None
+    summarizer_model: str | None = None
+    summary_max_tokens: int | None = None
+    summary_max_chars: int | None = None
 
 
 __all__ = [
     "AgentChatRequest",
     "AgentChatResponse",
     "StreamingChatEvent",
-    "ToolCallPayload",
-    "UrlCitation",
-    "ContainerFileCitation",
-    "FileCitation",
     "MessageAttachment",
-    "WebSearchAction",
-    "WebSearchCall",
-    "CodeInterpreterCall",
-    "FileSearchCall",
-    "ImageGenerationCall",
     "LocationHint",
     "AgentRunOptions",
+    "MemoryStrategyRequest",
 ]

@@ -7,13 +7,13 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
-    BigInteger,
     Computed,
     DateTime,
     ForeignKey,
     Index,
     Integer,
     String,
+    Text,
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import TSVECTOR
@@ -21,7 +21,7 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.infrastructure.persistence.models.base import UTC_NOW, Base, uuid_pk
+from app.infrastructure.persistence.models.base import INT_PK_TYPE, UTC_NOW, Base, uuid_pk
 from app.infrastructure.persistence.types import JSONBCompat
 
 
@@ -102,11 +102,22 @@ class AgentConversation(Base):
     total_tokens_prompt: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     total_tokens_completion: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     reasoning_tokens: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    total_cached_input_tokens: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    total_requests: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     provider: Mapped[str | None] = mapped_column(String(32))
     provider_conversation_id: Mapped[str | None] = mapped_column(String(128), unique=True)
     handoff_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     source_channel: Mapped[str | None] = mapped_column(String(32))
     topic_hint: Mapped[str | None] = mapped_column(String(256))
+    display_name: Mapped[str | None] = mapped_column(String(128))
+    title_generated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    memory_strategy: Mapped[str | None] = mapped_column(String(16))
+    memory_max_turns: Mapped[int | None] = mapped_column(Integer)
+    memory_keep_last_turns: Mapped[int | None] = mapped_column(Integer)
+    memory_compact_trigger_turns: Mapped[int | None] = mapped_column(Integer)
+    memory_compact_keep: Mapped[int | None] = mapped_column(Integer)
+    memory_clear_tool_inputs: Mapped[bool | None] = mapped_column(nullable=True)
+    memory_injection: Mapped[bool | None] = mapped_column(nullable=True)
     last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_run_id: Mapped[str | None] = mapped_column(String(64))
     client_version: Mapped[str | None] = mapped_column(String(32))
@@ -144,11 +155,17 @@ class AgentMessage(Base):
             "conversation_id",
             "created_at",
         ),
+        Index("ix_agent_messages_segment_id", "segment_id"),
     )
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(INT_PK_TYPE, primary_key=True, autoincrement=True)
     conversation_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("agent_conversations.id", ondelete="CASCADE"), nullable=False
+    )
+    segment_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("conversation_ledger_segments.id", ondelete="CASCADE"),
+        nullable=False,
     )
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     role: Mapped[str] = mapped_column(String(16), nullable=False)
@@ -180,6 +197,29 @@ class AgentMessage(Base):
     conversation: Mapped[AgentConversation] = relationship(back_populates="messages")
 
 
+class ConversationSummary(Base):
+    """Cross-session summaries used for memory injection."""
+
+    __tablename__ = "conversation_summaries"
+
+    id: Mapped[int] = mapped_column(INT_PK_TYPE, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("agent_conversations.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    agent_key: Mapped[str | None] = mapped_column(String(64))
+    summary_text: Mapped[str] = mapped_column(Text)
+    summary_model: Mapped[str | None] = mapped_column(String(64))
+    summary_length_tokens: Mapped[int | None] = mapped_column(Integer)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    version: Mapped[str | None] = mapped_column(String(32))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=UTC_NOW, nullable=False
+    )
+
+
 class AgentRunEvent(Base):
     """Structured event log entry mirroring SDK run items."""
 
@@ -198,7 +238,7 @@ class AgentRunEvent(Base):
         Index("ix_agent_run_events_workflow_run_seq", "workflow_run_id", "sequence_no"),
     )
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(INT_PK_TYPE, primary_key=True, autoincrement=True)
     conversation_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("agent_conversations.id", ondelete="CASCADE"),
@@ -231,10 +271,45 @@ class AgentRunEvent(Base):
     )
 
 
+class AgentRunUsageModel(Base):
+    """Per-run usage snapshot for audit and analytics."""
+
+    __tablename__ = "agent_run_usage"
+    __table_args__ = (
+        Index("ix_agent_run_usage_conversation_created", "conversation_id", "created_at"),
+        Index("ix_agent_run_usage_tenant_created", "tenant_id", "created_at"),
+        Index("ix_agent_run_usage_response", "response_id"),
+        UniqueConstraint("response_id", name="uq_agent_run_usage_response_id"),
+    )
+
+    id: Mapped[int] = mapped_column(INT_PK_TYPE, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("agent_conversations.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    response_id: Mapped[str | None] = mapped_column(String(128))
+    run_id: Mapped[str | None] = mapped_column(String(64))
+    agent_key: Mapped[str | None] = mapped_column(String(64))
+    provider: Mapped[str | None] = mapped_column(String(32))
+    requests: Mapped[int | None] = mapped_column(Integer)
+    input_tokens: Mapped[int | None] = mapped_column(Integer)
+    output_tokens: Mapped[int | None] = mapped_column(Integer)
+    total_tokens: Mapped[int | None] = mapped_column(Integer)
+    cached_input_tokens: Mapped[int | None] = mapped_column(Integer)
+    reasoning_output_tokens: Mapped[int | None] = mapped_column(Integer)
+    request_usage_entries: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONBCompat)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=UTC_NOW, nullable=False
+    )
+
 __all__ = [
     "Base",
     "TenantAccount",
     "AgentConversation",
     "AgentMessage",
     "AgentRunEvent",
+    "AgentRunUsageModel",
+    "ConversationSummary",
 ]

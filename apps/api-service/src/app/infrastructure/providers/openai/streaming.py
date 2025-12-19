@@ -64,16 +64,17 @@ class OpenAIStreamingHandle(AgentStreamingHandle):
                     response_text = json.dumps(final_output, ensure_ascii=False)
                 except Exception:  # pragma: no cover
                     response_text = str(final_output)
-            yield AgentStreamEvent(
-                kind="run_item_stream_event",
-                response_id=response_id,
-                is_terminal=True,
-                payload={"structured_output": structured_output, "response_text": response_text},
-                structured_output=structured_output,
-                response_text=response_text,
-                metadata=self.metadata,
-                agent=self._agent_key,
-            )
+        yield AgentStreamEvent(
+            kind="run_item_stream_event",
+            response_id=response_id,
+            is_terminal=True,
+            payload={"structured_output": structured_output, "response_text": response_text},
+            structured_output=structured_output,
+            response_text=response_text,
+            usage=self.usage,
+            metadata=self.metadata,
+            agent=self._agent_key,
+        )
 
     async def _map_event(self, event) -> AsyncIterator[AgentStreamEvent]:
         if event.type == "raw_response_event":
@@ -289,6 +290,18 @@ class OpenAIStreamingHandle(AgentStreamingHandle):
                 status=status,
                 queries=None,
                 results=None,
+            )
+        elif (
+            raw_type in {"response.output_item.added", "response.output_item.done"}
+            and isinstance(raw_mapping, Mapping)
+            and raw_mapping.get("item", {}).get("type") == "web_search_call"
+        ):
+            item = raw_mapping.get("item", {}) or {}
+            action = item.get("action")
+            tool_call = build_web_search_tool_call(
+                item_id=item.get("id"),
+                status=item.get("status"),
+                action=AgentStreamEvent._to_mapping(action),
             )
         elif (
             raw_type == "response.output_item.done"

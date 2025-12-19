@@ -12,8 +12,8 @@ from app.domain.ai.models import AgentStreamEvent
 from app.services.workflows.hooks import apply_reducer, evaluate_guard, run_mapper
 from app.services.workflows.recording import WorkflowRunRecorder
 from app.services.workflows.types import WorkflowStepResult
-from app.workflows.schema_utils import schema_to_json_schema, validate_against_schema
-from app.workflows.specs import WorkflowSpec, WorkflowStage, WorkflowStep
+from app.workflows._shared.schema_utils import schema_to_json_schema, validate_against_schema
+from app.workflows._shared.specs import WorkflowSpec, WorkflowStage, WorkflowStep
 
 
 async def stream_sequential_stage(
@@ -88,8 +88,13 @@ async def stream_sequential_stage(
                 text_buffer.append(event.text_delta)
             if event.structured_output is not None:
                 last_structured = event.structured_output
+
+            is_provider_terminal = event.is_terminal
+            if is_provider_terminal:
+                # Step-level terminal events must not terminate the *workflow* stream.
+                event.is_terminal = False
             yield event
-            if event.is_terminal:
+            if is_provider_terminal:
                 break
 
         if not last_text and text_buffer:
@@ -241,8 +246,12 @@ async def stream_parallel_stage(
                     text_buffer.append(event.text_delta)
                 if event.structured_output is not None:
                     last_structured = event.structured_output
+                is_provider_terminal = event.is_terminal
+                if is_provider_terminal:
+                    # Step-level terminal events must not terminate the *workflow* stream.
+                    event.is_terminal = False
                 await queue.put(event)
-                if event.is_terminal:
+                if is_provider_terminal:
                     break
 
             if not last_text and text_buffer:

@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
+from app.guardrails._shared.specs import AgentGuardrailConfig, ToolGuardrailConfig
+
 
 @dataclass(frozen=True, slots=True)
 class AgentSpec:
@@ -22,6 +24,8 @@ class AgentSpec:
     - `model_key` controls which settings override is applied (e.g., "triage"
       resolves to `settings.agent_triage_model`). If unset, `agent_default_model`
       is used.
+    - `model` optionally fixes the agent to a specific model name (e.g., "gpt-5.1").
+      When set, this takes precedence over settings and per-request overrides.
     - `capabilities` describe the agent for catalog/filtering; tool selection
       is now explicit via `tool_keys`.
     - `instructions` or `prompt_path` provide the system prompt. Only one is
@@ -44,21 +48,26 @@ class AgentSpec:
       vector stores (tenant_default vs static ids).
     - `file_search_options` are passed through to the FileSearchTool (e.g.,
       max_num_results, filters, ranking_options, include_search_results).
+    - `guardrails` specifies input/output guardrails configuration (preset key,
+      explicit guardrail configs, or both). See AgentGuardrailConfig for details.
+    - `tool_guardrails` applies guardrails to all tools on this agent (tool_input
+      and tool_output stages). Per-tool overrides can disable or replace these.
+    - `guardrails_runtime` controls how guardrails run
+      (suppress, streaming mode, concurrency, handler).
     """
 
     key: str
     display_name: str
     description: str
     model_key: str | None = None
+    model: str | None = None
     capabilities: tuple[str, ...] = ()
     instructions: str | None = None
     prompt_path: Path | None = None
     handoff_keys: tuple[str, ...] = ()
     default: bool = False
     wrap_with_handoff_prompt: bool = False
-    prompt_context_keys: tuple[str, ...] = ()
     prompt_defaults: dict[str, Any] = field(default_factory=dict)
-    extra_context_providers: tuple[str, ...] = ()
     # Explicit tool assignment (mirrors Agents SDK: Agent(..., tools=[...])).
     tool_keys: tuple[str, ...] = ()
     # Optional per-tool configuration (e.g., {"code_interpreter": {"mode": "explicit"}}).
@@ -81,6 +90,17 @@ class AgentSpec:
     vector_store_binding: Literal["tenant_default", "static", "required"] = "tenant_default"
     vector_store_ids: tuple[str, ...] = ()
     file_search_options: dict[str, Any] = field(default_factory=dict)
+    # Optional memory strategy defaults applied at agent level (resolved after per-request
+    # and conversation overrides).
+    memory_strategy: dict[str, Any] | None = None
+    # Optional guardrails configuration for input/output validation.
+    guardrails: AgentGuardrailConfig | None = None
+    # Optional guardrails for all tools on this agent.
+    tool_guardrails: ToolGuardrailConfig | None = None
+    # Optional per-tool guardrail overrides keyed by tool name.
+    tool_guardrail_overrides: dict[str, ToolGuardrailConfig] = field(default_factory=dict)
+    # Optional runtime execution options for guardrails.
+    guardrails_runtime: GuardrailRuntimeOptions | None = None
 
     def prompt_source(self) -> str:
         if self.instructions:
@@ -92,6 +112,19 @@ class AgentSpec:
     def ensure_prompt(self) -> None:
         if not (self.instructions or self.prompt_path):
             raise ValueError(f"Agent '{self.key}' must supply instructions or prompt_path")
+
+    def ensure_model_config(self) -> None:
+        if self.model is not None and not str(self.model).strip():
+            raise ValueError(
+                f"Agent '{self.key}' has an invalid 'model' value. "
+                "If set, 'model' must be a non-empty string."
+            )
+        if self.model is not None and self.model_key is not None:
+            raise ValueError(
+                f"Agent '{self.key}' must not set both 'model' and 'model_key'. "
+                "Use 'model' to fix the agent to a specific model, or 'model_key' to allow "
+                "settings to select the model."
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,7 +146,30 @@ class AgentToolConfig:
     max_turns: int | None = None
 
 
-__all__ = ["AgentSpec", "HandoffConfig", "OutputSpec", "AgentToolConfig"]
+__all__ = [
+    "AgentSpec",
+    "HandoffConfig",
+    "OutputSpec",
+    "AgentToolConfig",
+    "GuardrailRuntimeOptions",
+]
+
+
+@dataclass(frozen=True, slots=True)
+class GuardrailRuntimeOptions:
+    """Execution options for guardrails.
+
+    - suppress_tripwire: if True, do not raise when tripwire triggers.
+    - streaming_mode: blocking runs output guardrails before emitting;
+      streaming streams while guardrails run.
+    - concurrency: max concurrent guardrails (None uses default).
+    - result_handler_path: dotted path to async callable(GuardrailCheckResult) -> None.
+    """
+
+    suppress_tripwire: bool = False
+    streaming_mode: Literal["blocking", "streaming"] = "blocking"
+    concurrency: int | None = None
+    result_handler_path: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

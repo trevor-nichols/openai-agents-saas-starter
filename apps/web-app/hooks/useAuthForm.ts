@@ -14,7 +14,7 @@ type ToastContent = {
 
 type AuthSchema = z.ZodObject<Record<string, z.ZodTypeAny>>;
 
-type SubmitResult = { success?: boolean; error?: string } | void;
+type SubmitResult = { success?: boolean; error?: string; mfa?: unknown } | void;
 
 interface UseAuthFormOptions<TSchema extends AuthSchema> {
   schema: TSchema;
@@ -23,6 +23,7 @@ interface UseAuthFormOptions<TSchema extends AuthSchema> {
   successToast?: ToastContent;
   errorToast?: ToastContent;
   onSuccess?: () => void;
+  onMfaRequired?: (payload: unknown) => void;
 }
 
 export function useAuthForm<TSchema extends AuthSchema>({
@@ -32,6 +33,7 @@ export function useAuthForm<TSchema extends AuthSchema>({
   successToast,
   errorToast,
   onSuccess,
+  onMfaRequired,
 }: UseAuthFormOptions<TSchema>) {
   type FormValues = z.infer<TSchema>;
 
@@ -46,6 +48,11 @@ export function useAuthForm<TSchema extends AuthSchema>({
     setFormError(null);
     try {
       const result = await submitHandler(values);
+
+      if (isMfaResult(result)) {
+        onMfaRequired?.(result.mfa);
+        return;
+      }
 
       const resultError = extractResultError(result);
       if (resultError) {
@@ -76,8 +83,12 @@ export function useAuthForm<TSchema extends AuthSchema>({
     onSubmit,
     isSubmitting: form.formState.isSubmitting,
     formError,
-    clearFormError: () => setFormError(null),
+  clearFormError: () => setFormError(null),
   };
+}
+
+function isMfaResult(result: SubmitResult): result is { mfa: unknown } {
+  return Boolean(result && typeof result === 'object' && 'mfa' in result);
 }
 
 function getErrorMessage(error: unknown, fallback?: string) {

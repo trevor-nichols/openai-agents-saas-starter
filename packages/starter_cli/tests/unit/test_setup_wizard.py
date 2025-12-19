@@ -59,7 +59,11 @@ def _local_headless_answers() -> dict[str, str]:
         "ALLOWED_HOSTS": "localhost",
         "ALLOWED_ORIGINS": "http://localhost:3000",
         "AUTO_RUN_MIGRATIONS": "false",
-        "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/saas_strarter_db",
+        "STARTER_LOCAL_DATABASE_MODE": "compose",
+        "POSTGRES_PORT": "5432",
+        "POSTGRES_USER": "postgres",
+        "POSTGRES_PASSWORD": "postgres",
+        "POSTGRES_DB": "saas_starter_db",
         "API_BASE_URL": "http://127.0.0.1:8000",
         "ROTATE_SIGNING_KEYS": "false",
         "VAULT_VERIFY_ENABLED": "true",
@@ -208,7 +212,7 @@ def test_wizard_exports_answers_when_requested(temp_ctx: CLIContext) -> None:
     wizard.execute()
 
     payload = json.loads(export_path.read_text(encoding="utf-8"))
-    assert payload["DATABASE_URL"] == answers["DATABASE_URL"]
+    assert payload["DATABASE_URL"] == "postgresql+asyncpg://postgres:postgres@localhost:5432/saas_starter_db"
     assert payload["OPENAI_API_KEY"] == answers["OPENAI_API_KEY"]
     _cleanup_env(snapshot)
 
@@ -368,7 +372,7 @@ def test_wizard_writes_dedicated_worker_artifacts(temp_ctx: CLIContext) -> None:
         "ALLOWED_HOSTS": "example.com",
         "ALLOWED_ORIGINS": "https://example.com",
         "AUTO_RUN_MIGRATIONS": "false",
-        "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/saas_strarter_db",
+        "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/saas_starter_db",
         "API_BASE_URL": "https://api.example.com",
         "ROTATE_SIGNING_KEYS": "false",
         "VAULT_VERIFY_ENABLED": "true",
@@ -452,7 +456,7 @@ def test_wizard_refreshes_cached_settings(temp_ctx: CLIContext) -> None:
         "ALLOWED_HOSTS": "localhost",
         "ALLOWED_ORIGINS": "http://localhost:3000",
         "AUTO_RUN_MIGRATIONS": "false",
-        "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/saas_strarter_db",
+        "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/saas_starter_db",
         "API_BASE_URL": "http://127.0.0.1:8000",
         "ROTATE_SIGNING_KEYS": "false",
         "VAULT_VERIFY_ENABLED": "false",
@@ -525,7 +529,7 @@ def test_wizard_clears_optional_provider_keys(temp_ctx: CLIContext) -> None:
         "ALLOWED_HOSTS": "localhost",
         "ALLOWED_ORIGINS": "http://localhost:3000",
         "AUTO_RUN_MIGRATIONS": "false",
-        "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/saas_strarter_db",
+        "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/saas_starter_db",
         "API_BASE_URL": "http://127.0.0.1:8000",
         "ROTATE_SIGNING_KEYS": "false",
         "VAULT_VERIFY_ENABLED": "false",
@@ -589,7 +593,7 @@ def test_wizard_does_not_leak_env_values(temp_ctx: CLIContext) -> None:
         "ALLOWED_HOSTS": "localhost",
         "ALLOWED_ORIGINS": "http://localhost:3000",
         "AUTO_RUN_MIGRATIONS": "false",
-        "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/saas_strarter_db",
+        "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/saas_starter_db",
         "API_BASE_URL": "http://127.0.0.1:8000",
         "ROTATE_SIGNING_KEYS": "false",
         "VAULT_VERIFY_ENABLED": "false",
@@ -666,7 +670,7 @@ def test_wizard_rotates_new_peppers(monkeypatch, temp_ctx: CLIContext) -> None:
         "ALLOWED_HOSTS": "localhost",
         "ALLOWED_ORIGINS": "http://localhost:3000",
         "AUTO_RUN_MIGRATIONS": "false",
-        "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/saas_strarter_db",
+        "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/saas_starter_db",
         "API_BASE_URL": "http://127.0.0.1:8000",
         "ROTATE_SIGNING_KEYS": "false",
         "VAULT_VERIFY_ENABLED": "false",
@@ -729,7 +733,7 @@ def test_wizard_staging_verifies_vault(
         "ALLOWED_HOSTS": "staging.example.com",
         "ALLOWED_ORIGINS": "https://staging.example.com",
         "AUTO_RUN_MIGRATIONS": "false",
-        "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@staging-db:5432/saas_strarter_db",
+        "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@staging-db:5432/saas_starter_db",
         "API_BASE_URL": "https://api.staging.example.com",
         "ROTATE_SIGNING_KEYS": "false",
         "VAULT_VERIFY_ENABLED": "true",
@@ -824,12 +828,7 @@ def test_wizard_summary_writes_milestones(temp_ctx: CLIContext) -> None:
     assert data["milestones"][0]["checks"][0]["name"] == "example"
 
 
-def test_collect_database_allows_clearing_local(temp_ctx: CLIContext) -> None:
-    env_path = backend_env_path(temp_ctx)
-    env_path.write_text(
-        "DATABASE_URL=postgresql+asyncpg://remote.example/saas_strarter_db\n",
-        encoding="utf-8",
-    )
+def test_collect_database_local_compose_derives_database_url(temp_ctx: CLIContext) -> None:
     wizard = _create_setup_wizard(
         ctx=temp_ctx,
         profile="local",
@@ -837,10 +836,46 @@ def test_collect_database_allows_clearing_local(temp_ctx: CLIContext) -> None:
         input_provider=None,
     )
     snapshot = dict(os.environ)
-    provider = HeadlessInputProvider(answers={"DATABASE_URL": ""})
+    provider = HeadlessInputProvider(
+        answers={
+            "STARTER_LOCAL_DATABASE_MODE": "compose",
+            "POSTGRES_PORT": "5433",
+            "POSTGRES_USER": "postgres",
+            "POSTGRES_PASSWORD": "postgres",
+            "POSTGRES_DB": "saas_starter_db",
+        }
+    )
     provider_section.collect_database(wizard.context, provider)
-    assert wizard.context.backend_env.get("DATABASE_URL") is None
-    assert "DATABASE_URL" not in os.environ
+    assert wizard.context.backend_env.get("STARTER_LOCAL_DATABASE_MODE") == "compose"
+    assert wizard.context.backend_env.get("POSTGRES_PORT") == "5433"
+    assert (
+        wizard.context.backend_env.get("DATABASE_URL")
+        == "postgresql+asyncpg://postgres:postgres@localhost:5433/saas_starter_db"
+    )
+    _cleanup_env(snapshot)
+
+
+def test_collect_database_local_external_uses_provided_url(temp_ctx: CLIContext) -> None:
+    wizard = _create_setup_wizard(
+        ctx=temp_ctx,
+        profile="local",
+        output_format="summary",
+        input_provider=None,
+    )
+    snapshot = dict(os.environ)
+    provider = HeadlessInputProvider(
+        answers={
+            "STARTER_LOCAL_DATABASE_MODE": "external",
+            "DATABASE_URL": "postgresql+asyncpg://remote.example:5432/saas_starter_db",
+        }
+    )
+    provider_section.collect_database(wizard.context, provider)
+    assert wizard.context.backend_env.get("STARTER_LOCAL_DATABASE_MODE") == "external"
+    assert (
+        wizard.context.backend_env.get("DATABASE_URL")
+        == "postgresql+asyncpg://remote.example:5432/saas_starter_db"
+    )
+    assert wizard.context.backend_env.get("POSTGRES_PORT") is None
     _cleanup_env(snapshot)
 
 

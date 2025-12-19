@@ -3,10 +3,17 @@
 from __future__ import annotations
 
 import logging
+import math
+from collections.abc import Awaitable, Callable, Mapping
 from datetime import UTC, datetime
 from typing import Any
 
 from app.domain.conversations import ConversationSessionState
+from app.infrastructure.providers.openai.memory import (
+    MemoryStrategy,
+    MemoryStrategyConfig,
+    StrategySession,
+)
 from app.services.agents.policy import AgentRuntimePolicy
 from app.services.conversation_service import ConversationService
 
@@ -73,6 +80,9 @@ class SessionManager:
         tenant_id: str,
         conversation_id: str,
         provider_conversation_id: str | None,
+        memory_strategy: MemoryStrategyConfig | None = None,
+        agent_key: str | None = None,
+        on_compaction: Callable[[Mapping[str, Any]], Awaitable[None]] | None = None,
     ) -> tuple[str, Any]:
         state = await self._conversation_service.get_session_state(
             conversation_id, tenant_id=tenant_id
@@ -87,6 +97,40 @@ class SessionManager:
             session_id = conversation_id
 
         session_handle = provider.session_store.build(session_id)
+        if memory_strategy and _is_session_handle(session_handle):
+            on_summary = None
+            if memory_strategy.mode == MemoryStrategy.SUMMARIZE:
+
+                async def _persist(summary_text: str) -> None:
+                    length_tokens = (
+                        max(1, math.ceil(len(summary_text) / 4)) if summary_text else None
+                    )
+                    await self._conversation_service.persist_summary(
+                        conversation_id,
+                        tenant_id=tenant_id,
+                        agent_key=agent_key,
+                        summary_text=summary_text,
+                        summary_model=memory_strategy.summarizer_model,
+                        version="v1",
+                        summary_length_tokens=length_tokens,
+                    )
+
+                on_summary = _persist
+
+            session_handle = StrategySession(
+                session_handle,
+                memory_strategy,
+                on_summary=on_summary,
+                on_compaction=on_compaction,
+            )
+            logger.info(
+                "session.memory_strategy_applied",
+                extra={
+                    "conversation_id": conversation_id,
+                    "tenant_id": tenant_id,
+                    "strategy": memory_strategy.mode.value,
+                },
+            )
         return session_id, session_handle
 
     async def sync_session_state(
@@ -108,6 +152,10 @@ class SessionManager:
                 last_session_sync_at=datetime.now(UTC),
             ),
         )
+
+
+def _is_session_handle(obj: Any) -> bool:
+    return hasattr(obj, "get_items") and hasattr(obj, "add_items")
 
 
 __all__ = ["SessionManager"]

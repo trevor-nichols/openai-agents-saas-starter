@@ -1,3 +1,8 @@
+from .files_gateway import (
+    ContainerFileContent,
+    ContainerFilesGateway,
+    OpenAIContainerFilesGateway,
+)
 from .service import (
     ContainerNameConflictError,
     ContainerNotFoundError,
@@ -8,6 +13,9 @@ from .service import (
 )
 
 __all__ = [
+    "ContainerFileContent",
+    "ContainerFilesGateway",
+    "OpenAIContainerFilesGateway",
     "ContainerService",
     "ContainerNotFoundError",
     "ContainerQuotaError",

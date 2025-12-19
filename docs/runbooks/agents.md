@@ -102,10 +102,10 @@ registration; the OpenAI Agents SDK runtime is unchanged.
   - `agent.key`, `agent.display_name`
   - `run.conversation_id`, `run.request_message`
   - `env.environment`
+  - `memory.summary`
+  - `date`, `time`, `date_and_time`
 - Each `AgentSpec` can declare:
-  - `prompt_context_keys`: expected top-level keys (helps readability; validation uses StrictUndefined).
   - `prompt_defaults`: seed values for missing fields.
-  - `extra_context_providers`: tuple of provider names to enrich context.
 - Register custom providers in `app/agents/_shared/prompt_context.py` via:
   ```python
   from app.agents._shared.prompt_context import register_context_provider, PromptRuntimeContext
@@ -114,7 +114,7 @@ registration; the OpenAI Agents SDK runtime is unchanged.
   def calendar_provider(ctx: PromptRuntimeContext, spec):
       return {"next_meeting": "2025-11-25T10:00Z"}
   ```
-  Then opt-in per agent with `extra_context_providers=("calendar",)` and use `{{ calendar.next_meeting }}` in the prompt.
+  Provider keys are injected globally, so use `{{ calendar.next_meeting }}` directly in the prompt.
 
 ### Rendering flow
 - AgentService builds a `PromptRuntimeContext` (actor, conversation_id, request_message, settings) and passes it through to the provider runtime.

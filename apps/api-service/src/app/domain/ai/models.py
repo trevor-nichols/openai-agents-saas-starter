@@ -19,6 +19,8 @@ class AgentDescriptor:
     capabilities: tuple[str, ...] = ()
     status: Literal["active", "inactive", "error"] = "active"
     last_seen_at: datetime | None = None
+    memory_strategy_defaults: dict[str, Any] | None = None
+    output_schema: dict[str, Any] | None = None
 
 
 @dataclass(slots=True)
@@ -27,6 +29,12 @@ class AgentRunUsage:
 
     input_tokens: int | None = None
     output_tokens: int | None = None
+    total_tokens: int | None = None
+    cached_input_tokens: int | None = None
+    reasoning_output_tokens: int | None = None
+    requests: int | None = None
+    # Optional per-request usage entries as returned by the Agents SDK
+    request_usage_entries: list[Mapping[str, Any]] | None = None
 
 
 @dataclass(slots=True)
@@ -81,6 +89,7 @@ class AgentStreamEvent:
         "raw_response_event",
         "run_item_stream_event",
         "agent_updated_stream_event",
+        "guardrail_result",
         "usage",
         "error",
         "lifecycle",
@@ -134,11 +143,26 @@ class AgentStreamEvent:
     # Structured output / text equivalents for final outputs when present
     structured_output: Any | None = None
     response_text: str | None = None
+    usage: AgentRunUsage | None = None
 
     # Typed enrichments for downstream consumers
+    output_schema: Mapping[str, Any] | None = None
     raw_event: Mapping[str, Any] | None = None
     tool_call: Mapping[str, Any] | None = None
     annotations: list[Mapping[str, Any]] | None = None
+
+    # Guardrail metadata (emitted when kind == "guardrail_result")
+    guardrail_stage: str | None = None  # pre_flight|input|output|tool_input|tool_output
+    guardrail_key: str | None = None
+    guardrail_name: str | None = None
+    guardrail_tripwire_triggered: bool | None = None
+    guardrail_suppressed: bool | None = None
+    guardrail_flagged: bool | None = None
+    guardrail_confidence: float | None = None
+    guardrail_masked_content: str | None = None
+    guardrail_token_usage: Mapping[str, Any] | None = None
+    guardrail_details: Mapping[str, Any] | None = None
+    guardrail_summary: bool = False
 
     @staticmethod
     def _strip_unserializable(obj: Any) -> Any:
@@ -171,7 +195,6 @@ class AgentStreamEvent:
 
         # Conservative fallback: string representation to keep streaming resilient.
         return repr(obj)
-        return obj
 
     @staticmethod
     def _to_mapping(obj: Any) -> Mapping[str, Any] | None:

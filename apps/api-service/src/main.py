@@ -9,11 +9,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.errors import register_exception_handlers
+from app.api.openapi import build_openapi_schema
 from app.api.router import api_router
 from app.bootstrap import (
     get_container,
     shutdown_container,
     wire_conversation_query_service,
+    wire_storage_service,
+    wire_title_service,
 )
 from app.core.provider_validation import (
     ProviderViolation,
@@ -206,11 +209,13 @@ async def lifespan(app: FastAPI):
         run_migrations = True
 
     await init_engine(run_migrations=run_migrations)
+    logger.debug("Startup checkpoint: engine initialised")
     engine = get_engine()
     if engine is None:
         raise RuntimeError("Database engine failed to initialise; cannot configure sessions.")
     session_factory = get_async_sessionmaker()
     container.session_factory = session_factory
+    logger.debug("Startup checkpoint: session factory configured")
 
     container.activity_service = ActivityService()
     activity_repo = SqlAlchemyActivityEventRepository(session_factory)
@@ -247,6 +252,7 @@ async def lifespan(app: FastAPI):
     if not repo_already_set:
         postgres_repository = PostgresConversationRepository(session_factory)
         container.conversation_service.set_repository(postgres_repository)
+    logger.debug("Startup checkpoint: conversation repository configured")
     container.tenant_settings_service.set_repository(
         PostgresTenantSettingsRepository(session_factory)
     )
@@ -276,6 +282,7 @@ async def lifespan(app: FastAPI):
         settings=settings,
         repository=user_repository,
     )
+    logger.debug("Startup checkpoint: user service configured")
 
     container.user_session_service = build_session_service(
         settings=settings,
@@ -326,6 +333,7 @@ async def lifespan(app: FastAPI):
         session_factory=session_factory,
         invite_service=container.invite_service,
     )
+    logger.debug("Startup checkpoint: signup services configured")
 
     status_repo = get_status_subscription_repository(settings)
     if status_repo:
@@ -340,6 +348,7 @@ async def lifespan(app: FastAPI):
             settings=settings,
             slack_notifier=slack_notifier,
         )
+        logger.debug("Startup checkpoint: status subscriptions configured")
 
     if settings.enable_billing:
         billing_service = container.billing_service
@@ -397,10 +406,10 @@ async def lifespan(app: FastAPI):
             backend = RedisBillingEventBackend(redis_client, owns_client=False)
             service = container.billing_events_service
             service.configure(backend=backend)
-            if settings.enable_billing_stream_replay:
-                await service.startup()
-            else:
-                logger.info("Billing stream replay/startup disabled by configuration")
+        if settings.enable_billing_stream_replay:
+            await service.startup()
+        else:
+            logger.info("Billing stream replay/startup disabled by configuration")
         # Vector limits resolver (plan-aware)
         container.vector_limit_resolver = VectorLimitResolver(
             billing_service=billing_service,
@@ -409,6 +418,7 @@ async def lifespan(app: FastAPI):
     else:
         container.usage_policy_service = None
         container.vector_limit_resolver = None
+    logger.debug("Startup checkpoint: billing stack configured")
 
     # Vector store service (OpenAI vector stores + file search)
     container.vector_store_service = VectorStoreService(
@@ -418,13 +428,17 @@ async def lifespan(app: FastAPI):
     )
 
     # Agent service (after vector store is finalized)
+    wire_storage_service(container)
+    wire_title_service(container)
     container.agent_service = build_agent_service(
         conversation_service=container.conversation_service,
         usage_recorder=container.usage_recorder,
         provider_registry=provider_registry,
         container_service=container.container_service,
+        storage_service=container.storage_service,
         vector_store_service=container.vector_store_service,
     )
+    logger.debug("Startup checkpoint: agent service configured")
 
     # Conversation query service (history + search) wired once at startup
     wire_conversation_query_service(container)
@@ -439,6 +453,7 @@ async def lifespan(app: FastAPI):
             client_factory=container.vector_store_service.openai_client,
         )
         await container.vector_store_sync_worker.start()
+    logger.debug("Startup checkpoint: vector sync worker configured")
     try:
         yield
     finally:
@@ -470,6 +485,7 @@ def create_application() -> FastAPI:
         redoc_url="/redoc" if settings.debug else None,
         lifespan=lifespan,
     )
+    app.openapi = lambda: build_openapi_schema(app)  # type: ignore[method-assign]
 
     # =============================================================================
     # MIDDLEWARE CONFIGURATION

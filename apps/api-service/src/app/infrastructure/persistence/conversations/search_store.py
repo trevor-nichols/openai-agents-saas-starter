@@ -17,6 +17,7 @@ from app.infrastructure.persistence.conversations.cursors import (
     encode_search_cursor,
 )
 from app.infrastructure.persistence.conversations.ids import parse_tenant_id
+from app.infrastructure.persistence.conversations.ledger_models import ConversationLedgerSegment
 from app.infrastructure.persistence.conversations.mappers import record_from_model
 from app.infrastructure.persistence.conversations.models import (
     AgentConversation,
@@ -98,7 +99,21 @@ class ConversationSearchStore:
                     func.max(rank_expr).label("rank"),
                 )
                 .join(AgentMessage, AgentMessage.conversation_id == AgentConversation.id)
+                .join(
+                    ConversationLedgerSegment,
+                    ConversationLedgerSegment.id == AgentMessage.segment_id,
+                )
                 .where(*base_filters, search_filter)
+                .where(
+                    or_(
+                        ConversationLedgerSegment.truncated_at.is_(None),
+                        and_(
+                            ConversationLedgerSegment.visible_through_message_position.isnot(None),
+                            AgentMessage.position
+                            <= ConversationLedgerSegment.visible_through_message_position,
+                        ),
+                    )
+                )
                 .group_by(AgentConversation.id, AgentConversation.updated_at)
             )
 
@@ -135,11 +150,11 @@ class ConversationSearchStore:
             rows = result.all()
             next_cursor = None
             if len(rows) > limit:
-                tail_conv, tail_rank = rows[limit]
+                rows = rows[:limit]
+                tail_conv, tail_rank = rows[-1]
                 next_cursor = encode_search_cursor(
                     float(tail_rank or 0.0), tail_conv.updated_at, tail_conv.id
                 )
-                rows = rows[:limit]
 
             if not rows:
                 return ConversationSearchPage(items=[], next_cursor=None)
@@ -147,7 +162,21 @@ class ConversationSearchStore:
             ids = [row[0].id for row in rows]
             messages = await session.execute(
                 select(AgentMessage)
+                .join(
+                    ConversationLedgerSegment,
+                    ConversationLedgerSegment.id == AgentMessage.segment_id,
+                )
                 .where(AgentMessage.conversation_id.in_(ids))
+                .where(
+                    or_(
+                        ConversationLedgerSegment.truncated_at.is_(None),
+                        and_(
+                            ConversationLedgerSegment.visible_through_message_position.isnot(None),
+                            AgentMessage.position
+                            <= ConversationLedgerSegment.visible_through_message_position,
+                        ),
+                    )
+                )
                 .order_by(AgentMessage.conversation_id, AgentMessage.position)
             )
             message_rows: Sequence[AgentMessage] = messages.scalars().all()

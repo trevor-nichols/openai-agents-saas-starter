@@ -1,7 +1,6 @@
 services:
   vault-dev:
     image: hashicorp/vault:1.17.5
-    container_name: vault-dev
     cap_add:
       - IPC_LOCK
     environment:

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 
 import { getRefreshTokenFromCookies } from '@/lib/auth/cookies';
 import { destroySession, exchangeCredentials, refreshSessionWithBackend } from '@/lib/auth/session';
+import { MfaRequiredError } from '@/lib/server/services/auth.errors';
 
 interface LoginActionInput {
   email: string;
@@ -14,6 +15,7 @@ interface LoginActionInput {
 interface AuthActionResult {
   success: boolean;
   error?: string;
+  mfa?: unknown;
 }
 
 export async function loginAction({ email, password, tenantId }: LoginActionInput): Promise<AuthActionResult> {
@@ -31,6 +33,9 @@ export async function loginAction({ email, password, tenantId }: LoginActionInpu
     });
     return { success: true };
   } catch (error) {
+    if (error instanceof MfaRequiredError) {
+      return { success: false, mfa: error.payload };
+    }
     return { success: false, error: resolveAuthErrorMessage(error) };
   }
 }

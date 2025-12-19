@@ -3,21 +3,22 @@
 import { useMemo, useState } from 'react';
 
 import { ErrorState } from '@/components/ui/states';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { USE_API_MOCK } from '@/lib/config';
 import {
   useWorkflowDescriptorQuery,
-  useWorkflowRunEventsQuery,
   useWorkflowRunQuery,
+  useWorkflowRunReplayEventsQuery,
   useWorkflowsQuery,
 } from '@/lib/queries/workflows';
 import type { LocationHint } from '@/lib/api/client/types.gen';
-import { RunHistoryPanel } from './components/RunHistoryPanel';
-import { RunConsole } from './components/RunConsole';
-import { WorkflowSidebar } from './components/WorkflowSidebar';
+
+import { WorkflowCanvas, WorkflowRunFeed, WorkflowSidebar } from './components';
 import type { WorkflowStatusFilter } from './constants';
 import {
   useWorkflowRunActions,
   useWorkflowRunStream,
+  useWorkflowNodeStreamStore,
   useWorkflowRunsInfinite,
   useWorkflowSelection,
 } from './hooks';
@@ -44,10 +45,7 @@ export function WorkflowsWorkspace() {
   const runs = useWorkflowRunsInfinite(runFilters);
 
   const runDetailQuery = useWorkflowRunQuery(selectedRunId ?? '', Boolean(selectedRunId));
-  const runEventsQuery = useWorkflowRunEventsQuery(
-    selectedRunId ?? null,
-    runDetailQuery.data?.conversation_id ?? null,
-  );
+  const runReplayQuery = useWorkflowRunReplayEventsQuery(selectedRunId ?? null);
 
   const {
     events: streamEvents,
@@ -62,16 +60,23 @@ export function WorkflowsWorkspace() {
     onRunCreated: (runId, workflowKey) => setRun(runId, workflowKey ?? selectedWorkflowKey),
   });
 
+  const nodeStreamStore = useWorkflowNodeStreamStore({
+    descriptor: descriptorQuery.data ?? null,
+    events: streamEvents,
+  });
+
   const activeStreamStep = useMemo(() => {
     // Pick the latest event that carries step metadata
     for (let i = streamEvents.length - 1; i >= 0; i -= 1) {
       const evt = streamEvents[i];
-      if (evt?.step_name || evt?.stage_name || evt?.parallel_group) {
+      if (!evt) continue;
+      const workflow = evt.workflow;
+      if (workflow?.step_name || workflow?.stage_name || workflow?.parallel_group) {
         return {
-          stepName: evt.step_name ?? null,
-          stageName: evt.stage_name ?? null,
-          parallelGroup: evt.parallel_group ?? null,
-          branchIndex: typeof evt.branch_index === 'number' ? evt.branch_index : null,
+          stepName: workflow?.step_name ?? null,
+          stageName: workflow?.stage_name ?? null,
+          parallelGroup: workflow?.parallel_group ?? null,
+          branchIndex: typeof workflow?.branch_index === 'number' ? workflow.branch_index : null,
         } as const;
       }
     }
@@ -86,7 +91,7 @@ export function WorkflowsWorkspace() {
     onAfterDelete: async () => {
       await runs.refetch();
       await runDetailQuery.refetch();
-      await runEventsQuery.refetch();
+      await runReplayQuery.refetch();
     },
   });
 
@@ -105,58 +110,68 @@ export function WorkflowsWorkspace() {
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)_320px]">
-      <WorkflowSidebar
-        workflows={workflows}
-        isLoadingWorkflows={isWorkflowsLoading}
-        selectedKey={selectedWorkflowKey}
-        onSelect={setWorkflow}
-        descriptor={descriptorQuery.data ?? null}
-        isLoadingDescriptor={descriptorQuery.isLoading}
-        activeStep={activeStreamStep}
-      />
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <ResizablePanelGroup direction="horizontal" className="h-full min-h-0 border-t">
+            <ResizablePanel defaultSize={20} minSize={15} maxSize={30} className="min-h-0 bg-background">
+                <WorkflowSidebar
+                    workflows={workflows}
+                    isLoadingWorkflows={isWorkflowsLoading}
+                    selectedKey={selectedWorkflowKey}
+                    onSelect={setWorkflow}
+                />
+            </ResizablePanel>
+            
+            <ResizableHandle />
+            
+            <ResizablePanel defaultSize={55} minSize={30} className="min-h-0 bg-muted/5 relative">
+                <WorkflowCanvas
+                    descriptor={descriptorQuery.data ?? null}
+                    nodeStreamStore={nodeStreamStore}
+                    activeStep={activeStreamStep}
+                    selectedKey={selectedWorkflowKey}
+                    onRun={handleRun}
+                    isRunning={isStreaming}
+                    runError={runError}
+                    isLoadingWorkflows={isWorkflowsLoading}
+                    streamStatus={streamStatus}
+                />
+            </ResizablePanel>
 
-      <div className="space-y-4">
-        <RunConsole
-          workflows={workflows}
-          selectedWorkflowKey={selectedWorkflowKey}
-          onRun={handleRun}
-          isRunning={isStreaming}
-          isLoadingWorkflows={isWorkflowsLoading}
-          runError={runError}
-          streamStatus={streamStatus}
-          isMockMode={USE_API_MOCK}
-          onSimulate={simulate}
-          streamEvents={streamEvents}
-          lastRunSummary={lastSummary}
-          lastUpdated={lastUpdated}
-          selectedRunId={selectedRunId}
-          runDetail={runDetailQuery.data ?? null}
-          runEvents={runEventsQuery.data ?? null}
-          isLoadingRun={runDetailQuery.isLoading}
-          isLoadingEvents={runEventsQuery.isLoading}
-          onCancelRun={cancelRun}
-          cancelPending={cancelPending}
-          onDeleteRun={deleteRun}
-          deletingRunId={deletingRunId}
-        />
-      </div>
+            <ResizableHandle />
 
-      <RunHistoryPanel
-        runs={runs.runs}
-        workflows={workflows}
-        statusFilter={statusFilter}
-        onStatusChange={setStatusFilter}
-        onRefresh={runs.refetch}
-        onLoadMore={runs.loadMore}
-        hasMore={runs.hasMore}
-        isLoading={runs.isInitialLoading}
-        isFetchingMore={runs.isLoadingMore}
-        onSelectRun={(runId, workflowKey) => setRun(runId, workflowKey ?? selectedWorkflowKey)}
-        selectedRunId={selectedRunId}
-        onDeleteRun={deleteRun}
-        deletingRunId={deletingRunId}
-      />
+            <ResizablePanel defaultSize={25} minSize={20} maxSize={40} className="min-h-0 bg-background">
+                <WorkflowRunFeed
+                    workflows={workflows}
+                    streamEvents={streamEvents}
+                    streamStatus={streamStatus}
+                    runError={runError}
+                    isMockMode={USE_API_MOCK}
+                    onSimulate={simulate}
+                    lastRunSummary={lastSummary}
+                    lastUpdated={lastUpdated}
+                    selectedRunId={selectedRunId}
+                    
+                    runDetail={runDetailQuery.data ?? null}
+                    runReplayEvents={runReplayQuery.data ?? null}
+                    isLoadingRun={runDetailQuery.isLoading}
+                    isLoadingReplay={runReplayQuery.isLoading}
+                    onCancelRun={cancelRun}
+                    cancelPending={cancelPending}
+                    onDeleteRun={deleteRun}
+                    deletingRunId={deletingRunId}
+
+                    historyRuns={runs.runs}
+                    historyStatusFilter={statusFilter}
+                    onHistoryStatusChange={setStatusFilter}
+                    onHistoryRefresh={runs.refetch}
+                    onHistoryLoadMore={runs.loadMore}
+                    historyHasMore={runs.hasMore}
+                    isHistoryLoading={runs.isInitialLoading}
+                    isHistoryFetchingMore={runs.isLoadingMore}
+                    onSelectRun={(runId, workflowKey) => setRun(runId, workflowKey ?? selectedWorkflowKey)}
+                />
+            </ResizablePanel>
+        </ResizablePanelGroup>
     </div>
   );
 }

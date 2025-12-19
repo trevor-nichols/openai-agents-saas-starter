@@ -21,14 +21,24 @@ import { Children } from 'react';
 
 export type PromptInputProps = HTMLAttributes<HTMLFormElement>;
 
-export const PromptInput = ({ className, ...props }: PromptInputProps) => (
-  <form
-    className={cn(
-      'w-full divide-y overflow-hidden rounded-xl border bg-background shadow-sm',
-      className
-    )}
-    {...props}
-  />
+export type PromptInputVariant = 'default' | 'composer';
+
+const promptInputVariants: Record<PromptInputVariant, string> = {
+  default: 'w-full divide-y overflow-hidden rounded-xl border bg-background shadow-sm',
+  composer:
+    'w-full divide-y-0 overflow-hidden rounded-xl border bg-background shadow-lg transition-all focus-within:ring-1 focus-within:ring-ring',
+};
+
+export type PromptInputWithVariantProps = PromptInputProps & {
+  variant?: PromptInputVariant;
+};
+
+export const PromptInput = ({
+  className,
+  variant = 'default',
+  ...props
+}: PromptInputWithVariantProps) => (
+  <form className={cn(promptInputVariants[variant], className)} {...props} />
 );
 
 export type PromptInputTextareaProps = ComponentProps<typeof Textarea> & {
@@ -40,8 +50,9 @@ export const PromptInputTextarea = ({
   onChange,
   className,
   placeholder = 'What would you like to know?',
-  minHeight: _minHeight = 48,
-  maxHeight: _maxHeight = 164,
+  minHeight = 48,
+  maxHeight = 164,
+  style,
   ...props
 }: PromptInputTextareaProps) => {
   const handleKeyDown: KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
@@ -64,7 +75,11 @@ export const PromptInputTextarea = ({
     <Textarea
       className={cn(
         'w-full resize-none rounded-none border-none p-3 shadow-none outline-none ring-0',
-        'field-sizing-content max-h-[6lh] bg-transparent dark:bg-transparent',
+        'field-sizing-content bg-transparent dark:bg-transparent',
+        '[scrollbar-color:hsl(var(--border))_transparent] [scrollbar-width:thin]',
+        '[&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5',
+        '[&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:bg-clip-content [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-transparent',
+        '[&::-webkit-scrollbar-track]:bg-transparent',
         'focus-visible:ring-0',
         className
       )}
@@ -74,6 +89,11 @@ export const PromptInputTextarea = ({
       }}
       onKeyDown={handleKeyDown}
       placeholder={placeholder}
+      style={{
+        ...style,
+        maxHeight,
+        minHeight,
+      }}
       {...props}
     />
   );

@@ -12,6 +12,7 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.infrastructure.persistence.conversations.message_store import ConversationMessageStore
+from app.infrastructure.persistence.conversations.ledger_models import ConversationLedgerSegment
 from app.infrastructure.persistence.conversations.search_store import ConversationSearchStore
 from app.infrastructure.persistence.conversations.models import AgentConversation, AgentMessage
 from app.infrastructure.persistence.models.base import Base
@@ -43,14 +44,24 @@ async def test_search_returns_hits(session_factory: async_sessionmaker[AsyncSess
             created_at=datetime.now(UTC),
             updated_at=datetime.now(UTC),
         )
+        segment_id = UUID("11111111-1111-1111-1111-111111111111")
+        segment = ConversationLedgerSegment(
+            id=segment_id,
+            tenant_id=conv.tenant_id,
+            conversation_id=conv.id,
+            segment_index=0,
+            created_at=conv.created_at,
+            updated_at=conv.updated_at,
+        )
         msg = AgentMessage(
             conversation_id=conv.id,
+            segment_id=segment_id,
             position=0,
             role="assistant",
             content={"text": "Searchable content foobar"},
             created_at=datetime.now(UTC),
         )
-        session.add_all([conv, msg])
+        session.add_all([conv, segment, msg])
         await session.commit()
 
     page = await search.search_conversations(
@@ -70,7 +81,7 @@ async def test_search_paginates_with_cursor(session_factory: async_sessionmaker[
     search = ConversationSearchStore(session_factory)
     async with session_factory() as session:
         base_ts = datetime.now(UTC)
-        items = []
+        items: list[object] = []
         for i in range(3):
             conv = AgentConversation(
                 id=UUID(int=1000 + i),
@@ -81,8 +92,20 @@ async def test_search_paginates_with_cursor(session_factory: async_sessionmaker[
                 created_at=base_ts,
                 message_count=1,
             )
+            segment_id = UUID(int=2000 + i)
+            items.append(
+                ConversationLedgerSegment(
+                    id=segment_id,
+                    tenant_id=conv.tenant_id,
+                    conversation_id=conv.id,
+                    segment_index=0,
+                    created_at=base_ts,
+                    updated_at=base_ts,
+                )
+            )
             msg = AgentMessage(
                 conversation_id=conv.id,
+                segment_id=segment_id,
                 position=0,
                 role="assistant",
                 content={"text": f"shared term number {i}"},

@@ -26,10 +26,17 @@ from app.infrastructure.persistence.models.base import Base  # noqa: E402
 
 # Ensure all ORM metadata is registered before Alembic inspects Base metadata.
 importlib.import_module("app.infrastructure.persistence.auth.models")
-importlib.import_module("app.infrastructure.persistence.conversations.models")
 importlib.import_module("app.infrastructure.persistence.billing.models")
+importlib.import_module("app.infrastructure.persistence.containers.models")
+importlib.import_module("app.infrastructure.persistence.conversations.models")
+importlib.import_module("app.infrastructure.persistence.conversations.ledger_models")
+importlib.import_module("app.infrastructure.persistence.storage.models")
+importlib.import_module("app.infrastructure.persistence.status.models")
+importlib.import_module("app.infrastructure.persistence.stripe.models")
+importlib.import_module("app.infrastructure.persistence.tenants.models")
 importlib.import_module("app.infrastructure.persistence.vector_stores.models")
 importlib.import_module("app.infrastructure.persistence.activity.models")
+importlib.import_module("app.infrastructure.persistence.workflows.models")
 
 config = context.config
 

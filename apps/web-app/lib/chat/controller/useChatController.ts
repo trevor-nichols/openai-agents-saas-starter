@@ -1,33 +1,39 @@
 import {
   useCallback,
-  useEffect,
   useMemo,
   useReducer,
   useRef,
   useState,
-  type Dispatch,
 } from 'react';
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 
-import { deleteConversationById, fetchConversationMessages } from '@/lib/api/conversations';
-import { streamChat } from '@/lib/api/chat';
+import {
+  deleteConversationById,
+  deleteConversationMessage,
+} from '@/lib/api/conversations';
 import { useSendChatMutation } from '@/lib/queries/chat';
 import { queryKeys } from '@/lib/queries/keys';
 import type { ConversationListItem } from '@/types/conversations';
-import type { ChatMessage, ConversationLifecycleStatus, ToolState } from '../types';
-import type { ConversationMessagesPage } from '@/types/conversations';
-import type { LocationHint } from '@/lib/api/client/types.gen';
+import type {
+  ChatMessage,
+  ConversationLifecycleStatus,
+  ToolEventAnchors,
+  ToolState,
+} from '../types';
+import type { LocationHint, PublicSseEvent } from '@/lib/api/client/types.gen';
+import type { ReasoningPart } from '@/lib/streams/publicSseV1/reasoningParts';
 
 import { createLogger } from '@/lib/logging';
-import { consumeChatStream } from '../adapters/chatStreamAdapter';
 import {
-  createConversationListEntry,
   dedupeAndSortMessages,
-  mapMessagesToChatMessages,
   normalizeLocationPayload,
 } from '../mappers/chatRequestMappers';
-import { upsertConversationCaches } from '../cache/conversationCache';
-import { messagesReducer, type MessagesAction } from '../state/messagesReducer';
+import { messagesReducer } from '../state/messagesReducer';
+import { useMessageDispatchQueue } from './useMessageDispatchQueue';
+import { useConversationHistory } from './useConversationHistory';
+import { useToolTimeline } from './useToolTimeline';
+import { runChatTurn } from './turn/runChatTurn';
+import { resetTurnRuntimeRefs, resetViewRuntimeRefs, type TurnRuntimeRefs } from './turn/turnRuntime';
 
 const log = createLogger('chat-controller');
 
@@ -42,9 +48,11 @@ type UseChatControllerOptions = ChatControllerCallbacks;
 
 export interface UseChatControllerReturn {
   messages: ChatMessage[];
+  streamEvents: PublicSseEvent[];
   isSending: boolean;
   isLoadingHistory: boolean;
   isClearingConversation: boolean;
+  isDeletingMessage: boolean;
   errorMessage: string | null;
   historyError: string | null;
   currentConversationId: string | null;
@@ -53,7 +61,9 @@ export interface UseChatControllerReturn {
   activeAgent: string;
   agentNotices: AgentNotice[];
   toolEvents: ToolState[];
+  toolEventAnchors: ToolEventAnchors;
   reasoningText: string;
+  reasoningParts: ReasoningPart[];
   lifecycleStatus: ConversationLifecycleStatus;
   hasOlderMessages: boolean;
   isFetchingOlderMessages: boolean;
@@ -64,6 +74,7 @@ export interface UseChatControllerReturn {
   selectConversation: (conversationId: string) => Promise<void>;
   startNewConversation: () => void;
   deleteConversation: (conversationId: string) => Promise<void>;
+  deleteMessage: (messageId: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -86,19 +97,51 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
   const queryClient = useQueryClient();
 
   const [messages, dispatchMessages] = useReducer(messagesReducer, []);
+  const [streamEvents, setStreamEvents] = useState<PublicSseEvent[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [isClearingConversation, setIsClearingConversation] = useState(false);
+  const [isDeletingMessage, setIsDeletingMessage] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [historyError, setHistoryError] = useState<string | null>(null);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [selectedAgent, setSelectedAgentState] = useState<string>('triage');
   const [activeAgent, setActiveAgent] = useState<string>('triage');
   const [agentNotices, setAgentNotices] = useState<AgentNotice[]>([]);
   const [toolEvents, setToolEvents] = useState<ToolState[]>([]);
+  const [toolEventAnchors, setToolEventAnchors] = useState<ToolEventAnchors>({});
   const [reasoningText, setReasoningText] = useState('');
+  const [reasoningParts, setReasoningParts] = useState<ReasoningPart[]>([]);
   const [lifecycleStatus, setLifecycleStatus] = useState<ConversationLifecycleStatus>('idle');
   const lastActiveAgentRef = useRef<string>('triage');
   const lastResponseIdRef = useRef<string | null>(null);
+  const turnUserMessageIdRef = useRef<string | null>(null);
+  const assistantIdNonceRef = useRef<number>(0);
+  const messageItemToUiIdRef = useRef<Map<string, string>>(new Map());
+  const assistantTurnMessagesRef = useRef<Array<{ itemId: string; uiId: string; outputIndex: number }>>([]);
+  const lastAssistantMessageUiIdRef = useRef<string | null>(null);
+  const latestAssistantTextByUiIdRef = useRef<Map<string, string>>(new Map());
+
+  const turnRuntimeRefs = useMemo<TurnRuntimeRefs>(
+    () => ({
+      lastActiveAgentRef,
+      lastResponseIdRef,
+      turnUserMessageIdRef,
+      assistantIdNonceRef,
+      messageItemToUiIdRef,
+      assistantTurnMessagesRef,
+      lastAssistantMessageUiIdRef,
+      latestAssistantTextByUiIdRef,
+    }),
+    [
+      assistantIdNonceRef,
+      assistantTurnMessagesRef,
+      lastActiveAgentRef,
+      lastAssistantMessageUiIdRef,
+      lastResponseIdRef,
+      latestAssistantTextByUiIdRef,
+      messageItemToUiIdRef,
+      turnUserMessageIdRef,
+    ],
+  );
 
   const invalidateMessagesCache = useCallback(
     async (conversationId: string | null) => {
@@ -114,101 +157,101 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
     [queryClient],
   );
 
-  const messagesQueryKey = useMemo(
-    () => queryKeys.conversations.messages(currentConversationId ?? 'preview'),
-    [currentConversationId],
+  const invalidateLedgerCache = useCallback(
+    async (conversationId: string | null) => {
+      if (!conversationId) return;
+      try {
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.conversations.ledger(conversationId),
+        });
+      } catch (error) {
+        console.warn('[useChatController] Failed to invalidate ledger cache', error);
+      }
+    },
+    [queryClient],
   );
 
   const {
-    data: messagesPages,
-    isLoading: isLoadingMessages,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    error: messagesError,
-    refetch: refetchMessages,
-  } = useInfiniteQuery<ConversationMessagesPage>({
-    queryKey: messagesQueryKey,
-    enabled: Boolean(currentConversationId),
-    queryFn: ({ pageParam }) =>
-      fetchConversationMessages({
-        conversationId: currentConversationId as string,
-        limit: 50,
-        cursor: (pageParam as string | null) ?? null,
-        direction: 'desc',
-      }),
-    getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
-    initialPageParam: null as string | null,
-    staleTime: 30 * 1000,
-    retry: false,
-  });
-
-  useEffect(() => {
-    if (messagesError) {
-      const message =
-        messagesError instanceof Error
-          ? messagesError.message
-          : 'Failed to load conversation messages.';
-      setHistoryError(message);
-    }
-  }, [messagesError, setHistoryError]);
-
-  useEffect(() => {
-    if (messagesPages) {
-      setHistoryError(null);
-    }
-  }, [messagesPages, setHistoryError]);
-
-  const historyMessages = useMemo(() => {
-    if (!messagesPages?.pages) return [] as ChatMessage[];
-    const flattened = messagesPages.pages.flatMap((page: ConversationMessagesPage) => page.items ?? []);
-    return dedupeAndSortMessages(
-      mapMessagesToChatMessages(flattened, currentConversationId ?? undefined),
-    );
-  }, [messagesPages?.pages, currentConversationId]);
+    historyMessagesWithMarkers,
+    ledgerEvents,
+    isLoadingHistory,
+    historyError,
+    hasOlderMessages,
+    isFetchingOlderMessages,
+    loadOlderMessages,
+    retryMessages,
+    clearHistoryError,
+  } = useConversationHistory(currentConversationId);
 
   const mergedMessages = useMemo(
-    () => dedupeAndSortMessages([...historyMessages, ...messages]),
-    [historyMessages, messages],
+    () => dedupeAndSortMessages([...historyMessagesWithMarkers, ...messages]),
+    [historyMessagesWithMarkers, messages],
   );
-
-  const isLoadingHistory = Boolean(currentConversationId) && isLoadingMessages && !messagesPages;
+  const { toolEvents: combinedToolEvents, toolEventAnchors: combinedToolEventAnchors } =
+    useToolTimeline({
+      ledgerEvents,
+      historyMessagesWithMarkers,
+      liveToolEvents: toolEvents,
+      liveToolEventAnchors: toolEventAnchors,
+      liveMessages: messages,
+      mergedMessages,
+    });
 
   const { enqueueMessageAction, flushQueuedMessages } = useMessageDispatchQueue(dispatchMessages);
 
   const resetViewState = useCallback(() => {
     dispatchMessages({ type: 'reset' });
+    setStreamEvents([]);
     setErrorMessage(null);
-    setHistoryError(null);
+    clearHistoryError();
     setToolEvents([]);
+    setToolEventAnchors({});
     setReasoningText('');
+    setReasoningParts([]);
     setAgentNotices([]);
     setLifecycleStatus('idle');
     setActiveAgent(selectedAgent);
-    lastActiveAgentRef.current = selectedAgent;
-    lastResponseIdRef.current = null;
-  }, [selectedAgent]);
+    resetViewRuntimeRefs(turnRuntimeRefs, selectedAgent);
+  }, [clearHistoryError, selectedAgent, turnRuntimeRefs]);
 
   const resetTurnState = useCallback(() => {
+    setStreamEvents([]);
     setReasoningText('');
+    setReasoningParts([]);
     setToolEvents([]);
+    setToolEventAnchors({});
     setLifecycleStatus('idle');
-  }, []);
+    resetTurnRuntimeRefs(turnRuntimeRefs);
+  }, [turnRuntimeRefs]);
 
   const appendAgentNotice = useCallback((text: string) => {
     setAgentNotices((prev) => [...prev, { id: `agent-${Date.now()}`, text }]);
   }, []);
 
+  const appendStreamEvent = useCallback((event: PublicSseEvent) => {
+    setStreamEvents((prev) => {
+      const next = [...prev, event];
+      // Guard: prevent unbounded growth during very long streams.
+      if (next.length <= 2000) return next;
+      return next.slice(next.length - 2000);
+    });
+  }, []);
+
   const selectConversation = useCallback(
     async (conversationId: string) => {
-      if (!conversationId || conversationId === currentConversationId) {
+      if (
+        !conversationId ||
+        conversationId === currentConversationId ||
+        isDeletingMessage ||
+        isClearingConversation
+      ) {
         return;
       }
 
       log.debug('Selecting conversation', { conversationId });
       dispatchMessages({ type: 'reset' });
       setErrorMessage(null);
-      setHistoryError(null);
+      clearHistoryError();
       resetTurnState();
       setAgentNotices([]);
       setActiveAgent(selectedAgent);
@@ -216,7 +259,14 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
 
       setCurrentConversationId(conversationId);
     },
-    [currentConversationId, resetTurnState, selectedAgent],
+    [
+      clearHistoryError,
+      currentConversationId,
+      isClearingConversation,
+      isDeletingMessage,
+      resetTurnState,
+      selectedAgent,
+    ],
   );
 
   const setSelectedAgent = useCallback((agentName: string) => {
@@ -233,12 +283,12 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
 
   const sendMessage = useCallback(
     async (messageText: string, options?: SendMessageOptions) => {
-      if (!messageText.trim() || isSending) {
+      if (!messageText.trim() || isSending || isDeletingMessage || isClearingConversation) {
         return;
       }
 
       const shareLocation = options?.shareLocation ?? false;
-      const locationPayload = normalizeLocationPayload(shareLocation, options?.location);
+      const locationPayload = normalizeLocationPayload(shareLocation, options?.location) ?? null;
 
       // Reset per-turn streaming state
       resetTurnState();
@@ -254,186 +304,38 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
         ? { previous_response_id: lastResponseIdRef.current }
         : undefined;
 
-      const userMessage: ChatMessage = {
-        id: `user-${Date.now()}`,
-        role: 'user',
-        content: messageText,
-        timestamp: new Date().toISOString(),
-      };
-      dispatchMessages({ type: 'append', message: userMessage });
-
-      const assistantMessageId = `assistant-${Date.now()}`;
-      const assistantPlaceholderMessage: ChatMessage = {
-        id: assistantMessageId,
-        role: 'assistant',
-        content: '▋',
-        timestamp: new Date().toISOString(),
-        isStreaming: true,
-      };
-      dispatchMessages({ type: 'append', message: assistantPlaceholderMessage });
-
       const previousConversationId = currentConversationId;
 
       try {
-        const stream = streamChat({
-          message: messageText,
-          conversationId: previousConversationId,
-          agentType: selectedAgent,
-          shareLocation,
-          location: locationPayload,
-          runOptions,
-        });
-
-        const streamResult = await consumeChatStream(stream, {
-          onTextDelta: (contentWithCursor) =>
-            enqueueMessageAction({
-              type: 'updateById',
-              id: assistantMessageId,
-              patch: { content: contentWithCursor, isStreaming: true },
-            }),
-          onReasoningDelta: (delta) => setReasoningText((prev) => `${prev}${delta}`),
-          onToolStates: setToolEvents,
-          onLifecycle: setLifecycleStatus,
-          onAgentChange: (agent) => {
-            setActiveAgent(agent);
-            lastActiveAgentRef.current = agent;
-          },
-          onAgentNotice: (notice) => {
-            const current = lastActiveAgentRef.current;
-            if (notice.endsWith(current)) return;
-            appendAgentNotice(notice);
-          },
-          onAttachments: (attachments) =>
-            enqueueMessageAction({
-              type: 'updateById',
-              id: assistantMessageId,
-              patch: { attachments: attachments ?? null },
-            }),
-          onStructuredOutput: (structuredOutput) =>
-            enqueueMessageAction({
-              type: 'updateById',
-              id: assistantMessageId,
-              patch: { structuredOutput },
-            }),
-          onError: (errorText) => {
-            setErrorMessage(errorText);
-            enqueueMessageAction({
-              type: 'updateById',
-              id: assistantMessageId,
-              patch: { content: `Error: ${errorText}`, isStreaming: false },
-            });
-          },
-        });
-
-        if (streamResult.errored) {
-          flushQueuedMessages();
-          return;
-        }
-
-        enqueueMessageAction({
-          type: 'updateById',
-          id: assistantMessageId,
-          patch: {
-            content: streamResult.finalContent,
-            isStreaming: false,
-            attachments: streamResult.attachments ?? null,
-            structuredOutput: streamResult.structuredOutput ?? null,
-            citations: streamResult.citations ?? null,
-          },
-        });
-        flushQueuedMessages();
-
-        setLifecycleStatus(streamResult.lifecycleStatus);
-
-        if (streamResult.responseId) {
-          lastResponseIdRef.current = streamResult.responseId;
-        }
-
-        if (streamResult.conversationId) {
-          const resolvedConversationId = streamResult.conversationId;
-          log.debug('Stream completed', {
-            conversationId: resolvedConversationId,
-            createdNew: !previousConversationId,
-          });
-          const entry = createConversationListEntry(messageText, resolvedConversationId);
-          // Fire-and-forget cache refresh to keep composer responsive
-          void upsertConversationCaches({
-            queryClient,
-            resolvedConversationId,
-            previousConversationId,
-            entry,
-            setCurrentConversationId,
-            onConversationAdded,
-            onConversationUpdated,
-          });
-          // Ensure paginated messages refresh picks up the new turn
-          void invalidateMessagesCache(resolvedConversationId);
-        }
-      } catch (error) {
-        console.error('[useChatController] Streaming failed, falling back to mutation:', error);
-        log.debug('Stream failed, attempting fallback', {
-          error,
+        await runChatTurn({
+          messageText,
           previousConversationId,
+          selectedAgent,
+          shareLocation,
+          locationPayload,
+          runOptions,
+          dispatchMessages,
+          enqueueMessageAction,
+          flushQueuedMessages,
+          setErrorMessage,
+          setToolEvents,
+          setToolEventAnchors,
+          setReasoningText,
+          setReasoningParts,
+          setLifecycleStatus,
+          setActiveAgent,
+          appendAgentNotice,
+          appendStreamEvent,
+          refs: turnRuntimeRefs,
+          queryClient,
+          setCurrentConversationId,
+          onConversationAdded,
+          onConversationUpdated,
+          invalidateMessagesCache,
+          invalidateLedgerCache,
+          sendChatFallback: sendChatMutation.mutateAsync,
+          log,
         });
-        try {
-          const fallbackResponse = await sendChatMutation.mutateAsync({
-            message: messageText,
-            conversation_id: previousConversationId ?? undefined,
-            agent_type: selectedAgent,
-            context: null,
-            share_location: shareLocation,
-            location: locationPayload,
-            run_options: runOptions,
-          });
-
-          dispatchMessages({
-            type: 'updateById',
-            id: assistantMessageId,
-            patch: {
-              content: fallbackResponse.response,
-              isStreaming: false,
-              attachments: fallbackResponse.attachments ?? null,
-              structuredOutput: fallbackResponse.structured_output ?? null,
-            },
-          });
-
-          const fallbackConversationId = fallbackResponse.conversation_id;
-          if (fallbackConversationId) {
-            lastResponseIdRef.current = null;
-            const resolvedConversationId = fallbackConversationId;
-            log.debug('Fallback succeeded', {
-              conversationId: resolvedConversationId,
-              createdNew:
-                !previousConversationId || previousConversationId !== resolvedConversationId,
-            });
-            const entry = createConversationListEntry(messageText, resolvedConversationId);
-            // Fire-and-forget cache refresh to keep composer responsive
-            void upsertConversationCaches({
-              queryClient,
-              resolvedConversationId,
-              previousConversationId,
-              entry,
-              setCurrentConversationId,
-              onConversationAdded,
-              onConversationUpdated,
-            });
-            void invalidateMessagesCache(resolvedConversationId);
-          }
-        } catch (fallbackError) {
-          console.error('[useChatController] Fallback send failed:', fallbackError);
-          const message =
-            fallbackError instanceof Error ? fallbackError.message : 'Fallback send failed.';
-          setErrorMessage(message);
-          log.debug('Fallback send failed', {
-            error: fallbackError,
-          });
-          dispatchMessages({ type: 'removeById', id: assistantMessageId });
-          dispatchMessages({
-            type: 'updateById',
-            id: userMessage.id,
-            patch: { content: `${userMessage.content} (Error sending)` },
-          });
-        }
       } finally {
         setIsSending(false);
       }
@@ -441,6 +343,9 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
     [
       currentConversationId,
       isSending,
+      isClearingConversation,
+      isDeletingMessage,
+      appendStreamEvent,
       appendAgentNotice,
       enqueueMessageAction,
       flushQueuedMessages,
@@ -451,6 +356,14 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       selectedAgent,
       sendChatMutation,
       invalidateMessagesCache,
+      invalidateLedgerCache,
+      setActiveAgent,
+      setLifecycleStatus,
+      setReasoningText,
+      setReasoningParts,
+      setToolEventAnchors,
+      setToolEvents,
+      turnRuntimeRefs,
     ],
   );
 
@@ -499,32 +412,68 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
     ],
   );
 
+  const deleteMessage = useCallback(
+    async (messageId: string) => {
+      const conversationId = currentConversationId;
+      if (!conversationId || !messageId || isSending || isClearingConversation || isDeletingMessage) {
+        return;
+      }
+
+      if (!/^[0-9]+$/.test(messageId)) {
+        setErrorMessage('Only saved user messages can be deleted.');
+        return;
+      }
+
+      log.debug('Deleting message', { conversationId, messageId });
+      setIsDeletingMessage(true);
+      setErrorMessage(null);
+
+      try {
+        await deleteConversationMessage({ conversationId, messageId });
+
+        resetViewState();
+
+        queryClient.removeQueries({ queryKey: queryKeys.conversations.messages(conversationId) });
+        queryClient.removeQueries({ queryKey: queryKeys.conversations.ledger(conversationId) });
+        queryClient.removeQueries({ queryKey: queryKeys.conversations.detail(conversationId) });
+
+        void invalidateMessagesCache(conversationId);
+        void invalidateLedgerCache(conversationId);
+        void queryClient.invalidateQueries({ queryKey: queryKeys.conversations.lists() });
+
+        reloadConversations?.();
+      } catch (error) {
+        console.error('[useChatController] Failed to delete message:', error);
+        const message = error instanceof Error ? error.message : 'Failed to delete message.';
+        setErrorMessage(message);
+        log.debug('Delete message failed', { conversationId, messageId, error });
+      } finally {
+        setIsDeletingMessage(false);
+      }
+    },
+    [
+      currentConversationId,
+      invalidateLedgerCache,
+      invalidateMessagesCache,
+      isClearingConversation,
+      isDeletingMessage,
+      isSending,
+      queryClient,
+      reloadConversations,
+      resetViewState,
+    ],
+  );
+
   const clearError = useCallback(() => setErrorMessage(null), []);
-  const clearHistoryError = useCallback(() => setHistoryError(null), []);
-
-  const loadOlderMessages = useCallback(async () => {
-    if (!hasNextPage) return;
-    try {
-      await fetchNextPage();
-    } catch (error) {
-      console.error('[useChatController] Failed to load older messages:', error);
-      setHistoryError(
-        error instanceof Error ? error.message : 'Failed to load older messages.',
-      );
-    }
-  }, [fetchNextPage, hasNextPage]);
-
-  const retryMessages = useCallback(() => {
-    setHistoryError(null);
-    void refetchMessages();
-  }, [refetchMessages]);
 
   return useMemo(
     () => ({
       messages: mergedMessages,
+      streamEvents,
       isSending,
       isLoadingHistory,
       isClearingConversation,
+      isDeletingMessage,
       errorMessage,
       historyError,
       currentConversationId,
@@ -532,11 +481,13 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       setSelectedAgent,
       activeAgent,
       agentNotices,
-      toolEvents,
+      toolEvents: combinedToolEvents,
+      toolEventAnchors: combinedToolEventAnchors,
       reasoningText,
+      reasoningParts,
       lifecycleStatus,
-      hasOlderMessages: Boolean(hasNextPage),
-      isFetchingOlderMessages: isFetchingNextPage,
+      hasOlderMessages,
+      isFetchingOlderMessages,
       loadOlderMessages,
       retryMessages,
       clearHistoryError,
@@ -544,13 +495,16 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       selectConversation,
       startNewConversation,
       deleteConversation,
+      deleteMessage,
       clearError,
     }),
     [
       mergedMessages,
+      streamEvents,
       isSending,
       isLoadingHistory,
       isClearingConversation,
+      isDeletingMessage,
       errorMessage,
       historyError,
       currentConversationId,
@@ -560,54 +514,21 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       selectConversation,
       startNewConversation,
       deleteConversation,
+      deleteMessage,
       clearError,
       activeAgent,
       agentNotices,
-      toolEvents,
+      combinedToolEvents,
+      combinedToolEventAnchors,
       reasoningText,
+      reasoningParts,
       lifecycleStatus,
-      hasNextPage,
-      isFetchingNextPage,
+      hasOlderMessages,
+      isFetchingOlderMessages,
       loadOlderMessages,
       retryMessages,
       clearHistoryError,
     ],
   );
 
-}
-
-function useMessageDispatchQueue(dispatch: Dispatch<MessagesAction>) {
-  const queueRef = useRef<MessagesAction[]>([]);
-  const frameRef = useRef<number | null>(null);
-
-  const flushQueuedMessages = useCallback(() => {
-    if (!queueRef.current.length) {
-      frameRef.current = null;
-      return;
-    }
-    dispatch({ type: 'batch', actions: queueRef.current });
-    queueRef.current = [];
-    frameRef.current = null;
-  }, [dispatch]);
-
-  const enqueueMessageAction = useCallback(
-    (action: MessagesAction) => {
-      queueRef.current.push(action);
-      if (frameRef.current === null) {
-        frameRef.current = requestAnimationFrame(flushQueuedMessages);
-      }
-    },
-    [flushQueuedMessages],
-  );
-
-  useEffect(() => {
-    return () => {
-      if (frameRef.current !== null) {
-        cancelAnimationFrame(frameRef.current);
-      }
-      queueRef.current = [];
-    };
-  }, []);
-
-  return { enqueueMessageAction, flushQueuedMessages };
 }

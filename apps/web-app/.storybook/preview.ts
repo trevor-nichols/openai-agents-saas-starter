@@ -51,12 +51,22 @@ const preview: Preview = {
         method: 'alphabetical',
       },
     },
+    nextjs: {
+      navigation: {
+        pathname: '/',
+        push: () => {},
+        replace: () => {},
+        refresh: () => {},
+        forward: () => {},
+        back: () => {},
+      },
+    },
   },
   globalTypes: {
     theme: {
       name: 'Theme',
       description: 'Global theme for components',
-      defaultValue: 'dark',
+      defaultValue: 'light',
       toolbar: {
         icon: 'circlehollow',
         items: [

@@ -106,6 +106,7 @@ def test_record_from_model_composes_messages() -> None:
         updated_at=datetime.now(UTC),
     )
     msg = AgentMessage(
+        segment_id=UUID("11111111-1111-1111-1111-111111111111"),
         conversation_id=conv.id,
         position=0,
         role="assistant",

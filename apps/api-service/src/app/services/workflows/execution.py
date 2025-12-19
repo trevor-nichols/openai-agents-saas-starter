@@ -5,8 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 from app.domain.ai import AgentRunResult, RunOptions
-from app.workflows.schema_utils import validate_against_schema
-from app.workflows.specs import WorkflowStep
+from app.workflows._shared.schema_utils import validate_against_schema
+from app.workflows._shared.specs import WorkflowStep
 
 
 async def execute_agent_step(

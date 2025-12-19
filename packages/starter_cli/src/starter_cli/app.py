@@ -19,7 +19,7 @@ Handler = Callable[[argparse.Namespace, CLIContext], int]
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="starter-cli",
-        description="Operator tooling for the OpenAI Agents starter stack.",
+        description="Operator tooling for the OpenAI Agents SaaS starter stack.",
     )
     parser.add_argument(
         "--env-file",

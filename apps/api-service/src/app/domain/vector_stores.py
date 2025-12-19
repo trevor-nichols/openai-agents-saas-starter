@@ -76,6 +76,33 @@ class AgentVectorStoreBinding:
     tenant_id: uuid.UUID
 
 
+# --- Search models ---
+
+
+@dataclass(slots=True)
+class VectorStoreSearchContentChunk:
+    type: str
+    text: str
+
+
+@dataclass(slots=True)
+class VectorStoreSearchResult:
+    file_id: str
+    filename: str
+    score: float
+    attributes: dict[str, object] = field(default_factory=dict)
+    content: list[VectorStoreSearchContentChunk] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class VectorStoreSearchResultsPage:
+    object: str
+    search_query: str
+    data: list[VectorStoreSearchResult] = field(default_factory=list)
+    has_more: bool = False
+    next_page: str | None = None
+
+
 # --- Repository contracts ---
 
 
@@ -141,6 +168,9 @@ __all__ = [
     "VectorStore",
     "VectorStoreFile",
     "AgentVectorStoreBinding",
+    "VectorStoreSearchContentChunk",
+    "VectorStoreSearchResult",
+    "VectorStoreSearchResultsPage",
     "VectorStoreRepository",
     "VectorStoreFileRepository",
     "AgentVectorStoreRepository",

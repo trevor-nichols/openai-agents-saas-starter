@@ -9,15 +9,37 @@ Key primitives:
 - `WorkflowStage`: name, mode, steps, optional `reducer` (dotted path `outputs, prior_steps -> next_input`).
 - `WorkflowSpec`: declarative container; `step_count` sums steps across stages.
 
+## Relationship to agents
+- Workflows reference existing agents by `agent_key`; they do not redefine prompts, tools, guardrails, models, or memory. All of that comes from the underlying `AgentSpec`.
+- Agent-level guardrails, tool guardrails, and memory defaults still apply when a workflow step invokes that agent.
+- Use `input_mapper` to shape what each step receives; use stage `reducer` to merge parallel outputs; use step or workflow `output_schema` to validate structured outputs.
+- If you need a new capability, add it to the agent spec (prompt/tools/guardrails) first, then reference that agent in the workflow.
+
+## Guards & input mappers
+- `guard`: dotted callable `(request, prior_outputs, ctx) -> bool`; when False, the step is skipped.
+- `input_mapper`: dotted callable `(request, prior_outputs, ctx) -> str | dict | list`; return value becomes the next step’s input message/content.
+- Both are looked up by dotted path; keep them in module-level functions for importability and reuse.
+- For parallel stages, `prior_outputs` is the list of branch outputs; for sequential, it is the previous step’s output.
+
+## Authoring checklist
+- [ ] Define `WorkflowSpec` in `app/workflows/<key>/spec.py` with `key`, `display_name`, `description`.
+- [ ] Choose `steps` (single stage) or `stages` with explicit `mode` and optional `reducer` for parallel fan-in.
+- [ ] Confirm every `agent_key` exists (and is loaded) in agent specs; add capabilities to the agent spec if needed.
+- [ ] Add `guard` / `input_mapper` dotted paths if conditional logic or reshaping is required.
+- [ ] Add step-level `output_schema` or workflow `output_schema` if you need validation.
+- [ ] Set `allow_handoff_agents=True` only if you expect agents in the workflow to perform handoffs.
+- [ ] Add tests if the workflow is business-critical; reuse shared guards/mappers where possible.
+
 Runtime behavior (see `services/workflows/runner.py`):
 - Entire workflow runs inside `agents.trace` for unified observability.
 - Sequential stages behave like the prior implementation.
 - Parallel stages use `asyncio.gather` (sync) or multiplexed streams (streaming) and tag results with `stage_name`, `parallel_group`, `branch_index`.
+- Memory strategies: Workflows do **not** declare memory settings. Each step inherits the agent's resolved memory configuration (request → conversation → agent spec defaults). If a step calls an agent with trim/summarize/compact enabled, that run uses the strategy automatically; other agents in the same workflow keep their own defaults. Prompt summaries are injected per agent run when enabled; there is no cross-agent handoff-based summarizer.
 
 Example (fan-out + synthesis):
 
 ```python
-from app.workflows.specs import WorkflowSpec, WorkflowStage, WorkflowStep
+from app.workflows._shared.specs import WorkflowSpec, WorkflowStage, WorkflowStep
 
 def concat(outputs, _):
     return " | ".join(str(o) for o in outputs if o is not None)

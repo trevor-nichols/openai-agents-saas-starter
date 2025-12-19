@@ -194,7 +194,7 @@ def test_login_invalid_credentials_returns_401(fake_auth_service, client: TestCl
     assert response.status_code == 401
     body = response.json()
     assert body["message"] == "Invalid email or password."
-    assert body["error"] == "Invalid email or password."
+    assert body["error"] == "Unauthorized"
 
 
 def test_login_locked_account_returns_423(fake_auth_service, client: TestClient) -> None:
@@ -213,7 +213,7 @@ def test_login_locked_account_returns_423(fake_auth_service, client: TestClient)
     assert response.status_code == 423
     body = response.json()
     assert body["message"] == "Account locked due to failures."
-    assert body["error"] == "Account locked due to failures."
+    assert body["error"] == "Locked"
 
 
 def test_login_missing_tenant_returns_401(fake_auth_service, client: TestClient) -> None:
@@ -232,7 +232,7 @@ def test_login_missing_tenant_returns_401(fake_auth_service, client: TestClient)
     assert response.status_code == 401
     body = response.json()
     assert body["message"] == "User is not assigned to this tenant."
-    assert body["error"] == "User is not assigned to this tenant."
+    assert body["error"] == "Unauthorized"
 
 
 def test_refresh_success_returns_new_tokens(fake_auth_service, client: TestClient) -> None:
@@ -272,7 +272,7 @@ def test_refresh_revoked_returns_401(fake_auth_service, client: TestClient) -> N
     assert response.status_code == 401
     body = response.json()
     assert body["message"] == "Refresh token has been revoked or expired."
-    assert body["error"] == "Refresh token has been revoked or expired."
+    assert body["error"] == "Unauthorized"
 
 
 def test_password_forgot_endpoint(fake_password_recovery_service, client: TestClient) -> None:
@@ -308,10 +308,9 @@ def test_password_forgot_delivery_failure(
     )
 
     assert response.status_code == 502
-    assert (
-        response.json()["error"]
-        == "Unable to send password reset email. Please try again shortly."
-    )
+    body = response.json()
+    assert body["error"] == "BadGateway"
+    assert body["message"] == "Unable to send password reset email. Please try again shortly."
 
 
 def test_password_confirm_endpoint_success(
@@ -341,7 +340,8 @@ def test_password_confirm_invalid_token_returns_400(
 
     assert response.status_code == 400
     body = response.json()
-    assert body["error"] == "Password reset token is invalid or expired."
+    assert body["error"] == "BadRequest"
+    assert body["message"] == "Password reset token is invalid or expired."
 
 
 def test_email_send_endpoint(fake_email_verification_service, client: TestClient) -> None:
@@ -378,10 +378,9 @@ def test_email_send_endpoint_delivery_failure(
     )
 
     assert response.status_code == 502
-    assert (
-        response.json()["error"]
-        == "Unable to send verification email. Please try again shortly."
-    )
+    body = response.json()
+    assert body["error"] == "BadGateway"
+    assert body["message"] == "Unable to send verification email. Please try again shortly."
 
 
 def test_email_send_endpoint_skips_when_verified(client: TestClient) -> None:
@@ -420,7 +419,8 @@ def test_email_verify_endpoint_invalid_token(
 
     assert response.status_code == 400
     body = response.json()
-    assert body["error"] == "Verification token is invalid or expired."
+    assert body["error"] == "BadRequest"
+    assert body["message"] == "Verification token is invalid or expired."
 
 
 def test_logout_single_session_success(fake_auth_service, client: TestClient) -> None:
@@ -458,7 +458,7 @@ def test_logout_single_session_forbidden_on_service_error(
     assert response.status_code == 403
     body = response.json()
     assert body["message"] == "Refresh token does not belong to the authenticated user."
-    assert body["error"] == "Refresh token does not belong to the authenticated user."
+    assert body["error"] == "Forbidden"
 
 
 def test_logout_all_endpoint(fake_auth_service, client: TestClient) -> None:
@@ -557,7 +557,8 @@ def test_me_endpoint_rejects_refresh_token(client: TestClient) -> None:
 
     assert response.status_code == 401
     body = response.json()
-    assert body["error"] == "Access token required."
+    assert body["error"] == "Unauthorized"
+    assert body["message"] == "Access token required."
 
 
 def test_password_change_endpoint(fake_auth_service, fake_user_service, client: TestClient) -> None:

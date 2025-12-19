@@ -1,11 +1,19 @@
 import { Reasoning, ReasoningContent, ReasoningTrigger } from '@/components/ui/ai/reasoning';
+import { ReasoningParts } from '@/components/ui/ai/reasoning-parts';
+import type { ReasoningPart } from '@/lib/streams/publicSseV1/reasoningParts';
 
 interface ReasoningPanelProps {
   reasoningText?: string;
+  reasoningParts?: ReasoningPart[];
   isStreaming: boolean;
 }
 
-export function ReasoningPanel({ reasoningText, isStreaming }: ReasoningPanelProps) {
+export function ReasoningPanel({ reasoningText, reasoningParts, isStreaming }: ReasoningPanelProps) {
+  const hasParts = Boolean(reasoningParts?.length);
+  if (hasParts) {
+    return <ReasoningParts parts={reasoningParts ?? []} isStreaming={isStreaming} defaultOpen />;
+  }
+
   if (!reasoningText) return null;
 
   return (

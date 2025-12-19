@@ -1,4 +1,4 @@
-import { RefObject } from 'react';
+import { RefObject, useRef } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { GlassPanel } from '@/components/ui/foundation';
@@ -29,15 +29,18 @@ interface ConversationSidebarViewProps {
   groupedConversations: Record<DateGroup, ConversationListItem[]>;
   groupOrder: DateGroup[];
   recentLoading: boolean;
+  recentFetchingMore: boolean;
   recentCount: number;
   searchResults: ConversationListItem[];
   isSearching: boolean;
+  isFetchingMoreSearchResults: boolean;
   showSearchEmpty: boolean;
   currentConversationId: string | null;
   onSelectConversation: (id: string) => void;
   onDeleteConversation?: (id: string) => void;
+  onRenameConversation?: (conversation: ConversationListItem) => void;
   onNewConversation: () => void;
-  infiniteScrollRef: RefObject<HTMLDivElement | null>;
+  infiniteScrollRef?: RefObject<HTMLDivElement | null>;
 }
 
 export function ConversationSidebarView({
@@ -52,17 +55,26 @@ export function ConversationSidebarView({
   groupedConversations,
   groupOrder,
   recentLoading,
+  recentFetchingMore,
   recentCount,
   searchResults,
   isSearching,
+  isFetchingMoreSearchResults,
   showSearchEmpty,
   currentConversationId,
   onSelectConversation,
   onDeleteConversation,
+  onRenameConversation,
   onNewConversation,
   infiniteScrollRef,
 }: ConversationSidebarViewProps) {
-  const showLoader = (tab === 'recent' ? recentLoading : isSearching) && (recentCount > 0 || searchResults.length > 0);
+  const fallbackRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = infiniteScrollRef ?? fallbackRef;
+
+  const showLoader =
+    tab === 'recent'
+      ? recentFetchingMore && recentCount > 0
+      : isFetchingMoreSearchResults && searchResults.length > 0;
 
   const content = (
     <>
@@ -75,7 +87,7 @@ export function ConversationSidebarView({
       <Tabs
         value={tab}
         onValueChange={(value) => onTabChange(value as ConversationSidebarTab)}
-        className="flex flex-1 flex-col overflow-hidden"
+        className="flex min-h-0 flex-1 flex-col overflow-hidden"
       >
         {showTabs && (
           <div className="px-4 pb-2">
@@ -90,7 +102,7 @@ export function ConversationSidebarView({
           </div>
         )}
 
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex min-h-0 flex-1">
           <div className="flex w-full min-w-0 max-w-full flex-col py-2">
             {tab === 'recent' ? (
               recentLoading && recentCount === 0 ? (
@@ -104,6 +116,7 @@ export function ConversationSidebarView({
                   currentConversationId={currentConversationId}
                   onSelectConversation={onSelectConversation}
                   onDeleteConversation={onDeleteConversation}
+                  onRenameConversation={onRenameConversation}
                 />
               )
             ) : isSearching && searchResults.length === 0 ? (
@@ -118,12 +131,12 @@ export function ConversationSidebarView({
                 currentConversationId={currentConversationId}
                 onSelectConversation={onSelectConversation}
                 onDeleteConversation={onDeleteConversation}
+                onRenameConversation={onRenameConversation}
               />
             )}
 
-            <div ref={infiniteScrollRef}>
-              {showLoader ? <ConversationListLoader /> : null}
-            </div>
+            <div ref={sentinelRef} aria-hidden="true" className="h-px w-full opacity-0" />
+            {showLoader ? <ConversationListLoader /> : null}
           </div>
         </ScrollArea>
       </Tabs>

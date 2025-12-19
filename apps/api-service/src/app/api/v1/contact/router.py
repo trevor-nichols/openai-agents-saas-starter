@@ -7,8 +7,11 @@ from dataclasses import asdict
 from fastapi import APIRouter, HTTPException, Request, status
 
 from app.api.dependencies import raise_rate_limit_http_error
-from app.api.models.common import SuccessResponse
-from app.api.models.contact import ContactSubmissionRequest, ContactSubmissionResponse
+from app.api.models.contact import (
+    ContactSubmissionRequest,
+    ContactSubmissionResponse,
+    ContactSubmissionSuccessResponse,
+)
 from app.api.v1.auth.utils import extract_client_ip, extract_user_agent
 from app.core.settings import get_settings
 from app.services.contact_service import (
@@ -23,10 +26,12 @@ router = APIRouter(tags=["contact"])
 
 @router.post(
     "/contact",
-    response_model=SuccessResponse,
+    response_model=ContactSubmissionSuccessResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
-async def submit_contact(payload: ContactSubmissionRequest, request: Request) -> SuccessResponse:
+async def submit_contact(
+    payload: ContactSubmissionRequest, request: Request
+) -> ContactSubmissionSuccessResponse:
     client_ip = extract_client_ip(request)
     await _enforce_contact_quota(payload.email, client_ip)
 
@@ -51,7 +56,7 @@ async def submit_contact(payload: ContactSubmissionRequest, request: Request) ->
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     response = ContactSubmissionResponse.model_validate(asdict(result))
-    return SuccessResponse(
+    return ContactSubmissionSuccessResponse(
         message="Thanks for reaching out. We'll respond soon.",
         data=response,
     )

@@ -1,0 +1,74 @@
+from __future__ import annotations
+
+from app.api.v1.shared.public_stream_projector import PublicStreamProjector
+from app.domain.ai.models import AgentStreamEvent
+from app.services.agents.streaming_pipeline import build_guardrail_summary
+
+
+def test_public_stream_projector_does_not_emit_guardrail_events():
+    internal_event = AgentStreamEvent(
+        kind="guardrail_result",
+        conversation_id="conv1",
+        agent="triage",
+        guardrail_stage="input",
+        guardrail_key="pii_detection_input",
+        guardrail_name="PII Detection (Input)",
+        guardrail_tripwire_triggered=True,
+        guardrail_suppressed=False,
+        guardrail_flagged=True,
+        guardrail_confidence=0.9,
+        guardrail_masked_content="[redacted]",
+        guardrail_token_usage={"total_tokens": 12},
+        guardrail_details={"flagged": True},
+    )
+
+    projector = PublicStreamProjector(stream_id="test_stream")
+    public_events = projector.project(
+        internal_event,
+        conversation_id="conv1",
+        response_id="resp1",
+        agent="triage",
+        workflow_meta=None,
+        server_timestamp="2025-12-15T00:00:00Z",
+    )
+    assert public_events == []
+
+
+def test_guardrail_summary_builder():
+    events = [
+        {
+            "guardrail_stage": "input",
+            "guardrail_key": "pii_detection_input",
+            "guardrail_tripwire_triggered": True,
+            "guardrail_suppressed": False,
+            "guardrail_token_usage": {"total_tokens": 5, "prompt_tokens": 2},
+        },
+        {
+            "guardrail_stage": "output",
+            "guardrail_key": "nsfw_text",
+            "guardrail_tripwire_triggered": False,
+            "guardrail_suppressed": False,
+            "guardrail_token_usage": {"total_tokens": 7, "completion_tokens": 3},
+        },
+        {
+            "guardrail_stage": "input",
+            "guardrail_key": "off_topic_prompts",
+            "guardrail_tripwire_triggered": True,
+            "guardrail_suppressed": True,
+        },
+    ]
+
+    summary = build_guardrail_summary(events)
+
+    assert summary["total"] == 3
+    assert summary["triggered"] == 2
+    assert summary["suppressed"] == 1
+    assert summary["by_stage"]["input"]["total"] == 2
+    assert summary["by_stage"]["input"]["triggered"] == 2
+    assert summary["by_stage"]["output"]["total"] == 1
+    assert summary["by_key"]["pii_detection_input"] == 1
+    assert summary["by_key"]["nsfw_text"] == 1
+    assert summary["by_key"]["off_topic_prompts"] == 1
+    assert summary["token_usage"]["total_tokens"] == 12
+    assert summary["token_usage"]["prompt_tokens"] == 2
+    assert summary["token_usage"]["completion_tokens"] == 3

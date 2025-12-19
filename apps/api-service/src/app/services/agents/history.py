@@ -31,10 +31,7 @@ class ConversationHistoryService:
         )
         if record is None:
             raise ConversationNotFoundError(f"Conversation {conversation_id} not found")
-
         messages = record.messages
-        if not messages:
-            raise ConversationNotFoundError(f"Conversation {conversation_id} not found")
 
         await self._attachments.presign_message_attachments(
             messages, tenant_id=actor.tenant_id
@@ -43,6 +40,7 @@ class ConversationHistoryService:
         api_messages = [self._to_chat_message(msg) for msg in messages]
         return ConversationHistory(
             conversation_id=conversation_id,
+            display_name=record.display_name,
             messages=api_messages,
             created_at=record.created_at.isoformat(),
             updated_at=record.updated_at.isoformat(),
@@ -76,6 +74,7 @@ class ConversationHistoryService:
             summaries.append(
                 ConversationSummary(
                     conversation_id=record.conversation_id,
+                    display_name=record.display_name,
                     agent_entrypoint=record.agent_entrypoint,
                     active_agent=record.active_agent,
                     topic_hint=record.topic_hint,
@@ -141,6 +140,7 @@ class ConversationHistoryService:
     @staticmethod
     def _to_chat_message(message) -> ChatMessage:
         return ChatMessage(
+            message_id=getattr(message, "message_id", None),
             role=message.role,
             content=message.content,
             timestamp=message.timestamp.isoformat(),

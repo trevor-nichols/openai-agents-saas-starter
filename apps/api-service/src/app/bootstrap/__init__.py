@@ -7,6 +7,8 @@ from .container import (
     set_container,
     shutdown_container,
     wire_conversation_query_service,
+    wire_storage_service,
+    wire_title_service,
 )
 
 __all__ = [
@@ -16,4 +18,6 @@ __all__ = [
     "set_container",
     "shutdown_container",
     "wire_conversation_query_service",
+    "wire_storage_service",
+    "wire_title_service",
 ]

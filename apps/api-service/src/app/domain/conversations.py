@@ -5,11 +5,19 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
 
 class ConversationNotFoundError(RuntimeError):
     """Raised when a conversation lookup fails for the given tenant."""
+
+
+class ConversationMessageNotFoundError(RuntimeError):
+    """Raised when a message lookup fails for the given conversation."""
+
+
+class ConversationMessageNotDeletableError(RuntimeError):
+    """Raised when a requested message cannot be deleted (e.g., not a user message)."""
 
 
 @dataclass(slots=True)
@@ -18,6 +26,8 @@ class ConversationMessage:
 
     role: Literal["user", "assistant", "system"]
     content: str
+    message_id: str | None = None
+    position: int | None = None
     timestamp: datetime = field(default_factory=datetime.utcnow)
     attachments: list[ConversationAttachment] = field(default_factory=list)
 
@@ -62,10 +72,12 @@ class ConversationRecord:
 
     conversation_id: str
     messages: list[ConversationMessage]
+    display_name: str | None = None
     agent_entrypoint: str | None = None
     active_agent: str | None = None
     topic_hint: str | None = None
     status: str | None = None
+    title_generated_at: datetime | None = None
     created_at_value: datetime | None = None
     updated_at_value: datetime | None = None
 
@@ -149,6 +161,51 @@ class ConversationSessionState:
     sdk_session_id: str | None = None
     session_cursor: str | None = None
     last_session_sync_at: datetime | None = None
+
+
+@dataclass(slots=True)
+class ConversationMemoryConfig:
+    """Persisted memory strategy defaults for a conversation."""
+
+    strategy: str | None = None
+    max_user_turns: int | None = None
+    keep_last_turns: int | None = None
+    compact_trigger_turns: int | None = None
+    compact_keep: int | None = None
+    clear_tool_inputs: bool | None = None
+    memory_injection: bool | None = None
+
+
+@dataclass(slots=True)
+class ConversationSummary:
+    """Cross-session summary snapshot."""
+
+    conversation_id: str
+    agent_key: str | None
+    summary_text: str
+    summary_model: str | None = None
+    summary_length_tokens: int | None = None
+    version: str | None = None
+    created_at: datetime | None = None
+
+
+@dataclass(slots=True)
+class ConversationRunUsage:
+    """Per-run usage record for audit/analytics."""
+
+    conversation_id: str
+    response_id: str | None
+    run_id: str | None
+    agent_key: str | None
+    provider: str | None
+    requests: int | None
+    input_tokens: int | None
+    output_tokens: int | None
+    total_tokens: int | None
+    cached_input_tokens: int | None
+    reasoning_output_tokens: int | None
+    request_usage_entries: list[Mapping[str, Any]] | None
+    created_at: datetime
 
 
 class ConversationRepository(Protocol):
@@ -248,3 +305,94 @@ class ConversationRepository(Protocol):
         tenant_id: str,
         workflow_run_id: str | None = None,
     ) -> list[ConversationEvent]: ...
+
+    async def get_memory_config(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+    ) -> ConversationMemoryConfig | None: ...
+
+    async def set_memory_config(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        config: ConversationMemoryConfig,
+        provided_fields: set[str] | None = None,
+    ) -> None: ...
+
+    async def persist_summary(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        agent_key: str | None,
+        summary_text: str,
+        summary_model: str | None = None,
+        summary_length_tokens: int | None = None,
+        version: str | None = None,
+    ) -> None: ...
+
+    async def get_latest_summary(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        agent_key: str | None,
+        max_age_seconds: int | None = None,
+    ) -> ConversationSummary | None: ...
+
+    async def add_run_usage(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        usage: ConversationRunUsage,
+    ) -> None: ...
+
+    async def list_run_usage(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        limit: int = 20,
+    ) -> list[ConversationRunUsage]: ...
+
+    async def set_display_name(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        display_name: str,
+        generated_at: datetime | None = None,
+    ) -> bool: ...
+
+    async def update_display_name(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        display_name: str,
+    ) -> None: ...
+
+
+__all__ = [
+    "ConversationAttachment",
+    "ConversationEvent",
+    "ConversationMessage",
+    "ConversationMetadata",
+    "ConversationNotFoundError",
+    "ConversationMessageNotDeletableError",
+    "ConversationMessageNotFoundError",
+    "ConversationPage",
+    "ConversationRecord",
+    "ConversationRepository",
+    "ConversationSearchHit",
+    "ConversationSearchPage",
+    "ConversationSessionState",
+    "ConversationMemoryConfig",
+    "ConversationSummary",
+    "ConversationRunUsage",
+    "MessagePage",
+]

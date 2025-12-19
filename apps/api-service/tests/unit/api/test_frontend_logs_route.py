@@ -11,25 +11,23 @@ import importlib
 
 logs_module = importlib.import_module("app.api.v1.logs.router")
 from app.api.v1.logs.router import MAX_BODY_BYTES
-from app.core.settings import Settings
+from app.api.errors import register_exception_handlers
+from app.core.settings import get_settings
 from app.services.shared.rate_limit_service import rate_limiter
 
 
 @pytest.fixture()
 def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     app = FastAPI()
+    register_exception_handlers(app)
 
     async def _noop_enforce(*args, **kwargs):
         return None
 
     monkeypatch.setattr(rate_limiter, "enforce", _noop_enforce)
-    settings = Settings.model_validate(
-        {
-            "ALLOW_ANON_FRONTEND_LOGS": True,
-            "FRONTEND_LOG_SHARED_SECRET": "secret",
-        }
-    )
-    monkeypatch.setattr(logs_module, "get_settings", lambda: settings)
+    monkeypatch.setenv("ALLOW_ANON_FRONTEND_LOGS", "true")
+    monkeypatch.setenv("FRONTEND_LOG_SHARED_SECRET", "secret")
+    get_settings.cache_clear()
 
     app.include_router(logs_module.router, prefix="/api/v1")
     return TestClient(app)
@@ -60,7 +58,11 @@ def test_ingest_rejects_oversized_payload(client: TestClient) -> None:
         headers={"x-log-signature": _sig(body, "secret")},
     )
     assert resp.status_code == 413
-    assert resp.json()["detail"] == "Log payload too large."
+    payload = resp.json()
+    assert payload["success"] is False
+    assert payload["error"] == "PayloadTooLarge"
+    assert payload["message"] == "Log payload too large."
+    assert payload["details"]["max_bytes"] == MAX_BODY_BYTES
 
 
 def test_ingest_strips_reserved_fields(client: TestClient) -> None:
@@ -83,6 +85,21 @@ def test_ingest_strips_reserved_fields(client: TestClient) -> None:
     )
     assert resp.status_code == 202
     assert resp.json().get("accepted") is True
+
+
+def test_ingest_rejects_missing_signature(client: TestClient) -> None:
+    body: Payload = {"event": "ui.click", "message": "ok"}
+    raw = client_payload(body)
+    resp = client.post(
+        "/api/v1/logs",
+        content=cast(bytes, raw),
+        headers={"content-type": "application/json"},
+    )
+    assert resp.status_code == 401
+    payload = resp.json()
+    assert payload["success"] is False
+    assert payload["error"] == "Unauthorized"
+    assert payload["message"] == "Missing log signature."
 
 
 Payload = dict[str, object]

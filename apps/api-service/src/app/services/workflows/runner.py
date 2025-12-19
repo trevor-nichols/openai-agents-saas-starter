@@ -2,32 +2,69 @@
 
 from __future__ import annotations
 
-import inspect
+import json
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 from uuid import uuid4
 
 from agents import trace
 
-from app.domain.ai.models import AgentStreamEvent
-from app.domain.conversations import ConversationMessage, ConversationMetadata
+from app.domain.ai.models import AgentRunUsage, AgentStreamEvent
+from app.domain.conversations import (
+    ConversationAttachment,
+    ConversationMessage,
+    ConversationMetadata,
+)
 from app.domain.workflows import WorkflowRunRepository
+from app.services.agents.attachment_utils import collect_container_file_citations_from_event
+from app.services.agents.attachments import AttachmentService
 from app.services.agents.context import ConversationActorContext
 from app.services.agents.event_log import EventProjector
 from app.services.agents.interaction_context import InteractionContextBuilder
 from app.services.agents.provider_registry import AgentProviderRegistry, get_provider_registry
+from app.services.agents.session_items import compute_session_delta, get_session_items
 from app.services.conversation_service import ConversationService, get_conversation_service
 from app.services.workflows.recording import WorkflowRunRecorder
 from app.services.workflows.stages import run_parallel_stage, run_sequential_stage
 from app.services.workflows.streaming import stream_parallel_stage, stream_sequential_stage
 from app.services.workflows.types import WorkflowRunResult, WorkflowStepResult
-from app.workflows.registry import WorkflowRegistry
-from app.workflows.schema_utils import schema_to_json_schema, validate_against_schema
-from app.workflows.specs import WorkflowSpec
+from app.workflows._shared.registry import WorkflowRegistry
+from app.workflows._shared.schema_utils import schema_to_json_schema, validate_against_schema
+from app.workflows._shared.specs import WorkflowSpec
 
 logger = logging.getLogger(__name__)
+
+
+def _aggregate_usage(usages: list[AgentRunUsage | None]) -> AgentRunUsage | None:
+    totals: dict[str, int] = {}
+    saw_any = False
+    for usage in usages:
+        if usage is None:
+            continue
+        for field_name in (
+            "input_tokens",
+            "output_tokens",
+            "total_tokens",
+            "cached_input_tokens",
+            "reasoning_output_tokens",
+            "requests",
+        ):
+            value = getattr(usage, field_name, None)
+            if isinstance(value, int):
+                totals[field_name] = totals.get(field_name, 0) + value
+                saw_any = True
+    if not saw_any:
+        return None
+    return AgentRunUsage(
+        input_tokens=totals.get("input_tokens"),
+        output_tokens=totals.get("output_tokens"),
+        total_tokens=totals.get("total_tokens"),
+        cached_input_tokens=totals.get("cached_input_tokens"),
+        reasoning_output_tokens=totals.get("reasoning_output_tokens"),
+        requests=totals.get("requests"),
+    )
 
 
 class WorkflowRunner:
@@ -41,6 +78,7 @@ class WorkflowRunner:
         cancellation_tracker: set[str] | None = None,
         conversation_service: ConversationService | None = None,
         event_projector: EventProjector | None = None,
+        attachment_service: AttachmentService | None = None,
     ) -> None:
         self._registry = registry
         self._provider_registry = provider_registry or get_provider_registry()
@@ -50,23 +88,7 @@ class WorkflowRunner:
         self._cancellations = cancellation_tracker or set()
         self._conversation_service = conversation_service or get_conversation_service()
         self._event_projector = event_projector or EventProjector(self._conversation_service)
-
-    async def _get_session_items(self, session_handle: Any) -> list[dict[str, Any]]:
-        getter = getattr(session_handle, "get_items", None)
-        if getter is None or not callable(getter):
-            return []
-        try:
-            result = getter()
-            items = await result if inspect.isawaitable(result) else result
-            if not items:
-                return []
-            if isinstance(items, list):
-                return list(items)
-            if isinstance(items, (tuple, set)):  # noqa: UP038 - tuple is runtime-safe for isinstance
-                return list(items)
-            return []
-        except Exception:
-            return []
+        self._attachment_service = attachment_service
 
     async def _ingest_session_delta(
         self,
@@ -82,13 +104,15 @@ class WorkflowRunner:
         session_items: list[dict[str, Any]] | None = None,
     ) -> None:
         post_items = (
-            session_items
-            if session_items is not None
-            else await self._get_session_items(session_handle)
+            session_items if session_items is not None else await get_session_items(session_handle)
         )
         if not post_items:
             return
-        delta = post_items if session_items is not None else post_items[len(pre_items) :]
+        delta = (
+            post_items
+            if session_items is not None
+            else compute_session_delta(pre_items, post_items)
+        )
         if not delta:
             return
         try:
@@ -110,6 +134,32 @@ class WorkflowRunner:
                     "agent": agent,
                 },
             )
+
+    async def _persist_workflow_assistant_message(
+        self,
+        *,
+        workflow: WorkflowSpec,
+        actor: ConversationActorContext,
+        provider_name: str | None,
+        conversation_id: str,
+        response_text: str,
+        attachments: list[ConversationAttachment],
+        active_agent: str | None,
+    ) -> None:
+        """Persist the workflow result as a single assistant message (chat parity)."""
+
+        await self._conversation_service.append_message(
+            conversation_id,
+            ConversationMessage(role="assistant", content=response_text, attachments=attachments),
+            tenant_id=actor.tenant_id,
+            metadata=ConversationMetadata(
+                tenant_id=actor.tenant_id,
+                agent_entrypoint=workflow.key,
+                active_agent=active_agent,
+                provider=provider_name,
+                user_id=actor.user_id,
+            ),
+        )
 
     async def run(
         self,
@@ -165,7 +215,7 @@ class WorkflowRunner:
         )
 
         async def session_getter():
-            return await self._get_session_items(session_handle)
+            return await get_session_items(session_handle)
 
         async def ingest_session_delta(
             *,
@@ -190,6 +240,9 @@ class WorkflowRunner:
         current_input: Any = message
         steps_results: list[WorkflowStepResult] = []
         stages = workflow.resolved_stages()
+        attachments: list[ConversationAttachment] = []
+        seen_tool_calls: set[str] = set()
+        seen_container_files: set[str] = set()
 
         def _check_cancel() -> None:
             self._raise_if_cancelled(run_id)
@@ -238,6 +291,44 @@ class WorkflowRunner:
                 label="workflow output",
             )
 
+            if self._attachment_service is not None and steps_results:
+                ingest_container_files = self._attachment_service.ingest_container_file_citations
+                for step in steps_results:
+                    tool_outputs = getattr(step.response, "tool_outputs", None)
+                    if not tool_outputs:
+                        continue
+                    images = await self._attachment_service.ingest_image_outputs(
+                        tool_outputs,
+                        actor=actor,
+                        conversation_id=conversation_id,
+                        agent_key=step.agent_key,
+                        response_id=step.response.response_id,
+                        seen_tool_calls=seen_tool_calls,
+                    )
+                    if images:
+                        attachments.extend(images)
+
+                    container_files = await ingest_container_files(
+                        tool_outputs,
+                        actor=actor,
+                        conversation_id=conversation_id,
+                        agent_key=step.agent_key,
+                        response_id=step.response.response_id,
+                        seen_citations=seen_container_files,
+                    )
+                    if container_files:
+                        attachments.extend(container_files)
+
+            await self._persist_workflow_assistant_message(
+                workflow=workflow,
+                actor=actor,
+                provider_name=provider.name,
+                conversation_id=conversation_id,
+                response_text=_render_workflow_output_text(validated_output),
+                attachments=attachments,
+                active_agent=(steps_results[-1].agent_key if steps_results else None),
+            )
+
             await self._recorder.end(
                 run_id,
                 status="succeeded",
@@ -267,6 +358,7 @@ class WorkflowRunner:
             steps=steps_results,
             final_output=validated_output if steps_results else None,
             output_schema=schema_to_json_schema(workflow.output_schema),
+            attachments=attachments,
         )
 
     async def run_stream(
@@ -322,7 +414,7 @@ class WorkflowRunner:
         )
 
         async def session_getter():
-            return await self._get_session_items(session_handle)
+            return await get_session_items(session_handle)
 
         async def ingest_session_delta(
             *,
@@ -347,6 +439,10 @@ class WorkflowRunner:
         current_input: Any = message
         prior_steps: list[WorkflowStepResult] = []
         stages = workflow.resolved_stages()
+        attachments: list[ConversationAttachment] = []
+        seen_tool_calls: set[str] = set()
+        pending_container_citations: list[tuple[Mapping[str, Any], str | None, str | None]] = []
+        seen_container_files: set[str] = set()
 
         def _check_cancel() -> None:
             self._raise_if_cancelled(run_id)
@@ -374,6 +470,17 @@ class WorkflowRunner:
                             session_handle=session_handle,
                             workflow_run_id=run_id,
                         ):
+                            if self._attachment_service is not None:
+                                await _maybe_ingest_workflow_event_attachments(
+                                    event=event,
+                                    attachment_service=self._attachment_service,
+                                    actor=actor,
+                                    conversation_id=conversation_id,
+                                    attachments_out=attachments,
+                                    seen_tool_calls=seen_tool_calls,
+                                    pending_container_citations=pending_container_citations,
+                                    seen_container_files=seen_container_files,
+                                )
                             yield event
                         current_input = stage_state.get(
                             "next_input",
@@ -396,6 +503,17 @@ class WorkflowRunner:
                             ingest_session_delta=ingest_session_delta,
                             session_handle=session_handle,
                         ):
+                            if self._attachment_service is not None:
+                                await _maybe_ingest_workflow_event_attachments(
+                                    event=event,
+                                    attachment_service=self._attachment_service,
+                                    actor=actor,
+                                    conversation_id=conversation_id,
+                                    attachments_out=attachments,
+                                    seen_tool_calls=seen_tool_calls,
+                                    pending_container_citations=pending_container_citations,
+                                    seen_container_files=seen_container_files,
+                                )
                             yield event
                         if prior_steps:
                             current_input = prior_steps[-1].response.final_output
@@ -406,12 +524,84 @@ class WorkflowRunner:
                 label="workflow output",
             )
 
+            if self._attachment_service is not None and pending_container_citations:
+                ingest_container_files = self._attachment_service.ingest_container_file_citations
+                grouped: dict[str, list[tuple[Mapping[str, Any], str | None]]] = {}
+                for citation, agent_key, response_id in pending_container_citations:
+                    grouped.setdefault(agent_key or "", []).append((citation, response_id))
+                for agent_key, items in grouped.items():
+                    citations = [c for c, _ in items]
+                    response_id = next((rid for _, rid in items if rid), None)
+                    container_files = await ingest_container_files(
+                        citations,
+                        actor=actor,
+                        conversation_id=conversation_id,
+                        agent_key=agent_key or (prior_steps[-1].agent_key if prior_steps else ""),
+                        response_id=response_id,
+                    )
+                    if container_files:
+                        attachments.extend(container_files)
+
+            await self._persist_workflow_assistant_message(
+                workflow=workflow,
+                actor=actor,
+                provider_name=provider.name,
+                conversation_id=conversation_id,
+                response_text=_render_workflow_output_text(validated_output),
+                attachments=attachments,
+                active_agent=(prior_steps[-1].agent_key if prior_steps else None),
+            )
+
             await self._recorder.end(
                 run_id,
                 status="succeeded",
                 final_output=validated_output,
                 actor=actor,
                 workflow_key=workflow.key,
+            )
+
+            last_step = prior_steps[-1] if prior_steps else None
+            response_text: str | None = None
+            structured_output: Any | None = None
+            if validated_output is not None:
+                if isinstance(validated_output, str):
+                    response_text = validated_output
+                else:
+                    structured_output = validated_output
+                    try:
+                        response_text = json.dumps(validated_output, ensure_ascii=False)
+                    except Exception:  # pragma: no cover - defensive
+                        response_text = str(validated_output)
+
+            yield AgentStreamEvent(
+                kind="run_item_stream_event",
+                conversation_id=conversation_id,
+                response_id=last_step.response.response_id if last_step else None,
+                agent=last_step.agent_key if last_step else _first_agent_key(workflow),
+                is_terminal=True,
+                response_text=response_text,
+                structured_output=structured_output,
+                usage=_aggregate_usage([step.response.usage for step in prior_steps]),
+                attachments=(
+                    [
+                        cast(
+                            Mapping[str, Any],
+                            self._attachment_service.to_attachment_payload(att),
+                        )
+                        for att in attachments
+                    ]
+                    if self._attachment_service is not None
+                    else None
+                ),
+                metadata={
+                    "workflow_key": workflow.key,
+                    "workflow_run_id": run_id,
+                    "step_name": last_step.name if last_step else None,
+                    "step_agent": last_step.agent_key if last_step else None,
+                    "stage_name": last_step.stage_name if last_step else None,
+                    "parallel_group": last_step.parallel_group if last_step else None,
+                    "branch_index": last_step.branch_index if last_step else None,
+                },
             )
         except _WorkflowCancelled:
             await self._recorder.end(
@@ -473,6 +663,76 @@ def _workflow_agent_keys(workflow: WorkflowSpec) -> list[str]:
         for step in stage.steps:
             seen.add(step.agent_key)
     return list(seen)
+
+
+def _render_workflow_output_text(value: Any) -> str:
+    """Best-effort conversion of a workflow output into message text."""
+
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    try:
+        return json.dumps(value, ensure_ascii=False)
+    except Exception:  # pragma: no cover - defensive
+        return str(value)
+
+
+async def _maybe_ingest_workflow_event_attachments(
+    *,
+    event: AgentStreamEvent,
+    attachment_service: AttachmentService,
+    actor: ConversationActorContext,
+    conversation_id: str,
+    attachments_out: list[ConversationAttachment],
+    seen_tool_calls: set[str],
+    pending_container_citations: list[tuple[Mapping[str, Any], str | None, str | None]],
+    seen_container_files: set[str],
+) -> None:
+    """Ingest any attachments discoverable from a workflow stream event.
+
+    - Images are ingested opportunistically from payload/tool_call mappings.
+    - Code Interpreter container file citations are collected and ingested after
+      the workflow completes (to align persistence with the terminal event).
+    """
+
+    new_citations = collect_container_file_citations_from_event(event, seen=seen_container_files)
+    for ann in new_citations:
+        pending_container_citations.append(
+            (dict(ann), event.step_agent or event.agent, event.response_id)
+        )
+
+    attachment_sources: list[Mapping[str, Any]] = []
+    if isinstance(event.payload, Mapping):
+        attachment_sources.append(event.payload)
+    if isinstance(event.tool_call, Mapping):
+        attachment_sources.append(event.tool_call)
+    if not attachment_sources:
+        return
+
+    agent_key = event.step_agent or event.agent
+    if not agent_key:
+        return
+
+    images = await attachment_service.ingest_image_outputs(
+        attachment_sources,
+        actor=actor,
+        conversation_id=conversation_id,
+        agent_key=str(agent_key),
+        response_id=event.response_id,
+        seen_tool_calls=seen_tool_calls,
+    )
+    if not images:
+        return
+
+    attachments_out.extend(images)
+    payloads: list[Mapping[str, Any]] = [
+        cast(Mapping[str, Any], attachment_service.to_attachment_payload(att)) for att in images
+    ]
+    if event.attachments is None:
+        event.attachments = payloads
+    else:
+        event.attachments.extend(payloads)
 
 
 __all__ = [

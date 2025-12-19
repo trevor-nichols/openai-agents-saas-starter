@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 from collections import defaultdict
 from collections.abc import AsyncGenerator, Generator
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,7 @@ import pytest_asyncio
 import sqlalchemy.ext.asyncio as sqla_async
 from fakeredis.aioredis import FakeRedis
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.ext.compiler import compiles
 from starter_contracts import config as shared_config
 
@@ -34,6 +36,11 @@ os.environ.setdefault("ENABLE_BILLING", "false")
 os.environ.setdefault("ALLOW_PUBLIC_SIGNUP", "true")
 os.environ.setdefault("STARTER_CLI_SKIP_ENV", "true")
 os.environ.setdefault("STARTER_CLI_SKIP_VAULT_PROBE", "true")
+os.environ.setdefault("OPENAI_AGENTS_DISABLE_TRACING", "true")
+os.environ.setdefault("OPENAI_API_KEY", "dummy-test-key")
+
+# Avoid shutdown-unsafe debug logs from Agents SDK during pytest capture teardown.
+logging.getLogger("openai.agents").setLevel(logging.WARNING)
 
 TEST_DB_PATH = Path("test.db")
 if TEST_DB_PATH.exists():
@@ -43,17 +50,34 @@ from app.bootstrap import get_container, reset_container
 from app.core import settings as config_module
 from app.domain.conversations import (
     ConversationEvent,
+    ConversationMemoryConfig,
     ConversationMessage,
     ConversationMetadata,
+    ConversationNotFoundError,
     ConversationPage,
     ConversationRecord,
     ConversationRepository,
     ConversationSearchHit,
     ConversationSearchPage,
     ConversationSessionState,
+    ConversationRunUsage,
+    ConversationSummary,
     MessagePage,
 )
 from app.infrastructure.persistence.models.base import Base
+from app.infrastructure.persistence.activity import models as _activity_models  # noqa: F401
+from app.infrastructure.persistence.auth import models as _auth_models  # noqa: F401
+from app.infrastructure.persistence.billing import models as _billing_models  # noqa: F401
+from app.infrastructure.persistence.containers import models as _container_models  # noqa: F401
+from app.infrastructure.persistence.conversations import models as _conversation_models  # noqa: F401
+from app.infrastructure.persistence.conversations import (  # noqa: F401
+    ledger_models as _conversation_ledger_models,
+)
+from app.infrastructure.persistence.status import models as _status_models  # noqa: F401
+from app.infrastructure.persistence.storage import models as _storage_models  # noqa: F401
+from app.infrastructure.persistence.stripe import models as _stripe_models  # noqa: F401
+from app.infrastructure.persistence.tenants import models as _tenant_models  # noqa: F401
+from app.infrastructure.persistence.vector_stores import models as _vector_store_models  # noqa: F401
 from app.infrastructure.persistence.workflows import models as _workflow_models  # noqa: F401
 from app.infrastructure.providers.openai import build_openai_provider
 from app.services.agents.provider_registry import get_provider_registry
@@ -71,6 +95,11 @@ def _compile_jsonb_to_text(element, compiler, **kwargs):
 
 @compiles(CITEXT, "sqlite")
 def _compile_citext_to_text(element, compiler, **kwargs):
+    return "TEXT"
+
+
+@compiles(PG_UUID, "sqlite")
+def _compile_uuid_to_text(element, compiler, **kwargs):
     return "TEXT"
 
 
@@ -140,6 +169,11 @@ async def _configure_agent_provider(
         # Populate ORM metadata (includes workflow tables via imports above)
         await conn.run_sync(Base.metadata.create_all)
 
+    container = get_container()
+    container.session_factory = sqla_async.async_sessionmaker(
+        _provider_engine, expire_on_commit=False
+    )
+
     registry = get_provider_registry()
     registry.clear()
     registry.register(
@@ -154,7 +188,7 @@ async def _configure_agent_provider(
         set_default=True,
     )
     # Ensure AgentService will be rebuilt against the freshly populated registry
-    get_container().agent_service = None
+    container.agent_service = None
     yield
 
 
@@ -218,6 +252,10 @@ class EphemeralConversationRepository(ConversationRepository):
         self._metadata: dict[tuple[str, str], ConversationMetadata] = {}
         self._session_state: dict[tuple[str, str], ConversationSessionState] = {}
         self._events: dict[tuple[str, str], list[ConversationEvent]] = defaultdict(list)
+        self._display_names: dict[tuple[str, str], tuple[str, datetime | None]] = {}
+        self._memory: dict[tuple[str, str], ConversationMemoryConfig] = {}
+        self._summaries: dict[tuple[str, str], list[ConversationSummary]] = defaultdict(list)
+        self._usage: dict[tuple[str, str], list[ConversationRunUsage]] = defaultdict(list)
 
     async def add_message(
         self,
@@ -257,7 +295,15 @@ class EphemeralConversationRepository(ConversationRepository):
         for (current_tenant, cid), messages in self._messages.items():
             if current_tenant != tenant:
                 continue
-            records.append(ConversationRecord(conversation_id=cid, messages=list(messages)))
+            display_name, generated_at = self._display_names.get((tenant, cid), (None, None))
+            records.append(
+                ConversationRecord(
+                    conversation_id=cid,
+                    messages=list(messages),
+                    display_name=display_name,
+                    title_generated_at=generated_at,
+                )
+            )
         return records
 
     async def get_conversation(
@@ -271,7 +317,13 @@ class EphemeralConversationRepository(ConversationRepository):
         messages = self._messages.get(key, [])
         if not messages:
             return None
-        return ConversationRecord(conversation_id=conversation_id, messages=list(messages))
+        display_name, generated_at = self._display_names.get(key, (None, None))
+        return ConversationRecord(
+            conversation_id=conversation_id,
+            messages=list(messages),
+            display_name=display_name,
+            title_generated_at=generated_at,
+        )
 
     async def paginate_conversations(
         self,
@@ -407,6 +459,83 @@ class EphemeralConversationRepository(ConversationRepository):
         key = self._key(tenant_id, conversation_id)
         return self._session_state.get(key)
 
+    async def get_memory_config(
+        self, conversation_id: str, *, tenant_id: str
+    ) -> ConversationMemoryConfig | None:
+        return self._memory.get(self._key(tenant_id, conversation_id))
+
+    async def set_memory_config(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        config: ConversationMemoryConfig,
+        provided_fields: set[str] | None = None,
+    ) -> None:
+        key = self._key(tenant_id, conversation_id)
+        current = self._memory.get(key, ConversationMemoryConfig())
+        fields = provided_fields or set()
+        if "mode" in fields:
+            current.strategy = config.strategy
+        if "max_user_turns" in fields:
+            current.max_user_turns = config.max_user_turns
+        if "keep_last_turns" in fields:
+            current.keep_last_turns = config.keep_last_turns
+        if "compact_trigger_turns" in fields:
+            current.compact_trigger_turns = config.compact_trigger_turns
+        if "compact_keep" in fields:
+            current.compact_keep = config.compact_keep
+        if "clear_tool_inputs" in fields:
+            current.clear_tool_inputs = config.clear_tool_inputs
+        if "memory_injection" in fields:
+            current.memory_injection = config.memory_injection
+        self._memory[key] = current
+
+    async def persist_summary(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        agent_key: str | None,
+        summary_text: str,
+        summary_model: str | None = None,
+        summary_length_tokens: int | None = None,
+        version: str | None = None,
+    ) -> None:
+        key = self._key(tenant_id, conversation_id)
+        self._summaries[key].append(
+            ConversationSummary(
+                conversation_id=conversation_id,
+                agent_key=agent_key,
+                summary_text=summary_text,
+                summary_model=summary_model,
+                summary_length_tokens=summary_length_tokens,
+                version=version,
+                created_at=datetime.utcnow(),
+            )
+        )
+
+    async def get_latest_summary(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        agent_key: str | None,
+        max_age_seconds: int | None = None,
+    ) -> ConversationSummary | None:
+        key = self._key(tenant_id, conversation_id)
+        summaries = [
+            s
+            for s in self._summaries.get(key, [])
+            if (not agent_key or s.agent_key == agent_key)
+        ]
+        if max_age_seconds is not None:
+            cutoff = datetime.utcnow() - timedelta(seconds=max_age_seconds)
+            summaries = [s for s in summaries if (s.created_at or datetime.min) >= cutoff]
+        if not summaries:
+            return None
+        return sorted(summaries, key=lambda s: s.created_at or datetime.min, reverse=True)[0]
+
     async def upsert_session_state(
         self,
         conversation_id: str,
@@ -439,6 +568,54 @@ class EphemeralConversationRepository(ConversationRepository):
         if workflow_run_id:
             events = [ev for ev in events if ev.workflow_run_id == workflow_run_id]
         return events
+
+    async def add_run_usage(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        usage: ConversationRunUsage,
+    ) -> None:
+        key = self._key(tenant_id, conversation_id)
+        self._usage[key].append(usage)
+
+    async def list_run_usage(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        limit: int = 20,
+    ) -> list[ConversationRunUsage]:
+        key = self._key(tenant_id, conversation_id)
+        return list(reversed(self._usage.get(key, [])))[:limit]
+
+    async def set_display_name(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        display_name: str,
+        generated_at: datetime | None = None,
+    ) -> bool:
+        key = self._key(tenant_id, conversation_id)
+        if key in self._display_names:
+            return False
+        self._display_names[key] = (display_name, generated_at)
+        return True
+
+    async def update_display_name(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        display_name: str,
+    ) -> None:
+        key = self._key(tenant_id, conversation_id)
+        if key not in self._messages:
+            raise ConversationNotFoundError(f"Conversation {conversation_id} does not exist")
+        existing = self._display_names.get(key)
+        generated_at = existing[1] if existing else None
+        self._display_names[key] = (display_name, generated_at)
 
     def _key(self, tenant_id: str, conversation_id: str) -> tuple[str, str]:
         tenant = self._require_tenant(tenant_id)

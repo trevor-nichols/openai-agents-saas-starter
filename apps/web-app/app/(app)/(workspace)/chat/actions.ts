@@ -6,12 +6,9 @@
 
 'use server';
 
+import { streamChat } from '@/lib/api/chat';
+import { fetchConversationsPage, searchConversations } from '@/lib/api/conversations';
 import type { StreamChunk } from '@/lib/chat/types';
-import { streamChatServer } from '@/lib/server/streaming/chat';
-import {
-  listConversationsPage,
-  searchConversationsPage,
-} from '@/lib/server/services/conversations';
 
 // --- Stream chat ---
 // Exposes the streaming chat server action to the client workspace components.
@@ -28,7 +25,7 @@ export async function* streamChatAgent(params: {
   } | null;
 }): AsyncGenerator<StreamChunk, void, undefined> {
   try {
-    const stream = streamChatServer({
+    const stream = streamChat({
       message: params.message,
       conversationId: params.conversationId,
       agentType: params.agentType ?? 'triage',
@@ -55,7 +52,7 @@ export async function listConversationsAction(params?: {
   agent?: string | null;
 }) {
   try {
-    const page = await listConversationsPage(params);
+    const page = await fetchConversationsPage(params);
     return {
       success: true,
       items: page.items,
@@ -76,7 +73,7 @@ export async function searchConversationsAction(params: {
   agent?: string | null;
 }) {
   try {
-    const page = await searchConversationsPage(params);
+    const page = await searchConversations(params);
     return {
       success: true,
       items: page.items,

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 from typing import Any
 from uuid import UUID
 
@@ -13,6 +15,7 @@ from app.api.models.auth import (
     UserSessionItem,
     UserSessionResponse,
 )
+from app.core.settings import get_settings
 from app.domain.auth import UserSession, UserSessionTokens
 from app.services.auth_service import UserAuthenticationError
 from app.services.users import (
@@ -36,6 +39,38 @@ def extract_client_ip(request: Request) -> str | None:
 def extract_user_agent(request: Request) -> str | None:
     header = request.headers.get("user-agent")
     return header.strip() if header else None
+
+
+def _hash_value(value: str | None, salt: str | None = None) -> str | None:
+    if not value:
+        return None
+    material = value.strip()
+    if not material:
+        return None
+    key = (salt or get_settings().secret_key).encode("utf-8")
+    digest = hmac.new(key, material.encode("utf-8"), hashlib.sha256).hexdigest()
+    return digest
+
+
+def hash_client_ip(ip: str | None) -> str | None:
+    settings = get_settings()
+    base_salt = (
+        getattr(settings, "auth_session_ip_hash_salt", None) or settings.secret_key or ""
+    )
+    scoped_salt = f"ip:{base_salt}" if base_salt else None
+    return _hash_value(ip, scoped_salt)
+
+
+def hash_user_agent(user_agent: str | None) -> str | None:
+    settings = get_settings()
+    base_salt = (
+        getattr(settings, "auth_session_user_agent_hash_salt", None)
+        or getattr(settings, "auth_session_ip_hash_salt", None)
+        or settings.secret_key
+        or ""
+    )
+    scoped_salt = f"ua:{base_salt}" if base_salt else None
+    return _hash_value(user_agent, scoped_salt)
 
 
 def to_user_session_response(tokens: UserSessionTokens) -> UserSessionResponse:

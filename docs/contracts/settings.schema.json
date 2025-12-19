@@ -1063,6 +1063,18 @@
       "title": "Mcp Tools",
       "type": "array"
     },
+    "MFA_CHALLENGE_TTL_MINUTES": {
+      "default": 5,
+      "description": "Lifetime of MFA challenge tokens issued during login.",
+      "title": "Mfa Challenge Ttl Minutes",
+      "type": "integer"
+    },
+    "MFA_VERIFY_RATE_LIMIT_PER_HOUR": {
+      "default": 10,
+      "description": "Maximum MFA verification attempts per user per hour.",
+      "title": "Mfa Verify Rate Limit Per Hour",
+      "type": "integer"
+    },
     "PASSWORD_RESET_EMAIL_RATE_LIMIT_PER_HOUR": {
       "default": 5,
       "description": "Password reset requests allowed per email per hour.",
@@ -1194,7 +1206,7 @@
     "SECRETS_PROVIDER": {
       "$ref": "#/$defs/SecretsProviderLiteral",
       "default": "vault_dev",
-      "description": "Which secrets provider implementation to use (vault_dev, vault_hcp, infisical_cloud, infisical_self_host)."
+      "description": "Which secrets provider implementation to use (vault_dev, vault_hcp, infisical_cloud, infisical_self_host, aws_sm, azure_kv)."
     },
     "SECURITY_TOKEN_REDIS_URL": {
       "anyOf": [
@@ -1311,7 +1323,7 @@
         },
         "type": "array"
       },
-      "description": "JSON map of tenant_id \u2192 channel list overrides.",
+      "description": "JSON map of tenant_id → channel list overrides.",
       "title": "Slack Status Tenant Channel Map",
       "type": "object"
     },
@@ -1838,7 +1850,7 @@
       "type": "string"
     },
     "image_max_partial_images": {
-      "default": 2,
+      "default": 3,
       "description": "Maximum partial images to stream when enabled (0-3).",
       "maximum": 3,
       "minimum": 0,

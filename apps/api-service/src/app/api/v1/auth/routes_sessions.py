@@ -2,20 +2,27 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
 from app.api.dependencies.auth import require_current_user
 from app.api.models.auth import (
+    CurrentUserInfoResponseData,
+    CurrentUserInfoSuccessResponse,
+    LogoutAllSessionsSuccessResponse,
+    LogoutSessionSuccessResponse,
+    SessionLogoutAllResponseData,
+    SessionLogoutResponseData,
+    SessionRevokeByIdSuccessResponse,
     UserLoginRequest,
     UserLogoutRequest,
     UserRefreshRequest,
     UserSessionListResponse,
     UserSessionResponse,
 )
-from app.api.models.common import SuccessResponse
+from app.api.models.mfa import MfaChallengeResponse, MfaMethodView
 from app.api.v1.auth.utils import (
     current_session_uuid,
     extract_client_ip,
@@ -25,6 +32,7 @@ from app.api.v1.auth.utils import (
     to_user_session_response,
 )
 from app.services.auth_service import (
+    MfaRequiredError,
     UserAuthenticationError,
     UserLogoutError,
     UserRefreshError,
@@ -40,11 +48,21 @@ from app.services.users import (
 router = APIRouter(tags=["auth"])
 
 
-@router.post("/token", response_model=UserSessionResponse)
+@router.post(
+    "/token",
+    response_model=UserSessionResponse | MfaChallengeResponse,
+    responses={
+        status.HTTP_202_ACCEPTED: {
+            "model": MfaChallengeResponse,
+            "description": "MFA required; challenge token and available methods returned.",
+        },
+    },
+)
 async def login_for_access_token(
     payload: UserLoginRequest,
     request: Request,
-) -> UserSessionResponse:
+    response: Response,
+) -> UserSessionResponse | MfaChallengeResponse:
     """Authenticate a user and mint fresh access/refresh tokens."""
 
     client_ip = extract_client_ip(request)
@@ -58,6 +76,27 @@ async def login_for_access_token(
             ip_address=client_ip,
             user_agent=user_agent,
         )
+    except MfaRequiredError as exc:
+        method_dicts = [cast(dict[str, Any], m) for m in exc.methods]
+        methods = []
+        for m in method_dicts:
+            method_id = UUID(str(m.get("id")))
+            methods.append(
+                MfaMethodView(
+                    id=method_id,
+                    method_type=str(m.get("method_type")),
+                    label=m.get("label") if isinstance(m.get("label"), str) else None,
+                    verified_at=cast(str | None, m.get("verified_at")),
+                    last_used_at=cast(str | None, m.get("last_used_at")),
+                    revoked_at=cast(str | None, m.get("revoked_at")),
+                )
+            )
+        payload_body = MfaChallengeResponse(
+            challenge_token=exc.challenge_token,
+            methods=methods,
+        )
+        response.status_code = status.HTTP_202_ACCEPTED
+        return payload_body
     except UserAuthenticationError as exc:
         raise map_user_auth_error(exc) from exc
 
@@ -92,11 +131,11 @@ async def refresh_access_token(
     return to_user_session_response(tokens)
 
 
-@router.post("/logout", response_model=SuccessResponse)
+@router.post("/logout", response_model=LogoutSessionSuccessResponse)
 async def logout_session(
     payload: UserLogoutRequest,
     current_user: dict[str, Any] = Depends(require_current_user),
-) -> SuccessResponse:
+) -> LogoutSessionSuccessResponse:
     """Revoke a single refresh token for the authenticated user."""
 
     try:
@@ -110,19 +149,25 @@ async def logout_session(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
 
     message = "Session revoked successfully." if revoked else "Session already inactive."
-    return SuccessResponse(message=message, data={"revoked": revoked})
+    return LogoutSessionSuccessResponse(
+        message=message,
+        data=SessionLogoutResponseData(revoked=revoked),
+    )
 
 
-@router.post("/logout/all", response_model=SuccessResponse)
+@router.post("/logout/all", response_model=LogoutAllSessionsSuccessResponse)
 async def logout_all_sessions(
     current_user: dict[str, Any] = Depends(require_current_user),
-) -> SuccessResponse:
+) -> LogoutAllSessionsSuccessResponse:
     """Revoke every refresh token tied to the authenticated user."""
 
     user_uuid = UUID(current_user["user_id"])
     revoked = await auth_service.revoke_user_sessions(user_uuid, reason="user_logout_all")
     message = "All sessions revoked successfully." if revoked else "No active sessions to revoke."
-    return SuccessResponse(message=message, data={"revoked": revoked})
+    return LogoutAllSessionsSuccessResponse(
+        message=message,
+        data=SessionLogoutAllResponseData(revoked=revoked),
+    )
 
 
 @router.get("/sessions", response_model=UserSessionListResponse)
@@ -174,11 +219,11 @@ async def list_user_sessions(
     )
 
 
-@router.delete("/sessions/{session_id}", response_model=SuccessResponse)
+@router.delete("/sessions/{session_id}", response_model=SessionRevokeByIdSuccessResponse)
 async def revoke_user_session(
     session_id: UUID,
     current_user: dict[str, Any] = Depends(require_current_user),
-) -> SuccessResponse:
+) -> SessionRevokeByIdSuccessResponse:
     """Revoke a specific session/device for the authenticated user."""
 
     user_uuid = UUID(current_user["user_id"])
@@ -198,19 +243,22 @@ async def revoke_user_session(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Session not found or already revoked.",
         )
-    return SuccessResponse(message="Session revoked successfully.", data={"revoked": True})
+    return SessionRevokeByIdSuccessResponse(
+        message="Session revoked successfully.",
+        data=SessionLogoutResponseData(revoked=True),
+    )
 
 
-@router.get("/me", response_model=SuccessResponse)
+@router.get("/me", response_model=CurrentUserInfoSuccessResponse)
 async def get_current_user_info(
     current_user: dict[str, Any] = Depends(require_current_user),
-) -> SuccessResponse:
+) -> CurrentUserInfoSuccessResponse:
     """Return metadata about the current authenticated user."""
 
-    return SuccessResponse(
+    return CurrentUserInfoSuccessResponse(
         message="User information retrieved successfully",
-        data={
-            "user_id": current_user["user_id"],
-            "token_payload": current_user["payload"],
-        },
+        data=CurrentUserInfoResponseData(
+            user_id=current_user["user_id"],
+            token_payload=current_user["payload"],
+        ),
     )

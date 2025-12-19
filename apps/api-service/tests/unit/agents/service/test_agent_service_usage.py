@@ -26,6 +26,7 @@ class StubUsageRecorder:
 class FakeConversationService:
     def __init__(self) -> None:
         self.repository = None
+        self.usage_calls: list[tuple[str, str, object]] = []
 
     def set_repository(self, repo):  # pragma: no cover - unused in tests
         self.repository = repo
@@ -41,6 +42,12 @@ class FakeConversationService:
 
     async def record_conversation_created(self, *args, **kwargs):  # pragma: no cover - noop
         return None
+
+    async def persist_run_usage(self, conversation_id, *, tenant_id, usage):
+        self.usage_calls.append((conversation_id, tenant_id, usage))
+
+    async def list_run_usage(self, *args, **kwargs):  # pragma: no cover - unused
+        return []
 
 
 class FakeContainerService:

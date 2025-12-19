@@ -10,7 +10,7 @@ This layer orchestrates multiple Agents SDK instances in a deterministic sequenc
 
 ## Authoring a workflow
 ```python
-from app.workflows.specs import WorkflowSpec, WorkflowStep
+from app.workflows._shared.specs import WorkflowSpec, WorkflowStep
 
 def passthrough(current_input, prior_steps):
     return (prior_steps[-1].response.response_text or current_input) if prior_steps else current_input

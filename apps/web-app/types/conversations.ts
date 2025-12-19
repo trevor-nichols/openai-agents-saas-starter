@@ -3,11 +3,18 @@ import type {
   ConversationHistory as BackendConversationHistory,
   ConversationEventItem as BackendConversationEventItem,
   ConversationEventsResponse as BackendConversationEventsResponse,
+  ConversationLedgerEventsResponse as BackendConversationLedgerEventsResponse,
   PaginatedMessagesResponse,
+  ConversationMemoryConfigRequest,
+  ConversationMemoryConfigResponse,
+  ConversationTitleUpdateRequest,
+  ConversationTitleUpdateResponse,
 } from '@/lib/api/client/types.gen';
 
 export interface ConversationListItem {
   id: string;
+  display_name?: string | null;
+  display_name_pending?: boolean;
   agent_entrypoint?: string | null;
   active_agent?: string | null;
   title?: string | null;
@@ -33,6 +40,8 @@ export interface ConversationListPage {
 
 export interface ConversationSearchResultItem {
   conversation_id: string;
+  display_name?: string | null;
+  display_name_pending?: boolean;
   agent_entrypoint?: string | null;
   active_agent?: string | null;
   topic_hint?: string | null;
@@ -57,3 +66,11 @@ export type ConversationMessagesPage = PaginatedMessagesResponse;
 export type ConversationEvent = BackendConversationEventItem;
 
 export type ConversationEvents = BackendConversationEventsResponse;
+
+export type ConversationLedgerEventsPage = BackendConversationLedgerEventsResponse;
+
+export type ConversationMemoryConfig = ConversationMemoryConfigResponse;
+export type ConversationMemoryConfigInput = ConversationMemoryConfigRequest;
+
+export type ConversationTitleUpdate = ConversationTitleUpdateResponse;
+export type ConversationTitleUpdateInput = ConversationTitleUpdateRequest;

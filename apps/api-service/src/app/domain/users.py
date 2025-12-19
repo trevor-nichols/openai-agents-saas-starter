@@ -84,8 +84,24 @@ class UserRecord:
     created_at: datetime
     updated_at: datetime
     display_name: str | None
+    given_name: str | None
+    family_name: str | None
+    avatar_url: str | None
     memberships: list[TenantMembershipDTO]
     email_verified_at: datetime | None
+
+
+@dataclass(slots=True)
+class UserProfileSummary:
+    user_id: UUID
+    tenant_id: UUID
+    email: EmailStr
+    display_name: str | None
+    given_name: str | None
+    family_name: str | None
+    avatar_url: str | None
+    role: str
+    email_verified: bool
 
 
 @dataclass(slots=True)
@@ -172,6 +188,7 @@ __all__ = [
     "UserLoginEventDTO",
     "UserRead",
     "UserRecord",
+    "UserProfileSummary",
     "UserRepository",
     "UserRepositoryError",
     "UserStatus",

@@ -97,6 +97,9 @@ def sample_user() -> UserRecord:
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
         display_name=None,
+        given_name=None,
+        family_name=None,
+        avatar_url=None,
         memberships=[
             TenantMembershipDTO(tenant_id=uuid4(), role="admin", created_at=datetime.now(UTC))
         ],

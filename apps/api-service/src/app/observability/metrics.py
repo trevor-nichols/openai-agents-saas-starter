@@ -21,6 +21,24 @@ _LATENCY_BUCKETS: Final = (
     5.0,
 )
 
+_TOKEN_BUCKETS: Final = (
+    50,
+    100,
+    200,
+    400,
+    800,
+    1_600,
+    3_200,
+    6_400,
+    12_800,
+    25_600,
+    51_200,
+    102_400,
+    204_800,
+    409_600,
+    819_200,
+)
+
 
 def _sanitize_token_use(value: str | None) -> str:
     if not value:
@@ -195,6 +213,36 @@ VECTOR_STORE_OPERATIONS_TOTAL = Counter(
     "vector_store_operations_total",
     "Count of vector store operations segmented by operation and result.",
     ("operation", "result"),
+    registry=REGISTRY,
+)
+
+# Memory strategies
+MEMORY_TRIGGER_TOTAL = Counter(
+    "memory_trigger_total",
+    "Count of memory strategy applications segmented by strategy and trigger reason.",
+    ("strategy", "trigger"),
+    registry=REGISTRY,
+)
+
+MEMORY_SUMMARY_INJECTION_TOTAL = Counter(
+    "memory_summary_injection_total",
+    "Cross-session summary injection outcomes.",
+    ("result",),
+    registry=REGISTRY,
+)
+
+MEMORY_COMPACTION_ITEMS_TOTAL = Counter(
+    "memory_compaction_items_total",
+    "Count of compacted items segmented by kind (input/output).",
+    ("kind",),
+    registry=REGISTRY,
+)
+
+MEMORY_TOKENS_BEFORE_AFTER = Histogram(
+    "memory_tokens_before_after",
+    "Token estimates before/after strategy application segmented by strategy and trigger.",
+    ("strategy", "trigger"),
+    buckets=_TOKEN_BUCKETS,
     registry=REGISTRY,
 )
 

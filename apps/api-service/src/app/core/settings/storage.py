@@ -1,10 +1,8 @@
 """Object storage provider settings (MinIO, GCS, memory)."""
-# ruff: noqa: I001
 
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
-
 from starter_contracts.storage.models import (
     GCSProviderConfig,
     MinioProviderConfig,
@@ -35,19 +33,38 @@ class StorageSettingsMixin(BaseModel):
     storage_allowed_mime_types: list[str] = Field(
         default_factory=lambda: [
             "application/json",
+            "application/gzip",
+            "application/octet-stream",
             "application/pdf",
+            "application/zip",
+            "application/x-tar",
+            "application/x-sh",
+            "application/xml",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             "application/msword",
+            "application/typescript",
+            "application/csv",
             "text/plain",
+            "text/csv",
             "text/markdown",
+            "text/css",
             "text/x-python",
+            "text/x-c",
+            "text/x-c++",
+            "text/x-csharp",
+            "text/x-java",
+            "text/x-php",
+            "text/x-ruby",
+            "text/x-tex",
             "text/x-javascript",
             "text/javascript",
             "text/html",
             "image/png",
             "image/jpeg",
             "image/webp",
+            "image/gif",
         ],
         description="Allowed MIME types for uploaded objects.",
     )

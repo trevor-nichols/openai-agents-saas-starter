@@ -6,6 +6,7 @@ import pytest
 
 from app.domain.conversations import ConversationAttachment, ConversationMessage
 from app.services.agents.attachments import AttachmentService
+from app.services.containers.files_gateway import ContainerFileContent, ContainerFilesGateway
 from app.services.storage.service import StorageService
 
 
@@ -96,6 +97,122 @@ async def test_ingest_image_outputs_deduplicates_tool_call(monkeypatch):
 
     assert len(attachments) == 1
     assert seen == {"tool-1"}
+
+
+class FakeContainerFilesGateway:
+    def __init__(self, *, data: bytes, filename: str | None = None):
+        self.calls: list[tuple[uuid.UUID, str, str]] = []
+        self._data = data
+        self._filename = filename
+
+    async def download_file_content(self, *, tenant_id, container_id, file_id):
+        self.calls.append((uuid.UUID(str(tenant_id)), str(container_id), str(file_id)))
+        return ContainerFileContent(data=self._data, filename=self._filename)
+
+
+@pytest.mark.asyncio
+async def test_ingest_container_file_citations_happy_path():
+    storage = FakeStorageService()
+    gateway = FakeContainerFilesGateway(data=b"a,b\n1,2\n", filename="squares.csv")
+    service = AttachmentService(
+        lambda: cast(StorageService, storage),
+        container_files_gateway_resolver=lambda: cast(ContainerFilesGateway, gateway),
+    )
+    actor = type(
+        "Actor",
+        (),
+        {
+            "tenant_id": "11111111-1111-1111-1111-111111111111",
+            "user_id": "22222222-2222-2222-2222-222222222222",
+        },
+    )
+    outputs = [
+        {
+            "type": "message",
+            "content": [
+                {
+                    "type": "output_text",
+                    "text": "download squares.csv",
+                    "annotations": [
+                        {
+                            "type": "container_file_citation",
+                            "container_id": "cntr_123",
+                            "file_id": "cfile_123",
+                            "filename": "squares.csv",
+                        }
+                    ],
+                }
+            ],
+        }
+    ]
+
+    attachments = await service.ingest_container_file_citations(
+        outputs,
+        actor=actor,
+        conversation_id="33333333-3333-3333-3333-333333333333",
+        agent_key="researcher",
+        response_id="resp-1",
+    )
+
+    assert len(attachments) == 1
+    att = attachments[0]
+    assert att.filename == "squares.csv"
+    assert att.mime_type == "text/csv"
+    assert att.size_bytes == len(b"a,b\n1,2\n")
+    assert att.presigned_url and att.presigned_url.startswith("https://example.com/")
+    assert gateway.calls == [
+        (uuid.UUID(actor.tenant_id), "cntr_123", "cfile_123"),
+    ]
+    assert storage.put_calls, "Expected storage.put_object call"
+    _, stored_name, stored_mime, stored_meta = storage.put_calls[0]
+    assert stored_name == "squares.csv"
+    assert stored_mime == "text/csv"
+    assert stored_meta["container_id"] == "cntr_123"
+    assert stored_meta["file_id"] == "cfile_123"
+
+
+@pytest.mark.asyncio
+async def test_ingest_container_file_citations_deduplicates_repeated_citations():
+    storage = FakeStorageService()
+    gateway = FakeContainerFilesGateway(data=b"abc", filename="report.pdf")
+    service = AttachmentService(
+        lambda: cast(StorageService, storage),
+        container_files_gateway_resolver=lambda: cast(ContainerFilesGateway, gateway),
+    )
+    actor = type(
+        "Actor",
+        (),
+        {
+            "tenant_id": "11111111-1111-1111-1111-111111111111",
+            "user_id": "22222222-2222-2222-2222-222222222222",
+        },
+    )
+    outputs = [
+        {
+            "type": "container_file_citation",
+            "container_id": "cntr_123",
+            "file_id": "cfile_123",
+            "filename": "report.pdf",
+        },
+        {
+            "type": "container_file_citation",
+            "container_id": "cntr_123",
+            "file_id": "cfile_123",
+            "filename": "report.pdf",
+        },
+    ]
+
+    attachments = await service.ingest_container_file_citations(
+        outputs,
+        actor=actor,
+        conversation_id="33333333-3333-3333-3333-333333333333",
+        agent_key="researcher",
+        response_id="resp-1",
+    )
+
+    assert len(attachments) == 1
+    assert len(storage.put_calls) == 1
+    assert len(gateway.calls) == 1
 
 
 @pytest.mark.asyncio

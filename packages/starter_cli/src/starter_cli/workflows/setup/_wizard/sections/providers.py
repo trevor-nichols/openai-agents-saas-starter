@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 import subprocess
+from urllib.parse import quote, urlparse
 
-from redis.asyncio import Redis
+from redis import Redis
 
 from starter_cli.adapters.io.console import console
 from starter_cli.commands.stripe import WebhookSecretFlow
@@ -15,6 +15,9 @@ from ...automation import AutomationPhase, AutomationStatus
 from ...inputs import InputProvider
 from ...validators import validate_plan_map, validate_redis_url
 from ..context import WizardContext
+
+_LOCAL_DB_MODE_KEY = "STARTER_LOCAL_DATABASE_MODE"
+_LOCAL_DB_MODES = ("compose", "external")
 
 
 def run(context: WizardContext, provider: InputProvider) -> None:
@@ -31,33 +34,141 @@ def run(context: WizardContext, provider: InputProvider) -> None:
 
 
 def collect_database(context: WizardContext, provider: InputProvider) -> None:
-    existing_url = context.current("DATABASE_URL") or os.getenv("DATABASE_URL")
-    default_url: str | None
     if context.profile == "local":
-        default_url = (
-            existing_url
-            or "postgresql+asyncpg://postgres:postgres@localhost:5432/saas_strarter_db"
-        )
-    else:
-        default_url = existing_url
-    required = context.profile != "local"
+        _collect_local_database(context, provider)
+        return
+
     db_url = provider.prompt_string(
         key="DATABASE_URL",
         prompt="Primary Postgres connection URL (DATABASE_URL)",
-        default=default_url,
-        required=required,
-    )
-    if db_url:
+        default=context.current("DATABASE_URL") or os.getenv("DATABASE_URL"),
+        required=True,
+    ).strip()
+    if not db_url:
+        raise CLIError("DATABASE_URL is required outside local profiles.")
+    context.set_backend("DATABASE_URL", db_url)
+
+
+def _collect_local_database(context: WizardContext, provider: InputProvider) -> None:
+    existing_url = (context.current("DATABASE_URL") or os.getenv("DATABASE_URL") or "").strip()
+    existing_mode = (context.current(_LOCAL_DB_MODE_KEY) or "").strip().lower()
+    if existing_mode not in _LOCAL_DB_MODES:
+        existing_mode = _infer_local_db_mode(existing_url)
+
+    mode = provider.prompt_choice(
+        key=_LOCAL_DB_MODE_KEY,
+        prompt="Local database mode",
+        choices=_LOCAL_DB_MODES,
+        default=existing_mode or "compose",
+    ).strip()
+    if mode not in _LOCAL_DB_MODES:  # pragma: no cover - provider enforces choices
+        raise CLIError(f"{_LOCAL_DB_MODE_KEY} must be one of {', '.join(_LOCAL_DB_MODES)}.")
+
+    context.set_backend(_LOCAL_DB_MODE_KEY, mode)
+    if mode == "external":
+        db_url = provider.prompt_string(
+            key="DATABASE_URL",
+            prompt="Primary Postgres connection URL (DATABASE_URL)",
+            default=existing_url or None,
+            required=True,
+        ).strip()
+        if not db_url:
+            raise CLIError("DATABASE_URL is required when STARTER_LOCAL_DATABASE_MODE=external.")
         context.set_backend("DATABASE_URL", db_url)
         return
-    if required:
-        raise CLIError("DATABASE_URL is required outside local profiles.")
 
-    console.warn(
-        "DATABASE_URL left blank; Compose defaults will be used for local dev.",
-        topic="database",
+    # STARTER_LOCAL_DATABASE_MODE=compose: manage Docker Postgres inputs and derive DATABASE_URL.
+    port = _prompt_port(
+        context,
+        provider,
+        key="POSTGRES_PORT",
+        prompt="Local Postgres port (host)",
+        default=context.current("POSTGRES_PORT") or "5432",
     )
-    context.unset_backend("DATABASE_URL")
+    user = _prompt_nonempty(
+        provider,
+        key="POSTGRES_USER",
+        prompt="Local Postgres username",
+        default=context.current("POSTGRES_USER") or "postgres",
+    )
+    password = provider.prompt_secret(
+        key="POSTGRES_PASSWORD",
+        prompt="Local Postgres password",
+        existing=context.current("POSTGRES_PASSWORD") or "postgres",
+        required=True,
+    )
+    db_name = _prompt_nonempty(
+        provider,
+        key="POSTGRES_DB",
+        prompt="Local Postgres database name",
+        default=context.current("POSTGRES_DB") or "saas_starter_db",
+    )
+
+    context.set_backend("POSTGRES_PORT", str(port))
+    context.set_backend("POSTGRES_USER", user)
+    context.set_backend("POSTGRES_PASSWORD", password, mask=True)
+    context.set_backend("POSTGRES_DB", db_name)
+
+    derived = _build_local_postgres_url(
+        username=user,
+        password=password,
+        host="localhost",
+        port=port,
+        database=db_name,
+    )
+    context.set_backend("DATABASE_URL", derived)
+
+
+def _infer_local_db_mode(existing_url: str) -> str:
+    if not existing_url:
+        return "compose"
+    try:
+        parsed = urlparse(existing_url)
+    except ValueError:
+        return "compose"
+    host = (parsed.hostname or "").strip().lower()
+    if host and host not in {"localhost", "127.0.0.1"}:
+        return "external"
+    return "compose"
+
+
+def _prompt_nonempty(provider: InputProvider, *, key: str, prompt: str, default: str) -> str:
+    value = provider.prompt_string(key=key, prompt=prompt, default=default, required=True).strip()
+    if not value:
+        raise CLIError(f"{key} cannot be blank.")
+    return value
+
+
+def _prompt_port(
+    context: WizardContext,
+    provider: InputProvider,
+    *,
+    key: str,
+    prompt: str,
+    default: str,
+) -> int:
+    raw = provider.prompt_string(key=key, prompt=prompt, default=default, required=True).strip()
+    try:
+        port = int(raw)
+    except ValueError as exc:
+        raise CLIError(f"{key} must be an integer.") from exc
+    if not (1 <= port <= 65535):
+        raise CLIError(f"{key} must be between 1 and 65535.")
+    return port
+
+
+def _build_local_postgres_url(
+    *,
+    username: str,
+    password: str,
+    host: str,
+    port: int,
+    database: str,
+) -> str:
+    user_enc = quote(username, safe="")
+    pass_enc = quote(password, safe="")
+    db_enc = quote(database, safe="")
+    return f"postgresql+asyncpg://{user_enc}:{pass_enc}@{host}:{port}/{db_enc}"
 
 
 def _collect_ai_providers(context: WizardContext, provider: InputProvider) -> None:
@@ -294,7 +405,7 @@ def _warmup_redis(context: WizardContext, targets: dict[str, str]) -> None:
     )
     context.refresh_automation_ui(AutomationPhase.REDIS)
     try:
-        asyncio.run(_ping_all_redis(targets))
+        _ping_all_redis(targets)
     except Exception as exc:  # pragma: no cover - network failures
         context.automation.update(
             AutomationPhase.REDIS,
@@ -313,7 +424,7 @@ def _warmup_redis(context: WizardContext, targets: dict[str, str]) -> None:
         console.success("Redis pools validated.", topic="redis")
 
 
-async def _ping_all_redis(targets: dict[str, str]) -> None:
+def _ping_all_redis(targets: dict[str, str]) -> None:
     seen: set[str] = set()
     for _, url in targets.items():
         if not url or url in seen:
@@ -321,9 +432,9 @@ async def _ping_all_redis(targets: dict[str, str]) -> None:
         seen.add(url)
         client = Redis.from_url(url, encoding="utf-8", decode_responses=True)
         try:
-            await client.ping()
+            client.ping()
         finally:
-            await client.close()
+            client.close()
 
 
 def _maybe_run_migrations(context: WizardContext, provider: InputProvider) -> None:

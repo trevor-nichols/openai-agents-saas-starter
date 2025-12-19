@@ -149,6 +149,9 @@ def _ensure_import_paths() -> None:
     # Ensure API app boots without external services during contract tests.
     os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
     os.environ.setdefault("OPENAI_API_KEY", "test-key")
+    # Avoid background workers that assume migrated schemas.
+    os.environ.setdefault("ENABLE_VECTOR_STORE_SYNC_WORKER", "false")
+    os.environ.setdefault("AUTO_CREATE_VECTOR_STORE_FOR_FILE_SEARCH", "false")
     # Ensure settings pick up the overrides
     api_config.get_settings.cache_clear()
     shared_config.get_settings.cache_clear()

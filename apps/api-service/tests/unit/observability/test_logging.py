@@ -70,8 +70,9 @@ def test_log_event_emits_context_and_fields() -> None:
     assert payload["fields"]["quota"] == "signup.per_hour"
 
 
-def test_configure_logging_requires_datadog_api_key() -> None:
-    settings = Settings.model_validate({"LOGGING_SINK": "datadog"})
+def test_configure_logging_requires_datadog_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("LOGGING_DATADOG_API_KEY", raising=False)
+    settings = Settings.model_validate({"LOGGING_SINKS": None, "LOGGING_SINK": "datadog"})
     with pytest.raises(ValueError):
         configure_logging(settings)
 
@@ -161,7 +162,12 @@ def test_custom_file_path_ignores_unwritable_log_root(monkeypatch, tmp_path: Pat
 
     assert custom.exists(), "Custom log file not written"
     # ensure we didn't create the forbidden root
-    assert not Path("/root/forbidden").exists() or Path("/root/forbidden").is_dir()
+    try:
+        forbidden = Path("/root/forbidden")
+        assert not forbidden.exists() or forbidden.is_dir()
+    except PermissionError:
+        # Some CI runners deny stat access to /root; treat as not created.
+        pass
 
 
 def test_stdout_duplex_error_file(tmp_path: Path) -> None:

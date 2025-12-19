@@ -19,3 +19,32 @@ export function formatClockTime(value: string | undefined): string {
   if (Number.isNaN(date.getTime())) return '';
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
+
+/**
+ * Parse an ISO-ish timestamp to epoch ms.
+ *
+ * The backend sometimes emits timestamps with microseconds and/or without an explicit
+ * timezone (e.g. `2025-12-14T03:46:39.123456`). Browsers can treat those as invalid,
+ * which breaks ordering/anchoring logic in the chat UI.
+ */
+export function parseTimestampMs(value: string | null | undefined): number | null {
+  if (!value) return null;
+  let normalized = value.trim();
+  if (!normalized) return null;
+
+  // Truncate fractional seconds beyond milliseconds (JS Date parsing is inconsistent for microseconds).
+  const fractionalMatch = normalized.match(/\.(\d+)(?=Z|[+-]\d{2}:?\d{2}$|$)/);
+  if (fractionalMatch && fractionalMatch[1] && fractionalMatch[1].length > 3) {
+    const truncated = fractionalMatch[1].slice(0, 3);
+    normalized = normalized.replace(`.${fractionalMatch[1]}`, `.${truncated}`);
+  }
+
+  // If no timezone is present, assume UTC for stable cross-client ordering.
+  const hasTimezone = /Z|[+-]\d{2}:?\d{2}$/.test(normalized);
+  if (!hasTimezone) {
+    normalized = `${normalized}Z`;
+  }
+
+  const ms = Date.parse(normalized);
+  return Number.isFinite(ms) ? ms : null;
+}

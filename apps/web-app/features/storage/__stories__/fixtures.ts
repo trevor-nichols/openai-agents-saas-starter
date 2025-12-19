@@ -1,0 +1,100 @@
+import type { StoragePresignUploadResponse, VectorStoreResponse, VectorStoreFileResponse, StorageObjectResponse } from '@/lib/api/client/types.gen';
+
+export const mockStorageObjects: StorageObjectResponse[] = [
+  {
+    id: 'obj-1',
+    bucket: 'uploads',
+    filename: 'transcript.pdf',
+    object_key: 'uploads/transcript.pdf',
+    mime_type: 'application/pdf',
+    size_bytes: 128_000,
+    status: 'stored',
+    created_at: '2024-12-09T12:00:00Z',
+    conversation_id: 'conv-123',
+    agent_key: 'triage_agent',
+  },
+  {
+    id: 'obj-2',
+    bucket: 'uploads',
+    filename: 'notes.txt',
+    object_key: 'uploads/notes.txt',
+    mime_type: 'text/plain',
+    size_bytes: 4_200,
+    status: 'stored',
+    created_at: '2024-12-08T10:00:00Z',
+    conversation_id: null,
+    agent_key: null,
+  },
+];
+
+export const mockVectorStores: VectorStoreResponse[] = [
+  {
+    id: 'vs-1',
+    openai_id: 'vs_openai_1',
+    tenant_id: 'tenant-1',
+    owner_user_id: 'user-1',
+    status: 'ready',
+    usage_bytes: 2048,
+    name: 'Product KB',
+    description: 'Customer-facing docs',
+    created_at: '2024-12-01T00:00:00Z',
+    updated_at: '2024-12-01T00:00:00Z',
+    metadata: {},
+  },
+  {
+    id: 'vs-2',
+    openai_id: 'vs_openai_2',
+    tenant_id: 'tenant-1',
+    owner_user_id: 'user-1',
+    status: 'ready',
+    usage_bytes: 4096,
+    name: 'Engineering Notes',
+    description: 'Design docs and ADRs',
+    created_at: '2024-12-02T00:00:00Z',
+    updated_at: '2024-12-02T00:00:00Z',
+    metadata: {},
+  },
+];
+
+export const mockVectorStoreFiles: VectorStoreFileResponse[] = [
+  {
+    id: 'file-1',
+    vector_store_id: 'vs-1',
+    openai_file_id: 'file_openai_1',
+    filename: 'kb-intro.pdf',
+    mime_type: 'application/pdf',
+    size_bytes: 120_000,
+    status: 'processed',
+    usage_bytes: 120_000,
+    chunking_strategy: null,
+    last_error: null,
+    created_at: '2024-12-01T01:00:00Z',
+    updated_at: '2024-12-01T01:00:00Z',
+    attributes: {},
+  },
+  {
+    id: 'file-2',
+    vector_store_id: 'vs-2',
+    openai_file_id: 'file_openai_2',
+    filename: 'adr-001.md',
+    mime_type: 'text/markdown',
+    size_bytes: 12_000,
+    status: 'processed',
+    usage_bytes: 12_000,
+    chunking_strategy: null,
+    last_error: null,
+    created_at: '2024-12-02T01:00:00Z',
+    updated_at: '2024-12-02T01:00:00Z',
+    attributes: {},
+  },
+];
+
+export const mockPresignUpload: StoragePresignUploadResponse = {
+  upload_url: 'https://example.com/upload',
+  headers: {},
+  method: 'PUT',
+  object_id: 'obj-presign',
+  bucket: 'uploads',
+  object_key: 'uploads/mock-file',
+  expires_in_seconds: 900,
+};

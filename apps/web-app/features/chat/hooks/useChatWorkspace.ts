@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 
 import { useChatController } from '@/lib/chat';
+import { updateConversationTitle as updateConversationTitleApi } from '@/lib/api/conversations';
 import type { LocationHint } from '@/lib/api/client/types.gen';
 import { useAgents } from '@/lib/queries/agents';
 import { useBillingStream } from '@/lib/queries/billing';
@@ -12,11 +13,13 @@ import { useTools } from '@/lib/queries/tools';
 
 import { CHAT_COPY } from '../constants';
 import { normalizeAgentLabel } from '../utils/formatters';
+import { useConversationTitleStream } from './useConversationTitleStream';
 
 export function useChatWorkspace() {
   const {
     conversationList,
     isLoadingConversations,
+    isFetchingMoreConversations,
     loadMore,
     hasNextPage,
     addConversationToList,
@@ -91,6 +94,15 @@ export function useChatWorkspace() {
 
   const activeAgents = useMemo(() => agents.filter((agent) => agent.status === 'active').length, [agents]);
   const selectedAgentLabel = useMemo(() => normalizeAgentLabel(selectedAgent), [selectedAgent]);
+  const currentConversation = useMemo(
+    () => conversationList.find((c) => c.id === currentConversationId) ?? null,
+    [conversationList, currentConversationId],
+  );
+  const currentConversationTitle = useMemo(
+    () => currentConversation?.display_name ?? currentConversation?.title ?? null,
+    [currentConversation],
+  );
+  const titlePending = currentConversation?.display_name_pending ?? false;
 
   const handleSelectConversation = useCallback(
     (conversationId: string) => {
@@ -120,7 +132,104 @@ export function useChatWorkspace() {
     [deleteConversation],
   );
 
+  const handleRenameConversation = useCallback(
+    async (conversationId: string, title: string) => {
+      const normalized = (title || '').trim();
+      if (!conversationId) return;
+      if (!normalized) {
+        throw new Error('Title cannot be empty.');
+      }
 
+      const existing = conversationList.find((c) => c.id === conversationId) ?? null;
+      const base = existing ?? {
+        id: conversationId,
+        updated_at: new Date().toISOString(),
+        topic_hint: null,
+        agent_entrypoint: null,
+        active_agent: null,
+        status: null,
+        message_count: 0,
+        last_message_preview: undefined,
+      };
+
+      updateConversationInList({
+        ...base,
+        display_name: normalized,
+        display_name_pending: false,
+        title: normalized,
+      });
+
+      try {
+        const updated = await updateConversationTitleApi({ conversationId, displayName: normalized });
+        updateConversationInList({
+          ...base,
+          display_name: updated.display_name,
+          display_name_pending: false,
+          title: updated.display_name,
+          updated_at: new Date().toISOString(),
+        });
+      } catch (error) {
+        if (existing) {
+          updateConversationInList(existing);
+        }
+        const message =
+          error instanceof Error ? error.message : 'Failed to rename conversation title.';
+        toast.error('Failed to rename conversation', { description: message });
+        throw error instanceof Error ? error : new Error(message);
+      }
+    },
+    [conversationList, updateConversationInList],
+  );
+
+  const setPending = useCallback(
+    (pending: boolean) => {
+      if (!currentConversationId) return;
+      const base = currentConversation ?? {
+        id: currentConversationId,
+        updated_at: new Date().toISOString(),
+        topic_hint: null,
+        agent_entrypoint: null,
+        active_agent: null,
+        status: null,
+        message_count: 0,
+        last_message_preview: undefined,
+      };
+      updateConversationInList({
+        ...base,
+        display_name_pending: pending,
+      });
+    },
+    [currentConversation, currentConversationId, updateConversationInList],
+  );
+
+  const handleTitle = useCallback(
+    (title: string) => {
+      if (!currentConversationId) return;
+      const base = currentConversation ?? {
+        id: currentConversationId,
+        updated_at: new Date().toISOString(),
+        topic_hint: null,
+        agent_entrypoint: null,
+        active_agent: null,
+        status: null,
+        message_count: 0,
+        last_message_preview: undefined,
+      };
+      updateConversationInList({
+        ...base,
+        display_name: title,
+        title,
+      });
+    },
+    [currentConversation, currentConversationId, updateConversationInList],
+  );
+
+  useConversationTitleStream({
+    conversationId: currentConversationId,
+    onTitle: handleTitle,
+    onPendingStart: () => setPending(true),
+    onPendingResolve: () => setPending(false),
+  });
 
   const handleWorkspaceError = useCallback(() => {
     if (!errorMessage) {
@@ -161,6 +270,8 @@ export function useChatWorkspace() {
   return {
     conversationList,
     isLoadingConversations,
+    isFetchingMoreConversations,
+    titlePending,
     billingEvents,
     billingStreamStatus,
     agents,
@@ -177,6 +288,7 @@ export function useChatWorkspace() {
     retryMessages,
     clearHistoryError,
     currentConversationId,
+    currentConversationTitle,
     selectedAgent,
     selectedAgentLabel,
     activeAgent,
@@ -199,6 +311,7 @@ export function useChatWorkspace() {
     handleSelectConversation,
     handleNewConversation,
     handleDeleteConversation,
+    handleRenameConversation,
     handleWorkspaceError,
     clearError,
     sendMessage: handleSendMessage,

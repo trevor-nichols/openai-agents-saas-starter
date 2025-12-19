@@ -1,19 +1,26 @@
-import { FormEvent } from 'react';
+'use client';
+
+import { FormEvent, useState } from 'react';
 import type { ChatStatus } from 'ai';
 
-import { GlassPanel, InlineTag, SectionHeader, type SectionHeaderProps } from '@/components/ui/foundation';
+import { InlineTag, SectionHeader, type SectionHeaderProps } from '@/components/ui/foundation';
 import { Banner, BannerClose, BannerTitle } from '@/components/ui/banner';
 import { Conversation, ConversationContent, ConversationScrollButton } from '@/components/ui/ai/conversation';
 import { EmptyState, SkeletonPanel } from '@/components/ui/states';
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
+import { PublicSseStreamLog } from '@/components/ui/ai/public-sse-stream-log';
 
 import { MessageList } from './MessageList';
 import { ReasoningPanel } from './ReasoningPanel';
-import { ToolEventsPanel } from './ToolEventsPanel';
 import { PromptComposer } from './PromptComposer';
-import type { ChatMessage, ConversationLifecycleStatus, ToolState } from '@/lib/chat/types';
+import type { ChatMessage, ConversationLifecycleStatus, ToolEventAnchors, ToolState } from '@/lib/chat/types';
+import type { PublicSseEvent } from '@/lib/api/client/types.gen';
+import type { ReasoningPart } from '@/lib/streams/publicSseV1/reasoningParts';
 import type { AttachmentState } from '../../hooks/useAttachmentResolver';
+
+type MemoryModeOption = 'inherit' | 'none' | 'trim' | 'summarize' | 'compact';
 
 interface ChatSurfaceProps {
   className?: string;
@@ -22,11 +29,15 @@ interface ChatSurfaceProps {
   isLoadingHistory: boolean;
   messages: ChatMessage[];
   reasoningText?: string;
+  reasoningParts?: ReasoningPart[];
+  debugEvents?: PublicSseEvent[];
   tools: ToolState[];
+  toolEventAnchors?: ToolEventAnchors;
   chatStatus?: ChatStatus;
   lifecycleStatus?: ConversationLifecycleStatus;
   activeAgent?: string;
   isSending: boolean;
+  isDeletingMessage?: boolean;
   isClearingConversation: boolean;
   currentConversationId: string | null;
   hasOlderMessages: boolean;
@@ -37,6 +48,7 @@ interface ChatSurfaceProps {
   errorMessage?: string | null;
   onClearError?: () => void;
   onClearHistory?: () => void;
+  onDeleteMessage?: (messageId: string) => void | Promise<void>;
   messageInput: string;
   onMessageInputChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void> | void;
@@ -53,6 +65,11 @@ interface ChatSurfaceProps {
     timezone?: string | null;
   };
   onLocationHintChange: (field: 'city' | 'region' | 'country' | 'timezone', value: string) => void;
+  memoryMode: MemoryModeOption;
+  memoryInjection?: boolean;
+  onMemoryModeChange: (mode: MemoryModeOption) => void;
+  onMemoryInjectionChange: (value: boolean) => void;
+  isUpdatingMemory: boolean;
 }
 
 export function ChatSurface({
@@ -62,11 +79,15 @@ export function ChatSurface({
   isLoadingHistory,
   messages,
   reasoningText,
+  reasoningParts,
+  debugEvents,
   tools,
+  toolEventAnchors,
   chatStatus,
   lifecycleStatus,
   activeAgent,
   isSending,
+  isDeletingMessage,
   isClearingConversation,
   currentConversationId,
   hasOlderMessages,
@@ -77,6 +98,7 @@ export function ChatSurface({
   errorMessage,
   onClearError,
   onClearHistory,
+  onDeleteMessage,
   messageInput,
   onMessageInputChange,
   onSubmit,
@@ -88,20 +110,26 @@ export function ChatSurface({
   onShareLocationChange,
   locationHint,
   onLocationHintChange,
+  memoryMode,
+  memoryInjection,
+  onMemoryModeChange,
+  onMemoryInjectionChange,
+  isUpdatingMemory,
 }: ChatSurfaceProps) {
   const showEmpty = !isLoadingHistory && messages.length === 0;
-  const isBusy = isSending || isLoadingHistory;
+  const isBusy = isSending || Boolean(isDeletingMessage) || isLoadingHistory;
+  const [debugOpen, setDebugOpen] = useState(false);
 
   return (
-    <GlassPanel className={cn('flex h-full flex-col overflow-hidden p-0', className)}>
+    <div className={cn('relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background', className)}>
       {headerProps ? (
-        <div className="border-b border-white/5 px-6 py-4">
+        <div className="border-b border-border/40 px-6 py-4">
           <SectionHeader {...headerProps} size="compact" />
         </div>
       ) : null}
 
       <Conversation className="flex-1">
-        <ConversationContent className="space-y-4 px-6 py-6">
+        <ConversationContent className="mx-auto max-w-3xl space-y-6 px-4 py-8">
           {agentNotices.length > 0 ? (
             <div className="space-y-2">
               {agentNotices.map((notice) => (
@@ -141,7 +169,7 @@ export function ChatSurface({
           ) : showEmpty ? (
             <div className="flex min-h-[360px] items-center justify-center py-4">
               <EmptyState
-                variant="ghost"
+                variant="default"
                 title="No messages yet"
                 description="Compose a prompt below to brief your agent."
                 className="max-w-lg text-foreground/80"
@@ -178,15 +206,34 @@ export function ChatSurface({
 
               <MessageList
                 messages={messages}
+                tools={tools}
+                toolEventAnchors={toolEventAnchors}
                 attachmentState={attachmentState}
                 onResolveAttachment={resolveAttachment}
                 isBusy={isBusy}
                 onCopyMessage={onCopyMessage}
+                onDeleteMessage={onDeleteMessage}
               />
 
-              <ReasoningPanel reasoningText={reasoningText} isStreaming={isSending} />
+              <ReasoningPanel reasoningText={reasoningText} reasoningParts={reasoningParts} isStreaming={isSending} />
 
-              <ToolEventsPanel tools={tools} />
+              {debugEvents ? (
+                <Collapsible open={debugOpen} onOpenChange={setDebugOpen}>
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-foreground/60">
+                      Debug events
+                    </div>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-7 text-xs">
+                        {debugOpen ? 'Hide' : 'Show'}
+                      </Button>
+                    </CollapsibleTrigger>
+                  </div>
+                  <CollapsibleContent className="mt-3">
+                    <PublicSseStreamLog events={debugEvents} />
+                  </CollapsibleContent>
+                </Collapsible>
+              ) : null}
             </>
           )}
         </ConversationContent>
@@ -201,6 +248,7 @@ export function ChatSurface({
         isClearingConversation={isClearingConversation}
         isLoadingHistory={isLoadingHistory}
         isSending={isSending}
+        isDeletingMessage={Boolean(isDeletingMessage)}
         chatStatus={chatStatus}
         lifecycleStatus={lifecycleStatus}
         activeAgent={activeAgent}
@@ -209,7 +257,12 @@ export function ChatSurface({
         onShareLocationChange={onShareLocationChange}
         locationHint={locationHint}
         onLocationHintChange={onLocationHintChange}
+        memoryMode={memoryMode}
+        memoryInjection={memoryInjection}
+        onMemoryModeChange={onMemoryModeChange}
+        onMemoryInjectionChange={onMemoryInjectionChange}
+        isUpdatingMemory={isUpdatingMemory}
       />
-    </GlassPanel>
+    </div>
   );
 }

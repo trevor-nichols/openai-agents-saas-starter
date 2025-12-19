@@ -1,1 +1,1 @@
-"""Utility scripts for the OpenAI Agents starter repository."""
+"""Utility scripts for the OpenAI Agents SaaS starter repository."""

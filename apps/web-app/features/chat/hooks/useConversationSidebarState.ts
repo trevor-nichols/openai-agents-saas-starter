@@ -11,6 +11,7 @@ export type ConversationSidebarTab = 'recent' | 'search';
 interface SidebarStateParams {
   conversationList: ConversationListItem[];
   isLoadingConversations: boolean;
+  isFetchingMoreConversations?: boolean;
   loadMoreConversations?: () => void;
   hasNextConversationPage?: boolean;
 }
@@ -18,6 +19,7 @@ interface SidebarStateParams {
 export function useConversationSidebarState({
   conversationList,
   isLoadingConversations,
+  isFetchingMoreConversations,
   loadMoreConversations,
   hasNextConversationPage,
 }: SidebarStateParams) {
@@ -48,6 +50,7 @@ export function useConversationSidebarState({
   const {
     results: rawSearchResults,
     isLoading: isSearching,
+    isFetchingMore: isFetchingMoreSearchResults,
     loadMore: loadMoreSearch,
     hasNextPage: hasNextSearchPage,
   } = useConversationSearch(debouncedSearch);
@@ -62,12 +65,16 @@ export function useConversationSidebarState({
     [conversationList],
   );
 
-  const showSearchEmpty = !!debouncedSearch && !isSearching && searchResults.length === 0;
+  const isSearchBusy = isSearching || isFetchingMoreSearchResults;
+  const showSearchEmpty = !!debouncedSearch && !isSearchBusy && searchResults.length === 0;
 
   const infiniteScrollRef = useInfiniteScroll({
     loadMore: tab === 'recent' ? loadMoreConversations : loadMoreSearch,
     hasNextPage: tab === 'recent' ? hasNextConversationPage : hasNextSearchPage,
-    isLoading: tab === 'recent' ? isLoadingConversations : isSearching,
+    isLoading:
+      tab === 'recent'
+        ? isLoadingConversations || Boolean(isFetchingMoreConversations)
+        : isSearchBusy,
   });
 
   return {
@@ -79,6 +86,7 @@ export function useConversationSidebarState({
     groupedConversations,
     groupOrder: DATE_GROUP_ORDER,
     isSearching,
+    isFetchingMoreSearchResults,
     showSearchEmpty,
     searchResults,
     infiniteScrollRef,

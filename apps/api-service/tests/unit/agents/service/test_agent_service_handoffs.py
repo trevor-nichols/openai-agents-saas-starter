@@ -32,6 +32,9 @@ class _FakeConversationService(ConversationService):
     async def get_session_state(self, conversation_id, *, tenant_id):
         return None
 
+    async def get_memory_config(self, conversation_id, *, tenant_id):  # pragma: no cover - noop
+        return None
+
     async def update_session_state(self, conversation_id, *, tenant_id, state: ConversationSessionState):
         return None
 
@@ -75,18 +78,23 @@ class _HandoffProvider:
     name = "openai"
 
     def __init__(self, runtime: _HandoffRuntime):
+        class _SessionStore:
+            def build(self, session_id: str):  # pragma: no cover - simple stub
+                return f"session:{session_id}"
+
         self._descriptor = AgentDescriptor(
             key="triage", display_name="Triage", description="", model="gpt-5.1"
         )
         self._runtime = runtime
+        self._session_store = _SessionStore()
 
     @property
     def runtime(self):
         return self._runtime
 
     @property
-    def session_store(self):  # pragma: no cover - not exercised
-        return None
+    def session_store(self):  # pragma: no cover - trivial stub
+        return self._session_store
 
     @property
     def conversation_factory(self):  # pragma: no cover - not exercised
@@ -137,7 +145,7 @@ async def test_chat_sets_handoff_flag_and_final_agent():
     assert response.handoff_occurred is True
     assert response.agent_used == "Researcher"
     # Metadata persisted should include the handoff count
-    assert conv_service.messages[0]["metadata"].handoff_count == 1
+    assert conv_service.messages[-1]["metadata"].handoff_count == 1
 
 
 class _FakeAttachmentService:
@@ -146,6 +154,9 @@ class _FakeAttachmentService:
 
     async def ingest_image_outputs(self, *args, **kwargs):
         self.ingest_calls += 1
+        return []
+
+    async def ingest_container_file_citations(self, *args, **kwargs):
         return []
 
     def to_attachment_payload(self, attachment):
@@ -225,7 +236,7 @@ async def test_chat_stream_persists_final_agent_and_handoff_count():
 
     assert any(ev.kind == "agent_updated_stream_event" for ev in events_out)
     # Persistence should have recorded the updated agent and handoff count
-    metadata = conv_service.messages[0]["metadata"]
+    metadata = conv_service.messages[-1]["metadata"]
     assert metadata.active_agent == "Researcher"
     assert metadata.handoff_count == 1
 
@@ -284,6 +295,6 @@ async def test_chat_stream_counts_handoffs_from_lifecycle_bus():
     lifecycle_handoffs = [ev for ev in events_out if ev.kind == "lifecycle" and ev.event == "handoff"]
     agent_updates = [ev for ev in events_out if ev.kind == "agent_updated_stream_event"]
 
-    metadata = conv_service.messages[0]["metadata"]
+    metadata = conv_service.messages[-1]["metadata"]
     assert metadata.active_agent == "Researcher"
     assert metadata.handoff_count == len(agent_updates) == len(lifecycle_handoffs) == 1

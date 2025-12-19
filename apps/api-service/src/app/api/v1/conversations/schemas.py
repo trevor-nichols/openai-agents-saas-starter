@@ -2,14 +2,20 @@
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.api.v1.chat.schemas import MessageAttachment
+from app.api.v1.shared.streaming import PublicSseEvent
+from app.domain.conversation_titles import normalize_display_name
 
 
 class ChatMessage(BaseModel):
     """Single conversational message."""
 
+    message_id: str | None = Field(
+        default=None,
+        description="Stable identifier for this message (opaque string; safe for JS).",
+    )
     role: Literal["user", "assistant", "system"] = Field(
         description="Originator of the message.",
     )
@@ -28,6 +34,7 @@ class ConversationHistory(BaseModel):
     """Full detail view of a conversation."""
 
     conversation_id: str = Field(description="Conversation identifier.")
+    display_name: str | None = Field(default=None, description="Generated or assigned title.")
     messages: list[ChatMessage] = Field(description="Complete message history.")
     created_at: str = Field(description="Conversation creation timestamp.")
     updated_at: str = Field(description="Last update timestamp.")
@@ -55,6 +62,7 @@ class ConversationSummary(BaseModel):
     """Lightweight summary used when listing conversations."""
 
     conversation_id: str = Field(description="Conversation identifier.")
+    display_name: str | None = Field(default=None, description="Generated conversation title.")
     agent_entrypoint: str | None = Field(
         default=None, description="Agent entrypoint configured for this thread."
     )
@@ -83,6 +91,7 @@ class ConversationSearchResult(BaseModel):
     """Search hit with preview and relevance score."""
 
     conversation_id: str = Field(description="Conversation identifier.")
+    display_name: str | None = Field(default=None, description="Generated conversation title.")
     agent_entrypoint: str | None = Field(
         default=None, description="Agent entrypoint configured for this thread."
     )
@@ -97,6 +106,53 @@ class ConversationSearchResult(BaseModel):
     )
     score: float | None = Field(default=None, description="Backend relevance score.")
     updated_at: str | None = Field(default=None, description="Last update timestamp.")
+
+
+class ConversationMemoryConfigRequest(BaseModel):
+    mode: Literal["none", "trim", "summarize", "compact"] | None = None
+    max_user_turns: int | None = None
+    keep_last_turns: int | None = None
+    compact_trigger_turns: int | None = None
+    compact_keep: int | None = None
+    clear_tool_inputs: bool | None = None
+    memory_injection: bool | None = None
+
+
+class ConversationMemoryConfigResponse(ConversationMemoryConfigRequest):
+    pass
+
+
+class ConversationTitleUpdateRequest(BaseModel):
+    """Request payload to rename a conversation title."""
+
+    display_name: str = Field(
+        ...,
+        min_length=1,
+        max_length=128,
+        description="User-defined conversation title.",
+    )
+
+    @field_validator("display_name", mode="before")
+    @classmethod
+    def _normalize_display_name(cls, value: object) -> str:
+        if not isinstance(value, str):
+            raise TypeError("display_name must be a string")
+        return normalize_display_name(value)
+
+
+class ConversationTitleUpdateResponse(BaseModel):
+    """Response payload after updating a conversation title."""
+
+    conversation_id: str = Field(description="Conversation identifier.")
+    display_name: str = Field(description="Updated conversation title.")
+
+
+class ConversationMessageDeleteResponse(BaseModel):
+    """Response payload after truncating a conversation from a user message."""
+
+    conversation_id: str = Field(description="Conversation identifier.")
+    deleted_message_id: str = Field(description="User message id that triggered truncation.")
+    success: bool = Field(default=True, description="Whether the truncation was applied.")
 
 
 class ConversationSearchResponse(BaseModel):
@@ -139,3 +195,31 @@ class ConversationEventsResponse(BaseModel):
 
     conversation_id: str = Field(description="Conversation identifier.")
     items: list[ConversationEventItem]
+
+
+class ConversationLedgerEventsResponse(BaseModel):
+    """Paged list of persisted public_sse_v1 frames for deterministic UI replay."""
+
+    conversation_id: str = Field(description="Conversation identifier.")
+    items: list[PublicSseEvent]
+    next_cursor: str | None = Field(
+        default=None,
+        description="Opaque cursor for fetching the next page.",
+    )
+
+
+__all__ = [
+    "ChatMessage",
+    "ConversationHistory",
+    "PaginatedMessagesResponse",
+    "ConversationSummary",
+    "ConversationListResponse",
+    "ConversationSearchResult",
+    "ConversationSearchResponse",
+    "ConversationTitleUpdateRequest",
+    "ConversationTitleUpdateResponse",
+    "ConversationMessageDeleteResponse",
+    "ConversationEventItem",
+    "ConversationEventsResponse",
+    "ConversationLedgerEventsResponse",
+]

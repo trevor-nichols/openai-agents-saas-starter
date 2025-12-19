@@ -42,6 +42,12 @@ class FakeConversationService(ConversationService):
     async def update_session_state(self, conversation_id: str, *, tenant_id: str, state):
         self.updated = (conversation_id, tenant_id, state)
 
+    async def persist_run_usage(self, *args, **kwargs):  # pragma: no cover
+        return None
+
+    async def list_run_usage(self, *args, **kwargs):  # pragma: no cover
+        return []
+
 
 @pytest.mark.asyncio
 async def test_resolve_provider_conversation_id_uses_existing_valid():

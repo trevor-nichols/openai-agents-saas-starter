@@ -112,7 +112,11 @@ export function ContactForm() {
               {submitMutation.isPending ? 'Sending…' : 'Send message'}
             </Button>
             <Button type="button" variant="secondary" asChild>
-              <a href="https://calendly.com/your-team/intro" target="_blank" rel="noreferrer">
+              <a
+                href="https://calendly.com/your-team/intro"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 Book a 15-min call
               </a>
             </Button>

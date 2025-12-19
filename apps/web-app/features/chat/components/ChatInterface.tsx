@@ -13,24 +13,37 @@ import {
   useChatLifecycle,
   useChatMessages,
   useChatSelector,
+  useChatReasoningParts,
+  useChatStreamEvents,
+  useChatToolEventAnchors,
   useChatToolEvents,
 } from '@/lib/chat';
-import type { ChatMessage, ConversationLifecycleStatus, ToolState } from '@/lib/chat/types';
+import type {
+  ChatMessage,
+  ConversationLifecycleStatus,
+  ToolEventAnchors,
+  ToolState,
+} from '@/lib/chat/types';
+import { useUpdateConversationMemory } from '@/lib/queries/conversations';
+import type { ConversationMemoryConfigInput } from '@/types/conversations';
 
 import { ChatSurface } from './chat-interface/ChatSurface';
 import { useAttachmentResolver } from '../hooks/useAttachmentResolver';
 
 interface ChatInterfaceProps {
   onSendMessage: (messageText: string) => Promise<void>;
+  onDeleteMessage?: (messageId: string) => void | Promise<void>;
   currentConversationId: string | null;
   onClearConversation?: () => void | Promise<void>;
   messages?: ChatMessage[];
   tools?: ToolState[];
+  toolEventAnchors?: ToolEventAnchors;
   agentNotices?: { id: string; text: string }[];
   reasoningText?: string;
   activeAgent?: string;
   lifecycleStatus?: ConversationLifecycleStatus;
   isSending?: boolean;
+  isDeletingMessage?: boolean;
   isClearingConversation?: boolean;
   isLoadingHistory?: boolean;
   hasOlderMessages?: boolean;
@@ -54,17 +67,22 @@ interface ChatInterfaceProps {
   headerProps?: SectionHeaderProps;
 }
 
+type MemoryModeOption = 'inherit' | 'none' | 'trim' | 'summarize' | 'compact';
+
 export function ChatInterface({
   onSendMessage,
+  onDeleteMessage,
   currentConversationId,
   onClearConversation,
   messages: messagesProp,
   tools: toolsProp,
+  toolEventAnchors: toolEventAnchorsProp,
   agentNotices: agentNoticesProp,
   reasoningText: reasoningTextProp,
   activeAgent: activeAgentProp,
   lifecycleStatus: lifecycleStatusProp,
   isSending: isSendingProp,
+  isDeletingMessage: isDeletingMessageProp,
   isClearingConversation: isClearingConversationProp,
   isLoadingHistory: isLoadingHistoryProp,
   hasOlderMessages: hasOlderMessagesProp,
@@ -83,24 +101,33 @@ export function ChatInterface({
   headerProps,
 }: ChatInterfaceProps) {
   const messagesFromStore = useChatMessages();
+  const streamEventsFromStore = useChatStreamEvents();
   const toolEventsFromStore = useChatToolEvents();
+  const toolEventAnchorsFromStore = useChatToolEventAnchors();
   const agentNoticesFromStore = useChatAgentNotices();
   const lifecycleFromStore = useChatLifecycle();
   const activeAgentFromStore = useChatSelector((s) => s.activeAgent);
   const reasoningFromStore = useChatSelector((s) => s.reasoningText);
+  const reasoningPartsFromStore = useChatReasoningParts();
   const isSendingFromStore = useChatSelector((s) => s.isSending);
+  const isDeletingMessageFromStore = useChatSelector((s) => s.isDeletingMessage);
   const isClearingFromStore = useChatSelector((s) => s.isClearingConversation);
   const isLoadingHistoryFromStore = useChatSelector((s) => s.isLoadingHistory);
   const hasOlderMessagesFromStore = useChatSelector((s) => s.hasOlderMessages);
   const isLoadingOlderMessagesFromStore = useChatSelector((s) => s.isFetchingOlderMessages);
+  const deleteMessageFromStore = useChatSelector((s) => s.deleteMessage);
 
   const messages = messagesProp ?? messagesFromStore;
+  const streamEvents = streamEventsFromStore;
   const toolEvents = toolsProp ?? toolEventsFromStore;
+  const toolEventAnchors = toolEventAnchorsProp ?? toolEventAnchorsFromStore;
   const agentNotices = agentNoticesProp ?? agentNoticesFromStore;
   const lifecycleStatus = lifecycleStatusProp ?? lifecycleFromStore;
   const activeAgent = activeAgentProp ?? activeAgentFromStore;
   const reasoningText = reasoningTextProp ?? reasoningFromStore;
+  const reasoningParts = reasoningPartsFromStore;
   const isSending = isSendingProp ?? isSendingFromStore;
+  const isDeletingMessage = isDeletingMessageProp ?? isDeletingMessageFromStore;
   const isClearingConversation = isClearingConversationProp ?? isClearingFromStore;
   const isLoadingHistory = isLoadingHistoryProp ?? isLoadingHistoryFromStore;
   const hasOlderMessages = hasOlderMessagesProp ?? hasOlderMessagesFromStore;
@@ -119,20 +146,84 @@ export function ChatInterface({
   const [messageInput, setMessageInput] = useState('');
   const { attachmentState, resolveAttachment } = useAttachmentResolver();
   const { error: showErrorToast, success: showSuccessToast } = useToast();
+  const { updateMemory, isUpdating: isUpdatingMemory } = useUpdateConversationMemory(currentConversationId);
+  const [memoryByConversation, setMemoryByConversation] = useState<
+    Record<string, { mode: MemoryModeOption; memory_injection?: boolean }>
+  >({});
+  const defaultMemoryState = useMemo(
+    () => ({ mode: 'inherit' as MemoryModeOption, memory_injection: undefined as boolean | undefined }),
+    [],
+  );
+  const currentMemoryState = useMemo(() => {
+    if (!currentConversationId) return defaultMemoryState;
+    return memoryByConversation[currentConversationId] ?? defaultMemoryState;
+  }, [currentConversationId, defaultMemoryState, memoryByConversation]);
+
+  const resolvedDeleteMessage = onDeleteMessage ?? deleteMessageFromStore;
 
   const chatStatus = useMemo<ChatStatus | undefined>(() => {
-    if (isClearingConversation || isLoadingHistory) return 'submitted';
+    if (isClearingConversation || isDeletingMessage || isLoadingHistory) return 'submitted';
     if (isSending) return 'streaming';
     return undefined;
-  }, [isClearingConversation, isLoadingHistory, isSending]);
+  }, [isClearingConversation, isDeletingMessage, isLoadingHistory, isSending]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const value = messageInput.trim();
-    if (!value || isSending || isLoadingHistory) return;
+    if (!value || isSending || isDeletingMessage || isLoadingHistory) return;
     setMessageInput('');
     await onSendMessage(value);
   };
+
+  const applyMemoryUpdate = useCallback(
+    async (
+      next: { mode: MemoryModeOption; memory_injection?: boolean },
+      options?: { resetMode?: boolean },
+    ) => {
+      if (!currentConversationId) return;
+      const previous = memoryByConversation[currentConversationId] ?? defaultMemoryState;
+      setMemoryByConversation((prev) => ({ ...prev, [currentConversationId]: next }));
+      const body: ConversationMemoryConfigInput = {};
+      if (next.mode !== 'inherit') {
+        body.mode = next.mode;
+      } else if (options?.resetMode) {
+        body.mode = null;
+      }
+      if (typeof next.memory_injection === 'boolean') {
+        body.memory_injection = next.memory_injection;
+      }
+
+      try {
+        await updateMemory(body);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Unable to update conversation memory.';
+        showErrorToast({
+          title: 'Memory update failed',
+          description: message,
+        });
+        setMemoryByConversation((prev) => ({ ...prev, [currentConversationId]: previous }));
+      }
+    },
+    [currentConversationId, defaultMemoryState, memoryByConversation, showErrorToast, updateMemory],
+  );
+
+  const handleMemoryModeChange = useCallback(
+    (mode: MemoryModeOption) => {
+      const next = { ...currentMemoryState, mode };
+      const resetMode = mode === 'inherit';
+      void applyMemoryUpdate(next, { resetMode });
+    },
+    [applyMemoryUpdate, currentMemoryState],
+  );
+
+  const handleMemoryInjectionChange = useCallback(
+    (value: boolean) => {
+      const next = { ...currentMemoryState, memory_injection: value };
+      void applyMemoryUpdate(next);
+    },
+    [applyMemoryUpdate, currentMemoryState],
+  );
 
   const handleCopyMessage = useCallback(
     async (text: string) => {
@@ -164,16 +255,21 @@ export function ChatInterface({
       isLoadingHistory={isLoadingHistory}
       messages={messages}
       reasoningText={reasoningText}
+      reasoningParts={reasoningParts}
+      debugEvents={streamEvents}
       tools={toolEvents}
+      toolEventAnchors={toolEventAnchors}
       chatStatus={chatStatus}
       lifecycleStatus={lifecycleStatus}
       activeAgent={activeAgent}
       isSending={isSending}
+      isDeletingMessage={isDeletingMessage}
       isClearingConversation={isClearingConversation}
       historyError={resolvedHistoryError}
       errorMessage={resolvedErrorMessage}
       onClearError={onClearError}
       onClearHistory={resolvedClearHistory}
+      onDeleteMessage={resolvedDeleteMessage}
       currentConversationId={currentConversationId}
       hasOlderMessages={hasOlderMessages}
       isLoadingOlderMessages={isLoadingOlderMessages}
@@ -190,6 +286,11 @@ export function ChatInterface({
       onShareLocationChange={onShareLocationChange}
       locationHint={locationHint}
       onLocationHintChange={onLocationHintChange}
+      memoryMode={currentMemoryState.mode}
+      memoryInjection={currentMemoryState.memory_injection}
+      onMemoryModeChange={handleMemoryModeChange}
+      onMemoryInjectionChange={handleMemoryInjectionChange}
+      isUpdatingMemory={isUpdatingMemory}
     />
   );
 }

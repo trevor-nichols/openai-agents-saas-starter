@@ -139,48 +139,69 @@ export function mockWorkflowRunList(): WorkflowRunListView {
 }
 
 export async function* mockWorkflowStream(runId: string): AsyncGenerator<StreamingWorkflowEvent> {
-  const base = {
-    workflow_key: 'triage-and-summary',
+  const server_timestamp = new Date().toISOString();
+  const conversation_id = `conv_${Date.now()}`;
+  const response_id = `resp_${Date.now()}`;
+  const stream_id = `stream_mock_workflow_${runId}`;
+  const workflow_key = 'triage-and-summary';
+
+  const workflow = {
+    workflow_key,
     workflow_run_id: runId,
+    stage_name: 'main',
+    step_name: 'analyze',
+    step_agent: 'analysis',
+    parallel_group: null,
+    branch_index: null,
   } as const;
 
   yield {
-    ...base,
+    schema: 'public_sse_v1',
+    event_id: 1,
+    stream_id,
+    server_timestamp,
     kind: 'lifecycle',
-    workflow_run_id: runId,
-    workflow_key: base.workflow_key,
-    event: 'run_started',
-    is_terminal: false,
+    conversation_id,
+    response_id,
+    agent: 'analysis',
+    workflow,
+    status: 'in_progress',
   } as StreamingWorkflowEvent;
 
   yield {
-    ...base,
-    kind: 'run_item_stream_event',
-    run_item_name: 'agent_output',
-    run_item_type: 'agent',
-    agent: 'researcher',
-    response_id: 'resp-1',
-    sequence_number: 1,
-    response_text: 'Working on it...',
-    structured_output: null,
-    is_terminal: false,
+    schema: 'public_sse_v1',
+    event_id: 2,
+    stream_id,
+    server_timestamp,
+    kind: 'message.delta',
+    conversation_id,
+    response_id,
+    agent: 'analysis',
+    workflow,
+    output_index: 0,
+    item_id: 'msg_mock_workflow_1',
+    content_index: 0,
+    delta: 'Working on it...',
   } as StreamingWorkflowEvent;
 
   yield {
-    ...base,
-    kind: 'raw_response_event',
-    raw_type: 'response.output_text.delta',
-    text_delta: 'Done.',
-    sequence_number: 2,
-    is_terminal: false,
-  } as StreamingWorkflowEvent;
-
-  yield {
-    ...base,
-    kind: 'raw_response_event',
-    raw_type: 'response.completed',
-    text_delta: '',
-    sequence_number: 3,
-    is_terminal: true,
+    schema: 'public_sse_v1',
+    event_id: 3,
+    stream_id,
+    server_timestamp,
+    kind: 'final',
+    conversation_id,
+    response_id,
+    agent: 'analysis',
+    workflow,
+    final: {
+      status: 'completed',
+      response_text: 'Done.',
+      structured_output: null,
+      reasoning_summary_text: null,
+      refusal_text: null,
+      attachments: [],
+      usage: { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
+    },
   } as StreamingWorkflowEvent;
 }

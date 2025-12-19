@@ -1,10 +1,16 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
+
+from app.domain.vector_stores import (
+    VectorStoreSearchContentChunk,
+    VectorStoreSearchResult,
+    VectorStoreSearchResultsPage,
+)
 
 
 class VectorStoreCreateRequest(BaseModel):
@@ -65,14 +71,57 @@ class VectorStoreFileListResponse(BaseModel):
 
 
 class VectorStoreSearchRequest(BaseModel):
-    query: str = Field(min_length=1)
+    query: str | list[str] = Field(min_length=1)
     filters: dict[str, Any] | None = None
     max_num_results: int | None = Field(default=None, ge=1, le=50)
     ranking_options: dict[str, Any] | None = None
 
 
+class VectorStoreSearchContentChunkResponse(BaseModel):
+    type: Literal["text"]
+    text: str
+
+    @classmethod
+    def from_domain(
+        cls, chunk: VectorStoreSearchContentChunk
+    ) -> VectorStoreSearchContentChunkResponse:
+        return cls(type="text", text=chunk.text)
+
+
+class VectorStoreSearchResultResponse(BaseModel):
+    file_id: str
+    filename: str
+    score: float
+    attributes: dict[str, Any] = Field(default_factory=dict)
+    content: list[VectorStoreSearchContentChunkResponse] = Field(default_factory=list)
+
+    @classmethod
+    def from_domain(cls, result: VectorStoreSearchResult) -> VectorStoreSearchResultResponse:
+        return cls(
+            file_id=result.file_id,
+            filename=result.filename,
+            score=result.score,
+            attributes=dict(result.attributes),
+            content=[VectorStoreSearchContentChunkResponse.from_domain(c) for c in result.content],
+        )
+
+
 class VectorStoreSearchResponse(BaseModel):
-    data: Any
+    object: str
+    search_query: str
+    data: list[VectorStoreSearchResultResponse] = Field(default_factory=list)
+    has_more: bool = False
+    next_page: str | None = None
+
+    @classmethod
+    def from_domain(cls, page: VectorStoreSearchResultsPage) -> VectorStoreSearchResponse:
+        return cls(
+            object=page.object,
+            search_query=page.search_query,
+            data=[VectorStoreSearchResultResponse.from_domain(item) for item in page.data],
+            has_more=page.has_more,
+            next_page=page.next_page,
+        )
 
 
 __all__ = [
@@ -84,4 +133,6 @@ __all__ = [
     "VectorStoreFileListResponse",
     "VectorStoreSearchRequest",
     "VectorStoreSearchResponse",
+    "VectorStoreSearchContentChunkResponse",
+    "VectorStoreSearchResultResponse",
 ]

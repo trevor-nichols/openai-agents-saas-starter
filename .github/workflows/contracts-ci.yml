@@ -29,7 +29,7 @@ jobs:
           tool: just
 
       - name: Bootstrap contracts env
-        run: just -f starter_contracts/justfile bootstrap
+        run: just -f packages/starter_contracts/justfile bootstrap
 
       - name: Lint
         run: just contracts-lint

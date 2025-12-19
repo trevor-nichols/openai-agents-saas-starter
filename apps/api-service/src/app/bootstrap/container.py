@@ -13,17 +13,22 @@ from app.infrastructure.persistence.workflows.repository import (
 from app.infrastructure.redis.factory import reset_redis_factory, shutdown_redis_factory
 from app.services.activity import ActivityService
 from app.services.agents.interaction_context import InteractionContextBuilder
+from app.services.auth.mfa_service import MfaService
 from app.services.auth.service_account_service import ServiceAccountTokenService
 from app.services.auth.session_service import UserSessionService
 from app.services.billing.billing_events import BillingEventsService
 from app.services.billing.billing_service import BillingService
 from app.services.billing.stripe.dispatcher import StripeEventDispatcher
 from app.services.billing.stripe.retry_worker import StripeDispatchRetryWorker
+from app.services.consent_service import ConsentService
 from app.services.contact_service import ContactService
 from app.services.containers import ContainerService
 from app.services.conversation_service import ConversationService
+from app.services.conversations.title_service import TitleService
 from app.services.geoip_service import GeoIPService, NullGeoIPService, shutdown_geoip_service
 from app.services.integrations.slack_notifier import SlackNotifier
+from app.services.notification_preferences import NotificationPreferenceService
+from app.services.security_events import SecurityEventService
 from app.services.shared.rate_limit_service import RateLimiter
 from app.services.signup.email_verification_service import EmailVerificationService
 from app.services.signup.password_recovery_service import PasswordRecoveryService
@@ -31,6 +36,7 @@ from app.services.status.status_alert_dispatcher import StatusAlertDispatcher
 from app.services.status.status_subscription_service import StatusSubscriptionService
 from app.services.storage.service import StorageService
 from app.services.tenant.tenant_settings_service import TenantSettingsService
+from app.services.usage_counters import UsageCounterService
 from app.services.usage_policy_service import UsagePolicyService
 from app.services.usage_recorder import UsageRecorder
 from app.services.users import UserService
@@ -48,6 +54,9 @@ if TYPE_CHECKING:  # pragma: no cover - type hints only
     from app.services.agent_service import AgentService
     from app.services.agents.query import ConversationQueryService
     from app.services.auth_service import AuthService
+    from app.services.conversations.ledger_reader import ConversationLedgerReader
+    from app.services.conversations.ledger_recorder import ConversationLedgerRecorder
+    from app.services.conversations.truncation_service import ConversationTruncationService
     from app.services.signup.invite_service import InviteService
     from app.services.signup.signup_request_service import SignupRequestService
     from app.services.signup.signup_service import SignupService
@@ -75,6 +84,8 @@ class ApplicationContainer:
     geoip_service: GeoIPService = field(default_factory=NullGeoIPService)
     slack_notifier: SlackNotifier | None = None
     auth_service: AuthService | None = None
+    mfa_service: MfaService | None = None
+    security_event_service: SecurityEventService | None = None
     password_recovery_service: PasswordRecoveryService | None = None
     email_verification_service: EmailVerificationService | None = None
     user_session_service: UserSessionService | None = None
@@ -89,15 +100,22 @@ class ApplicationContainer:
         default_factory=TenantSettingsService
     )
     conversation_query_service: ConversationQueryService | None = None
+    conversation_ledger_recorder: ConversationLedgerRecorder | None = None
+    conversation_ledger_reader: ConversationLedgerReader | None = None
+    conversation_truncation_service: ConversationTruncationService | None = None
     vector_limit_resolver: VectorLimitResolver | None = None
     vector_store_service: VectorStoreService | None = None
     vector_store_sync_worker: VectorStoreSyncWorker | None = None
     container_service: ContainerService | None = None
+    title_service: TitleService | None = None
     usage_recorder: UsageRecorder = field(default_factory=UsageRecorder)
     usage_policy_service: UsagePolicyService | None = None
     storage_service: StorageService | None = None
     workflow_run_repository: SqlAlchemyWorkflowRunRepository | None = None
     workflow_service: WorkflowService | None = None
+    consent_service: ConsentService | None = None
+    notification_preference_service: NotificationPreferenceService | None = None
+    usage_counter_service: UsageCounterService | None = None
 
     async def shutdown(self) -> None:
         """Gracefully tear down managed services."""
@@ -125,7 +143,16 @@ class ApplicationContainer:
         self.service_account_token_service = None
         self.contact_service = None
         self.agent_service = None
+        self.title_service = None
         self.conversation_query_service = None
+        self.conversation_ledger_recorder = None
+        self.conversation_ledger_reader = None
+        self.conversation_truncation_service = None
+        self.mfa_service = None
+        self.security_event_service = None
+        self.consent_service = None
+        self.notification_preference_service = None
+        self.usage_counter_service = None
         self.signup_service = None
         self.invite_service = None
         self.signup_request_service = None
@@ -216,6 +243,55 @@ def wire_storage_service(container: ApplicationContainer) -> None:
         )
 
 
+def wire_title_service(container: ApplicationContainer) -> None:
+    """Initialize the internal title generation service."""
+
+    if container.title_service is None:
+        container.title_service = TitleService(container.conversation_service)
+
+
+def wire_conversation_ledger_recorder(container: ApplicationContainer) -> None:
+    """Initialize the conversation ledger recorder (public_sse_v1 capture)."""
+
+    if container.conversation_ledger_recorder is not None:
+        return
+    if container.session_factory is None:
+        raise RuntimeError("Session factory must be configured before conversation ledger recorder")
+    if container.storage_service is None:
+        wire_storage_service(container)
+    if container.storage_service is None:  # pragma: no cover - defensive
+        raise RuntimeError("Storage service must be configured before conversation ledger recorder")
+
+    from app.services.conversations.ledger_recorder import ConversationLedgerRecorder
+
+    storage_service = cast(StorageService, container.storage_service)
+    container.conversation_ledger_recorder = ConversationLedgerRecorder(
+        session_factory=container.session_factory,
+        storage_service=storage_service,
+    )
+
+
+def wire_conversation_ledger_reader(container: ApplicationContainer) -> None:
+    """Initialize the conversation ledger reader (public_sse_v1 replay)."""
+
+    if container.conversation_ledger_reader is not None:
+        return
+    if container.session_factory is None:
+        raise RuntimeError("Session factory must be configured before conversation ledger reader")
+    if container.storage_service is None:
+        wire_storage_service(container)
+    if container.storage_service is None:  # pragma: no cover - defensive
+        raise RuntimeError("Storage service must be configured before conversation ledger reader")
+
+    from app.services.conversations.ledger_reader import ConversationLedgerReader
+
+    storage_service = cast(StorageService, container.storage_service)
+    container.conversation_ledger_reader = ConversationLedgerReader(
+        session_factory=container.session_factory,
+        storage_service=storage_service,
+    )
+
+
 def wire_conversation_query_service(container: ApplicationContainer) -> None:
     """Initialize the conversation query service with history + attachments."""
 
@@ -245,6 +321,9 @@ def wire_workflow_services(container: ApplicationContainer) -> None:
     if container.session_factory is None:
         raise RuntimeError("Session factory must be configured before workflow services")
 
+    if container.container_service is None:
+        wire_container_service(container)
+
     if container.vector_store_service is None:
         wire_vector_store_service(container)
 
@@ -254,6 +333,19 @@ def wire_workflow_services(container: ApplicationContainer) -> None:
         )
 
     if container.workflow_service is None:
+        if container.storage_service is None:
+            wire_storage_service(container)
+        if container.storage_service is None:  # pragma: no cover - defensive
+            raise RuntimeError("Storage service must be configured before workflow services")
+
+        from app.services.agents.attachments import AttachmentService
+        from app.services.containers.files_gateway import OpenAIContainerFilesGateway
+
+        storage_service = cast(StorageService, container.storage_service)
+        attachment_service = AttachmentService(
+            lambda: storage_service,
+            container_files_gateway_resolver=lambda: OpenAIContainerFilesGateway(get_settings),
+        )
         container.workflow_service = WorkflowService(
             registry=None,
             provider_registry=None,
@@ -262,6 +354,7 @@ def wire_workflow_services(container: ApplicationContainer) -> None:
                 vector_store_service=container.vector_store_service,
             ),
             run_repository=container.workflow_run_repository,
+            attachment_service=attachment_service,
         )
 
 
@@ -275,6 +368,8 @@ __all__ = [
     "wire_container_service",
     "wire_storage_service",
     "wire_conversation_query_service",
+    "wire_conversation_ledger_recorder",
+    "wire_conversation_ledger_reader",
     "wire_workflow_services",
     "VectorLimitResolver",
     "VectorStoreSyncWorker",

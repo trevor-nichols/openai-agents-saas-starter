@@ -127,6 +127,13 @@ async def get_platform_status_rss() -> Response:
     return await _build_status_rss_response()
 
 
+@router.get(".rss", response_class=Response, include_in_schema=False)
+async def get_platform_status_rss_dot() -> Response:
+    """Alias for the RSS feed endpoint (for clients expecting `/status.rss`)."""
+
+    return await _build_status_rss_response()
+
+
 async def _build_status_rss_response() -> Response:
     snapshot = await _status_service.get_platform_status()
     rss_xml = _render_snapshot_as_rss(

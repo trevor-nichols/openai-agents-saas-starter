@@ -22,16 +22,27 @@ interface AppPageHeadingProps {
 
 export function AppPageHeading({ navItems, accountItems, subtitle }: AppPageHeadingProps) {
   const pathname = usePathname() ?? '';
-  const allItems = useMemo(() => [...navItems, ...accountItems], [navItems, accountItems]);
-
+  
   const active = useMemo(() => {
+    const flatten = (items: AppNavItem[]): AppNavItem[] => {
+      return items.reduce((acc, item) => {
+        acc.push(item);
+        if (item.items) {
+          acc.push(...flatten(item.items));
+        }
+        return acc;
+      }, [] as AppNavItem[]);
+    };
+
+    const allItems = flatten([...navItems, ...accountItems]);
+
     return (
       allItems.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`)) ?? {
         href: '/dashboard',
         label: 'Dashboard',
       }
     );
-  }, [allItems, pathname]);
+  }, [navItems, accountItems, pathname]);
 
   return (
     <div className="space-y-3">

@@ -10,6 +10,7 @@ from typing import Any
 from app.domain.ai.models import AgentStreamEvent
 from app.domain.conversations import ConversationEvent
 from app.services.conversation_service import ConversationService
+from app.utils.tools.builtin_tools import infer_builtin_tool_name
 
 
 class EventProjector:
@@ -56,19 +57,56 @@ class EventProjector:
         response_id: str | None,
         workflow_run_id: str | None,
     ) -> ConversationEvent | None:
-        item_type = str(item.get("type") or "unknown")
+        explicit_run_item_type = item.get("run_item_type")
+        item_type = str(item.get("type") or explicit_run_item_type or "unknown")
         role = item.get("role")
         role_literal = role if role in {"user", "assistant", "system"} else None
-        run_item_type = _classify_item_type(item_type, role_literal)
+        run_item_type = (
+            str(explicit_run_item_type)
+            if explicit_run_item_type
+            else _classify_item_type(item_type, role_literal)
+        )
 
-        tool_call_id = item.get("tool_call_id") or item.get("id") or None
-        tool_name = item.get("tool_name") or item.get("name") or None
+        tool_call_id = None
+        tool_name = None
+        if run_item_type in {"tool_call", "tool_result", "mcp_call"}:
+            tool_call_id = item.get("tool_call_id") or item.get("id") or None
+            tool_name = item.get("tool_name") or item.get("name") or None
+            if tool_name is None:
+                tool_name = infer_builtin_tool_name(item_type)
 
         content_text = _extract_text(item)
         reasoning_text = _extract_reasoning(item)
 
         call_arguments = _maybe_json(item.get("arguments"))
         call_output = _maybe_json(item.get("output") or item.get("result"))
+        if call_arguments is None and run_item_type == "tool_call":
+            # Best-effort arguments for built-in tool run items emitted by Responses API.
+            if item_type == "web_search_call":
+                call_arguments = _maybe_json(item.get("action"))
+            elif item_type == "file_search_call":
+                call_arguments = _maybe_json({"queries": item.get("queries")})
+            elif item_type == "code_interpreter_call":
+                call_arguments = _maybe_json({"code": item.get("code")})
+            elif item_type == "image_generation_call":
+                call_arguments = _maybe_json(
+                    {
+                        "prompt": item.get("prompt") or item.get("revised_prompt"),
+                        "size": item.get("size"),
+                        "quality": item.get("quality"),
+                        "background": item.get("background"),
+                    }
+                )
+        if (
+            call_output is None
+            and run_item_type == "tool_call"
+            and infer_builtin_tool_name(item_type)
+        ):
+            # Persist tool completion status even when the provider does not emit a separate
+            # tool-result item.
+            status = item.get("status")
+            if status is not None:
+                call_output = _maybe_json({"status": status})
 
         timestamp = _extract_timestamp(item)
 
@@ -106,6 +144,9 @@ def _classify_item_type(item_type: str, role: Any) -> str:
         if role == "system":
             return "system_message"
         return "assistant_message"
+    if infer_builtin_tool_name(item_type):
+        # Built-in Responses tool run items like `web_search_call`.
+        return "tool_call"
     if item_type in {"tool_call", "function_call", "tool_call_item"}:
         return "tool_call"
     if item_type in {"tool_result", "tool_output", "function_result", "tool_output_item"}:

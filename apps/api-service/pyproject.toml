@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { file = "LICENSE" }
 authors = [
-  { name = "OpenAI Agents Starter Team" }
+  { name = "OpenAI Agents SaaS Starter Team" }
 ]
 keywords = ["fastapi", "openai", "agents", "ai", "starter"]
 classifiers = [
@@ -46,6 +46,7 @@ dependencies = [
   "aiosqlite>=0.20.0,<0.21.0",
   "asyncpg>=0.30.0,<0.31.0",
   "openai-agents==0.6.1",
+  "openai-guardrails==0.2.0",
   "prometheus-client>=0.20.0,<0.21.0",
   "rich>=13.9.0,<14.0.0",
   "zxcvbn-python>=4.4.0,<5.0.0",
@@ -82,10 +83,10 @@ tui = [
 ]
 
 [project.urls]
-homepage = "https://github.com/openai/openai-agents-starter"
-repository = "https://github.com/openai/openai-agents-starter"
-documentation = "https://github.com/openai/openai-agents-starter/tree/main/docs/openai-agents-sdk"
-issues = "https://github.com/openai/openai-agents-starter/issues"
+homepage = "https://github.com/openai/openai-agents-saas-starter"
+repository = "https://github.com/openai/openai-agents-saas-starter"
+documentation = "https://github.com/openai/openai-agents-saas-starter/tree/main/docs/openai-agents-sdk"
+issues = "https://github.com/openai/openai-agents-saas-starter/issues"
 
 [project.scripts]
 api-service = "run:main"
@@ -127,14 +128,14 @@ PYTHONPATH = "src:../../packages/starter_contracts/src"
 
 [tool.hatch.envs.default.scripts]
 serve = "uvicorn main:app --reload --app-dir src --reload-dir src --reload-dir ../../packages/starter_contracts --host 127.0.0.1 --port 8000"
-test = "pytest"
+test = "pytest -m 'not smoke and not integration'"
 lint = "ruff check src"
 format = "ruff format src"
 typecheck = "python -m pyright --project pyproject.toml && python -m mypy --config-file pyproject.toml src tests"
 coverage = "python -m coverage run -m pytest && python -m coverage report"
 pyright = "python -m pyright --project pyproject.toml"
 migrate = "alembic -c alembic.ini upgrade heads"
-migration-revision = "alembic -c alembic.ini revision -m \"{args}\""
+migration-revision = "alembic -c alembic.ini revision --autogenerate -m \"{args}\""
 
 [tool.ruff]
 line-length = 100

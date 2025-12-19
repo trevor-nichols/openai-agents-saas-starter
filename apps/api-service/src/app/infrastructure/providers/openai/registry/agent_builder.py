@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import importlib
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from agents import Agent, RunConfig, handoff
 from agents.agent_output import AgentOutputSchema, AgentOutputSchemaBase
@@ -13,11 +14,22 @@ from agents.extensions.handoff_prompt import prompt_with_handoff_instructions
 from agents.model_settings import ModelSettings
 
 from app.agents._shared.handoff_filters import get_filter as get_handoff_filter
-from app.agents._shared.specs import AgentSpec, AgentToolConfig, HandoffConfig, OutputSpec
+from app.agents._shared.specs import (
+    AgentSpec,
+    AgentToolConfig,
+    GuardrailRuntimeOptions,
+    HandoffConfig,
+    OutputSpec,
+)
 from app.core.settings import Settings
 
 from .prompt import PromptRenderer
 from .tool_resolver import ToolResolver
+
+if TYPE_CHECKING:
+    from app.guardrails._shared.builder import GuardrailBuilder
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -33,10 +45,16 @@ class AgentBuilder:
         tool_resolver: ToolResolver,
         prompt_renderer: PromptRenderer,
         settings_factory: Callable[[], Settings],
+        guardrail_builder: GuardrailBuilder | None = None,
+        default_guardrails: Any | None = None,
+        default_runtime_options: GuardrailRuntimeOptions | None = None,
     ) -> None:
         self._tool_resolver = tool_resolver
         self._prompt_renderer = prompt_renderer
         self._settings_factory = settings_factory
+        self._guardrail_builder = guardrail_builder
+        self._default_guardrails = default_guardrails
+        self._default_runtime_options = default_runtime_options
 
     def build_agent(
         self,
@@ -54,6 +72,7 @@ class AgentBuilder:
             runtime_ctx=runtime_ctx,
             allow_unresolved_file_search=allow_unresolved_file_search,
         )
+        spec.ensure_model_config()
         instructions, _ = self._prompt_renderer.render_instructions(
             spec=spec,
             runtime_ctx=runtime_ctx,
@@ -78,16 +97,29 @@ class AgentBuilder:
             response_include.append("code_interpreter_call.outputs")
         model_settings = ModelSettings(response_include=response_include or None)
 
-        agent = Agent(
-            name=spec.display_name,
-            instructions=instructions,
-            model=self._resolve_agent_model(self._settings_factory(), spec),
-            model_settings=model_settings,
-            tools=tools_with_agents,
-            handoffs=cast(list[Any], handoff_targets),
-            handoff_description=spec.description if handoff_targets else None,
-            output_type=self._resolve_output_type(spec),
-        )
+        # Build guardrails if configured
+        input_guardrails, output_guardrails = self._build_guardrails(spec)
+
+        # Build agent kwargs with optional guardrails
+        agent_kwargs: dict[str, Any] = {
+            "name": spec.display_name,
+            "instructions": instructions,
+            "model": self._resolve_agent_model(self._settings_factory(), spec),
+            "model_settings": model_settings,
+            "tools": tools_with_agents,
+            "handoffs": cast(list[Any], handoff_targets),
+            "handoff_description": spec.description if handoff_targets else None,
+            "output_type": self._resolve_output_type(spec),
+        }
+        if input_guardrails:
+            agent_kwargs["input_guardrails"] = input_guardrails
+        if output_guardrails:
+            agent_kwargs["output_guardrails"] = output_guardrails
+        runtime_opts = spec.guardrails_runtime or self._default_runtime_options
+        if runtime_opts:
+            agent_kwargs.setdefault("guardrails_runtime", self._runtime_options(runtime_opts))
+
+        agent = Agent(**agent_kwargs)
         return BuildResult(agent=agent, code_interpreter_mode=tool_selection.code_interpreter_mode)
 
     def _build_agent_tools(
@@ -263,6 +295,8 @@ class AgentBuilder:
         return AgentOutputSchema(type_obj, strict_json_schema=cfg.strict)
 
     def _resolve_agent_model(self, settings: Settings, spec: AgentSpec) -> str:
+        if spec.model is not None:
+            return str(spec.model)
         if spec.model_key:
             attr = f"agent_{spec.model_key}_model"
             override = getattr(settings, attr, None)
@@ -290,6 +324,53 @@ class AgentBuilder:
                     f"{label or 'object'} '{dotted}' must be an instance of {expected.__name__}"
                 )
         return obj
+
+    def _build_guardrails(
+        self,
+        spec: AgentSpec,
+    ) -> tuple[list[Any], list[Any]]:
+        """Build input and output guardrails from agent spec.
+
+        Args:
+            spec: The agent specification.
+
+        Returns:
+            Tuple of (input_guardrails, output_guardrails) lists.
+        """
+        guardrail_config = getattr(spec, "guardrails", None) or self._default_guardrails
+        if guardrail_config is None or not self._guardrail_builder:
+            return [], []
+
+        try:
+            input_guardrails = self._guardrail_builder.build_input_guardrails(guardrail_config)
+            output_guardrails = self._guardrail_builder.build_output_guardrails(guardrail_config)
+            logger.debug(
+                "Built guardrails for agent '%s': %d input, %d output",
+                spec.key,
+                len(input_guardrails),
+                len(output_guardrails),
+            )
+            return input_guardrails, output_guardrails
+        except Exception as e:
+            logger.exception("Failed to build guardrails for agent '%s': %s", spec.key, e)
+            raise ValueError(
+                f"Failed to build guardrails for agent '{spec.key}': {e}"
+            ) from e
+
+    @staticmethod
+    def _runtime_options(
+        options: GuardrailRuntimeOptions,
+    ) -> dict[str, Any]:
+        """Translate GuardrailRuntimeOptions to Agent kwargs."""
+        runtime: dict[str, Any] = {
+            "suppress_tripwire": options.suppress_tripwire,
+            "streaming_mode": options.streaming_mode,
+        }
+        if options.concurrency is not None:
+            runtime["concurrency"] = options.concurrency
+        if options.result_handler_path:
+            runtime["result_handler_path"] = options.result_handler_path
+        return runtime
 
 
 __all__ = ["AgentBuilder", "BuildResult"]

@@ -50,7 +50,7 @@ def test_output_spec_strict_json_schema():
         instructions="hi",
         output=OutputSpec(
             mode="json_schema",
-            type_path="tests.unit.test_output_spec:ExampleModel",
+            type_path=f"{__name__}:ExampleModel",
             strict=True,
         ),
     )
@@ -69,7 +69,7 @@ def test_output_spec_non_strict_json_schema():
         instructions="hi",
         output=OutputSpec(
             mode="json_schema",
-            type_path="tests.unit.test_output_spec:ExampleModel",
+            type_path=f"{__name__}:ExampleModel",
             strict=False,
         ),
     )
@@ -88,7 +88,7 @@ def test_output_spec_custom_schema():
         instructions="hi",
         output=OutputSpec(
             mode="json_schema",
-            custom_schema_path="tests.unit.test_output_spec:ExampleCustomSchema",
+            custom_schema_path=f"{__name__}:ExampleCustomSchema",
         ),
     )
     registry = _make_registry(spec)

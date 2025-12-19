@@ -5,15 +5,7 @@ import type { ContactSubmissionRequest } from '@/lib/api/client/types.gen';
 import { createApiClient } from '../apiClient';
 import type { ContactSubmission } from '@/types/marketing';
 
-export class MarketingServiceError extends Error {
-  status: number;
-
-  constructor(message: string, status = 500) {
-    super(message);
-    this.name = 'MarketingServiceError';
-    this.status = status;
-  }
-}
+import { MarketingServiceError } from './marketing.errors';
 
 export async function submitContact(payload: ContactSubmission): Promise<void> {
   const client = createApiClient();
@@ -70,4 +62,3 @@ function mapErrorToStatus(message: string): number {
   if (normalized.includes('validation')) return 422;
   return 500;
 }
-

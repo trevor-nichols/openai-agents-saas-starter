@@ -13,7 +13,7 @@ interface UseToolsResult {
 
 export function useTools(): UseToolsResult {
   const {
-    data = {},
+    data = { total_tools: 0 },
     isLoading,
     error,
     refetch,

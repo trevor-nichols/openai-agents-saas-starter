@@ -57,6 +57,21 @@ const errorStream = createWriteStream(errorPath, { flags: "a" });
 
 const child = spawn(args[0], args.slice(1), { stdio: ["inherit", "pipe", "pipe"] });
 
+let shuttingDown = false;
+function forwardSignal(signalName) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  try {
+    child.kill(signalName);
+  } catch (_err) {
+    // ignore
+  }
+}
+
+process.on("SIGINT", () => forwardSignal("SIGINT"));
+process.on("SIGTERM", () => forwardSignal("SIGTERM"));
+process.on("SIGHUP", () => forwardSignal("SIGHUP"));
+
 child.stdout.on("data", (chunk) => {
   process.stdout.write(chunk);
   allStream.write(chunk);
@@ -72,4 +87,13 @@ child.on("exit", (code) => {
   allStream.end();
   errorStream.end();
   process.exit(code ?? 0);
+});
+
+process.on("exit", () => {
+  // Best-effort: ensure the child doesn't linger if the wrapper is terminated.
+  try {
+    if (!child.killed) child.kill("SIGTERM");
+  } catch (_err) {
+    // ignore
+  }
 });

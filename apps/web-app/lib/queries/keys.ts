@@ -19,6 +19,8 @@ export const queryKeys = {
     messages: (id: string) => [...queryKeys.conversations.all, 'messages', id] as const,
     events: (id: string, filters?: Record<string, unknown>) =>
       [...queryKeys.conversations.all, 'events', id, filters ?? {}] as const,
+    ledger: (id: string, filters?: Record<string, unknown>) =>
+      [...queryKeys.conversations.all, 'ledger', id, filters ?? {}] as const,
   },
   billing: {
     all: ['billing'] as const,
@@ -35,6 +37,16 @@ export const queryKeys = {
     all: ['agents'] as const,
     list: () => [...queryKeys.agents.all, 'list'] as const,
     detail: (agentName: string) => [...queryKeys.agents.all, 'detail', agentName] as const,
+  },
+  guardrails: {
+    all: ['guardrails'] as const,
+    list: () => [...queryKeys.guardrails.all, 'list'] as const,
+    detail: (guardrailKey: string) => [...queryKeys.guardrails.all, 'detail', guardrailKey] as const,
+    presets: {
+      all: () => [...queryKeys.guardrails.all, 'presets'] as const,
+      list: () => [...queryKeys.guardrails.presets.all(), 'list'] as const,
+      detail: (presetKey: string) => [...queryKeys.guardrails.presets.all(), 'detail', presetKey] as const,
+    },
   },
   status: {
     all: ['status'] as const,
@@ -59,6 +71,10 @@ export const queryKeys = {
         [...queryKeys.account.serviceAccounts.all(), filters] as const,
     },
   },
+  users: {
+    all: ['users'] as const,
+    profile: () => [...queryKeys.users.all, 'profile'] as const,
+  },
   tenant: {
     all: ['tenant'] as const,
     settings: () => [...queryKeys.tenant.all, 'settings'] as const,
@@ -81,8 +97,8 @@ export const queryKeys = {
     all: ['workflows'] as const,
     list: () => [...queryKeys.workflows.all, 'list'] as const,
     run: (runId: string) => [...queryKeys.workflows.all, 'run', runId] as const,
-    runEvents: (runId: string | null, conversationId: string | null) =>
-      [...queryKeys.workflows.all, 'run-events', runId ?? 'none', conversationId ?? 'none'] as const,
+    runReplay: (runId: string | null) =>
+      [...queryKeys.workflows.all, 'run-replay', runId ?? 'none'] as const,
     descriptor: (workflowKey: string | null) =>
       [...queryKeys.workflows.all, 'descriptor', workflowKey ?? 'none'] as const,
     runs: (filters?: Record<string, unknown>) =>

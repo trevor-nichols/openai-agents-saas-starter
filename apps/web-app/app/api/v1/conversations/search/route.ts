@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { searchConversationsAction } from '@/app/(app)/(workspace)/chat/actions';
+import { searchConversationsPage } from '@/lib/server/services/conversations';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -12,23 +12,23 @@ export async function GET(request: Request) {
   const cursor = searchParams.get('cursor');
   const agent = searchParams.get('agent');
 
-  const result = await searchConversationsAction({
-    query,
-    limit: limit ? Number(limit) : undefined,
-    cursor: cursor || null,
-    agent: agent || null,
-  });
+  try {
+    const page = await searchConversationsPage({
+      query,
+      limit: limit ? Number(limit) : undefined,
+      cursor: cursor || null,
+      agent: agent || null,
+    });
 
-  const status = result.success ? 200 : 500;
-  if (!result.success) {
-    return NextResponse.json({ error: result.error ?? 'Failed to search conversations' }, { status });
+    return NextResponse.json(
+      {
+        items: page.items ?? [],
+        next_cursor: page.next_cursor ?? null,
+      },
+      { status: 200 },
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to search conversations';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-
-  return NextResponse.json(
-    {
-      items: result.items ?? [],
-      next_cursor: result.next_cursor ?? null,
-    },
-    { status },
-  );
 }

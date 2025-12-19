@@ -2,18 +2,30 @@
 
 import {
   deleteConversationApiV1ConversationsConversationIdDelete,
+  deleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDelete,
   getConversationApiV1ConversationsConversationIdGet,
   getConversationEventsApiV1ConversationsConversationIdEventsGet,
+  getConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGet,
   getConversationMessagesApiV1ConversationsConversationIdMessagesGet,
   listConversationsApiV1ConversationsGet,
   searchConversationsApiV1ConversationsSearchGet,
+  streamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGet,
+  streamConversationMetadataApiV1ConversationsConversationIdStreamGet,
+  updateConversationMemoryApiV1ConversationsConversationIdMemoryPatch,
+  updateConversationTitleApiV1ConversationsConversationIdTitlePatch,
 } from '@/lib/api/client/sdk.gen';
 import type {
   ConversationHistory,
   ConversationEventsResponse,
+  ConversationLedgerEventsResponse,
   ConversationListResponse as BackendConversationListResponse,
+  ConversationMessageDeleteResponse,
   ConversationSearchResponse as BackendConversationSearchResponse,
   PaginatedMessagesResponse,
+  ConversationMemoryConfigRequest,
+  ConversationMemoryConfigResponse,
+  ConversationTitleUpdateRequest,
+  ConversationTitleUpdateResponse,
 } from '@/lib/api/client/types.gen';
 import type {
   ConversationEvents,
@@ -24,6 +36,57 @@ import type {
 } from '@/types/conversations';
 
 import { getServerApiClient } from '../apiClient';
+import { ConversationTitleApiError } from './conversations.errors';
+
+const STREAM_HEADERS = {
+  'Content-Type': 'text/event-stream',
+  'Cache-Control': 'no-cache',
+  Connection: 'keep-alive',
+} as const;
+
+type SdkFieldsResult<T> =
+  | {
+      data: T;
+      error: undefined;
+      response: Response;
+    }
+  | {
+      data: undefined;
+      error: unknown;
+      response: Response;
+    };
+
+function mapApiErrorMessage(payload: unknown, fallback: string): string {
+  if (typeof payload === 'string') {
+    return payload || fallback;
+  }
+
+  if (!payload || typeof payload !== 'object') {
+    return fallback;
+  }
+
+  const record = payload as Record<string, unknown>;
+  if (typeof record.detail === 'string' && record.detail) return record.detail;
+  if (typeof record.message === 'string' && record.message) return record.message;
+
+  const detail = record.detail;
+  if (Array.isArray(detail) && detail.length > 0) {
+    const parts = detail
+      .map((item) => {
+        if (item && typeof item === 'object' && typeof (item as Record<string, unknown>).msg === 'string') {
+          return (item as Record<string, unknown>).msg as string;
+        }
+        if (typeof item === 'string') return item;
+        return null;
+      })
+      .filter(Boolean);
+    if (parts.length > 0) {
+      return parts.join('; ');
+    }
+  }
+
+  return fallback;
+}
 
 /**
  * Fetch the authenticated user's conversation summaries (paginated).
@@ -76,8 +139,7 @@ export async function listConversationsPage(params?: {
 }
 
 /**
- * Search conversations by text. Uses direct fetch to the backend search endpoint to
- * avoid SDK staleness while OpenAPI spec catches up.
+ * Search conversations by text.
  */
 export async function searchConversationsPage(params: {
   query: string;
@@ -90,7 +152,7 @@ export async function searchConversationsPage(params: {
   const response = await searchConversationsApiV1ConversationsSearchGet({
     client,
     auth,
-    responseStyle: 'data',
+    responseStyle: 'fields',
     throwOnError: true,
     query: {
       q: params.query,
@@ -100,12 +162,17 @@ export async function searchConversationsPage(params: {
     },
   });
 
-  const data = response.data as BackendConversationSearchResponse;
+  const data = response.data as BackendConversationSearchResponse | null;
+  if (!data) {
+    return { items: [], next_cursor: null };
+  }
 
   return {
     items:
       data.items?.map((item) => ({
         conversation_id: item.conversation_id,
+        display_name: item.display_name ?? null,
+        display_name_pending: false,
         agent_entrypoint: item.agent_entrypoint ?? null,
         active_agent: item.active_agent ?? null,
         topic_hint: item.topic_hint ?? null,
@@ -180,6 +247,38 @@ export async function getConversationEvents(
   return events;
 }
 
+export async function getConversationLedgerEventsPage(
+  conversationId: string,
+  options?: { cursor?: string | null; limit?: number },
+): Promise<ConversationLedgerEventsResponse> {
+  if (!conversationId) {
+    throw new Error('Conversation id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+
+  const response = await getConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGet({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    path: {
+      conversation_id: conversationId,
+    },
+    query: {
+      cursor: options?.cursor ?? undefined,
+      limit: options?.limit,
+    },
+  });
+
+  const page = response.data as ConversationLedgerEventsResponse | null;
+  if (!page) {
+    throw new Error('Conversation ledger events not found.');
+  }
+
+  return page;
+}
+
 /**
  * Retrieve a paginated slice of messages for a conversation.
  */
@@ -242,8 +341,235 @@ export async function deleteConversation(conversationId: string): Promise<void> 
   });
 }
 
+/**
+ * Delete a user message and truncate subsequent content.
+ */
+export async function deleteConversationMessage(params: {
+  conversationId: string;
+  messageId: string;
+}): Promise<ConversationMessageDeleteResponse> {
+  if (!params.conversationId) {
+    throw new Error('Conversation id is required.');
+  }
+  if (!params.messageId) {
+    throw new Error('Message id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+
+  const response = await deleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDelete({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    path: {
+      conversation_id: params.conversationId,
+      message_id: params.messageId,
+    },
+  });
+
+  const payload = response.data as ConversationMessageDeleteResponse | null | undefined;
+  if (!payload) {
+    throw new Error('Failed to delete message.');
+  }
+  return payload;
+}
+
+/**
+ * Update conversation-level memory configuration.
+ */
+export async function updateConversationMemory(
+  conversationId: string,
+  config: ConversationMemoryConfigRequest,
+  options?: { tenantId?: string | null; tenantRole?: string | null },
+): Promise<ConversationMemoryConfigResponse> {
+  if (!conversationId) {
+    throw new Error('Conversation id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+  const headers = new Headers();
+  if (options?.tenantId) {
+    headers.set('X-Tenant-Id', options.tenantId);
+  }
+  if (options?.tenantRole) {
+    headers.set('X-Tenant-Role', options.tenantRole);
+  }
+
+  const result = await updateConversationMemoryApiV1ConversationsConversationIdMemoryPatch({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    headers: headers.keys().next().done ? undefined : headers,
+    path: { conversation_id: conversationId },
+    body: config,
+  });
+
+  const payload = result.data as ConversationMemoryConfigResponse | null | undefined;
+  if (!payload) {
+    throw new Error('Failed to update conversation memory configuration.');
+  }
+  return payload;
+}
+
+/**
+ * Update conversation title (manual rename).
+ */
+export async function updateConversationTitle(
+  conversationId: string,
+  payload: ConversationTitleUpdateRequest,
+  options?: { tenantId?: string | null; tenantRole?: string | null },
+): Promise<ConversationTitleUpdateResponse> {
+  if (!conversationId) {
+    throw new Error('Conversation id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+  const headers = new Headers();
+  if (options?.tenantId) {
+    headers.set('X-Tenant-Id', options.tenantId);
+  }
+  if (options?.tenantRole) {
+    headers.set('X-Tenant-Role', options.tenantRole);
+  }
+
+  const result = (await updateConversationTitleApiV1ConversationsConversationIdTitlePatch({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: false,
+    headers: headers.keys().next().done ? undefined : headers,
+    path: { conversation_id: conversationId },
+    body: payload,
+  })) as SdkFieldsResult<ConversationTitleUpdateResponse>;
+
+  if (result.error) {
+    throw new ConversationTitleApiError(
+      result.response.status,
+      mapApiErrorMessage(result.error, 'Failed to update conversation title.'),
+    );
+  }
+
+  if (!result.data) {
+    throw new ConversationTitleApiError(result.response.status || 500, 'Failed to update conversation title.');
+  }
+
+  return result.data;
+}
+
+export interface ConversationTitleStreamOptions {
+  conversationId: string;
+  signal: AbortSignal;
+  tenantRole?: string | null;
+}
+
+export interface ConversationLedgerStreamOptions {
+  conversationId: string;
+  cursor?: string | null;
+  signal: AbortSignal;
+  tenantRole?: string | null;
+}
+
+export async function openConversationLedgerStream(
+  options: ConversationLedgerStreamOptions,
+): Promise<Response> {
+  if (!options.conversationId) {
+    throw new Error('Conversation id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+
+  const headers = new Headers({
+    Accept: 'text/event-stream',
+    ...(options.tenantRole ? { 'X-Tenant-Role': options.tenantRole } : {}),
+  });
+
+  const upstream = await streamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGet({
+    client,
+    auth,
+    signal: options.signal,
+    cache: 'no-store',
+    headers,
+    path: { conversation_id: options.conversationId },
+    query: {
+      cursor: options.cursor ?? undefined,
+    },
+    parseAs: 'stream',
+    responseStyle: 'fields',
+    throwOnError: true,
+  });
+
+  const stream = upstream.data;
+  if (!stream || !upstream.response) {
+    throw new Error('Conversation ledger stream returned no data.');
+  }
+
+  const responseHeaders = new Headers(STREAM_HEADERS);
+  const contentType = upstream.response.headers.get('Content-Type');
+  if (contentType) {
+    responseHeaders.set('Content-Type', contentType);
+  }
+
+  return new Response(stream as unknown as BodyInit, {
+    status: upstream.response.status,
+    statusText: upstream.response.statusText,
+    headers: responseHeaders,
+  });
+}
+
+/**
+  * Open the SSE stream for the conversation title (generated server-side).
+  */
+export async function openConversationTitleStream(
+  options: ConversationTitleStreamOptions,
+): Promise<Response> {
+  if (!options.conversationId) {
+    throw new Error('Conversation id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+
+  const headers = new Headers({
+    Accept: 'text/event-stream',
+    ...(options.tenantRole ? { 'X-Tenant-Role': options.tenantRole } : {}),
+  });
+
+  const upstream = await streamConversationMetadataApiV1ConversationsConversationIdStreamGet({
+    client,
+    auth,
+    signal: options.signal,
+    cache: 'no-store',
+    headers,
+    path: { conversation_id: options.conversationId },
+    parseAs: 'stream',
+    responseStyle: 'fields',
+    throwOnError: true,
+  });
+
+  const stream = upstream.data;
+  if (!stream || !upstream.response) {
+    throw new Error('Conversation title stream returned no data.');
+  }
+
+  const responseHeaders = new Headers(STREAM_HEADERS);
+  const contentType = upstream.response.headers.get('Content-Type');
+  if (contentType) {
+    responseHeaders.set('Content-Type', contentType);
+  }
+
+  // Upstream is typed loosely by the generated SDK; treat it as a standard SSE body.
+  return new Response(stream as unknown as BodyInit, {
+    status: upstream.response.status,
+    statusText: upstream.response.statusText,
+    headers: responseHeaders,
+  });
+}
+
 function mapSummaryToListItem(summary: {
   conversation_id: string;
+  display_name?: string | null;
+  display_name_pending?: boolean;
   agent_entrypoint?: string | null;
   active_agent?: string | null;
   topic_hint?: string | null;
@@ -253,12 +579,15 @@ function mapSummaryToListItem(summary: {
   updated_at: string;
   created_at?: string;
 }): ConversationListItem {
+  const title = summary.display_name ?? summary.topic_hint ?? summary.last_message_preview ?? null;
   return {
     id: summary.conversation_id,
+    display_name: summary.display_name ?? null,
+    display_name_pending: summary.display_name_pending ?? false,
     agent_entrypoint: summary.agent_entrypoint ?? null,
     active_agent: summary.active_agent ?? null,
     topic_hint: summary.topic_hint ?? null,
-    title: summary.topic_hint ?? null,
+    title,
     status: summary.status ?? null,
     message_count: summary.message_count ?? 0,
     last_message_preview: summary.last_message_preview ?? undefined,

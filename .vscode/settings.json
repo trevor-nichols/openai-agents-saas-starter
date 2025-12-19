@@ -18,5 +18,19 @@
     ],
     "evenBetterToml.schema.associations": {
         "pyproject.toml": false
+    },
+    "editor.tokenColorCustomizations": {
+        "textMateRules": [
+            {
+                "scope": [
+                    "variable.other.jinja",
+                    "variable.language.jinja"
+                ],
+                "settings": {
+                    "foreground": "#e5c07b",
+                    "fontStyle": "bold"
+                }
+            }
+        ]
     }
 }

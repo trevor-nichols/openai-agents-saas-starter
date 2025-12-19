@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type {
-  StreamingWorkflowEvent,
   WorkflowRunRequestBody,
   LocationHint,
 } from '@/lib/api/client/types.gen';
@@ -11,8 +10,7 @@ import { streamWorkflowRun } from '@/lib/api/workflows';
 import { mockWorkflowStream } from '@/lib/workflows/mock';
 import { USE_API_MOCK } from '@/lib/config';
 import type { StreamStatus } from '../constants';
-
-type StreamEventWithMeta = StreamingWorkflowEvent & { receivedAt: string };
+import type { WorkflowRunSummary, WorkflowStreamEventWithReceivedAt } from '../types';
 
 type StartRunInput = {
   workflowKey: string;
@@ -21,22 +19,16 @@ type StartRunInput = {
   location?: LocationHint | null;
 };
 
-type RunSummary = {
-  workflowKey: string;
-  runId?: string | null;
-  message?: string;
-};
-
 type Options = {
   onRunCreated?: (runId: string, workflowKey?: string | null) => void;
 };
 
 export function useWorkflowRunStream(options?: Options) {
-  const [events, setEvents] = useState<StreamEventWithMeta[]>([]);
+  const [events, setEvents] = useState<WorkflowStreamEventWithReceivedAt[]>([]);
   const [status, setStatus] = useState<StreamStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [lastSummary, setLastSummary] = useState<RunSummary | null>(null);
+  const [lastSummary, setLastSummary] = useState<WorkflowRunSummary | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const abortRef = useRef(false);
@@ -80,32 +72,36 @@ export function useWorkflowRunStream(options?: Options) {
       try {
         for await (const evt of streamWorkflowRun(input.workflowKey, body)) {
           if (abortRef.current) break;
-          const enriched: StreamEventWithMeta = { ...evt, receivedAt: new Date().toISOString() };
+          const enriched: WorkflowStreamEventWithReceivedAt = { ...evt, receivedAt: new Date().toISOString() };
           setEvents((prev) => [...prev, enriched]);
           setStreamStatus((current) => (current === 'connecting' ? 'streaming' : current));
           setLastUpdated(enriched.receivedAt);
 
-          if (!autoSelectedRef.current && evt.workflow_run_id) {
-            options?.onRunCreated?.(evt.workflow_run_id, evt.workflow_key ?? input.workflowKey);
+          const workflowRunId = evt.workflow?.workflow_run_id ?? null;
+          const workflowKey = evt.workflow?.workflow_key ?? null;
+
+          if (!autoSelectedRef.current && workflowRunId) {
+            options?.onRunCreated?.(workflowRunId, workflowKey ?? input.workflowKey);
             autoSelectedRef.current = true;
           }
 
           if (evt.kind === 'error') {
-            const maybeMessage =
-              typeof (evt as { payload?: { message?: string } }).payload?.message === 'string'
-                ? (evt as { payload?: { message?: string } }).payload?.message
-                : undefined;
-            setError(maybeMessage ?? 'Workflow reported an error.');
+            setError(evt.error.message ?? 'Workflow reported an error.');
           }
 
           setLastSummary((prev) => ({
-            workflowKey: prev?.workflowKey ?? input.workflowKey,
-            runId: prev?.runId ?? evt.workflow_run_id ?? null,
+            workflowKey: prev?.workflowKey ?? workflowKey ?? input.workflowKey,
+            runId: prev?.runId ?? workflowRunId ?? null,
             message: prev?.message ?? input.message,
           }));
 
-          if (evt.is_terminal) {
-            setStreamStatus(evt.kind === 'error' ? 'error' : 'completed');
+          if (evt.kind === 'error' || evt.kind === 'final') {
+            if (evt.kind === 'final' && evt.final.status !== 'completed') {
+              setError(`Workflow finished with status: ${evt.final.status}`);
+              setStreamStatus('error');
+            } else {
+              setStreamStatus(evt.kind === 'error' ? 'error' : 'completed');
+            }
             break;
           }
         }
@@ -130,7 +126,7 @@ export function useWorkflowRunStream(options?: Options) {
     setEvents([]);
     const runId = `mock_run_${Date.now()}`;
     for await (const evt of mockWorkflowStream(runId)) {
-      const enriched: StreamEventWithMeta = { ...evt, receivedAt: new Date().toISOString() };
+      const enriched: WorkflowStreamEventWithReceivedAt = { ...evt, receivedAt: new Date().toISOString() };
       setEvents((prev) => [...prev, enriched]);
     }
   }, []);

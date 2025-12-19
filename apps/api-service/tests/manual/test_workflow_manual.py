@@ -24,7 +24,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from app.api.v1.workflows.schemas import StreamingWorkflowEvent
+from app.api.v1.shared.streaming import PublicSseEvent, PublicSseEventBase
 from tests.utils.stream_assertions import (
     assembled_text,
     assert_common_stream,
@@ -87,7 +87,7 @@ async def test_analysis_code_workflow_stream_manual() -> None:
                 body = (await resp.aread()).decode("utf-8", "ignore")
                 assert False, f"status {resp.status_code}: {body}"
 
-            events: list[StreamingWorkflowEvent] = []
+            events: list[PublicSseEventBase] = []
 
             async for line in resp.aiter_lines():
                 if not line or not line.startswith("data:"):
@@ -97,19 +97,28 @@ async def test_analysis_code_workflow_stream_manual() -> None:
                 except json.JSONDecodeError:
                     continue
 
-                parsed = StreamingWorkflowEvent.model_validate(event)
+                parsed = PublicSseEvent.model_validate(event).root
                 events.append(parsed)
+                if getattr(parsed, "kind", None) in {"final", "error"}:
+                    break
 
     assert_common_stream(events)
-    assert events[-1].workflow_key == "analysis_code"
-    steps_seen = {e.step_name for e in events if e.step_name}
+    assert events[-1].workflow is not None
+    assert events[-1].workflow.workflow_key == "analysis_code"
+    steps_seen = {e.workflow.step_name for e in events if e.workflow and e.workflow.step_name}
     assert "analysis" in steps_seen, f"Analysis step missing; saw {steps_seen}"
     # Code step may be skipped if the first agent fully answers; log when absent.
     if "code" not in steps_seen:
         pytest.skip(f"Code step not invoked in this run (steps seen: {steps_seen})")
     assert assembled_text(events), "No assistant text returned"
 
+    repo_root = Path(__file__).resolve().parents[4]
     default_path = (
-        Path(__file__).resolve().parent.parent / "fixtures" / "streams" / "workflow_analysis_code.ndjson"
+        repo_root
+        / "docs"
+        / "contracts"
+        / "public-sse-streaming"
+        / "examples"
+        / "workflow-analysis-code.ndjson"
     )
     maybe_record_stream(events, env_var="MANUAL_RECORD_STREAM_TO", default_path=default_path)

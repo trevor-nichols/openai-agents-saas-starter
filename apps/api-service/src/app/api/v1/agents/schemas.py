@@ -12,6 +12,10 @@ class AgentSummary(BaseModel):
     status: Literal["active", "inactive", "error"] = Field(
         description="Health status of the agent.",
     )
+    output_schema: dict[str, object] | None = Field(
+        default=None,
+        description="JSON Schema for the agent structured output, if declared.",
+    )
     display_name: str | None = Field(
         default=None,
         description="Human-friendly display name for the agent.",
@@ -37,6 +41,9 @@ class AgentStatus(BaseModel):
     status: Literal["active", "inactive", "error"] = Field(
         description="Operational status.",
     )
+    output_schema: dict[str, object] | None = Field(
+        default=None, description="JSON Schema for the agent structured output, if declared."
+    )
     last_used: str | None = Field(
         default=None,
         description="Last time the agent was invoked.",
@@ -44,4 +51,17 @@ class AgentStatus(BaseModel):
     total_conversations: int = Field(
         default=0,
         description="Total number of conversations handled.",
+    )
+
+
+class AgentListResponse(BaseModel):
+    """Paginated list of available agents."""
+
+    items: list[AgentSummary]
+    next_cursor: str | None = Field(
+        default=None,
+        description="Opaque cursor for fetching the next page.",
+    )
+    total: int = Field(
+        description="Total number of agents matching the current filter.",
     )

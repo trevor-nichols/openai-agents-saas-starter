@@ -22,7 +22,6 @@ def build_run_config(options: RunOptions | None) -> RunConfig | None:
     allowed = {
         "input_guardrails",
         "output_guardrails",
-        "model",
         "model_settings",
         "tracing_disabled",
         "trace_include_sensitive_data",

@@ -142,6 +142,16 @@ class SecuritySettingsMixin(BaseModel):
         description="Verification email sends per IP per hour.",
         alias="EMAIL_VERIFICATION_IP_RATE_LIMIT_PER_HOUR",
     )
+    mfa_challenge_ttl_minutes: int = Field(
+        default=5,
+        description="Lifetime of MFA challenge tokens issued during login.",
+        alias="MFA_CHALLENGE_TTL_MINUTES",
+    )
+    mfa_verify_rate_limit_per_hour: int = Field(
+        default=10,
+        description="Maximum MFA verification attempts per user per hour.",
+        alias="MFA_VERIFY_RATE_LIMIT_PER_HOUR",
+    )
     contact_email_recipients: list[str] = Field(
         default_factory=lambda: ["support@localhost"],
         description=(

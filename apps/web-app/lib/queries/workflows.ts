@@ -9,16 +9,16 @@ import {
   runWorkflow,
   streamWorkflowRun,
   deleteWorkflowRun,
+  fetchWorkflowRunReplayEvents,
 } from '@/lib/api/workflows';
 import type { WorkflowRunInput, WorkflowRunListFilters } from '@/lib/workflows/types';
 import type { LocationHint } from '@/lib/api/client/types.gen';
 import { queryKeys } from './keys';
-import { fetchConversationEvents } from '@/lib/api/conversations';
 
 export function useWorkflowsQuery() {
   return useQuery({
     queryKey: queryKeys.workflows.list(),
-    queryFn: listWorkflows,
+    queryFn: () => listWorkflows(),
   });
 }
 
@@ -56,14 +56,11 @@ export function useWorkflowRunsInfiniteQuery(filters: WorkflowRunListFilters) {
   });
 }
 
-export function useWorkflowRunEventsQuery(runId: string | null, conversationId: string | null) {
+export function useWorkflowRunReplayEventsQuery(runId: string | null) {
   return useQuery({
-    queryKey: queryKeys.workflows.runEvents(runId, conversationId),
-    queryFn: () =>
-      runId && conversationId
-        ? fetchConversationEvents({ conversationId, workflowRunId: runId })
-        : null,
-    enabled: Boolean(runId && conversationId),
+    queryKey: queryKeys.workflows.runReplay(runId),
+    queryFn: () => (runId ? fetchWorkflowRunReplayEvents({ runId }) : null),
+    enabled: Boolean(runId),
     staleTime: 30_000,
   });
 }
@@ -105,14 +102,12 @@ export function useDeleteWorkflowRunMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ runId, hard, conversationId }: { runId: string; hard?: boolean; conversationId?: string | null }) =>
-      deleteWorkflowRun(runId, { hard }).then(() => ({ runId, conversationId })),
-    onSuccess: ({ runId, conversationId }) => {
+    mutationFn: ({ runId, hard }: { runId: string; hard?: boolean }) =>
+      deleteWorkflowRun(runId, { hard }).then(() => ({ runId })),
+    onSuccess: ({ runId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.workflows.all }).catch(() => {});
       queryClient.invalidateQueries({ queryKey: queryKeys.workflows.run(runId) }).catch(() => {});
-      queryClient
-        .invalidateQueries({ queryKey: queryKeys.workflows.runEvents(runId, conversationId ?? null) })
-        .catch(() => {});
+      queryClient.invalidateQueries({ queryKey: queryKeys.workflows.runReplay(runId) }).catch(() => {});
     },
   });
 }

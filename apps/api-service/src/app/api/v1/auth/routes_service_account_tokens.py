@@ -13,8 +13,9 @@ from app.api.models.auth import (
     ServiceAccountTokenItem,
     ServiceAccountTokenListResponse,
     ServiceAccountTokenRevokeRequest,
+    ServiceAccountTokenRevokeResponseData,
+    ServiceAccountTokenRevokeSuccessResponse,
 )
-from app.api.models.common import SuccessResponse
 from app.domain.auth import ServiceAccountTokenStatus
 from app.services.auth_service import auth_service
 
@@ -86,13 +87,13 @@ async def list_service_account_tokens(
 
 @router.post(
     "/service-accounts/tokens/{jti}/revoke",
-    response_model=SuccessResponse,
+    response_model=ServiceAccountTokenRevokeSuccessResponse,
 )
 async def revoke_service_account_token(
     jti: str = Path(..., description="Refresh token identifier (JWT jti)."),
     payload: ServiceAccountTokenRevokeRequest = Body(...),
     actor: ServiceAccountActor = Depends(require_service_account_actor),
-) -> SuccessResponse:
+) -> ServiceAccountTokenRevokeSuccessResponse:
     reason = payload.reason or actor.reason
     if actor.actor_type == ServiceAccountActorType.PLATFORM_OPERATOR and not reason:
         raise HTTPException(
@@ -103,7 +104,10 @@ async def revoke_service_account_token(
         reason = "tenant_admin_manual_revoke"
 
     await auth_service.revoke_service_account_token(jti, reason=reason)
-    return SuccessResponse(message="Service account token revoked.", data={"jti": jti})
+    return ServiceAccountTokenRevokeSuccessResponse(
+        message="Service account token revoked.",
+        data=ServiceAccountTokenRevokeResponseData(jti=jti),
+    )
 
 
 def _resolve_scope(

@@ -8,7 +8,7 @@
  * - Type-safe mutations
  */
 
-import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
 
 import type {
@@ -17,6 +17,8 @@ import type {
   ConversationListPage,
   ConversationSearchResultItem,
   ConversationEvents,
+  ConversationMemoryConfig,
+  ConversationMemoryConfigInput,
 } from '@/types/conversations';
 import {
   fetchConversationsPage,
@@ -24,6 +26,7 @@ import {
   fetchConversationEvents,
   sortConversationsByDate,
   searchConversations,
+  updateConversationMemory as updateConversationMemoryApi,
 } from '@/lib/api/conversations';
 import { queryKeys } from './keys';
 import type { InfiniteData } from '@tanstack/react-query';
@@ -31,6 +34,7 @@ import type { InfiniteData } from '@tanstack/react-query';
 interface UseConversationsReturn {
   conversationList: ConversationListItem[];
   isLoadingConversations: boolean;
+  isFetchingMoreConversations: boolean;
   loadMore: () => void;
   hasNextPage: boolean;
   loadConversations: () => void;
@@ -43,6 +47,7 @@ interface UseConversationsReturn {
 interface UseConversationSearchReturn {
   results: ConversationSearchResultItem[];
   isLoading: boolean;
+  isFetchingMore: boolean;
   loadMore: () => void;
   hasNextPage: boolean;
   error: string | null;
@@ -64,6 +69,12 @@ interface UseConversationEventsReturn {
   refetchEvents: () => Promise<void>;
 }
 
+interface UseUpdateConversationMemoryReturn {
+  updateMemory: (config: ConversationMemoryConfigInput) => Promise<ConversationMemoryConfig>;
+  isUpdating: boolean;
+  error: string | null;
+}
+
 /**
  * Hook to manage conversations list with TanStack Query
  *
@@ -79,6 +90,7 @@ export function useConversations(): UseConversationsReturn {
   const {
     data,
     isLoading: isLoadingConversations,
+    isFetchingNextPage: isFetchingMoreConversations,
     error,
     fetchNextPage,
     hasNextPage,
@@ -97,10 +109,10 @@ export function useConversations(): UseConversationsReturn {
   );
 
   const loadMore = useCallback(() => {
-    if (hasNextPage) {
+    if (hasNextPage && !isFetchingMoreConversations) {
       void fetchNextPage();
     }
-  }, [fetchNextPage, hasNextPage]);
+  }, [fetchNextPage, hasNextPage, isFetchingMoreConversations]);
 
   const loadConversations = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.conversations.lists() });
@@ -171,6 +183,7 @@ export function useConversations(): UseConversationsReturn {
   return {
     conversationList,
     isLoadingConversations,
+    isFetchingMoreConversations,
     loadMore,
     hasNextPage: Boolean(hasNextPage),
     loadConversations,
@@ -188,6 +201,7 @@ export function useConversationSearch(query: string): UseConversationSearchRetur
   const {
     data,
     isLoading,
+    isFetchingNextPage: isFetchingMore,
     error,
     fetchNextPage,
     hasNextPage,
@@ -207,14 +221,15 @@ export function useConversationSearch(query: string): UseConversationSearchRetur
   );
 
   const loadMore = useCallback(() => {
-    if (isActive && hasNextPage) {
+    if (isActive && hasNextPage && !isFetchingMore) {
       void fetchNextPage();
     }
-  }, [fetchNextPage, hasNextPage, isActive]);
+  }, [fetchNextPage, hasNextPage, isActive, isFetchingMore]);
 
   return {
     results,
     isLoading: isActive ? isLoading : false,
+    isFetchingMore: isActive ? isFetchingMore : false,
     loadMore,
     hasNextPage: isActive ? Boolean(hasNextPage) : false,
     error: isActive ? error?.message ?? null : null,
@@ -277,5 +292,38 @@ export function useConversationEvents(
     isFetchingEvents: isFetching && isEnabled,
     eventsError: error?.message ?? null,
     refetchEvents: () => refetch().then(() => undefined),
+  };
+}
+
+/**
+ * Mutation hook to update conversation memory configuration.
+ */
+export function useUpdateConversationMemory(
+  conversationId: string | null,
+): UseUpdateConversationMemoryReturn {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationKey: [...queryKeys.conversations.all, 'memory', conversationId ?? 'none'],
+    mutationFn: async (config: ConversationMemoryConfigInput) => {
+      if (!conversationId) {
+        throw new Error('Conversation id is required.');
+      }
+      return updateConversationMemoryApi({ conversationId, config });
+    },
+    onSuccess: () => {
+      if (!conversationId) return;
+      // Refresh conversation detail to reflect new memory defaults.
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.conversations.detail(conversationId),
+      });
+      // No list-level invalidation needed unless UI surfaces memory in list.
+      // If future UI includes memory badges, we can invalidate lists here.
+    },
+  });
+
+  return {
+    updateMemory: mutation.mutateAsync,
+    isUpdating: mutation.isPending,
+    error: mutation.error instanceof Error ? mutation.error.message : null,
   };
 }

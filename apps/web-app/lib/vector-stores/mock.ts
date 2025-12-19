@@ -44,5 +44,7 @@ export const mockVectorStoreFiles: VectorStoreFileListResponse = {
 };
 
 export const mockVectorStoreSearch: VectorStoreSearchResponse = {
-  data: [{ id: 'hit-1', score: 0.9 }],
+  object: 'vector_store.search_results',
+  search_query: 'example query',
+  data: [{ file_id: 'file-1', filename: 'notes.txt', score: 0.9, attributes: {}, content: [] }],
 };

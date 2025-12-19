@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.workflows.specs import WorkflowSpec, WorkflowStep
+from app.workflows._shared.specs import WorkflowSpec, WorkflowStep
 
 
 def passthrough(current_input: str, prior_steps):

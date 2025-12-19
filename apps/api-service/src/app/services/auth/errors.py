@@ -29,3 +29,12 @@ class UserRefreshError(UserAuthenticationError):
 
 class UserLogoutError(UserAuthenticationError):
     """Raised when logout operations fail."""
+
+
+class MfaRequiredError(UserAuthenticationError):
+    """Raised when login requires an MFA challenge before issuing tokens."""
+
+    def __init__(self, challenge_token: str, methods: list[dict[str, object]]) -> None:
+        super().__init__("Multi-factor authentication required.")
+        self.challenge_token = challenge_token
+        self.methods = methods

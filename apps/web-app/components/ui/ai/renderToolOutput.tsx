@@ -1,7 +1,8 @@
 import { CodeBlock } from './code-block';
 import { FileSearchResults } from './file-search-results';
 import { Image } from './image';
-import type { FileSearchResult, ImageGenerationCall } from '@/lib/api/client/types.gen';
+import type { FileSearchResult } from '@/lib/api/client/types.gen';
+import { isGeneratedImageFrames } from '@/lib/streams/imageFrames';
 
 /**
  * Shared renderer for tool outputs across chat + workflow surfaces.
@@ -20,12 +21,6 @@ const isFileSearchResults = (output: unknown): output is FileSearchResult[] =>
       'file_id' in (item as Record<string, unknown>),
   );
 
-const isImageGenerationCall = (value: unknown): value is ImageGenerationCall =>
-  typeof value === 'object' &&
-  value !== null &&
-  'type' in value &&
-  (value as { type?: string }).type === 'image_generation_call';
-
 const isCodeInterpreterOutput = (
   output: unknown,
 ): output is {
@@ -43,12 +38,8 @@ export function renderToolOutput(tool: ToolLike) {
     return <FileSearchResults results={tool.output} />;
   }
 
-  if (Array.isArray(tool.output) && tool.output.length && isImageGenerationCall(tool.output[0])) {
-    return <Image frames={tool.output as ImageGenerationCall[]} className="max-w-xl" alt="Generated image" />;
-  }
-
-  if (isImageGenerationCall(tool.output)) {
-    return <Image frames={[tool.output]} className="max-w-xl" alt="Generated image" />;
+  if (isGeneratedImageFrames(tool.output)) {
+    return <Image frames={tool.output} className="max-w-xl" alt="Generated image" />;
   }
 
   if (isCodeInterpreterOutput(tool.output)) {

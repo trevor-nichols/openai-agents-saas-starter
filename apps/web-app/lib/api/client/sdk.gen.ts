@@ -10,9 +10,6 @@ import type {
   AdminResetPasswordApiV1AuthPasswordResetPostData,
   AdminResetPasswordApiV1AuthPasswordResetPostErrors,
   AdminResetPasswordApiV1AuthPasswordResetPostResponses,
-  ApplyTestFixturesApiV1TestFixturesApplyPostData,
-  ApplyTestFixturesApiV1TestFixturesApplyPostErrors,
-  ApplyTestFixturesApiV1TestFixturesApplyPostResponses,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostData,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostErrors,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostResponses,
@@ -40,6 +37,9 @@ import type {
   ChatWithAgentApiV1ChatPostData,
   ChatWithAgentApiV1ChatPostErrors,
   ChatWithAgentApiV1ChatPostResponses,
+  CompleteMfaChallengeApiV1AuthMfaCompletePostData,
+  CompleteMfaChallengeApiV1AuthMfaCompletePostErrors,
+  CompleteMfaChallengeApiV1AuthMfaCompletePostResponses,
   ConfirmPasswordResetApiV1AuthPasswordConfirmPostData,
   ConfirmPasswordResetApiV1AuthPasswordConfirmPostErrors,
   ConfirmPasswordResetApiV1AuthPasswordConfirmPostResponses,
@@ -64,6 +64,9 @@ import type {
   DeleteConversationApiV1ConversationsConversationIdDeleteData,
   DeleteConversationApiV1ConversationsConversationIdDeleteErrors,
   DeleteConversationApiV1ConversationsConversationIdDeleteResponses,
+  DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteData,
+  DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteErrors,
+  DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteResponses,
   DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteData,
   DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteErrors,
   DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteResponses,
@@ -97,22 +100,38 @@ import type {
   GetConversationEventsApiV1ConversationsConversationIdEventsGetData,
   GetConversationEventsApiV1ConversationsConversationIdEventsGetErrors,
   GetConversationEventsApiV1ConversationsConversationIdEventsGetResponses,
+  GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetData,
+  GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetErrors,
+  GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetResponses,
   GetConversationMessagesApiV1ConversationsConversationIdMessagesGetData,
   GetConversationMessagesApiV1ConversationsConversationIdMessagesGetErrors,
   GetConversationMessagesApiV1ConversationsConversationIdMessagesGetResponses,
   GetCurrentUserInfoApiV1AuthMeGetData,
+  GetCurrentUserInfoApiV1AuthMeGetErrors,
   GetCurrentUserInfoApiV1AuthMeGetResponses,
+  GetCurrentUserProfileApiV1UsersMeGetData,
+  GetCurrentUserProfileApiV1UsersMeGetErrors,
+  GetCurrentUserProfileApiV1UsersMeGetResponses,
   GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetData,
   GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetErrors,
   GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetResponses,
   GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetData,
   GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetErrors,
   GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetResponses,
+  GetGuardrailApiV1GuardrailsGuardrailKeyGetData,
+  GetGuardrailApiV1GuardrailsGuardrailKeyGetErrors,
+  GetGuardrailApiV1GuardrailsGuardrailKeyGetResponses,
   GetPlatformStatusApiV1StatusGetData,
+  GetPlatformStatusApiV1StatusGetErrors,
   GetPlatformStatusApiV1StatusGetResponses,
   GetPlatformStatusRssApiV1StatusRssGetData,
+  GetPlatformStatusRssApiV1StatusRssGetErrors,
   GetPlatformStatusRssApiV1StatusRssGetResponses,
+  GetPresetApiV1GuardrailsPresetsPresetKeyGetData,
+  GetPresetApiV1GuardrailsPresetsPresetKeyGetErrors,
+  GetPresetApiV1GuardrailsPresetsPresetKeyGetResponses,
   GetSignupAccessPolicyApiV1AuthSignupPolicyGetData,
+  GetSignupAccessPolicyApiV1AuthSignupPolicyGetErrors,
   GetSignupAccessPolicyApiV1AuthSignupPolicyGetResponses,
   GetTenantSettingsApiV1TenantsSettingsGetData,
   GetTenantSettingsApiV1TenantsSettingsGetErrors,
@@ -129,13 +148,15 @@ import type {
   GetWorkflowRunApiV1WorkflowsRunsRunIdGetData,
   GetWorkflowRunApiV1WorkflowsRunsRunIdGetErrors,
   GetWorkflowRunApiV1WorkflowsRunsRunIdGetResponses,
+  GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetData,
+  GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetErrors,
+  GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetResponses,
   HandleStripeWebhookWebhooksStripePostData,
+  HandleStripeWebhookWebhooksStripePostErrors,
   HandleStripeWebhookWebhooksStripePostResponses,
   HealthCheckHealthGetData,
+  HealthCheckHealthGetErrors,
   HealthCheckHealthGetResponses,
-  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData,
-  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors,
-  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses,
   IssueInviteApiV1AuthInvitesPostData,
   IssueInviteApiV1AuthInvitesPostErrors,
   IssueInviteApiV1AuthInvitesPostResponses,
@@ -149,14 +170,20 @@ import type {
   ListActivityEventsApiV1ActivityGetErrors,
   ListActivityEventsApiV1ActivityGetResponses,
   ListAvailableAgentsApiV1AgentsGetData,
+  ListAvailableAgentsApiV1AgentsGetErrors,
   ListAvailableAgentsApiV1AgentsGetResponses,
   ListAvailableToolsApiV1ToolsGetData,
+  ListAvailableToolsApiV1ToolsGetErrors,
   ListAvailableToolsApiV1ToolsGetResponses,
   ListBillingEventsApiV1BillingTenantsTenantIdEventsGetData,
   ListBillingEventsApiV1BillingTenantsTenantIdEventsGetErrors,
   ListBillingEventsApiV1BillingTenantsTenantIdEventsGetResponses,
   ListBillingPlansApiV1BillingPlansGetData,
+  ListBillingPlansApiV1BillingPlansGetErrors,
   ListBillingPlansApiV1BillingPlansGetResponses,
+  ListConsentsApiV1UsersConsentsGetData,
+  ListConsentsApiV1UsersConsentsGetErrors,
+  ListConsentsApiV1UsersConsentsGetResponses,
   ListContainersApiV1ContainersGetData,
   ListContainersApiV1ContainersGetErrors,
   ListContainersApiV1ContainersGetResponses,
@@ -166,12 +193,24 @@ import type {
   ListFilesApiV1VectorStoresVectorStoreIdFilesGetData,
   ListFilesApiV1VectorStoresVectorStoreIdFilesGetErrors,
   ListFilesApiV1VectorStoresVectorStoreIdFilesGetResponses,
+  ListGuardrailsApiV1GuardrailsGetData,
+  ListGuardrailsApiV1GuardrailsGetErrors,
+  ListGuardrailsApiV1GuardrailsGetResponses,
   ListInvitesApiV1AuthInvitesGetData,
   ListInvitesApiV1AuthInvitesGetErrors,
   ListInvitesApiV1AuthInvitesGetResponses,
+  ListMfaMethodsApiV1AuthMfaGetData,
+  ListMfaMethodsApiV1AuthMfaGetErrors,
+  ListMfaMethodsApiV1AuthMfaGetResponses,
+  ListNotificationPreferencesApiV1UsersNotificationPreferencesGetData,
+  ListNotificationPreferencesApiV1UsersNotificationPreferencesGetErrors,
+  ListNotificationPreferencesApiV1UsersNotificationPreferencesGetResponses,
   ListObjectsApiV1StorageObjectsGetData,
   ListObjectsApiV1StorageObjectsGetErrors,
   ListObjectsApiV1StorageObjectsGetResponses,
+  ListPresetsApiV1GuardrailsPresetsGetData,
+  ListPresetsApiV1GuardrailsPresetsGetErrors,
+  ListPresetsApiV1GuardrailsPresetsGetResponses,
   ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetData,
   ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetErrors,
   ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetResponses,
@@ -181,6 +220,9 @@ import type {
   ListStatusSubscriptionsApiV1StatusSubscriptionsGetData,
   ListStatusSubscriptionsApiV1StatusSubscriptionsGetErrors,
   ListStatusSubscriptionsApiV1StatusSubscriptionsGetResponses,
+  ListUsageApiV1UsageGetData,
+  ListUsageApiV1UsageGetErrors,
+  ListUsageApiV1UsageGetResponses,
   ListUserSessionsApiV1AuthSessionsGetData,
   ListUserSessionsApiV1AuthSessionsGetErrors,
   ListUserSessionsApiV1AuthSessionsGetResponses,
@@ -197,6 +239,7 @@ import type {
   LoginForAccessTokenApiV1AuthTokenPostErrors,
   LoginForAccessTokenApiV1AuthTokenPostResponses,
   LogoutAllSessionsApiV1AuthLogoutAllPostData,
+  LogoutAllSessionsApiV1AuthLogoutAllPostErrors,
   LogoutAllSessionsApiV1AuthLogoutAllPostResponses,
   LogoutSessionApiV1AuthLogoutPostData,
   LogoutSessionApiV1AuthLogoutPostErrors,
@@ -208,13 +251,20 @@ import type {
   MarkAllActivityReadApiV1ActivityMarkAllReadPostErrors,
   MarkAllActivityReadApiV1ActivityMarkAllReadPostResponses,
   ReadinessCheckHealthReadyGetData,
+  ReadinessCheckHealthReadyGetErrors,
   ReadinessCheckHealthReadyGetResponses,
+  RecordConsentApiV1UsersConsentsPostData,
+  RecordConsentApiV1UsersConsentsPostErrors,
+  RecordConsentApiV1UsersConsentsPostResponses,
   RecordUsageApiV1BillingTenantsTenantIdUsagePostData,
   RecordUsageApiV1BillingTenantsTenantIdUsagePostErrors,
   RecordUsageApiV1BillingTenantsTenantIdUsagePostResponses,
   RefreshAccessTokenApiV1AuthRefreshPostData,
   RefreshAccessTokenApiV1AuthRefreshPostErrors,
   RefreshAccessTokenApiV1AuthRefreshPostResponses,
+  RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostData,
+  RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostErrors,
+  RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostResponses,
   RegisterTenantApiV1AuthRegisterPostData,
   RegisterTenantApiV1AuthRegisterPostErrors,
   RegisterTenantApiV1AuthRegisterPostResponses,
@@ -230,6 +280,9 @@ import type {
   RevokeInviteApiV1AuthInvitesInviteIdRevokePostData,
   RevokeInviteApiV1AuthInvitesInviteIdRevokePostErrors,
   RevokeInviteApiV1AuthInvitesInviteIdRevokePostResponses,
+  RevokeMfaMethodApiV1AuthMfaMethodIdDeleteData,
+  RevokeMfaMethodApiV1AuthMfaMethodIdDeleteErrors,
+  RevokeMfaMethodApiV1AuthMfaMethodIdDeleteResponses,
   RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostData,
   RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostErrors,
   RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePostResponses,
@@ -252,11 +305,16 @@ import type {
   SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostErrors,
   SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostResponses,
   SendEmailVerificationApiV1AuthEmailSendPostData,
+  SendEmailVerificationApiV1AuthEmailSendPostErrors,
   SendEmailVerificationApiV1AuthEmailSendPostResponses,
   StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostData,
   StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostErrors,
   StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponses,
+  StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostData,
+  StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostErrors,
+  StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostResponses,
   StorageHealthHealthStorageGetData,
+  StorageHealthHealthStorageGetErrors,
   StorageHealthHealthStorageGetResponses,
   StreamActivityEventsApiV1ActivityStreamGetData,
   StreamActivityEventsApiV1ActivityStreamGetErrors,
@@ -264,6 +322,15 @@ import type {
   StreamChatWithAgentApiV1ChatStreamPostData,
   StreamChatWithAgentApiV1ChatStreamPostErrors,
   StreamChatWithAgentApiV1ChatStreamPostResponses,
+  StreamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGetData,
+  StreamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGetErrors,
+  StreamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGetResponses,
+  StreamConversationMetadataApiV1ConversationsConversationIdStreamGetData,
+  StreamConversationMetadataApiV1ConversationsConversationIdStreamGetErrors,
+  StreamConversationMetadataApiV1ConversationsConversationIdStreamGetResponses,
+  StreamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGetData,
+  StreamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGetErrors,
+  StreamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGetResponses,
   SubmitAccessRequestApiV1AuthRequestAccessPostData,
   SubmitAccessRequestApiV1AuthRequestAccessPostErrors,
   SubmitAccessRequestApiV1AuthRequestAccessPostResponses,
@@ -276,18 +343,30 @@ import type {
   UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDeleteData,
   UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDeleteErrors,
   UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDeleteResponses,
+  UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchData,
+  UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchErrors,
+  UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchResponses,
+  UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchData,
+  UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchErrors,
+  UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchResponses,
   UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchData,
   UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchErrors,
   UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchResponses,
   UpdateTenantSettingsApiV1TenantsSettingsPutData,
   UpdateTenantSettingsApiV1TenantsSettingsPutErrors,
   UpdateTenantSettingsApiV1TenantsSettingsPutResponses,
+  UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutData,
+  UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutErrors,
+  UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutResponses,
   VerifyEmailTokenApiV1AuthEmailVerifyPostData,
   VerifyEmailTokenApiV1AuthEmailVerifyPostErrors,
   VerifyEmailTokenApiV1AuthEmailVerifyPostResponses,
   VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostData,
   VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostErrors,
   VerifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPostResponses,
+  VerifyTotpApiV1AuthMfaTotpVerifyPostData,
+  VerifyTotpApiV1AuthMfaTotpVerifyPostErrors,
+  VerifyTotpApiV1AuthMfaTotpVerifyPostResponses,
 } from "./types.gen.ts";
 
 export type Options<
@@ -317,7 +396,7 @@ export const healthCheckHealthGet = <ThrowOnError extends boolean = false>(
 ) => {
   return (options?.client ?? client).get<
     HealthCheckHealthGetResponses,
-    unknown,
+    HealthCheckHealthGetErrors,
     ThrowOnError
   >({
     url: "/health",
@@ -337,7 +416,7 @@ export const readinessCheckHealthReadyGet = <
 ) => {
   return (options?.client ?? client).get<
     ReadinessCheckHealthReadyGetResponses,
-    unknown,
+    ReadinessCheckHealthReadyGetErrors,
     ThrowOnError
   >({
     url: "/health/ready",
@@ -357,7 +436,7 @@ export const storageHealthHealthStorageGet = <
 ) => {
   return (options?.client ?? client).get<
     StorageHealthHealthStorageGetResponses,
-    unknown,
+    StorageHealthHealthStorageGetErrors,
     ThrowOnError
   >({
     url: "/health/storage",
@@ -371,15 +450,19 @@ export const storageHealthHealthStorageGet = <
 export const handleStripeWebhookWebhooksStripePost = <
   ThrowOnError extends boolean = false,
 >(
-  options?: Options<HandleStripeWebhookWebhooksStripePostData, ThrowOnError>,
+  options: Options<HandleStripeWebhookWebhooksStripePostData, ThrowOnError>,
 ) => {
-  return (options?.client ?? client).post<
+  return (options.client ?? client).post<
     HandleStripeWebhookWebhooksStripePostResponses,
-    unknown,
+    HandleStripeWebhookWebhooksStripePostErrors,
     ThrowOnError
   >({
     url: "/webhooks/stripe",
     ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
   });
 };
 
@@ -473,7 +556,7 @@ export const logoutAllSessionsApiV1AuthLogoutAllPost = <
 ) => {
   return (options?.client ?? client).post<
     LogoutAllSessionsApiV1AuthLogoutAllPostResponses,
-    unknown,
+    LogoutAllSessionsApiV1AuthLogoutAllPostErrors,
     ThrowOnError
   >({
     security: [
@@ -554,7 +637,7 @@ export const getCurrentUserInfoApiV1AuthMeGet = <
 ) => {
   return (options?.client ?? client).get<
     GetCurrentUserInfoApiV1AuthMeGetResponses,
-    unknown,
+    GetCurrentUserInfoApiV1AuthMeGetErrors,
     ThrowOnError
   >({
     security: [
@@ -581,7 +664,7 @@ export const sendEmailVerificationApiV1AuthEmailSendPost = <
 ) => {
   return (options?.client ?? client).post<
     SendEmailVerificationApiV1AuthEmailSendPostResponses,
-    unknown,
+    SendEmailVerificationApiV1AuthEmailSendPostErrors,
     ThrowOnError
   >({
     security: [
@@ -853,7 +936,7 @@ export const getSignupAccessPolicyApiV1AuthSignupPolicyGet = <
 ) => {
   return (options?.client ?? client).get<
     GetSignupAccessPolicyApiV1AuthSignupPolicyGetResponses,
-    unknown,
+    GetSignupAccessPolicyApiV1AuthSignupPolicyGetErrors,
     ThrowOnError
   >({
     url: "/api/v1/auth/signup-policy",
@@ -1077,6 +1160,161 @@ export const revokeInviteApiV1AuthInvitesInviteIdRevokePost = <
 };
 
 /**
+ * List Mfa Methods
+ */
+export const listMfaMethodsApiV1AuthMfaGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<ListMfaMethodsApiV1AuthMfaGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    ListMfaMethodsApiV1AuthMfaGetResponses,
+    ListMfaMethodsApiV1AuthMfaGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/auth/mfa",
+    ...options,
+  });
+};
+
+/**
+ * Start Totp Enrollment
+ */
+export const startTotpEnrollmentApiV1AuthMfaTotpEnrollPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<
+    StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options?.client ?? client).post<
+    StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostResponses,
+    StartTotpEnrollmentApiV1AuthMfaTotpEnrollPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/auth/mfa/totp/enroll",
+    ...options,
+  });
+};
+
+/**
+ * Verify Totp
+ */
+export const verifyTotpApiV1AuthMfaTotpVerifyPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<VerifyTotpApiV1AuthMfaTotpVerifyPostData, ThrowOnError>,
+) => {
+  return (options.client ?? client).post<
+    VerifyTotpApiV1AuthMfaTotpVerifyPostResponses,
+    VerifyTotpApiV1AuthMfaTotpVerifyPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/auth/mfa/totp/verify",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Revoke Mfa Method
+ */
+export const revokeMfaMethodApiV1AuthMfaMethodIdDelete = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<RevokeMfaMethodApiV1AuthMfaMethodIdDeleteData, ThrowOnError>,
+) => {
+  return (options.client ?? client).delete<
+    RevokeMfaMethodApiV1AuthMfaMethodIdDeleteResponses,
+    RevokeMfaMethodApiV1AuthMfaMethodIdDeleteErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/auth/mfa/{method_id}",
+    ...options,
+  });
+};
+
+/**
+ * Regenerate Recovery Codes
+ */
+export const regenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePost = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<
+    RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostData,
+    ThrowOnError
+  >,
+) => {
+  return (options?.client ?? client).post<
+    RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostResponses,
+    RegenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/auth/mfa/recovery/regenerate",
+    ...options,
+  });
+};
+
+/**
+ * Complete Mfa Challenge
+ */
+export const completeMfaChallengeApiV1AuthMfaCompletePost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    CompleteMfaChallengeApiV1AuthMfaCompletePostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    CompleteMfaChallengeApiV1AuthMfaCompletePostResponses,
+    CompleteMfaChallengeApiV1AuthMfaCompletePostErrors,
+    ThrowOnError
+  >({
+    url: "/api/v1/auth/mfa/complete",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
  * Chat With Agent
  *
  * Send a message to the agent framework and receive a full response.
@@ -1139,7 +1377,7 @@ export const streamChatWithAgentApiV1ChatStreamPost = <
 /**
  * List Available Agents
  *
- * Return all agents registered with the platform.
+ * Return a paginated list of available agents.
  */
 export const listAvailableAgentsApiV1AgentsGet = <
   ThrowOnError extends boolean = false,
@@ -1148,7 +1386,7 @@ export const listAvailableAgentsApiV1AgentsGet = <
 ) => {
   return (options?.client ?? client).get<
     ListAvailableAgentsApiV1AgentsGetResponses,
-    unknown,
+    ListAvailableAgentsApiV1AgentsGetErrors,
     ThrowOnError
   >({
     security: [
@@ -1187,6 +1425,116 @@ export const getAgentStatusApiV1AgentsAgentNameStatusGet = <
       },
     ],
     url: "/api/v1/agents/{agent_name}/status",
+    ...options,
+  });
+};
+
+/**
+ * List Guardrails
+ *
+ * Return all available guardrail specifications.
+ */
+export const listGuardrailsApiV1GuardrailsGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<ListGuardrailsApiV1GuardrailsGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    ListGuardrailsApiV1GuardrailsGetResponses,
+    ListGuardrailsApiV1GuardrailsGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/guardrails",
+    ...options,
+  });
+};
+
+/**
+ * List Presets
+ *
+ * Return all available guardrail presets.
+ */
+export const listPresetsApiV1GuardrailsPresetsGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<ListPresetsApiV1GuardrailsPresetsGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    ListPresetsApiV1GuardrailsPresetsGetResponses,
+    ListPresetsApiV1GuardrailsPresetsGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/guardrails/presets",
+    ...options,
+  });
+};
+
+/**
+ * Get Guardrail
+ *
+ * Return detailed information about a specific guardrail.
+ */
+export const getGuardrailApiV1GuardrailsGuardrailKeyGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    GetGuardrailApiV1GuardrailsGuardrailKeyGetData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).get<
+    GetGuardrailApiV1GuardrailsGuardrailKeyGetResponses,
+    GetGuardrailApiV1GuardrailsGuardrailKeyGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/guardrails/{guardrail_key}",
+    ...options,
+  });
+};
+
+/**
+ * Get Preset
+ *
+ * Return detailed information about a specific preset.
+ */
+export const getPresetApiV1GuardrailsPresetsPresetKeyGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    GetPresetApiV1GuardrailsPresetsPresetKeyGetData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).get<
+    GetPresetApiV1GuardrailsPresetsPresetKeyGetResponses,
+    GetPresetApiV1GuardrailsPresetsPresetKeyGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/guardrails/presets/{preset_key}",
     ...options,
   });
 };
@@ -1407,6 +1755,62 @@ export const getWorkflowDescriptorApiV1WorkflowsWorkflowKeyGet = <
 };
 
 /**
+ * Get Workflow Run Replay Events
+ *
+ * Return persisted public_sse_v1 frames for deterministic workflow run UI replay.
+ */
+export const getWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGet =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).get<
+      GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetResponses,
+      GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/workflows/runs/{run_id}/replay/events",
+      ...options,
+    });
+  };
+
+/**
+ * Stream Workflow Run Replay Events
+ *
+ * SSE replay of persisted public_sse_v1 frames for a workflow run (exactly as emitted).
+ */
+export const streamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGet =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      StreamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGetData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).get<
+      StreamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGetResponses,
+      StreamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGetErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/workflows/runs/{run_id}/replay/stream",
+      ...options,
+    });
+  };
+
+/**
  * List Conversations
  *
  * List stored conversations ordered by recency.
@@ -1548,6 +1952,98 @@ export const getConversationMessagesApiV1ConversationsConversationIdMessagesGet 
   };
 
 /**
+ * Delete Conversation Message
+ *
+ * Delete a user message and truncate all subsequent visible content.
+ */
+export const deleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDelete =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).delete<
+      DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteResponses,
+      DeleteConversationMessageApiV1ConversationsConversationIdMessagesMessageIdDeleteErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/conversations/{conversation_id}/messages/{message_id}",
+      ...options,
+    });
+  };
+
+/**
+ * Update Conversation Memory
+ *
+ * Set or clear memory strategy defaults for a conversation.
+ */
+export const updateConversationMemoryApiV1ConversationsConversationIdMemoryPatch =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).patch<
+      UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchResponses,
+      UpdateConversationMemoryApiV1ConversationsConversationIdMemoryPatchErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/conversations/{conversation_id}/memory",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
+  };
+
+/**
+ * Update Conversation Title
+ *
+ * Rename a conversation title (manual override of auto-generated titles).
+ */
+export const updateConversationTitleApiV1ConversationsConversationIdTitlePatch =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).patch<
+      UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchResponses,
+      UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/conversations/{conversation_id}/title",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
+  };
+
+/**
  * Get Conversation Events
  */
 export const getConversationEventsApiV1ConversationsConversationIdEventsGet = <
@@ -1575,6 +2071,90 @@ export const getConversationEventsApiV1ConversationsConversationIdEventsGet = <
 };
 
 /**
+ * Stream Conversation Metadata
+ *
+ * SSE stream of the conversation title generated from the first user message.
+ */
+export const streamConversationMetadataApiV1ConversationsConversationIdStreamGet =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      StreamConversationMetadataApiV1ConversationsConversationIdStreamGetData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).get<
+      StreamConversationMetadataApiV1ConversationsConversationIdStreamGetResponses,
+      StreamConversationMetadataApiV1ConversationsConversationIdStreamGetErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/conversations/{conversation_id}/stream",
+      ...options,
+    });
+  };
+
+/**
+ * Get Conversation Ledger Events
+ *
+ * Return persisted public_sse_v1 frames for deterministic UI replay.
+ */
+export const getConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGet =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).get<
+      GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetResponses,
+      GetConversationLedgerEventsApiV1ConversationsConversationIdLedgerEventsGetErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/conversations/{conversation_id}/ledger/events",
+      ...options,
+    });
+  };
+
+/**
+ * Stream Conversation Ledger Events
+ *
+ * SSE replay of persisted public_sse_v1 frames (exactly as originally emitted).
+ */
+export const streamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGet =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      StreamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGetData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).get<
+      StreamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGetResponses,
+      StreamConversationLedgerEventsApiV1ConversationsConversationIdLedgerStreamGetErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/conversations/{conversation_id}/ledger/stream",
+      ...options,
+    });
+  };
+
+/**
  * List Available Tools
  *
  * Return metadata about registered tools.
@@ -1586,7 +2166,7 @@ export const listAvailableToolsApiV1ToolsGet = <
 ) => {
   return (options?.client ?? client).get<
     ListAvailableToolsApiV1ToolsGetResponses,
-    unknown,
+    ListAvailableToolsApiV1ToolsGetErrors,
     ThrowOnError
   >({
     security: [
@@ -1635,7 +2215,7 @@ export const streamActivityEventsApiV1ActivityStreamGet = <
     ThrowOnError
   >,
 ) => {
-  return (options?.client ?? client).get<
+  return (options?.client ?? client).sse.get<
     StreamActivityEventsApiV1ActivityStreamGetResponses,
     StreamActivityEventsApiV1ActivityStreamGetErrors,
     ThrowOnError
@@ -2392,7 +2972,7 @@ export const getPlatformStatusApiV1StatusGet = <
 ) => {
   return (options?.client ?? client).get<
     GetPlatformStatusApiV1StatusGetResponses,
-    unknown,
+    GetPlatformStatusApiV1StatusGetErrors,
     ThrowOnError
   >({
     url: "/api/v1/status",
@@ -2412,7 +2992,7 @@ export const getPlatformStatusRssApiV1StatusRssGet = <
 ) => {
   return (options?.client ?? client).get<
     GetPlatformStatusRssApiV1StatusRssGetResponses,
-    unknown,
+    GetPlatformStatusRssApiV1StatusRssGetErrors,
     ThrowOnError
   >({
     url: "/api/v1/status/rss",
@@ -2641,6 +3221,163 @@ export const updateTenantSettingsApiV1TenantsSettingsPut = <
 };
 
 /**
+ * List Consents
+ */
+export const listConsentsApiV1UsersConsentsGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<ListConsentsApiV1UsersConsentsGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    ListConsentsApiV1UsersConsentsGetResponses,
+    ListConsentsApiV1UsersConsentsGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/users/consents",
+    ...options,
+  });
+};
+
+/**
+ * Record Consent
+ */
+export const recordConsentApiV1UsersConsentsPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<RecordConsentApiV1UsersConsentsPostData, ThrowOnError>,
+) => {
+  return (options.client ?? client).post<
+    RecordConsentApiV1UsersConsentsPostResponses,
+    RecordConsentApiV1UsersConsentsPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/users/consents",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * List Notification Preferences
+ */
+export const listNotificationPreferencesApiV1UsersNotificationPreferencesGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<
+    ListNotificationPreferencesApiV1UsersNotificationPreferencesGetData,
+    ThrowOnError
+  >,
+) => {
+  return (options?.client ?? client).get<
+    ListNotificationPreferencesApiV1UsersNotificationPreferencesGetResponses,
+    ListNotificationPreferencesApiV1UsersNotificationPreferencesGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/users/notification-preferences",
+    ...options,
+  });
+};
+
+/**
+ * Upsert Notification Preference
+ */
+export const upsertNotificationPreferenceApiV1UsersNotificationPreferencesPut =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).put<
+      UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutResponses,
+      UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/users/notification-preferences",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
+  };
+
+/**
+ * Get Current User Profile
+ *
+ * Return profile metadata for the current authenticated user.
+ */
+export const getCurrentUserProfileApiV1UsersMeGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<GetCurrentUserProfileApiV1UsersMeGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    GetCurrentUserProfileApiV1UsersMeGetResponses,
+    GetCurrentUserProfileApiV1UsersMeGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/users/me",
+    ...options,
+  });
+};
+
+/**
+ * List Usage
+ */
+export const listUsageApiV1UsageGet = <ThrowOnError extends boolean = false>(
+  options?: Options<ListUsageApiV1UsageGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    ListUsageApiV1UsageGetResponses,
+    ListUsageApiV1UsageGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/usage",
+    ...options,
+  });
+};
+
+/**
  * List Billing Plans
  *
  * Return the catalog of available billing plans.
@@ -2652,7 +3389,7 @@ export const listBillingPlansApiV1BillingPlansGet = <
 ) => {
   return (options?.client ?? client).get<
     ListBillingPlansApiV1BillingPlansGetResponses,
-    unknown,
+    ListBillingPlansApiV1BillingPlansGetErrors,
     ThrowOnError
   >({
     url: "/api/v1/billing/plans",
@@ -2857,7 +3594,7 @@ export const billingEventStreamApiV1BillingStreamGet = <
 >(
   options?: Options<BillingEventStreamApiV1BillingStreamGetData, ThrowOnError>,
 ) => {
-  return (options?.client ?? client).get<
+  return (options?.client ?? client).sse.get<
     BillingEventStreamApiV1BillingStreamGetResponses,
     BillingEventStreamApiV1BillingStreamGetErrors,
     ThrowOnError
@@ -2872,52 +3609,3 @@ export const billingEventStreamApiV1BillingStreamGet = <
     ...options,
   });
 };
-
-/**
- * Apply Test Fixtures
- */
-export const applyTestFixturesApiV1TestFixturesApplyPost = <
-  ThrowOnError extends boolean = false,
->(
-  options: Options<
-    ApplyTestFixturesApiV1TestFixturesApplyPostData,
-    ThrowOnError
-  >,
-) => {
-  return (options.client ?? client).post<
-    ApplyTestFixturesApiV1TestFixturesApplyPostResponses,
-    ApplyTestFixturesApiV1TestFixturesApplyPostErrors,
-    ThrowOnError
-  >({
-    url: "/api/v1/test-fixtures/apply",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
-};
-
-/**
- * Issue Email Verification Token
- */
-export const issueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPost =
-  <ThrowOnError extends boolean = false>(
-    options: Options<
-      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData,
-      ThrowOnError
-    >,
-  ) => {
-    return (options.client ?? client).post<
-      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses,
-      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors,
-      ThrowOnError
-    >({
-      url: "/api/v1/test-fixtures/email-verification-token",
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-    });
-  };

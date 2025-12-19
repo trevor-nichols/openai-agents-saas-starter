@@ -11,6 +11,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.domain.conversations import (
+    ConversationMemoryConfig,
     ConversationMessage,
     ConversationMetadata,
     ConversationNotFoundError,
@@ -29,6 +30,10 @@ from app.infrastructure.persistence.conversations.ids import (
     coerce_conversation_uuid,
     derive_conversation_key,
     parse_tenant_id,
+)
+from app.infrastructure.persistence.conversations.ledger_models import ConversationLedgerSegment
+from app.infrastructure.persistence.conversations.ledger_segments import (
+    get_or_create_active_segment,
 )
 from app.infrastructure.persistence.conversations.mappers import (
     coerce_role,
@@ -69,6 +74,11 @@ class ConversationMessageStore:
                 tenant_id=tenant_uuid,
                 metadata=metadata,
             )
+            segment = await get_or_create_active_segment(
+                session,
+                tenant_id=tenant_uuid,
+                conversation_id=conversation.id,
+            )
 
             position = conversation.message_count
             conversation.message_count = position + 1
@@ -102,6 +112,7 @@ class ConversationMessageStore:
 
             db_message = AgentMessage(
                 conversation_id=conversation.id,
+                segment_id=segment.id,
                 position=position,
                 role=message.role,
                 agent_type=metadata.active_agent if message.role == "assistant" else None,
@@ -143,11 +154,22 @@ class ConversationMessageStore:
             result = await session.execute(
                 select(AgentMessage)
                 .where(AgentMessage.conversation_id == conversation_uuid)
+                .where(
+                    _message_visibility_predicate(
+                        await _load_ledger_segments(
+                            session,
+                            tenant_id=tenant_uuid,
+                            conversation_id=conversation_uuid,
+                        )
+                    )
+                )
                 .order_by(AgentMessage.position)
             )
             rows: Sequence[AgentMessage] = result.scalars().all()
             return [
                 ConversationMessage(
+                    message_id=str(row.id) if row.id is not None else None,
+                    position=int(row.position) if row.position is not None else None,
                     role=coerce_role(row.role),
                     content=extract_message_content(row.content),
                     attachments=extract_attachments(row.attachments),
@@ -171,7 +193,11 @@ class ConversationMessageStore:
             if conversation is None:
                 return None
 
-            messages = await self._load_messages(session, [conversation.id])
+            messages = await self._load_messages(
+                session,
+                [conversation.id],
+                tenant_id=tenant_uuid,
+            )
             grouped = {conversation.id: messages.get(conversation.id, [])}
             return record_from_model(conversation, grouped.get(conversation.id, []))
 
@@ -198,7 +224,9 @@ class ConversationMessageStore:
                 return []
 
             grouped = await self._load_messages(
-                session, [conversation.id for conversation in conversation_rows]
+                session,
+                [conversation.id for conversation in conversation_rows],
+                tenant_id=tenant_uuid,
             )
             return [
                 record_from_model(conversation, grouped.get(conversation.id, []))
@@ -256,7 +284,11 @@ class ConversationMessageStore:
             if not rows:
                 return ConversationPage(items=[], next_cursor=None)
 
-            grouped = await self._load_messages(session, [conversation.id for conversation in rows])
+            grouped = await self._load_messages(
+                session,
+                [conversation.id for conversation in rows],
+                tenant_id=tenant_uuid,
+            )
             records = [
                 record_from_model(conversation, grouped.get(conversation.id, []))
                 for conversation in rows
@@ -296,6 +328,15 @@ class ConversationMessageStore:
                 raise ConversationNotFoundError(f"Conversation {conversation_id} does not exist")
 
             stmt = select(AgentMessage).where(AgentMessage.conversation_id == conversation_uuid)
+            stmt = stmt.where(
+                _message_visibility_predicate(
+                    await _load_ledger_segments(
+                        session,
+                        tenant_id=tenant_uuid,
+                        conversation_id=conversation_uuid,
+                    )
+                )
+            )
 
             if cursor_ts and cursor_id is not None:
                 if direction_normalized == "desc":
@@ -340,6 +381,8 @@ class ConversationMessageStore:
 
             messages = [
                 ConversationMessage(
+                    message_id=str(row.id) if row.id is not None else None,
+                    position=int(row.position) if row.position is not None else None,
                     role=coerce_role(row.role),
                     content=extract_message_content(row.content),
                     attachments=extract_attachments(row.attachments),
@@ -390,6 +433,77 @@ class ConversationMessageStore:
                 last_session_sync_at=conversation.last_session_sync_at,
             )
 
+    async def get_memory_config(
+        self, conversation_id: str, *, tenant_id: str
+    ) -> ConversationMemoryConfig | None:
+        conversation_uuid = coerce_conversation_uuid(conversation_id)
+        tenant_uuid = parse_tenant_id(tenant_id)
+        async with self._session_factory() as session:
+            conversation = await self._get_conversation(
+                session,
+                conversation_uuid,
+                tenant_id=tenant_uuid,
+            )
+            if conversation is None:
+                return None
+            return ConversationMemoryConfig(
+                strategy=conversation.memory_strategy,
+                max_user_turns=conversation.memory_max_turns,
+                keep_last_turns=conversation.memory_keep_last_turns,
+                compact_trigger_turns=conversation.memory_compact_trigger_turns,
+                compact_keep=conversation.memory_compact_keep,
+                clear_tool_inputs=conversation.memory_clear_tool_inputs,
+                memory_injection=conversation.memory_injection,
+            )
+
+    async def set_memory_config(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        config: ConversationMemoryConfig,
+        provided_fields: set[str] | None = None,
+    ) -> None:
+        conversation_uuid = coerce_conversation_uuid(conversation_id)
+        tenant_uuid = parse_tenant_id(tenant_id)
+        async with self._session_factory() as session:
+            conversation = await self._get_conversation(
+                session,
+                conversation_uuid,
+                tenant_id=tenant_uuid,
+                for_update=True,
+                strict=True,
+            )
+            if conversation is None:
+                raise ConversationNotFoundError(f"Conversation {conversation_id} does not exist")
+
+            fields = provided_fields or set()
+
+            if "mode" in fields:
+                conversation.memory_strategy = (config.strategy[:16] if config.strategy else None)
+            if "max_user_turns" in fields:
+                conversation.memory_max_turns = config.max_user_turns
+            if "keep_last_turns" in fields:
+                conversation.memory_keep_last_turns = config.keep_last_turns
+            if "compact_trigger_turns" in fields:
+                conversation.memory_compact_trigger_turns = config.compact_trigger_turns
+            if "compact_keep" in fields:
+                conversation.memory_compact_keep = config.compact_keep
+            if "clear_tool_inputs" in fields:
+                conversation.memory_clear_tool_inputs = (
+                    bool(config.clear_tool_inputs)
+                    if config.clear_tool_inputs is not None
+                    else None
+                )
+            if "memory_injection" in fields:
+                conversation.memory_injection = (
+                    bool(config.memory_injection)
+                    if config.memory_injection is not None
+                    else None
+                )
+            conversation.updated_at = datetime.now(UTC)
+            await session.commit()
+
     async def upsert_session_state(
         self,
         conversation_id: str,
@@ -420,6 +534,63 @@ class ConversationMessageStore:
             if state.provider_conversation_id:
                 conversation.provider_conversation_id = state.provider_conversation_id
 
+            await session.commit()
+
+    async def set_display_name(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        display_name: str,
+        generated_at: datetime | None = None,
+    ) -> bool:
+        conversation_uuid = coerce_conversation_uuid(conversation_id)
+        tenant_uuid = parse_tenant_id(tenant_id)
+        async with self._session_factory() as session:
+            conversation = await self._get_conversation(
+                session,
+                conversation_uuid,
+                tenant_id=tenant_uuid,
+                for_update=True,
+                strict=True,
+            )
+            if conversation is None:
+                raise ConversationNotFoundError(f"Conversation {conversation_id} does not exist")
+            if conversation.display_name:
+                return False
+
+            conversation.display_name = display_name[:128]
+            conversation.title_generated_at = generated_at or datetime.now(UTC)
+            conversation.updated_at = datetime.now(UTC)
+            await session.commit()
+            return True
+
+    async def update_display_name(
+        self,
+        conversation_id: str,
+        *,
+        tenant_id: str,
+        display_name: str,
+    ) -> None:
+        conversation_uuid = coerce_conversation_uuid(conversation_id)
+        tenant_uuid = parse_tenant_id(tenant_id)
+        normalized = (display_name or "").strip()
+        if not normalized:
+            raise ValueError("display_name is required")
+
+        async with self._session_factory() as session:
+            conversation = await self._get_conversation(
+                session,
+                conversation_uuid,
+                tenant_id=tenant_uuid,
+                for_update=True,
+                strict=True,
+            )
+            if conversation is None:
+                raise ConversationNotFoundError(f"Conversation {conversation_id} does not exist")
+
+            conversation.display_name = normalized[:128]
+            conversation.updated_at = datetime.now(UTC)
             await session.commit()
 
     # --- internals -----------------------------------------------------
@@ -512,13 +683,26 @@ class ConversationMessageStore:
         return conversation
 
     async def _load_messages(
-        self, session: AsyncSession, conversation_ids: list[uuid.UUID]
+        self,
+        session: AsyncSession,
+        conversation_ids: list[uuid.UUID],
+        *,
+        tenant_id: uuid.UUID,
     ) -> dict[uuid.UUID, list[AgentMessage]]:
         if not conversation_ids:
             return {}
+        segments = await _load_ledger_segments_bulk(
+            session,
+            tenant_id=tenant_id,
+            conversation_ids=conversation_ids,
+        )
+        visibility_predicate = _message_visibility_predicate(segments)
         messages = await session.execute(
             select(AgentMessage)
-            .where(AgentMessage.conversation_id.in_(conversation_ids))
+            .where(
+                AgentMessage.conversation_id.in_(conversation_ids),
+                visibility_predicate,
+            )
             .order_by(AgentMessage.conversation_id, AgentMessage.position)
         )
         rows: Sequence[AgentMessage] = messages.scalars().all()
@@ -531,6 +715,74 @@ class ConversationMessageStore:
 def _ensure_metadata_tenant(metadata: ConversationMetadata, tenant_id: str) -> None:
     if metadata.tenant_id != tenant_id:
         raise ValueError("Metadata tenant_id mismatch")
+
+
+async def _load_ledger_segments(
+    session: AsyncSession,
+    *,
+    tenant_id: uuid.UUID,
+    conversation_id: uuid.UUID,
+) -> list[ConversationLedgerSegment]:
+    result = await session.execute(
+        select(ConversationLedgerSegment)
+        .where(
+            ConversationLedgerSegment.tenant_id == tenant_id,
+            ConversationLedgerSegment.conversation_id == conversation_id,
+        )
+        .order_by(ConversationLedgerSegment.segment_index.asc())
+    )
+    return list(result.scalars().all())
+
+
+async def _load_ledger_segments_bulk(
+    session: AsyncSession,
+    *,
+    tenant_id: uuid.UUID,
+    conversation_ids: list[uuid.UUID],
+) -> list[ConversationLedgerSegment]:
+    if not conversation_ids:
+        return []
+    result = await session.execute(
+        select(ConversationLedgerSegment)
+        .where(
+            ConversationLedgerSegment.tenant_id == tenant_id,
+            ConversationLedgerSegment.conversation_id.in_(conversation_ids),
+        )
+        .order_by(
+            ConversationLedgerSegment.conversation_id.asc(),
+            ConversationLedgerSegment.segment_index.asc(),
+        )
+    )
+    return list(result.scalars().all())
+
+
+def _message_visibility_predicate(segments: list[ConversationLedgerSegment]):
+    """Build a SQL predicate that selects only the visible portion of each segment."""
+
+    if not segments:
+        return AgentMessage.id >= 0  # all messages (fallback; normally segments always exist)
+
+    active_by_conversation: dict[uuid.UUID, int] = {}
+    for seg in segments:
+        if seg.truncated_at is None:
+            active_by_conversation[seg.conversation_id] = (
+                active_by_conversation.get(seg.conversation_id, 0) + 1
+            )
+    if any(count > 1 for count in active_by_conversation.values()):
+        raise ValueError("Conversation ledger has multiple active segments")
+
+    conditions = []
+    for seg in segments:
+        if seg.truncated_at is None:
+            conditions.append(AgentMessage.segment_id == seg.id)
+            continue
+
+        max_pos = seg.visible_through_message_position
+        if max_pos is None:
+            raise ValueError("Truncated ledger segment missing visible_through_message_position")
+        conditions.append(and_(AgentMessage.segment_id == seg.id, AgentMessage.position <= max_pos))
+
+    return or_(*conditions) if conditions else AgentMessage.id < 0
 
 
 __all__ = ["ConversationMessageStore"]

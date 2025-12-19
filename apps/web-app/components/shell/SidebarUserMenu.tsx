@@ -33,8 +33,8 @@ export function SidebarUserMenu({ userName, userEmail, tenantId, avatarUrl }: Si
   const { isMobile } = useSidebar();
   const [isPending, startTransition] = useTransition();
 
-  const displayName = userName ?? 'Signed in user';
-  const displayEmail = userEmail ?? tenantId ?? 'Account';
+  const displayName = userName ?? userEmail ?? 'Signed in user';
+  const displayEmail = userName ? (userEmail ?? tenantId ?? 'Account') : 'Account';
   const initials = displayName
     .split(' ')
     .filter(Boolean)

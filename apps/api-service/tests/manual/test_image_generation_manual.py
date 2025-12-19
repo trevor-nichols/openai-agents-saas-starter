@@ -26,7 +26,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from app.api.v1.shared.streaming import StreamingEvent
+from app.api.v1.shared.streaming import ChunkDeltaEvent, PublicSseEvent, PublicSseEventBase
 from tests.utils.stream_assertions import (
     assert_image_generation_expectations,
     maybe_record_stream,
@@ -84,7 +84,7 @@ async def test_image_generation_streaming_manual() -> None:
     }
 
     raw_lines: list[str] = []
-    events: list[StreamingEvent] = []
+    events: list[PublicSseEventBase] = []
 
     url = f"{base_url.rstrip('/')}/api/v1/chat/stream"
     async with httpx.AsyncClient(timeout=timeout) as client:
@@ -101,19 +101,37 @@ async def test_image_generation_streaming_manual() -> None:
                 except json.JSONDecodeError:
                     continue
 
-                parsed = StreamingEvent.model_validate(event)
+                parsed = PublicSseEvent.model_validate(event).root
                 events.append(parsed)
 
-                if event.get("is_terminal"):
+                if getattr(parsed, "kind", None) in {"final", "error"}:
                     break
 
     try:
-        assert_image_generation_expectations(events)
+        assert_image_generation_expectations(events, require_partial_chunks=False)
     except AssertionError as exc:  # pragma: no cover - debugging aid for manual runs
         dump_dir = Path(tempfile.mkdtemp(prefix="image_gen_stream_"))
         dump_path = dump_dir / "stream.ndjson"
         dump_path.write_text("\n".join(raw_lines), encoding="utf-8")
         pytest.fail(f"{exc}\nRaw stream saved to {dump_path}")
 
-    default_path = Path(__file__).resolve().parent.parent / "fixtures" / "streams" / "image_generation.ndjson"
+    repo_root = Path(__file__).resolve().parents[4]
+    default_path = (
+        repo_root
+        / "docs"
+        / "contracts"
+        / "public-sse-streaming"
+        / "examples"
+        / "chat-image-generation-partials.ndjson"
+    )
+    if os.getenv("MANUAL_RECORD_STREAM_TO") == "":
+        has_partials = any(
+            isinstance(e, ChunkDeltaEvent) and e.target.field == "partial_image_b64" for e in events
+        )
+        if not has_partials:
+            pytest.skip(
+                "No partial_image_b64 chunk events emitted; refusing to overwrite the canonical"
+                " chat-image-generation-partials.ndjson fixture. Re-run until partials appear,"
+                " or set MANUAL_RECORD_STREAM_TO to a different path."
+            )
     maybe_record_stream(events, env_var="MANUAL_RECORD_STREAM_TO", default_path=default_path)

@@ -194,11 +194,11 @@ class VectorStoreService:
         *,
         vector_store_id: uuid.UUID | str,
         tenant_id: uuid.UUID | str,
-        query: str,
+        query: str | list[str],
         filters: dict[str, Any] | None = None,
         max_num_results: int | None = None,
         ranking_options: dict[str, Any] | None = None,
-    ) -> Any:
+    ):
         return await self._search.search(
             vector_store_id=vector_store_id,
             tenant_id=tenant_id,

@@ -11,16 +11,17 @@ import { apiV1Path } from '@/lib/apiPaths';
 const originalFetch = global.fetch;
 
 vi.mock('@/lib/api/conversations', () => ({
-  fetchConversationHistory: vi.fn(),
   fetchConversationMessages: vi.fn(),
+  fetchConversationLedgerEvents: vi.fn(),
   deleteConversationById: vi.fn(),
+  deleteConversationMessage: vi.fn(),
 }));
 
 vi.mock('@/lib/queries/chat', () => ({
   useSendChatMutation: vi.fn(),
 }));
 
-const { fetchConversationHistory, fetchConversationMessages } = vi.mocked(
+const { fetchConversationLedgerEvents, fetchConversationMessages } = vi.mocked(
   await import('@/lib/api/conversations'),
 );
 const { useSendChatMutation } = vi.mocked(
@@ -40,12 +41,9 @@ describe('useChatController (integration)', () => {
       createMutationMock({ mutateAsync }),
     );
 
-    fetchConversationHistory.mockImplementation(async (conversationId: string) => ({
-      conversation_id: conversationId,
-      created_at: '2025-01-01T00:00:00.000Z',
-      updated_at: '2025-01-01T00:00:05.000Z',
-      messages: [],
-    }));
+    fetchConversationLedgerEvents.mockImplementation(
+      async ({ conversationId: _conversationId }: { conversationId: string }) => [],
+    );
     fetchConversationMessages.mockResolvedValue({
       items: [],
       next_cursor: null,
@@ -57,12 +55,12 @@ describe('useChatController (integration)', () => {
       start(controller) {
         controller.enqueue(
           encoder.encode(
-            'data: {"kind":"raw_response_event","conversation_id":"conv-integration","raw_type":"response.output_text.delta","text_delta":"Integrated response","is_terminal":false}\n\n',
+            'data: {"schema":"public_sse_v1","event_id":1,"stream_id":"stream-integration","server_timestamp":"2025-12-15T00:00:00.000Z","kind":"message.delta","conversation_id":"conv-integration","response_id":"resp-integration","agent":"triage","output_index":0,"item_id":"msg-1","content_index":0,"delta":"Integrated response"}\n\n',
           ),
         );
         controller.enqueue(
           encoder.encode(
-            'data: {"kind":"raw_response_event","conversation_id":"conv-integration","raw_type":"response.completed","text_delta":"","is_terminal":true}\n\n',
+            'data: {"schema":"public_sse_v1","event_id":2,"stream_id":"stream-integration","server_timestamp":"2025-12-15T00:00:00.100Z","kind":"final","conversation_id":"conv-integration","response_id":"resp-integration","agent":"triage","final":{"status":"completed","response_text":"Integrated response","structured_output":null,"reasoning_summary_text":null,"refusal_text":null,"attachments":[],"usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}}\n\n',
           ),
         );
         controller.close();
@@ -106,7 +104,7 @@ describe('useChatController (integration)', () => {
       expect(result.current.currentConversationId).toBe('conv-integration');
     });
     await waitFor(() => {
-      expect(fetchConversationHistory).toHaveBeenCalledWith('conv-integration');
+      expect(fetchConversationLedgerEvents).toHaveBeenCalledWith({ conversationId: 'conv-integration' });
     });
 
     const assistantMessages = result.current.messages.filter(

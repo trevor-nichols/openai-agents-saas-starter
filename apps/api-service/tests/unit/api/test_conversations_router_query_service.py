@@ -54,7 +54,7 @@ async def test_list_conversations_uses_query_service(monkeypatch):
     monkeypatch.setattr(router, "get_conversation_query_service", lambda: stub)
     monkeypatch.setattr(
         router,
-        "_resolve_tenant_context",
+        "resolve_tenant_context",
         AsyncMock(
             return_value=SimpleNamespace(
                 tenant_id="t1", tenant_role="admin", ensure_role=lambda *args: None
@@ -84,7 +84,7 @@ async def test_get_conversation_messages_uses_query_service(monkeypatch):
     monkeypatch.setattr(router, "get_conversation_query_service", lambda: stub)
     monkeypatch.setattr(
         router,
-        "_resolve_tenant_context",
+        "resolve_tenant_context",
         AsyncMock(
             return_value=SimpleNamespace(
                 tenant_id="t1", tenant_role="admin", ensure_role=lambda *args: None

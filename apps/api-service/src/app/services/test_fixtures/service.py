@@ -25,6 +25,7 @@ from app.infrastructure.persistence.billing.models import (
     SubscriptionUsage,
     TenantSubscription,
 )
+from app.infrastructure.persistence.conversations.ledger_models import ConversationLedgerSegment
 from app.infrastructure.persistence.conversations.models import (
     AgentConversation,
     AgentMessage,
@@ -396,6 +397,23 @@ class TestFixtureService:
             await session.execute(
                 delete(AgentMessage).where(AgentMessage.conversation_id == conversation.id)
             )
+            await session.execute(
+                delete(ConversationLedgerSegment).where(
+                    ConversationLedgerSegment.conversation_id == conversation.id
+                )
+            )
+
+            segment_id = uuid4()
+            session.add(
+                ConversationLedgerSegment(
+                    id=segment_id,
+                    tenant_id=tenant.id,
+                    conversation_id=conversation.id,
+                    segment_index=0,
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
 
             for index, message in enumerate(convo.messages):
                 random_bits = cast(int, uuid4().int)
@@ -404,6 +422,7 @@ class TestFixtureService:
                     AgentMessage(
                         id=message_id,
                         conversation_id=conversation.id,
+                        segment_id=segment_id,
                         position=index,
                         role=message.role,
                         content={"type": "text", "text": message.text},

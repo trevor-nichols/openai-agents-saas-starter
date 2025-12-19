@@ -1,7 +1,7 @@
-You are a professional engineer and developer in charge of the OpenAI Agent Starter Codebase. The OpenAI Agent Starter Codebase contains a Next.js 16 frontend and a FastAPI backend. The FastAPI backend is based on the latest new OpenAI Agents SDK (v0.6.1) and uses the brand new GPT-5.1 model with reasoning. 
+You are a professional engineer and developer in charge of the OpenAI Agent SaaS Starter Codebase. The OpenAI Agent SaaS Starter Codebase contains a Next.js 16 frontend and a FastAPI backend. The FastAPI backend is based on the latest new OpenAI Agents SDK (v0.6.1) and uses the brand new OpenAI models (gpt-5.1, gpt-5.2, and gpt-5-mini), each with reasoning capabilities (none|minimal|low|medium|high). 
 
 # Overview
-- This is a SaaS starter repo people can easily clone and quickly set up their own AI Agent SaaS website. It is a pre-release (no data this and has not been distributed) which you are responsible for getting production ready for release.
+- This is a SaaS starter repo developers can easily clone and quickly set up their own AI Agent SaaS website. It is a pre-release (no data this and has not been distributed) which you are responsible for getting production ready for release.
 
 ## Backend
 - Request auth funnels through FastAPI dependencies into JWT-backed services
@@ -19,6 +19,11 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 - Never truncate or hand-edit `alembic_version`. If you need to align an existing schema without data loss, use `alembic stamp heads`; if data is disposable, drop + recreate the DB then rerun `just migrate`.
 - Don’t manually create tables; schema drift without matching `alembic_version` rows leads to “relation already exists” / startup hangs.
 - New migrations that depend on other branches must declare `depends_on` to enforce ordering (see `b6dcb157d208` depending on `c3c9b1f4cf29`).
+- Migration policy (autogen by default; manual needs approval):
+  - Default: `just migration-revision message="add widget table"` (wraps `alembic revision --autogenerate ...`). Review the generated file before committing.
+  - Apply: `just migrate` (runs `scripts/check_alembic_version.py` first, then `alembic upgrade heads`).
+  - Manual revisions are forbidden unless a lead explicitly approves a one-off (e.g., irreconcilable autogen). If approved, run inside `apps/api-service`: `hatch run alembic revision -m "manual step"` and follow with a merge revision if multiple heads arise.
+  - Never bypass `just migrate` or edit `alembic_version` directly; fix multi-heads with merge revisions, not deletes.
 
 ### Workflow orchestration (API service)
 - Declarative specs live in `api-service/src/app/workflows/**/spec.py`. You can define either a flat `steps` list (legacy) or explicit `stages`.
@@ -30,6 +35,17 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 - `AgentSpec` (`api-service/src/app/agents/<key>/spec.py`) declares a single SDK agent: prompt/instructions, model selector, explicit tool surface, and optional handoff targets. Specs are loaded via `load_agent_specs()` and materialized into concrete OpenAI agents at startup.
 - `WorkflowSpec` (`api-service/src/app/workflows/<name>/spec.py`) stitches existing agents into deterministic chains or fan-out/fan-in stages. It reuses agent prompts and only controls sequencing via guards, input mappers, and reducers; the workflow registry validates referenced agent keys.
 - Reach for an agent spec when you need a single conversational entrypoint with tools or handoffs. Choose a workflow spec when you need a repeatable, auditable sequence where ordering and branching stay outside the model.
+
+### Public SSE streaming contract (`public_sse_v1`)
+- **Goal:** expose a stable, browser-safe SSE event stream for the web app while insulating it from raw provider event churn.
+- **Inbound (provider → normalized):** OpenAI Agents SDK stream events are normalized into `AgentStreamEvent` (`apps/api-service/src/app/domain/ai/models.py`) by `OpenAIStreamingHandle` (`apps/api-service/src/app/infrastructure/providers/openai/streaming.py`).
+- **Outbound (normalized → public):** `PublicStreamProjector` (`apps/api-service/src/app/api/v1/shared/public_stream_projector/projector.py`) projects internal events into the public contract `PublicSseEvent` (`apps/api-service/src/app/api/v1/shared/streaming.py`, `schema=public_sse_v1`).
+- **Endpoints:** chat streaming (`apps/api-service/src/app/api/v1/chat/router.py`) and workflow run streaming (`apps/api-service/src/app/api/v1/workflows/router.py`) emit `data: <PublicSseEvent JSON>\n\n` frames and stop emitting after `kind=final|error`.
+- **Contract docs + goldens:** the spec lives in `docs/contracts/public-sse-streaming/v1.md`; examples live in `docs/contracts/public-sse-streaming/examples/*.ndjson` and are enforced by `apps/api-service/tests/contract/streams/test_stream_goldens.py` (assertions in `apps/api-service/tests/utils/stream_assertions.py`).
+- **Coverage tracking:** `docs/integrations/openai-responses-api/streaming-events/coverage-matrix.md` tracks raw provider events → public SSE events, usage, and fixture coverage.
+- **When changing streaming:** update schema (`apps/api-service/src/app/api/v1/shared/streaming.py`) + projector(s) (`apps/api-service/src/app/api/v1/shared/public_stream_projector/**`), add/adjust a golden NDJSON fixture + assertions, then regenerate OpenAPI + TS client:
+  - `cd packages/starter_cli && python -m starter_cli.app api export-openapi --output apps/api-service/.artifacts/openapi-fixtures.json --enable-billing --enable-test-fixtures`
+  - `cd apps/web-app && OPENAPI_INPUT=../api-service/.artifacts/openapi-fixtures.json pnpm generate:fixtures`
 
 ## Frontend
 - The frontend uses the HeyAPI SDK to generate the API client. The API client is generated into the `lib/api/client` directory.
@@ -106,7 +122,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
   - Prod/CI: build wheels and install non-editable (`pip wheel packages/starter_contracts packages/starter_cli -w dist` then `pip install dist/starter_contracts-*.whl dist/starter_cli-*.whl`).
 
 # Development Guidelines
-- You must maintain a professional clean architecture, referring to the documentations of the OpenAI Agents SDK and the `docs/openai-agents-sdk` directory whenever needed in order to ensure you abide by the latest API framework. 
+- You must maintain a professional clean architecture, referring to the documentations of the OpenAI Agents SDK and the `docs/openai-agents-sdk` and `docs/integrations/openai-responses-api` directories during development in order to ensure you abide by the latest API framework. 
 - Avoid feature gates/flags and any backwards compability changes - since our app is still unreleased
 - **After Your Edits**
   - **Backend**: Run `hatch run lint` and `hatch run typecheck` (Pyright + Mypy) after all edits in backend; CI blocks merges on `hatch run typecheck`, so keep it green locally.
@@ -117,7 +133,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 
 # Test Environment Contract
 - `conftest.py` at the repository root forces the entire pytest run onto SQLite + fakeredis and disables billing/auto migrations. **Do not** remove or bypass this file; any new package (CLI included) must behave correctly when those overrides are in effect.
-- Run backend tests inside the hatch env (`cd apps/api-service && hatch run pytest …`) or `hatch shell`; invoking `pytest` with the host interpreter can miss dev extras like `fakeredis` even if they’re installed elsewhere.
+- Run backend tests inside the hatch env (`cd apps/api-service && hatch run test …`) or `hatch shell`; invoking `pytest` with the host interpreter can miss dev extras like `fakeredis` even if they’re installed elsewhere.
 - Any test that mutates `os.environ` must snapshot and restore the original values to avoid leaking state into other suites. Use the helpers in `api-service/tests/conftest.py` or mimic their pattern.
 - When adding CLI modules, ensure module import has no side effects (e.g., avoid calling `get_settings()` or hitting the database at import time). If you need settings, fetch them inside the handler after env overrides have loaded.
 - Postgres integration suites (`tests/integration/test_postgres_migrations.py`) remain skipped unless `USE_REAL_POSTGRES=true`; leave this off for local/unit CI runs so we never accidentally hit a developer's Postgres instance.
@@ -138,30 +154,55 @@ You are a professional engineer and developer in charge of the OpenAI Agent Star
 - Quick tail: `python -m starter_cli.app logs tail --service api --service frontend --errors`.
 
 # Codebase Patterns
+<patterns>
 openai-agents-saas-starter/
-├── apps/                         # Runtime apps
-│   ├── api-service/              # FastAPI backend (see apps/api-service/SNAPSHOT.md)
-│   │   ├── alembic/              # Database migrations
-│   │   ├── src/app/              # Agents, API v1, services, infrastructure, workflows
-│   │   ├── tests/                # contract/, integration/, unit/ suites
-│   │   └── var/keys/             # Ed25519 signing keys
-│   └── web-app/                  # Next.js 16 frontend (see apps/web-app/SNAPSHOT.md)
-│       ├── app/                  # App Router groups: marketing, auth, app/workspace
-│       ├── features/             # Feature orchestrators (chat, billing, account, etc.)
-│       ├── components/           # Shadcn UI + domain assemblies
-│       ├── lib/                  # API client, config, streaming helpers
-│       ├── hooks/                # Client-side hooks
-│       ├── tests/ + storybook    # Vitest/Playwright and Storybook assets
-│       └── public/               # Static assets
-├── packages/                     # Shared Python libraries
-│   ├── starter_cli/              # Operator CLI (src/starter_cli/, tests/, justfile)
-│   └── starter_contracts/        # Shared contracts used by CLI + backend
-├── tools/                        # CI/utility scripts (typecheck, smoke tests, vault helpers)
-├── ops/                          # Local infra configs (compose stacks, observability)
-├── docs/                         # SDK reference, trackers, frontend docs
-├── scripts/                      # Repo-level helper scripts
-├── var/                          # Local runtime data (keys/, log/, reports/)
-├── justfile                      # Top-level task runner (preferred over ad-hoc commands)
-├── package.json / pnpm-workspace.yaml # Workspace root for JS/TS tooling
-├── tsconfig.scripts.json         # TS config for repo scripts
-└── SNAPSHOT.md                   # Root structure reference; per-project snapshots live beside each app/package
+├── apps/                         # Runtime apps (deployable services)
+│   ├── api-service/              # FastAPI backend
+│   │   ├── .artifacts/            # Generated artifacts (OpenAPI snapshots, fixtures)
+│   │   ├── alembic/               # Database migrations
+│   │   ├── src/app/               # Layered backend architecture
+│   │   │   ├── api/               # FastAPI routing + API v1 modules/schemas
+│   │   │   ├── agents/            # Agent specs/prompts + shared agent utilities
+│   │   │   ├── guardrails/        # Guardrail checks + presets + shared guardrail plumbing
+│   │   │   ├── workflows/         # Workflow specs + orchestration/runner logic
+│   │   │   ├── domain/            # Domain models + ports (core business concepts)
+│   │   │   ├── services/          # Application services / use-cases
+│   │   │   ├── infrastructure/    # Persistence + integrations + repositories
+│   │   │   ├── providers/         # External providers (OpenAI, secrets, storage, stripe, redis, etc.)
+│   │   │   ├── observability/     # Logging/metrics/OTLP sinks + instrumentation
+│   │   │   ├── middleware/        # Request/response middleware
+│   │   │   └── core/ + bootstrap/ + utils/  # Settings, security, app wiring, helpers
+│   │   ├── tests/                 # contract/, integration/, unit/, smoke/ (+ stream goldens/fixtures)
+│   │   ├── scripts/               # One-off maintenance / admin scripts
+│   │   ├── var/keys/              # Local signing keysets (Ed25519)
+│   │   └── justfile               # App-scoped tasks (pairs with root justfile)
+│   └── web-app/                   # Next.js App Router frontend
+│       ├── app/                   # Route groups: (marketing)/, (auth)/, (app)/(workspace)
+│       │   └── api/               # BFF/edge route handlers (proxy to backend, streaming, downloads)
+│       ├── features/              # Feature modules (chat, agents, billing, settings, etc.)
+│       ├── components/            # shadcn/ui + shared UI assemblies
+│       ├── lib/                   # API client, server helpers, streaming utilities
+│       │   └── api/client/        # Generated OpenAPI TS client + types (*.gen.ts)
+│       ├── hooks/                 # Shared React hooks
+│       ├── tests/                 # Playwright e2e + Vitest unit tests
+│       ├── .storybook/            # Storybook config + mocks/fixtures
+│       ├── seeds/                 # Test seeds/config (e.g., Playwright)
+│       ├── public/                # Static assets
+│       └── justfile               # App-scoped tasks
+├── packages/                      # Shared Python libraries (reused across apps)
+│   ├── starter_cli/               # Operator CLI (Typer/Rich TUI, setup wizard, probes, tests)
+│   │   └── justfile               # Package-scoped tasks
+│   └── starter_contracts/         # Shared contracts/models/config used by CLI + backend (tests, py.typed)
+├── ops/                           # Local infra configs
+│   ├── compose/                   # Docker compose stacks (vault/minio/etc.)
+│   └── observability/             # Collector/config generation helpers
+├── tools/                         # Repo tooling (typecheck, smoke tests, vault helpers, module viz)
+├── scripts/                       # Repo-level helper scripts (e.g., vault file/log helpers)
+├── var/                           # Local runtime outputs (keys/, observability/, ...)
+├── .env.compose*                  # Repo-level dev env for compose (example + real)
+├── .nvmrc                         # Node version pin for JS tooling
+├── justfile                       # Root task runner (preferred entrypoint; complements per-app justfiles)
+├── package.json                   # Workspace root for JS/TS tooling
+├── pnpm-workspace.yaml            # pnpm workspace definition
+└── tsconfig.scripts.json          # TS config for repo-level scripts beside each app/package
+</patterns>

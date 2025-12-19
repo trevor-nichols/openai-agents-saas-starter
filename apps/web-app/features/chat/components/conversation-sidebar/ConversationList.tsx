@@ -1,9 +1,10 @@
-import { Loader2, MessageSquare, MoreVertical, Trash2 } from 'lucide-react';
+import { Loader2, MessageSquare, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import type { ConversationListItem } from '@/types/conversations';
 import { cn } from '@/lib/utils';
+import { formatConversationFallbackTitle } from '../../utils/formatters';
 
 import type { DateGroup } from '../../utils/conversationGrouping';
 
@@ -12,10 +13,15 @@ interface ConversationItemProps {
   isActive: boolean;
   onSelect: () => void;
   onDelete?: () => void;
+  onRename?: () => void;
 }
 
-export function ConversationItem({ conversation, isActive, onSelect, onDelete }: ConversationItemProps) {
-  const title = conversation.title?.trim() || conversation.topic_hint?.trim() || 'New Conversation';
+export function ConversationItem({ conversation, isActive, onSelect, onDelete, onRename }: ConversationItemProps) {
+  const title =
+    conversation.title?.trim() ||
+    conversation.topic_hint?.trim() ||
+    formatConversationFallbackTitle(conversation.updated_at ?? conversation.created_at);
+  const hasActions = Boolean(onDelete || onRename);
 
   return (
     <li className="group relative w-full min-w-0">
@@ -33,7 +39,7 @@ export function ConversationItem({ conversation, isActive, onSelect, onDelete }:
         </span>
       </button>
 
-      {onDelete && (
+      {hasActions && (
         <div
           className={cn(
             'absolute right-1 top-1/2 -translate-y-1/2 opacity-0 transition-opacity duration-200 group-hover:opacity-100',
@@ -53,16 +59,29 @@ export function ConversationItem({ conversation, isActive, onSelect, onDelete }:
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete();
-                }}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
+              {onRename && (
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRename();
+                  }}
+                >
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Rename
+                </DropdownMenuItem>
+              )}
+              {onDelete && (
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete();
+                  }}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -113,6 +132,7 @@ interface ConversationGroupsProps {
   currentConversationId: string | null;
   onSelectConversation: (id: string) => void;
   onDeleteConversation?: (id: string) => void;
+  onRenameConversation?: (conversation: ConversationListItem) => void;
 }
 
 export function ConversationGroups({
@@ -121,6 +141,7 @@ export function ConversationGroups({
   currentConversationId,
   onSelectConversation,
   onDeleteConversation,
+  onRenameConversation,
 }: ConversationGroupsProps) {
   return (
     <div className="space-y-6 px-2">
@@ -139,6 +160,7 @@ export function ConversationGroups({
                   isActive={currentConversationId === conv.id}
                   onSelect={() => onSelectConversation(conv.id)}
                   onDelete={onDeleteConversation ? () => onDeleteConversation(conv.id) : undefined}
+                  onRename={onRenameConversation ? () => onRenameConversation(conv) : undefined}
                 />
               ))}
             </ul>
@@ -154,9 +176,10 @@ interface ConversationSearchResultsProps {
   currentConversationId: string | null;
   onSelectConversation: (id: string) => void;
   onDeleteConversation?: (id: string) => void;
+  onRenameConversation?: (conversation: ConversationListItem) => void;
 }
 
-export function ConversationSearchResults({ items, currentConversationId, onSelectConversation, onDeleteConversation }: ConversationSearchResultsProps) {
+export function ConversationSearchResults({ items, currentConversationId, onSelectConversation, onDeleteConversation, onRenameConversation }: ConversationSearchResultsProps) {
   return (
     <ul className="space-y-1 px-2">
       {items.map((conv) => (
@@ -166,6 +189,7 @@ export function ConversationSearchResults({ items, currentConversationId, onSele
           isActive={currentConversationId === conv.id}
           onSelect={() => onSelectConversation(conv.id)}
           onDelete={onDeleteConversation ? () => onDeleteConversation(conv.id) : undefined}
+          onRename={onRenameConversation ? () => onRenameConversation(conv) : undefined}
         />
       ))}
     </ul>

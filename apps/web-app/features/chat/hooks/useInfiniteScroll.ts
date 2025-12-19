@@ -16,7 +16,7 @@ export function useInfiniteScroll({
   loadMore,
   hasNextPage,
   isLoading,
-  rootMargin = '20px',
+  rootMargin = '0px 0px 240px 0px',
 }: UseInfiniteScrollOptions) {
   const observerRef = useRef<HTMLDivElement>(null);
 
@@ -33,6 +33,8 @@ export function useInfiniteScroll({
   useEffect(() => {
     const element = observerRef.current;
     if (!element) return undefined;
+    if (!loadMore || !hasNextPage) return undefined;
+    if (typeof IntersectionObserver === 'undefined') return undefined;
 
     const observer = new IntersectionObserver(handleObserver, {
       root: null,
@@ -42,7 +44,7 @@ export function useInfiniteScroll({
 
     observer.observe(element);
     return () => observer.disconnect();
-  }, [handleObserver, rootMargin]);
+  }, [handleObserver, hasNextPage, loadMore, rootMargin]);
 
   return observerRef;
 }

@@ -7,7 +7,6 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
-    BigInteger,
     Boolean,
     DateTime,
     ForeignKey,
@@ -20,7 +19,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.infrastructure.persistence.models.base import UTC_NOW, Base, uuid_pk
+from app.infrastructure.persistence.models.base import INT_PK_TYPE, UTC_NOW, Base, uuid_pk
 from app.infrastructure.persistence.types import JSONBCompat
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
@@ -69,7 +68,7 @@ class PlanFeature(Base):
         ),
     )
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(INT_PK_TYPE, primary_key=True, autoincrement=True)
     plan_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("billing_plans.id", ondelete="CASCADE"), nullable=False
     )

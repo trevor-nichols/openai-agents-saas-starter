@@ -1,6 +1,6 @@
 import { useEffect, useState, createContext, useContext, useCallback, useSyncExternalStore, ReactNode, memo } from 'react';
 import type { UseChatControllerReturn } from '../controller/useChatController';
-import type { ChatMessage, ToolState } from '../types';
+import type { ChatMessage, ToolEventAnchors, ToolState } from '../types';
 
 // shallow equality for objects/arrays
 function shallowEqual<T>(a: T, b: T) {
@@ -93,12 +93,15 @@ export function useChatSelector<T>(
 }
 
 export const useChatMessages = () => useChatSelector((s) => s.messages);
+export const useChatStreamEvents = () => useChatSelector((s) => s.streamEvents, shallowEqual);
 export const useChatToolEvents = () => useChatSelector((s) => s.toolEvents, shallowEqual);
+export const useChatToolEventAnchors = () => useChatSelector((s) => s.toolEventAnchors, shallowEqual);
 export const useChatLifecycle = () => useChatSelector((s) => s.lifecycleStatus);
 export const useChatAgentNotices = () => useChatSelector((s) => s.agentNotices, shallowEqual);
+export const useChatReasoningParts = () => useChatSelector((s) => s.reasoningParts, shallowEqual);
 
 // Small memo helper for components that consume selectors with no props
 export const memoSelector = <P extends object>(component: React.FC<P>) => memo(component);
 
 // Explicit exports to aid tree-shaking in consumers
-export type { ChatMessage, ToolState };
+export type { ChatMessage, ToolEventAnchors, ToolState };

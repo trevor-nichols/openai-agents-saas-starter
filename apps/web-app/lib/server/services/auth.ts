@@ -6,7 +6,8 @@ import {
   refreshAccessTokenApiV1AuthRefreshPost,
 } from '@/lib/api/client/sdk.gen';
 import type {
-  SuccessResponse,
+  CurrentUserInfoSuccessResponse,
+  MfaChallengeResponse,
   UserLoginRequest,
   UserRefreshRequest,
   UserSessionResponse,
@@ -14,6 +15,7 @@ import type {
 import type { UserSessionTokens } from '@/lib/types/auth';
 
 import { createApiClient, getServerApiClient } from '../apiClient';
+import { MfaRequiredError } from './auth.errors';
 
 export type CurrentUserProfile = Record<string, unknown>;
 
@@ -37,7 +39,11 @@ export async function loginWithCredentials(
     throw new Error('Auth service returned an empty response.');
   }
 
-  return mapSessionResponse(response.data);
+  if ('mfa_required' in response.data) {
+    throw new MfaRequiredError(response.data as MfaChallengeResponse);
+  }
+
+  return mapSessionResponse(response.data as UserSessionResponse);
 }
 
 /**
@@ -75,7 +81,7 @@ export async function getCurrentUserProfile<TProfile extends CurrentUserProfile 
     throwOnError: true,
   });
 
-  const payload = response.data as SuccessResponse | undefined;
+  const payload = response.data as CurrentUserInfoSuccessResponse | undefined;
   const data = (payload?.data ?? null) as TProfile | null;
 
   if (payload?.success === false || !data) {

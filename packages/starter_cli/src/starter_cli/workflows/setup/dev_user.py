@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-import asyncio
 import json
+import os
 import secrets
-import sys
+import subprocess
 from dataclasses import dataclass
-from importlib import import_module
 from pathlib import Path
 from typing import TYPE_CHECKING
-from uuid import uuid4
+
+from dotenv import dotenv_values
 
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIError
@@ -40,18 +40,6 @@ class DevUserConfig:
     rotate_existing: bool = True
 
 
-def _ensure_import_paths(project_root: Path) -> None:
-    # Keep backend importable without requiring PYTHONPATH tweaks.
-    if project_root.as_posix() not in sys.path:
-        sys.path.insert(0, project_root.as_posix())
-    backend_root = project_root / "apps" / "api-service"
-    backend_src = backend_root / "src"
-    # Prefer adding the actual source directory so `import app.*` works when run from packages/.
-    for path in (backend_src, backend_root):
-        if path.exists() and path.as_posix() not in sys.path:
-            sys.path.insert(0, path.as_posix())
-
-
 def _resolve_config(context: WizardContext) -> DevUserConfig:
     # If the wizard already captured a config, reuse it. Otherwise synthesize sensible defaults
     # so reruns (or headless runs) still emit credentials.
@@ -78,131 +66,119 @@ def _resolve_config(context: WizardContext) -> DevUserConfig:
     )
 
 
-async def _seed_dev_user(config: DevUserConfig) -> str:
-    from sqlalchemy import select
-    from sqlalchemy.ext.asyncio import AsyncSession
+def _resolve_backend_env_files(project_root: Path) -> list[Path]:
+    env_files: list[Path] = []
+    compose = project_root / ".env.compose"
+    if compose.is_file():
+        env_files.append(compose)
 
-    password_module = import_module("app.core.password_policy")
-    security_module = import_module("app.core.security")
-    db_engine_module = import_module("app.infrastructure.db.engine")
-    auth_models = import_module("app.infrastructure.persistence.auth.models")
-    # Import related models to satisfy relationship registrations on TenantAccount.
-    import_module("app.infrastructure.persistence.billing.models")
-    import_module("app.infrastructure.persistence.tenants.models")
-    conv_models = import_module("app.infrastructure.persistence.conversations.models")
+    backend_root = project_root / "apps" / "api-service"
+    env_local = backend_root / ".env.local"
+    env_default = backend_root / ".env"
 
-    PasswordPolicyError = password_module.PasswordPolicyError
-    validate_password_strength = password_module.validate_password_strength
-    PASSWORD_HASH_VERSION = security_module.PASSWORD_HASH_VERSION
-    get_password_hash = security_module.get_password_hash
-    get_async_sessionmaker = db_engine_module.get_async_sessionmaker
-    init_engine = db_engine_module.init_engine
-    PasswordHistory = auth_models.PasswordHistory
-    TenantUserMembership = auth_models.TenantUserMembership
-    UserAccount = auth_models.UserAccount
-    UserProfile = auth_models.UserProfile
-    UserStatus = auth_models.UserStatus
-    TenantAccount = conv_models.TenantAccount
+    if env_local.is_file():
+        env_files.append(env_local)
+    elif env_default.is_file():
+        env_files.append(env_default)
+    else:
+        raise CLIError(
+            "No apps/api-service/.env.local or apps/api-service/.env found; "
+            "run the setup wizard first."
+        )
 
-    await init_engine(run_migrations=False)
-    sessionmaker = get_async_sessionmaker()
+    return env_files
 
-    async with sessionmaker() as session:
-        assert isinstance(session, AsyncSession)
 
-        result = await session.execute(select(UserAccount).where(UserAccount.email == config.email))
-        existing = result.scalars().first()
+def _merge_env_files(paths: list[Path]) -> dict[str, str]:
+    merged: dict[str, str] = {}
+    for path in paths:
+        values = dotenv_values(path)
+        for key, value in values.items():
+            if key and value is not None:
+                merged[key] = value
+    return merged
 
-        # Always validate the new password so rotations respect the policy.
+
+def _run_backend_seed_script(project_root: Path, config: DevUserConfig) -> str:
+    backend_root = project_root / "apps" / "api-service"
+    script_path = backend_root / "scripts" / "seed_dev_user.py"
+    if not script_path.is_file():
+        raise CLIError(f"Backend seed script missing: {script_path}")
+
+    env_files = _resolve_backend_env_files(project_root)
+    env = os.environ.copy()
+    env.update(_merge_env_files(env_files))
+
+    cmd = [
+        "hatch",
+        "run",
+        "python",
+        "scripts/seed_dev_user.py",
+        "--email",
+        config.email,
+        "--password",
+        config.password,
+        "--tenant-slug",
+        config.tenant_slug,
+        "--tenant-name",
+        config.tenant_name,
+        "--role",
+        config.role,
+        "--display-name",
+        config.display_name,
+    ]
+    if config.locked:
+        cmd.append("--locked")
+    if not config.rotate_existing:
+        cmd.append("--no-rotate-existing")
+
+    completed = subprocess.run(
+        cmd,
+        cwd=backend_root,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        stderr = (completed.stderr or "").strip()
+        stdout = (completed.stdout or "").strip()
+        detail = stderr or stdout or "unknown error"
+        raise CLIError(f"Dev user seeding failed: {detail}")
+
+    payload = _extract_seed_payload(completed.stdout or "")
+
+    result = payload.get("result")
+    if not isinstance(result, str) or not result.strip():
+        raise CLIError(f"Dev user seeding returned unexpected payload: {payload}")
+    return result
+
+
+def _extract_seed_payload(stdout: str) -> dict[str, object]:
+    raw = stdout.strip()
+    if not raw:
+        raise CLIError("Dev user seeding produced no output.")
+
+    last_error: json.JSONDecodeError | None = None
+    for line in reversed(raw.splitlines()):
+        candidate = line.strip()
+        if not candidate:
+            continue
         try:
-            validate_password_strength(config.password, user_inputs=[config.email])
-        except PasswordPolicyError as exc:
-            raise CLIError(str(exc)) from exc
+            payload = json.loads(candidate)
+        except json.JSONDecodeError as exc:
+            last_error = exc
+            continue
+        if isinstance(payload, dict) and "result" in payload:
+            return payload
 
-        if existing:
-            if not config.rotate_existing:
-                return "exists"
-
-            password_hash = get_password_hash(config.password)
-            existing.password_hash = password_hash
-            existing.password_pepper_version = PASSWORD_HASH_VERSION
-            existing.status = UserStatus.LOCKED if config.locked else UserStatus.ACTIVE
-
-            history = PasswordHistory(
-                id=uuid4(),
-                user_id=existing.id,
-                password_hash=password_hash,
-                password_pepper_version=PASSWORD_HASH_VERSION,
-            )
-            session.add(history)
-            await session.commit()
-            return "rotated"
-
-        tenant_result = await session.execute(
-            select(TenantAccount).where(TenantAccount.slug == config.tenant_slug)
-        )
-        tenant = tenant_result.scalars().first()
-        if tenant is None:
-            tenant = TenantAccount(
-                id=uuid4(),
-                slug=config.tenant_slug,
-                name=config.tenant_name,
-            )
-            session.add(tenant)
-            await session.flush()
-
-        password_hash = get_password_hash(config.password)
-        user = UserAccount(
-            id=uuid4(),
-            email=config.email,
-            password_hash=password_hash,
-            password_pepper_version=PASSWORD_HASH_VERSION,
-            status=UserStatus.LOCKED if config.locked else UserStatus.ACTIVE,
-        )
-        session.add(user)
-        await session.flush()
-
-        if config.display_name:
-            profile = UserProfile(
-                id=uuid4(),
-                user_id=user.id,
-                display_name=config.display_name,
-            )
-            session.add(profile)
-
-        membership = TenantUserMembership(
-            id=uuid4(),
-            user_id=user.id,
-            tenant_id=tenant.id,
-            role=config.role,
-        )
-        session.add(membership)
-
-        history = PasswordHistory(
-            id=uuid4(),
-            user_id=user.id,
-            password_hash=password_hash,
-            password_pepper_version=PASSWORD_HASH_VERSION,
-        )
-        session.add(history)
-
-        await session.commit()
-        return "created"
+    if last_error is not None:
+        raise CLIError(f"Dev user seeding returned invalid JSON: {last_error}") from last_error
+    raise CLIError("Dev user seeding returned invalid JSON output.")
 
 
 def seed_dev_user(context: WizardContext, config: DevUserConfig) -> str:
-    _ensure_import_paths(context.cli_ctx.project_root)
-    try:
-        get_settings = import_module("app.core.settings").get_settings
-    except ImportError as exc:  # pragma: no cover - environment dependent
-        raise CLIError(
-            "Unable to import backend modules. Ensure apps/api-service is on PYTHONPATH "
-            "or run the CLI from the repository root."
-        ) from exc
-
-    # Validate env is loaded and settings can resolve.
-    get_settings()
-
+    project_root = context.cli_ctx.project_root
     normalized_email = config.email.strip().lower()
     config = DevUserConfig(
         email=normalized_email,
@@ -217,7 +193,7 @@ def seed_dev_user(context: WizardContext, config: DevUserConfig) -> str:
     )
 
     try:
-        result = asyncio.run(_seed_dev_user(config))
+        result = _run_backend_seed_script(project_root, config)
     except CLIError:
         raise
     except Exception as exc:  # pragma: no cover - runtime failures

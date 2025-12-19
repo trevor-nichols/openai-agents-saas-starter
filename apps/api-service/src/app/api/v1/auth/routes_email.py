@@ -8,8 +8,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.api.dependencies import raise_rate_limit_http_error
 from app.api.dependencies.auth import require_current_user
-from app.api.models.auth import EmailVerificationConfirmRequest
-from app.api.models.common import SuccessResponse
+from app.api.models.auth import (
+    EmailVerificationConfirmRequest,
+    EmailVerificationSendSuccessResponse,
+    EmailVerificationStatusResponseData,
+)
+from app.api.models.common import SuccessNoDataResponse
 from app.api.v1.auth.utils import extract_client_ip, extract_user_agent
 from app.services.shared.rate_limit_service import RateLimitExceeded, RateLimitQuota, rate_limiter
 from app.services.signup.email_verification_service import (
@@ -23,16 +27,19 @@ router = APIRouter(tags=["auth"])
 
 @router.post(
     "/email/send",
-    response_model=SuccessResponse,
+    response_model=EmailVerificationSendSuccessResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def send_email_verification(
     request: Request,
     current_user: dict[str, Any] = Depends(require_current_user),
-) -> SuccessResponse:
+) -> EmailVerificationSendSuccessResponse:
     payload = current_user.get("payload", {})
     if bool(payload.get("email_verified")):
-        return SuccessResponse(message="Email already verified.", data={"email_verified": True})
+        return EmailVerificationSendSuccessResponse(
+            message="Email already verified.",
+            data=EmailVerificationStatusResponseData(email_verified=True),
+        )
 
     client_ip = extract_client_ip(request)
     await _enforce_email_verification_quota(current_user["user_id"], client_ip)
@@ -51,17 +58,17 @@ async def send_email_verification(
             detail="Unable to send verification email. Please try again shortly.",
         ) from exc
 
-    return SuccessResponse(
+    return EmailVerificationSendSuccessResponse(
         message="Verification email sent.",
-        data={"email_verified": False},
+        data=EmailVerificationStatusResponseData(email_verified=False),
     )
 
 
-@router.post("/email/verify", response_model=SuccessResponse)
+@router.post("/email/verify", response_model=SuccessNoDataResponse)
 async def verify_email_token(
     payload: EmailVerificationConfirmRequest,
     request: Request,
-) -> SuccessResponse:
+) -> SuccessNoDataResponse:
     service = get_email_verification_service()
     try:
         await service.verify_token(
@@ -72,7 +79,7 @@ async def verify_email_token(
     except InvalidEmailVerificationTokenError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    return SuccessResponse(message="Email verified successfully.", data=None)
+    return SuccessNoDataResponse(message="Email verified successfully.")
 
 
 async def _enforce_email_verification_quota(user_id: str, client_ip: str | None) -> None:

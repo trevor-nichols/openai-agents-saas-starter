@@ -15,11 +15,11 @@ This doc explains how the starter repo ships a turnkey OpenTelemetry Collector s
 
 ## Services & Ports
 
-| Service | Container name | Default host ports | Notes |
+| Service | Compose service | Default host ports | Notes |
 | --- | --- | --- | --- |
-| Postgres | `agents-postgres` | `5432` | Unchanged from the base stack. |
-| Redis | `agents-redis` | `6379` | Unchanged from the base stack. |
-| OpenTelemetry Collector | `agents-otel-collector` | `4318` (OTLP/HTTP), `4317` (OTLP/gRPC), `13133` (health/diagnostics) | Runs only when `ENABLE_OTEL_COLLECTOR=true` (set by the wizard). |
+| Postgres | `postgres` | `${POSTGRES_PORT:-5432}` | Part of the base local stack when `STARTER_LOCAL_DATABASE_MODE=compose` (default). |
+| Redis | `redis` | `${REDIS_PORT:-6379}` | Unchanged from the base stack. |
+| OpenTelemetry Collector | `otel-collector` | `${OTEL_COLLECTOR_HTTP_PORT:-4318}` (OTLP/HTTP), `${OTEL_COLLECTOR_GRPC_PORT:-4317}` (OTLP/gRPC), `${OTEL_COLLECTOR_DIAG_PORT:-13133}` (health/diagnostics) | Runs only when `ENABLE_OTEL_COLLECTOR=true` (set by the wizard). |
 
 The collector image is pinned to `otel/opentelemetry-collector-contrib:0.139.0`, the latest GA cut as of Nov 18, 2025. Upgrade cadence lives in `docs/trackers/MILESTONE_OBSERVABILITY_COLLECTOR.md`.
 

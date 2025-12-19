@@ -11,9 +11,9 @@ from app.domain.ai import AgentRunResult
 from app.domain.ai.models import AgentStreamEvent
 from app.services.agents.context import ConversationActorContext
 from app.services.agents.provider_registry import get_provider_registry
-from app.workflows.registry import WorkflowRegistry
+from app.workflows._shared.registry import WorkflowRegistry
 from app.services.workflows.runner import WorkflowRunner
-from app.workflows.specs import WorkflowSpec, WorkflowStep, WorkflowStage
+from app.workflows._shared.specs import WorkflowSpec, WorkflowStep, WorkflowStage
 
 
 class _FakeStreamHandle:

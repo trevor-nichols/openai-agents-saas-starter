@@ -58,7 +58,7 @@ async def test_agent_service_persists_messages_postgres(
     request = AgentChatRequest(message="Hello durable world", agent_type="triage")
 
     with patch(
-        "app.infrastructure.providers.openai.runtime.Runner.run",
+        "app.infrastructure.providers.openai.runtime.OpenAIAgentRuntime.run",
         new_callable=AsyncMock,
     ) as mock_run:
         mock_run.return_value = AgentRunResult(

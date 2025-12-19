@@ -14,9 +14,14 @@ import type {
   ConversationListPage,
   ConversationSearchPage,
   ConversationEvents,
+  ConversationLedgerEventsPage,
   ConversationMessagesPage,
+  ConversationMemoryConfig,
+  ConversationMemoryConfigInput,
+  ConversationTitleUpdate,
 } from '@/types/conversations';
 import { apiV1Path } from '@/lib/apiPaths';
+import type { ConversationMessageDeleteResponse, PublicSseEvent } from '@/lib/api/client/types.gen';
 
 /**
  * Fetch paginated conversations for the current user
@@ -40,7 +45,13 @@ export async function fetchConversationsPage(params?: {
 
   const result = (await response.json()) as ConversationListPage;
   return {
-    items: result.items ?? [],
+    items:
+      result.items?.map((item) => ({
+        ...item,
+        display_name: item.display_name ?? null,
+        display_name_pending: item.display_name_pending ?? false,
+        title: item.display_name ?? item.topic_hint ?? item.last_message_preview ?? null,
+      })) ?? [],
     next_cursor: result.next_cursor ?? null,
   };
 }
@@ -76,6 +87,8 @@ export async function searchConversations(params: {
   const result = (await response.json()) as {
     items?: Array<{
       conversation_id: string;
+      display_name?: string | null;
+      display_name_pending?: boolean;
       agent_entrypoint?: string | null;
       active_agent?: string | null;
       topic_hint?: string | null;
@@ -91,6 +104,8 @@ export async function searchConversations(params: {
   return {
     items: (result.items ?? []).map((item) => ({
       conversation_id: item.conversation_id,
+      display_name: item.display_name ?? null,
+      display_name_pending: item.display_name_pending ?? false,
       agent_entrypoint: item.agent_entrypoint ?? null,
       active_agent: item.active_agent ?? null,
       topic_hint: item.topic_hint ?? null,
@@ -197,6 +212,64 @@ export async function fetchConversationEvents(params: {
   return body.data;
 }
 
+export async function fetchConversationLedgerEventsPage(params: {
+  conversationId: string;
+  limit?: number;
+  cursor?: string | null;
+}): Promise<ConversationLedgerEventsPage> {
+  const { conversationId, limit, cursor } = params;
+
+  const searchParams = new URLSearchParams();
+  if (limit) searchParams.set('limit', String(limit));
+  if (cursor) searchParams.set('cursor', cursor);
+
+  const response = await fetch(
+    `${apiV1Path(`/conversations/${encodeURIComponent(conversationId)}/ledger/events`)}${
+      searchParams.toString() ? `?${searchParams.toString()}` : ''
+    }`,
+    {
+      method: 'GET',
+      cache: 'no-store',
+    },
+  );
+
+  if (!response.ok) {
+    const errorPayload = (await response.json().catch(() => ({}))) as { message?: string };
+    throw new Error(errorPayload.message || 'Failed to load conversation ledger events');
+  }
+
+  return (await response.json()) as ConversationLedgerEventsPage;
+}
+
+export async function fetchConversationLedgerEvents(params: {
+  conversationId: string;
+  pageSize?: number;
+}): Promise<PublicSseEvent[]> {
+  const conversationId = params.conversationId;
+  const pageSize = Math.min(Math.max(params.pageSize ?? 1000, 1), 1000);
+
+  const events: PublicSseEvent[] = [];
+  let cursor: string | null = null;
+
+  // Safety guard: prevents accidental infinite loops due to a backend bug.
+  const maxPages = 100;
+  for (let pageIndex = 0; pageIndex < maxPages; pageIndex += 1) {
+    const page = await fetchConversationLedgerEventsPage({
+      conversationId,
+      limit: pageSize,
+      cursor,
+    });
+    events.push(...(page.items ?? []));
+
+    cursor = page.next_cursor ?? null;
+    if (!cursor) {
+      return events;
+    }
+  }
+
+  throw new Error('Conversation ledger replay exceeded maximum page limit');
+}
+
 /**
  * Delete a stored conversation by id.
  */
@@ -209,4 +282,74 @@ export async function deleteConversationById(conversationId: string): Promise<vo
     const errorPayload = (await response.json().catch(() => ({}))) as { message?: string };
     throw new Error(errorPayload.message || 'Failed to delete conversation');
   }
+}
+
+/**
+ * Delete a user message and truncate all subsequent content in the visible line.
+ */
+export async function deleteConversationMessage(params: {
+  conversationId: string;
+  messageId: string;
+}): Promise<ConversationMessageDeleteResponse> {
+  const response = await fetch(
+    apiV1Path(
+      `/conversations/${encodeURIComponent(params.conversationId)}/messages/${encodeURIComponent(params.messageId)}`,
+    ),
+    { method: 'DELETE' },
+  );
+
+  if (!response.ok) {
+    const errorPayload = (await response.json().catch(() => ({}))) as { message?: string };
+    throw new Error(errorPayload.message || 'Failed to delete message');
+  }
+
+  return (await response.json()) as ConversationMessageDeleteResponse;
+}
+
+/**
+ * Update a conversation title (manual rename).
+ */
+export async function updateConversationTitle(params: {
+  conversationId: string;
+  displayName: string;
+}): Promise<ConversationTitleUpdate> {
+  const { conversationId, displayName } = params;
+  const response = await fetch(apiV1Path(`/conversations/${encodeURIComponent(conversationId)}/title`), {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ display_name: displayName }),
+  });
+
+  if (!response.ok) {
+    const errorPayload = (await response.json().catch(() => ({}))) as { message?: string };
+    throw new Error(errorPayload.message || 'Failed to update conversation title');
+  }
+
+  return (await response.json()) as ConversationTitleUpdate;
+}
+
+/**
+ * Update conversation memory configuration.
+ */
+export async function updateConversationMemory(params: {
+  conversationId: string;
+  config: ConversationMemoryConfigInput;
+}): Promise<ConversationMemoryConfig> {
+  const { conversationId, config } = params;
+  const response = await fetch(apiV1Path(`/conversations/${encodeURIComponent(conversationId)}/memory`), {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(config),
+  });
+
+  if (!response.ok) {
+    const errorPayload = (await response.json().catch(() => ({}))) as { message?: string };
+    throw new Error(errorPayload.message || 'Failed to update conversation memory');
+  }
+
+  return (await response.json()) as ConversationMemoryConfig;
 }

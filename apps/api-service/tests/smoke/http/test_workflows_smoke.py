@@ -16,7 +16,8 @@ async def test_workflows_list_and_runs(http_client: httpx.AsyncClient, smoke_sta
     catalog = await http_client.get("/api/v1/workflows", headers=headers)
     assert catalog.status_code == 200
     workflows = catalog.json()
-    assert isinstance(workflows, list)
+    assert "items" in workflows
+    assert isinstance(workflows.get("items"), list)
 
     runs = await http_client.get("/api/v1/workflows/runs", headers=headers)
     assert runs.status_code == 200

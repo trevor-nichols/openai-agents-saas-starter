@@ -4,18 +4,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.api.v1.shared.streaming import (
-    CodeInterpreterCall,
-    ContainerFileCitation,
-    FileCitation,
-    FileSearchCall,
-    MessageAttachment,
-    StreamingEvent,
-    ToolCallPayload,
-    UrlCitation,
-    WebSearchAction,
-    WebSearchCall,
-)
+from app.api.v1.shared.streaming import MessageAttachment, PublicSseEvent
 from app.domain.workflows import WorkflowStatus
 from app.utils.tools.location import LocationHint
 
@@ -26,6 +15,17 @@ class WorkflowSummary(BaseModel):
     description: str
     step_count: int
     default: bool = False
+
+
+class WorkflowListResponse(BaseModel):
+    """Paginated list of workflows."""
+
+    items: list[WorkflowSummary]
+    next_cursor: str | None = Field(
+        default=None,
+        description="Opaque cursor for fetching the next page.",
+    )
+    total: int = Field(description="Total number of workflows matching the current filter.")
 
 
 class WorkflowRunRequestBody(BaseModel):
@@ -60,6 +60,7 @@ class WorkflowRunResponse(BaseModel):
     steps: list[WorkflowStepResultSchema]
     final_output: Any | None
     output_schema: dict[str, Any] | None = None
+    attachments: list[MessageAttachment] | None = None
 
 
 class WorkflowRunDetail(BaseModel):
@@ -96,6 +97,23 @@ class WorkflowRunListResponse(BaseModel):
     next_cursor: str | None = None
 
 
+class WorkflowRunCancelResponse(BaseModel):
+    workflow_run_id: str = Field(..., description="The workflow run id that was cancelled.")
+    success: bool = Field(..., description="True if the cancel request succeeded.")
+
+
+class WorkflowRunReplayEventsResponse(BaseModel):
+    """Paged list of persisted public_sse_v1 frames for deterministic workflow run replay."""
+
+    workflow_run_id: str = Field(description="Workflow run identifier.")
+    conversation_id: str = Field(description="Conversation backing this workflow run.")
+    items: list[PublicSseEvent]
+    next_cursor: str | None = Field(
+        default=None,
+        description="Opaque cursor for fetching the next page.",
+    )
+
+
 class WorkflowStepDescriptor(BaseModel):
     name: str
     agent_key: str
@@ -125,28 +143,23 @@ class WorkflowDescriptorResponse(BaseModel):
     output_schema: dict[str, Any] | None = None
 
 
-class StreamingWorkflowEvent(StreamingEvent):
+class StreamingWorkflowEvent(PublicSseEvent):
     model_config = ConfigDict(title="StreamingWorkflowEvent")
 
 
 __all__ = [
     "WorkflowSummary",
+    "WorkflowListResponse",
     "WorkflowRunRequestBody",
     "WorkflowRunResponse",
     "WorkflowRunDetail",
     "WorkflowRunListItem",
     "WorkflowRunListResponse",
+    "WorkflowRunCancelResponse",
+    "WorkflowRunReplayEventsResponse",
     "WorkflowStepDescriptor",
     "WorkflowStageDescriptor",
     "WorkflowDescriptorResponse",
     "StreamingWorkflowEvent",
-    "ToolCallPayload",
-    "UrlCitation",
-    "ContainerFileCitation",
-    "FileCitation",
     "MessageAttachment",
-    "WebSearchAction",
-    "WebSearchCall",
-    "CodeInterpreterCall",
-    "FileSearchCall",
 ]

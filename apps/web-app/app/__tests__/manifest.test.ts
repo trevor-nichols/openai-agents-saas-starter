@@ -18,7 +18,7 @@ describe('manifest route', () => {
 
     const result = manifest();
 
-    expect(result.name).toMatch(/Agents Starter/);
+    expect(result.name).toMatch(/Agent(?:s)?(?: SaaS)? Starter/);
     expect(result.start_url).toBe('/');
     expect(result.icons?.length).toBeGreaterThanOrEqual(2);
     result.icons?.forEach((icon) => {

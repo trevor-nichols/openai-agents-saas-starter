@@ -4,7 +4,9 @@ import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 import { consumeChatStream } from '../../adapters/chatStreamAdapter';
-import type { StreamChunk, ToolState, UrlCitation } from '../../types';
+import type { StreamChunk, ToolState } from '../../types';
+import type { StreamingChatEvent } from '@/lib/api/client/types.gen';
+import type { GeneratedImageFrame } from '@/lib/streams/imageFrames';
 
 async function* chunkStream(chunks: StreamChunk[]) {
   for (const chunk of chunks) {
@@ -12,354 +14,262 @@ async function* chunkStream(chunks: StreamChunk[]) {
   }
 }
 
-describe('consumeChatStream', () => {
-  it('accumulates deltas, updates lifecycle, and emits final content', async () => {
-    const onTextDelta = vi.fn();
-    const onLifecycle = vi.fn();
+function loadContractExample(filename: string): StreamingChatEvent[] {
+  const fixturePath = path.resolve(
+    __dirname,
+    `../../../../../../docs/contracts/public-sse-streaming/examples/${filename}`,
+  );
+  const raw = readFileSync(fixturePath, 'utf-8');
+  return raw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line) => JSON.parse(line) as StreamingChatEvent);
+}
 
-    const chunks: StreamChunk[] = [
+describe('consumeChatStream (public_sse_v1)', () => {
+  it('accumulates message deltas and uses final response_text', async () => {
+    const onTextDelta = vi.fn();
+
+    const events: StreamingChatEvent[] = [
       {
-        type: 'event',
-        event: {
-          conversation_id: 'c1',
-          kind: 'raw_response_event',
-          raw_type: 'response.output_text.delta',
-          text_delta: 'Hello',
-        },
+        schema: 'public_sse_v1',
+        event_id: 1,
+        stream_id: 'stream_test',
+        server_timestamp: '2025-12-15T00:00:00.000Z',
+        kind: 'message.delta',
+        conversation_id: 'c1',
+        response_id: 'resp_1',
+        agent: 'triage',
+        output_index: 0,
+        item_id: 'msg_1',
+        content_index: 0,
+        delta: 'Hello',
       },
       {
-        type: 'event',
-        event: {
-          conversation_id: 'c1',
-          kind: 'raw_response_event',
-          raw_type: 'response.output_text.delta',
-          text_delta: ' world',
-        },
+        schema: 'public_sse_v1',
+        event_id: 2,
+        stream_id: 'stream_test',
+        server_timestamp: '2025-12-15T00:00:00.050Z',
+        kind: 'message.delta',
+        conversation_id: 'c1',
+        response_id: 'resp_1',
+        agent: 'triage',
+        output_index: 0,
+        item_id: 'msg_1',
+        content_index: 0,
+        delta: ' world',
       },
       {
-        type: 'event',
-        event: {
-          conversation_id: 'c1',
-          kind: 'raw_response_event',
-          raw_type: 'response.completed',
+        schema: 'public_sse_v1',
+        event_id: 3,
+        stream_id: 'stream_test',
+        server_timestamp: '2025-12-15T00:00:00.100Z',
+        kind: 'final',
+        conversation_id: 'c1',
+        response_id: 'resp_1',
+        agent: 'triage',
+        final: {
+          status: 'completed',
           response_text: 'Override text',
-          is_terminal: true,
+          structured_output: null,
+          reasoning_summary_text: null,
+          refusal_text: null,
+          attachments: [],
+          usage: { input_tokens: 1, output_tokens: 2, total_tokens: 3 },
         },
       },
     ];
 
+    const chunks: StreamChunk[] = events.map((event) => ({ type: 'event', event }));
+
+    const result = await consumeChatStream(chunkStream(chunks), { onTextDelta });
+
+    expect(onTextDelta).toHaveBeenCalled();
+    expect(result.finalContent).toBe('Override text');
+    expect(result.lifecycleStatus).toBe('completed');
+    expect(result.terminalSeen).toBe(true);
+    expect(result.errored).toBe(false);
+  });
+
+  it('captures function tool arguments and outputs (contract example)', async () => {
+    const toolStates: ToolState[][] = [];
+    const events = loadContractExample('chat-function-tool.ndjson');
+    const chunks: StreamChunk[] = events.map((event) => ({ type: 'event', event }));
+
     const result = await consumeChatStream(chunkStream(chunks), {
-      onTextDelta,
-      onLifecycle,
+      onToolStates: (tools) => toolStates.push(tools),
     });
 
-    expect(onTextDelta).toHaveBeenCalledTimes(2);
-    expect(onLifecycle).toHaveBeenCalledWith('completed');
-    expect(result.finalContent).toBe('Override text');
+    const last = toolStates.at(-1) ?? [];
+    expect(last.length).toBeGreaterThan(0);
+    expect(last[0]).toMatchObject({
+      id: 'call_001',
+      name: 'get_current_time',
+      status: 'output-available',
+    });
+
+    expect(last[0]?.input).toMatchObject({
+      tool_type: 'function',
+      tool_name: 'get_current_time',
+      arguments_json: { timezone: 'UTC' },
+    });
+    expect(last[0]?.output).toMatchObject({
+      timezone: 'UTC',
+      iso: '2025-12-15T12:10:00Z',
+    });
+
+    expect(result.finalContent).toContain('Current time');
     expect(result.lifecycleStatus).toBe('completed');
     expect(result.errored).toBe(false);
   });
 
-  it('collects tool events and agent notices', async () => {
-    const toolStates: ToolState[][] = [];
-    const notices: string[] = [];
-    const agentChanges: string[] = [];
+  it('streams reasoning summary deltas (contract example)', async () => {
+    const onReasoningDelta = vi.fn();
+    const events = loadContractExample('chat-reasoning-summary.ndjson');
+    const chunks: StreamChunk[] = events.map((event) => ({ type: 'event', event }));
 
-    const chunks: StreamChunk[] = [
-      {
-        type: 'event',
-        event: {
-          conversation_id: 'c2',
-          kind: 'agent_updated_stream_event',
-          new_agent: 'assistant-2',
-        },
-      },
-      {
-        type: 'event',
-        event: {
-          conversation_id: 'c2',
-          kind: 'run_item_stream_event',
-          run_item_name: 'tool_called',
-          tool_call_id: 'tool-1',
-          tool_name: 'search',
-          payload: { q: 'hello' },
-        },
-      },
-      {
-        type: 'event',
-        event: {
-          conversation_id: 'c2',
-          kind: 'run_item_stream_event',
-          run_item_name: 'tool_output',
-          tool_call_id: 'tool-1',
-          tool_name: 'search',
-          payload: { results: [] },
-          is_terminal: true,
-        },
-      },
-    ];
+    const result = await consumeChatStream(chunkStream(chunks), { onReasoningDelta });
 
-    const result = await consumeChatStream(chunkStream(chunks), {
-      onToolStates: (tools) => toolStates.push(tools),
-      onAgentNotice: (notice) => notices.push(notice),
-      onAgentChange: (agent) => agentChanges.push(agent),
-    });
-
-    expect(agentChanges).toEqual(['assistant-2']);
-    expect(notices[0]).toContain('Switched to assistant-2');
-    expect(toolStates.at(-1)?.[0]?.status).toBe('output-available');
+    expect(onReasoningDelta).toHaveBeenCalledTimes(2);
+    expect(result.finalContent).toContain('Here’s a concise answer');
+    expect(result.lifecycleStatus).toBe('completed');
     expect(result.errored).toBe(false);
   });
 
-  it('marks errored streams', async () => {
-    const chunks: StreamChunk[] = [
-      { type: 'error', payload: 'boom' },
+  it('reconciles final reasoning summary text into reasoning parts', async () => {
+    const onReasoningDelta = vi.fn();
+    const onReasoningParts = vi.fn();
+
+    const events: StreamingChatEvent[] = [
+      {
+        schema: 'public_sse_v1',
+        event_id: 1,
+        stream_id: 'stream_reasoning_suffix',
+        server_timestamp: '2025-12-15T00:00:00.000Z',
+        kind: 'output_item.added',
+        conversation_id: 'c_reason_suffix',
+        response_id: 'resp_reason_suffix',
+        agent: 'triage',
+        output_index: 0,
+        item_id: 'rs_0',
+        item_type: 'reasoning_summary',
+        status: 'in_progress',
+      },
+      {
+        schema: 'public_sse_v1',
+        event_id: 2,
+        stream_id: 'stream_reasoning_suffix',
+        server_timestamp: '2025-12-15T00:00:00.010Z',
+        kind: 'reasoning_summary.part.added',
+        conversation_id: 'c_reason_suffix',
+        response_id: 'resp_reason_suffix',
+        agent: 'triage',
+        output_index: 0,
+        item_id: 'rs_0',
+        summary_index: 0,
+        part_type: 'summary_text',
+        text: '',
+      },
+      {
+        schema: 'public_sse_v1',
+        event_id: 3,
+        stream_id: 'stream_reasoning_suffix',
+        server_timestamp: '2025-12-15T00:00:00.020Z',
+        kind: 'reasoning_summary.delta',
+        conversation_id: 'c_reason_suffix',
+        response_id: 'resp_reason_suffix',
+        agent: 'triage',
+        output_index: 0,
+        item_id: 'rs_0',
+        summary_index: 0,
+        delta: 'Hello',
+      },
+      {
+        schema: 'public_sse_v1',
+        event_id: 4,
+        stream_id: 'stream_reasoning_suffix',
+        server_timestamp: '2025-12-15T00:00:00.030Z',
+        kind: 'final',
+        conversation_id: 'c_reason_suffix',
+        response_id: 'resp_reason_suffix',
+        agent: 'triage',
+        final: {
+          status: 'completed',
+          response_text: 'Hi',
+          structured_output: null,
+          reasoning_summary_text: 'Hello world',
+          refusal_text: null,
+          attachments: [],
+          usage: { input_tokens: 1, output_tokens: 1, total_tokens: 2 },
+        },
+      },
     ];
 
-    const result = await consumeChatStream(chunkStream(chunks), {});
+    const chunks: StreamChunk[] = events.map((event) => ({ type: 'event', event }));
+    await consumeChatStream(chunkStream(chunks), { onReasoningDelta, onReasoningParts });
+
+    const lastParts = onReasoningParts.mock.calls.at(-1)?.[0];
+    expect(lastParts).toBeTruthy();
+    expect(lastParts?.[0]).toMatchObject({
+      summaryIndex: 0,
+      text: 'Hello world',
+    });
+
+    expect(onReasoningDelta).toHaveBeenNthCalledWith(1, 'Hello');
+    expect(onReasoningDelta).toHaveBeenNthCalledWith(2, ' world');
+  });
+
+  it('treats refusals as first-class terminal state (contract example)', async () => {
+    const onTextDelta = vi.fn();
+    const events = loadContractExample('chat-refusal.ndjson');
+    const chunks: StreamChunk[] = events.map((event) => ({ type: 'event', event }));
+
+    const result = await consumeChatStream(chunkStream(chunks), { onTextDelta });
+
+    expect(onTextDelta).toHaveBeenCalled();
+    expect(result.lifecycleStatus).toBe('refused');
+    expect(result.finalContent).toContain('I can’t help with that request');
+    expect(result.terminalSeen).toBe(true);
+    expect(result.errored).toBe(false);
+  });
+
+  it('builds image frames from chunk events (contract example)', async () => {
+    const toolStates: ToolState[][] = [];
+    const events = loadContractExample('chat-image-generation-partials.ndjson');
+    const chunks: StreamChunk[] = events.map((event) => ({ type: 'event', event }));
+
+    const result = await consumeChatStream(chunkStream(chunks), {
+      onToolStates: (tools) => toolStates.push(tools),
+    });
+
+    const flattened = toolStates.flat();
+    const imageTool = [...flattened].reverse().find((tool) => tool.id === 'img_123');
+
+    expect(imageTool).toBeTruthy();
+    expect(imageTool?.output).toBeTruthy();
+
+    const frames = imageTool?.output as GeneratedImageFrame[] | undefined;
+    expect(Array.isArray(frames)).toBe(true);
+    expect(frames?.[0]?.src).toContain('data:image/');
+
+    expect(result.lifecycleStatus).toBe('completed');
+    expect(result.attachments?.[0]).toMatchObject({
+      object_id: 'obj_img_001',
+      filename: 'image.png',
+      mime_type: 'image/png',
+    });
+  });
+
+  it('surfaces terminal provider/server errors (contract example)', async () => {
+    const onError = vi.fn();
+    const events = loadContractExample('chat-provider-error.ndjson');
+    const chunks: StreamChunk[] = events.map((event) => ({ type: 'event', event }));
+
+    const result = await consumeChatStream(chunkStream(chunks), { onError });
+
+    expect(onError).toHaveBeenCalledWith('The request was invalid.');
     expect(result.errored).toBe(true);
-  });
-
-  it('parses web_search tool calls and citations from SDK fixture', async () => {
-    const fixturePath = path.resolve(
-      __dirname,
-      '../../../../../../docs/integrations/openai-agents-sdk/runner_api_events/tool_events.json',
-    );
-    const log = JSON.parse(readFileSync(fixturePath, 'utf-8')) as {
-      raw_events: Array<Record<string, unknown>>;
-    };
-    const annotationEvent = log.raw_events.find((ev) => ev.type === 'response.output_text.annotation.added');
-    const webSearchCompleted = log.raw_events.find((ev) => ev.type === 'response.web_search_call.completed');
-
-    expect(annotationEvent).toBeTruthy();
-    expect(webSearchCompleted).toBeTruthy();
-
-    const chunks: StreamChunk[] = [
-      {
-        type: 'event',
-        event: {
-          kind: 'raw_response_event',
-          conversation_id: 'fixture',
-          raw_type: annotationEvent?.type as string,
-          payload: annotationEvent,
-          raw_event: annotationEvent,
-          annotations: annotationEvent && 'annotation' in annotationEvent ? [annotationEvent.annotation as UrlCitation] : undefined,
-        },
-      },
-      {
-        type: 'event',
-        event: {
-          kind: 'raw_response_event',
-          conversation_id: 'fixture',
-          raw_type: webSearchCompleted?.type as string,
-          payload: webSearchCompleted,
-          raw_event: webSearchCompleted,
-          tool_call: {
-            tool_type: 'web_search',
-            web_search_call: {
-              id: String((webSearchCompleted as { item_id?: unknown })?.item_id ?? ''),
-              type: 'web_search_call',
-              status: 'completed',
-              action: null,
-            },
-          },
-        },
-      },
-      {
-        type: 'event',
-        event: {
-          kind: 'raw_response_event',
-          conversation_id: 'fixture',
-          raw_type: 'response.completed',
-          is_terminal: true,
-        },
-      },
-    ];
-
-    const toolStates: ToolState[][] = [];
-    const result = await consumeChatStream(chunkStream(chunks), {
-      onToolStates: (tools) => toolStates.push(tools),
-    });
-
-    const lastTool = toolStates.at(-1)?.[0];
-    expect(lastTool?.name).toBe('web_search');
-    expect(lastTool?.status).toBe('output-available');
-    expect(result.citations?.length).toBeGreaterThanOrEqual(1);
-    expect(result.errored).toBe(false);
-  });
-
-  it('does not duplicate citations when both payload.annotation and annotations are present', async () => {
-    const annotation = {
-      type: 'url_citation',
-      start_index: 0,
-      end_index: 4,
-      title: 'Example',
-      url: 'https://example.com',
-    } satisfies UrlCitation;
-
-    const chunks: StreamChunk[] = [
-      {
-        type: 'event',
-        event: {
-          kind: 'raw_response_event',
-          conversation_id: 'dup',
-          raw_type: 'response.output_text.annotation.added',
-          payload: { annotation },
-          annotations: [annotation],
-        },
-      },
-      {
-        type: 'event',
-        event: {
-          kind: 'raw_response_event',
-          conversation_id: 'dup',
-          raw_type: 'response.completed',
-          is_terminal: true,
-        },
-      },
-    ];
-
-    const result = await consumeChatStream(chunkStream(chunks), {});
-    expect(result.citations).toEqual([annotation]);
-  });
-
-  it('parses code_interpreter tool calls and code deltas', async () => {
-    const chunks: StreamChunk[] = [
-      {
-        type: 'event',
-        event: {
-          kind: 'raw_response_event',
-          conversation_id: 'ci',
-          raw_type: 'response.code_interpreter_call.in_progress',
-          payload: { item_id: 'ci_1' },
-          tool_call: {
-            tool_type: 'code_interpreter',
-            code_interpreter_call: {
-              id: 'ci_1',
-              type: 'code_interpreter_call',
-              status: 'in_progress',
-              code: null,
-              outputs: null,
-            },
-          },
-        },
-      },
-      {
-        type: 'event',
-        event: {
-          kind: 'raw_response_event',
-          conversation_id: 'ci',
-          raw_type: 'response.code_interpreter_call_code.delta',
-          payload: { item_id: 'ci_1', delta: 'print(1)' },
-          tool_call: {
-            tool_type: 'code_interpreter',
-            code_interpreter_call: {
-              id: 'ci_1',
-              type: 'code_interpreter_call',
-              status: 'in_progress',
-              code: 'print(1)',
-              outputs: null,
-            },
-          },
-        },
-      },
-      {
-        type: 'event',
-        event: {
-          kind: 'run_item_stream_event',
-          conversation_id: 'ci',
-          run_item_name: 'tool_output',
-          run_item_type: 'tool_call_output_item',
-          tool_call_id: 'ci_1',
-          payload: { outputs: [{ text: '1' }] },
-          tool_call: {
-            tool_type: 'code_interpreter',
-            code_interpreter_call: {
-              id: 'ci_1',
-              type: 'code_interpreter_call',
-              status: 'completed',
-              code: 'print(1)',
-              outputs: [{ text: '1' }],
-            },
-          },
-        },
-      },
-      {
-        type: 'event',
-        event: {
-          kind: 'raw_response_event',
-          conversation_id: 'ci',
-          raw_type: 'response.completed',
-          is_terminal: true,
-        },
-      },
-    ];
-
-    const toolStates: ToolState[][] = [];
-    const result = await consumeChatStream(chunkStream(chunks), {
-      onToolStates: (tools) => toolStates.push(tools),
-    });
-
-    const lastTool = toolStates.at(-1)?.[0];
-    expect(lastTool?.name).toBe('code_interpreter');
-    expect(lastTool?.status).toBe('output-available');
-    expect(lastTool?.output).toEqual([{ text: '1' }]);
-    expect(result.errored).toBe(false);
-  });
-
-  it('parses file_search tool calls', async () => {
-    const chunks: StreamChunk[] = [
-      {
-        type: 'event',
-        event: {
-          kind: 'raw_response_event',
-          conversation_id: 'fs',
-          raw_type: 'response.file_search_call.in_progress',
-          payload: { item_id: 'fs_1' },
-          tool_call: undefined,
-        },
-      },
-      {
-        type: 'event',
-        event: {
-          kind: 'run_item_stream_event',
-          conversation_id: 'fs',
-          run_item_name: 'tool_output',
-          run_item_type: 'tool_call_output_item',
-          tool_call_id: 'fs_1',
-          payload: { results: [{ id: 'doc1' }] },
-          tool_call: {
-            tool_type: 'file_search',
-            file_search_call: {
-              id: 'fs_1',
-              type: 'file_search_call',
-              status: 'completed',
-              queries: ['what is deep research'],
-              results: [{ id: 'doc1' }],
-            },
-          },
-        },
-      },
-      {
-        type: 'event',
-        event: {
-          kind: 'raw_response_event',
-          conversation_id: 'fs',
-          raw_type: 'response.completed',
-          is_terminal: true,
-        },
-      },
-    ];
-
-    const toolStates: ToolState[][] = [];
-    const result = await consumeChatStream(chunkStream(chunks), {
-      onToolStates: (tools) => toolStates.push(tools),
-    });
-
-    const lastToolStateList = toolStates.at(-1);
-    const fileSearch = lastToolStateList?.find((t) => t.name === 'file_search');
-    expect(fileSearch?.status).toBe('output-available');
-    expect(fileSearch?.output).toEqual([{ id: 'doc1' }]);
-    expect(result.errored).toBe(false);
+    expect(result.terminalSeen).toBe(true);
   });
 });

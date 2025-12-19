@@ -4,10 +4,10 @@ import type { ConversationSearchPage } from '@/types/conversations';
 
 import { GET } from './route';
 
-const searchConversationsAction = vi.hoisted(() => vi.fn());
+const searchConversationsPage = vi.hoisted(() => vi.fn());
 
-vi.mock('@/app/(app)/(workspace)/chat/actions', () => ({
-  searchConversationsAction,
+vi.mock('@/lib/server/services/conversations', () => ({
+  searchConversationsPage,
 }));
 
 describe('/api/conversations/search route', () => {
@@ -20,7 +20,7 @@ describe('/api/conversations/search route', () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({ error: 'Query is required' });
-    expect(searchConversationsAction).not.toHaveBeenCalled();
+    expect(searchConversationsPage).not.toHaveBeenCalled();
   });
 
   it('returns search results on success', async () => {
@@ -30,7 +30,7 @@ describe('/api/conversations/search route', () => {
       ],
       next_cursor: 'cursor-1',
     };
-    searchConversationsAction.mockResolvedValueOnce({ success: true, ...payload });
+    searchConversationsPage.mockResolvedValueOnce(payload);
 
     const response = await GET(
       new Request('http://localhost/api/conversations/search?q=hello&limit=5&cursor=abc&agent=triage'),
@@ -38,7 +38,7 @@ describe('/api/conversations/search route', () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual(payload);
-    expect(searchConversationsAction).toHaveBeenCalledWith({
+    expect(searchConversationsPage).toHaveBeenCalledWith({
       query: 'hello',
       limit: 5,
       cursor: 'abc',
@@ -47,7 +47,7 @@ describe('/api/conversations/search route', () => {
   });
 
   it('returns 500 when server action fails', async () => {
-    searchConversationsAction.mockResolvedValueOnce({ success: false, error: 'boom' });
+    searchConversationsPage.mockRejectedValueOnce(new Error('boom'));
 
     const response = await GET(new Request('http://localhost/api/conversations/search?q=boom'));
 

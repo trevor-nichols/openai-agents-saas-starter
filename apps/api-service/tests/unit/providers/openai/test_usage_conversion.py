@@ -1,0 +1,56 @@
+from types import SimpleNamespace
+
+from app.domain.ai import AgentRunUsage
+from app.infrastructure.providers.openai.usage import convert_usage
+
+
+def _usage(**kwargs):
+    return SimpleNamespace(**kwargs)
+
+
+def test_convert_usage_maps_extended_fields():
+    usage = _usage(
+        input_tokens=10,
+        output_tokens=5,
+        total_tokens=15,
+        input_tokens_details=_usage(cached_tokens=7),
+        output_tokens_details=_usage(reasoning_tokens=3),
+        requests=2,
+        request_usage_entries=[{"input_tokens": 5}],
+    )
+
+    result = convert_usage(usage)
+    assert isinstance(result, AgentRunUsage)
+    assert result.input_tokens == 10
+    assert result.output_tokens == 5
+    assert result.total_tokens == 15
+    assert result.cached_input_tokens == 7
+    assert result.reasoning_output_tokens == 3
+    assert result.requests == 2
+    assert result.request_usage_entries == [{"input_tokens": 5}]
+
+
+def test_convert_usage_defaults_requests_to_one():
+    usage = _usage()
+
+    result = convert_usage(usage)
+
+    assert result.requests == 1
+
+
+def test_convert_usage_normalizes_request_usage_entries_to_mappings():
+    class FakeRequestUsage:
+        def model_dump(self, mode: str = "python", exclude_none: bool = False):  # noqa: ARG002
+            return {
+                "input_tokens": 7,
+                "output_tokens": 3,
+                "total_tokens": 10,
+            }
+
+    usage = _usage(request_usage_entries=[FakeRequestUsage()])
+
+    result = convert_usage(usage)
+
+    assert result.request_usage_entries == [
+        {"input_tokens": 7, "output_tokens": 3, "total_tokens": 10}
+    ]

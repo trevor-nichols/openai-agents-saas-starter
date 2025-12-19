@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
 import { renderToolOutput } from '@/components/ui/ai/renderToolOutput';
-import type { ImageGenerationCall } from '@/lib/api/client/types.gen';
 import type { FileSearchResult } from '@/lib/api/client/types.gen';
+import type { GeneratedImageFrame } from '@/lib/streams/imageFrames';
 
 describe('renderToolOutput helper', () => {
   it('renders file search results with the custom renderer', () => {
@@ -25,13 +25,11 @@ describe('renderToolOutput helper', () => {
   });
 
   it('renders image generation frames with the AI image component', () => {
-    const frames: ImageGenerationCall[] = [
+    const frames: GeneratedImageFrame[] = [
       {
         id: 'img-1',
-        type: 'image_generation_call',
         status: 'completed',
-        result: 'data:image/png;base64,aGVsbG8=',
-        format: 'png',
+        src: 'data:image/png;base64,aGVsbG8=',
       },
     ];
 

@@ -124,6 +124,16 @@ class GCSStorageProvider(StorageProviderProtocol):
 
         return await asyncio.to_thread(_head)
 
+    async def get_object_bytes(self, *, bucket: str, key: str) -> bytes:
+        def _get() -> bytes:
+            blob = self._client.bucket(bucket).blob(key)
+            try:
+                return blob.download_as_bytes()
+            except gcs_exceptions.NotFound as exc:
+                raise FileNotFoundError(f"Object {key} not found") from exc
+
+        return await asyncio.to_thread(_get)
+
     async def delete_object(self, *, bucket: str, key: str) -> None:
         def _delete() -> None:
             blob = self._client.bucket(bucket).blob(key)
