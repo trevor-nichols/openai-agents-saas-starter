@@ -86,6 +86,7 @@ coverage.xml
 logs/
 !src/app/api/v1/logs/
 !src/app/api/v1/logs/**
+src/app/api/v1/logs/__pycache__/
 
 # =============================================================================
 # TEMPORARY FILES
