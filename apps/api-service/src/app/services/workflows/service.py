@@ -17,6 +17,7 @@ from app.services.agents.provider_registry import (
     AgentProviderRegistry,
     get_provider_registry,
 )
+from app.services.assets.service import AssetService
 from app.services.workflows.catalog import WorkflowCatalogPage, WorkflowCatalogService
 from app.services.workflows.runner import WorkflowRunner, WorkflowRunResult
 from app.workflows._shared.registry import WorkflowRegistry, get_workflow_registry
@@ -41,6 +42,7 @@ class WorkflowService:
         run_repository: WorkflowRunRepository | None = None,
         catalog_service: WorkflowCatalogService | None = None,
         attachment_service: AttachmentService | None = None,
+        asset_service: AssetService | None = None,
     ) -> None:
         self._registry = registry or get_workflow_registry()
         self._catalog_service = catalog_service or WorkflowCatalogService(self._registry)
@@ -51,6 +53,7 @@ class WorkflowService:
             run_repository=run_repository,
             cancellation_tracker=_CancellationTracker(),
             attachment_service=attachment_service,
+            asset_service=asset_service,
         )
 
     def list_workflows(self) -> Sequence[WorkflowDescriptor]:

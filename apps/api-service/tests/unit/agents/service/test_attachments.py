@@ -7,6 +7,7 @@ import pytest
 from app.domain.conversations import ConversationAttachment, ConversationMessage
 from app.services.agents.attachments import AttachmentService
 from app.services.containers.files_gateway import ContainerFileContent, ContainerFilesGateway
+from app.services.assets.service import AssetService
 from app.services.storage.service import StorageService
 
 
@@ -23,6 +24,15 @@ class FakeStorageService:
     async def get_presigned_download(self, *, tenant_id, object_id):
         self.presigned_for[tenant_id].append(object_id)
         return type("Presigned", (), {"url": f"https://example.com/{object_id}"}), None
+
+
+class FakeAssetService:
+    def __init__(self):
+        self.calls = []
+
+    async def create_asset(self, **kwargs):
+        self.calls.append(kwargs)
+        return type("Asset", (), {"id": uuid.uuid4()})
 
 
 def attachment_service(storage: FakeStorageService) -> AttachmentService:
@@ -213,6 +223,44 @@ async def test_ingest_container_file_citations_deduplicates_repeated_citations()
     assert len(attachments) == 1
     assert len(storage.put_calls) == 1
     assert len(gateway.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_ingest_image_outputs_records_asset():
+    storage = FakeStorageService()
+    asset_service = FakeAssetService()
+    service = AttachmentService(
+        lambda: cast(StorageService, storage),
+        asset_service_resolver=lambda: cast(AssetService, asset_service),
+    )
+    actor = type(
+        "Actor",
+        (),
+        {
+            "tenant_id": "11111111-1111-1111-1111-111111111111",
+            "user_id": "22222222-2222-2222-2222-222222222222",
+        },
+    )
+    outputs = [
+        {
+            "type": "image_generation_call",
+            "id": "tool-2",
+            "result": "ZmFrZQ==",  # base64("fake")
+            "format": "png",
+        }
+    ]
+
+    attachments = await service.ingest_image_outputs(
+        outputs,
+        actor=actor,
+        conversation_id="33333333-3333-3333-3333-333333333333",
+        agent_key="image",
+        response_id="resp-2",
+    )
+
+    assert len(attachments) == 1
+    assert len(asset_service.calls) == 1
+    assert asset_service.calls[0]["asset_type"] == "image"
 
 
 @pytest.mark.asyncio

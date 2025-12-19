@@ -199,7 +199,7 @@ async def persist_assistant_message(
     attachments,
     active_agent: str | None = None,
     handoff_count: int | None = None,
-) -> None:
+) -> int | None:
     """Store assistant response with aligned metadata."""
 
     agent_name = active_agent or ctx.descriptor.key
@@ -208,7 +208,7 @@ async def persist_assistant_message(
         content=response_text,
         attachments=attachments,
     )
-    await conversation_service.append_message(
+    return await conversation_service.append_message(
         ctx.conversation_id,
         assistant_message,
         tenant_id=ctx.actor.tenant_id,

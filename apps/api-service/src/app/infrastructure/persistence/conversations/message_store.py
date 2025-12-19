@@ -61,7 +61,7 @@ class ConversationMessageStore:
         *,
         tenant_id: str,
         metadata: ConversationMetadata,
-    ) -> None:
+    ) -> int | None:
         conversation_uuid = coerce_conversation_uuid(conversation_id)
         conversation_key = derive_conversation_key(conversation_id)
         tenant_uuid = parse_tenant_id(tenant_id)
@@ -129,12 +129,14 @@ class ConversationMessageStore:
             )
             session.add(db_message)
             await session.commit()
+            await session.refresh(db_message)
             logger.debug(
                 "Persisted %s message for conversation %s (agent=%s)",
                 message.role,
                 conversation_id,
                 metadata.active_agent or metadata.agent_entrypoint,
             )
+            return getattr(db_message, "id", None)
 
     async def get_messages(
         self, conversation_id: str, *, tenant_id: str

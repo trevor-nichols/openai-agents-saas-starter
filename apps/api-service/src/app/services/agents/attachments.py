@@ -7,12 +7,15 @@ import uuid
 from collections.abc import Callable, Iterable, Mapping
 from typing import Any
 
+from app.domain.assets import AssetSourceTool, AssetType
 from app.domain.conversations import ConversationAttachment, ConversationMessage
+from app.services.agents.attachment_utils import coerce_conversation_uuid
 from app.services.agents.container_file_ingestor import (
     ContainerFileCitationRef,
     ingest_container_file_citation,
 )
 from app.services.agents.image_ingestor import ingest_image_output
+from app.services.assets.service import AssetService
 from app.services.containers.files_gateway import ContainerFilesGateway
 from app.services.storage.service import StorageService
 
@@ -27,9 +30,11 @@ class AttachmentService:
         storage_resolver: Callable[[], StorageService],
         *,
         container_files_gateway_resolver: Callable[[], ContainerFilesGateway] | None = None,
+        asset_service_resolver: Callable[[], AssetService] | None = None,
     ) -> None:
         self._storage_resolver = storage_resolver
         self._container_files_gateway_resolver = container_files_gateway_resolver
+        self._asset_service_resolver = asset_service_resolver
 
     async def ingest_image_outputs(
         self,
@@ -83,6 +88,21 @@ class AttachmentService:
                         quality=quality,
                         background=background,
                         storage_service=storage,
+                    )
+
+                    await self._record_asset(
+                        asset_type="image",
+                        source_tool="image_generation",
+                        tenant_id=uuid.UUID(actor.tenant_id),
+                        storage_object_id=ingested.storage_object_id,
+                        conversation_id=conversation_id,
+                        tool_call_id=tool_call_id,
+                        response_id=response_id,
+                        metadata={
+                            "format": image_format,
+                            "quality": quality,
+                            "background": background,
+                        },
                     )
 
                     presigned, _ = await storage.get_presigned_download(
@@ -157,6 +177,22 @@ class AttachmentService:
                         gateway=gateway,
                         storage_service=storage,
                     )
+                    asset_type = _infer_asset_type(ingested.mime_type)
+                    await self._record_asset(
+                        asset_type=asset_type,
+                        source_tool="code_interpreter",
+                        tenant_id=uuid.UUID(actor.tenant_id),
+                        storage_object_id=ingested.storage_object_id,
+                        conversation_id=conversation_id,
+                        tool_call_id=None,
+                        response_id=response_id,
+                        container_id=container_id,
+                        openai_file_id=file_id,
+                        metadata={
+                            "filename": ingested.attachment.filename,
+                            "size_bytes": ingested.size_bytes,
+                        },
+                    )
                     presigned, _ = await storage.get_presigned_download(
                         tenant_id=uuid.UUID(actor.tenant_id),
                         object_id=ingested.storage_object_id,
@@ -222,6 +258,56 @@ class AttachmentService:
             return {}
         return {"attachments": {"status": "stored", "count": len(attachments)}}
 
+    async def _record_asset(
+        self,
+        *,
+        asset_type: AssetType,
+        source_tool: AssetSourceTool | None,
+        tenant_id: uuid.UUID,
+        storage_object_id: uuid.UUID,
+        conversation_id: str | None,
+        tool_call_id: str | None,
+        response_id: str | None,
+        container_id: str | None = None,
+        openai_file_id: str | None = None,
+        metadata: dict[str, object] | None = None,
+    ) -> None:
+        if self._asset_service_resolver is None:
+            return
+        try:
+            service = self._asset_service_resolver()
+        except Exception:
+            logger.warning(
+                "asset.service_unavailable",
+                extra={"tenant_id": str(tenant_id)},
+            )
+            return
+        try:
+            await service.create_asset(
+                tenant_id=tenant_id,
+                storage_object_id=storage_object_id,
+                asset_type=asset_type,
+                source_tool=source_tool,
+                conversation_id=coerce_conversation_uuid(conversation_id),
+                message_id=None,
+                tool_call_id=tool_call_id,
+                response_id=response_id,
+                container_id=container_id,
+                openai_file_id=openai_file_id,
+                metadata=metadata,
+            )
+        except Exception as exc:  # pragma: no cover - best effort
+            logger.warning(
+                "asset.record_failed",
+                extra={
+                    "tenant_id": str(tenant_id),
+                    "storage_object_id": str(storage_object_id),
+                    "asset_type": asset_type,
+                    "source_tool": source_tool,
+                },
+                exc_info=exc,
+            )
+
 
 __all__ = ["AttachmentService"]
 
@@ -285,3 +371,9 @@ def _iter_container_file_citations(candidate: Mapping[str, Any]) -> Iterable[Map
     raw_item = candidate.get("raw_item")
     if isinstance(raw_item, Mapping):
         yield from _iter_container_file_citations(raw_item)
+
+
+def _infer_asset_type(mime_type: str | None) -> AssetType:
+    if mime_type and mime_type.startswith("image/"):
+        return "image"
+    return "file"

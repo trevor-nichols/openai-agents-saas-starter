@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from app.api.v1.activity.router import router as activity_router
 from app.api.v1.agents.router import router as agents_router
+from app.api.v1.assets.router import router as assets_router
 from app.api.v1.auth.router import router as auth_router
 from app.api.v1.billing.router import router as billing_router
 from app.api.v1.chat.router import router as chat_router
@@ -32,6 +33,7 @@ router = APIRouter()
 router.include_router(auth_router)
 router.include_router(chat_router)
 router.include_router(agents_router)
+router.include_router(assets_router)
 router.include_router(guardrails_router)
 router.include_router(workflows_router)
 router.include_router(workflows_replay_router)

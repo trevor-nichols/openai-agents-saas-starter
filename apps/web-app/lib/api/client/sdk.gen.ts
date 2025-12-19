@@ -10,6 +10,9 @@ import type {
   AdminResetPasswordApiV1AuthPasswordResetPostData,
   AdminResetPasswordApiV1AuthPasswordResetPostErrors,
   AdminResetPasswordApiV1AuthPasswordResetPostResponses,
+  ApplyTestFixturesApiV1TestFixturesApplyPostData,
+  ApplyTestFixturesApiV1TestFixturesApplyPostErrors,
+  ApplyTestFixturesApiV1TestFixturesApplyPostResponses,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostData,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostErrors,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostResponses,
@@ -58,6 +61,9 @@ import type {
   CreateVectorStoreApiV1VectorStoresPostData,
   CreateVectorStoreApiV1VectorStoresPostErrors,
   CreateVectorStoreApiV1VectorStoresPostResponses,
+  DeleteAssetApiV1AssetsAssetIdDeleteData,
+  DeleteAssetApiV1AssetsAssetIdDeleteErrors,
+  DeleteAssetApiV1AssetsAssetIdDeleteResponses,
   DeleteContainerApiV1ContainersContainerIdDeleteData,
   DeleteContainerApiV1ContainersContainerIdDeleteErrors,
   DeleteContainerApiV1ContainersContainerIdDeleteResponses,
@@ -91,6 +97,12 @@ import type {
   GetAgentStatusApiV1AgentsAgentNameStatusGetData,
   GetAgentStatusApiV1AgentsAgentNameStatusGetErrors,
   GetAgentStatusApiV1AgentsAgentNameStatusGetResponses,
+  GetAssetApiV1AssetsAssetIdGetData,
+  GetAssetApiV1AssetsAssetIdGetErrors,
+  GetAssetApiV1AssetsAssetIdGetResponses,
+  GetAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGetData,
+  GetAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGetErrors,
+  GetAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGetResponses,
   GetContainerByIdApiV1ContainersContainerIdGetData,
   GetContainerByIdApiV1ContainersContainerIdGetErrors,
   GetContainerByIdApiV1ContainersContainerIdGetResponses,
@@ -157,6 +169,9 @@ import type {
   HealthCheckHealthGetData,
   HealthCheckHealthGetErrors,
   HealthCheckHealthGetResponses,
+  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData,
+  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors,
+  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses,
   IssueInviteApiV1AuthInvitesPostData,
   IssueInviteApiV1AuthInvitesPostErrors,
   IssueInviteApiV1AuthInvitesPostResponses,
@@ -169,6 +184,9 @@ import type {
   ListActivityEventsApiV1ActivityGetData,
   ListActivityEventsApiV1ActivityGetErrors,
   ListActivityEventsApiV1ActivityGetResponses,
+  ListAssetsApiV1AssetsGetData,
+  ListAssetsApiV1AssetsGetErrors,
+  ListAssetsApiV1AssetsGetResponses,
   ListAvailableAgentsApiV1AgentsGetData,
   ListAvailableAgentsApiV1AgentsGetErrors,
   ListAvailableAgentsApiV1AgentsGetResponses,
@@ -1425,6 +1443,103 @@ export const getAgentStatusApiV1AgentsAgentNameStatusGet = <
       },
     ],
     url: "/api/v1/agents/{agent_name}/status",
+    ...options,
+  });
+};
+
+/**
+ * List Assets
+ */
+export const listAssetsApiV1AssetsGet = <ThrowOnError extends boolean = false>(
+  options?: Options<ListAssetsApiV1AssetsGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    ListAssetsApiV1AssetsGetResponses,
+    ListAssetsApiV1AssetsGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/assets",
+    ...options,
+  });
+};
+
+/**
+ * Delete Asset
+ */
+export const deleteAssetApiV1AssetsAssetIdDelete = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<DeleteAssetApiV1AssetsAssetIdDeleteData, ThrowOnError>,
+) => {
+  return (options.client ?? client).delete<
+    DeleteAssetApiV1AssetsAssetIdDeleteResponses,
+    DeleteAssetApiV1AssetsAssetIdDeleteErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/assets/{asset_id}",
+    ...options,
+  });
+};
+
+/**
+ * Get Asset
+ */
+export const getAssetApiV1AssetsAssetIdGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<GetAssetApiV1AssetsAssetIdGetData, ThrowOnError>,
+) => {
+  return (options.client ?? client).get<
+    GetAssetApiV1AssetsAssetIdGetResponses,
+    GetAssetApiV1AssetsAssetIdGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/assets/{asset_id}",
+    ...options,
+  });
+};
+
+/**
+ * Get Asset Download Url
+ */
+export const getAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    GetAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGetData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).get<
+    GetAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGetResponses,
+    GetAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/assets/{asset_id}/download-url",
     ...options,
   });
 };
@@ -3609,3 +3724,52 @@ export const billingEventStreamApiV1BillingStreamGet = <
     ...options,
   });
 };
+
+/**
+ * Apply Test Fixtures
+ */
+export const applyTestFixturesApiV1TestFixturesApplyPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    ApplyTestFixturesApiV1TestFixturesApplyPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    ApplyTestFixturesApiV1TestFixturesApplyPostResponses,
+    ApplyTestFixturesApiV1TestFixturesApplyPostErrors,
+    ThrowOnError
+  >({
+    url: "/api/v1/test-fixtures/apply",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Issue Email Verification Token
+ */
+export const issueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPost =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).post<
+      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses,
+      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors,
+      ThrowOnError
+    >({
+      url: "/api/v1/test-fixtures/email-verification-token",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
+  };

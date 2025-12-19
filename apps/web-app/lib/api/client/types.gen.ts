@@ -389,6 +389,141 @@ export type AgentUpdatedEvent = {
 };
 
 /**
+ * AssetDownloadResponse
+ */
+export type AssetDownloadResponse = {
+  /**
+   * Asset Id
+   */
+  asset_id: string;
+  /**
+   * Storage Object Id
+   */
+  storage_object_id: string;
+  /**
+   * Download Url
+   */
+  download_url: string;
+  /**
+   * Method
+   */
+  method: string;
+  /**
+   * Headers
+   */
+  headers: {
+    [key: string]: string;
+  };
+  /**
+   * Expires In Seconds
+   */
+  expires_in_seconds: number;
+};
+
+/**
+ * AssetListResponse
+ */
+export type AssetListResponse = {
+  /**
+   * Items
+   */
+  items: Array<AssetResponse>;
+  /**
+   * Next Offset
+   */
+  next_offset?: number | null;
+};
+
+/**
+ * AssetResponse
+ */
+export type AssetResponse = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Storage Object Id
+   */
+  storage_object_id: string;
+  /**
+   * Asset Type
+   */
+  asset_type: "image" | "file";
+  /**
+   * Source Tool
+   */
+  source_tool?:
+    | "image_generation"
+    | "code_interpreter"
+    | "user_upload"
+    | "unknown"
+    | null;
+  /**
+   * Conversation Id
+   */
+  conversation_id?: string | null;
+  /**
+   * Message Id
+   */
+  message_id?: number | null;
+  /**
+   * Tool Call Id
+   */
+  tool_call_id?: string | null;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Container Id
+   */
+  container_id?: string | null;
+  /**
+   * Openai File Id
+   */
+  openai_file_id?: string | null;
+  /**
+   * Metadata
+   */
+  metadata?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Filename
+   */
+  filename?: string | null;
+  /**
+   * Mime Type
+   */
+  mime_type?: string | null;
+  /**
+   * Size Bytes
+   */
+  size_bytes?: number | null;
+  /**
+   * Agent Key
+   */
+  agent_key?: string | null;
+  /**
+   * Storage Status
+   */
+  storage_status?: string | null;
+  /**
+   * Asset Created At
+   */
+  asset_created_at?: string | null;
+  /**
+   * Asset Updated At
+   */
+  asset_updated_at?: string | null;
+  /**
+   * Storage Created At
+   */
+  storage_created_at?: string | null;
+};
+
+/**
  * BillingContactModel
  */
 export type BillingContactModel = {
@@ -1835,6 +1970,42 @@ export type EmailVerificationStatusResponseData = {
 };
 
 /**
+ * EmailVerificationTokenRequest
+ */
+export type EmailVerificationTokenRequest = {
+  /**
+   * Email
+   */
+  email: string;
+  /**
+   * Ip Address
+   */
+  ip_address?: string | null;
+  /**
+   * User Agent
+   */
+  user_agent?: string | null;
+};
+
+/**
+ * EmailVerificationTokenResponse
+ */
+export type EmailVerificationTokenResponse = {
+  /**
+   * Token
+   */
+  token: string;
+  /**
+   * User Id
+   */
+  user_id: string;
+  /**
+   * Expires At
+   */
+  expires_at: string;
+};
+
+/**
  * ErrorEvent
  */
 export type ErrorEvent = {
@@ -2069,6 +2240,206 @@ export type FinalPayload = {
    */
   attachments?: Array<MessageAttachment>;
   usage?: PublicUsage | null;
+};
+
+/**
+ * FixtureApplyResult
+ */
+export type FixtureApplyResult = {
+  /**
+   * Tenants
+   */
+  tenants: {
+    [key: string]: FixtureTenantResult;
+  };
+  /**
+   * Generated At
+   */
+  generated_at: string;
+};
+
+/**
+ * FixtureConversation
+ */
+export type FixtureConversation = {
+  /**
+   * Key
+   */
+  key: string;
+  /**
+   * Agent Entrypoint
+   */
+  agent_entrypoint?: string;
+  /**
+   * Status
+   */
+  status?: "active" | "archived";
+  /**
+   * User Email
+   */
+  user_email?: string | null;
+  /**
+   * Messages
+   */
+  messages?: Array<FixtureConversationMessage>;
+};
+
+/**
+ * FixtureConversationMessage
+ */
+export type FixtureConversationMessage = {
+  /**
+   * Role
+   */
+  role: "user" | "assistant" | "system";
+  /**
+   * Text
+   */
+  text: string;
+};
+
+/**
+ * FixtureConversationResult
+ */
+export type FixtureConversationResult = {
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Status
+   */
+  status: string;
+};
+
+/**
+ * FixtureTenant
+ */
+export type FixtureTenant = {
+  /**
+   * Slug
+   */
+  slug: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Plan Code
+   */
+  plan_code?: string | null;
+  /**
+   * Billing Email
+   */
+  billing_email?: string | null;
+  /**
+   * Users
+   */
+  users?: Array<FixtureUser>;
+  /**
+   * Conversations
+   */
+  conversations?: Array<FixtureConversation>;
+  /**
+   * Usage
+   */
+  usage?: Array<FixtureUsageEntry>;
+};
+
+/**
+ * FixtureTenantResult
+ */
+export type FixtureTenantResult = {
+  /**
+   * Tenant Id
+   */
+  tenant_id: string;
+  /**
+   * Plan Code
+   */
+  plan_code: string | null;
+  /**
+   * Users
+   */
+  users: {
+    [key: string]: FixtureUserResult;
+  };
+  /**
+   * Conversations
+   */
+  conversations: {
+    [key: string]: FixtureConversationResult;
+  };
+};
+
+/**
+ * FixtureUsageEntry
+ */
+export type FixtureUsageEntry = {
+  /**
+   * Feature Key
+   */
+  feature_key: string;
+  /**
+   * Quantity
+   */
+  quantity: number;
+  /**
+   * Unit
+   */
+  unit?: string;
+  /**
+   * Period Start
+   */
+  period_start: string;
+  /**
+   * Period End
+   */
+  period_end?: string | null;
+  /**
+   * Idempotency Key
+   */
+  idempotency_key?: string | null;
+};
+
+/**
+ * FixtureUser
+ */
+export type FixtureUser = {
+  /**
+   * Email
+   */
+  email: string;
+  /**
+   * Password
+   */
+  password: string;
+  /**
+   * Display Name
+   */
+  display_name?: string | null;
+  /**
+   * Role
+   */
+  role?: string;
+  /**
+   * Verify Email
+   */
+  verify_email?: boolean;
+};
+
+/**
+ * FixtureUserResult
+ */
+export type FixtureUserResult = {
+  /**
+   * User Id
+   */
+  user_id: string;
+  /**
+   * Role
+   */
+  role: string;
 };
 
 /**
@@ -3304,6 +3675,16 @@ export type PlatformStatusResponse = {
    * Uptime Metrics
    */
   uptime_metrics: Array<UptimeMetricSchema>;
+};
+
+/**
+ * PlaywrightFixtureSpec
+ */
+export type PlaywrightFixtureSpec = {
+  /**
+   * Tenants
+   */
+  tenants?: Array<FixtureTenant>;
 };
 
 /**
@@ -10131,6 +10512,391 @@ export type GetAgentStatusApiV1AgentsAgentNameStatusGetResponses = {
 
 export type GetAgentStatusApiV1AgentsAgentNameStatusGetResponse =
   GetAgentStatusApiV1AgentsAgentNameStatusGetResponses[keyof GetAgentStatusApiV1AgentsAgentNameStatusGetResponses];
+
+export type ListAssetsApiV1AssetsGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path?: never;
+  query?: {
+    /**
+     * Limit
+     */
+    limit?: number;
+    /**
+     * Offset
+     */
+    offset?: number;
+    /**
+     * Asset Type
+     */
+    asset_type?: "image" | "file" | null;
+    /**
+     * Source Tool
+     */
+    source_tool?:
+      | "image_generation"
+      | "code_interpreter"
+      | "user_upload"
+      | "unknown"
+      | null;
+    /**
+     * Conversation Id
+     */
+    conversation_id?: string | null;
+    /**
+     * Message Id
+     */
+    message_id?: number | null;
+    /**
+     * Agent Key
+     */
+    agent_key?: string | null;
+    /**
+     * Mime Type Prefix
+     */
+    mime_type_prefix?: string | null;
+    /**
+     * Created After
+     */
+    created_after?: string | null;
+    /**
+     * Created Before
+     */
+    created_before?: string | null;
+  };
+  url: "/api/v1/assets";
+};
+
+export type ListAssetsApiV1AssetsGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ListAssetsApiV1AssetsGetError =
+  ListAssetsApiV1AssetsGetErrors[keyof ListAssetsApiV1AssetsGetErrors];
+
+export type ListAssetsApiV1AssetsGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: AssetListResponse;
+};
+
+export type ListAssetsApiV1AssetsGetResponse =
+  ListAssetsApiV1AssetsGetResponses[keyof ListAssetsApiV1AssetsGetResponses];
+
+export type DeleteAssetApiV1AssetsAssetIdDeleteData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Asset Id
+     */
+    asset_id: string;
+  };
+  query?: never;
+  url: "/api/v1/assets/{asset_id}";
+};
+
+export type DeleteAssetApiV1AssetsAssetIdDeleteErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type DeleteAssetApiV1AssetsAssetIdDeleteError =
+  DeleteAssetApiV1AssetsAssetIdDeleteErrors[keyof DeleteAssetApiV1AssetsAssetIdDeleteErrors];
+
+export type DeleteAssetApiV1AssetsAssetIdDeleteResponses = {
+  /**
+   * Successful Response
+   */
+  204: void;
+};
+
+export type DeleteAssetApiV1AssetsAssetIdDeleteResponse =
+  DeleteAssetApiV1AssetsAssetIdDeleteResponses[keyof DeleteAssetApiV1AssetsAssetIdDeleteResponses];
+
+export type GetAssetApiV1AssetsAssetIdGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Asset Id
+     */
+    asset_id: string;
+  };
+  query?: never;
+  url: "/api/v1/assets/{asset_id}";
+};
+
+export type GetAssetApiV1AssetsAssetIdGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type GetAssetApiV1AssetsAssetIdGetError =
+  GetAssetApiV1AssetsAssetIdGetErrors[keyof GetAssetApiV1AssetsAssetIdGetErrors];
+
+export type GetAssetApiV1AssetsAssetIdGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: AssetResponse;
+};
+
+export type GetAssetApiV1AssetsAssetIdGetResponse =
+  GetAssetApiV1AssetsAssetIdGetResponses[keyof GetAssetApiV1AssetsAssetIdGetResponses];
+
+export type GetAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Asset Id
+     */
+    asset_id: string;
+  };
+  query?: never;
+  url: "/api/v1/assets/{asset_id}/download-url";
+};
+
+export type GetAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type GetAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGetError =
+  GetAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGetErrors[keyof GetAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGetErrors];
+
+export type GetAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: AssetDownloadResponse;
+};
+
+export type GetAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGetResponse =
+  GetAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGetResponses[keyof GetAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGetResponses];
 
 export type ListGuardrailsApiV1GuardrailsGetData = {
   body?: never;
@@ -17081,3 +17847,148 @@ export type BillingEventStreamApiV1BillingStreamGetResponses = {
 
 export type BillingEventStreamApiV1BillingStreamGetResponse =
   BillingEventStreamApiV1BillingStreamGetResponses[keyof BillingEventStreamApiV1BillingStreamGetResponses];
+
+export type ApplyTestFixturesApiV1TestFixturesApplyPostData = {
+  body: PlaywrightFixtureSpec;
+  path?: never;
+  query?: never;
+  url: "/api/v1/test-fixtures/apply";
+};
+
+export type ApplyTestFixturesApiV1TestFixturesApplyPostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ApplyTestFixturesApiV1TestFixturesApplyPostError =
+  ApplyTestFixturesApiV1TestFixturesApplyPostErrors[keyof ApplyTestFixturesApiV1TestFixturesApplyPostErrors];
+
+export type ApplyTestFixturesApiV1TestFixturesApplyPostResponses = {
+  /**
+   * Successful Response
+   */
+  201: FixtureApplyResult;
+};
+
+export type ApplyTestFixturesApiV1TestFixturesApplyPostResponse =
+  ApplyTestFixturesApiV1TestFixturesApplyPostResponses[keyof ApplyTestFixturesApiV1TestFixturesApplyPostResponses];
+
+export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData =
+  {
+    body: EmailVerificationTokenRequest;
+    path?: never;
+    query?: never;
+    url: "/api/v1/test-fixtures/email-verification-token";
+  };
+
+export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostError =
+  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors[keyof IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors];
+
+export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    201: EmailVerificationTokenResponse;
+  };
+
+export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponse =
+  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses[keyof IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses];

@@ -70,6 +70,11 @@ class _FakeRuntime:
         return _Stream()
 
 
+class _ExplodingAssetService:
+    async def link_assets_to_message(self, **_: object) -> None:
+        raise RuntimeError("boom")
+
+
 def _actor() -> ConversationActorContext:
     return ConversationActorContext(
         tenant_id=str(uuid.uuid4()),
@@ -124,6 +129,44 @@ async def test_workflow_run_ingests_container_file_attachments(monkeypatch: pyte
 
     assert result.attachments, "expected attachments to be returned on WorkflowRunResult"
     assert any(att.filename == "report.pdf" for att in result.attachments or [])
+    gateway.download_file_content.assert_awaited()
+    storage.put_object.assert_awaited()
+    storage.get_presigned_download.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_workflow_run_asset_linking_is_best_effort(monkeypatch: pytest.MonkeyPatch):
+    provider = get_provider_registry().get_default()
+    original_runtime = getattr(provider, "_runtime", None)
+    fake_runtime = _FakeRuntime()
+    setattr(provider, "_runtime", fake_runtime)
+
+    attachments, storage, gateway = _attachment_service()
+    runner = WorkflowRunner(
+        registry=WorkflowRegistry(),
+        attachment_service=attachments,
+        asset_service=_ExplodingAssetService(),
+    )
+
+    spec = WorkflowSpec(
+        key="ci-demo-assets",
+        display_name="CI Demo Assets",
+        description="",
+        steps=(WorkflowStep(agent_key="a1"),),
+        allow_handoff_agents=True,
+    )
+
+    try:
+        result = await runner.run(
+            spec,
+            actor=_actor(),
+            message="make a pdf",
+            conversation_id="conv",
+        )
+    finally:
+        setattr(provider, "_runtime", original_runtime)
+
+    assert result.attachments, "expected attachments to be returned on WorkflowRunResult"
     gateway.download_file_content.assert_awaited()
     storage.put_object.assert_awaited()
     storage.get_presigned_download.assert_awaited()

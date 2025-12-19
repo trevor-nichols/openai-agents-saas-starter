@@ -13,6 +13,7 @@ from app.infrastructure.persistence.workflows.repository import (
 from app.infrastructure.redis.factory import reset_redis_factory, shutdown_redis_factory
 from app.services.activity import ActivityService
 from app.services.agents.interaction_context import InteractionContextBuilder
+from app.services.assets.service import AssetService
 from app.services.auth.mfa_service import MfaService
 from app.services.auth.service_account_service import ServiceAccountTokenService
 from app.services.auth.session_service import UserSessionService
@@ -111,6 +112,7 @@ class ApplicationContainer:
     usage_recorder: UsageRecorder = field(default_factory=UsageRecorder)
     usage_policy_service: UsagePolicyService | None = None
     storage_service: StorageService | None = None
+    asset_service: AssetService | None = None
     workflow_run_repository: SqlAlchemyWorkflowRunRepository | None = None
     workflow_service: WorkflowService | None = None
     consent_service: ConsentService | None = None
@@ -153,6 +155,7 @@ class ApplicationContainer:
         self.consent_service = None
         self.notification_preference_service = None
         self.usage_counter_service = None
+        self.asset_service = None
         self.signup_service = None
         self.invite_service = None
         self.signup_request_service = None
@@ -240,6 +243,23 @@ def wire_storage_service(container: ApplicationContainer) -> None:
         container.storage_service = StorageService(
             container.session_factory,
             lambda: settings,
+        )
+
+
+def wire_asset_service(container: ApplicationContainer) -> None:
+    """Initialize the asset catalog service using the shared session factory."""
+
+    if container.asset_service is None:
+        if container.session_factory is None:
+            raise RuntimeError("Session factory must be configured before asset service")
+        if container.storage_service is None:
+            wire_storage_service(container)
+        if container.storage_service is None:  # pragma: no cover - defensive
+            raise RuntimeError("Storage service must be configured before asset service")
+        storage_service = cast(StorageService, container.storage_service)
+        container.asset_service = AssetService(
+            container.session_factory,
+            storage_service,
         )
 
 
@@ -337,14 +357,18 @@ def wire_workflow_services(container: ApplicationContainer) -> None:
             wire_storage_service(container)
         if container.storage_service is None:  # pragma: no cover - defensive
             raise RuntimeError("Storage service must be configured before workflow services")
+        if container.asset_service is None:
+            wire_asset_service(container)
 
         from app.services.agents.attachments import AttachmentService
         from app.services.containers.files_gateway import OpenAIContainerFilesGateway
 
         storage_service = cast(StorageService, container.storage_service)
+        asset_service = cast(AssetService | None, container.asset_service)
         attachment_service = AttachmentService(
             lambda: storage_service,
             container_files_gateway_resolver=lambda: OpenAIContainerFilesGateway(get_settings),
+            asset_service_resolver=(lambda: asset_service) if asset_service else None,
         )
         container.workflow_service = WorkflowService(
             registry=None,
@@ -355,6 +379,7 @@ def wire_workflow_services(container: ApplicationContainer) -> None:
             ),
             run_repository=container.workflow_run_repository,
             attachment_service=attachment_service,
+            asset_service=asset_service,
         )
 
 
@@ -367,6 +392,7 @@ __all__ = [
     "wire_vector_store_service",
     "wire_container_service",
     "wire_storage_service",
+    "wire_asset_service",
     "wire_conversation_query_service",
     "wire_conversation_ledger_recorder",
     "wire_conversation_ledger_reader",

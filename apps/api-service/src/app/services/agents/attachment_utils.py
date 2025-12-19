@@ -10,15 +10,15 @@ import uuid
 from collections.abc import Mapping
 
 from app.domain.ai.models import AgentStreamEvent
+from app.infrastructure.persistence.conversations.ids import (
+    coerce_conversation_uuid as coerce_conversation_uuid_from_persistence,
+)
 
 
 def coerce_conversation_uuid(conversation_id: str | None) -> uuid.UUID | None:
     if not conversation_id:
         return None
-    try:
-        return uuid.UUID(conversation_id)
-    except (TypeError, ValueError):
-        return uuid.uuid5(uuid.NAMESPACE_URL, f"api-service:conversation:{conversation_id}")
+    return coerce_conversation_uuid_from_persistence(conversation_id)
 
 
 def collect_container_file_citations_from_event(

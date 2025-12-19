@@ -25,6 +25,7 @@ Tenant-scoped object storage orchestration that fronts the provider (MinIO, GCS,
 
 ## Where it is used
 - Agent attachments: `services/agents/attachments.py` and `image_ingestor.py` persist tool outputs via `put_object`, then presign for chat history rendering.
+- Asset catalog: `services/assets/service.py` records generated assets in `agent_assets`, linking storage objects back to conversations/messages and powering `/api/v1/assets` listings.
 - Conversation query wiring: `bootstrap/container.py` wires `AttachmentService` with `StorageService` for history/attachments.
 - Health/info: `/health/storage` calls `StorageService.health_check` to report provider status without gating readiness.
 - API consumers (frontend/SDK) rely on presign endpoints; there is no webhook to flip `pending_upload` → `ready`, so clients use the presigned location directly after upload.

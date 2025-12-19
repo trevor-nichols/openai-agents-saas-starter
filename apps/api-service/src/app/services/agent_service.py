@@ -7,6 +7,7 @@ the surface here stays lean and testable.
 from __future__ import annotations
 
 import logging
+import uuid
 from collections.abc import AsyncGenerator, Mapping
 from datetime import datetime
 from typing import Any, cast
@@ -15,7 +16,7 @@ from agents import trace
 
 from app.api.v1.agents.schemas import AgentStatus, AgentSummary
 from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse, MessageAttachment
-from app.bootstrap.container import wire_storage_service
+from app.bootstrap.container import wire_asset_service, wire_storage_service
 from app.core.settings import get_settings
 from app.domain.ai.lifecycle import LifecycleEventBus
 from app.domain.ai.models import AgentStreamEvent
@@ -50,6 +51,7 @@ from app.services.agents.streaming_pipeline import (
     build_guardrail_summary,
 )
 from app.services.agents.usage import UsageService
+from app.services.assets.service import AssetService
 from app.services.containers import (
     ContainerFilesGateway,
     ContainerService,
@@ -78,6 +80,7 @@ class AgentService:
         container_service: ContainerService | None = None,
         container_files_gateway: ContainerFilesGateway | None = None,
         storage_service: StorageService | None = None,
+        asset_service: AssetService | None = None,
         policy: AgentRuntimePolicy | None = None,
         interaction_builder: InteractionContextBuilder | None = None,
         vector_store_service: VectorStoreService | None = None,
@@ -94,6 +97,7 @@ class AgentService:
         self._container_service = container_service
         self._container_files_gateway = container_files_gateway
         self._storage_service = storage_service
+        self._asset_service = asset_service
         self._policy = policy or AgentRuntimePolicy.from_env()
 
         self._session_manager = session_manager or SessionManager(
@@ -102,6 +106,9 @@ class AgentService:
         self._attachment_service = attachment_service or AttachmentService(
             self._get_storage_service,
             container_files_gateway_resolver=self._get_container_files_gateway,
+            asset_service_resolver=self._get_asset_service
+            if self._asset_service is not None
+            else None,
         )
         self._interaction_builder = interaction_builder or InteractionContextBuilder(
             container_service=self._container_service,
@@ -195,13 +202,18 @@ class AgentService:
             response_id=result.response_id,
         )
         attachments = [*image_attachments, *container_attachments]
-        await persist_assistant_message(
+        message_id = await persist_assistant_message(
             ctx=ctx,
             conversation_service=self._conversation_service,
             response_text=response_text,
             attachments=attachments,
             active_agent=result.final_agent,
             handoff_count=result.handoff_count,
+        )
+        await self._maybe_link_assets(
+            tenant_id=actor.tenant_id,
+            message_id=message_id,
+            attachments=attachments,
         )
         logger.info(
             "agent.chat.end",
@@ -409,13 +421,18 @@ class AgentService:
                 else:
                     terminal_event.attachments.extend(payloads)
 
-        await persist_assistant_message(
+        message_id = await persist_assistant_message(
             ctx=ctx,
             conversation_service=self._conversation_service,
             response_text=processor.outcome.complete_response,
             attachments=processor.outcome.attachments,
             active_agent=processor.outcome.current_agent or ctx.descriptor.key,
             handoff_count=processor.outcome.handoff_count or None,
+        )
+        await self._maybe_link_assets(
+            tenant_id=actor.tenant_id,
+            message_id=message_id,
+            attachments=processor.outcome.attachments,
         )
         logger.info(
             "agent.chat_stream.end",
@@ -497,6 +514,41 @@ class AgentService:
         if self._storage_service is None:
             raise RuntimeError("Storage service is not configured")
         return self._storage_service
+
+    def _get_asset_service(self) -> AssetService:
+        if self._asset_service is None:
+            raise RuntimeError("Asset service is not configured")
+        return self._asset_service
+
+    async def _maybe_link_assets(
+        self,
+        *,
+        tenant_id: str,
+        message_id: int | None,
+        attachments: list,
+    ) -> None:
+        if self._asset_service is None or message_id is None or not attachments:
+            return
+        try:
+            storage_object_ids = [uuid.UUID(att.object_id) for att in attachments]
+        except Exception:
+            logger.warning(
+                "asset.link_failed_invalid_object_ids",
+                extra={"tenant_id": tenant_id, "message_id": message_id},
+            )
+            return
+        try:
+            await self._asset_service.link_assets_to_message(
+                tenant_id=uuid.UUID(tenant_id),
+                message_id=message_id,
+                storage_object_ids=storage_object_ids,
+            )
+        except Exception as exc:
+            logger.warning(
+                "asset.link_failed",
+                extra={"tenant_id": tenant_id, "message_id": message_id},
+                exc_info=exc,
+            )
 
     def _get_container_files_gateway(self) -> ContainerFilesGateway:
         if self._container_files_gateway is None:
@@ -595,6 +647,7 @@ def build_agent_service(
     provider_registry: AgentProviderRegistry | None = None,
     container_service: ContainerService | None = None,
     storage_service: StorageService | None = None,
+    asset_service: AssetService | None = None,
     policy: AgentRuntimePolicy | None = None,
     vector_store_service: VectorStoreService | None = None,
     catalog_service: AgentCatalogService | None = None,
@@ -607,6 +660,7 @@ def build_agent_service(
         provider_registry=provider_registry,
         container_service=container_service,
         storage_service=storage_service,
+        asset_service=asset_service,
         policy=policy,
         vector_store_service=vector_store_service,
         catalog_service=catalog_service,
@@ -623,6 +677,8 @@ def get_agent_service() -> AgentService:
     if container.agent_service is None:
         if container.storage_service is None:
             wire_storage_service(container)
+        if container.asset_service is None:
+            wire_asset_service(container)
         container.agent_service = build_agent_service(
             conversation_service=container.conversation_service,
             conversation_repository=None,
@@ -631,6 +687,7 @@ def get_agent_service() -> AgentService:
             provider_registry=get_provider_registry(),
             container_service=container.container_service,
             storage_service=container.storage_service,
+            asset_service=container.asset_service,
             vector_store_service=container.vector_store_service,
         )
     return container.agent_service

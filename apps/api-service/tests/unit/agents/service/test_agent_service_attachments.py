@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from app.domain.ai.models import AgentStreamEvent
-from app.domain.conversations import ConversationMessage
+from app.domain.conversations import ConversationAttachment, ConversationMessage
 from app.services.agent_service import AgentService
 from app.services.agents.context import ConversationActorContext
 
@@ -65,3 +65,27 @@ async def test_agent_service_stream_attaches_images(monkeypatch):
     assert any(ev.attachments for ev in events)
     storage.put_object.assert_awaited()
     storage.get_presigned_download.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_agent_service_asset_linking_is_best_effort():
+    provider = MagicMock()
+    registry = MagicMock(get_default=lambda: provider)
+
+    class _ExplodingAssetService:
+        async def link_assets_to_message(self, **_: object) -> None:
+            raise RuntimeError("boom")
+
+    svc = AgentService(provider_registry=registry, asset_service=_ExplodingAssetService())
+    attachments = [
+        ConversationAttachment(
+            object_id=str(uuid.uuid4()),
+            filename="file.txt",
+        )
+    ]
+
+    await svc._maybe_link_assets(
+        tenant_id=str(uuid.uuid4()),
+        message_id=1,
+        attachments=attachments,
+    )

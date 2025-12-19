@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
 from collections.abc import AsyncIterator, Mapping
 from types import SimpleNamespace
 from typing import Any, cast
@@ -25,6 +26,7 @@ from app.services.agents.event_log import EventProjector
 from app.services.agents.interaction_context import InteractionContextBuilder
 from app.services.agents.provider_registry import AgentProviderRegistry, get_provider_registry
 from app.services.agents.session_items import compute_session_delta, get_session_items
+from app.services.assets.service import AssetService
 from app.services.conversation_service import ConversationService, get_conversation_service
 from app.services.workflows.recording import WorkflowRunRecorder
 from app.services.workflows.stages import run_parallel_stage, run_sequential_stage
@@ -79,6 +81,7 @@ class WorkflowRunner:
         conversation_service: ConversationService | None = None,
         event_projector: EventProjector | None = None,
         attachment_service: AttachmentService | None = None,
+        asset_service: AssetService | None = None,
     ) -> None:
         self._registry = registry
         self._provider_registry = provider_registry or get_provider_registry()
@@ -89,6 +92,7 @@ class WorkflowRunner:
         self._conversation_service = conversation_service or get_conversation_service()
         self._event_projector = event_projector or EventProjector(self._conversation_service)
         self._attachment_service = attachment_service
+        self._asset_service = asset_service
 
     async def _ingest_session_delta(
         self,
@@ -148,7 +152,7 @@ class WorkflowRunner:
     ) -> None:
         """Persist the workflow result as a single assistant message (chat parity)."""
 
-        await self._conversation_service.append_message(
+        message_id = await self._conversation_service.append_message(
             conversation_id,
             ConversationMessage(role="assistant", content=response_text, attachments=attachments),
             tenant_id=actor.tenant_id,
@@ -160,6 +164,35 @@ class WorkflowRunner:
                 user_id=actor.user_id,
             ),
         )
+        if self._asset_service and message_id is not None and attachments:
+            try:
+                storage_ids = [uuid.UUID(att.object_id) for att in attachments]
+            except Exception:
+                logger.warning(
+                    "asset.link_failed_invalid_object_ids",
+                    extra={
+                        "tenant_id": actor.tenant_id,
+                        "conversation_id": conversation_id,
+                        "message_id": message_id,
+                    },
+                )
+                return
+            try:
+                await self._asset_service.link_assets_to_message(
+                    tenant_id=uuid.UUID(actor.tenant_id),
+                    message_id=message_id,
+                    storage_object_ids=storage_ids,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "asset.link_failed",
+                    extra={
+                        "tenant_id": actor.tenant_id,
+                        "conversation_id": conversation_id,
+                        "message_id": message_id,
+                    },
+                    exc_info=exc,
+                )
 
     async def run(
         self,

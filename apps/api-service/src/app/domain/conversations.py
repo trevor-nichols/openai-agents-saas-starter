@@ -218,7 +218,7 @@ class ConversationRepository(Protocol):
         *,
         tenant_id: str,
         metadata: ConversationMetadata,
-    ) -> None: ...
+    ) -> int | None: ...
 
     async def get_messages(
         self,

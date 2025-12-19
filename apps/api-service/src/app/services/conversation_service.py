@@ -111,11 +111,11 @@ class ConversationService:
         *,
         tenant_id: str,
         metadata: ConversationMetadata,
-    ) -> None:
+    ) -> int | None:
         repository = self._require_repository()
         normalized_tenant = _require_tenant_id(tenant_id)
         _ensure_metadata_tenant(metadata, normalized_tenant)
-        await repository.add_message(
+        return await repository.add_message(
             conversation_id,
             message,
             tenant_id=normalized_tenant,

@@ -73,6 +73,7 @@ from app.infrastructure.persistence.conversations import models as _conversation
 from app.infrastructure.persistence.conversations import (  # noqa: F401
     ledger_models as _conversation_ledger_models,
 )
+from app.infrastructure.persistence.assets import models as _asset_models  # noqa: F401
 from app.infrastructure.persistence.status import models as _status_models  # noqa: F401
 from app.infrastructure.persistence.storage import models as _storage_models  # noqa: F401
 from app.infrastructure.persistence.stripe import models as _stripe_models  # noqa: F401
@@ -264,7 +265,7 @@ class EphemeralConversationRepository(ConversationRepository):
         *,
         tenant_id: str,
         metadata: ConversationMetadata,
-    ) -> None:
+    ) -> int | None:
         key = self._key(tenant_id, conversation_id)
         self._messages[key].append(message)
         self._metadata[key] = metadata
@@ -275,6 +276,7 @@ class EphemeralConversationRepository(ConversationRepository):
             session_cursor=metadata.session_cursor,
             last_session_sync_at=metadata.last_session_sync_at,
         )
+        return len(self._messages[key])
 
     async def get_messages(
         self,

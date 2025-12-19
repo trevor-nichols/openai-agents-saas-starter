@@ -43,8 +43,8 @@ class PostgresConversationRepository(ConversationRepository):
         *,
         tenant_id: str,
         metadata: ConversationMetadata,
-    ) -> None:
-        await self._messages.add_message(
+    ) -> int | None:
+        return await self._messages.add_message(
             conversation_id, message, tenant_id=tenant_id, metadata=metadata
         )
 
