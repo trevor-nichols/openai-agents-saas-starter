@@ -32,10 +32,10 @@ jobs:
           pip install hatch
 
       - name: Bootstrap CLI env
-        run: just -f starter_cli/justfile bootstrap
+        run: just -f packages/starter_cli/justfile bootstrap
 
       - name: CLI smoke test
-        run: cd starter_cli && hatch run python -m starter_cli.app --help
+        run: cd packages/starter_cli && hatch run python -m starter_cli.app --help
 
       - name: Run CLI unit tests
         run: just cli-test
