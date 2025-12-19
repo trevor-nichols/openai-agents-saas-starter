@@ -65,10 +65,10 @@ smoke-http:
 	cd {{project_dir}}
 	api_pid=""
 	if python -m hatch run serve >/tmp/api-smoke.log 2>&1 & then
-	  api_pid=$!
+	api_pid=$!
 	else
-	  echo "api-service failed to start; see /tmp/api-smoke.log" >&2
-	  exit 1
+	echo "api-service failed to start; see /tmp/api-smoke.log" >&2
+	exit 1
 	fi
 	trap "kill $api_pid" EXIT
 	# Wait for health endpoint (fail fast if it never comes up)
