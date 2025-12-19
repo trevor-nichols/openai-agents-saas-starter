@@ -162,7 +162,12 @@ def test_custom_file_path_ignores_unwritable_log_root(monkeypatch, tmp_path: Pat
 
     assert custom.exists(), "Custom log file not written"
     # ensure we didn't create the forbidden root
-    assert not Path("/root/forbidden").exists() or Path("/root/forbidden").is_dir()
+    try:
+        forbidden = Path("/root/forbidden")
+        assert not forbidden.exists() or forbidden.is_dir()
+    except PermissionError:
+        # Some CI runners deny stat access to /root; treat as not created.
+        pass
 
 
 def test_stdout_duplex_error_file(tmp_path: Path) -> None:

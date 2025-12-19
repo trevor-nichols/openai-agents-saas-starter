@@ -64,9 +64,10 @@ smoke-http:
 	export SMOKE_ENABLE_CONTAINERS="${SMOKE_ENABLE_CONTAINERS:-0}"
 	cd {{project_dir}}
 	api_pid=""
-	if python -m hatch run serve >/tmp/api-smoke.log 2>&1 & then
+	python -m hatch run serve >/tmp/api-smoke.log 2>&1 &
 	api_pid=$!
-	else
+	sleep 0.2
+	if ! kill -0 "$api_pid" >/dev/null 2>&1; then
 	echo "api-service failed to start; see /tmp/api-smoke.log" >&2
 	exit 1
 	fi
