@@ -65,7 +65,9 @@ smoke-http:
 	cd {{project_dir}}
 	api_pid=""
 	python -m hatch run serve >/tmp/api-smoke.log 2>&1 &
+	set +u
 	api_pid=$!
+	set -u
 	sleep 0.2
 	if ! kill -0 "$api_pid" >/dev/null 2>&1; then
 	echo "api-service failed to start; see /tmp/api-smoke.log" >&2
