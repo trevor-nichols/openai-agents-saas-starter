@@ -14,6 +14,7 @@ from app.api.dependencies.usage import enforce_usage_guardrails
 from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse, StreamingChatEvent
 from app.api.v1.shared.public_stream_projector import PublicStreamProjector
 from app.core.settings import get_settings
+from app.domain.input_attachments import InputAttachmentNotFoundError
 from app.services.agent_service import ConversationActorContext, agent_service
 from app.services.conversations.ledger_recorder import get_conversation_ledger_recorder
 from app.services.shared.rate_limit_service import (
@@ -69,6 +70,16 @@ async def chat_with_agent(
 
     try:
         return await agent_service.chat(request, actor=actor)
+    except InputAttachmentNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

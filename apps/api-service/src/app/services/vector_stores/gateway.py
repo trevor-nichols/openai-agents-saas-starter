@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable
+from io import BytesIO
 from typing import Any, cast
 
 from openai import AsyncOpenAI
@@ -58,6 +59,26 @@ class OpenAIVectorStoreGateway:
     async def retrieve_file_meta(self, *, tenant_id: uuid.UUID, file_id: str) -> object:
         client = self._client(tenant_id)
         return await client.files.retrieve(file_id)
+
+    async def upload_file(
+        self,
+        *,
+        tenant_id: uuid.UUID,
+        filename: str,
+        data: bytes,
+        mime_type: str | None,
+    ) -> object:
+        client = self._client(tenant_id)
+        file_tuple: tuple[object, ...]
+        if mime_type:
+            file_tuple = (filename, BytesIO(data), mime_type)
+        else:
+            file_tuple = (filename, BytesIO(data))
+        return await client.files.create(file=file_tuple, purpose="assistants")
+
+    async def delete_openai_file(self, *, tenant_id: uuid.UUID, file_id: str) -> None:
+        client = self._client(tenant_id)
+        await client.files.delete(file_id=file_id)
 
     async def attach_file(
         self,

@@ -4,6 +4,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.api.v1.shared.attachments import InputAttachment
 from app.api.v1.shared.streaming import MessageAttachment, PublicSseEvent
 from app.domain.workflows import WorkflowStatus
 from app.utils.tools.location import LocationHint
@@ -30,6 +31,9 @@ class WorkflowListResponse(BaseModel):
 
 class WorkflowRunRequestBody(BaseModel):
     message: str = Field(..., description="Initial user message")
+    attachments: list[InputAttachment] | None = Field(
+        default=None, description="Optional file/image inputs for the workflow run."
+    )
     conversation_id: str | None = Field(
         None, description="Optional conversation id to reuse across steps"
     )

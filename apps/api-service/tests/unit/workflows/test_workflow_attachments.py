@@ -122,6 +122,7 @@ async def test_workflow_run_ingests_container_file_attachments(monkeypatch: pyte
             spec,
             actor=_actor(),
             message="make a pdf",
+            attachments=None,
             conversation_id="conv",
         )
     finally:
@@ -161,6 +162,7 @@ async def test_workflow_run_asset_linking_is_best_effort(monkeypatch: pytest.Mon
             spec,
             actor=_actor(),
             message="make a pdf",
+            attachments=None,
             conversation_id="conv",
         )
     finally:
@@ -196,6 +198,7 @@ async def test_workflow_stream_terminal_event_includes_attachments(monkeypatch: 
             spec,
             actor=_actor(),
             message="make a pdf",
+            attachments=None,
             conversation_id="conv",
         ):
             events.append(ev)

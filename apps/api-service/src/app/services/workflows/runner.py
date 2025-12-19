@@ -12,17 +12,20 @@ from uuid import uuid4
 
 from agents import trace
 
+from app.api.v1.shared.attachments import InputAttachment
 from app.domain.ai.models import AgentRunUsage, AgentStreamEvent
 from app.domain.conversations import (
     ConversationAttachment,
     ConversationMessage,
     ConversationMetadata,
 )
+from app.domain.input_attachments import InputAttachmentRef
 from app.domain.workflows import WorkflowRunRepository
 from app.services.agents.attachment_utils import collect_container_file_citations_from_event
 from app.services.agents.attachments import AttachmentService
 from app.services.agents.context import ConversationActorContext
 from app.services.agents.event_log import EventProjector
+from app.services.agents.input_attachments import InputAttachmentService
 from app.services.agents.interaction_context import InteractionContextBuilder
 from app.services.agents.provider_registry import AgentProviderRegistry, get_provider_registry
 from app.services.agents.session_items import compute_session_delta, get_session_items
@@ -81,6 +84,7 @@ class WorkflowRunner:
         conversation_service: ConversationService | None = None,
         event_projector: EventProjector | None = None,
         attachment_service: AttachmentService | None = None,
+        input_attachment_service: InputAttachmentService | None = None,
         asset_service: AssetService | None = None,
     ) -> None:
         self._registry = registry
@@ -92,7 +96,39 @@ class WorkflowRunner:
         self._conversation_service = conversation_service or get_conversation_service()
         self._event_projector = event_projector or EventProjector(self._conversation_service)
         self._attachment_service = attachment_service
+        self._input_attachment_service = input_attachment_service
         self._asset_service = asset_service
+
+    async def _resolve_user_input(
+        self,
+        *,
+        attachments: list[InputAttachment] | None,
+        actor: ConversationActorContext,
+        conversation_id: str,
+        agent_key: str,
+        message: str,
+    ) -> tuple[Any, list[ConversationAttachment]]:
+        if not attachments:
+            return message, []
+        if self._input_attachment_service is None:
+            raise RuntimeError("InputAttachmentService is not configured")
+        attachment_refs = [
+            InputAttachmentRef(object_id=att.object_id, kind=getattr(att, "kind", None))
+            for att in attachments
+        ]
+        resolution = await self._input_attachment_service.resolve(
+            attachment_refs,
+            actor=actor,
+            conversation_id=conversation_id,
+            agent_key=agent_key,
+        )
+        if not resolution.input_items:
+            return message, resolution.attachments
+        content: list[dict[str, Any]] = [
+            {"type": "input_text", "text": message},
+            *resolution.input_items,
+        ]
+        return [{"role": "user", "content": content}], resolution.attachments
 
     async def _ingest_session_delta(
         self,
@@ -200,29 +236,52 @@ class WorkflowRunner:
         *,
         actor: ConversationActorContext,
         message: str,
+        attachments: list[InputAttachment] | None,
         conversation_id: str,
         location: Any | None = None,
         share_location: bool | None = None,
     ) -> WorkflowRunResult:
         provider = self._provider_registry.get_default()
         run_id = _uuid()
+        entry_agent = _first_agent_key(workflow) or workflow.key
         session_handle = provider.session_store.build(conversation_id)
         conversation_exists = await self._conversation_service.conversation_exists(
             conversation_id, tenant_id=actor.tenant_id
         )
 
-        await self._conversation_service.append_message(
+        agent_input, user_attachments = await self._resolve_user_input(
+            attachments=attachments,
+            actor=actor,
+            conversation_id=conversation_id,
+            agent_key=entry_agent,
+            message=message,
+        )
+        message_id = await self._conversation_service.append_message(
             conversation_id,
-            ConversationMessage(role="user", content=message),
+            ConversationMessage(role="user", content=message, attachments=user_attachments),
             tenant_id=actor.tenant_id,
             metadata=ConversationMetadata(
                 tenant_id=actor.tenant_id,
                 agent_entrypoint=workflow.key,
-                active_agent=_first_agent_key(workflow),
+                active_agent=entry_agent,
                 provider=provider.name,
                 user_id=actor.user_id,
             ),
         )
+        if self._asset_service and message_id is not None and user_attachments:
+            try:
+                storage_ids = [uuid.UUID(att.object_id) for att in user_attachments]
+                await self._asset_service.link_assets_to_message(
+                    tenant_id=uuid.UUID(actor.tenant_id),
+                    message_id=message_id,
+                    storage_object_ids=storage_ids,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "workflow.user_attachment.link_failed",
+                    extra={"tenant_id": actor.tenant_id, "conversation_id": conversation_id},
+                    exc_info=exc,
+                )
         await self._conversation_service.record_conversation_created(
             conversation_id,
             tenant_id=actor.tenant_id,
@@ -270,10 +329,10 @@ class WorkflowRunner:
                 session_items=session_items,
             )
 
-        current_input: Any = message
+        current_input: Any = agent_input
         steps_results: list[WorkflowStepResult] = []
         stages = workflow.resolved_stages()
-        attachments: list[ConversationAttachment] = []
+        output_attachments: list[ConversationAttachment] = []
         seen_tool_calls: set[str] = set()
         seen_container_files: set[str] = set()
 
@@ -339,7 +398,7 @@ class WorkflowRunner:
                         seen_tool_calls=seen_tool_calls,
                     )
                     if images:
-                        attachments.extend(images)
+                        output_attachments.extend(images)
 
                     container_files = await ingest_container_files(
                         tool_outputs,
@@ -350,7 +409,7 @@ class WorkflowRunner:
                         seen_citations=seen_container_files,
                     )
                     if container_files:
-                        attachments.extend(container_files)
+                        output_attachments.extend(container_files)
 
             await self._persist_workflow_assistant_message(
                 workflow=workflow,
@@ -358,7 +417,7 @@ class WorkflowRunner:
                 provider_name=provider.name,
                 conversation_id=conversation_id,
                 response_text=_render_workflow_output_text(validated_output),
-                attachments=attachments,
+                attachments=output_attachments,
                 active_agent=(steps_results[-1].agent_key if steps_results else None),
             )
 
@@ -391,7 +450,7 @@ class WorkflowRunner:
             steps=steps_results,
             final_output=validated_output if steps_results else None,
             output_schema=schema_to_json_schema(workflow.output_schema),
-            attachments=attachments,
+            attachments=output_attachments,
         )
 
     async def run_stream(
@@ -400,28 +459,51 @@ class WorkflowRunner:
         *,
         actor: ConversationActorContext,
         message: str,
+        attachments: list[InputAttachment] | None,
         conversation_id: str,
         location: Any | None = None,
         share_location: bool | None = None,
     ) -> AsyncIterator[AgentStreamEvent]:
         provider = self._provider_registry.get_default()
         run_id = _uuid()
+        entry_agent = _first_agent_key(workflow) or workflow.key
         session_handle = provider.session_store.build(conversation_id)
         conversation_exists = await self._conversation_service.conversation_exists(
             conversation_id, tenant_id=actor.tenant_id
         )
-        await self._conversation_service.append_message(
+        agent_input, user_attachments = await self._resolve_user_input(
+            attachments=attachments,
+            actor=actor,
+            conversation_id=conversation_id,
+            agent_key=entry_agent,
+            message=message,
+        )
+        message_id = await self._conversation_service.append_message(
             conversation_id,
-            ConversationMessage(role="user", content=message),
+            ConversationMessage(role="user", content=message, attachments=user_attachments),
             tenant_id=actor.tenant_id,
             metadata=ConversationMetadata(
                 tenant_id=actor.tenant_id,
                 agent_entrypoint=workflow.key,
-                active_agent=_first_agent_key(workflow),
+                active_agent=entry_agent,
                 provider=provider.name,
                 user_id=actor.user_id,
             ),
         )
+        if self._asset_service and message_id is not None and user_attachments:
+            try:
+                storage_ids = [uuid.UUID(att.object_id) for att in user_attachments]
+                await self._asset_service.link_assets_to_message(
+                    tenant_id=uuid.UUID(actor.tenant_id),
+                    message_id=message_id,
+                    storage_object_ids=storage_ids,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "workflow.user_attachment.link_failed",
+                    extra={"tenant_id": actor.tenant_id, "conversation_id": conversation_id},
+                    exc_info=exc,
+                )
         await self._conversation_service.record_conversation_created(
             conversation_id,
             tenant_id=actor.tenant_id,
@@ -469,10 +551,10 @@ class WorkflowRunner:
                 session_items=session_items,
             )
 
-        current_input: Any = message
+        current_input: Any = agent_input
         prior_steps: list[WorkflowStepResult] = []
         stages = workflow.resolved_stages()
-        attachments: list[ConversationAttachment] = []
+        output_attachments: list[ConversationAttachment] = []
         seen_tool_calls: set[str] = set()
         pending_container_citations: list[tuple[Mapping[str, Any], str | None, str | None]] = []
         seen_container_files: set[str] = set()
@@ -509,7 +591,7 @@ class WorkflowRunner:
                                     attachment_service=self._attachment_service,
                                     actor=actor,
                                     conversation_id=conversation_id,
-                                    attachments_out=attachments,
+                                    attachments_out=output_attachments,
                                     seen_tool_calls=seen_tool_calls,
                                     pending_container_citations=pending_container_citations,
                                     seen_container_files=seen_container_files,
@@ -542,7 +624,7 @@ class WorkflowRunner:
                                     attachment_service=self._attachment_service,
                                     actor=actor,
                                     conversation_id=conversation_id,
-                                    attachments_out=attachments,
+                                    attachments_out=output_attachments,
                                     seen_tool_calls=seen_tool_calls,
                                     pending_container_citations=pending_container_citations,
                                     seen_container_files=seen_container_files,
@@ -573,7 +655,7 @@ class WorkflowRunner:
                         response_id=response_id,
                     )
                     if container_files:
-                        attachments.extend(container_files)
+                        output_attachments.extend(container_files)
 
             await self._persist_workflow_assistant_message(
                 workflow=workflow,
@@ -581,7 +663,7 @@ class WorkflowRunner:
                 provider_name=provider.name,
                 conversation_id=conversation_id,
                 response_text=_render_workflow_output_text(validated_output),
-                attachments=attachments,
+                attachments=output_attachments,
                 active_agent=(prior_steps[-1].agent_key if prior_steps else None),
             )
 
@@ -621,7 +703,7 @@ class WorkflowRunner:
                             Mapping[str, Any],
                             self._attachment_service.to_attachment_payload(att),
                         )
-                        for att in attachments
+                        for att in output_attachments
                     ]
                     if self._attachment_service is not None
                     else None

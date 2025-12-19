@@ -4,6 +4,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from app.api.v1.shared.attachments import InputAttachment
 from app.api.v1.shared.streaming import MessageAttachment, PublicSseEvent
 
 
@@ -21,6 +22,7 @@ class AgentRunOptions(BaseModel):
 
 class AgentChatRequest(BaseModel):
     message: str
+    attachments: list[InputAttachment] | None = None
     conversation_id: str | None = None
     agent_type: str | None = None
     share_location: bool | None = None

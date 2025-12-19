@@ -20,9 +20,9 @@ from app.bootstrap.container import wire_asset_service, wire_storage_service
 from app.core.settings import get_settings
 from app.domain.ai.lifecycle import LifecycleEventBus
 from app.domain.ai.models import AgentStreamEvent
-from app.domain.conversations import (
-    ConversationRepository,
-)
+from app.domain.ai.ports import AgentInput
+from app.domain.conversations import ConversationAttachment, ConversationRepository
+from app.domain.input_attachments import InputAttachmentRef
 from app.guardrails._shared.events import GuardrailEmissionToken, set_guardrail_emitters
 from app.services.agents.attachments import AttachmentService
 from app.services.agents.catalog import AgentCatalogPage, AgentCatalogService
@@ -32,6 +32,7 @@ from app.services.agents.context import (
     set_current_actor,
 )
 from app.services.agents.event_log import EventProjector
+from app.services.agents.input_attachments import InputAttachmentService
 from app.services.agents.interaction_context import InteractionContextBuilder
 from app.services.agents.policy import AgentRuntimePolicy
 from app.services.agents.provider_registry import AgentProviderRegistry, get_provider_registry
@@ -86,6 +87,7 @@ class AgentService:
         vector_store_service: VectorStoreService | None = None,
         session_manager: SessionManager | None = None,
         attachment_service: AttachmentService | None = None,
+        input_attachment_service: InputAttachmentService | None = None,
         usage_service: UsageService | None = None,
         catalog_service: AgentCatalogService | None = None,
     ) -> None:
@@ -106,6 +108,12 @@ class AgentService:
         self._attachment_service = attachment_service or AttachmentService(
             self._get_storage_service,
             container_files_gateway_resolver=self._get_container_files_gateway,
+            asset_service_resolver=self._get_asset_service
+            if self._asset_service is not None
+            else None,
+        )
+        self._input_attachment_service = input_attachment_service or InputAttachmentService(
+            self._get_storage_service,
             asset_service_resolver=self._get_asset_service
             if self._asset_service is not None
             else None,
@@ -139,11 +147,24 @@ class AgentService:
             else None,
         )
 
-        await record_user_message(
+        agent_input, user_attachments = await self._resolve_user_input(
+            request=request,
+            actor=actor,
+            conversation_id=ctx.conversation_id,
+            agent_key=ctx.descriptor.key,
+        )
+        _, user_message_id = await record_user_message(
             ctx=ctx,
             request=request,
             conversation_service=self._conversation_service,
+            attachments=user_attachments,
         )
+        if user_message_id is not None and user_attachments:
+            await self._maybe_link_assets(
+                tenant_id=actor.tenant_id,
+                message_id=user_message_id,
+                attachments=user_attachments,
+            )
 
         token = set_current_actor(actor)
         try:
@@ -177,7 +198,7 @@ class AgentService:
             with trace(workflow_name="Agent Chat", group_id=ctx.conversation_id):
                 result = await ctx.provider.runtime.run(
                     ctx.descriptor.key,
-                    request.message,
+                    agent_input,
                     session=ctx.session_handle,
                     conversation_id=runtime_conversation_id,
                     metadata={"prompt_runtime_ctx": ctx.runtime_ctx},
@@ -320,11 +341,24 @@ class AgentService:
             },
         )
 
-        await record_user_message(
+        agent_input, user_attachments = await self._resolve_user_input(
+            request=request,
+            actor=actor,
+            conversation_id=ctx.conversation_id,
+            agent_key=ctx.descriptor.key,
+        )
+        _, user_message_id = await record_user_message(
             ctx=ctx,
             request=request,
             conversation_service=self._conversation_service,
+            attachments=user_attachments,
         )
+        if user_message_id is not None and user_attachments:
+            await self._maybe_link_assets(
+                tenant_id=actor.tenant_id,
+                message_id=user_message_id,
+                attachments=user_attachments,
+            )
 
         token = set_current_actor(actor)
         try:
@@ -362,7 +396,7 @@ class AgentService:
             with trace(workflow_name="Agent Chat Stream", group_id=ctx.conversation_id):
                 stream_handle = ctx.provider.runtime.run_stream(
                     ctx.descriptor.key,
-                    request.message,
+                    agent_input,
                     session=ctx.session_handle,
                     conversation_id=runtime_conversation_id,
                     metadata={"prompt_runtime_ctx": ctx.runtime_ctx},
@@ -510,6 +544,41 @@ class AgentService:
                 " AgentProviderRegistry."
             ) from exc
 
+    async def _resolve_user_input(
+        self,
+        *,
+        request: AgentChatRequest,
+        actor: ConversationActorContext,
+        conversation_id: str,
+        agent_key: str,
+    ) -> tuple[AgentInput, list[ConversationAttachment]]:
+        attachments = self._coerce_input_attachments(request.attachments)
+        resolution = await self._input_attachment_service.resolve(
+            attachments,
+            actor=actor,
+            conversation_id=conversation_id,
+            agent_key=agent_key,
+        )
+        if not resolution.input_items:
+            return request.message, resolution.attachments
+
+        content: list[dict[str, Any]] = [
+            {"type": "input_text", "text": request.message},
+            *resolution.input_items,
+        ]
+        return [{"role": "user", "content": content}], resolution.attachments
+
+    @staticmethod
+    def _coerce_input_attachments(
+        attachments: list | None,
+    ) -> list[InputAttachmentRef] | None:
+        if not attachments:
+            return None
+        return [
+            InputAttachmentRef(object_id=att.object_id, kind=getattr(att, "kind", None))
+            for att in attachments
+        ]
+
     def _get_storage_service(self) -> StorageService:
         if self._storage_service is None:
             raise RuntimeError("Storage service is not configured")
@@ -648,6 +717,7 @@ def build_agent_service(
     container_service: ContainerService | None = None,
     storage_service: StorageService | None = None,
     asset_service: AssetService | None = None,
+    input_attachment_service: InputAttachmentService | None = None,
     policy: AgentRuntimePolicy | None = None,
     vector_store_service: VectorStoreService | None = None,
     catalog_service: AgentCatalogService | None = None,
@@ -661,6 +731,7 @@ def build_agent_service(
         container_service=container_service,
         storage_service=storage_service,
         asset_service=asset_service,
+        input_attachment_service=input_attachment_service,
         policy=policy,
         vector_store_service=vector_store_service,
         catalog_service=catalog_service,

@@ -9,8 +9,9 @@ from typing import Any
 from app.agents._shared.prompt_context import PromptRuntimeContext
 from app.agents._shared.registry_loader import load_agent_specs
 from app.core.settings import Settings, get_settings
+from app.services.agents.vector_store_resolution import resolve_vector_store_ids_for_agent
 from app.services.containers import ContainerService
-from app.services.vector_stores.service import VectorStoreNotFoundError, VectorStoreService
+from app.services.vector_stores.service import VectorStoreService
 from app.utils.tools.location import build_web_search_location
 
 
@@ -155,82 +156,19 @@ class InteractionContextBuilder:
         *,
         spec,
         tenant_id: str,
-        user_id: str,
+        user_id: str | None,
         overrides: dict[str, Any],
         vector_store_service,
     ) -> list[str]:
         """Resolve the vector_store_ids for file_search following override > binding > default."""
-
-        # Request override (client-provided)
-        override_ids = overrides.get("vector_store_ids") or overrides.get("vector_store_id")
-        if override_ids:
-            if isinstance(override_ids, str):
-                override_ids = [override_ids]
-            resolved: list[str] = []
-            for candidate in override_ids:
-                store = None
-                try:
-                    store = await vector_store_service.get_store(
-                        vector_store_id=candidate, tenant_id=tenant_id
-                    )
-                except Exception:
-                    store = await vector_store_service.get_store_by_openai_id(
-                        tenant_id=tenant_id, openai_id=str(candidate)
-                    )
-                if store is None:
-                    raise VectorStoreNotFoundError("Vector store override not found")
-                resolved.append(str(store.openai_id))
-            return resolved
-
-        # Agent-level binding stored in DB
-        try:
-            binding = await vector_store_service.get_agent_binding(
-                agent_key=spec.key,
-                tenant_id=tenant_id,
-            )
-        except Exception:
-            binding = None
-        if binding is not None and getattr(binding, "openai_id", None):
-            return [str(binding.openai_id)]
-
-        # Spec-configured bindings
-        binding_mode = getattr(spec, "vector_store_binding", "tenant_default")
-        spec_ids = list(getattr(spec, "vector_store_ids", ()) or [])
-
-        if binding_mode == "static":
-            if not spec_ids:
-                raise ValueError(
-                    "Agent "
-                    f"'{spec.key}' file_search requires vector_store_ids when binding='static'"
-                )
-            return spec_ids
-
-        settings = self._settings_factory()
-        auto_create = getattr(settings, "auto_create_vector_store_for_file_search", True)
-
-        if binding_mode == "required":
-            store = await vector_store_service.get_store_by_name(
-                tenant_id=tenant_id,
-                name="primary",
-            )
-            if store is None or not store.openai_id:
-                raise VectorStoreNotFoundError("Primary vector store is required but not found")
-            return [str(store.openai_id)]
-
-        if auto_create:
-            store = await vector_store_service.ensure_primary_store(
-                tenant_id=tenant_id,
-                owner_user_id=user_id,
-            )
-        else:
-            store = await vector_store_service.get_store_by_name(
-                tenant_id=tenant_id,
-                name="primary",
-            )
-
-        if store is None or not getattr(store, "openai_id", None):
-            raise VectorStoreNotFoundError("Failed to resolve vector store for file_search")
-        return [str(store.openai_id)]
+        return await resolve_vector_store_ids_for_agent(
+            spec=spec,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            overrides=overrides,
+            vector_store_service=vector_store_service,
+            settings_factory=self._settings_factory,
+        )
 
 
 __all__ = ["InteractionContextBuilder"]

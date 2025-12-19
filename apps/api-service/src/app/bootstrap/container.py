@@ -213,10 +213,16 @@ def wire_vector_store_service(container: ApplicationContainer) -> None:
         if container.session_factory is None:
             raise RuntimeError("Session factory must be configured before vector store service")
         settings = get_settings()
+        if container.storage_service is None:
+            wire_storage_service(container)
+        if container.storage_service is None:  # pragma: no cover - defensive
+            raise RuntimeError("Storage service must be configured before vector store service")
+        storage_service = cast(StorageService, container.storage_service)
         container.vector_store_service = VectorStoreService(
             container.session_factory,
             lambda: settings,
             limit_resolver=container.vector_limit_resolver,
+            storage_service=storage_service,
         )
 
 
@@ -361,6 +367,7 @@ def wire_workflow_services(container: ApplicationContainer) -> None:
             wire_asset_service(container)
 
         from app.services.agents.attachments import AttachmentService
+        from app.services.agents.input_attachments import InputAttachmentService
         from app.services.containers.files_gateway import OpenAIContainerFilesGateway
 
         storage_service = cast(StorageService, container.storage_service)
@@ -368,6 +375,10 @@ def wire_workflow_services(container: ApplicationContainer) -> None:
         attachment_service = AttachmentService(
             lambda: storage_service,
             container_files_gateway_resolver=lambda: OpenAIContainerFilesGateway(get_settings),
+            asset_service_resolver=(lambda: asset_service) if asset_service else None,
+        )
+        input_attachment_service = InputAttachmentService(
+            lambda: storage_service,
             asset_service_resolver=(lambda: asset_service) if asset_service else None,
         )
         container.workflow_service = WorkflowService(
@@ -379,6 +390,7 @@ def wire_workflow_services(container: ApplicationContainer) -> None:
             ),
             run_repository=container.workflow_run_repository,
             attachment_service=attachment_service,
+            input_attachment_service=input_attachment_service,
             asset_service=asset_service,
         )
 

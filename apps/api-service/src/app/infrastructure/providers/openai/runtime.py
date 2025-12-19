@@ -14,7 +14,12 @@ from app.agents._shared.prompt_context import PromptRuntimeContext
 from app.core.settings import get_settings
 from app.domain.ai import AgentRunResult, RunOptions
 from app.domain.ai.models import AgentStreamEvent
-from app.domain.ai.ports import AgentRuntime, AgentSessionHandle, AgentStreamingHandle
+from app.domain.ai.ports import (
+    AgentInput,
+    AgentRuntime,
+    AgentSessionHandle,
+    AgentStreamingHandle,
+)
 from app.services.agents.context import ConversationActorContext
 
 from .context import resolve_runtime_context
@@ -47,7 +52,7 @@ class OpenAIAgentRuntime(AgentRuntime):
     async def run(
         self,
         agent_key: str,
-        message: str,
+        message: AgentInput,
         *,
         session: AgentSessionHandle | None = None,
         conversation_id: str | None = None,
@@ -64,9 +69,10 @@ class OpenAIAgentRuntime(AgentRuntime):
         handoff_count = 0
         final_agent: str | None = agent_key
 
+        input_payload = cast(Any, message)
         result = await Runner.run(
             agent,
-            message,
+            input_payload,
             session=session,
             conversation_id=conversation_id,
             hooks=cast(RunHooksBase[Any, Agent[Any]] | None, hooks),
@@ -109,7 +115,7 @@ class OpenAIAgentRuntime(AgentRuntime):
     def run_stream(
         self,
         agent_key: str,
-        message: str,
+        message: AgentInput,
         *,
         session: AgentSessionHandle | None = None,
         conversation_id: str | None = None,
@@ -121,9 +127,10 @@ class OpenAIAgentRuntime(AgentRuntime):
         )
         run_kwargs = self._prepare_run_kwargs(options)
 
+        input_payload = cast(Any, message)
         stream = Runner.run_streamed(
             agent,
-            message,
+            input_payload,
             session=session,
             conversation_id=conversation_id,
             hooks=cast(RunHooksBase[Any, Agent[Any]] | None, hooks),

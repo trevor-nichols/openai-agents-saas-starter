@@ -421,14 +421,17 @@ async def lifespan(app: FastAPI):
     logger.debug("Startup checkpoint: billing stack configured")
 
     # Vector store service (OpenAI vector stores + file search)
+    wire_storage_service(container)
+    if container.storage_service is None:  # pragma: no cover - defensive
+        raise RuntimeError("Storage service failed to initialize")
     container.vector_store_service = VectorStoreService(
         session_factory,
         get_settings,
         limit_resolver=container.vector_limit_resolver,
+        storage_service=container.storage_service,
     )
 
     # Agent service (after vector store is finalized)
-    wire_storage_service(container)
     wire_title_service(container)
     container.agent_service = build_agent_service(
         conversation_service=container.conversation_service,

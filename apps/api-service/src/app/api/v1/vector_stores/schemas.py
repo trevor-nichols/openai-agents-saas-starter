@@ -49,6 +49,14 @@ class VectorStoreFileCreateRequest(BaseModel):
     poll: bool = True
 
 
+class VectorStoreFileUploadRequest(BaseModel):
+    object_id: UUID
+    agent_key: str = Field(min_length=1)
+    attributes: dict[str, Any] | None = None
+    chunking_strategy: dict[str, Any] | None = None
+    poll: bool = True
+
+
 class VectorStoreFileResponse(BaseModel):
     id: UUID
     openai_file_id: str
@@ -129,6 +137,7 @@ __all__ = [
     "VectorStoreResponse",
     "VectorStoreListResponse",
     "VectorStoreFileCreateRequest",
+    "VectorStoreFileUploadRequest",
     "VectorStoreFileResponse",
     "VectorStoreFileListResponse",
     "VectorStoreSearchRequest",

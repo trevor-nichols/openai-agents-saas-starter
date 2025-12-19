@@ -25,6 +25,7 @@ from app.infrastructure.persistence.vector_stores.repository import (
     SqlAlchemyVectorStoreFileRepository,
     SqlAlchemyVectorStoreRepository,
 )
+from app.services.storage.service import StorageService
 from app.services.vector_stores.bindings import BindingService
 from app.services.vector_stores.files import FileService
 from app.services.vector_stores.gateway import OpenAIVectorStoreGateway
@@ -45,6 +46,7 @@ class VectorStoreService:
         get_tenant_api_key: Callable[[uuid.UUID, Settings], str] | None = None,
         limit_resolver: VectorLimitResolver | None = None,
         client_factory: Callable[[uuid.UUID | str], AsyncOpenAI] | None = None,
+        storage_service: StorageService | None = None,
     ) -> None:
         store_repo = SqlAlchemyVectorStoreRepository(session_factory)
         file_repo = SqlAlchemyVectorStoreFileRepository(session_factory)
@@ -58,6 +60,7 @@ class VectorStoreService:
             billing_service=None, settings_factory=settings_factory
         )
         policy = VectorStorePolicy(limit_resolver, settings_factory)
+        storage_service = storage_service or StorageService(session_factory, settings_factory)
 
         self._gateway = gateway
         self._stores = StoreService(store_repo=store_repo, policy=policy, gateway=gateway)
@@ -67,6 +70,7 @@ class VectorStoreService:
             file_repo=file_repo,
             policy=policy,
             gateway=gateway,
+            storage_service=storage_service,
         )
         self._bindings = BindingService(store_service=self._stores, binding_repo=binding_repo)
         self._search = SearchService(store_service=self._stores, gateway=gateway)
@@ -139,6 +143,25 @@ class VectorStoreService:
             vector_store_id=vector_store_id,
             tenant_id=tenant_id,
             file_id=file_id,
+            attributes=attributes,
+            chunking_strategy=chunking_strategy,
+            poll=poll,
+        )
+
+    async def attach_storage_object(
+        self,
+        *,
+        vector_store_id: uuid.UUID | str,
+        tenant_id: uuid.UUID | str,
+        object_id: uuid.UUID,
+        attributes: dict[str, Any] | None = None,
+        chunking_strategy: dict[str, Any] | None = None,
+        poll: bool = True,
+    ) -> VectorStoreFile:
+        return await self._files.attach_storage_object(
+            vector_store_id=vector_store_id,
+            tenant_id=tenant_id,
+            object_id=object_id,
             attributes=attributes,
             chunking_strategy=chunking_strategy,
             poll=poll,

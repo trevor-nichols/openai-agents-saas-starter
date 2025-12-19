@@ -199,6 +199,9 @@
 `POST` `/api/v1/vector-stores/{vector_store_id}/files`
 - Attach File
 
+`POST` `/api/v1/vector-stores/{vector_store_id}/files/upload`
+- Upload Stored Object + Attach File (requires agent_key)
+
 `GET` `/api/v1/vector-stores/{vector_store_id}/files`
 - List Files
 

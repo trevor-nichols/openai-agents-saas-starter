@@ -32,6 +32,7 @@ from app.api.v1.workflows.schemas import (
     WorkflowStepResultSchema,
     WorkflowSummary,
 )
+from app.domain.input_attachments import InputAttachmentNotFoundError
 from app.domain.workflows import WorkflowStatus
 from app.services.agents.context import ConversationActorContext
 from app.services.conversations.ledger_recorder import get_conversation_ledger_recorder
@@ -101,12 +102,15 @@ async def run_workflow(
             workflow_key,
             request=WorkflowRunRequest(
                 message=request.message,
+                attachments=request.attachments,
                 conversation_id=request.conversation_id,
                 location=request.location,
                 share_location=request.share_location,
             ),
             actor=actor,
         )
+    except InputAttachmentNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except ValueError as exc:
         message = str(exc)
         if "not found" in message.lower():
@@ -339,6 +343,7 @@ async def run_workflow_stream(
             workflow_key,
             request=WorkflowRunRequest(
                 message=request.message,
+                attachments=request.attachments,
                 conversation_id=request.conversation_id,
                 location=request.location,
                 share_location=request.share_location,
