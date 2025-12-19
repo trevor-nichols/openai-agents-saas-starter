@@ -63,8 +63,13 @@ smoke-http:
 	export SMOKE_ENABLE_VECTOR="${SMOKE_ENABLE_VECTOR:-0}"
 	export SMOKE_ENABLE_CONTAINERS="${SMOKE_ENABLE_CONTAINERS:-0}"
 	cd {{project_dir}}
-	python -m hatch run serve >/tmp/api-smoke.log 2>&1 &
-	api_pid=$!
+	api_pid=""
+	if python -m hatch run serve >/tmp/api-smoke.log 2>&1 & then
+		api_pid=$!
+	else
+		echo "api-service failed to start; see /tmp/api-smoke.log" >&2
+		exit 1
+	fi
 	trap "kill $api_pid" EXIT
 	# Wait for health endpoint (fail fast if it never comes up)
 	health_ok=false

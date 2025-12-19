@@ -37,6 +37,7 @@ os.environ.setdefault("ALLOW_PUBLIC_SIGNUP", "true")
 os.environ.setdefault("STARTER_CLI_SKIP_ENV", "true")
 os.environ.setdefault("STARTER_CLI_SKIP_VAULT_PROBE", "true")
 os.environ.setdefault("OPENAI_AGENTS_DISABLE_TRACING", "true")
+os.environ.setdefault("OPENAI_API_KEY", "dummy-test-key")
 
 # Avoid shutdown-unsafe debug logs from Agents SDK during pytest capture teardown.
 logging.getLogger("openai.agents").setLevel(logging.WARNING)
