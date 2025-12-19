@@ -4,7 +4,7 @@
 _Last updated: 2025-12-19_  
 **Status:** Completed  
 **Owner:** Platform Foundations  
-**Domain:** Cross-cutting (Backend-first)  
+**Domain:** Cross-cutting (Backend + Frontend)  
 **ID / Links:** [Storage service](../../apps/api-service/src/app/services/storage/README.md), [Attachments](../../apps/api-service/src/app/services/agents/attachments.py)
 
 ---
@@ -12,7 +12,7 @@ _Last updated: 2025-12-19_
 <!-- SECTION: Objective -->
 ## Objective
 
-Provide a first-class, queryable asset catalog for generated images and files that is tenant-scoped, auditable, and linkable back to conversations/messages, enabling dedicated “Images” and “Files” UX pages with list/download/delete actions.
+Provide a first-class, queryable asset catalog for generated images and files that is tenant-scoped, auditable, and linkable back to conversations/messages, plus a polished Asset Library UI for browsing, filtering, downloading, and deleting assets.
 
 ---
 
@@ -26,6 +26,10 @@ Provide a first-class, queryable asset catalog for generated images and files th
 - OpenAPI updated + frontend client regenerated (if schemas change).
 - Tests cover asset creation, list filtering, and delete flows.
 - `hatch run lint` and `hatch run typecheck` are green.
+- Frontend Asset Library page (tabs for images/files) live under authenticated app shell.
+- Frontend uses BFF API routes + fetch helpers + TanStack Query hooks (no direct backend calls).
+- UX supports filtering by conversation/source/tool, download, and delete.
+- `pnpm lint` and `pnpm type-check` are green.
 - Docs/trackers updated.
 
 ---
@@ -39,12 +43,15 @@ Provide a first-class, queryable asset catalog for generated images and files th
 - Asset listing/filtering and download/delete APIs.
 - Storage object ↔ asset linkage and metadata propagation.
 - Optional message linkage (message_id) to support deep links from asset to chat.
+- Frontend Asset Library (single page with tabs for Images / Files) and supporting data-access layers.
+- BFF asset proxy routes + client fetch helpers + TanStack Query hooks.
+- High-end, accessible UI using existing Shadcn primitives + design system.
 
 ### Out of Scope
-- Frontend gallery pages and UX polish (will be separate milestone).
 - Retention policies or lifecycle jobs for storage providers.
 - Billing/usage accounting for assets.
 - Backfill of historical assets (optional follow-up if needed).
+- Bulk download/delete, sharing links, or advanced tagging.
 
 ---
 
@@ -53,10 +60,10 @@ Provide a first-class, queryable asset catalog for generated images and files th
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Architecture/design | ✅ | Asset domain + storage linkage defined and implemented. |
-| Implementation | ✅ | Asset model, ingestion, and API endpoints in place. |
-| Tests & QA | ✅ | Unit + API tests green with lint/typecheck. |
-| Docs & runbooks | ✅ | Asset catalog docs added alongside storage notes. |
+| Architecture/design | ✅ | Backend done; frontend design + UX plan in scope. |
+| Implementation | ✅ | Backend + frontend Asset Library implemented. |
+| Tests & QA | ✅ | Backend + frontend tests green with lint/type-check. |
+| Docs & runbooks | ✅ | Milestone and UX notes updated. |
 
 ---
 
@@ -108,6 +115,23 @@ Provide a first-class, queryable asset catalog for generated images and files th
 | D2 | Tests | API tests for download/delete flows. | Platform Foundations | ✅ |
 | D3 | Docs | Update storage/attachments docs with asset catalog usage. | Platform Foundations | ✅ |
 
+### Workstream E – Frontend Data Access
+
+| ID | Area | Description | Owner | Status |
+|----|------|-------------|-------|--------|
+| E1 | BFF | Add `/app/api/v1/assets` proxy routes (list/detail/delete/download-url). | Platform Foundations | ✅ |
+| E2 | Client | Add `lib/api/assets.ts` + error handling. | Platform Foundations | ✅ |
+| E3 | Queries | Add query keys + TanStack Query hooks for assets. | Platform Foundations | ✅ |
+
+### Workstream F – Frontend UX
+
+| ID | Area | Description | Owner | Status |
+|----|------|-------------|-------|--------|
+| F1 | Page | Add `/assets` page under app shell + nav entry. | Platform Foundations | ✅ |
+| F2 | UI | Asset Library orchestrator + filters + tabs (images/files). | Platform Foundations | ✅ |
+| F3 | UI | Image gallery + file table + actions (download/delete). | Platform Foundations | ✅ |
+| F4 | QA | UI tests for filters/actions + states. | Platform Foundations | ✅ |
+
 ---
 
 <!-- SECTION: Phases (optional if simple) -->
@@ -119,6 +143,9 @@ Provide a first-class, queryable asset catalog for generated images and files th
 | P1 – Implementation | Workstreams A–C2 | Assets persisted + APIs live | ✅ | 2025-12-19 |
 | P2 – Validation | Workstream D + QA | Tests + docs green | ✅ | 2025-12-19 |
 | P3 – Contracts | Workstream C3 | OpenAPI + HeyAPI artifacts regenerated | ✅ | 2025-12-19 |
+| P4 – Frontend Plumbing | Workstream E | BFF + client helpers + queries | ✅ | 2025-12-19 |
+| P5 – Frontend UX | Workstream F1–F3 | Asset Library UI complete | ✅ | 2025-12-19 |
+| P6 – Frontend QA | Workstream F4 | UI tests + lint/type-check green | ✅ | 2025-12-19 |
 
 ---
 
@@ -128,6 +155,8 @@ Provide a first-class, queryable asset catalog for generated images and files th
 - Storage service (`apps/api-service/src/app/services/storage/service.py`) and attachments pipeline.
 - Conversation message persistence (`apps/api-service/src/app/infrastructure/persistence/conversations/*`).
 - OpenAPI export + frontend client regeneration flow (if API changes).
+- Frontend data-access layering (`docs/frontend/data-access.md`).
+- Existing UI primitives (`apps/web-app/components/ui/*`).
 
 ---
 
@@ -149,6 +178,9 @@ Provide a first-class, queryable asset catalog for generated images and files th
 - `cd apps/api-service && hatch run lint`
 - `cd apps/api-service && hatch run typecheck`
 - `cd apps/api-service && hatch run test` (or scoped tests)
+- `cd apps/web-app && pnpm lint`
+- `cd apps/web-app && pnpm type-check`
+- `cd apps/web-app && pnpm vitest run` (targeted UI tests)
 - Validate list/download/delete endpoints via API tests or smoke requests.
 
 ---
@@ -175,3 +207,8 @@ Provide a first-class, queryable asset catalog for generated images and files th
 - 2025-12-19 — Accepted non-UUID conversation_id filter for assets + regenerated SDK.
 - 2025-12-19 — Map missing storage objects to 404 for asset downloads; add service test.
 - 2025-12-19 — Make asset linking best-effort for agents/workflows; add unit coverage.
+- 2025-12-19 — Expanded milestone to include frontend Asset Library delivery.
+- 2025-12-19 — Completed frontend plumbing (BFF routes, fetch helpers, queries) + API route tests.
+- 2025-12-19 — Added Asset Library shell page + nav entry scaffold.
+- 2025-12-19 — Implemented Asset Library UX (filters, tabs, gallery/table, actions) + frontend tests.
+- 2025-12-19 — Corrected assets BFF 404 handling for missing assets/download URLs + tests.

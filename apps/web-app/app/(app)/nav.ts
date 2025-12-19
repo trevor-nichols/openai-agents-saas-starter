@@ -9,6 +9,7 @@ const PRIMARY_NAV: AppNavItem[] = [
     icon: 'square-terminal' satisfies NavIconKey,
     items: [
       { href: '/chat', label: 'Chat' },
+      { href: '/assets', label: 'Assets' },
       { href: '/workflows', label: 'Workflows' },
       { href: '/agents', label: 'Agents' },
     ],
