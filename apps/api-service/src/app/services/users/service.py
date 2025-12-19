@@ -13,6 +13,7 @@ from app.domain.users import (
     TenantMembershipDTO,
     UserCreate,
     UserCreatePayload,
+    UserProfileSummary,
     UserRecord,
     UserRepository,
 )
@@ -237,6 +238,33 @@ class UserService:
             email=user.email,
             role=membership.role,
             scopes=self._scope_resolver(membership.role),
+            email_verified=user.email_verified_at is not None,
+        )
+
+    async def get_user_profile_summary(
+        self,
+        *,
+        user_id: UUID,
+        tenant_id: UUID,
+    ) -> UserProfileSummary:
+        user = await self._repository.get_user_by_id(user_id)
+        if user is None:
+            raise InvalidCredentialsError("Unknown user.")
+        membership = self._membership_resolver(user.memberships, tenant_id)
+        display_name = (
+            user.display_name
+            or " ".join(part for part in [user.given_name, user.family_name] if part)
+            or None
+        )
+        return UserProfileSummary(
+            user_id=user.id,
+            tenant_id=membership.tenant_id,
+            email=user.email,
+            display_name=display_name,
+            given_name=user.given_name,
+            family_name=user.family_name,
+            avatar_url=user.avatar_url,
+            role=membership.role,
             email_verified=user.email_verified_at is not None,
         )
 

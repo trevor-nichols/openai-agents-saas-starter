@@ -1705,6 +1705,88 @@ export type CurrentUserInfoSuccessResponse = {
 };
 
 /**
+ * CurrentUserProfileResponseData
+ */
+export type CurrentUserProfileResponseData = {
+  /**
+   * User Id
+   *
+   * Current authenticated user id.
+   */
+  user_id: string;
+  /**
+   * Tenant Id
+   *
+   * Tenant id associated with the session.
+   */
+  tenant_id: string;
+  /**
+   * Email
+   *
+   * User email address.
+   */
+  email: string;
+  /**
+   * Display Name
+   *
+   * Preferred display name for the user, when available.
+   */
+  display_name?: string | null;
+  /**
+   * Given Name
+   *
+   * Optional given name for the user.
+   */
+  given_name?: string | null;
+  /**
+   * Family Name
+   *
+   * Optional family name for the user.
+   */
+  family_name?: string | null;
+  /**
+   * Avatar Url
+   *
+   * Optional avatar URL for the user.
+   */
+  avatar_url?: string | null;
+  /**
+   * Role
+   *
+   * Tenant role associated with the session.
+   */
+  role: string;
+  /**
+   * Email Verified
+   *
+   * Whether the user's email is verified.
+   */
+  email_verified: boolean;
+};
+
+/**
+ * CurrentUserProfileSuccessResponse
+ */
+export type CurrentUserProfileSuccessResponse = {
+  /**
+   * Success
+   *
+   * Operation success status flag.
+   */
+  success?: boolean;
+  /**
+   * Message
+   *
+   * Human-readable summary of the result.
+   */
+  message: string;
+  /**
+   * Current authenticated user profile payload.
+   */
+  data?: CurrentUserProfileResponseData | null;
+};
+
+/**
  * EmailVerificationConfirmRequest
  *
  * Payload for confirming the email verification token.
@@ -16387,6 +16469,73 @@ export type UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutResp
 
 export type UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutResponse =
   UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutResponses[keyof UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutResponses];
+
+export type GetCurrentUserProfileApiV1UsersMeGetData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/v1/users/me";
+};
+
+export type GetCurrentUserProfileApiV1UsersMeGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type GetCurrentUserProfileApiV1UsersMeGetError =
+  GetCurrentUserProfileApiV1UsersMeGetErrors[keyof GetCurrentUserProfileApiV1UsersMeGetErrors];
+
+export type GetCurrentUserProfileApiV1UsersMeGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: CurrentUserProfileSuccessResponse;
+};
+
+export type GetCurrentUserProfileApiV1UsersMeGetResponse =
+  GetCurrentUserProfileApiV1UsersMeGetResponses[keyof GetCurrentUserProfileApiV1UsersMeGetResponses];
 
 export type ListUsageApiV1UsageGetData = {
   body?: never;

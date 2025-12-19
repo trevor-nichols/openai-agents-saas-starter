@@ -1,8 +1,11 @@
+'use client';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CodeBlock } from '@/components/ui/ai/code-block';
 import { SkeletonPanel, EmptyState } from '@/components/ui/states';
 import { InlineTag } from '@/components/ui/foundation';
+import { useCurrentUserProfileQuery } from '@/lib/queries/users';
 import type { WorkflowRunDetailView } from '@/lib/workflows/types';
 import { workflowRunStatusVariant } from '../../../constants';
 
@@ -14,6 +17,14 @@ interface WorkflowRunDetailProps {
 }
 
 export function WorkflowRunDetail({ run, isLoading, onCancel, canceling }: WorkflowRunDetailProps) {
+  const { profile } = useCurrentUserProfileQuery({ enabled: Boolean(run) });
+  const userLabel =
+    run && profile?.user_id && run.user_id
+      ? profile.user_id === run.user_id
+        ? profile.display_name ?? profile.email ?? run.user_id
+        : run.user_id
+      : run?.user_id ?? '—';
+
   if (isLoading) {
     return <SkeletonPanel lines={6} />;
   }
@@ -43,7 +54,7 @@ export function WorkflowRunDetail({ run, isLoading, onCancel, canceling }: Workf
       <div className="grid gap-3 sm:grid-cols-2">
         <DetailItem label="Started" value={run.started_at} />
         <DetailItem label="Ended" value={run.ended_at ?? '—'} />
-        <DetailItem label="User" value={run.user_id} />
+        <DetailItem label="User" value={userLabel} />
         <DetailItem label="Final text" value={run.final_output_text ?? '—'} />
       </div>
 

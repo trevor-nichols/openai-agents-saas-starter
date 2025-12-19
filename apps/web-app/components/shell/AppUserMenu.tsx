@@ -25,8 +25,8 @@ interface AppUserMenuProps {
 export function AppUserMenu({ userName, userEmail, tenantId, avatarUrl }: AppUserMenuProps) {
   const [isPending, startTransition] = useTransition();
 
-  const displayName = userName ?? 'Signed in user';
-  const displayEmail = userEmail ?? tenantId ?? 'Account';
+  const displayName = userName ?? userEmail ?? 'Signed in user';
+  const displayEmail = userName ? (userEmail ?? tenantId ?? 'Account') : 'Account';
   const initials = displayName
     .split(' ')
     .filter(Boolean)

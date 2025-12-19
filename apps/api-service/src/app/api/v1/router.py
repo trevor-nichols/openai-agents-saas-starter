@@ -22,6 +22,7 @@ from app.api.v1.tools.router import router as tools_router
 from app.api.v1.usage.router import router as usage_router
 from app.api.v1.users.routes_consents import router as user_consents_router
 from app.api.v1.users.routes_notifications import router as user_notifications_router
+from app.api.v1.users.routes_profile import router as user_profile_router
 from app.api.v1.vector_stores.router import router as vector_stores_router
 from app.api.v1.workflows.replay_router import router as workflows_replay_router
 from app.api.v1.workflows.router import router as workflows_router
@@ -47,6 +48,7 @@ router.include_router(status_router)
 router.include_router(tenants_router)
 router.include_router(user_consents_router)
 router.include_router(user_notifications_router)
+router.include_router(user_profile_router)
 router.include_router(usage_router)
 
 settings = get_settings()

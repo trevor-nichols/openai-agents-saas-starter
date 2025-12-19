@@ -27,7 +27,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 }
 
 async function AppLayoutContent({ children }: AppLayoutProps) {
-  const { session, navItems, accountNav } = await getAppShellLayoutModel();
+  const { session, navItems, accountNav, profile } = await getAppShellLayoutModel();
 
   return (
     <SidebarProvider>
@@ -37,8 +37,10 @@ async function AppLayoutContent({ children }: AppLayoutProps) {
         navItems={navItems} 
         accountItems={accountNav} 
         user={{
-            email: session?.userId,
-            tenantId: session?.tenantId,
+            name: profile?.display_name ?? null,
+            email: profile?.email ?? null,
+            avatarUrl: profile?.avatar_url ?? null,
+            tenantId: profile?.tenant_id ?? session?.tenantId ?? null,
         }}
       />
 

@@ -112,6 +112,9 @@ import type {
   GetCurrentUserInfoApiV1AuthMeGetData,
   GetCurrentUserInfoApiV1AuthMeGetErrors,
   GetCurrentUserInfoApiV1AuthMeGetResponses,
+  GetCurrentUserProfileApiV1UsersMeGetData,
+  GetCurrentUserProfileApiV1UsersMeGetErrors,
+  GetCurrentUserProfileApiV1UsersMeGetResponses,
   GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetData,
   GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetErrors,
   GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetResponses,
@@ -3331,6 +3334,32 @@ export const upsertNotificationPreferenceApiV1UsersNotificationPreferencesPut =
       },
     });
   };
+
+/**
+ * Get Current User Profile
+ *
+ * Return profile metadata for the current authenticated user.
+ */
+export const getCurrentUserProfileApiV1UsersMeGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<GetCurrentUserProfileApiV1UsersMeGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    GetCurrentUserProfileApiV1UsersMeGetResponses,
+    GetCurrentUserProfileApiV1UsersMeGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/users/me",
+    ...options,
+  });
+};
 
 /**
  * List Usage
