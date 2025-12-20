@@ -392,6 +392,7 @@ def wire_workflow_services(container: ApplicationContainer) -> None:
             attachment_service=attachment_service,
             input_attachment_service=input_attachment_service,
             asset_service=asset_service,
+            container_service=container.container_service,
         )
 
 

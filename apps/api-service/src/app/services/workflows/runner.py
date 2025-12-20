@@ -23,6 +23,7 @@ from app.domain.input_attachments import InputAttachmentRef
 from app.domain.workflows import WorkflowRunRepository
 from app.services.agents.attachment_utils import collect_container_file_citations_from_event
 from app.services.agents.attachments import AttachmentService
+from app.services.agents.container_context import ContainerContextService
 from app.services.agents.context import ConversationActorContext
 from app.services.agents.event_log import EventProjector
 from app.services.agents.input_attachments import InputAttachmentService
@@ -30,6 +31,7 @@ from app.services.agents.interaction_context import InteractionContextBuilder
 from app.services.agents.provider_registry import AgentProviderRegistry, get_provider_registry
 from app.services.agents.session_items import compute_session_delta, get_session_items
 from app.services.assets.service import AssetService
+from app.services.containers import ContainerService
 from app.services.conversation_service import ConversationService, get_conversation_service
 from app.services.workflows.recording import WorkflowRunRecorder
 from app.services.workflows.stages import run_parallel_stage, run_sequential_stage
@@ -86,6 +88,7 @@ class WorkflowRunner:
         attachment_service: AttachmentService | None = None,
         input_attachment_service: InputAttachmentService | None = None,
         asset_service: AssetService | None = None,
+        container_service: ContainerService | None = None,
     ) -> None:
         self._registry = registry
         self._provider_registry = provider_registry or get_provider_registry()
@@ -98,6 +101,82 @@ class WorkflowRunner:
         self._attachment_service = attachment_service
         self._input_attachment_service = input_attachment_service
         self._asset_service = asset_service
+        self._container_context_service = ContainerContextService(
+            container_service=container_service
+        )
+
+    async def _bootstrap_run_record(
+        self,
+        *,
+        run_id: str,
+        workflow: WorkflowSpec,
+        actor: ConversationActorContext,
+        message: str,
+        conversation_id: str,
+        runtime_ctx,
+    ) -> dict[str, dict[str, str | None]]:
+        agent_keys = _workflow_agent_keys(workflow)
+        contexts: dict[str, dict[str, str | None]] = {}
+        metadata: dict[str, Any] | None = None
+        try:
+            contexts = await self._container_context_service.resolve_contexts(
+                agent_keys=agent_keys,
+                runtime_ctx=runtime_ctx,
+                tenant_id=actor.tenant_id,
+            )
+            metadata = self._container_context_service.build_metadata_from_contexts(contexts)
+        except Exception as exc:  # pragma: no cover - best effort
+            logger.warning(
+                "container_context.resolve.failed",
+                extra={"tenant_id": actor.tenant_id, "workflow_run_id": run_id},
+                exc_info=exc,
+            )
+
+        await self._recorder.start(
+            run_id,
+            workflow,
+            actor=actor,
+            message=message,
+            conversation_id=conversation_id,
+            metadata=metadata,
+        )
+
+        if contexts:
+            await self._append_container_context_events(
+                conversation_id=conversation_id,
+                tenant_id=actor.tenant_id,
+                contexts=contexts,
+                workflow_run_id=run_id,
+            )
+        return contexts
+
+    async def _append_container_context_events(
+        self,
+        *,
+        conversation_id: str,
+        tenant_id: str,
+        contexts: Mapping[str, dict[str, str | None]],
+        workflow_run_id: str,
+    ) -> None:
+        try:
+            events = self._container_context_service.build_run_events_from_contexts(
+                contexts,
+                response_id=None,
+                workflow_run_id=workflow_run_id,
+            )
+            if not events:
+                return
+            await self._conversation_service.append_run_events(
+                conversation_id,
+                tenant_id=tenant_id,
+                events=events,
+            )
+        except Exception as exc:  # pragma: no cover - best effort
+            logger.warning(
+                "container_context.append_failed",
+                extra={"tenant_id": tenant_id, "conversation_id": conversation_id},
+                exc_info=exc,
+            )
 
     async def _resolve_user_input(
         self,
@@ -240,6 +319,7 @@ class WorkflowRunner:
         conversation_id: str,
         location: Any | None = None,
         share_location: bool | None = None,
+        container_overrides: dict[str, str] | None = None,
     ) -> WorkflowRunResult:
         provider = self._provider_registry.get_default()
         run_id = _uuid()
@@ -288,22 +368,24 @@ class WorkflowRunner:
             agent_entrypoint=workflow.key,
             existed=conversation_exists,
         )
-        await self._recorder.start(
-            run_id,
-            workflow,
-            actor=actor,
-            message=message,
-            conversation_id=conversation_id,
-        )
         runtime_ctx = await self._interaction_builder.build(
             actor=actor,
             request=_WorkflowRequestProxy(
                 message=message,
                 location=location,
                 share_location=share_location,
+                container_overrides=container_overrides,
             ),
             conversation_id=conversation_id,
             agent_keys=_workflow_agent_keys(workflow),
+        )
+        await self._bootstrap_run_record(
+            run_id=run_id,
+            workflow=workflow,
+            actor=actor,
+            message=message,
+            conversation_id=conversation_id,
+            runtime_ctx=runtime_ctx,
         )
 
         async def session_getter():
@@ -463,6 +545,7 @@ class WorkflowRunner:
         conversation_id: str,
         location: Any | None = None,
         share_location: bool | None = None,
+        container_overrides: dict[str, str] | None = None,
     ) -> AsyncIterator[AgentStreamEvent]:
         provider = self._provider_registry.get_default()
         run_id = _uuid()
@@ -510,22 +593,24 @@ class WorkflowRunner:
             agent_entrypoint=workflow.key,
             existed=conversation_exists,
         )
-        await self._recorder.start(
-            run_id,
-            workflow,
-            actor=actor,
-            message=message,
-            conversation_id=conversation_id,
-        )
         runtime_ctx = await self._interaction_builder.build(
             actor=actor,
             request=_WorkflowRequestProxy(
                 message=message,
                 location=location,
                 share_location=share_location,
+                container_overrides=container_overrides,
             ),
             conversation_id=conversation_id,
             agent_keys=_workflow_agent_keys(workflow),
+        )
+        await self._bootstrap_run_record(
+            run_id=run_id,
+            workflow=workflow,
+            actor=actor,
+            message=message,
+            conversation_id=conversation_id,
+            runtime_ctx=runtime_ctx,
         )
 
         async def session_getter():
@@ -757,8 +842,20 @@ def _uuid() -> str:
 class _WorkflowRequestProxy(SimpleNamespace):
     """Tiny adapter so InteractionContextBuilder can reuse its shape expectations."""
 
-    def __init__(self, *, message: str, location: Any | None, share_location: bool | None):
-        super().__init__(message=message, location=location, share_location=share_location)
+    def __init__(
+        self,
+        *,
+        message: str,
+        location: Any | None,
+        share_location: bool | None,
+        container_overrides: dict[str, str] | None = None,
+    ):
+        super().__init__(
+            message=message,
+            location=location,
+            share_location=share_location,
+            container_overrides=container_overrides,
+        )
 
 
 class _WorkflowCancelled(Exception):

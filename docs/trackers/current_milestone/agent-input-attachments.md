@@ -1,30 +1,29 @@
 <!-- SECTION: Metadata -->
-# Milestone: Agent Input Attachments (API)
+# Milestone: Container Overrides + Run History (API)
 
-_Last updated: 2025-12-19_  
+_Last updated: 2025-12-20_  
 **Status:** In Progress  
 **Owner:** @platform-foundations  
 **Domain:** Backend  
-**ID / Links:** [Docs: Agents SDK inputs], [Docs: Vector store file_search]
+**ID / Links:** [Docs: Containers service], [Docs: Agent runtime context]
 
 ---
 
 <!-- SECTION: Objective -->
 ## Objective
 
-Enable the API service to accept user-provided images/files as direct agent inputs, while keeping vector-store (retrieval) uploads as an explicit, separate flow gated by agent capabilities. The outcome is a clean, auditable API that supports immediate multimodal chat inputs and optional knowledge-base ingestion without coupling the two.
+Enable per-agent container overrides for chat and workflow runs while persisting the container used in the run event log for audit/history. The outcome is a clean, tenant-safe override path that respects agent tool eligibility and leaves a reliable record of which container executed each run.
 
 ---
 
 <!-- SECTION: Definition of Done -->
 ## Definition of Done
 
-- Chat and workflow endpoints accept optional input attachments and pass them to the Agents SDK as `input_image` / `input_file` items.
-- User-level upload flow exists for chat attachments with storage guardrails enforced.
-- Vector-store upload flow exists to promote stored uploads to OpenAI File IDs and attach to vector stores (only when allowed by agent tooling).
-- Vector-store uploads can be gated by agent capability (file_search + resolved vector store binding).
-- Attachments are persisted on user messages with proper asset records (`source_tool=user_upload`).
-- Tests cover input attachment validation and vector-store upload behavior.
+- Chat and workflow request models accept `container_overrides` keyed by agent.
+- Overrides are validated against agent capability (`code_interpreter`) and tenant scope.
+- Runtime container selection uses precedence: request override → spec config → tenant binding → auto.
+- Container context is persisted in conversation run events (and workflow run metadata).
+- Tests cover validation, resolution precedence, and event persistence.
 - `hatch run lint` and `hatch run typecheck` pass for the API service.
 - Tracker updated with phase completion and changelog.
 
@@ -34,17 +33,17 @@ Enable the API service to accept user-provided images/files as direct agent inpu
 ## Scope
 
 ### In Scope
-- API request models for chat/workflow input attachments.
-- User-level presigned upload endpoint for agent inputs.
-- InputAttachment resolution service (storage -> presigned URL -> SDK input items).
-- Runtime contract widened to accept text or input item lists.
-- Vector-store “promote upload” endpoint (storage object -> OpenAI file -> attach to store).
-- Backend tests for attachment handling and vector-store upload.
+- Backend request schemas for chat + workflows.
+- Container override resolution service.
+- Runtime context plumbing + tool resolver precedence.
+- Run-event persistence for container context (audit trail).
+- Workflow run metadata updates for container context.
+- API service tests for overrides + run log persistence.
 
 ### Out of Scope
-- Web app UI/UX changes.
-- Background virus scanning / DLP.
-- Cross-provider (non-OpenAI) file upload integration.
+- Web app UI/UX for selecting containers.
+- Non-Code-Interpreter tools or multi-tool container overrides.
+- Backfilling historical runs.
 
 ---
 
@@ -53,51 +52,55 @@ Enable the API service to accept user-provided images/files as direct agent inpu
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Architecture/design | ✅ | Direct inputs vs vector store uploads explicitly separated. |
-| Implementation | ✅ | P1–P4 complete. |
-| Tests & QA | ✅ | P1–P4 tests executed. |
-| Docs & runbooks | ✅ | P1–P4 docs updated. |
+| Architecture/design | ✅ | Override contract + precedence defined. |
+| Implementation | ✅ | P1–P3 request contracts + runtime + run history complete. |
+| Tests & QA | ✅ | P1–P4 tests + lint/typecheck complete. |
+| Docs & runbooks | ⏳ | Tracker only. |
 
 ---
 
 <!-- SECTION: Architecture / Design -->
 ## Architecture / Design Snapshot
 
-- Direct input attachments are passed as Responses API input items (`input_image`, `input_file`) using presigned storage URLs.
-- Vector-store uploads are an explicit action that produces an OpenAI File ID and attaches it to a vector store for `file_search`.
-- Agent tooling gates vector-store option (agent must include `file_search`).
-- New `InputAttachmentService` handles validation + input item assembly; storage and asset services remain the single sources of truth.
+- Introduce `container_overrides: {agent_key: container_id}` on chat + workflow requests.
+- Resolve overrides in a dedicated service to enforce tenant scope and tool eligibility.
+- Extend `PromptRuntimeContext` to include resolved overrides for tool resolution.
+- Persist container context as a run event with `tool_context` semantics for audit.
+- Store per-run container context in workflow run metadata for quick retrieval.
 
 ---
 
 <!-- SECTION: Workstreams & Tasks -->
 ## Workstreams & Tasks
 
-### Workstream A – Direct Input Attachments
+### Workstream A – Request Contracts
 
 | ID | Area | Description | Owner | Status |
 |----|------|-------------|-------|--------|
-| A1 | API | Add request models for input attachments (chat/workflow). | @platform-foundations | ✅ |
-| A2 | API | Add user-level presigned upload endpoint for agent inputs. | @platform-foundations | ✅ |
-| A3 | Service | Implement InputAttachmentService (storage -> SDK input items). | @platform-foundations | ✅ |
-| A4 | Runtime | Widen runtime input contract (string or items). | @platform-foundations | ✅ |
-| A5 | Tests | Unit tests for attachment validation/assembly. | @platform-foundations | ✅ |
+| A1 | API | Add `container_overrides` to chat request schema. | @platform-foundations | ✅ |
+| A2 | API | Add `container_overrides` to workflow run schema. | @platform-foundations | ✅ |
 
-### Workstream B – Vector Store Upload Flow
+### Workstream B – Resolution + Runtime Integration
 
 | ID | Area | Description | Owner | Status |
 |----|------|-------------|-------|--------|
-| B1 | API | Add endpoint to promote storage object to OpenAI file + attach to vector store. | @platform-foundations | ✅ |
-| B2 | Service | Implement storage->OpenAI file upload in vector store service/gateway. | @platform-foundations | ✅ |
-| B3 | Tests | Tests for vector-store upload + attach flow. | @platform-foundations | ✅ |
+| B1 | Service | Add container override resolution service. | @platform-foundations | ✅ |
+| B2 | Runtime | Extend PromptRuntimeContext + tool resolver precedence. | @platform-foundations | ✅ |
 
-### Workstream C – Agent-Gated Vector Store Upload
+### Workstream C – Run History Persistence
 
 | ID | Area | Description | Owner | Status |
 |----|------|-------------|-------|--------|
-| C1 | Service | Add reusable agent capability + vector-store binding resolver for gating. | @platform-foundations | ✅ |
-| C2 | API | Enforce agent-gated access on vector-store upload endpoint (agent_key required). | @platform-foundations | ✅ |
-| C3 | Tests | Unit tests covering allow/deny cases for agent-gated uploads. | @platform-foundations | ✅ |
+| C1 | Events | Persist container context as run event (chat + workflow). | @platform-foundations | ✅ |
+| C2 | Workflows | Add container context to workflow run metadata. | @platform-foundations | ✅ |
+
+### Workstream D – Tests + Hardening
+
+| ID | Area | Description | Owner | Status |
+|----|------|-------------|-------|--------|
+| D1 | Tests | Validation + precedence unit tests. | @platform-foundations | ✅ |
+| D2 | Tests | Run-event persistence tests. | @platform-foundations | ✅ |
+| D3 | QA | Lint + typecheck green. | @platform-foundations | ✅ |
 
 ---
 
@@ -106,19 +109,19 @@ Enable the API service to accept user-provided images/files as direct agent inpu
 
 | Phase | Scope | Exit Criteria | Status | Target |
 | ----- | ----- | ------------- | ------ | ------ |
-| P0 – Alignment | API design + flow separation | Tracker created, plan agreed | ✅ | 2025-12-19 |
-| P1 – Direct Inputs | Chat/workflow input attachments + upload endpoint | A1–A5 complete + tests | ✅ | 2025-12-22 |
-| P2 – Vector Store Upload | Storage -> OpenAI file -> attach flow | B1–B3 complete + tests | ✅ | 2025-12-23 |
-| P3 – Hardening | Lint/typecheck + docs update | Green checks + tracker updated | ✅ | 2025-12-24 |
-| P4 – Agent Gating | Agent-gated vector store upload flow | C1–C3 complete + tests | ✅ | 2025-12-26 |
+| P0 – Alignment | Requirements + contract | Tracker updated + plan agreed | ✅ | 2025-12-20 |
+| P1 – Contracts | Request schemas + validation | A1–A2 complete | ✅ | 2025-12-21 |
+| P2 – Runtime | Resolver + tool precedence | B1–B2 complete | ✅ | 2025-12-22 |
+| P3 – Audit | Run events + workflow metadata | C1–C2 complete | ✅ | 2025-12-23 |
+| P4 – Hardening | Tests + lint/typecheck | D1–D3 complete | ✅ | 2025-12-24 |
 
 ---
 
 <!-- SECTION: Dependencies -->
 ## Dependencies
 
-- OpenAI API key configured for file upload endpoints.
-- Storage provider configured (MinIO/GCS/memory).
+- Container service configured (OpenAI API key, persistence).
+- Agent specs must include `code_interpreter` for overrides to be valid.
 
 ---
 
@@ -127,9 +130,9 @@ Enable the API service to accept user-provided images/files as direct agent inpu
 
 | Risk | Impact | Mitigation |
 | --- | --- | --- |
-| Oversized/mime-invalid uploads | Med | Enforce storage guardrails at presign + input validation. |
-| Leakage across tenants | High | Validate storage object tenant ownership before use. |
-| Provider changes | Med | Keep provider interaction isolated in gateway/service. |
+| Unauthorized container use | High | Resolve overrides via tenant-scoped DB lookups only. |
+| Missing container bindings | Med | Clear 400 errors for invalid overrides; fallback to auto. |
+| Audit gaps | Med | Persist container context in run events for every run. |
 
 ---
 
@@ -138,28 +141,25 @@ Enable the API service to accept user-provided images/files as direct agent inpu
 
 - `cd apps/api-service && hatch run lint`
 - `cd apps/api-service && hatch run typecheck`
-- `cd apps/api-service && hatch run test unit` (or targeted tests)
-- Manual: create upload URL, upload a PNG, run chat with attachment.
+- `cd apps/api-service && hatch run test unit`
+- Manual: chat run with override + verify run events show container context.
 
 ---
 
 <!-- SECTION: Rollout / Ops Notes -->
 ## Rollout / Ops Notes
 
-- No feature flags; endpoints are additive.
-- Ensure `STORAGE_PROVIDER` is configured for presigned uploads in non-dev environments.
-- Add documentation for new endpoints in API reference.
+- No feature flags; additive API fields.
+- No data migrations expected (run events + workflow metadata only).
+- Monitor for 400s indicating invalid overrides.
 
 ---
 
 <!-- SECTION: Changelog -->
 ## Changelog
 
-- 2025-12-19 — Milestone created; alignment captured.
-- 2025-12-19 — P1 complete: direct input attachments + upload endpoint + tests + lint/typecheck.
-- 2025-12-19 — P2 complete: vector-store upload endpoint + storage->OpenAI file flow + tests + lint/typecheck.
-- 2025-12-19 — P3 complete: docs updated; lint/typecheck re-run.
-- 2025-12-19 — P4 scoped: agent-gated vector store uploads added to plan.
-- 2025-12-19 — P4 complete: agent-gated uploads implemented + tests + docs + lint/typecheck.
-- 2025-12-19 — Attachment not-found now returns 404 (chat/workflows); tests added.
-- 2025-12-19 — Input attachment asset creation now best-effort; reuse safe.
+- 2025-12-20 — Milestone created; alignment captured for container overrides + run history.
+- 2025-12-20 — P1 complete: request schemas updated + unit tests + lint/typecheck.
+- 2025-12-20 — P2 complete: override resolver + runtime context + tool precedence + tests + lint/typecheck.
+- 2025-12-20 — P3 complete: container context run events + workflow metadata + tests.
+- 2025-12-20 — P4 complete: lint/typecheck/unit tests verified green.

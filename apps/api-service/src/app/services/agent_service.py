@@ -26,6 +26,7 @@ from app.domain.input_attachments import InputAttachmentRef
 from app.guardrails._shared.events import GuardrailEmissionToken, set_guardrail_emitters
 from app.services.agents.attachments import AttachmentService
 from app.services.agents.catalog import AgentCatalogPage, AgentCatalogService
+from app.services.agents.container_context import ContainerContextService
 from app.services.agents.context import (
     ConversationActorContext,
     reset_current_actor,
@@ -121,6 +122,9 @@ class AgentService:
         self._interaction_builder = interaction_builder or InteractionContextBuilder(
             container_service=self._container_service,
             vector_store_service=vector_store_service,
+        )
+        self._container_context_service = ContainerContextService(
+            container_service=self._container_service
         )
         self._event_projector = EventProjector(self._conversation_service)
         self._usage_service = usage_service or UsageService(
@@ -683,6 +687,11 @@ class AgentService:
             agent_key=ctx.descriptor.key,
             provider_name=ctx.provider.name,
         )
+        await self._append_container_context(
+            ctx=ctx,
+            tenant_id=tenant_id,
+            response_id=response_id,
+        )
         await project_compaction_events(
             event_projector=self._event_projector,
             compaction_events=ctx.compaction_events,
@@ -703,6 +712,29 @@ class AgentService:
             response_id=response_id,
         )
         ctx.provider.mark_seen(ctx.descriptor.key, datetime.utcnow())
+
+    async def _append_container_context(
+        self,
+        *,
+        ctx: RunContext,
+        tenant_id: str,
+        response_id: str | None,
+    ) -> None:
+        try:
+            await self._container_context_service.append_run_events(
+                conversation_service=self._conversation_service,
+                conversation_id=ctx.conversation_id,
+                tenant_id=tenant_id,
+                agent_keys=[ctx.descriptor.key],
+                runtime_ctx=ctx.runtime_ctx,
+                response_id=response_id,
+            )
+        except Exception as exc:  # pragma: no cover - best effort
+            logger.warning(
+                "container_context.append_failed",
+                extra={"tenant_id": tenant_id, "conversation_id": ctx.conversation_id},
+                exc_info=exc,
+            )
 
 
 # Factory helpers -----------------------------------------------------------

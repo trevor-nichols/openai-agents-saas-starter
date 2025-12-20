@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from typing import Any
 
 from app.agents._shared.prompt_context import PromptRuntimeContext
 from app.agents._shared.registry_loader import load_agent_specs
 from app.core.settings import Settings, get_settings
+from app.services.agents.container_overrides import (
+    ContainerOverrideError,
+    ContainerOverrideResolver,
+)
 from app.services.agents.vector_store_resolution import resolve_vector_store_ids_for_agent
 from app.services.containers import ContainerService
 from app.services.vector_stores.service import VectorStoreService
@@ -29,6 +33,7 @@ class InteractionContextBuilder:
         self._vector_store_service = vector_store_service
         self._settings_factory = settings_factory
         self._spec_index: dict[str, Any] | None = None
+        self._container_override_resolver: ContainerOverrideResolver | None = None
 
     async def build(
         self,
@@ -40,6 +45,11 @@ class InteractionContextBuilder:
     ) -> PromptRuntimeContext:
         container_bindings = await self._resolve_container_bindings_for_tenant(
             tenant_id=actor.tenant_id
+        )
+        container_overrides = await self._resolve_container_overrides(
+            actor=actor,
+            request=request,
+            agent_keys=agent_keys,
         )
         file_search_keys = self._file_search_agent_keys(agent_keys)
         file_search = (
@@ -60,6 +70,7 @@ class InteractionContextBuilder:
                 request.location, share_location=request.share_location
             ),
             container_bindings=container_bindings,
+            container_overrides=container_overrides,
             file_search=file_search,
             client_overrides=getattr(request, "context", None),
         )
@@ -109,6 +120,28 @@ class InteractionContextBuilder:
         except Exception:
             return None
         return bindings or None
+
+    async def _resolve_container_overrides(
+        self,
+        *,
+        actor,
+        request: Any,
+        agent_keys: Iterable[str] | None,
+    ):
+        overrides = getattr(request, "container_overrides", None)
+        if not overrides or not isinstance(overrides, Mapping):
+            return None
+        if self._container_service is None:
+            raise ContainerOverrideError("Container overrides require container service")
+        if self._container_override_resolver is None:
+            self._container_override_resolver = ContainerOverrideResolver(
+                container_service=self._container_service
+            )
+        return await self._container_override_resolver.resolve(
+            overrides=overrides,
+            tenant_id=actor.tenant_id,
+            allowed_agent_keys=agent_keys,
+        )
 
     async def _resolve_file_search_for_agents(
         self,

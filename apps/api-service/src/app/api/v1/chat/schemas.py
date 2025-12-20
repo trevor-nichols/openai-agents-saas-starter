@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.api.v1.shared.attachments import InputAttachment
 from app.api.v1.shared.streaming import MessageAttachment, PublicSseEvent
@@ -31,6 +31,10 @@ class AgentChatRequest(BaseModel):
     run_options: AgentRunOptions | None = None
     memory_strategy: MemoryStrategyRequest | None = None
     memory_injection: bool | None = None
+    container_overrides: dict[str, str] | None = Field(
+        default=None,
+        description="Optional container overrides keyed by agent key.",
+    )
 
 
 class AgentChatResponse(BaseModel):

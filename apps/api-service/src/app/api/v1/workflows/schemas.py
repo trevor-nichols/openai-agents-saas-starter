@@ -43,6 +43,10 @@ class WorkflowRunRequestBody(BaseModel):
     share_location: bool | None = Field(
         None, description="If true, forward location to hosted web search"
     )
+    container_overrides: dict[str, str] | None = Field(
+        default=None,
+        description="Optional container overrides keyed by agent key.",
+    )
 
 
 class WorkflowStepResultSchema(BaseModel):

@@ -20,6 +20,7 @@ from app.services.agents.provider_registry import (
     get_provider_registry,
 )
 from app.services.assets.service import AssetService
+from app.services.containers import ContainerService
 from app.services.workflows.catalog import WorkflowCatalogPage, WorkflowCatalogService
 from app.services.workflows.runner import WorkflowRunner, WorkflowRunResult
 from app.workflows._shared.registry import WorkflowRegistry, get_workflow_registry
@@ -33,6 +34,7 @@ class WorkflowRunRequest:
     conversation_id: str | None = None
     location: Any | None = None
     share_location: bool | None = None
+    container_overrides: dict[str, str] | None = None
 
 
 class WorkflowService:
@@ -47,6 +49,7 @@ class WorkflowService:
         attachment_service: AttachmentService | None = None,
         input_attachment_service: InputAttachmentService | None = None,
         asset_service: AssetService | None = None,
+        container_service: ContainerService | None = None,
     ) -> None:
         self._registry = registry or get_workflow_registry()
         self._catalog_service = catalog_service or WorkflowCatalogService(self._registry)
@@ -59,6 +62,7 @@ class WorkflowService:
             attachment_service=attachment_service,
             input_attachment_service=input_attachment_service,
             asset_service=asset_service,
+            container_service=container_service,
         )
 
     def list_workflows(self) -> Sequence[WorkflowDescriptor]:
@@ -101,6 +105,7 @@ class WorkflowService:
             conversation_id=conversation_id,
             location=request.location,
             share_location=request.share_location,
+            container_overrides=request.container_overrides,
         )
 
     async def get_run(self, run_id: str):
@@ -303,7 +308,7 @@ class WorkflowService:
 def build_workflow_service(
     *,
     run_repository: WorkflowRunRepository | None = None,
-    container_service=None,
+    container_service: ContainerService | None = None,
     vector_store_service=None,
     attachment_service: AttachmentService | None = None,
     input_attachment_service: InputAttachmentService | None = None,
@@ -317,6 +322,7 @@ def build_workflow_service(
         run_repository=run_repository,
         attachment_service=attachment_service,
         input_attachment_service=input_attachment_service,
+        container_service=container_service,
     )
 
 

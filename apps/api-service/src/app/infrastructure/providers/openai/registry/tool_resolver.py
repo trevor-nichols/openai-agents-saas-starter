@@ -6,13 +6,16 @@ Separated from the registry facade to keep concerns focused and testable.
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any, cast
 
 from agents import CodeInterpreterTool, FileSearchTool, ImageGenerationTool, WebSearchTool
 
-from app.agents._shared.prompt_context import PromptRuntimeContext
+from app.agents._shared.prompt_context import (
+    ContainerOverrideContext,
+    PromptRuntimeContext,
+)
 from app.agents._shared.specs import AgentSpec
 from app.core.settings import Settings
 from app.guardrails._shared.specs import AgentGuardrailConfig, ToolGuardrailConfig
@@ -146,6 +149,25 @@ class ToolResolver:
         mode = config.get("mode", "auto")
         memory_limit = config.get("memory_limit") or settings.container_default_auto_memory
         file_ids = config.get("file_ids")
+
+        override_container_id: str | None = None
+        if runtime_ctx and runtime_ctx.container_overrides:
+            override = runtime_ctx.container_overrides.get(spec.key)
+            if isinstance(override, ContainerOverrideContext):
+                override_container_id = override.openai_container_id
+            elif isinstance(override, Mapping):
+                override_container_id = (
+                    override.get("openai_container_id") or override.get("openai_id")
+                )
+            elif isinstance(override, str):
+                override_container_id = override
+
+        if override_container_id:
+            tool_config: CodeInterpreter = cast(
+                CodeInterpreter,
+                {"type": "code_interpreter", "container": override_container_id},
+            )
+            return CodeInterpreterTool(tool_config=tool_config), "explicit"
 
         container_id: str | None = None
         if runtime_ctx and runtime_ctx.container_bindings:

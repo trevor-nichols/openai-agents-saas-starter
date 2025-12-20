@@ -34,6 +34,7 @@ from app.api.v1.workflows.schemas import (
 )
 from app.domain.input_attachments import InputAttachmentNotFoundError
 from app.domain.workflows import WorkflowStatus
+from app.services.agents.container_overrides import ContainerOverrideError
 from app.services.agents.context import ConversationActorContext
 from app.services.conversations.ledger_recorder import get_conversation_ledger_recorder
 from app.services.workflows.catalog import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
@@ -106,11 +107,14 @@ async def run_workflow(
                 conversation_id=request.conversation_id,
                 location=request.location,
                 share_location=request.share_location,
+                container_overrides=request.container_overrides,
             ),
             actor=actor,
         )
     except InputAttachmentNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ContainerOverrideError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except ValueError as exc:
         message = str(exc)
         if "not found" in message.lower():
