@@ -8,7 +8,9 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-import app.api.v1.vector_stores.router as vector_router_module
+import importlib
+
+vector_router_module = importlib.import_module("app.api.v1.vector_stores.router")
 from app.api.dependencies.tenant import TenantContext, TenantRole, get_tenant_context
 from app.api.v1.vector_stores.router import _svc as vector_store_svc
 from app.api.v1.vector_stores.router import router as vector_stores_router

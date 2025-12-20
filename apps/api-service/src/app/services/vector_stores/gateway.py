@@ -69,7 +69,7 @@ class OpenAIVectorStoreGateway:
         mime_type: str | None,
     ) -> object:
         client = self._client(tenant_id)
-        file_tuple: tuple[object, ...]
+        file_tuple: tuple[str, BytesIO] | tuple[str, BytesIO, str]
         if mime_type:
             file_tuple = (filename, BytesIO(data), mime_type)
         else:

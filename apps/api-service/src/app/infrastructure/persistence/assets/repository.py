@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import builtins
 import uuid
 from collections.abc import Sequence
 from datetime import datetime
@@ -107,7 +108,7 @@ class SqlAlchemyAssetRepository(AssetRepository):
         mime_type_prefix: str | None = None,
         created_after: datetime | None = None,
         created_before: datetime | None = None,
-    ) -> list[AssetView]:
+    ) -> builtins.list[AssetView]:
         async with self._session_factory() as session:
             stmt = _base_view_query().where(
                 AgentAsset.tenant_id == tenant_id,
@@ -132,7 +133,7 @@ class SqlAlchemyAssetRepository(AssetRepository):
 
     async def list_by_ids(
         self, *, tenant_id: uuid.UUID, asset_ids: Sequence[uuid.UUID]
-    ) -> list[AssetView]:
+    ) -> builtins.list[AssetView]:
         if not asset_ids:
             return []
         async with self._session_factory() as session:

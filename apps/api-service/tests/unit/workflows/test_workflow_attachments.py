@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -10,6 +11,7 @@ from app.domain.ai.models import AgentStreamEvent
 from app.services.agents.attachments import AttachmentService
 from app.services.agents.context import ConversationActorContext
 from app.services.agents.provider_registry import get_provider_registry
+from app.services.assets.service import AssetService
 from app.services.containers.files_gateway import ContainerFileContent
 from app.services.workflows.runner import WorkflowRunner
 from app.workflows._shared.registry import WorkflowRegistry
@@ -146,7 +148,7 @@ async def test_workflow_run_asset_linking_is_best_effort(monkeypatch: pytest.Mon
     runner = WorkflowRunner(
         registry=WorkflowRegistry(),
         attachment_service=attachments,
-        asset_service=_ExplodingAssetService(),
+        asset_service=cast(AssetService, _ExplodingAssetService()),
     )
 
     spec = WorkflowSpec(

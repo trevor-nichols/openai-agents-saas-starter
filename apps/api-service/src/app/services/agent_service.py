@@ -16,6 +16,7 @@ from agents import trace
 
 from app.api.v1.agents.schemas import AgentStatus, AgentSummary
 from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse, MessageAttachment
+from app.api.v1.shared.attachments import InputAttachment
 from app.bootstrap.container import wire_asset_service, wire_storage_service
 from app.core.settings import get_settings
 from app.domain.ai.lifecycle import LifecycleEventBus
@@ -559,7 +560,7 @@ class AgentService:
 
     @staticmethod
     def _coerce_input_attachments(
-        attachments: list | None,
+        attachments: list[InputAttachment] | None,
     ) -> list[InputAttachmentRef] | None:
         if not attachments:
             return None
@@ -583,7 +584,7 @@ class AgentService:
         *,
         tenant_id: str,
         message_id: int | None,
-        attachments: list,
+        attachments: list[ConversationAttachment],
     ) -> None:
         if self._asset_service is None or message_id is None or not attachments:
             return

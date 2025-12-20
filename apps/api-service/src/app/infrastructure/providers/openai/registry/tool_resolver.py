@@ -163,11 +163,11 @@ class ToolResolver:
                 override_container_id = override
 
         if override_container_id:
-            tool_config: CodeInterpreter = cast(
+            override_tool_config: CodeInterpreter = cast(
                 CodeInterpreter,
                 {"type": "code_interpreter", "container": override_container_id},
             )
-            return CodeInterpreterTool(tool_config=tool_config), "explicit"
+            return CodeInterpreterTool(tool_config=override_tool_config), "explicit"
 
         container_id: str | None = None
         if runtime_ctx and runtime_ctx.container_bindings:
@@ -183,11 +183,11 @@ class ToolResolver:
                 )
 
         if container_id:
-            tool_config: CodeInterpreter = cast(
+            explicit_tool_config: CodeInterpreter = cast(
                 CodeInterpreter,
                 {"type": "code_interpreter", "container": container_id},
             )
-            return CodeInterpreterTool(tool_config=tool_config), "explicit"
+            return CodeInterpreterTool(tool_config=explicit_tool_config), "explicit"
 
         auto_container = cast(
             CodeInterpreterContainerCodeInterpreterToolAuto,
