@@ -21,7 +21,7 @@ from app.api.v1.usage.router import router as usage_router
 import app.api.v1.usage.router as usage_module
 from app.infrastructure.persistence.auth.models import UsageCounter, UsageCounterGranularity
 from app.infrastructure.persistence.models.base import Base
-from app.services.usage_counters import UsageCounterService
+from app.services.usage.counters import UsageCounterService
 
 
 @pytest.fixture(scope="module")
@@ -70,7 +70,7 @@ def client(session_factory: async_sessionmaker[AsyncSession], seeded_usage: UUID
     def _svc() -> UsageCounterService:  # pragma: no cover
         return svc
 
-    from app.services.usage_counters import get_usage_counter_service
+    from app.services.usage.counters import get_usage_counter_service
 
     dep = usage_router.routes[0].dependant.dependencies[0].call  # type: ignore[attr-defined]
 

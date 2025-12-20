@@ -9,8 +9,8 @@ from uuid import UUID
 from app.domain.ai import AgentRunUsage
 from app.infrastructure.persistence.auth.models import UsageCounterGranularity
 from app.services.conversation_service import ConversationService
-from app.services.usage_counters import UsageCounterService
-from app.services.usage_recorder import UsageEntry, UsageRecorder
+from app.services.usage.counters import UsageCounterService
+from app.services.usage.recorder import UsageEntry, UsageRecorder
 
 
 class UsageService:

@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from app.api.dependencies import usage as usage_dependency
-from app.services.usage_policy_service import (
+from app.services.usage.policy_service import (
     UsagePolicyDecision,
     UsagePolicyResult,
     UsageViolation,

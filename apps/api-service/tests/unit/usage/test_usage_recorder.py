@@ -5,7 +5,7 @@ from typing import cast
 import pytest
 
 from app.services.billing.billing_service import BillingService
-from app.services.usage_recorder import UsageEntry, UsageRecorder
+from app.services.usage.recorder import UsageEntry, UsageRecorder
 
 
 class FakeBillingService:

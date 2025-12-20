@@ -17,8 +17,8 @@ from app.services.containers import (
 )
 from app.services.conversation_service import ConversationService, get_conversation_service
 from app.services.storage.service import StorageService
-from app.services.usage_counters import UsageCounterService, get_usage_counter_service
-from app.services.usage_recorder import UsageRecorder
+from app.services.usage.counters import UsageCounterService, get_usage_counter_service
+from app.services.usage.recorder import UsageRecorder
 from app.services.vector_stores.service import VectorStoreService
 
 

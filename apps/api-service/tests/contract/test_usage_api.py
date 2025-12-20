@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 from app.api.dependencies.tenant import TenantContext, TenantRole, require_tenant_role
 from app.api.v1.usage.router import router as usage_router
 import app.api.v1.usage.router as usage_module
-from app.services.usage_counters import get_usage_counter_service
+from app.services.usage.counters import get_usage_counter_service
 from main import app
 
 

@@ -37,9 +37,9 @@ from app.services.status.status_alert_dispatcher import StatusAlertDispatcher
 from app.services.status.status_subscription_service import StatusSubscriptionService
 from app.services.storage.service import StorageService
 from app.services.tenant.tenant_settings_service import TenantSettingsService
-from app.services.usage_counters import UsageCounterService
-from app.services.usage_policy_service import UsagePolicyService
-from app.services.usage_recorder import UsageRecorder
+from app.services.usage.counters import UsageCounterService
+from app.services.usage.policy_service import UsagePolicyService
+from app.services.usage.recorder import UsageRecorder
 from app.services.users import UserService
 from app.services.vector_stores import (
     VectorLimitResolver,

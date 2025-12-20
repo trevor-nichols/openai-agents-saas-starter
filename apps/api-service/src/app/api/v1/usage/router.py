@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends
 
 from app.api.dependencies.tenant import TenantContext, TenantRole, require_tenant_role
 from app.api.models.usage import UsageCounterView
-from app.services.usage_counters import UsageCounterService, get_usage_counter_service
+from app.services.usage.counters import UsageCounterService, get_usage_counter_service
 
 router = APIRouter(prefix="/usage", tags=["usage"])
 

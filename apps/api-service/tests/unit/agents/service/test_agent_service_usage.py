@@ -12,7 +12,7 @@ from app.services.agents.policy import AgentRuntimePolicy
 from app.services.agents.provider_registry import AgentProviderRegistry
 from app.services.conversation_service import ConversationService
 from app.services.containers import ContainerService
-from app.services.usage_recorder import UsageEntry, UsageRecorder
+from app.services.usage.recorder import UsageEntry, UsageRecorder
 
 
 class StubUsageRecorder:

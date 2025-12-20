@@ -56,7 +56,7 @@ from app.infrastructure.providers.openai import build_openai_provider  # noqa: E
 from app.services.agents import AgentService  # noqa: E402
 from app.services.agents.provider_registry import get_provider_registry  # noqa: E402
 from app.services.shared.rate_limit_service import RateLimitExceeded, rate_limiter  # noqa: E402
-from app.services.usage_policy_service import (  # noqa: E402
+from app.services.usage.policy_service import (  # noqa: E402
     UsagePolicyDecision,
     UsagePolicyResult,
     UsagePolicyService,

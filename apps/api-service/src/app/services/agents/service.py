@@ -29,8 +29,8 @@ from app.services.assets.service import AssetService
 from app.services.containers import ContainerFilesGateway, ContainerService
 from app.services.conversation_service import ConversationService
 from app.services.storage.service import StorageService
-from app.services.usage_counters import UsageCounterService
-from app.services.usage_recorder import UsageRecorder
+from app.services.usage.counters import UsageCounterService
+from app.services.usage.recorder import UsageRecorder
 from app.services.vector_stores.service import VectorStoreService
 
 
