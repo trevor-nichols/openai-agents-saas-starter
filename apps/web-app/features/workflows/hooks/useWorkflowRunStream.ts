@@ -18,6 +18,7 @@ type StartRunInput = {
   shareLocation?: boolean;
   location?: LocationHint | null;
   containerOverrides?: Record<string, string> | null;
+  vectorStoreOverrides?: Record<string, { vector_store_id: string }> | null;
 };
 
 type Options = {
@@ -69,6 +70,7 @@ export function useWorkflowRunStream(options?: Options) {
         share_location: input.shareLocation ?? null,
         location: input.shareLocation ? input.location ?? null : null,
         container_overrides: input.containerOverrides ?? null,
+        vector_store_overrides: input.vectorStoreOverrides ?? null,
       };
 
       try {

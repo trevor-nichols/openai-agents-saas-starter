@@ -124,6 +124,25 @@ const demoContainers = [
   },
 ];
 
+const demoVectorStores = [
+  {
+    id: 'vs-1',
+    openai_id: 'vs_1',
+    tenant_id: 'tenant-1',
+    owner_user_id: null,
+    name: 'Primary Knowledge Base',
+    description: 'Default tenant vector store',
+    status: 'completed',
+    usage_bytes: 1024,
+    expires_after: null,
+    expires_at: null,
+    last_active_at: null,
+    metadata: {},
+    created_at: now,
+    updated_at: now,
+  },
+];
+
 type WorkspacePreviewProps = {
   streamStatus: StreamStatus;
   isRunning: boolean;
@@ -160,12 +179,22 @@ type WorkspacePreviewProps = {
           supportsContainersByAgent={{
             analysis: true,
           }}
+          supportsFileSearchByAgent={{
+            analysis: true,
+          }}
           containers={demoContainers}
           containersError={null}
           isLoadingContainers={false}
           containerOverrides={{}}
           onContainerOverrideChange={(agentKey, containerId) =>
             console.log('container override', agentKey, containerId)
+          }
+          vectorStores={demoVectorStores}
+          vectorStoresError={null}
+          isLoadingVectorStores={false}
+          vectorStoreOverrides={{}}
+          onVectorStoreOverrideChange={(agentKey, storeId) =>
+            console.log('vector store override', agentKey, storeId)
           }
           selectedKey={primaryWorkflow.key}
           onRun={async (payload) => {

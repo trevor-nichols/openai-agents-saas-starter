@@ -14,7 +14,7 @@ import {
 } from '@xyflow/react';
 
 import { cn } from '@/lib/utils';
-import type { ContainerResponse } from '@/lib/api/client/types.gen';
+import type { ContainerResponse, VectorStoreResponse } from '@/lib/api/client/types.gen';
 import type { WorkflowDescriptor } from '@/lib/workflows/types';
 import type { WorkflowNodeStreamStore } from '@/lib/workflows/streaming';
 
@@ -35,11 +35,17 @@ interface WorkflowGraphViewportProps {
   } | null;
   toolsByAgent?: Record<string, string[]>;
   supportsContainersByAgent?: Record<string, boolean>;
+  supportsFileSearchByAgent?: Record<string, boolean>;
   containers?: ContainerResponse[];
   containersError?: string | null;
   isLoadingContainers?: boolean;
   containerOverrides?: Record<string, string | null>;
   onContainerOverrideChange?: (agentKey: string, containerId: string | null) => void;
+  vectorStores?: VectorStoreResponse[];
+  vectorStoresError?: string | null;
+  isLoadingVectorStores?: boolean;
+  vectorStoreOverrides?: Record<string, string | null>;
+  onVectorStoreOverrideChange?: (agentKey: string, vectorStoreId: string | null) => void;
   className?: string;
 }
 
@@ -90,11 +96,17 @@ function buildFlow(
   options: {
     toolsByAgent?: Record<string, string[]>;
     supportsContainersByAgent?: Record<string, boolean>;
+    supportsFileSearchByAgent?: Record<string, boolean>;
     containers?: ContainerResponse[];
     containersError?: string | null;
     isLoadingContainers?: boolean;
     containerOverrides?: Record<string, string | null>;
     onContainerOverrideChange?: (agentKey: string, containerId: string | null) => void;
+    vectorStores?: VectorStoreResponse[];
+    vectorStoresError?: string | null;
+    isLoadingVectorStores?: boolean;
+    vectorStoreOverrides?: Record<string, string | null>;
+    onVectorStoreOverrideChange?: (agentKey: string, vectorStoreId: string | null) => void;
   },
 ) {
   if (!descriptor?.stages?.length) return { nodes: [] as WorkflowAgentFlowNode[], edges: [] as Edge[] };
@@ -135,11 +147,17 @@ function buildFlow(
           status,
           tools: options.toolsByAgent?.[step.agent_key] ?? [],
           supportsContainers: Boolean(options.supportsContainersByAgent?.[step.agent_key]),
+          supportsFileSearch: Boolean(options.supportsFileSearchByAgent?.[step.agent_key]),
           containers: options.containers ?? [],
           containersError: options.containersError ?? null,
           isLoadingContainers: Boolean(options.isLoadingContainers),
           selectedContainerId: options.containerOverrides?.[step.agent_key] ?? null,
           onContainerOverrideChange: options.onContainerOverrideChange,
+          vectorStores: options.vectorStores ?? [],
+          vectorStoresError: options.vectorStoresError ?? null,
+          isLoadingVectorStores: Boolean(options.isLoadingVectorStores),
+          selectedVectorStoreId: options.vectorStoreOverrides?.[step.agent_key] ?? null,
+          onVectorStoreOverrideChange: options.onVectorStoreOverrideChange,
         },
       });
 
@@ -192,11 +210,17 @@ function WorkflowGraphViewportInner({
   activeStep,
   toolsByAgent,
   supportsContainersByAgent,
+  supportsFileSearchByAgent,
   containers,
   containersError,
   isLoadingContainers,
   containerOverrides,
   onContainerOverrideChange,
+  vectorStores,
+  vectorStoresError,
+  isLoadingVectorStores,
+  vectorStoreOverrides,
+  onVectorStoreOverrideChange,
   className,
 }: WorkflowGraphViewportProps) {
   const activeKey = useMemo(() => computeActiveStepKey(descriptor, activeStep), [descriptor, activeStep]);
@@ -205,22 +229,34 @@ function WorkflowGraphViewportInner({
       buildFlow(descriptor, activeKey, {
         toolsByAgent,
         supportsContainersByAgent,
+        supportsFileSearchByAgent,
         containers,
         containersError,
         isLoadingContainers,
         containerOverrides,
         onContainerOverrideChange,
+        vectorStores,
+        vectorStoresError,
+        isLoadingVectorStores,
+        vectorStoreOverrides,
+        onVectorStoreOverrideChange,
       }),
     [
       descriptor,
       activeKey,
       toolsByAgent,
       supportsContainersByAgent,
+      supportsFileSearchByAgent,
       containers,
       containersError,
       isLoadingContainers,
       containerOverrides,
       onContainerOverrideChange,
+      vectorStores,
+      vectorStoresError,
+      isLoadingVectorStores,
+      vectorStoreOverrides,
+      onVectorStoreOverrideChange,
     ],
   );
   const { fitView } = useReactFlow();

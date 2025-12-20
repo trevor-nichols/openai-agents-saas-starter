@@ -145,6 +145,14 @@ export type AgentChatRequest = {
   container_overrides?: {
     [key: string]: string;
   } | null;
+  /**
+   * Vector Store Overrides
+   *
+   * Optional vector store overrides keyed by agent key.
+   */
+  vector_store_overrides?: {
+    [key: string]: VectorStoreOverride;
+  } | null;
 };
 
 /**
@@ -6892,6 +6900,26 @@ export type VectorStoreListResponse = {
 };
 
 /**
+ * VectorStoreOverride
+ *
+ * Per-agent vector store override payload.
+ */
+export type VectorStoreOverride = {
+  /**
+   * Vector Store Id
+   *
+   * Single vector store id (DB UUID or OpenAI vector store id).
+   */
+  vector_store_id?: string | null;
+  /**
+   * Vector Store Ids
+   *
+   * List of vector store ids (DB UUID or OpenAI vector store ids).
+   */
+  vector_store_ids?: Array<string> | null;
+};
+
+/**
  * VectorStoreResponse
  */
 export type VectorStoreResponse = {
@@ -7382,6 +7410,14 @@ export type WorkflowRunRequestBody = {
    */
   container_overrides?: {
     [key: string]: string;
+  } | null;
+  /**
+   * Vector Store Overrides
+   *
+   * Optional vector store overrides keyed by agent key.
+   */
+  vector_store_overrides?: {
+    [key: string]: VectorStoreOverride;
   } | null;
 };
 

@@ -102,6 +102,7 @@ export async function runWorkflow(input: WorkflowRunInput): Promise<WorkflowRunR
     location: input.location,
     share_location: input.shareLocation ?? null,
     container_overrides: input.containerOverrides ?? null,
+    vector_store_overrides: input.vectorStoreOverrides ?? null,
   };
 
   const response = await fetch(apiV1Path(`/workflows/${encodeURIComponent(input.workflowKey)}/run`), {

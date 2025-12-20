@@ -71,3 +71,6 @@ export function resolveSupportsContainers(tools: string[]): boolean {
   return tools.includes('code_interpreter');
 }
 
+export function resolveSupportsFileSearch(tools: string[]): boolean {
+  return tools.includes('file_search');
+}

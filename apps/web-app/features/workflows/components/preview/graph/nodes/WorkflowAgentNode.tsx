@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/workflow';
 import { useWorkflowNodePreview } from '../nodeStreamContext';
 import { cn } from '@/lib/utils';
-import type { ContainerResponse } from '@/lib/api/client/types.gen';
+import type { ContainerResponse, VectorStoreResponse } from '@/lib/api/client/types.gen';
 
 export type WorkflowAgentNodeData = {
   title: string;
@@ -38,11 +38,17 @@ export type WorkflowAgentNodeData = {
   status: NodeStatus;
   tools: string[];
   supportsContainers: boolean;
+  supportsFileSearch: boolean;
   containers: ContainerResponse[];
   containersError: string | null;
   isLoadingContainers: boolean;
   selectedContainerId: string | null;
   onContainerOverrideChange?: (agentKey: string, containerId: string | null) => void;
+  vectorStores: VectorStoreResponse[];
+  vectorStoresError: string | null;
+  isLoadingVectorStores: boolean;
+  selectedVectorStoreId: string | null;
+  onVectorStoreOverrideChange?: (agentKey: string, vectorStoreId: string | null) => void;
 };
 
 export type WorkflowAgentFlowNode = Node<WorkflowAgentNodeData, 'workflowAgent'>;
@@ -63,6 +69,7 @@ export function WorkflowAgentNode({ id, data, selected }: NodeProps<WorkflowAgen
   const preview = useWorkflowNodePreview(id);
   const sortedTools = [...data.tools].sort((a, b) => a.localeCompare(b));
   const containerValue = data.selectedContainerId ?? 'auto';
+  const vectorStoreValue = data.selectedVectorStoreId ?? 'auto';
 
   const statusTitle = (() => {
     switch (data.status) {
@@ -193,6 +200,53 @@ export function WorkflowAgentNode({ id, data, selected }: NodeProps<WorkflowAgen
                               <SelectItemTitle>{container.name}</SelectItemTitle>
                               <SelectItemDescription>
                                 {container.memory_limit} · {container.status}
+                              </SelectItemDescription>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    <p className="text-[11px] text-muted-foreground">
+                      Applies to the next workflow run.
+                    </p>
+                  </div>
+                ) : null}
+
+                {data.supportsFileSearch ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Vector store
+                      </p>
+                      <InlineTag tone="default">File Search</InlineTag>
+                    </div>
+                    {data.vectorStoresError ? (
+                      <p className="text-xs text-destructive">{data.vectorStoresError}</p>
+                    ) : data.isLoadingVectorStores ? (
+                      <p className="text-xs text-muted-foreground">Loading vector stores…</p>
+                    ) : data.vectorStores.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">No vector stores available.</p>
+                    ) : (
+                      <Select
+                        value={vectorStoreValue}
+                        onValueChange={(value) => {
+                          const resolved = value === 'auto' ? null : value;
+                          data.onVectorStoreOverrideChange?.(data.agentKey, resolved);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Auto (managed)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="auto">
+                            <SelectItemTitle>Auto (managed)</SelectItemTitle>
+                            <SelectItemDescription>Use the default vector store policy.</SelectItemDescription>
+                          </SelectItem>
+                          {data.vectorStores.map((store) => (
+                            <SelectItem key={store.id} value={store.id}>
+                              <SelectItemTitle>{store.name}</SelectItemTitle>
+                              <SelectItemDescription>
+                                {store.status} · {store.usage_bytes ?? 0} bytes
                               </SelectItemDescription>
                             </SelectItem>
                           ))}

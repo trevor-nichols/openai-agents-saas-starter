@@ -30,6 +30,7 @@ export interface WorkflowRunInput {
   location?: WorkflowRunRequest['location'];
   shareLocation?: boolean | null;
   containerOverrides?: Record<string, string> | null;
+  vectorStoreOverrides?: Record<string, { vector_store_id: string }> | null;
 }
 
 export interface WorkflowRunListFilters {

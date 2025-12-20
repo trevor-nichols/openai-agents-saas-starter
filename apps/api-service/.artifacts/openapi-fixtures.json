@@ -24170,6 +24170,21 @@
             ],
             "title": "Container Overrides",
             "description": "Optional container overrides keyed by agent key."
+          },
+          "vector_store_overrides": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/VectorStoreOverride"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vector Store Overrides",
+            "description": "Optional vector store overrides keyed by agent key."
           }
         },
         "type": "object",
@@ -35728,6 +35743,40 @@
         ],
         "title": "VectorStoreListResponse"
       },
+      "VectorStoreOverride": {
+        "properties": {
+          "vector_store_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vector Store Id",
+            "description": "Single vector store id (DB UUID or OpenAI vector store id)."
+          },
+          "vector_store_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vector Store Ids",
+            "description": "List of vector store ids (DB UUID or OpenAI vector store ids)."
+          }
+        },
+        "type": "object",
+        "title": "VectorStoreOverride",
+        "description": "Per-agent vector store override payload."
+      },
       "VectorStoreResponse": {
         "properties": {
           "id": {
@@ -36598,6 +36647,21 @@
             ],
             "title": "Container Overrides",
             "description": "Optional container overrides keyed by agent key."
+          },
+          "vector_store_overrides": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/VectorStoreOverride"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vector Store Overrides",
+            "description": "Optional vector store overrides keyed by agent key."
           }
         },
         "type": "object",

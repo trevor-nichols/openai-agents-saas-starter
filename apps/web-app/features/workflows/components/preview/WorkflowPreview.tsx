@@ -5,7 +5,7 @@ import { LayoutGrid, List } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import type { ContainerResponse } from '@/lib/api/client/types.gen';
+import type { ContainerResponse, VectorStoreResponse } from '@/lib/api/client/types.gen';
 import type { WorkflowDescriptor } from '@/lib/workflows/types';
 import type { WorkflowNodeStreamStore } from '@/lib/workflows/streaming';
 
@@ -25,11 +25,17 @@ interface WorkflowPreviewProps {
   } | null;
   toolsByAgent: Record<string, string[]>;
   supportsContainersByAgent: Record<string, boolean>;
+  supportsFileSearchByAgent: Record<string, boolean>;
   containers: ContainerResponse[];
   containersError: string | null;
   isLoadingContainers: boolean;
   containerOverrides: Record<string, string | null>;
   onContainerOverrideChange: (agentKey: string, containerId: string | null) => void;
+  vectorStores: VectorStoreResponse[];
+  vectorStoresError: string | null;
+  isLoadingVectorStores: boolean;
+  vectorStoreOverrides: Record<string, string | null>;
+  onVectorStoreOverrideChange: (agentKey: string, vectorStoreId: string | null) => void;
   className?: string;
 }
 
@@ -39,11 +45,17 @@ export function WorkflowPreview({
   activeStep,
   toolsByAgent,
   supportsContainersByAgent,
+  supportsFileSearchByAgent,
   containers,
   containersError,
   isLoadingContainers,
   containerOverrides,
   onContainerOverrideChange,
+  vectorStores,
+  vectorStoresError,
+  isLoadingVectorStores,
+  vectorStoreOverrides,
+  onVectorStoreOverrideChange,
   className,
 }: WorkflowPreviewProps) {
   const { mode, setMode } = useWorkflowPreviewMode('graph');
@@ -84,11 +96,17 @@ export function WorkflowPreview({
           activeStep={activeStep}
           toolsByAgent={toolsByAgent}
           supportsContainersByAgent={supportsContainersByAgent}
+          supportsFileSearchByAgent={supportsFileSearchByAgent}
           containers={containers}
           containersError={containersError}
           isLoadingContainers={isLoadingContainers}
           containerOverrides={containerOverrides}
           onContainerOverrideChange={onContainerOverrideChange}
+          vectorStores={vectorStores}
+          vectorStoresError={vectorStoresError}
+          isLoadingVectorStores={isLoadingVectorStores}
+          vectorStoreOverrides={vectorStoreOverrides}
+          onVectorStoreOverrideChange={onVectorStoreOverrideChange}
           className="h-full"
         />
       </TabsContent>

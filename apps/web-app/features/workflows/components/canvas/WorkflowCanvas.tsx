@@ -1,7 +1,7 @@
 'use client';
 
 import type { LocationHint } from '@/lib/api/client/types.gen';
-import type { ContainerResponse } from '@/lib/api/client/types.gen';
+import type { ContainerResponse, VectorStoreResponse } from '@/lib/api/client/types.gen';
 import type { WorkflowDescriptor } from '@/lib/workflows/types';
 import type { WorkflowNodeStreamStore } from '@/lib/workflows/streaming';
 
@@ -20,11 +20,17 @@ interface WorkflowCanvasProps {
   } | null;
   toolsByAgent: Record<string, string[]>;
   supportsContainersByAgent: Record<string, boolean>;
+  supportsFileSearchByAgent: Record<string, boolean>;
   containers: ContainerResponse[];
   containersError: string | null;
   isLoadingContainers: boolean;
   containerOverrides: Record<string, string | null>;
   onContainerOverrideChange: (agentKey: string, containerId: string | null) => void;
+  vectorStores: VectorStoreResponse[];
+  vectorStoresError: string | null;
+  isLoadingVectorStores: boolean;
+  vectorStoreOverrides: Record<string, string | null>;
+  onVectorStoreOverrideChange: (agentKey: string, vectorStoreId: string | null) => void;
   selectedKey: string | null;
   onRun: (input: {
     workflowKey: string;
@@ -44,11 +50,17 @@ export function WorkflowCanvas({
   activeStep,
   toolsByAgent,
   supportsContainersByAgent,
+  supportsFileSearchByAgent,
   containers,
   containersError,
   isLoadingContainers,
   containerOverrides,
   onContainerOverrideChange,
+  vectorStores,
+  vectorStoresError,
+  isLoadingVectorStores,
+  vectorStoreOverrides,
+  onVectorStoreOverrideChange,
   selectedKey,
   onRun,
   isRunning,
@@ -67,11 +79,17 @@ export function WorkflowCanvas({
             activeStep={activeStep}
             toolsByAgent={toolsByAgent}
             supportsContainersByAgent={supportsContainersByAgent}
+            supportsFileSearchByAgent={supportsFileSearchByAgent}
             containers={containers}
             containersError={containersError}
             isLoadingContainers={isLoadingContainers}
             containerOverrides={containerOverrides}
             onContainerOverrideChange={onContainerOverrideChange}
+            vectorStores={vectorStores}
+            vectorStoresError={vectorStoresError}
+            isLoadingVectorStores={isLoadingVectorStores}
+            vectorStoreOverrides={vectorStoreOverrides}
+            onVectorStoreOverrideChange={onVectorStoreOverrideChange}
             className="h-full"
           />
         </div>

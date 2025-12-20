@@ -4,15 +4,15 @@
 _Last updated: 2025-12-20_  
 **Status:** Completed  
 **Owner:** @platform-foundations  
-**Domain:** Backend  
-**ID / Links:** [Vector store overrides design], [Containers override pattern], [Agent tooling flags]
+**Domain:** Cross-cutting  
+**ID / Links:** [Vector store overrides design], [Containers override pattern], [Agent tooling flags], [Web app plan]
 
 ---
 
 <!-- SECTION: Objective -->
 ## Objective
 
-Enable per-agent vector store overrides (mirroring container overrides) so the frontend can safely gate file_search usage per agent and requests can target specific vector stores without global overrides, while keeping the implementation DRY and aligned with existing clean architecture patterns.
+Enable per-agent vector store overrides (mirroring container overrides) so the frontend can safely gate file_search usage per agent and requests can target specific vector stores without global overrides, while keeping the implementation DRY and aligned with existing clean architecture patterns across backend and web app.
 
 ---
 
@@ -23,8 +23,11 @@ Enable per-agent vector store overrides (mirroring container overrides) so the f
 - Overrides validate agent capability (`file_search`) and tenant ownership
 - Overrides resolve to OpenAI vector store IDs without duplicating resolution logic
 - Interaction context uses overrides before binding/spec/default resolution
+- Web app threads vector store overrides through workflow run requests/streams
+- Workflow nodes show vector store selectors only for file_search-capable agents
 - Unit tests cover valid/invalid override paths
 - `hatch run lint` and `hatch run typecheck` pass
+- `pnpm lint` and `pnpm type-check` pass
 - Docs/trackers updated
 
 ---
@@ -37,9 +40,10 @@ Enable per-agent vector store overrides (mirroring container overrides) so the f
 - Resolver to validate and resolve override inputs (DB UUID or OpenAI vector store ID)
 - Integrate overrides into interaction context resolution
 - Unit tests for new behavior
+- Web app workflow override wiring + UI gating for file_search
+- Web app tests for tooling + override flow
 
 ### Out of Scope
-- Frontend UI changes (schema regen only)
 - Changes to vector store CRUD endpoints
 - Migration or data backfills
 
@@ -51,9 +55,9 @@ Enable per-agent vector store overrides (mirroring container overrides) so the f
 | Area | Status | Notes |
 | --- | --- | --- |
 | Architecture/design | ✅ | Reuse container override pattern + existing vector store resolver |
-| Implementation | ✅ | Schema + service wiring complete |
-| Tests & QA | ✅ | Lint/typecheck + targeted pytest for overrides |
-| Docs & runbooks | ✅ | Tracker kept current |
+| Implementation | ✅ | Backend + web app wiring complete |
+| Tests & QA | ✅ | Backend + web lint/type-check + unit tests green |
+| Docs & runbooks | ✅ | Tracker updated with completion notes |
 
 ---
 
@@ -91,6 +95,14 @@ Enable per-agent vector store overrides (mirroring container overrides) so the f
 | C1 | Tests | Unit tests for overrides + validation | @platform-foundations | ✅ |
 | C2 | QA | Lint + typecheck | @platform-foundations | ✅ |
 
+### Workstream D – Web App
+
+| ID | Area | Description | Owner | Status |
+|----|------|-------------|-------|--------|
+| D1 | Web | Thread vector_store_overrides through workflow run + stream | @platform-foundations | ✅ |
+| D2 | Web | Add file_search gating + vector store selector UI in workflow nodes | @platform-foundations | ✅ |
+| D3 | Web | Web app tests + lint/type-check | @platform-foundations | ✅ |
+
 ---
 
 <!-- SECTION: Phases (optional if simple) -->
@@ -102,6 +114,7 @@ Enable per-agent vector store overrides (mirroring container overrides) so the f
 | P1 – Schemas | API request models updated | Schema compiles + lint/typecheck | ✅ | 2025-12-20 |
 | P2 – Services | Resolver + context integration | Unit tests pass + lint/typecheck | ✅ | 2025-12-20 |
 | P3 – Tests & QA | Coverage and cleanup | All backend checks green | ✅ | 2025-12-20 |
+| P4 – Web App | Workflow UI + wiring | Web checks green + tests updated | ✅ | 2025-12-20 |
 
 ---
 
@@ -130,6 +143,9 @@ Enable per-agent vector store overrides (mirroring container overrides) so the f
 - `cd apps/api-service && hatch run lint`
 - `cd apps/api-service && hatch run typecheck`
 - Unit tests for new overrides in `tests/unit/agents/service` (pytest via hatch)
+- `cd apps/web-app && pnpm lint`
+- `cd apps/web-app && pnpm type-check`
+- Web app unit tests for tooling (vitest)
 
 ---
 
@@ -147,3 +163,4 @@ Enable per-agent vector store overrides (mirroring container overrides) so the f
 - 2025-12-20 — Added vector_store_overrides schema + request fields; lint/typecheck clean.
 - 2025-12-20 — Implemented per-agent override resolver + workflow wiring; lint/typecheck clean.
 - 2025-12-20 — Added override tests; lint/typecheck + targeted pytest clean.
+- 2025-12-20 — Web app wiring + UI gating for file_search vector store overrides; `pnpm lint`, `pnpm type-check`, `pnpm test:unit` green.

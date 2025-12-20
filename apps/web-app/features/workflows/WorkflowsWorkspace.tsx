@@ -6,6 +6,7 @@ import { ErrorState } from '@/components/ui/states';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { USE_API_MOCK } from '@/lib/config';
 import { useContainersQuery } from '@/lib/queries/containers';
+import { useVectorStoresQuery } from '@/lib/queries/vectorStores';
 import { useTools } from '@/lib/queries/tools';
 import {
   useWorkflowDescriptorQuery,
@@ -17,7 +18,12 @@ import type { LocationHint } from '@/lib/api/client/types.gen';
 
 import { WorkflowCanvas, WorkflowRunFeed, WorkflowSidebar } from './components';
 import type { WorkflowStatusFilter } from './constants';
-import { getToolRegistrySnapshot, resolveAgentTools, resolveSupportsContainers } from './utils/tooling';
+import {
+  getToolRegistrySnapshot,
+  resolveAgentTools,
+  resolveSupportsContainers,
+  resolveSupportsFileSearch,
+} from './utils/tooling';
 import {
   useWorkflowRunActions,
   useWorkflowRunStream,
@@ -37,7 +43,11 @@ export function WorkflowsWorkspace() {
   const descriptorQuery = useWorkflowDescriptorQuery(selectedWorkflowKey ?? null);
   const toolsQuery = useTools();
   const containersQuery = useContainersQuery();
+  const vectorStoresQuery = useVectorStoresQuery();
   const [containerOverridesByWorkflow, setContainerOverridesByWorkflow] = useState<
+    Record<string, Record<string, string | null>>
+  >({});
+  const [vectorStoreOverridesByWorkflow, setVectorStoreOverridesByWorkflow] = useState<
     Record<string, Record<string, string | null>>
   >({});
 
@@ -106,11 +116,26 @@ export function WorkflowsWorkspace() {
     return map;
   }, [agentKeys, toolsByAgent]);
 
+  const supportsFileSearchByAgent = useMemo(() => {
+    const map: Record<string, boolean> = {};
+    agentKeys.forEach((agentKey) => {
+      map[agentKey] = resolveSupportsFileSearch(toolsByAgent[agentKey] ?? []);
+    });
+    return map;
+  }, [agentKeys, toolsByAgent]);
+
   const containersError =
     containersQuery.error instanceof Error
       ? containersQuery.error.message
       : containersQuery.error
         ? String(containersQuery.error)
+        : null;
+
+  const vectorStoresError =
+    vectorStoresQuery.error instanceof Error
+      ? vectorStoresQuery.error.message
+      : vectorStoresQuery.error
+        ? String(vectorStoresQuery.error)
         : null;
 
   const containerOverrides = useMemo(() => {
@@ -119,6 +144,13 @@ export function WorkflowsWorkspace() {
     }
     return containerOverridesByWorkflow[selectedWorkflowKey] ?? {};
   }, [containerOverridesByWorkflow, selectedWorkflowKey]);
+
+  const vectorStoreOverrides = useMemo(() => {
+    if (!selectedWorkflowKey) {
+      return {};
+    }
+    return vectorStoreOverridesByWorkflow[selectedWorkflowKey] ?? {};
+  }, [vectorStoreOverridesByWorkflow, selectedWorkflowKey]);
 
   const handleContainerOverrideChange = useCallback(
     (agentKey: string, containerId: string | null) => {
@@ -130,6 +162,23 @@ export function WorkflowsWorkspace() {
           [selectedWorkflowKey]: {
             ...current,
             [agentKey]: containerId,
+          },
+        };
+      });
+    },
+    [selectedWorkflowKey],
+  );
+
+  const handleVectorStoreOverrideChange = useCallback(
+    (agentKey: string, vectorStoreId: string | null) => {
+      if (!selectedWorkflowKey) return;
+      setVectorStoreOverridesByWorkflow((prev) => {
+        const current = prev[selectedWorkflowKey] ?? {};
+        return {
+          ...prev,
+          [selectedWorkflowKey]: {
+            ...current,
+            [agentKey]: vectorStoreId,
           },
         };
       });
@@ -181,9 +230,18 @@ export function WorkflowsWorkspace() {
       },
     );
     const resolvedOverrides = Object.fromEntries(resolvedOverridesEntries);
+    const resolvedVectorOverridesEntries = Object.entries(vectorStoreOverrides).flatMap(
+      ([agentKey, storeId]) => {
+        if (!storeId) return [];
+        if (!supportsFileSearchByAgent[agentKey]) return [];
+        return [[agentKey, { vector_store_id: storeId }] as const];
+      },
+    );
+    const resolvedVectorOverrides = Object.fromEntries(resolvedVectorOverridesEntries);
     await startRun({
       ...input,
       containerOverrides: Object.keys(resolvedOverrides).length ? resolvedOverrides : undefined,
+      vectorStoreOverrides: Object.keys(resolvedVectorOverrides).length ? resolvedVectorOverrides : undefined,
     });
     await runs.refetch();
   };
@@ -213,11 +271,17 @@ export function WorkflowsWorkspace() {
                     activeStep={activeStreamStep}
                     toolsByAgent={toolsByAgent}
                     supportsContainersByAgent={supportsContainersByAgent}
+                    supportsFileSearchByAgent={supportsFileSearchByAgent}
                     containers={containersQuery.data?.items ?? []}
                     containersError={containersError}
                     isLoadingContainers={containersQuery.isLoading}
                     containerOverrides={containerOverrides}
                     onContainerOverrideChange={handleContainerOverrideChange}
+                    vectorStores={vectorStoresQuery.data?.items ?? []}
+                    vectorStoresError={vectorStoresError}
+                    isLoadingVectorStores={vectorStoresQuery.isLoading}
+                    vectorStoreOverrides={vectorStoreOverrides}
+                    onVectorStoreOverrideChange={handleVectorStoreOverrideChange}
                     selectedKey={selectedWorkflowKey}
                     onRun={handleRun}
                     isRunning={isStreaming}
