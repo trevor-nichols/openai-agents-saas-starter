@@ -320,6 +320,7 @@ class WorkflowRunner:
         location: Any | None = None,
         share_location: bool | None = None,
         container_overrides: dict[str, str] | None = None,
+        vector_store_overrides: Mapping[str, Any] | None = None,
     ) -> WorkflowRunResult:
         provider = self._provider_registry.get_default()
         run_id = _uuid()
@@ -375,6 +376,7 @@ class WorkflowRunner:
                 location=location,
                 share_location=share_location,
                 container_overrides=container_overrides,
+                vector_store_overrides=vector_store_overrides,
             ),
             conversation_id=conversation_id,
             agent_keys=_workflow_agent_keys(workflow),
@@ -546,6 +548,7 @@ class WorkflowRunner:
         location: Any | None = None,
         share_location: bool | None = None,
         container_overrides: dict[str, str] | None = None,
+        vector_store_overrides: Mapping[str, Any] | None = None,
     ) -> AsyncIterator[AgentStreamEvent]:
         provider = self._provider_registry.get_default()
         run_id = _uuid()
@@ -600,6 +603,7 @@ class WorkflowRunner:
                 location=location,
                 share_location=share_location,
                 container_overrides=container_overrides,
+                vector_store_overrides=vector_store_overrides,
             ),
             conversation_id=conversation_id,
             agent_keys=_workflow_agent_keys(workflow),
@@ -849,12 +853,14 @@ class _WorkflowRequestProxy(SimpleNamespace):
         location: Any | None,
         share_location: bool | None,
         container_overrides: dict[str, str] | None = None,
+        vector_store_overrides: Mapping[str, Any] | None = None,
     ):
         super().__init__(
             message=message,
             location=location,
             share_location=share_location,
             container_overrides=container_overrides,
+            vector_store_overrides=vector_store_overrides,
         )
 
 

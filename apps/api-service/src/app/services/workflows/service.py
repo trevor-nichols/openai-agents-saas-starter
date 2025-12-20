@@ -35,6 +35,7 @@ class WorkflowRunRequest:
     location: Any | None = None
     share_location: bool | None = None
     container_overrides: dict[str, str] | None = None
+    vector_store_overrides: dict[str, Any] | None = None
 
 
 class WorkflowService:
@@ -106,6 +107,7 @@ class WorkflowService:
             location=request.location,
             share_location=request.share_location,
             container_overrides=request.container_overrides,
+            vector_store_overrides=request.vector_store_overrides,
         )
 
     async def get_run(self, run_id: str):
@@ -302,6 +304,8 @@ class WorkflowService:
             conversation_id=conversation_id,
             location=request.location,
             share_location=request.share_location,
+            container_overrides=request.container_overrides,
+            vector_store_overrides=request.vector_store_overrides,
         )
 
 

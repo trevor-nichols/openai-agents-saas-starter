@@ -5,6 +5,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.api.v1.shared.attachments import InputAttachment
+from app.api.v1.shared.overrides import VectorStoreOverrides
 from app.api.v1.shared.streaming import MessageAttachment, PublicSseEvent
 
 
@@ -34,6 +35,10 @@ class AgentChatRequest(BaseModel):
     container_overrides: dict[str, str] | None = Field(
         default=None,
         description="Optional container overrides keyed by agent key.",
+    )
+    vector_store_overrides: VectorStoreOverrides | None = Field(
+        default=None,
+        description="Optional vector store overrides keyed by agent key.",
     )
 
 
