@@ -29,6 +29,7 @@ export interface WorkflowRunInput {
   conversationId?: string | null;
   location?: WorkflowRunRequest['location'];
   shareLocation?: boolean | null;
+  containerOverrides?: Record<string, string> | null;
 }
 
 export interface WorkflowRunListFilters {

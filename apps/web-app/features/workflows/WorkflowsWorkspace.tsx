@@ -1,10 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { ErrorState } from '@/components/ui/states';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { USE_API_MOCK } from '@/lib/config';
+import { useContainersQuery } from '@/lib/queries/containers';
+import { useTools } from '@/lib/queries/tools';
 import {
   useWorkflowDescriptorQuery,
   useWorkflowRunQuery,
@@ -15,6 +17,7 @@ import type { LocationHint } from '@/lib/api/client/types.gen';
 
 import { WorkflowCanvas, WorkflowRunFeed, WorkflowSidebar } from './components';
 import type { WorkflowStatusFilter } from './constants';
+import { getToolRegistrySnapshot, resolveAgentTools, resolveSupportsContainers } from './utils/tooling';
 import {
   useWorkflowRunActions,
   useWorkflowRunStream,
@@ -32,6 +35,11 @@ export function WorkflowsWorkspace() {
   const [statusFilter, setStatusFilter] = useState<WorkflowStatusFilter>('all');
 
   const descriptorQuery = useWorkflowDescriptorQuery(selectedWorkflowKey ?? null);
+  const toolsQuery = useTools();
+  const containersQuery = useContainersQuery();
+  const [containerOverridesByWorkflow, setContainerOverridesByWorkflow] = useState<
+    Record<string, Record<string, string | null>>
+  >({});
 
   const runFilters = useMemo(
     () => ({
@@ -64,6 +72,70 @@ export function WorkflowsWorkspace() {
     descriptor: descriptorQuery.data ?? null,
     events: streamEvents,
   });
+
+  const agentKeys = useMemo(() => {
+    const keys = new Set<string>();
+    descriptorQuery.data?.stages?.forEach((stage) => {
+      stage.steps?.forEach((step) => {
+        if (step.agent_key) {
+          keys.add(step.agent_key);
+        }
+      });
+    });
+    return Array.from(keys);
+  }, [descriptorQuery.data]);
+
+  const toolRegistrySnapshot = useMemo(
+    () => getToolRegistrySnapshot(toolsQuery.tools),
+    [toolsQuery.tools],
+  );
+
+  const toolsByAgent = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    agentKeys.forEach((agentKey) => {
+      map[agentKey] = resolveAgentTools(toolRegistrySnapshot, agentKey).tools;
+    });
+    return map;
+  }, [agentKeys, toolRegistrySnapshot]);
+
+  const supportsContainersByAgent = useMemo(() => {
+    const map: Record<string, boolean> = {};
+    agentKeys.forEach((agentKey) => {
+      map[agentKey] = resolveSupportsContainers(toolsByAgent[agentKey] ?? []);
+    });
+    return map;
+  }, [agentKeys, toolsByAgent]);
+
+  const containersError =
+    containersQuery.error instanceof Error
+      ? containersQuery.error.message
+      : containersQuery.error
+        ? String(containersQuery.error)
+        : null;
+
+  const containerOverrides = useMemo(() => {
+    if (!selectedWorkflowKey) {
+      return {};
+    }
+    return containerOverridesByWorkflow[selectedWorkflowKey] ?? {};
+  }, [containerOverridesByWorkflow, selectedWorkflowKey]);
+
+  const handleContainerOverrideChange = useCallback(
+    (agentKey: string, containerId: string | null) => {
+      if (!selectedWorkflowKey) return;
+      setContainerOverridesByWorkflow((prev) => {
+        const current = prev[selectedWorkflowKey] ?? {};
+        return {
+          ...prev,
+          [selectedWorkflowKey]: {
+            ...current,
+            [agentKey]: containerId,
+          },
+        };
+      });
+    },
+    [selectedWorkflowKey],
+  );
 
   const activeStreamStep = useMemo(() => {
     // Pick the latest event that carries step metadata
@@ -101,7 +173,18 @@ export function WorkflowsWorkspace() {
     shareLocation?: boolean;
     location?: LocationHint | null;
   }) => {
-    await startRun(input);
+    const resolvedOverridesEntries = Object.entries(containerOverrides).flatMap(
+      ([agentKey, containerId]) => {
+        if (!containerId) return [];
+        if (!supportsContainersByAgent[agentKey]) return [];
+        return [[agentKey, containerId] as const];
+      },
+    );
+    const resolvedOverrides = Object.fromEntries(resolvedOverridesEntries);
+    await startRun({
+      ...input,
+      containerOverrides: Object.keys(resolvedOverrides).length ? resolvedOverrides : undefined,
+    });
     await runs.refetch();
   };
 
@@ -128,6 +211,13 @@ export function WorkflowsWorkspace() {
                     descriptor={descriptorQuery.data ?? null}
                     nodeStreamStore={nodeStreamStore}
                     activeStep={activeStreamStep}
+                    toolsByAgent={toolsByAgent}
+                    supportsContainersByAgent={supportsContainersByAgent}
+                    containers={containersQuery.data?.items ?? []}
+                    containersError={containersError}
+                    isLoadingContainers={containersQuery.isLoading}
+                    containerOverrides={containerOverrides}
+                    onContainerOverrideChange={handleContainerOverrideChange}
                     selectedKey={selectedWorkflowKey}
                     onRun={handleRun}
                     isRunning={isStreaming}

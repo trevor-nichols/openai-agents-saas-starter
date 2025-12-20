@@ -5,6 +5,7 @@ import { LayoutGrid, List } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import type { ContainerResponse } from '@/lib/api/client/types.gen';
 import type { WorkflowDescriptor } from '@/lib/workflows/types';
 import type { WorkflowNodeStreamStore } from '@/lib/workflows/streaming';
 
@@ -22,10 +23,29 @@ interface WorkflowPreviewProps {
     parallelGroup?: string | null;
     branchIndex?: number | null;
   } | null;
+  toolsByAgent: Record<string, string[]>;
+  supportsContainersByAgent: Record<string, boolean>;
+  containers: ContainerResponse[];
+  containersError: string | null;
+  isLoadingContainers: boolean;
+  containerOverrides: Record<string, string | null>;
+  onContainerOverrideChange: (agentKey: string, containerId: string | null) => void;
   className?: string;
 }
 
-export function WorkflowPreview({ descriptor, nodeStreamStore, activeStep, className }: WorkflowPreviewProps) {
+export function WorkflowPreview({
+  descriptor,
+  nodeStreamStore,
+  activeStep,
+  toolsByAgent,
+  supportsContainersByAgent,
+  containers,
+  containersError,
+  isLoadingContainers,
+  containerOverrides,
+  onContainerOverrideChange,
+  className,
+}: WorkflowPreviewProps) {
   const { mode, setMode } = useWorkflowPreviewMode('graph');
 
   return (
@@ -62,6 +82,13 @@ export function WorkflowPreview({ descriptor, nodeStreamStore, activeStep, class
           descriptor={descriptor}
           nodeStreamStore={nodeStreamStore ?? null}
           activeStep={activeStep}
+          toolsByAgent={toolsByAgent}
+          supportsContainersByAgent={supportsContainersByAgent}
+          containers={containers}
+          containersError={containersError}
+          isLoadingContainers={isLoadingContainers}
+          containerOverrides={containerOverrides}
+          onContainerOverrideChange={onContainerOverrideChange}
           className="h-full"
         />
       </TabsContent>

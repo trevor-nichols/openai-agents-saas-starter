@@ -99,7 +99,8 @@ export function ChatWorkspace() {
             </TabsList>
             <TabsContent value="tools" className="mt-4 space-y-4">
               <ToolMetadataPanel
-                selectedAgent={selectedAgentLabel}
+                selectedAgentKey={selectedAgent}
+                selectedAgentLabel={selectedAgentLabel}
                 tools={tools}
                 isLoading={isLoadingTools}
                 error={toolsError}

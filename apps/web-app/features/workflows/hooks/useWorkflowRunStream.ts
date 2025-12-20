@@ -17,6 +17,7 @@ type StartRunInput = {
   message: string;
   shareLocation?: boolean;
   location?: LocationHint | null;
+  containerOverrides?: Record<string, string> | null;
 };
 
 type Options = {
@@ -67,6 +68,7 @@ export function useWorkflowRunStream(options?: Options) {
         message: input.message,
         share_location: input.shareLocation ?? null,
         location: input.shareLocation ? input.location ?? null : null,
+        container_overrides: input.containerOverrides ?? null,
       };
 
       try {

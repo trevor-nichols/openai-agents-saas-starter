@@ -16620,6 +16620,206 @@
         }
       }
     },
+    "/api/v1/vector-stores/{vector_store_id}/files/upload": {
+      "post": {
+        "tags": [
+          "vector-stores"
+        ],
+        "summary": "Upload And Attach File",
+        "operationId": "upload_and_attach_file_api_v1_vector_stores__vector_store_id__files_upload_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "vector_store_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Vector Store Id"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Tenant-Role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Role"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VectorStoreFileUploadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VectorStoreFileResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request Entity Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/vector-stores/{vector_store_id}/files/{file_id}": {
       "get": {
         "tags": [
@@ -18250,6 +18450,196 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request Entity Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/uploads/agent-input": {
+      "post": {
+        "tags": [
+          "uploads"
+        ],
+        "summary": "Create Agent Input Upload",
+        "operationId": "create_agent_input_upload_api_v1_uploads_agent_input_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Tenant-Role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Role"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoragePresignUploadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoragePresignUploadResponse"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -23666,6 +24056,20 @@
             "type": "string",
             "title": "Message"
           },
+          "attachments": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/InputAttachment"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attachments"
+          },
           "conversation_id": {
             "anyOf": [
               {
@@ -23751,6 +24155,21 @@
               }
             ],
             "title": "Memory Injection"
+          },
+          "container_overrides": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Container Overrides",
+            "description": "Optional container overrides keyed by agent key."
           }
         },
         "type": "object",
@@ -24007,6 +24426,10 @@
             "title": "Total Conversations",
             "description": "Total number of conversations handled.",
             "default": 0
+          },
+          "tooling": {
+            "$ref": "#/components/schemas/AgentToolingFlags",
+            "description": "Tooling capability flags for UI gating."
           }
         },
         "type": "object",
@@ -24083,6 +24506,10 @@
             "title": "Model",
             "description": "Model configured for this agent."
           },
+          "tooling": {
+            "$ref": "#/components/schemas/AgentToolingFlags",
+            "description": "Tooling capability flags for UI gating."
+          },
           "last_seen_at": {
             "anyOf": [
               {
@@ -24103,6 +24530,37 @@
         ],
         "title": "AgentSummary",
         "description": "Lightweight representation of an available agent."
+      },
+      "AgentToolingFlags": {
+        "properties": {
+          "supports_code_interpreter": {
+            "type": "boolean",
+            "title": "Supports Code Interpreter",
+            "description": "Whether the agent can use code_interpreter.",
+            "default": false
+          },
+          "supports_file_search": {
+            "type": "boolean",
+            "title": "Supports File Search",
+            "description": "Whether the agent can use file_search.",
+            "default": false
+          },
+          "supports_image_generation": {
+            "type": "boolean",
+            "title": "Supports Image Generation",
+            "description": "Whether the agent can use image_generation.",
+            "default": false
+          },
+          "supports_web_search": {
+            "type": "boolean",
+            "title": "Supports Web Search",
+            "description": "Whether the agent can use web_search.",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "AgentToolingFlags",
+        "description": "Stable capability flags for UI gating."
       },
       "AgentUpdatedEvent": {
         "properties": {
@@ -28358,6 +28816,38 @@
           "state"
         ],
         "title": "IncidentSchema"
+      },
+      "InputAttachment": {
+        "properties": {
+          "object_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Object Id",
+            "description": "Storage object identifier"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "image",
+                  "file"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind",
+            "description": "Optional override for how the object should be sent to the model."
+          }
+        },
+        "type": "object",
+        "required": [
+          "object_id"
+        ],
+        "title": "InputAttachment",
+        "description": "Reference to a stored object that should be passed to an agent as input."
       },
       "LifecycleEvent": {
         "properties": {
@@ -35168,6 +35658,55 @@
         ],
         "title": "VectorStoreFileResponse"
       },
+      "VectorStoreFileUploadRequest": {
+        "properties": {
+          "object_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Object Id"
+          },
+          "agent_key": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Agent Key"
+          },
+          "attributes": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attributes"
+          },
+          "chunking_strategy": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunking Strategy"
+          },
+          "poll": {
+            "type": "boolean",
+            "title": "Poll",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "object_id",
+          "agent_key"
+        ],
+        "title": "VectorStoreFileUploadRequest"
+      },
       "VectorStoreListResponse": {
         "properties": {
           "items": {
@@ -35995,6 +36534,21 @@
             "title": "Message",
             "description": "Initial user message"
           },
+          "attachments": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/InputAttachment"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attachments",
+            "description": "Optional file/image inputs for the workflow run."
+          },
           "conversation_id": {
             "anyOf": [
               {
@@ -36029,6 +36583,21 @@
             ],
             "title": "Share Location",
             "description": "If true, forward location to hosted web search"
+          },
+          "container_overrides": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Container Overrides",
+            "description": "Optional container overrides keyed by agent key."
           }
         },
         "type": "object",

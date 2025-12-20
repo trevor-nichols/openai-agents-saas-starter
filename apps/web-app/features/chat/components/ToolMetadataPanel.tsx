@@ -12,9 +12,11 @@ import { EmptyState, SkeletonPanel } from '@/components/ui/states';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import type { ToolRegistry } from '@/types/tools';
+import { normalizeAgentLabel } from '../utils/formatters';
 
 interface ToolMetadataPanelProps {
-  selectedAgent: string;
+  selectedAgentKey: string;
+  selectedAgentLabel?: string;
   tools: ToolRegistry;
   isLoading: boolean;
   error: string | null;
@@ -23,27 +25,70 @@ interface ToolMetadataPanelProps {
 }
 
 export function ToolMetadataPanel({
-  selectedAgent,
+  selectedAgentKey,
+  selectedAgentLabel,
   tools,
   isLoading,
   error,
   onRefresh,
   className,
 }: ToolMetadataPanelProps) {
-  const { totalTools, categories, toolNames } = useMemo(() => {
+  const { totalTools, categories, toolNames, perAgent } = useMemo(() => {
     const registry = tools as Record<string, unknown>;
     const categoryList = Array.isArray(registry.categories) ? (registry.categories as string[]) : [];
     const toolNameList = Array.isArray(registry.tool_names) ? (registry.tool_names as string[]) : [];
     const total = Number(registry.total_tools ?? toolNameList.length) || toolNameList.length;
+    const perAgentMap = registry.per_agent && typeof registry.per_agent === 'object'
+      ? (registry.per_agent as Record<string, unknown>)
+      : null;
 
     return {
       totalTools: total,
       categories: categoryList,
       toolNames: toolNameList,
+      perAgent: perAgentMap,
     };
   }, [tools]);
 
-  const sortedToolNames = useMemo(() => [...toolNames].sort((a, b) => a.localeCompare(b)), [toolNames]);
+  const resolvedAgentLabel = useMemo(
+    () => selectedAgentLabel ?? normalizeAgentLabel(selectedAgentKey),
+    [selectedAgentKey, selectedAgentLabel],
+  );
+
+  const { list: agentTools, isFallback: isRegistryFallback } = useMemo(() => {
+    if (!selectedAgentKey) {
+      return { list: toolNames, isFallback: true };
+    }
+
+    const entry = perAgent?.[selectedAgentKey];
+    if (Array.isArray(entry)) {
+      return {
+        list: entry.filter((tool): tool is string => typeof tool === 'string'),
+        isFallback: false,
+      };
+    }
+    if (typeof entry === 'string') {
+      return { list: [entry], isFallback: false };
+    }
+    if (entry && typeof entry === 'object') {
+      const nested = (entry as Record<string, unknown>).tool_names;
+      if (Array.isArray(nested)) {
+        return {
+          list: nested.filter((tool): tool is string => typeof tool === 'string'),
+          isFallback: false,
+        };
+      }
+    }
+    if (perAgent && Object.prototype.hasOwnProperty.call(perAgent, selectedAgentKey)) {
+      return { list: [], isFallback: false };
+    }
+    return { list: toolNames, isFallback: true };
+  }, [perAgent, selectedAgentKey, toolNames]);
+
+  const sortedToolNames = useMemo(
+    () => [...agentTools].sort((a, b) => a.localeCompare(b)),
+    [agentTools],
+  );
 
   return (
     <GlassPanel className={cn('flex h-full flex-col gap-4', className)}>
@@ -58,12 +103,15 @@ export function ToolMetadataPanel({
               Retry
             </Button>
           ) : (
-            <InlineTag tone="default">{selectedAgent}</InlineTag>
+            <InlineTag tone="default">{resolvedAgentLabel}</InlineTag>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <InlineTag tone="positive">{totalTools} tools</InlineTag>
           <InlineTag tone="default">{categories.length} categories</InlineTag>
+          {isRegistryFallback ? (
+            <InlineTag tone="default">Registry default</InlineTag>
+          ) : null}
           <Badge variant="outline">Last refreshed just now</Badge>
         </div>
       </div>
@@ -110,13 +158,15 @@ export function ToolMetadataPanel({
 
           <div className="flex-1">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-foreground/40">Tools available</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-foreground/40">
+                Tools for {resolvedAgentLabel}
+              </p>
               <Button variant="ghost" size="sm" onClick={onRefresh}>
                 Refresh
               </Button>
             </div>
-            {toolNames.length === 0 ? (
-              <p className="mt-2 text-sm text-foreground/60">Tool registry returned no entries.</p>
+            {agentTools.length === 0 ? (
+              <p className="mt-2 text-sm text-foreground/60">No tools assigned to this agent.</p>
             ) : (
               <ScrollArea className="mt-2 max-h-72 pr-2">
                 <ul className="space-y-2 text-sm text-foreground/80">

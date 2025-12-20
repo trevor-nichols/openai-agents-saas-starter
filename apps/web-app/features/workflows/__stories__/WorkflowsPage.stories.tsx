@@ -107,6 +107,23 @@ const streamEvents: WorkflowStreamEventWithReceivedAt[] = [
 
 const runReplayEvents: PublicSseEvent[] = streamEvents.map(({ receivedAt: _receivedAt, ...evt }) => evt);
 
+const demoContainers = [
+  {
+    id: 'container-1',
+    openai_id: 'cntr_1',
+    tenant_id: 'tenant-1',
+    owner_user_id: null,
+    name: 'Analysis Sandbox',
+    memory_limit: '4g',
+    status: 'active',
+    expires_after: null,
+    last_active_at: null,
+    metadata: {},
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+];
+
 type WorkspacePreviewProps = {
   streamStatus: StreamStatus;
   isRunning: boolean;
@@ -137,6 +154,19 @@ type WorkspacePreviewProps = {
         <WorkflowCanvas
           descriptor={descriptor}
           activeStep={activeStep}
+          toolsByAgent={{
+            analysis: ['code_interpreter', 'file_search'],
+          }}
+          supportsContainersByAgent={{
+            analysis: true,
+          }}
+          containers={demoContainers}
+          containersError={null}
+          isLoadingContainers={false}
+          containerOverrides={{}}
+          onContainerOverrideChange={(agentKey, containerId) =>
+            console.log('container override', agentKey, containerId)
+          }
           selectedKey={primaryWorkflow.key}
           onRun={async (payload) => {
             console.log('run', payload);

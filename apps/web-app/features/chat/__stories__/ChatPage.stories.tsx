@@ -100,6 +100,10 @@ const toolRegistry: ToolRegistry = {
   total_tools: 4,
   categories: ['search', 'code_interpreter'],
   tool_names: ['file_search', 'web_search', 'code_interpreter', 'browser'],
+  per_agent: {
+    triage: ['web_search'],
+    code_assistant: ['code_interpreter', 'file_search'],
+  },
 };
 
 const conversations: ConversationListItem[] = [
@@ -229,7 +233,8 @@ function ChatPage({ status, streamStatus, billingStatus = 'open', includeAttachm
         <BillingEventsPanel events={billingEvents} status={billingStatus} />
 
         <ToolMetadataPanel
-          selectedAgent="triage_agent"
+          selectedAgentKey="triage"
+          selectedAgentLabel="triage"
           tools={toolRegistry}
           isLoading={false}
           error={null}

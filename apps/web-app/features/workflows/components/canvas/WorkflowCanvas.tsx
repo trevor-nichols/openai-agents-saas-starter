@@ -1,6 +1,7 @@
 'use client';
 
 import type { LocationHint } from '@/lib/api/client/types.gen';
+import type { ContainerResponse } from '@/lib/api/client/types.gen';
 import type { WorkflowDescriptor } from '@/lib/workflows/types';
 import type { WorkflowNodeStreamStore } from '@/lib/workflows/streaming';
 
@@ -17,6 +18,13 @@ interface WorkflowCanvasProps {
     parallelGroup: string | null;
     branchIndex: number | null;
   } | null;
+  toolsByAgent: Record<string, string[]>;
+  supportsContainersByAgent: Record<string, boolean>;
+  containers: ContainerResponse[];
+  containersError: string | null;
+  isLoadingContainers: boolean;
+  containerOverrides: Record<string, string | null>;
+  onContainerOverrideChange: (agentKey: string, containerId: string | null) => void;
   selectedKey: string | null;
   onRun: (input: {
     workflowKey: string;
@@ -34,6 +42,13 @@ export function WorkflowCanvas({
   descriptor,
   nodeStreamStore,
   activeStep,
+  toolsByAgent,
+  supportsContainersByAgent,
+  containers,
+  containersError,
+  isLoadingContainers,
+  containerOverrides,
+  onContainerOverrideChange,
   selectedKey,
   onRun,
   isRunning,
@@ -50,6 +65,13 @@ export function WorkflowCanvas({
             descriptor={descriptor}
             nodeStreamStore={nodeStreamStore ?? null}
             activeStep={activeStep}
+            toolsByAgent={toolsByAgent}
+            supportsContainersByAgent={supportsContainersByAgent}
+            containers={containers}
+            containersError={containersError}
+            isLoadingContainers={isLoadingContainers}
+            containerOverrides={containerOverrides}
+            onContainerOverrideChange={onContainerOverrideChange}
             className="h-full"
           />
         </div>

@@ -44,6 +44,7 @@ from tests.utils.stream_assertions import assert_common_stream  # noqa: E402
 from tests.utils.agent_contract import (  # noqa: E402
     default_agent_key,
     expected_output_schema,
+    expected_tooling_flags_by_agent,
     expected_tools_by_agent,
     schema_agent_key,
     spec_index,
@@ -124,9 +125,13 @@ def test_list_available_agents(client: TestClient) -> None:
     specs = spec_index()
     assert all(agent["name"] in specs for agent in items)
     assert any(agent["name"] == default_agent_key() for agent in items)
+    expected_tooling = expected_tooling_flags_by_agent()
     for agent in items:
         if agent.get("output_schema") is not None:
             assert isinstance(agent["output_schema"], dict)
+        tooling = agent.get("tooling")
+        assert isinstance(tooling, dict)
+        assert tooling == expected_tooling[agent["name"]]
 
 
 def test_list_available_agents_pagination(client: TestClient) -> None:
@@ -171,6 +176,8 @@ def test_get_agent_status(client: TestClient) -> None:
     assert payload["name"] == agent_key
     assert payload["status"] == "active"
     assert "output_schema" in payload
+    expected_tooling = expected_tooling_flags_by_agent()
+    assert payload["tooling"] == expected_tooling[agent_key]
 
 
 def test_get_nonexistent_agent_status(client: TestClient) -> None:

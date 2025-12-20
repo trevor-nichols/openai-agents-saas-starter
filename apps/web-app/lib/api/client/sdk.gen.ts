@@ -49,6 +49,9 @@ import type {
   ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostData,
   ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostErrors,
   ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostResponses,
+  CreateAgentInputUploadApiV1UploadsAgentInputPostData,
+  CreateAgentInputUploadApiV1UploadsAgentInputPostErrors,
+  CreateAgentInputUploadApiV1UploadsAgentInputPostResponses,
   CreateContainerApiV1ContainersPostData,
   CreateContainerApiV1ContainersPostErrors,
   CreateContainerApiV1ContainersPostResponses,
@@ -376,6 +379,9 @@ import type {
   UpdateTenantSettingsApiV1TenantsSettingsPutData,
   UpdateTenantSettingsApiV1TenantsSettingsPutErrors,
   UpdateTenantSettingsApiV1TenantsSettingsPutResponses,
+  UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostData,
+  UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostErrors,
+  UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostResponses,
   UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutData,
   UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutErrors,
   UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutResponses,
@@ -2789,6 +2795,36 @@ export const attachFileApiV1VectorStoresVectorStoreIdFilesPost = <
 };
 
 /**
+ * Upload And Attach File
+ */
+export const uploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPost =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).post<
+      UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostResponses,
+      UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/vector-stores/{vector_store_id}/files/upload",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
+  };
+
+/**
  * Delete File
  */
 export const deleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDelete = <
@@ -3031,6 +3067,37 @@ export const deleteObjectApiV1StorageObjectsObjectIdDelete = <
     ],
     url: "/api/v1/storage/objects/{object_id}",
     ...options,
+  });
+};
+
+/**
+ * Create Agent Input Upload
+ */
+export const createAgentInputUploadApiV1UploadsAgentInputPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    CreateAgentInputUploadApiV1UploadsAgentInputPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    CreateAgentInputUploadApiV1UploadsAgentInputPostResponses,
+    CreateAgentInputUploadApiV1UploadsAgentInputPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/uploads/agent-input",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
   });
 };
 

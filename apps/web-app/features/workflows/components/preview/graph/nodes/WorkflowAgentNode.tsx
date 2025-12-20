@@ -1,9 +1,22 @@
 'use client';
 
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
-import { Rocket } from 'lucide-react';
+import { Rocket, Settings2 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { InlineTag } from '@/components/ui/foundation';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemDescription,
+  SelectItemTitle,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   BaseNode,
   BaseNodeContent,
@@ -15,6 +28,7 @@ import {
 } from '@/components/ui/workflow';
 import { useWorkflowNodePreview } from '../nodeStreamContext';
 import { cn } from '@/lib/utils';
+import type { ContainerResponse } from '@/lib/api/client/types.gen';
 
 export type WorkflowAgentNodeData = {
   title: string;
@@ -22,6 +36,13 @@ export type WorkflowAgentNodeData = {
   stageName: string;
   stageMode: 'sequential' | 'parallel';
   status: NodeStatus;
+  tools: string[];
+  supportsContainers: boolean;
+  containers: ContainerResponse[];
+  containersError: string | null;
+  isLoadingContainers: boolean;
+  selectedContainerId: string | null;
+  onContainerOverrideChange?: (agentKey: string, containerId: string | null) => void;
 };
 
 export type WorkflowAgentFlowNode = Node<WorkflowAgentNodeData, 'workflowAgent'>;
@@ -40,6 +61,8 @@ function toolTone(status: 'waiting' | 'running' | 'done' | 'error'): 'secondary'
 
 export function WorkflowAgentNode({ id, data, selected }: NodeProps<WorkflowAgentFlowNode>) {
   const preview = useWorkflowNodePreview(id);
+  const sortedTools = [...data.tools].sort((a, b) => a.localeCompare(b));
+  const containerValue = data.selectedContainerId ?? 'auto';
 
   const statusTitle = (() => {
     switch (data.status) {
@@ -95,9 +118,99 @@ export function WorkflowAgentNode({ id, data, selected }: NodeProps<WorkflowAgen
               {data.title}
             </BaseNodeHeaderTitle>
           </div>
-          <Badge variant="secondary" className="shrink-0 text-xs">
-            {data.stageMode}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                  aria-label={`Configure ${data.agentKey}`}
+                >
+                  <Settings2 className="h-3.5 w-3.5" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-80 space-y-4">
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-foreground">Agent tools</p>
+                  <p className="text-xs text-muted-foreground">
+                    Available capabilities for {data.agentKey}.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Tools</p>
+                    <InlineTag tone="default">{sortedTools.length}</InlineTag>
+                  </div>
+                  {sortedTools.length ? (
+                    <ScrollArea className="max-h-32 pr-2">
+                      <div className="flex flex-wrap gap-2">
+                        {sortedTools.map((tool) => (
+                          <Badge key={`${data.agentKey}-${tool}`} variant="outline" className="text-[11px]">
+                            {tool}
+                          </Badge>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No tools assigned.</p>
+                  )}
+                </div>
+
+                {data.supportsContainers ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Container
+                      </p>
+                      <InlineTag tone="default">Code Interpreter</InlineTag>
+                    </div>
+                    {data.containersError ? (
+                      <p className="text-xs text-destructive">{data.containersError}</p>
+                    ) : data.isLoadingContainers ? (
+                      <p className="text-xs text-muted-foreground">Loading containers…</p>
+                    ) : data.containers.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">No containers available.</p>
+                    ) : (
+                      <Select
+                        value={containerValue}
+                        onValueChange={(value) => {
+                          const resolved = value === 'auto' ? null : value;
+                          data.onContainerOverrideChange?.(data.agentKey, resolved);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Auto (managed)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="auto">
+                            <SelectItemTitle>Auto (managed)</SelectItemTitle>
+                            <SelectItemDescription>Use the default container policy.</SelectItemDescription>
+                          </SelectItem>
+                          {data.containers.map((container) => (
+                            <SelectItem key={container.id} value={container.id}>
+                              <SelectItemTitle>{container.name}</SelectItemTitle>
+                              <SelectItemDescription>
+                                {container.memory_limit} · {container.status}
+                              </SelectItemDescription>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    <p className="text-[11px] text-muted-foreground">
+                      Applies to the next workflow run.
+                    </p>
+                  </div>
+                ) : null}
+              </PopoverContent>
+            </Popover>
+
+            <Badge variant="secondary" className="shrink-0 text-xs">
+              {data.stageMode}
+            </Badge>
+          </div>
         </BaseNodeHeader>
 
         <div className="h-px w-full bg-border/60" />

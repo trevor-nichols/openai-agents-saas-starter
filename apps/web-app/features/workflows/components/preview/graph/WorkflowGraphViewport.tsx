@@ -14,6 +14,7 @@ import {
 } from '@xyflow/react';
 
 import { cn } from '@/lib/utils';
+import type { ContainerResponse } from '@/lib/api/client/types.gen';
 import type { WorkflowDescriptor } from '@/lib/workflows/types';
 import type { WorkflowNodeStreamStore } from '@/lib/workflows/streaming';
 
@@ -32,6 +33,13 @@ interface WorkflowGraphViewportProps {
     parallelGroup?: string | null;
     branchIndex?: number | null;
   } | null;
+  toolsByAgent?: Record<string, string[]>;
+  supportsContainersByAgent?: Record<string, boolean>;
+  containers?: ContainerResponse[];
+  containersError?: string | null;
+  isLoadingContainers?: boolean;
+  containerOverrides?: Record<string, string | null>;
+  onContainerOverrideChange?: (agentKey: string, containerId: string | null) => void;
   className?: string;
 }
 
@@ -76,7 +84,19 @@ function computeActiveStepKey(descriptor: WorkflowDescriptor | null, activeStep:
   return match?.key ?? null;
 }
 
-function buildFlow(descriptor: WorkflowDescriptor | null, activeKey: WorkflowStepKey | null) {
+function buildFlow(
+  descriptor: WorkflowDescriptor | null,
+  activeKey: WorkflowStepKey | null,
+  options: {
+    toolsByAgent?: Record<string, string[]>;
+    supportsContainersByAgent?: Record<string, boolean>;
+    containers?: ContainerResponse[];
+    containersError?: string | null;
+    isLoadingContainers?: boolean;
+    containerOverrides?: Record<string, string | null>;
+    onContainerOverrideChange?: (agentKey: string, containerId: string | null) => void;
+  },
+) {
   if (!descriptor?.stages?.length) return { nodes: [] as WorkflowAgentFlowNode[], edges: [] as Edge[] };
 
   const stageSpans = descriptor.stages.map((stage) => (stage.mode === 'sequential' ? stage.steps.length : 1));
@@ -113,6 +133,13 @@ function buildFlow(descriptor: WorkflowDescriptor | null, activeKey: WorkflowSte
           stageName: stage.name,
           stageMode: stage.mode,
           status,
+          tools: options.toolsByAgent?.[step.agent_key] ?? [],
+          supportsContainers: Boolean(options.supportsContainersByAgent?.[step.agent_key]),
+          containers: options.containers ?? [],
+          containersError: options.containersError ?? null,
+          isLoadingContainers: Boolean(options.isLoadingContainers),
+          selectedContainerId: options.containerOverrides?.[step.agent_key] ?? null,
+          onContainerOverrideChange: options.onContainerOverrideChange,
         },
       });
 
@@ -160,9 +187,42 @@ const nodeTypes: NodeTypes = {
   workflowAgent: WorkflowAgentNode,
 };
 
-function WorkflowGraphViewportInner({ descriptor, activeStep, className }: WorkflowGraphViewportProps) {
+function WorkflowGraphViewportInner({
+  descriptor,
+  activeStep,
+  toolsByAgent,
+  supportsContainersByAgent,
+  containers,
+  containersError,
+  isLoadingContainers,
+  containerOverrides,
+  onContainerOverrideChange,
+  className,
+}: WorkflowGraphViewportProps) {
   const activeKey = useMemo(() => computeActiveStepKey(descriptor, activeStep), [descriptor, activeStep]);
-  const flow = useMemo(() => buildFlow(descriptor, activeKey), [descriptor, activeKey]);
+  const flow = useMemo(
+    () =>
+      buildFlow(descriptor, activeKey, {
+        toolsByAgent,
+        supportsContainersByAgent,
+        containers,
+        containersError,
+        isLoadingContainers,
+        containerOverrides,
+        onContainerOverrideChange,
+      }),
+    [
+      descriptor,
+      activeKey,
+      toolsByAgent,
+      supportsContainersByAgent,
+      containers,
+      containersError,
+      isLoadingContainers,
+      containerOverrides,
+      onContainerOverrideChange,
+    ],
+  );
   const { fitView } = useReactFlow();
 
   useEffect(() => {

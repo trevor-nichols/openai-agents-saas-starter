@@ -143,6 +143,15 @@ export function useAgentWorkspace() {
     ],
   );
 
+  const selectedAgentTooling = useMemo(() => {
+    if (!selectedAgent) {
+      return null;
+    }
+    return rosterState.agentsWithStatus.find((agent) => agent.name === selectedAgent)?.tooling ?? null;
+  }, [rosterState.agentsWithStatus, selectedAgent]);
+
+  const supportsContainers = Boolean(selectedAgentTooling?.supports_code_interpreter);
+
   const insightsProps = useMemo(
     () => ({
       conversationList: data.conversationList,
@@ -156,6 +165,7 @@ export function useAgentWorkspace() {
       toolsSummary: data.toolsSummary,
       toolsByAgent: data.toolsByAgent,
       selectedAgent,
+      supportsContainers,
       isLoadingTools: data.isLoadingTools,
       toolsError: data.toolsError,
       onRefreshTools: data.refetchTools,
@@ -175,6 +185,7 @@ export function useAgentWorkspace() {
       deleteContainer,
       drawerState.openDrawerForConversation,
       selectedAgent,
+      supportsContainers,
       unbindContainer,
     ],
   );

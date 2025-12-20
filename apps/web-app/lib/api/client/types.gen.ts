@@ -109,6 +109,10 @@ export type AgentChatRequest = {
    */
   message: string;
   /**
+   * Attachments
+   */
+  attachments?: Array<InputAttachment> | null;
+  /**
    * Conversation Id
    */
   conversation_id?: string | null;
@@ -133,6 +137,14 @@ export type AgentChatRequest = {
    * Memory Injection
    */
   memory_injection?: boolean | null;
+  /**
+   * Container Overrides
+   *
+   * Optional container overrides keyed by agent key.
+   */
+  container_overrides?: {
+    [key: string]: string;
+  } | null;
 };
 
 /**
@@ -273,6 +285,10 @@ export type AgentStatus = {
    * Total number of conversations handled.
    */
   total_conversations?: number;
+  /**
+   * Tooling capability flags for UI gating.
+   */
+  tooling?: AgentToolingFlags;
 };
 
 /**
@@ -320,11 +336,47 @@ export type AgentSummary = {
    */
   model?: string | null;
   /**
+   * Tooling capability flags for UI gating.
+   */
+  tooling?: AgentToolingFlags;
+  /**
    * Last Seen At
    *
    * Last time the agent was observed handling a request.
    */
   last_seen_at?: string | null;
+};
+
+/**
+ * AgentToolingFlags
+ *
+ * Stable capability flags for UI gating.
+ */
+export type AgentToolingFlags = {
+  /**
+   * Supports Code Interpreter
+   *
+   * Whether the agent can use code_interpreter.
+   */
+  supports_code_interpreter?: boolean;
+  /**
+   * Supports File Search
+   *
+   * Whether the agent can use file_search.
+   */
+  supports_file_search?: boolean;
+  /**
+   * Supports Image Generation
+   *
+   * Whether the agent can use image_generation.
+   */
+  supports_image_generation?: boolean;
+  /**
+   * Supports Web Search
+   *
+   * Whether the agent can use web_search.
+   */
+  supports_web_search?: boolean;
 };
 
 /**
@@ -2790,6 +2842,26 @@ export type IncidentSchema = {
    * Current incident lifecycle state.
    */
   state: string;
+};
+
+/**
+ * InputAttachment
+ *
+ * Reference to a stored object that should be passed to an agent as input.
+ */
+export type InputAttachment = {
+  /**
+   * Object Id
+   *
+   * Storage object identifier
+   */
+  object_id: string;
+  /**
+   * Kind
+   *
+   * Optional override for how the object should be sent to the model.
+   */
+  kind?: "image" | "file" | null;
 };
 
 /**
@@ -6776,6 +6848,36 @@ export type VectorStoreFileResponse = {
 };
 
 /**
+ * VectorStoreFileUploadRequest
+ */
+export type VectorStoreFileUploadRequest = {
+  /**
+   * Object Id
+   */
+  object_id: string;
+  /**
+   * Agent Key
+   */
+  agent_key: string;
+  /**
+   * Attributes
+   */
+  attributes?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Chunking Strategy
+   */
+  chunking_strategy?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Poll
+   */
+  poll?: boolean;
+};
+
+/**
  * VectorStoreListResponse
  */
 export type VectorStoreListResponse = {
@@ -7252,6 +7354,12 @@ export type WorkflowRunRequestBody = {
    */
   message: string;
   /**
+   * Attachments
+   *
+   * Optional file/image inputs for the workflow run.
+   */
+  attachments?: Array<InputAttachment> | null;
+  /**
    * Conversation Id
    *
    * Optional conversation id to reuse across steps
@@ -7267,6 +7375,14 @@ export type WorkflowRunRequestBody = {
    * If true, forward location to hosted web search
    */
   share_location?: boolean | null;
+  /**
+   * Container Overrides
+   *
+   * Optional container overrides keyed by agent key.
+   */
+  container_overrides?: {
+    [key: string]: string;
+  } | null;
 };
 
 /**
@@ -14993,6 +15109,95 @@ export type AttachFileApiV1VectorStoresVectorStoreIdFilesPostResponses = {
 export type AttachFileApiV1VectorStoresVectorStoreIdFilesPostResponse =
   AttachFileApiV1VectorStoresVectorStoreIdFilesPostResponses[keyof AttachFileApiV1VectorStoresVectorStoreIdFilesPostResponses];
 
+export type UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostData =
+  {
+    body: VectorStoreFileUploadRequest;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Vector Store Id
+       */
+      vector_store_id: string;
+    };
+    query?: never;
+    url: "/api/v1/vector-stores/{vector_store_id}/files/upload";
+  };
+
+export type UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostError =
+  UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostErrors[keyof UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostErrors];
+
+export type UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    201: VectorStoreFileResponse;
+  };
+
+export type UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostResponse =
+  UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostResponses[keyof UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostResponses];
+
 export type DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteData = {
   body?: never;
   headers?: {
@@ -15793,6 +15998,87 @@ export type DeleteObjectApiV1StorageObjectsObjectIdDeleteResponses = {
 
 export type DeleteObjectApiV1StorageObjectsObjectIdDeleteResponse =
   DeleteObjectApiV1StorageObjectsObjectIdDeleteResponses[keyof DeleteObjectApiV1StorageObjectsObjectIdDeleteResponses];
+
+export type CreateAgentInputUploadApiV1UploadsAgentInputPostData = {
+  body: StoragePresignUploadRequest;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path?: never;
+  query?: never;
+  url: "/api/v1/uploads/agent-input";
+};
+
+export type CreateAgentInputUploadApiV1UploadsAgentInputPostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type CreateAgentInputUploadApiV1UploadsAgentInputPostError =
+  CreateAgentInputUploadApiV1UploadsAgentInputPostErrors[keyof CreateAgentInputUploadApiV1UploadsAgentInputPostErrors];
+
+export type CreateAgentInputUploadApiV1UploadsAgentInputPostResponses = {
+  /**
+   * Successful Response
+   */
+  201: StoragePresignUploadResponse;
+};
+
+export type CreateAgentInputUploadApiV1UploadsAgentInputPostResponse =
+  CreateAgentInputUploadApiV1UploadsAgentInputPostResponses[keyof CreateAgentInputUploadApiV1UploadsAgentInputPostResponses];
 
 export type DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetData = {
   body?: never;

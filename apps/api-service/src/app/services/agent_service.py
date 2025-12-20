@@ -266,7 +266,6 @@ class AgentService:
             return ctx.descriptor.output_schema
 
         effective_schema = _resolve_output_schema(result.final_agent or ctx.descriptor.key)
-        tool_overview = ctx.provider.tool_overview()
         return AgentChatResponse(
             response=response_text,
             structured_output=AgentStreamEvent._strip_unserializable(result.structured_output),
@@ -280,7 +279,6 @@ class AgentService:
             ],
             metadata={
                 "model_used": ctx.descriptor.model,
-                "tools_available": tool_overview.get("tool_names", []),
                 **self._attachment_service.attachment_metadata_note(attachments),
             },
         )
@@ -519,20 +517,7 @@ class AgentService:
         return page
 
     def get_agent_status(self, agent_name: str) -> AgentStatus:
-        provider = self._get_provider()
-        descriptor = provider.get_agent(agent_name)
-        if not descriptor:
-            raise ValueError(f"Agent '{agent_name}' not found")
-        last_used = getattr(descriptor, "last_seen_at", None)
-        if last_used:
-            last_used = last_used.replace(microsecond=0).isoformat() + "Z"
-        return AgentStatus(
-            name=descriptor.key,
-            status="active",
-            output_schema=descriptor.output_schema,
-            last_used=last_used,
-            total_conversations=0,
-        )
+        return self._catalog_service.get_agent_status(agent_name)
 
     def get_tool_information(self) -> dict[str, Any]:
         provider = self._get_provider()
