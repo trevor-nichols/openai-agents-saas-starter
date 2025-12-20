@@ -35681,9 +35681,17 @@
             "title": "Object Id"
           },
           "agent_key": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Agent Key"
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Key",
+            "description": "Optional agent key used to gate uploads to vector stores when the upload is intended for a specific agent's file_search tool."
           },
           "attributes": {
             "anyOf": [
@@ -35717,8 +35725,7 @@
         },
         "type": "object",
         "required": [
-          "object_id",
-          "agent_key"
+          "object_id"
         ],
         "title": "VectorStoreFileUploadRequest"
       },

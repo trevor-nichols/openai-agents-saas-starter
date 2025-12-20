@@ -65,6 +65,10 @@ interface ChatInterfaceProps {
   onLocationHintChange: (field: 'city' | 'region' | 'country' | 'timezone', value: string) => void;
   className?: string;
   headerProps?: SectionHeaderProps;
+  vectorStoreUpload?: {
+    enabled: boolean;
+    agentKey?: string | null;
+  };
 }
 
 type MemoryModeOption = 'inherit' | 'none' | 'trim' | 'summarize' | 'compact';
@@ -99,6 +103,7 @@ export function ChatInterface({
   onLocationHintChange,
   className,
   headerProps,
+  vectorStoreUpload,
 }: ChatInterfaceProps) {
   const messagesFromStore = useChatMessages();
   const streamEventsFromStore = useChatStreamEvents();
@@ -291,6 +296,7 @@ export function ChatInterface({
       onMemoryModeChange={handleMemoryModeChange}
       onMemoryInjectionChange={handleMemoryInjectionChange}
       isUpdatingMemory={isUpdatingMemory}
+      vectorStoreUpload={vectorStoreUpload}
     />
   );
 }

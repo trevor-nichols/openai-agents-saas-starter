@@ -28,6 +28,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import type { ConversationLifecycleStatus } from '@/lib/chat/types';
+import { VectorStoreUploadSection } from './VectorStoreUploadSection';
 
 type MemoryModeOption = 'inherit' | 'none' | 'trim' | 'summarize' | 'compact';
 
@@ -61,6 +62,10 @@ interface PromptComposerProps {
   onMemoryModeChange: (mode: MemoryModeOption) => void;
   onMemoryInjectionChange: (value: boolean) => void;
   isUpdatingMemory: boolean;
+  vectorStoreUpload?: {
+    enabled: boolean;
+    agentKey?: string | null;
+  };
 }
 
 export function PromptComposer({
@@ -84,6 +89,7 @@ export function PromptComposer({
   onMemoryModeChange,
   onMemoryInjectionChange,
   isUpdatingMemory,
+  vectorStoreUpload,
 }: PromptComposerProps) {
   const disabled = isSending || isDeletingMessage || isLoadingHistory;
   const memoryDisabled = disabled || !currentConversationId || isUpdatingMemory;
@@ -183,6 +189,15 @@ export function PromptComposer({
                       disabled={disabled}
                     />
                   </div>
+                  {vectorStoreUpload?.enabled ? (
+                    <>
+                      <Separator />
+                      <VectorStoreUploadSection
+                        agentKey={vectorStoreUpload.agentKey ?? ''}
+                        enabled={vectorStoreUpload.enabled}
+                      />
+                    </>
+                  ) : null}
                 </div>
               </PopoverContent>
             </Popover>

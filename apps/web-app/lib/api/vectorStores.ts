@@ -4,6 +4,8 @@ import type {
   VectorStoreSearchResponse,
   VectorStoreCreateRequest,
   VectorStoreFileCreateRequest,
+  VectorStoreFileUploadRequest,
+  VectorStoreFileResponse,
   VectorStoreSearchRequest,
 } from '@/lib/api/client/types.gen';
 import { USE_API_MOCK } from '@/lib/config';
@@ -50,6 +52,29 @@ export async function attachVectorStoreFile(vectorStoreId: string, body: VectorS
   });
   if (!res.ok) throw new Error(`Failed to attach file (${res.status})`);
   return (await res.json()) as VectorStoreFileListResponse['items'][number];
+}
+
+export async function uploadVectorStoreFile(
+  vectorStoreId: string,
+  body: VectorStoreFileUploadRequest,
+): Promise<VectorStoreFileResponse> {
+  if (USE_API_MOCK) {
+    const fallback = mockVectorStoreFiles.items[0];
+    if (!fallback) {
+      throw new Error('Mock vector store files are unavailable');
+    }
+    return fallback;
+  }
+  const res = await fetch(
+    apiV1Path(`/vector-stores/${encodeURIComponent(vectorStoreId)}/files/upload`),
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!res.ok) throw new Error(`Failed to upload vector store file (${res.status})`);
+  return (await res.json()) as VectorStoreFileResponse;
 }
 
 export async function deleteVectorStoreFile(vectorStoreId: string, fileId: string) {

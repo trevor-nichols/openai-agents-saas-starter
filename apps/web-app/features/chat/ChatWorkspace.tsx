@@ -57,6 +57,7 @@ export function ChatWorkspace() {
     toolsError,
     refetchTools,
     activeAgents,
+    selectedAgentSupportsFileSearch,
     hasOlderMessages,
     isFetchingOlderMessages,
     loadOlderMessages,
@@ -167,6 +168,10 @@ export function ChatWorkspace() {
                     </Button>
                   </div>
                 ),
+              }}
+              vectorStoreUpload={{
+                enabled: Boolean(selectedAgent && selectedAgentSupportsFileSearch),
+                agentKey: selectedAgent,
               }}
             />
           </ChatControllerProvider>

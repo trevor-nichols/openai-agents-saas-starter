@@ -70,6 +70,10 @@ interface ChatSurfaceProps {
   onMemoryModeChange: (mode: MemoryModeOption) => void;
   onMemoryInjectionChange: (value: boolean) => void;
   isUpdatingMemory: boolean;
+  vectorStoreUpload?: {
+    enabled: boolean;
+    agentKey?: string | null;
+  };
 }
 
 export function ChatSurface({
@@ -115,6 +119,7 @@ export function ChatSurface({
   onMemoryModeChange,
   onMemoryInjectionChange,
   isUpdatingMemory,
+  vectorStoreUpload,
 }: ChatSurfaceProps) {
   const showEmpty = !isLoadingHistory && messages.length === 0;
   const isBusy = isSending || Boolean(isDeletingMessage) || isLoadingHistory;
@@ -262,6 +267,7 @@ export function ChatSurface({
         onMemoryModeChange={onMemoryModeChange}
         onMemoryInjectionChange={onMemoryInjectionChange}
         isUpdatingMemory={isUpdatingMemory}
+        vectorStoreUpload={vectorStoreUpload}
       />
     </div>
   );

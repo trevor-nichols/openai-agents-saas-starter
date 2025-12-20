@@ -220,14 +220,16 @@ async def upload_and_attach_file(
     service: VectorStoreService = Depends(_svc),
 ) -> VectorStoreFileResponse:
     user_id = current_user.get("user_id") if isinstance(current_user, dict) else None
-    access = AgentVectorStoreAccessService(vector_store_service=service)
+    agent_key = payload.agent_key
     try:
-        await access.assert_agent_can_attach(
-            agent_key=payload.agent_key,
-            tenant_id=str(tenant_context.tenant_id),
-            user_id=str(user_id) if user_id else None,
-            vector_store_id=str(vector_store_id),
-        )
+        if agent_key:
+            access = AgentVectorStoreAccessService(vector_store_service=service)
+            await access.assert_agent_can_attach(
+                agent_key=agent_key,
+                tenant_id=str(tenant_context.tenant_id),
+                user_id=str(user_id) if user_id else None,
+                vector_store_id=str(vector_store_id),
+            )
         file = await service.attach_storage_object(
             vector_store_id=vector_store_id,
             tenant_id=_uuid(tenant_context.tenant_id),

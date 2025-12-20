@@ -93,7 +93,14 @@ export function useChatWorkspace() {
   });
 
   const activeAgents = useMemo(() => agents.filter((agent) => agent.status === 'active').length, [agents]);
+  const selectedAgentRecord = useMemo(
+    () => agents.find((agent) => agent.name === selectedAgent) ?? null,
+    [agents, selectedAgent],
+  );
   const selectedAgentLabel = useMemo(() => normalizeAgentLabel(selectedAgent), [selectedAgent]);
+  const selectedAgentSupportsFileSearch = Boolean(
+    selectedAgentRecord?.tooling?.supports_file_search,
+  );
   const currentConversation = useMemo(
     () => conversationList.find((c) => c.id === currentConversationId) ?? null,
     [conversationList, currentConversationId],
@@ -308,6 +315,7 @@ export function useChatWorkspace() {
     toolsError,
     refetchTools,
     activeAgents,
+    selectedAgentSupportsFileSearch,
     handleSelectConversation,
     handleNewConversation,
     handleDeleteConversation,

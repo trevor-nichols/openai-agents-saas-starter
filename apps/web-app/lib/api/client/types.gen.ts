@@ -6865,8 +6865,10 @@ export type VectorStoreFileUploadRequest = {
   object_id: string;
   /**
    * Agent Key
+   *
+   * Optional agent key used to gate uploads to vector stores when the upload is intended for a specific agent's file_search tool.
    */
-  agent_key: string;
+  agent_key?: string | null;
   /**
    * Attributes
    */
