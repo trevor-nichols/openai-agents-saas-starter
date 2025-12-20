@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import asyncio
 from types import SimpleNamespace
+from typing import cast
 from typing import Any
 
 import pytest
 
 from app.api.v1.chat.schemas import AgentChatRequest, MemoryStrategyRequest
 from app.domain.ai.models import AgentStreamEvent
-from app.services.agent_service import AgentService
+from app.services.agents import AgentService
+from app.services.agents.policy import AgentRuntimePolicy
+from app.services.conversation_service import ConversationService
 
 
 class _FakeBaseSession:
@@ -144,7 +147,7 @@ async def test_chat_stream_emits_compaction_event():
     agent_service = AgentService(
         provider_registry=registry,
         interaction_builder=interaction_builder,
-        conversation_service=conversation_service,
+        conversation_service=cast(ConversationService, conversation_service),
         session_manager=session_manager,
         usage_service=SimpleNamespace(record=_record_usage),
         usage_recorder=None,
@@ -154,8 +157,9 @@ async def test_chat_stream_emits_compaction_event():
             to_attachment_schema=lambda *args, **kwargs: {},
             attachment_metadata_note=lambda *args, **kwargs: {},
         ),
+        event_projector=event_projector,
+        policy=AgentRuntimePolicy(),
     )
-    agent_service._event_projector = event_projector  # inject test double
 
     request = AgentChatRequest(
         message="hi",

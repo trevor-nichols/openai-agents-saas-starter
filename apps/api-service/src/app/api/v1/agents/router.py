@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.dependencies.auth import CurrentUser, require_verified_scopes
 from app.api.v1.agents.schemas import AgentListResponse, AgentStatus
-from app.services.agent_service import agent_service
+from app.services.agents import AgentService, get_agent_service
 from app.services.agents.catalog import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 
 router = APIRouter(prefix="/agents", tags=["agents"])
@@ -29,6 +29,7 @@ async def list_available_agents(
         description="Case-insensitive match against name, display_name, or description.",
     ),
     _current_user: CurrentUser = Depends(require_verified_scopes("tools:read")),
+    agent_service: AgentService = Depends(get_agent_service),
 ) -> AgentListResponse:
     """Return a paginated list of available agents."""
 
@@ -46,6 +47,7 @@ async def list_available_agents(
 async def get_agent_status(
     agent_name: str,
     _current_user: CurrentUser = Depends(require_verified_scopes("tools:read")),
+    agent_service: AgentService = Depends(get_agent_service),
 ) -> AgentStatus:
     """Return health/status details for a specific agent."""
 

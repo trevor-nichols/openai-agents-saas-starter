@@ -15,7 +15,7 @@ from app.infrastructure.persistence.conversations.postgres import (
     PostgresConversationRepository,
 )
 from app.infrastructure.providers.openai import build_openai_provider
-from app.services.agent_service import ConversationActorContext, get_agent_service
+from app.services.agents import AgentService, ConversationActorContext
 from app.services.agents.provider_registry import get_provider_registry
 from app.services.conversation_service import conversation_service
 
@@ -33,6 +33,7 @@ def _pg_session_factory(
 @pytest.mark.asyncio
 async def test_agent_service_persists_messages_postgres(
     _pg_session_factory: tuple[async_sessionmaker[AsyncSession], AsyncEngine],
+    agent_service_factory,
 ) -> None:
     session_factory, engine = _pg_session_factory
     repository = PostgresConversationRepository(session_factory)
@@ -51,8 +52,7 @@ async def test_agent_service_persists_messages_postgres(
         ),
         set_default=True,
     )
-    container.agent_service = None
-    service = get_agent_service()
+    service: AgentService = agent_service_factory()
 
     actor = ConversationActorContext(tenant_id="tenant-pg", user_id="user-pg")
     request = AgentChatRequest(message="Hello durable world", agent_type="triage")

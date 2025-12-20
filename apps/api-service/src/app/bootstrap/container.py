@@ -52,7 +52,7 @@ if TYPE_CHECKING:  # pragma: no cover - type hints only
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
     from app.infrastructure.persistence.stripe.repository import StripeEventRepository
-    from app.services.agent_service import AgentService
+    from app.services.agents import AgentService
     from app.services.agents.query import ConversationQueryService
     from app.services.auth_service import AuthService
     from app.services.conversations.ledger_reader import ConversationLedgerReader

@@ -15,7 +15,7 @@ from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse, Streami
 from app.api.v1.shared.public_stream_projector import PublicStreamProjector
 from app.core.settings import get_settings
 from app.domain.input_attachments import InputAttachmentNotFoundError
-from app.services.agent_service import ConversationActorContext, agent_service
+from app.services.agents import AgentService, ConversationActorContext, get_agent_service
 from app.services.conversations.ledger_recorder import get_conversation_ledger_recorder
 from app.services.shared.rate_limit_service import (
     ConcurrencyQuota,
@@ -52,6 +52,7 @@ async def chat_with_agent(
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:write")),
     tenant_context: TenantContext = Depends(require_tenant_role(*_ALLOWED_VIEWER_ROLES)),
     _: object = Depends(enforce_usage_guardrails),
+    agent_service: AgentService = Depends(get_agent_service),
 ) -> AgentChatResponse:
     """Send a message to the agent framework and receive a full response."""
 
@@ -93,6 +94,7 @@ async def stream_chat_with_agent(
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:write")),
     tenant_context: TenantContext = Depends(require_tenant_role(*_ALLOWED_VIEWER_ROLES)),
     _: object = Depends(enforce_usage_guardrails),
+    agent_service: AgentService = Depends(get_agent_service),
 ) -> StreamingResponse:
     """Provide an SSE stream for real-time agent responses."""
 

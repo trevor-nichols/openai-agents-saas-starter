@@ -1,12 +1,41 @@
 import uuid
+from typing import cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from app.domain.ai.models import AgentStreamEvent
-from app.services.agent_service import AgentService
+from app.services.agents import AgentService
 from app.services.agents.context import ConversationActorContext
+from app.services.agents.policy import AgentRuntimePolicy
+from app.services.conversation_service import ConversationService
 from app.services.containers.files_gateway import ContainerFileContent
+
+
+class _StubConversationService:
+    def set_repository(self, repo):  # pragma: no cover - test shim
+        return None
+
+    async def get_memory_config(self, *args, **kwargs):
+        return None
+
+    async def get_session_state(self, *args, **kwargs):
+        return None
+
+    async def append_message(self, *args, **kwargs):  # pragma: no cover - noop
+        return None
+
+    async def update_session_state(self, *args, **kwargs):  # pragma: no cover - noop
+        return None
+
+    async def record_conversation_created(self, *args, **kwargs):  # pragma: no cover - noop
+        return None
+
+    async def append_run_events(self, *args, **kwargs):  # pragma: no cover - noop
+        return None
+
+    async def persist_summary(self, *args, **kwargs):  # pragma: no cover - noop
+        return None
 
 
 @pytest.mark.asyncio
@@ -42,7 +71,12 @@ async def test_sse_events_include_attachments(monkeypatch):
     storage.put_object.return_value.created_at = None
     storage.get_presigned_download = AsyncMock(return_value=(MagicMock(url="https://u"), MagicMock()))
 
-    svc = AgentService(provider_registry=MagicMock(get_default=lambda: provider), storage_service=storage)
+    svc = AgentService(
+        conversation_service=cast(ConversationService, _StubConversationService()),
+        provider_registry=MagicMock(get_default=lambda: provider),
+        storage_service=storage,
+        policy=AgentRuntimePolicy(),
+    )
 
     actor = ConversationActorContext(tenant_id=str(uuid.uuid4()), user_id=str(uuid.uuid4()))
     req = MagicMock()
@@ -111,9 +145,11 @@ async def test_sse_terminal_event_includes_container_file_attachments(monkeypatc
     )
 
     svc = AgentService(
+        conversation_service=cast(ConversationService, _StubConversationService()),
         provider_registry=MagicMock(get_default=lambda: provider),
         storage_service=storage,
         container_files_gateway=gateway,
+        policy=AgentRuntimePolicy(),
     )
 
     actor = ConversationActorContext(tenant_id=str(uuid.uuid4()), user_id=str(uuid.uuid4()))

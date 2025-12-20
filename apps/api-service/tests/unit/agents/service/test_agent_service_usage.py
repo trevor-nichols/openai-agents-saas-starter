@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from types import MethodType
 from typing import cast
 
 import pytest
@@ -8,7 +7,8 @@ import pytest
 from app.api.v1.chat.schemas import AgentChatRequest
 from app.domain.ai import AgentDescriptor, AgentRunResult, AgentRunUsage, AgentStreamEvent
 from app.domain.ai.ports import AgentStreamingHandle
-from app.services.agent_service import AgentService, ConversationActorContext
+from app.services.agents import AgentService, ConversationActorContext
+from app.services.agents.policy import AgentRuntimePolicy
 from app.services.agents.provider_registry import AgentProviderRegistry
 from app.services.conversation_service import ConversationService
 from app.services.containers import ContainerService
@@ -161,6 +161,7 @@ async def test_chat_records_usage():
         usage_recorder=cast(UsageRecorder, recorder),
         provider_registry=registry,
         container_service=cast(ContainerService, FakeContainerService()),
+        policy=AgentRuntimePolicy(),
     )
 
     actor = ConversationActorContext(tenant_id="tenant-123", user_id="user" )
@@ -188,26 +189,20 @@ async def test_chat_stream_records_usage():
     provider = FakeProvider(runtime)
     registry = AgentProviderRegistry()
     registry.register(provider, set_default=True)
+    finalize_calls: list[dict[str, object]] = []
+
+    class _StubFinalizer:
+        async def finalize(self, **kwargs):
+            finalize_calls.append(kwargs)
+
     service = AgentService(
         conversation_service=cast(ConversationService, FakeConversationService()),
         usage_recorder=cast(UsageRecorder, recorder),
         provider_registry=registry,
         container_service=cast(ContainerService, FakeContainerService()),
+        policy=AgentRuntimePolicy(),
+        run_finalizer=_StubFinalizer(),
     )
-
-    calls: list[dict[str, object]] = []
-
-    async def fake_record_usage(self, **kwargs):
-        calls.append(kwargs)
-
-    service._record_usage_metrics = MethodType(fake_record_usage, service)
-
-    sync_calls: list[bool] = []
-
-    async def fake_sync(self, *args, **kwargs):
-        sync_calls.append(True)
-
-    service._sync_session_state = MethodType(fake_sync, service)
 
     actor = ConversationActorContext(tenant_id="tenant-stream", user_id="user")
     request = AgentChatRequest(message="hello stream")
@@ -217,9 +212,8 @@ async def test_chat_stream_records_usage():
     async for evt in service.chat_stream(request, actor=actor):
         yielded.append(evt)
 
-    assert len(sync_calls) == 1
-    assert len(calls) == 1
-    assert calls[0]["tenant_id"] == "tenant-stream"
+    assert len(finalize_calls) == 1
+    assert finalize_calls[0]["tenant_id"] == "tenant-stream"
     # lifecycle + two raw_response events
     kinds = [e.kind for e in yielded]
     assert "lifecycle" in kinds

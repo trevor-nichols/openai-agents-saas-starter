@@ -4,7 +4,7 @@ import json
 import os
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any, Callable, cast
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
@@ -22,7 +22,7 @@ os.environ.setdefault("ENABLE_USAGE_GUARDRAILS", "false")
 
 pytestmark = pytest.mark.auto_migrations(enabled=True)
 
-from app.infrastructure.db.engine import init_engine  # noqa: E402
+from app.infrastructure.db.engine import get_engine, init_engine  # noqa: E402
 
 
 @pytest_asyncio.fixture(autouse=True)
@@ -53,7 +53,7 @@ from app.services.conversation_service import conversation_service  # noqa: E402
 from app.guardrails._shared.events import emit_guardrail_event  # noqa: E402
 from app.guardrails._shared.specs import GuardrailCheckResult  # noqa: E402
 from app.infrastructure.providers.openai import build_openai_provider  # noqa: E402
-from app.services.agent_service import agent_service  # noqa: E402
+from app.services.agents import AgentService  # noqa: E402
 from app.services.agents.provider_registry import get_provider_registry  # noqa: E402
 from app.services.shared.rate_limit_service import RateLimitExceeded, rate_limiter  # noqa: E402
 from app.services.usage_policy_service import (  # noqa: E402
@@ -111,6 +111,35 @@ def _override_current_user():
 def client(_configure_agent_provider):
     with TestClient(app) as test_client:
         yield test_client
+
+
+@pytest.fixture
+def guardrail_provider_factory() -> Callable[[Any, Any | None], Any]:
+    """Return a factory that registers a guardrail-enabled provider and refreshes AgentService."""
+
+    def _register(engine: Any, pipeline: Any | None = None) -> Any:
+        registry = get_provider_registry()
+        registry.clear()
+        from app.guardrails._shared.loaders import initialize_guardrails
+
+        initialize_guardrails()
+        pipeline_source = pipeline or {"version": 1}
+        provider = build_openai_provider(
+            settings_factory=config_module.get_settings,
+            conversation_searcher=lambda tenant_id, query: conversation_service.search(
+                tenant_id=tenant_id, query=query
+            ),
+            engine=engine,
+            auto_create_tables=True,
+            enable_guardrail_bundles=True,
+            guardrail_pipeline_source=pipeline_source,
+        )
+        registry.register(provider, set_default=True)
+        container = get_container()
+        container.agent_service = None
+        return provider
+
+    return _register
 
 
 def test_list_available_agents(client: TestClient) -> None:
@@ -432,8 +461,14 @@ def test_chat_stream_handoff_final_output_keeps_schema(
 
 
 def test_chat_stream_does_not_emit_guardrail_events_to_public_stream(
-    client: TestClient, monkeypatch: pytest.MonkeyPatch
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    guardrail_provider_factory,
 ) -> None:
+    engine = get_engine()
+    assert engine is not None
+    guardrail_provider_factory(engine)
+
     async def _fake_chat_stream(*args, **kwargs):
         yield AgentStreamEvent(
             kind="guardrail_result",
@@ -454,7 +489,7 @@ def test_chat_stream_does_not_emit_guardrail_events_to_public_stream(
             payload={"item": {"type": "message"}},
         )
 
-    monkeypatch.setattr("app.services.agent_service.AgentService.chat_stream", _fake_chat_stream)
+    monkeypatch.setattr("app.services.agents.service.AgentService.chat_stream", _fake_chat_stream)
 
     payload = {"message": "contains pii: user@example.com", "agent_type": default_agent_key()}
     events = []
@@ -475,8 +510,13 @@ def test_chat_stream_does_not_emit_guardrail_events_to_public_stream(
 
 
 def test_chat_stream_does_not_emit_tool_guardrail_events_to_public_stream(
-    client: TestClient, monkeypatch: pytest.MonkeyPatch
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    guardrail_provider_factory,
 ) -> None:
+    engine = get_engine()
+    assert engine is not None
+    guardrail_provider_factory(engine)
     async def _fake_chat_stream(*args, **kwargs):
         yield AgentStreamEvent(
             kind="guardrail_result",
@@ -499,7 +539,7 @@ def test_chat_stream_does_not_emit_tool_guardrail_events_to_public_stream(
             payload={"item": {"type": "message"}},
         )
 
-    monkeypatch.setattr("app.services.agent_service.AgentService.chat_stream", _fake_chat_stream)
+    monkeypatch.setattr("app.services.agents.service.AgentService.chat_stream", _fake_chat_stream)
 
     payload = {"message": "trigger tool guardrail", "agent_type": default_agent_key()}
     events = []
@@ -517,26 +557,6 @@ def test_chat_stream_does_not_emit_tool_guardrail_events_to_public_stream(
                 break
 
     assert_common_stream(events)
-
-
-def _register_guardrail_provider(engine, pipeline) -> None:
-    registry = get_provider_registry()
-    registry.clear()
-    from app.guardrails._shared.loaders import initialize_guardrails
-
-    initialize_guardrails()
-    provider = build_openai_provider(
-        settings_factory=config_module.get_settings,
-        conversation_searcher=lambda tenant_id, query: conversation_service.search(
-            tenant_id=tenant_id, query=query
-        ),
-        engine=engine,
-        auto_create_tables=True,
-        enable_guardrail_bundles=True,
-        guardrail_pipeline_source=pipeline,
-    )
-    registry.register(provider, set_default=True)
-    get_container().agent_service = None
 
 
 @patch(
@@ -573,7 +593,7 @@ def test_conversation_lifecycle(mock_run: AsyncMock, client: TestClient) -> None
     assert delete_response.status_code == 204
 
 
-def test_agent_service_initialization() -> None:
+def test_agent_service_initialization(agent_service: AgentService) -> None:
     page = agent_service.list_available_agents_page(limit=10, cursor=None, search=None)
     names = {agent.name for agent in page.items}
 
@@ -650,7 +670,7 @@ def test_chat_rate_limit_blocks(monkeypatch: pytest.MonkeyPatch, client: TestCli
             agent_used=default_agent_key(),
         )
 
-    monkeypatch.setattr("app.services.agent_service.AgentService.chat", _fake_chat)
+    monkeypatch.setattr("app.services.agents.service.AgentService.chat", _fake_chat)
 
     first = client.post("/api/v1/chat", json={"message": "hi"})
     assert first.status_code == 200
@@ -701,7 +721,7 @@ def test_chat_blocks_when_usage_guardrail_hits(
         container.usage_policy_service = previous_service
 
 @pytest.mark.asyncio
-async def test_conversation_repository_roundtrip() -> None:
+async def test_conversation_repository_roundtrip(agent_service: AgentService) -> None:
     repository = agent_service.conversation_repository
     await repository.clear_conversation("integration-test", tenant_id=TEST_TENANT_ID)
 

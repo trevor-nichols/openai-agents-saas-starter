@@ -3,7 +3,13 @@
 Glue layer that wires AgentSpecs to runtime execution, sessions, storage, and telemetry.
 
 ## What lives here
-- `agent_service.py` — façade for chat/chat_stream over the default provider; orchestrates message persistence, runtime calls, usage, titles, and event projection.
+- `service.py` — façade for chat/chat_stream over the default provider; delegates orchestration to focused run helpers.
+- `chat_run.py` — non-streaming chat run orchestration.
+- `chat_stream.py` — streaming chat run orchestration.
+- `run_finalize.py` — post-run finalization (session sync, usage, event projection, container context).
+- `user_input.py` — input attachment resolution + SDK input shaping.
+- `asset_linker.py` — best-effort linkage of stored assets to persisted messages.
+- `factory.py` — service construction + container wiring helpers.
 - `interaction_context.py` — builds `PromptRuntimeContext` (vector stores, container bindings, user/location, env), resolves file_search vector_store_ids, and prepares run metadata.
 - `session_manager.py` — resolves provider conversation IDs, wraps SDK sessions with memory strategies (trim/summarize/compact), persists summaries, and syncs session state.
 - `run_pipeline.py` — shared pre/post run helpers (record user msg, project session items, memory injection, compaction events).
@@ -20,9 +26,9 @@ Glue layer that wires AgentSpecs to runtime execution, sessions, storage, and te
 - Guardrails/tool guardrails are already built into the SDK Agent via the registry; this layer just executes the runtime and forwards guardrail events.
 
 ## Run flow (chat/chat_stream)
-1) `AgentService.chat/chat_stream` calls `prepare_run_context` (provider, agent descriptor, session, runtime context, memory strategy, conversation defaults).
-2) Records the user message, kicks off title generation, then invokes provider runtime (`OpenAIAgentRuntime`) with resolved run options.
-3) Persists assistant message/attachments, projects session items into the event log, syncs session state, and records usage.
+1) `AgentService` delegates to `ChatRunOrchestrator` / `ChatStreamOrchestrator`, which call `prepare_run_context` (provider, agent descriptor, session, runtime context, memory strategy, conversation defaults).
+2) Records the user message, then invokes provider runtime (`OpenAIAgentRuntime`) with resolved run options.
+3) Persists assistant message/attachments, projects session items into the event log, syncs session state, and records usage (via `RunFinalizer`).
 4) Streaming path also emits lifecycle/memory compaction/guardrail events via `AgentStreamEvent`.
 
 ## When to touch this layer

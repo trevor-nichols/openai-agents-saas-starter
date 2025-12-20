@@ -71,7 +71,7 @@ from app.presentation import metrics as metrics_routes
 from app.presentation import well_known as well_known_routes
 from app.presentation.webhooks import stripe as stripe_webhook
 from app.services.activity import ActivityService
-from app.services.agent_service import build_agent_service
+from app.services.agents import build_agent_service
 from app.services.agents.provider_registry import get_provider_registry
 from app.services.auth.builders import (
     build_service_account_token_service,

@@ -7,7 +7,7 @@ import pytest
 from app.api.v1.chat.schemas import AgentChatRequest
 from app.domain.ai import AgentDescriptor, AgentRunResult
 from app.domain.conversations import ConversationSessionState
-from app.services.agent_service import AgentService, ConversationActorContext
+from app.services.agents import AgentService, ConversationActorContext
 from app.services.agents.policy import AgentRuntimePolicy
 from app.services.agents.provider_registry import AgentProviderRegistry
 from app.services.conversation_service import ConversationService

@@ -399,18 +399,18 @@ GET /api/v1/agents/{agent_name}/status
 Simply modify the triage agent's instructions to include handoffs:
 
 ```python
-# In app/services/agent_service.py
-self._agents["triage"] = Agent(
-    name="Triage Assistant",
-    instructions="""
-    You are the main AI assistant. For coding questions, 
-    handoff to the code assistant. For data questions, 
-    handoff to the data analyst.
-    """,
-    handoffs=[
-        self._agents["code_assistant"],
-        self._agents["data_analyst"]
-    ]
+# In app/agents/triage/spec.py
+return AgentSpec(
+    key="triage",
+    display_name="Triage Assistant",
+    description="Primary triage assistant orchestrating handoffs.",
+    model_key="triage",
+    capabilities=("general", "search", "handoff"),
+    tool_keys=("get_current_time", "search_conversations"),
+    prompt_path=base_dir / "prompt.md.j2",
+    handoff_keys=("code_assistant", "researcher"),
+    # Optional per-target context policy.
+    handoff_context={"code_assistant": "last_turn", "researcher": "fresh"},
 )
 ```
 
