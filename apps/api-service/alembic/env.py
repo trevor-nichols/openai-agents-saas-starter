@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import importlib
 import sys
 from logging.config import fileConfig
 from pathlib import Path
@@ -23,20 +22,10 @@ for path in (SRC_DIR, BASE_DIR):
 
 from app.core.settings import get_settings  # noqa: E402
 from app.infrastructure.persistence.models.base import Base  # noqa: E402
+from app.infrastructure.persistence.registry import import_all_models  # noqa: E402
 
 # Ensure all ORM metadata is registered before Alembic inspects Base metadata.
-importlib.import_module("app.infrastructure.persistence.auth.models")
-importlib.import_module("app.infrastructure.persistence.billing.models")
-importlib.import_module("app.infrastructure.persistence.containers.models")
-importlib.import_module("app.infrastructure.persistence.conversations.models")
-importlib.import_module("app.infrastructure.persistence.conversations.ledger_models")
-importlib.import_module("app.infrastructure.persistence.storage.models")
-importlib.import_module("app.infrastructure.persistence.status.models")
-importlib.import_module("app.infrastructure.persistence.stripe.models")
-importlib.import_module("app.infrastructure.persistence.tenants.models")
-importlib.import_module("app.infrastructure.persistence.vector_stores.models")
-importlib.import_module("app.infrastructure.persistence.activity.models")
-importlib.import_module("app.infrastructure.persistence.workflows.models")
+import_all_models()
 
 config = context.config
 

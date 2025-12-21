@@ -6,12 +6,25 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Integer, JSON, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.infrastructure.persistence.models.base import UTC_NOW, Base
+from app.infrastructure.persistence.models.base import UTC_NOW, Base, uuid_pk
+
+
+class TenantAccount(Base):
+    """Represents a customer tenant in a multi-tenant deployment."""
+
+    __tablename__ = "tenant_accounts"
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk)
+    slug: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=UTC_NOW, nullable=False
+    )
 
 
 class TenantSettingsModel(Base):
@@ -20,9 +33,7 @@ class TenantSettingsModel(Base):
         UniqueConstraint("tenant_id", name="uq_tenant_settings_tenant_id"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk)
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("tenant_accounts.id", ondelete="CASCADE"),
@@ -53,7 +64,7 @@ class TenantSettingsModel(Base):
         DateTime(timezone=True), default=UTC_NOW, onupdate=UTC_NOW, nullable=False
     )
 
-    tenant = relationship("TenantAccount", back_populates="settings", lazy="selectin")
+    tenant: Mapped[TenantAccount] = relationship("TenantAccount", lazy="selectin")
 
 
-__all__ = ["TenantSettingsModel"]
+__all__ = ["TenantAccount", "TenantSettingsModel"]

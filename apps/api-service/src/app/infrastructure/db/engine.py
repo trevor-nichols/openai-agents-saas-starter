@@ -211,25 +211,9 @@ def _create_all_tables(connection) -> None:
 def _import_all_models() -> None:
     """Import all ORM models so they register with the Base metadata."""
 
-    # Register ORM models so Base.metadata is populated (SQLite auto-migrate path).
-    from app.infrastructure.persistence.activity import models as _activity_models  # noqa: F401
-    from app.infrastructure.persistence.auth import models as _auth_models  # noqa: F401
-    from app.infrastructure.persistence.billing import models as _billing_models  # noqa: F401
-    from app.infrastructure.persistence.containers import models as _container_models  # noqa: F401
-    from app.infrastructure.persistence.conversations import (
-        ledger_models as _conversation_ledger_models,  # noqa: F401
-    )
-    from app.infrastructure.persistence.conversations import (
-        models as _conversation_models,  # noqa: F401
-    )
-    from app.infrastructure.persistence.status import models as _status_models  # noqa: F401
-    from app.infrastructure.persistence.storage import models as _storage_models  # noqa: F401
-    from app.infrastructure.persistence.stripe import models as _stripe_models  # noqa: F401
-    from app.infrastructure.persistence.tenants import models as _tenant_models  # noqa: F401
-    from app.infrastructure.persistence.vector_stores import (
-        models as _vector_store_models,  # noqa: F401
-    )
-    from app.infrastructure.persistence.workflows import models as _workflow_models  # noqa: F401
+    from app.infrastructure.persistence.registry import import_all_models
+
+    import_all_models()
 
 
 @asynccontextmanager

@@ -24,7 +24,7 @@ from app.domain.signup import (
     SignupRequestStatus,
 )
 from app.infrastructure.db import get_async_sessionmaker
-from app.infrastructure.persistence.auth.models import (
+from app.infrastructure.persistence.auth.models.signup import (
     TenantSignupInvite,
     TenantSignupInviteReservation,
     TenantSignupRequest,

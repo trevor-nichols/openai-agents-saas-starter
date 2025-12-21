@@ -10,7 +10,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.infrastructure.persistence.auth.models import UsageCounter, UsageCounterGranularity
+from app.infrastructure.persistence.usage.models import UsageCounter, UsageCounterGranularity
 
 
 class UsageCounterService:

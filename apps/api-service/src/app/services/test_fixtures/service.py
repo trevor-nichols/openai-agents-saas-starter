@@ -13,9 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.bootstrap.container import ApplicationContainer, get_container
 from app.core.security import PASSWORD_HASH_VERSION, get_password_hash
-from app.infrastructure.persistence.auth.models import (
+from app.infrastructure.persistence.auth.models.membership import TenantUserMembership
+from app.infrastructure.persistence.auth.models.user import (
     PasswordHistory,
-    TenantUserMembership,
     UserAccount,
     UserProfile,
     UserStatus,
@@ -26,11 +26,8 @@ from app.infrastructure.persistence.billing.models import (
     TenantSubscription,
 )
 from app.infrastructure.persistence.conversations.ledger_models import ConversationLedgerSegment
-from app.infrastructure.persistence.conversations.models import (
-    AgentConversation,
-    AgentMessage,
-    TenantAccount,
-)
+from app.infrastructure.persistence.conversations.models import AgentConversation, AgentMessage
+from app.infrastructure.persistence.tenants.models import TenantAccount
 
 
 class TestFixtureError(RuntimeError):

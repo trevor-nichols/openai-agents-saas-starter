@@ -12,7 +12,7 @@ from app.core.security import TokenVerifierError, get_token_signer, get_token_ve
 from app.core.settings import get_settings
 from app.domain.auth import UserSessionListResult, UserSessionTokens
 from app.domain.users import AuthenticatedUser
-from app.infrastructure.persistence.auth.models import UserMfaMethod
+from app.infrastructure.persistence.auth.models.mfa import UserMfaMethod
 from app.observability.logging import log_event
 from app.services.activity import activity_service
 from app.services.auth.mfa_service import MfaService, get_mfa_service

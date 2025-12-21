@@ -30,7 +30,7 @@ from app.infrastructure.persistence.auth.cache import (
     RefreshTokenCache,
     build_refresh_token_cache,
 )
-from app.infrastructure.persistence.auth.models import ServiceAccountToken
+from app.infrastructure.persistence.auth.models.sessions import ServiceAccountToken
 
 logger = logging.getLogger(__name__)
 

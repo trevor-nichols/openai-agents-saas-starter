@@ -8,7 +8,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import Select, desc, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.infrastructure.persistence.auth.models import SecurityEvent
+from app.infrastructure.persistence.auth.models.security import SecurityEvent
 
 
 class SecurityEventService:

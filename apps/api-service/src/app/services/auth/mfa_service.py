@@ -14,7 +14,7 @@ from sqlalchemy import Select, and_, delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.settings import get_settings
-from app.infrastructure.persistence.auth.models import (
+from app.infrastructure.persistence.auth.models.mfa import (
     MfaMethodType,
     UserMfaMethod,
     UserRecoveryCode,
