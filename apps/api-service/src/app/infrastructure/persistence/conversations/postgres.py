@@ -18,6 +18,8 @@ from app.domain.conversations import (
     ConversationSearchPage,
     ConversationSessionState,
 )
+from app.infrastructure.persistence.conversations.conversation_reader import ConversationReader
+from app.infrastructure.persistence.conversations.conversation_store import ConversationStore
 from app.infrastructure.persistence.conversations.message_store import ConversationMessageStore
 from app.infrastructure.persistence.conversations.run_event_store import RunEventStore
 from app.infrastructure.persistence.conversations.search_store import ConversationSearchStore
@@ -29,7 +31,11 @@ class PostgresConversationRepository(ConversationRepository):
     """Facade that delegates to focused stores for each capability."""
 
     def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
-        self._messages = ConversationMessageStore(session_factory)
+        self._conversations = ConversationStore(session_factory)
+        self._messages = ConversationMessageStore(
+            session_factory, conversation_store=self._conversations
+        )
+        self._reader = ConversationReader(session_factory)
         self._search = ConversationSearchStore(session_factory)
         self._run_events = RunEventStore(session_factory)
         self._summaries = ConversationSummaryStore(session_factory)
@@ -56,13 +62,13 @@ class PostgresConversationRepository(ConversationRepository):
     async def get_conversation(
         self, conversation_id: str, *, tenant_id: str
     ) -> ConversationRecord | None:
-        return await self._messages.get_conversation(conversation_id, tenant_id=tenant_id)
+        return await self._reader.get_conversation(conversation_id, tenant_id=tenant_id)
 
     async def list_conversation_ids(self, *, tenant_id: str) -> list[str]:
-        return await self._messages.list_conversation_ids(tenant_id=tenant_id)
+        return await self._conversations.list_conversation_ids(tenant_id=tenant_id)
 
     async def iter_conversations(self, *, tenant_id: str) -> list[ConversationRecord]:
-        return await self._messages.iter_conversations(tenant_id=tenant_id)
+        return await self._reader.iter_conversations(tenant_id=tenant_id)
 
     async def paginate_conversations(
         self,
@@ -73,7 +79,7 @@ class PostgresConversationRepository(ConversationRepository):
         agent_entrypoint: str | None = None,
         updated_after: datetime | None = None,
     ) -> ConversationPage:
-        return await self._messages.paginate_conversations(
+        return await self._reader.paginate_conversations(
             tenant_id=tenant_id,
             limit=limit,
             cursor=cursor,
@@ -99,17 +105,17 @@ class PostgresConversationRepository(ConversationRepository):
         )
 
     async def clear_conversation(self, conversation_id: str, *, tenant_id: str) -> None:
-        await self._messages.clear_conversation(conversation_id, tenant_id=tenant_id)
+        await self._conversations.clear_conversation(conversation_id, tenant_id=tenant_id)
 
     async def get_session_state(
         self, conversation_id: str, *, tenant_id: str
     ) -> ConversationSessionState | None:
-        return await self._messages.get_session_state(conversation_id, tenant_id=tenant_id)
+        return await self._conversations.get_session_state(conversation_id, tenant_id=tenant_id)
 
     async def get_memory_config(
         self, conversation_id: str, *, tenant_id: str
     ) -> ConversationMemoryConfig | None:
-        return await self._messages.get_memory_config(conversation_id, tenant_id=tenant_id)
+        return await self._conversations.get_memory_config(conversation_id, tenant_id=tenant_id)
 
     async def set_memory_config(
         self,
@@ -119,7 +125,7 @@ class PostgresConversationRepository(ConversationRepository):
         config: ConversationMemoryConfig,
         provided_fields: set[str] | None = None,
     ) -> None:
-        await self._messages.set_memory_config(
+        await self._conversations.set_memory_config(
             conversation_id, tenant_id=tenant_id, config=config, provided_fields=provided_fields
         )
 
@@ -167,7 +173,9 @@ class PostgresConversationRepository(ConversationRepository):
         tenant_id: str,
         state: ConversationSessionState,
     ) -> None:
-        await self._messages.upsert_session_state(conversation_id, tenant_id=tenant_id, state=state)
+        await self._conversations.upsert_session_state(
+            conversation_id, tenant_id=tenant_id, state=state
+        )
 
     async def add_run_usage(
         self,
@@ -238,7 +246,7 @@ class PostgresConversationRepository(ConversationRepository):
         display_name: str,
         generated_at: datetime | None = None,
     ) -> bool:
-        return await self._messages.set_display_name(
+        return await self._conversations.set_display_name(
             conversation_id,
             tenant_id=tenant_id,
             display_name=display_name,
@@ -252,7 +260,7 @@ class PostgresConversationRepository(ConversationRepository):
         tenant_id: str,
         display_name: str,
     ) -> None:
-        await self._messages.update_display_name(
+        await self._conversations.update_display_name(
             conversation_id,
             tenant_id=tenant_id,
             display_name=display_name,

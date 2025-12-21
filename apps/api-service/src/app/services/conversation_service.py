@@ -19,6 +19,7 @@ from app.domain.conversations import (
     ConversationRunUsage,
     ConversationSessionState,
     MessagePage,
+    ensure_metadata_tenant,
 )
 from app.services.activity import activity_service
 
@@ -114,7 +115,7 @@ class ConversationService:
     ) -> int | None:
         repository = self._require_repository()
         normalized_tenant = _require_tenant_id(tenant_id)
-        _ensure_metadata_tenant(metadata, normalized_tenant)
+        ensure_metadata_tenant(metadata, normalized_tenant)
         return await repository.add_message(
             conversation_id,
             message,
@@ -467,11 +468,6 @@ def _require_tenant_id(value: str) -> str:
     if not tenant:
         raise ValueError("tenant_id is required for conversation operations")
     return tenant
-
-
-def _ensure_metadata_tenant(metadata: ConversationMetadata, tenant_id: str) -> None:
-    if metadata.tenant_id != tenant_id:
-        raise ValueError("ConversationMetadata tenant_id mismatch")
 
 
 def _build_preview(messages: list[ConversationMessage], query: str) -> str:

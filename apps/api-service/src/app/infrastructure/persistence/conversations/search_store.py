@@ -18,6 +18,7 @@ from app.infrastructure.persistence.conversations.cursors import (
 )
 from app.infrastructure.persistence.conversations.ids import parse_tenant_id
 from app.infrastructure.persistence.conversations.ledger_models import ConversationLedgerSegment
+from app.infrastructure.persistence.conversations.ledger_visibility import visible_message_clause
 from app.infrastructure.persistence.conversations.mappers import record_from_model
 from app.infrastructure.persistence.conversations.models import (
     AgentConversation,
@@ -104,16 +105,7 @@ class ConversationSearchStore:
                     ConversationLedgerSegment.id == AgentMessage.segment_id,
                 )
                 .where(*base_filters, search_filter)
-                .where(
-                    or_(
-                        ConversationLedgerSegment.truncated_at.is_(None),
-                        and_(
-                            ConversationLedgerSegment.visible_through_message_position.isnot(None),
-                            AgentMessage.position
-                            <= ConversationLedgerSegment.visible_through_message_position,
-                        ),
-                    )
-                )
+                .where(visible_message_clause())
                 .group_by(AgentConversation.id, AgentConversation.updated_at)
             )
 
@@ -167,16 +159,7 @@ class ConversationSearchStore:
                     ConversationLedgerSegment.id == AgentMessage.segment_id,
                 )
                 .where(AgentMessage.conversation_id.in_(ids))
-                .where(
-                    or_(
-                        ConversationLedgerSegment.truncated_at.is_(None),
-                        and_(
-                            ConversationLedgerSegment.visible_through_message_position.isnot(None),
-                            AgentMessage.position
-                            <= ConversationLedgerSegment.visible_through_message_position,
-                        ),
-                    )
-                )
+                .where(visible_message_clause())
                 .order_by(AgentMessage.conversation_id, AgentMessage.position)
             )
             message_rows: Sequence[AgentMessage] = messages.scalars().all()

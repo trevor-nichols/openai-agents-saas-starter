@@ -5,6 +5,8 @@ Persistence layer for conversations, messages, summaries, run events, search, an
 ## What lives here
 - `models.py` — SQLAlchemy models for conversations, messages, runs, events, summaries, usage.
 - `postgres.py` — repository implementations over AsyncSession.
+- `conversation_store.py` — conversation row persistence (metadata, titles, memory config).
+- `conversation_reader.py` — read-model assembly (conversations + messages).
 - `message_store.py` — append/read messages with metadata.
 - `run_event_store.py` — store per-run/session events (tool calls, guardrails, compaction).
 - `summary_store.py` — store and fetch conversation summaries used for memory injection.
@@ -14,6 +16,7 @@ Persistence layer for conversations, messages, summaries, run events, search, an
 - `ids.py` — ID helpers for runs and events.
 - `mappers.py` — DTO/entity mapping helpers.
 - `instrumentation.py` — tracing/logging wrappers.
+- `ledger_visibility.py` — shared ledger visibility filters for message queries.
 
 ## Relation to agents
 - AgentService writes/reads conversation messages and session events here; AgentSpecs are unaffected.
