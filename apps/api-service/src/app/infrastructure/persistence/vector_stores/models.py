@@ -17,7 +17,14 @@ from app.infrastructure.persistence.types import JSONBCompat
 class VectorStore(Base):
     __tablename__ = "vector_stores"
     __table_args__ = (
-        UniqueConstraint("tenant_id", "name", name="uq_vector_stores_tenant_name"),
+        Index(
+            "uq_vector_stores_tenant_name_active",
+            "tenant_id",
+            "name",
+            unique=True,
+            postgresql_where=sa.text("deleted_at IS NULL"),
+            sqlite_where=sa.text("deleted_at IS NULL"),
+        ),
         Index("ix_vector_stores_tenant_status", "tenant_id", "status"),
         Index("ix_vector_stores_tenant_created", "tenant_id", "created_at"),
     )

@@ -9,26 +9,32 @@ import { Label } from '@/components/ui/label';
 import { EmptyState, ErrorState, SkeletonPanel } from '@/components/ui/states';
 import { useToast } from '@/components/ui/use-toast';
 import {
-  useAttachVectorStoreFile,
   useCreateVectorStore,
   useDeleteVectorStore,
   useDeleteVectorStoreFile,
+  useUploadVectorStoreFile,
   useVectorStoreFilesQuery,
   useVectorStoresQuery,
 } from '@/lib/queries/vectorStores';
+import { usePresignUpload } from '@/lib/queries/storageObjects';
+import { uploadFileToPresignedUrl } from '@/lib/storage/upload';
 
 export function VectorStoresPanel() {
   const vectorStoresQuery = useVectorStoresQuery();
   const createVector = useCreateVectorStore();
   const deleteVector = useDeleteVectorStore();
-  const { error: showErrorToast } = useToast();
+  const { error: showErrorToast, success: showSuccessToast } = useToast();
   const [selectedVs, setSelectedVs] = useState<string | null>(null);
   const filesQuery = useVectorStoreFilesQuery(selectedVs ?? 'vs-placeholder', Boolean(selectedVs));
-  const attachFile = useAttachVectorStoreFile(selectedVs ?? '');
   const deleteFile = useDeleteVectorStoreFile(selectedVs ?? '');
+  const presignUpload = usePresignUpload();
+  const uploadVectorStoreFile = useUploadVectorStoreFile();
 
   const [newVsName, setNewVsName] = useState('');
-  const [fileIdInput, setFileIdInput] = useState('');
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+  const [uploadInputKey, setUploadInputKey] = useState(0);
+  const isUploading = presignUpload.isPending || uploadVectorStoreFile.isPending;
 
   return (
     <GlassPanel className="p-4 space-y-3">
@@ -136,29 +142,77 @@ export function VectorStoresPanel() {
             <EmptyState title="No files" description="Attach files to index them." />
           )}
 
-          <div className="space-y-1">
-            <Label className="text-xs text-foreground/70">Attach file (ID)</Label>
-            <div className="flex gap-2">
-              <Input
-                placeholder="file_id"
-                onChange={(e) => setFileIdInput(e.target.value)}
-                value={fileIdInput}
-                className="max-w-xs"
-              />
+          <div className="space-y-2">
+            <Label className="text-xs text-foreground/70">Upload file to vector store</Label>
+            <Input
+              key={uploadInputKey}
+              type="file"
+              disabled={isUploading}
+              onChange={(event) => {
+                const file = event.target.files?.[0] ?? null;
+                setUploadFile(file);
+              }}
+              className="max-w-xs"
+            />
+            <div className="flex items-center gap-2">
               <Button
                 size="sm"
-                onClick={() =>
-                  attachFile.mutate({
-                    file_id: fileIdInput || 'file-id',
-                    attributes: {},
-                    chunking_strategy: null,
-                    poll: false,
-                  })
-                }
-                disabled={attachFile.isPending}
+                onClick={async () => {
+                  if (!selectedVs) {
+                    showErrorToast({
+                      title: 'Select a vector store',
+                      description: 'Choose a destination store.',
+                    });
+                    return;
+                  }
+                  if (!uploadFile) {
+                    showErrorToast({ title: 'Choose a file first', description: 'Select a file to upload.' });
+                    return;
+                  }
+
+                  try {
+                    setUploadStatus('Requesting upload URL…');
+                    const presign = await presignUpload.mutateAsync({
+                      filename: uploadFile.name,
+                      mime_type: uploadFile.type || 'application/octet-stream',
+                      size_bytes: uploadFile.size,
+                      conversation_id: null,
+                      agent_key: null,
+                      metadata: {
+                        source: 'storage_vector_store',
+                      },
+                    });
+
+                    setUploadStatus('Uploading file…');
+                    await uploadFileToPresignedUrl(presign, uploadFile);
+
+                    setUploadStatus('Indexing in vector store…');
+                    await uploadVectorStoreFile.mutateAsync({
+                      vectorStoreId: selectedVs,
+                      body: {
+                        object_id: presign.object_id,
+                        attributes: { filename: uploadFile.name },
+                      },
+                    });
+
+                    setUploadStatus('Upload complete');
+                    showSuccessToast({
+                      title: 'File uploaded',
+                      description: `${uploadFile.name} is now attached to the vector store.`,
+                    });
+                    setUploadFile(null);
+                    setUploadInputKey((prev) => prev + 1);
+                  } catch (error) {
+                    const message = error instanceof Error ? error.message : 'Upload failed';
+                    setUploadStatus(null);
+                    showErrorToast({ title: 'Upload failed', description: message });
+                  }
+                }}
+                disabled={isUploading || !uploadFile || !selectedVs}
               >
-                Attach
+                {isUploading ? 'Uploading…' : 'Upload file'}
               </Button>
+              {uploadStatus ? <span className="text-xs text-foreground/60">{uploadStatus}</span> : null}
             </div>
           </div>
         </div>

@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.core.settings import Settings
 from app.domain.billing import PlanFeature, BillingPlan, TenantSubscription
-from app.infrastructure.persistence.conversations.models import TenantAccount
+from app.infrastructure.persistence.tenants.models import TenantAccount
 from app.infrastructure.persistence.vector_stores.models import AgentVectorStore, VectorStore, VectorStoreFile
 from app.domain.storage import StorageObjectRef, StoragePresignedUrl
 from app.services.vector_stores import (
@@ -165,6 +165,32 @@ async def test_create_store_name_conflict(session_factory, settings):
 
     with pytest.raises(VectorStoreNameConflictError):
         await svc.create_store(tenant_id=tenant_id, owner_user_id=None, name="primary")
+
+
+@pytest.mark.asyncio
+async def test_create_store_reuses_name_after_delete(session_factory, settings):
+    svc = _service(session_factory, settings, _FakeFile("file-reuse"))
+    tenant_id = uuid4()
+
+    first = await svc.create_store(tenant_id=tenant_id, owner_user_id=None, name="test")
+    await svc.delete_store(vector_store_id=first.id, tenant_id=tenant_id)
+
+    second = await svc.create_store(tenant_id=tenant_id, owner_user_id=None, name="test")
+    assert second.id != first.id
+
+    async with session_factory() as session:
+        first_row = await session.get(VectorStore, first.id)
+        assert first_row.deleted_at is not None
+        active_count = await session.scalar(
+            select(func.count())
+            .select_from(VectorStore)
+            .where(
+                VectorStore.tenant_id == tenant_id,
+                VectorStore.deleted_at.is_(None),
+                VectorStore.name == "test",
+            )
+        )
+        assert int(active_count or 0) == 1
 
 
 @pytest.mark.asyncio
