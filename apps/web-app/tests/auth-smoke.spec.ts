@@ -15,7 +15,7 @@ test('login, open chat, logout flow', async ({ page }) => {
 
   await page.getByRole('link', { name: 'Chat' }).click();
   await expect(page).toHaveURL(/\/chat$/);
-  await expect(page.getByText('Anything Agent Chat')).toBeVisible();
+  await expect(page.getByText('Agent Chat')).toBeVisible();
 
   await page.getByRole('button', { name: 'New' }).click();
   await page.getByRole('textbox').fill('Hello, agent!');

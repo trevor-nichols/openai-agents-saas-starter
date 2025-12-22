@@ -1,7 +1,7 @@
 export const CHAT_COPY = {
   header: {
     eyebrow: 'Workspace',
-    title: 'Anything Agent Chat',
+    title: 'Agent Chat',
     descriptionEmpty: 'Start a new conversation to brief your agent.',
   },
   sidebar: {

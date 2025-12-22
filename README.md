@@ -2,12 +2,32 @@
 
 Production-ready starter kit for building AI Agent SaaS products. The repo bundles a FastAPI backend (OpenAI Agents SDK v0.6.1) and a Next.js 16 frontend, plus an operator-focused Starter CLI that wires secrets, infrastructure, and env files in one flow.
 
+<img src="docs/assets/media/screenshots.jpeg" alt="OpenAI Agent Starter screenshots" width="1200" />
+
 ## Architecture At A Glance
 - **Backend** (`apps/api-service/`): FastAPI, async SQLAlchemy, Postgres + Redis (refresh tokens & billing), JWT auth, Alembic migrations, Ed25519 keys in `var/keys/`, OpenAI Agents SDK integrations, Stripe billing services.
 - **Frontend** (`apps/web-app/`): Next.js 16, TanStack Query, Shadcn UI, HeyAPI-generated client under `lib/api/client`.
 - **Starter CLI** (`packages/starter_cli/`): Operator workflows (setup wizard, secrets onboarding, Stripe provisioning, auth tooling, infra helpers) with side-effect-free imports so CI/CD can run `python -m starter_cli.app`.
 - **Shared Contracts** (`packages/starter_contracts/`): Versioned provider/storage/secret contracts shared by backend and CLI.
 - **Docs & Trackers** (`docs/`): SDK references, frontend UI/data-access guides, CLI milestones, and project trackers.
+
+## API Service Capabilities (FastAPI)
+- **Agent specs (declarative)** — Specs live in `apps/api-service/src/app/agents/<key>/spec.py` with Jinja prompts (`prompt.md.j2`). Each spec defines tools, handoffs, outputs, memory defaults, guardrails, and vector-store bindings. Registries materialize specs into concrete OpenAI Agents at runtime.
+- **Guardrails (safety + policy)** — Pluggable checks (moderation, jailbreak, PII, hallucination, prompt injection, URL filtering) with presets (`minimal`, `standard`, `strict`, plus tool presets). Agents can apply input/output guardrails and per-tool guardrails; runtime supports streaming or blocking evaluation.
+- **Tools** — Explicit tool allowlists per agent. Hosted OpenAI tools (`web_search`, `file_search`, `code_interpreter`, `image_generation`) plus built-ins (`get_current_time`, `search_conversations`), custom function tools, and Hosted MCP tools configured via `MCP_TOOLS`.
+- **Workflows** — Deterministic orchestration over agents via `WorkflowSpec` (`apps/api-service/src/app/workflows/<key>/spec.py`), supporting sequential and parallel stages with reducers; workflows reuse agent specs for prompts/tools/guardrails/memory.
+- **Vector stores + File Search** — OpenAI Vector Stores integration with per-tenant stores, agent bindings, file attach/search, and request-level overrides. Agent specs choose `tenant_default`, `static`, or `required` bindings.
+- **Containers (Code Interpreter)** — Per-tenant container management and agent bindings for OpenAI Code Interpreter. Supports explicit container IDs or auto-managed containers with configurable memory tiers and quotas.
+- **Storage + assets** — Tenant-scoped object storage with presigned uploads/downloads, Postgres metadata, and guardrails for MIME/size. Generated assets are tracked separately and linked to conversations/messages.
+- **Streaming** — Normalized SSE contract (`public_sse_v1`) for chat + workflow streams, including tool events, reasoning parts, and lifecycle markers for frontend rendering.
+
+## Hosting & Infrastructure Options
+- **Compute/runtime** — FastAPI ASGI service + optional worker process. Supports single-instance or multi-replica deployments; billing retry/stream workers can run inline or as a dedicated deployment to avoid double-processing.
+- **Datastores** — Postgres (durable state) and Redis (refresh tokens, rate limits, billing streams). Both are first-class in the CLI wizard and health probes.
+- **Secrets providers** — Vault (dev/HCP), Infisical (cloud/self-host), AWS Secrets Manager, Azure Key Vault (all wired through the Starter CLI).
+- **Object storage providers** — In-memory (dev/test), MinIO/S3-compatible, or Google Cloud Storage (GCS) with presigned upload/download flows.
+- **Observability** — JSON logs to stdout or file sink; optional OTLP export via the bundled OpenTelemetry collector or external endpoints.
+- **Local dev stack** — Docker Compose helpers for Postgres/Redis/Vault/OTel collector via `just dev-up` and CLI automation.
 
 ## Repo Layout (current)
 ```
