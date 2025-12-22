@@ -30,6 +30,8 @@ from app.infrastructure.persistence.auth.models.user import (
     UserAccount,
     UserLoginEvent,
     UserProfile,
+)
+from app.infrastructure.persistence.auth.models.user import (
     UserStatus as DBUserStatus,
 )
 from app.infrastructure.redis.factory import get_redis_factory

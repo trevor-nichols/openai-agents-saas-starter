@@ -60,7 +60,7 @@ class TenantSignupRequest(Base):
         DateTime(timezone=True), nullable=False, default=UTC_NOW, onupdate=UTC_NOW
     )
 
-    approved_invite: Mapped["TenantSignupInvite | None"] = relationship(
+    approved_invite: Mapped[TenantSignupInvite | None] = relationship(
         "TenantSignupInvite",
         back_populates="source_request",
         uselist=False,
@@ -114,13 +114,13 @@ class TenantSignupInvite(Base):
         DateTime(timezone=True), nullable=False, default=UTC_NOW, onupdate=UTC_NOW
     )
 
-    source_request: Mapped["TenantSignupRequest | None"] = relationship(
+    source_request: Mapped[TenantSignupRequest | None] = relationship(
         "TenantSignupRequest",
         back_populates="approved_invite",
         uselist=False,
         primaryjoin="TenantSignupInvite.signup_request_id == TenantSignupRequest.id",
     )
-    reservations: Mapped[list["TenantSignupInviteReservation"]] = relationship(
+    reservations: Mapped[list[TenantSignupInviteReservation]] = relationship(
         "TenantSignupInviteReservation",
         back_populates="invite",
         cascade="all, delete-orphan",
@@ -171,7 +171,7 @@ class TenantSignupInviteReservation(Base):
         DateTime(timezone=True), nullable=False, default=UTC_NOW, onupdate=UTC_NOW
     )
 
-    invite: Mapped["TenantSignupInvite"] = relationship(
+    invite: Mapped[TenantSignupInvite] = relationship(
         "TenantSignupInvite",
         back_populates="reservations",
     )

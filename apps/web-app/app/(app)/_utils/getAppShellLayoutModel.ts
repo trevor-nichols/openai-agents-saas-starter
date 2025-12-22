@@ -19,8 +19,6 @@ export async function getAppShellLayoutModel(): Promise<{
   profile: Awaited<ReturnType<typeof getCurrentUserProfile>>;
 }> {
   const session = await getSessionMetaFromCookies();
-  const hasStatusScope = session?.scopes?.includes('status:manage') ?? false;
-  const navItems = buildNavItems(hasStatusScope);
   let profile: Awaited<ReturnType<typeof getCurrentUserProfile>> = null;
   if (session) {
     try {
@@ -29,6 +27,13 @@ export async function getAppShellLayoutModel(): Promise<{
       console.warn('[app-shell] Failed to load current user profile', error);
     }
   }
+
+  const hasStatusScope = session?.scopes?.includes('status:manage') ?? false;
+  const navItems = buildNavItems({
+    hasStatusScope,
+    role: profile?.role ?? null,
+    scopes: session?.scopes ?? null,
+  });
 
   const subtitle = billingEnabled
     ? 'Configure agents, monitor conversations, and keep billing healthy.'

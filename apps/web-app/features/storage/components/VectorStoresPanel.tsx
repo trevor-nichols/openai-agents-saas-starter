@@ -7,6 +7,7 @@ import { GlassPanel } from '@/components/ui/foundation';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { EmptyState, ErrorState, SkeletonPanel } from '@/components/ui/states';
+import { useToast } from '@/components/ui/use-toast';
 import {
   useAttachVectorStoreFile,
   useCreateVectorStore,
@@ -20,6 +21,7 @@ export function VectorStoresPanel() {
   const vectorStoresQuery = useVectorStoresQuery();
   const createVector = useCreateVectorStore();
   const deleteVector = useDeleteVectorStore();
+  const { error: showErrorToast } = useToast();
   const [selectedVs, setSelectedVs] = useState<string | null>(null);
   const filesQuery = useVectorStoreFilesQuery(selectedVs ?? 'vs-placeholder', Boolean(selectedVs));
   const attachFile = useAttachVectorStoreFile(selectedVs ?? '');
@@ -47,7 +49,20 @@ export function VectorStoresPanel() {
         </div>
         <Button
           size="sm"
-          onClick={() => newVsName.trim() && createVector.mutate({ name: newVsName, description: null, metadata: null, expires_after: null })}
+          onClick={() => {
+            const trimmed = newVsName.trim();
+            if (!trimmed) return;
+            createVector.mutate(
+              { name: trimmed, description: null, metadata: null, expires_after: null },
+              {
+                onSuccess: () => setNewVsName(''),
+                onError: (error) => {
+                  const message = error instanceof Error ? error.message : 'Unable to create vector store.';
+                  showErrorToast({ title: 'Vector store create failed', description: message });
+                },
+              },
+            );
+          }}
           disabled={createVector.isPending}
         >
           Create
@@ -57,7 +72,12 @@ export function VectorStoresPanel() {
       {vectorStoresQuery.isLoading ? (
         <SkeletonPanel lines={6} />
       ) : vectorStoresQuery.isError ? (
-        <ErrorState title="Failed to load vector stores" />
+        <ErrorState
+          title="Failed to load vector stores"
+          message={
+            vectorStoresQuery.error instanceof Error ? vectorStoresQuery.error.message : undefined
+          }
+        />
       ) : (vectorStoresQuery.data?.items?.length ?? 0) === 0 ? (
         <EmptyState title="No vector stores" description="Create a store to attach files." />
       ) : (
