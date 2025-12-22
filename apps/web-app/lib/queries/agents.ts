@@ -1,4 +1,5 @@
 import { useInfiniteQuery, useQueries, useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 
 import { fetchAgentStatus, fetchAgents, fetchAgentsPage } from '@/lib/api/agents';
 import type { AgentStatus } from '@/types/agents';
@@ -106,5 +107,20 @@ export function useAgentStatus(agentName: string | null) {
     agentStatus: data ?? null,
     isLoadingAgentStatus: isLoading && shouldFetch,
     agentStatusError: error instanceof Error ? error : null,
+  };
+}
+
+export function useFileSearchAgents() {
+  const { agents, isLoadingAgents, agentsError } = useAgents();
+
+  const fileSearchAgents = useMemo(
+    () => agents.filter((agent) => agent.tooling?.supports_file_search),
+    [agents],
+  );
+
+  return {
+    agents: fileSearchAgents,
+    isLoadingAgents,
+    agentsError,
   };
 }

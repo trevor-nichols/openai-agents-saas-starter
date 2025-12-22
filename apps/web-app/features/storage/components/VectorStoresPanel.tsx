@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { GlassPanel } from '@/components/ui/foundation';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmptyState, ErrorState, SkeletonPanel } from '@/components/ui/states';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -16,8 +17,12 @@ import {
   useVectorStoreFilesQuery,
   useVectorStoresQuery,
 } from '@/lib/queries/vectorStores';
+import { useFileSearchAgents } from '@/lib/queries/agents';
+import { useConversationsByAgent } from '@/lib/queries/conversations';
 import { usePresignUpload } from '@/lib/queries/storageObjects';
 import { uploadFileToPresignedUrl } from '@/lib/storage/upload';
+
+const UNASSIGNED_OPTION = 'unassigned';
 
 export function VectorStoresPanel() {
   const vectorStoresQuery = useVectorStoresQuery();
@@ -35,6 +40,43 @@ export function VectorStoresPanel() {
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [uploadInputKey, setUploadInputKey] = useState(0);
   const isUploading = presignUpload.isPending || uploadVectorStoreFile.isPending;
+  const [selectedAgentKey, setSelectedAgentKey] = useState<string | null>(null);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+
+  const {
+    agents: fileSearchAgents,
+    isLoadingAgents,
+    agentsError,
+  } = useFileSearchAgents();
+  const {
+    conversations: agentConversations,
+    isLoadingConversations,
+    conversationsError,
+  } = useConversationsByAgent(selectedAgentKey, { limit: 100 });
+
+  const agentOptions = useMemo(
+    () =>
+      fileSearchAgents.map((agent) => ({
+        value: agent.name,
+        label: agent.display_name ?? agent.name,
+        description: agent.description ?? null,
+      })),
+    [fileSearchAgents],
+  );
+
+  const conversationOptions = useMemo(
+    () =>
+      agentConversations.map((conversation) => ({
+        value: conversation.id,
+        label:
+          conversation.display_name ??
+          conversation.title ??
+          conversation.last_message_preview ??
+          `Conversation ${conversation.id.slice(0, 8)}`,
+        description: conversation.last_message_preview ?? null,
+      })),
+    [agentConversations],
+  );
 
   return (
     <GlassPanel className="p-4 space-y-3">
@@ -144,6 +186,94 @@ export function VectorStoresPanel() {
 
           <div className="space-y-2">
             <Label className="text-xs text-foreground/70">Upload file to vector store</Label>
+            <div className="grid gap-2 md:grid-cols-2">
+              <div className="space-y-1">
+                <Label className="text-[11px] uppercase tracking-wide text-foreground/60">
+                  Agent (file_search)
+                </Label>
+                <Select
+                  value={selectedAgentKey ?? UNASSIGNED_OPTION}
+                  onValueChange={(value) => {
+                    const next = value === UNASSIGNED_OPTION ? null : value;
+                    setSelectedAgentKey(next);
+                    setSelectedConversationId(null);
+                  }}
+                  disabled={isLoadingAgents || Boolean(agentsError)}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        isLoadingAgents
+                          ? 'Loading agents…'
+                          : agentOptions.length
+                            ? 'Select an agent'
+                            : 'No file_search agents'
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={UNASSIGNED_OPTION}>No agent gating</SelectItem>
+                    {agentOptions.map((agent) => (
+                      <SelectItem key={agent.value} value={agent.value}>
+                        <div className="space-y-1">
+                          <div className="font-medium">{agent.label}</div>
+                          {agent.description ? (
+                            <div className="text-xs text-muted-foreground">{agent.description}</div>
+                          ) : null}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {agentsError ? (
+                  <p className="text-xs text-destructive">Unable to load agents.</p>
+                ) : null}
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px] uppercase tracking-wide text-foreground/60">
+                  Conversation
+                </Label>
+                <Select
+                  value={selectedConversationId ?? UNASSIGNED_OPTION}
+                  onValueChange={(value) =>
+                    setSelectedConversationId(value === UNASSIGNED_OPTION ? null : value)
+                  }
+                  disabled={!selectedAgentKey || isLoadingConversations || Boolean(conversationsError)}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        !selectedAgentKey
+                          ? 'Select an agent first'
+                          : isLoadingConversations
+                            ? 'Loading conversations…'
+                            : conversationOptions.length
+                              ? 'Select a conversation'
+                              : 'No conversations found'
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={UNASSIGNED_OPTION}>No conversation</SelectItem>
+                    {conversationOptions.map((conversation) => (
+                      <SelectItem key={conversation.value} value={conversation.value}>
+                        <div className="space-y-1">
+                          <div className="font-medium">{conversation.label}</div>
+                          {conversation.description ? (
+                            <div className="text-xs text-muted-foreground">
+                              {conversation.description}
+                            </div>
+                          ) : null}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {conversationsError ? (
+                  <p className="text-xs text-destructive">Unable to load conversations.</p>
+                ) : null}
+              </div>
+            </div>
             <Input
               key={uploadInputKey}
               type="file"
@@ -176,8 +306,8 @@ export function VectorStoresPanel() {
                       filename: uploadFile.name,
                       mime_type: uploadFile.type || 'application/octet-stream',
                       size_bytes: uploadFile.size,
-                      conversation_id: null,
-                      agent_key: null,
+                      conversation_id: selectedConversationId,
+                      agent_key: selectedAgentKey,
                       metadata: {
                         source: 'storage_vector_store',
                       },
