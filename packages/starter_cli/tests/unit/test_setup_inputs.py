@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 from starter_cli.core import CLIError
+from starter_cli.ports.console import StdConsole
+from starter_cli.presenters import build_headless_presenter
 from starter_cli.workflows.setup import (
     HeadlessInputProvider,
     InteractiveInputProvider,
@@ -50,7 +52,8 @@ def test_headless_provider_missing_value_raises() -> None:
 
 
 def test_interactive_prefill_short_circuits(monkeypatch: pytest.MonkeyPatch) -> None:
-    provider = InteractiveInputProvider(prefill={"PORT": "8100"})
+    presenter = build_headless_presenter(StdConsole())
+    provider = InteractiveInputProvider(prefill={"PORT": "8100"}, presenter=presenter)
 
     def fail_prompt(_: str) -> str:
         raise AssertionError("prompt should not be called when prefill exists")

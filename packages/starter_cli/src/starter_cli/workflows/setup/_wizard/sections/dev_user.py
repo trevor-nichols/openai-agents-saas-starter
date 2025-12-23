@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import secrets
 
-from starter_cli.adapters.io.console import console
-
 from ...demo_token import DemoTokenConfig
 from ...dev_user import DevUserConfig
 from ...inputs import InputProvider
@@ -11,6 +9,7 @@ from ..context import WizardContext
 
 
 def run(context: WizardContext, provider: InputProvider) -> None:
+    console = context.console
     console.section(
         "Dev User",
         "Capture the demo dev user you want seeded after setup. Leave the password blank to "

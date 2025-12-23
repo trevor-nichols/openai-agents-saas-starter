@@ -14,7 +14,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext
 from starter_cli.core.constants import PROJECT_ROOT
 from starter_cli.core.status_models import ProbeState
@@ -53,6 +52,7 @@ class StartRunner:
         log_dir: Path | None = None,
     ) -> None:
         self.ctx = ctx
+        self.console = ctx.console
         self.target = target
         self.timeout = timeout
         self.open_browser = open_browser
@@ -81,15 +81,15 @@ class StartRunner:
                 and existing_status.state == "running"
                 and not self.force
             ):
-                console.warn(
+                self.console.warn(
                     "Stack already running (use --force to replace).",
                     topic="start",
                 )
                 for proc in existing_status.running:
-                    console.info(f"- {proc.label} pid={proc.pid}")
+                    self.console.info(f"- {proc.label} pid={proc.pid}")
                 return 1
             if self.force and existing_state:
-                console.warn(
+                self.console.warn(
                     "--force set; stopping previously tracked stack before launch",
                     topic="start",
                 )
@@ -101,7 +101,7 @@ class StartRunner:
                     )
                     stack_state.stop_processes(safe_state)
                 else:
-                    console.info(
+                    self.console.info(
                         "No running PIDs in prior state; skipping process stop", topic="start"
                     )
                 stack_state.clear(self.pidfile)
@@ -135,7 +135,7 @@ class StartRunner:
             failures = [launch for launch in launches if launch.error]
             if failures:
                 for failure in failures:
-                    console.error(f"Failed to start {failure.label}: {failure.error}")
+                    self.console.error(f"Failed to start {failure.label}: {failure.error}")
                 self._cleanup_processes()
                 return 1
 
@@ -144,12 +144,12 @@ class StartRunner:
             api_ok = frontend_ok = False
             while time.time() < deadline:
                 if self._stop_event.is_set():
-                    console.warn("Stop requested; cleaning up processes...", topic="start")
+                    self.console.warn("Stop requested; cleaning up processes...", topic="start")
                     self._cleanup_processes()
                     return 0
                 early_failure = self._poll_launch_failures()
                 if early_failure:
-                    console.error(early_failure)
+                    self.console.error(early_failure)
                     self._dump_tail()
                     self._cleanup_processes()
                     return 1
@@ -170,7 +170,7 @@ class StartRunner:
                 except InterruptedError:
                     raise KeyboardInterrupt from None
 
-            console.info(
+            self.console.info(
                 "Health check: api="
                 f"{'ok' if api_ok else 'down'} "
                 f"frontend={'ok' if frontend_ok else 'down'}"
@@ -184,24 +184,24 @@ class StartRunner:
 
             code = 0 if api_ok and frontend_ok else 1
             if code != 0:
-                console.error("Start failed; see above logs and remediation.")
+                self.console.error("Start failed; see above logs and remediation.")
                 self._cleanup_processes()
                 return code
 
             if self.detach:
                 self._record_state()
-                console.success("Stack is running in background (managed by CLI).")
+                self.console.success("Stack is running in background (managed by CLI).")
                 self._print_ready_urls()
                 self._close_logs()
                 return 0
 
-            console.success(
+            self.console.success(
                 "Stack is running. Press Ctrl+C to stop processes started by this command."
             )
             self._print_ready_urls()
             return self._wait_for_processes()
         except KeyboardInterrupt:
-            console.warn("Interrupted; cleaning up processes...", topic="start")
+            self.console.warn("Interrupted; cleaning up processes...", topic="start")
             self._cleanup_processes()
             return 0
         except Exception:
@@ -253,7 +253,7 @@ class StartRunner:
                 log_path=log_path,
             )
             self._launches.append(launch)
-            console.info(f"Started {label} pid={proc.pid} cmd={' '.join(command)}")
+            self.console.info(f"Started {label} pid={proc.pid} cmd={' '.join(command)}")
             if not self.detach:
                 self._start_log_thread(launch)
             return launch
@@ -274,7 +274,7 @@ class StartRunner:
                 line = line.rstrip()
                 if line:
                     launch.log_tail.append(f"{launch.label}: {line}")
-                    console.info(f"{launch.label}> {line}")
+                    self.console.info(f"{launch.label}> {line}")
 
         threading.Thread(target=_consume, daemon=True).start()
 
@@ -285,26 +285,26 @@ class StartRunner:
         url = os.getenv("APP_PUBLIC_URL", "http://localhost:3000")
         try:
             webbrowser.open(url)
-            console.success(f"Opened browser at {url}")
+            self.console.success(f"Opened browser at {url}")
         except Exception as exc:  # pragma: no cover - defensive
-            console.warn(f"Failed to open browser: {exc}")
+            self.console.warn(f"Failed to open browser: {exc}")
 
     def _dump_tail(self) -> None:
         for launch in self._launches:
             if launch.log_tail:
-                console.info(f"--- last {len(launch.log_tail)} lines from {launch.label} ---")
+                self.console.info(f"--- last {len(launch.log_tail)} lines from {launch.label} ---")
                 for line in launch.log_tail:
-                    console.info(line)
+                    self.console.info(line)
             elif launch.log_path and launch.log_path.exists():
                 tail = (
                     launch.log_path.read_text(encoding="utf-8", errors="ignore").splitlines()[-20:]
                 )
                 if tail:
-                    console.info(
+                    self.console.info(
                         f"--- last {len(tail)} lines from {launch.label} ({launch.log_path}) ---"
                     )
                     for line in tail:
-                        console.info(line)
+                        self.console.info(line)
 
     def _poll_launch_failures(self) -> str | None:
         """Detect early exits during the health wait and fail fast."""
@@ -318,7 +318,7 @@ class StartRunner:
                 continue
             # Allow infra (docker compose) to exit 0 after bootstrapping.
             if launch.label == "infra" and ret == 0:
-                console.info("infra completed successfully; continuing supervision")
+                self.console.info("infra completed successfully; continuing supervision")
                 self._launches.remove(launch)
                 continue
             if ret == 0:
@@ -337,19 +337,21 @@ class StartRunner:
                         # Allow transient infra/bootstrap commands (e.g., just dev-up)
                         # to exit cleanly
                         if launch.label == "infra" and proc.returncode == 0:
-                            console.info("infra completed successfully; continuing supervision")
+                            self.console.info(
+                                "infra completed successfully; continuing supervision"
+                            )
                             self._launches.remove(launch)
                             continue
 
                         if proc.returncode == 0:
-                            console.error(
+                            self.console.error(
                                 f"{launch.label} exited unexpectedly with code 0; shutting down."
                             )
                             self._dump_tail()
                             self._cleanup_processes()
                             return 1
 
-                        console.error(
+                        self.console.error(
                             f"{launch.label} exited with code {proc.returncode}; shutting down."
                         )
                         self._dump_tail()
@@ -357,7 +359,7 @@ class StartRunner:
                         return proc.returncode or 1
                 time.sleep(0.5)
         except KeyboardInterrupt:
-            console.warn("Interrupted; cleaning up processes...")
+            self.console.warn("Interrupted; cleaning up processes...")
         self._cleanup_processes()
         return 0
 
@@ -368,8 +370,8 @@ class StartRunner:
 
         api_url = os.getenv("API_BASE_URL", "http://localhost:8000")
         app_url = os.getenv("APP_PUBLIC_URL", "http://localhost:3000")
-        console.info(f"Backend: {api_url}")
-        console.info(f"Frontend: {app_url}")
+        self.console.info(f"Backend: {api_url}")
+        self.console.info(f"Frontend: {app_url}")
 
     def _cleanup_processes(self) -> None:
         self._stop_event.set()
@@ -443,7 +445,7 @@ class StartRunner:
 
     def _install_signal_handlers(self) -> None:
         def _handler(signum, frame):
-            console.warn(f"Received signal {signum}; cleaning up started processes...")
+            self.console.warn(f"Received signal {signum}; cleaning up started processes...")
             self._stop_event.set()
             raise KeyboardInterrupt
 
@@ -513,7 +515,7 @@ class StartRunner:
             infra_started=self._infra_started,
         )
         stack_state.save(state, self.pidfile)
-        console.info(f"Recorded stack state to {self.pidfile}")
+        self.console.info(f"Recorded stack state to {self.pidfile}")
 
     def _ports_available(self) -> bool:
         checks: list[tuple[str, str, int]] = []
@@ -534,7 +536,7 @@ class StartRunner:
         if busy:
             message = "Ports already in use: " + ", ".join(busy)
             message += ". Stop existing services or use --force if they were started by this CLI."
-            console.error(message, topic="start")
+            self.console.error(message, topic="start")
             return False
         return True
 

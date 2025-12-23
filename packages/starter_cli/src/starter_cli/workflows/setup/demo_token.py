@@ -7,8 +7,6 @@ from importlib import import_module
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from starter_cli.adapters.io.console import console
-
 from .automation import AutomationPhase, AutomationStatus
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -65,7 +63,7 @@ def run_demo_token_automation(context: WizardContext) -> None:
     if not record.enabled:
         return
     if record.status == AutomationStatus.BLOCKED:
-        console.warn(record.note or "Demo token automation blocked.", topic="demo-token")
+        context.console.warn(record.note or "Demo token automation blocked.", topic="demo-token")
         context.refresh_automation_ui(AutomationPhase.DEMO_TOKEN)
         return
 
@@ -80,7 +78,10 @@ def run_demo_token_automation(context: WizardContext) -> None:
             "Demo token waits for migrations to complete.",
         )
         context.refresh_automation_ui(AutomationPhase.DEMO_TOKEN)
-        console.warn("Demo token automation blocked until migrations succeed.", topic="demo-token")
+        context.console.warn(
+            "Demo token automation blocked until migrations succeed.",
+            topic="demo-token",
+        )
         return
 
     config = context.demo_token_config or DemoTokenConfig(
@@ -114,7 +115,7 @@ def run_demo_token_automation(context: WizardContext) -> None:
             f"Demo token failed: {exc}",
         )
         context.refresh_automation_ui(AutomationPhase.DEMO_TOKEN)
-        console.error(f"Demo token issuance failed: {exc}", topic="demo-token")
+        context.console.error(f"Demo token issuance failed: {exc}", topic="demo-token")
         return
 
     context.automation.update(
@@ -125,12 +126,15 @@ def run_demo_token_automation(context: WizardContext) -> None:
     context.refresh_automation_ui(AutomationPhase.DEMO_TOKEN)
 
     token = result.get("refresh_token") if isinstance(result, dict) else None
-    console.section("Demo Token Ready", "Use this refresh token for demo testing (not stored).")
-    console.warn("Copy this now; it will not be written to disk.", topic="demo-token")
+    context.console.section(
+        "Demo Token Ready",
+        "Use this refresh token for demo testing (not stored).",
+    )
+    context.console.warn("Copy this now; it will not be written to disk.", topic="demo-token")
     if token:
-        console.info(token, topic="demo-token")
+        context.console.info(token, topic="demo-token")
     else:  # pragma: no cover - defensive
-        console.warn("Token missing from response.", topic="demo-token")
+        context.console.warn("Token missing from response.", topic="demo-token")
 
 
 __all__ = ["DemoTokenConfig", "run_demo_token_automation"]

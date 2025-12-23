@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIError
 
 from ...automation import AutomationPhase, AutomationStatus
@@ -18,6 +17,7 @@ from ..context import WizardContext
 
 
 def run(context: WizardContext, provider: InputProvider) -> None:
+    console = context.console
     console.section(
         "Tenant & Observability",
         "Name the default tenant and configure logging, GeoIP, and monitoring sinks.",
@@ -322,6 +322,7 @@ def _maybe_download_maxmind_db(
     license_key: str,
     raw_path: str,
 ) -> None:
+    console = context.console
     target = _resolve_geoip_path(context, raw_path)
     default_download = context.profile != "demo"
     record = context.automation.get(AutomationPhase.GEOIP)
@@ -337,7 +338,11 @@ def _maybe_download_maxmind_db(
             )
             context.refresh_automation_ui(AutomationPhase.GEOIP)
             try:
-                download_maxmind_database(license_key=license_key, target_path=target)
+                download_maxmind_database(
+                    license_key=license_key,
+                    target_path=target,
+                    console=console,
+                )
             except CLIError as exc:
                 context.automation.update(
                     AutomationPhase.GEOIP,
@@ -360,18 +365,22 @@ def _maybe_download_maxmind_db(
         default=default_download,
     )
     if not should_download:
-        _warn_missing_path(target, label="MaxMind database")
+        _warn_missing_path(console, target, label="MaxMind database")
         return
     try:
-        download_maxmind_database(license_key=license_key, target_path=target)
+        download_maxmind_database(
+            license_key=license_key,
+            target_path=target,
+            console=console,
+        )
     except CLIError as exc:
         console.error(f"Failed to download MaxMind database: {exc}", topic="geoip")
-        _warn_missing_path(target, label="MaxMind database")
+        _warn_missing_path(console, target, label="MaxMind database")
 
 
 def _warn_missing_db(context: WizardContext, raw_path: str, *, provider_name: str) -> None:
     target = _resolve_geoip_path(context, raw_path)
-    _warn_missing_path(target, label=f"{provider_name} database")
+    _warn_missing_path(context.console, target, label=f"{provider_name} database")
 
 
 def _resolve_geoip_path(context: WizardContext, raw_path: str) -> Path:
@@ -381,7 +390,7 @@ def _resolve_geoip_path(context: WizardContext, raw_path: str) -> Path:
     return (context.cli_ctx.project_root / candidate).resolve()
 
 
-def _warn_missing_path(path: Path, *, label: str) -> None:
+def _warn_missing_path(console, path: Path, *, label: str) -> None:
     if path.exists():
         return
     console.warn(

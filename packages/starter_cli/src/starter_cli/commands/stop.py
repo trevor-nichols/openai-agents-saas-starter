@@ -7,9 +7,9 @@ from pathlib import Path
 
 from dotenv import dotenv_values
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext
 from starter_cli.core.constants import PROJECT_ROOT
+from starter_cli.ports.console import ConsolePort
 from starter_cli.workflows.home import stack_state
 
 
@@ -28,6 +28,7 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
 
 
 def _handle_stop(args: argparse.Namespace, ctx: CLIContext) -> int:
+    console = ctx.console
     pidfile = args.pidfile or stack_state.STACK_STATE_PATH
     state = stack_state.load(pidfile)
     if state is None or not state.processes:
@@ -54,14 +55,14 @@ def _handle_stop(args: argparse.Namespace, ctx: CLIContext) -> int:
             )
 
     if state.infra_started:
-        _docker_compose_down()
+        _docker_compose_down(console)
 
     stack_state.clear(pidfile)
     console.success("Stack stopped and state cleared.")
     return 0
 
 
-def _docker_compose_down() -> None:
+def _docker_compose_down(console: ConsolePort) -> None:
     project_root = ctx_project_root()
     compose_file = project_root / "ops" / "compose" / "docker-compose.yml"
     if not compose_file.exists():

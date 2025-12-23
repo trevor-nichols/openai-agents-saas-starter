@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from typing import cast
+
 import pytest
 from starter_cli.commands import setup as setup_cmd
 from starter_cli.core import CLIContext, CLIError
@@ -17,7 +19,6 @@ def _build_args(**overrides) -> argparse.Namespace:
         "strict": False,
         "report_only": False,
         "non_interactive": False,
-        "legacy_flow": False,
         "no_tui": False,
         "no_schema": False,
         "export_answers": None,
@@ -46,10 +47,6 @@ def _dummy_ctx(tmp_path: Path) -> CLIContext:
 def _install_dummies(monkeypatch: pytest.MonkeyPatch):
     created: dict[str, object] = {}
 
-    class DummyInteractive:
-        def __init__(self, prefill: dict[str, str]):
-            self.prefill = prefill
-
     class DummyWizard:
         def __init__(self, **kwargs):
             created.update(kwargs)
@@ -62,38 +59,48 @@ def _install_dummies(monkeypatch: pytest.MonkeyPatch):
         def render_report(self) -> None:  # pragma: no cover - unused in these tests
             created["rendered"] = True
 
-    monkeypatch.setattr(setup_cmd, "InteractiveInputProvider", DummyInteractive)
     monkeypatch.setattr(setup_cmd, "SetupWizard", DummyWizard)
     return created
 
 
-def test_setup_command_enables_shell_and_tui_by_default(
+def test_setup_command_launches_textual_wizard_by_default(
     monkeypatch: pytest.MonkeyPatch, dummy_ctx: CLIContext
 ) -> None:
-    created = _install_dummies(monkeypatch)
+    calls: dict[str, object] = {}
+
+    class DummyTUI:
+        def __init__(self, ctx, initial_screen="home", wizard_config=None) -> None:
+            calls["ctx"] = ctx
+            calls["initial"] = initial_screen
+            calls["config"] = wizard_config
+
+        def run(self) -> None:
+            calls["run"] = True
+
+    import starter_cli.ui as ui_module
+
+    monkeypatch.setattr(ui_module, "StarterTUI", DummyTUI)
 
     args = _build_args()
 
     exit_code = setup_cmd.handle_setup_wizard(args, dummy_ctx)
 
     assert exit_code == 0
-    assert created["enable_shell"] is True
-    assert created["enable_tui"] is True
-    assert created.get("executed") is True
+    assert calls["initial"] == "wizard"
+    assert calls.get("run") is True
+    from starter_cli.ui.wizard_pane import WizardLaunchConfig
+
+    config = cast(WizardLaunchConfig, calls["config"])
+    assert config.profile == "demo"
 
 
-def test_setup_command_disables_shell_and_tui_when_requested(
-    monkeypatch: pytest.MonkeyPatch, dummy_ctx: CLIContext
+def test_setup_command_rejects_no_tui_interactive(
+    dummy_ctx: CLIContext,
 ) -> None:
-    created = _install_dummies(monkeypatch)
-
     args = _build_args(no_tui=True)
 
-    exit_code = setup_cmd.handle_setup_wizard(args, dummy_ctx)
-
-    assert exit_code == 0
-    assert created["enable_shell"] is False
-    assert created["enable_tui"] is False
+    with pytest.raises(CLIError):
+        setup_cmd.handle_setup_wizard(args, dummy_ctx)
 
 
 def test_setup_command_rejects_export_when_report_only(
@@ -138,7 +145,7 @@ def test_setup_command_passes_export_answers_path(
 ) -> None:
     created = _install_dummies(monkeypatch)
 
-    args = _build_args(export_answers="ops/local.json")
+    args = _build_args(export_answers="ops/local.json", non_interactive=True)
 
     exit_code = setup_cmd.handle_setup_wizard(args, dummy_ctx)
 

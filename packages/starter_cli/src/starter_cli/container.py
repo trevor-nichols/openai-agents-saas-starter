@@ -4,28 +4,20 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from pathlib import Path
+from typing import cast
 
-from .adapters.io.console import configure_console, console
 from .core import CLIContext, CLIError, build_context, iter_env_files
+from .ports.console import ConsolePort, StdConsole
 
 
 class ApplicationContainer:
     """Simple service locator for the CLI."""
 
     def __init__(self) -> None:
-        self.console = console
-
-    def configure_console(
-        self,
-        *,
-        theme: str | None,
-        width: int | None,
-        no_color: bool | None,
-    ) -> None:
-        configure_console(theme=theme, width=width, no_color=no_color)
+        self.console = StdConsole()
 
     def create_context(self, *, env_files: Sequence[Path] | None = None) -> CLIContext:
-        return build_context(env_files=env_files)
+        return build_context(env_files=env_files, console=cast(ConsolePort, self.console))
 
     def iter_env_files(self, paths: Iterable[str]) -> list[Path]:
         return iter_env_files(paths)

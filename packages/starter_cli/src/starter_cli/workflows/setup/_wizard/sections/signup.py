@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Final
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIError
 
 from ...inputs import InputProvider, is_headless_provider
@@ -19,7 +18,7 @@ _SIGNUP_POLICY_CHOICES: Final[set[str]] = set(_SIGNUP_POLICY_DESCRIPTIONS.keys()
 
 
 def run(context: WizardContext, provider: InputProvider) -> None:
-    console.section(
+    context.console.section(
         "Signup & Worker Policies",
         "Choose how tenants onboard and how the billing worker behaves by default.",
     )
@@ -124,7 +123,7 @@ def run(context: WizardContext, provider: InputProvider) -> None:
         context.set_backend_bool("ENABLE_BILLING_STREAM_REPLAY", replay_stream)
     else:
         context.set_backend_bool("ENABLE_BILLING_STREAM_REPLAY", False)
-        console.info(
+        context.console.info(
             "Disabling billing stream replay in this env (dedicated worker will own it).",
             topic="wizard",
         )
@@ -147,14 +146,14 @@ def _prompt_signup_policy(context: WizardContext, provider: InputProvider) -> st
             .lower()
         )
         if value in _SIGNUP_POLICY_CHOICES:
-            console.info(_SIGNUP_POLICY_DESCRIPTIONS[value], topic="wizard")
+            context.console.info(_SIGNUP_POLICY_DESCRIPTIONS[value], topic="wizard")
             return value
         if is_headless_provider(provider):
             raise CLIError(
                 "SIGNUP_ACCESS_POLICY must be one of "
                 f"{', '.join(sorted(_SIGNUP_POLICY_CHOICES))}."
             )
-        console.warn(
+        context.console.warn(
             f"Value must be one of {', '.join(sorted(_SIGNUP_POLICY_CHOICES))}.",
             topic="wizard",
         )
@@ -224,19 +223,19 @@ def _prompt_worker_mode(context: WizardContext, provider: InputProvider) -> str:
         normalized = _normalize_worker_mode(value)
         if normalized:
             if normalized == "dedicated":
-                console.info(
+                context.console.info(
                     "CLI will disable the worker on this env and generate worker overrides.",
                     topic="wizard",
                 )
             else:
-                console.info(
+                context.console.info(
                     "CLI will run the retry worker inside this deployment (single replica).",
                     topic="wizard",
                 )
             return normalized
         if is_headless_provider(provider):
             raise CLIError("BILLING_RETRY_DEPLOYMENT_MODE must be 'inline' or 'dedicated'.")
-        console.warn("Enter either 'inline' or 'dedicated'.", topic="wizard")
+        context.console.warn("Enter either 'inline' or 'dedicated'.", topic="wizard")
 
 
 def _normalize_worker_mode(value: str | None) -> str | None:
@@ -266,7 +265,7 @@ def _write_worker_guidance(context: WizardContext, worker_mode: str) -> None:
     if inline:
         if overlay_path.exists():
             overlay_path.unlink()
-            console.info(
+            context.console.info(
                 "Removed dedicated worker overrides (current mode is inline).",
                 topic="wizard",
             )
@@ -287,7 +286,10 @@ def _write_worker_guidance(context: WizardContext, worker_mode: str) -> None:
             "BILLING_RETRY_DEPLOYMENT_MODE=dedicated",
         ]
         overlay_path.write_text("\n".join(overlay_lines) + "\n", encoding="utf-8")
-        console.success(f"Billing worker overrides written to {overlay_path}", topic="wizard")
+        context.console.success(
+            f"Billing worker overrides written to {overlay_path}",
+            topic="wizard",
+        )
         lines.extend(
             [
                 "",
@@ -300,7 +302,7 @@ def _write_worker_guidance(context: WizardContext, worker_mode: str) -> None:
             ]
         )
     summary_path.write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
-    console.success(f"Worker topology documented in {summary_path}", topic="wizard")
+    context.console.success(f"Worker topology documented in {summary_path}", topic="wizard")
 
 
 def _headless_answer(provider: InputProvider, key: str) -> str | None:

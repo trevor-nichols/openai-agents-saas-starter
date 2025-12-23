@@ -4,7 +4,6 @@ import argparse
 
 from starter_contracts.secrets.models import SecretsProviderLiteral
 
-from starter_cli.adapters.io.console import console
 from starter_cli.commands.auth import handle_keys_rotate
 from starter_cli.core import CLIError
 from starter_cli.workflows.secrets import registry
@@ -21,7 +20,7 @@ _VAULT_PROVIDERS = {
 
 
 def run(context: WizardContext, provider: InputProvider) -> None:
-    console.section(
+    context.console.section(
         "Secrets & Vault",
         "Generate peppers, provision signing keys, and choose a secrets provider.",
     )
@@ -105,7 +104,7 @@ def _collect_provider_choice(
         except ValueError:
             if is_headless_provider(provider):
                 raise CLIError(f"Invalid secrets provider '{choice}'.") from None
-            console.warn(
+            context.console.warn(
                 "Invalid secrets provider. Please choose a supported value.",
                 topic="secrets",
             )
@@ -163,7 +162,7 @@ def _collect_key_storage_provider(
     if key_provider == selected_provider:
         return
 
-    console.section(
+    context.console.section(
         "Key Storage Provider",
         "Capture credentials for the key storage provider (distinct from SECRETS_PROVIDER).",
     )
@@ -256,7 +255,7 @@ def _collect_aws_key_storage(context: WizardContext, provider: InputProvider) ->
                 required=False,
             )
         elif not is_headless_provider(provider):
-            console.note(
+            context.console.note(
                 "Using IAM role/instance credentials (no static access keys provided).",
                 topic="aws",
             )
@@ -412,7 +411,7 @@ def _verify_vault_transit(context: WizardContext) -> None:
             detail=base_url,
             source="wizard",
         )
-        console.success("Vault transit key verified.", topic="vault")
+        context.console.success("Vault transit key verified.", topic="vault")
 
 
 def _collect_vault(context: WizardContext, provider: InputProvider) -> bool:

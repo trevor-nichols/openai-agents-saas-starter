@@ -8,7 +8,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Final
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIError
 
 from ...inputs import InputProvider, is_headless_provider
@@ -72,13 +71,13 @@ class PlanEntitlement:
 
 
 def run(context: WizardContext, provider: InputProvider) -> None:
-    console.section(
+    context.console.section(
         "Usage & Entitlements",
         "Decide whether to enforce plan guardrails before chat execution "
         "and capture per-plan limits.",
     )
     if not context.current_bool("ENABLE_BILLING", False):
-        console.warn(
+        context.console.warn(
             "Billing is disabled; usage guardrails require billing. Skipping this section.",
             topic="wizard",
         )
@@ -97,7 +96,7 @@ def run(context: WizardContext, provider: InputProvider) -> None:
 
     existing = _load_existing_plans(context)
     if not enabled:
-        console.info(
+        context.console.info(
             "Usage guardrails disabled; existing entitlements retained for future runs.",
             topic="wizard",
         )
@@ -125,7 +124,7 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     if _prompt_vector_limits(context, provider):
         entitlements = _inject_vector_limits(context, entitlements)
     _write_entitlements_report(context, enabled=True, plans=entitlements)
-    console.success(
+    context.console.success(
         "Usage guardrails configured. Remember to seed plan features in Postgres before launch.",
         topic="wizard",
     )
@@ -162,7 +161,7 @@ def _prompt_cache_ttl(context: WizardContext, provider: InputProvider) -> int:
         except CLIError as exc:
             if is_headless_provider(provider):
                 raise
-            console.warn(str(exc), topic="wizard")
+            context.console.warn(str(exc), topic="wizard")
             continue
         return ttl
 
@@ -181,7 +180,7 @@ def _prompt_soft_limit_mode(context: WizardContext, provider: InputProvider) -> 
             return value
         if is_headless_provider(provider):
             raise CLIError("USAGE_GUARDRAIL_SOFT_LIMIT_MODE must be 'warn' or 'block'.")
-        console.warn("Enter either 'warn' or 'block'.", topic="wizard")
+        context.console.warn("Enter either 'warn' or 'block'.", topic="wizard")
 
 
 def _prompt_cache_backend(context: WizardContext, provider: InputProvider) -> str:
@@ -203,7 +202,7 @@ def _prompt_cache_backend(context: WizardContext, provider: InputProvider) -> st
             return value
         if is_headless_provider(provider):
             raise CLIError("USAGE_GUARDRAIL_CACHE_BACKEND must be 'redis' or 'memory'.")
-        console.warn("Enter either 'redis' or 'memory'.", topic="wizard")
+        context.console.warn("Enter either 'redis' or 'memory'.", topic="wizard")
 
 
 def _prompt_usage_redis_url(context: WizardContext, provider: InputProvider) -> str | None:
@@ -261,7 +260,7 @@ def _derive_default_plan_codes(
         try:
             plan_map = validate_plan_map(plan_map_raw)
         except CLIError as exc:
-            console.warn(
+            context.console.warn(
                 f"Unable to parse STRIPE_PRODUCT_PRICE_MAP for plan codes: {exc}",
                 topic="wizard",
             )
@@ -405,7 +404,7 @@ def _prompt_limit(
         except CLIError as exc:
             if is_headless_provider(provider):
                 raise
-            console.warn(str(exc), topic="wizard")
+            context.console.warn(str(exc), topic="wizard")
             continue
         _record_answer(context, key, str(value))
         return value
@@ -465,7 +464,7 @@ def _write_entitlements_report(
     }
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     rel_path = _relative_to_project(context, path)
-    console.info(f"Wrote {rel_path} with plan entitlements.", topic="wizard")
+    context.console.info(f"Wrote {rel_path} with plan entitlements.", topic="wizard")
 
 
 def _relative_to_project(context: WizardContext, path: Path) -> str:

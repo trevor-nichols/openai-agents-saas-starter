@@ -10,9 +10,9 @@ from typing import Any, get_args, get_origin
 from pydantic_core import PydanticUndefined
 from starter_contracts.config import get_settings_class
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext
 from starter_cli.core.inventory import WIZARD_PROMPTED_ENV_VARS
+from starter_cli.ports.console import ConsolePort
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -70,6 +70,7 @@ class FieldSpec:
 
 
 def handle_dump_schema(args: argparse.Namespace, ctx: CLIContext) -> int:
+    console = ctx.console
     settings_cls = get_settings_class()
 
     field_specs = _collect_field_specs(settings_cls)
@@ -79,11 +80,12 @@ def handle_dump_schema(args: argparse.Namespace, ctx: CLIContext) -> int:
         console.stream.write("\n")
         return 0
 
-    _render_table(field_specs)
+    _render_table(console, field_specs)
     return 0
 
 
 def handle_write_inventory(args: argparse.Namespace, ctx: CLIContext) -> int:
+    console = ctx.console
     field_specs = _collect_field_specs(get_settings_class())
     destination = Path(args.path).expanduser().resolve()
     body = _render_markdown(field_specs)
@@ -141,7 +143,7 @@ def _format_default(value: Any, required: bool) -> str:
     return str(value)
 
 
-def _render_table(field_specs: list[FieldSpec]) -> None:
+def _render_table(console: ConsolePort, field_specs: list[FieldSpec]) -> None:
     rows = [
         (
             spec.env_var,

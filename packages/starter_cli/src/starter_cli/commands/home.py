@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 
 from starter_cli.core import CLIContext
-from starter_cli.workflows.home import HomeController
+from starter_cli.services.hub import HubService
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -20,8 +20,27 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
 
 
 def _handle_home(args: argparse.Namespace, ctx: CLIContext) -> int:
-    controller = HomeController(ctx)
-    return controller.run(use_tui=not args.no_tui)
+    if args.no_tui:
+        snapshot = HubService(ctx).load_home()
+        _render_summary(ctx, snapshot)
+        return 0
+    from starter_cli.ui import StarterTUI
+
+    StarterTUI(ctx, initial_screen="home").run()
+    return 0
+
+
+def _render_summary(ctx: CLIContext, snapshot) -> None:
+    console = ctx.console
+    console.rule("Starter CLI Home")
+    console.info("Probes:")
+    for probe in snapshot.probes:
+        console.info(f"- {probe.name}: {probe.state.value} ({probe.detail or 'pending'})")
+    console.info("Services:")
+    for service in snapshot.services:
+        console.info(
+            f"- {service.label}: {service.state.value} ({service.detail or 'pending'})"
+        )
 
 
 __all__ = ["register"]

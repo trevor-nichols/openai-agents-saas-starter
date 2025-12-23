@@ -9,8 +9,6 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from starter_cli.adapters.io.console import console
-
 
 @dataclass(slots=True)
 class TenantSummary:
@@ -53,7 +51,7 @@ def capture_tenant_summary(context) -> TenantSummary | None:
 
     database_url = context.current("DATABASE_URL")
     if not database_url:
-        console.warn(
+        context.console.warn(
             "DATABASE_URL is not set; skipping tenant lookup.",
             topic="tenant",
         )
@@ -63,11 +61,11 @@ def capture_tenant_summary(context) -> TenantSummary | None:
     try:
         summary = asyncio.run(_lookup_tenant(database_url, preferred_slug))
     except Exception as exc:  # pragma: no cover - defensive fallback
-        console.warn(f"Unable to query tenant_accounts ({exc}).", topic="tenant")
+        context.console.warn(f"Unable to query tenant_accounts ({exc}).", topic="tenant")
         return None
 
     if summary is None:
-        console.warn(
+        context.console.warn(
             "No tenant records found. Run `python -m starter_cli.app users seed` "
             "to provision the first tenant.",
             topic="tenant",
@@ -76,16 +74,16 @@ def capture_tenant_summary(context) -> TenantSummary | None:
 
     context.tenant_summary = summary
     if preferred_slug and summary.slug != preferred_slug:
-        console.info(
+        context.console.info(
             f"Tenant slug '{preferred_slug}' not found; showing earliest tenant instead.",
             topic="tenant",
         )
 
-    console.success(
+    context.console.success(
         f"Tenant '{summary.slug}' UUID: {summary.tenant_id}",
         topic="tenant",
     )
-    console.info(
+    context.console.info(
         "Copy this UUID into operator runbooks/CI secrets so API clients can set the tenant scope.",
         topic="tenant",
     )

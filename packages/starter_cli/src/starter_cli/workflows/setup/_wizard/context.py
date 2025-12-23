@@ -10,9 +10,9 @@ from typing import TYPE_CHECKING
 from starter_contracts.config import get_settings
 
 from starter_cli.adapters.env import EnvFile
-from starter_cli.adapters.io.console import console
-from starter_cli.commands.infra import DependencyStatus
 from starter_cli.core import CLIContext, CLIError
+from starter_cli.ports.console import ConsolePort
+from starter_cli.services.infra import DependencyStatus
 from starter_cli.telemetry import (
     VerificationArtifact,
     append_verification_artifact,
@@ -59,8 +59,10 @@ class WizardContext:
     tenant_summary: TenantSummary | None = None
     dev_user_config: DevUserConfig | None = None
     demo_token_config: DemoTokenConfig | None = None
+    console: ConsolePort = field(init=False)
 
     def __post_init__(self) -> None:
+        self.console = self.cli_ctx.console
         self.verification_log_path = (
             self.cli_ctx.project_root / "var/reports/verification-artifacts.json"
         )
@@ -90,7 +92,7 @@ class WizardContext:
         previous = self.backend_env.get(key)
         self.backend_env.set(key, value)
         os.environ[key] = value
-        console.value_change(
+        self.console.value_change(
             scope="backend",
             key=key,
             previous=previous,
@@ -105,7 +107,7 @@ class WizardContext:
             return
         self.backend_env.delete(key)
         os.environ.pop(key, None)
-        console.value_change(
+        self.console.value_change(
             scope="backend",
             key=key,
             previous=previous,
@@ -121,7 +123,7 @@ class WizardContext:
             return
         previous = self.frontend_env.get(key)
         self.frontend_env.set(key, value)
-        console.value_change(
+        self.console.value_change(
             scope="frontend",
             key=key,
             previous=previous,
@@ -151,7 +153,7 @@ class WizardContext:
         if existing and existing not in placeholders:
             self.set_backend(key, existing, mask=True)
             return
-        console.info(f"{label} is not set; leave blank to autogenerate.", topic="wizard")
+        self.console.info(f"{label} is not set; leave blank to autogenerate.", topic="wizard")
         value = provider.prompt_secret(
             key=key,
             prompt=label,
@@ -160,7 +162,7 @@ class WizardContext:
         )
         if not value:
             value = secrets.token_urlsafe(length)
-            console.info(f"Generated random value for {key}", topic="wizard")
+            self.console.info(f"Generated random value for {key}", topic="wizard")
         self.set_backend(key, value, mask=True)
 
     def require_env(self, key: str) -> str:
@@ -174,12 +176,12 @@ class WizardContext:
     # ------------------------------------------------------------------
     def save_env_files(self) -> None:
         self.backend_env.save()
-        console.success("Updated apps/api-service/.env.local", topic="wizard")
+        self.console.success("Updated apps/api-service/.env.local", topic="wizard")
         if self.frontend_env:
             self.frontend_env.save()
-            console.success("Updated web-app/.env.local", topic="wizard")
+            self.console.success("Updated web-app/.env.local", topic="wizard")
         elif self.frontend_path:
-            console.warn(
+            self.console.warn(
                 "Frontend directory missing; skipped web-app/.env.local.",
                 topic="wizard",
             )
@@ -202,7 +204,7 @@ class WizardContext:
         return dict(os.environ)
 
     def run_subprocess(self, cmd: list[str], *, topic: str, check: bool = True) -> None:
-        console.info(" ".join(cmd), topic=topic)
+        self.console.info(" ".join(cmd), topic=topic)
         subprocess.run(cmd, check=check, cwd=self.cli_ctx.project_root)
 
     def run_migrations(self) -> None:

@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from starter_cli.adapters.io.console import console
-
 from ..section_specs import SectionSpec
 from .view import WizardUIView
 
@@ -39,7 +37,7 @@ class WizardUICommandHandler:
         if command in {"list", "sections"}:
             self._list_sections()
             return True
-        console.warn(f"Unknown UI command '{command}'. Type :help for options.", topic="wizard")
+        self.ui.log(f"Unknown UI command '{command}'. Type :help for options.")
         return True
 
     # ------------------------------------------------------------------
@@ -50,7 +48,7 @@ class WizardUICommandHandler:
         if not key:
             return True
         self.ui.expand_section(key)
-        console.info(f"Expanded {key} in wizard UI.", topic="wizard")
+        self.ui.log(f"Expanded {key} in wizard UI.")
         return True
 
     def _collapse(self, target: str) -> bool:
@@ -58,7 +56,7 @@ class WizardUICommandHandler:
         if not key:
             return True
         self.ui.collapse_section(key)
-        console.info(f"Collapsed {key} in wizard UI.", topic="wizard")
+        self.ui.log(f"Collapsed {key} in wizard UI.")
         return True
 
     def _toggle(self, target: str) -> bool:
@@ -66,19 +64,19 @@ class WizardUICommandHandler:
         if not key:
             return True
         self.ui.toggle_section(key)
-        console.info(f"Toggled {key} in wizard UI.", topic="wizard")
+        self.ui.log(f"Toggled {key} in wizard UI.")
         return True
 
     def _resolve_section(self, ref: str) -> str | None:
         candidate = ref.strip().lower()
         if not candidate:
-            console.warn("Specify a section key or number.", topic="wizard")
+            self.ui.log("Specify a section key or number.")
             return None
         if candidate in self._order_map:
             return self._order_map[candidate]
         if candidate in self._label_map:
             return self._label_map[candidate]
-        console.warn(f"Unknown section '{ref}'. Use :list to view options.", topic="wizard")
+        self.ui.log(f"Unknown section '{ref}'. Use :list to view options.")
         return None
 
     def _list_sections(self) -> None:
@@ -86,12 +84,11 @@ class WizardUICommandHandler:
         for num, key in self._order_map.items():
             spec = self._sections_by_key[key]
             rows.append(f"{num}. {spec.label} ({key})")
-        console.info("Available sections:\n" + "\n".join(rows), topic="wizard")
+        self.ui.log("Available sections:\n" + "\n".join(rows))
 
     def _render_help(self) -> None:
-        console.note(
-            "UI commands: :expand <section>, :collapse <section>, :toggle <section>, :list, :help",
-            topic="wizard",
+        self.ui.log(
+            "UI commands: :expand <section>, :collapse <section>, :toggle <section>, :list, :help"
         )
 
 

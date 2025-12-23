@@ -20,7 +20,6 @@ from starter_cli.adapters.env import (
     build_env_scope,
     expand_env_placeholders,
 )
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext, CLIError
 
 from .stripe import DEFAULT_WEBHOOK_FORWARD_URL, PLAN_CATALOG, StripeSetupFlow
@@ -101,6 +100,7 @@ class StepResult:
 class DatabaseReleaseWorkflow:
     def __init__(self, *, ctx: CLIContext, args: argparse.Namespace) -> None:
         self.ctx = ctx
+        self.console = ctx.console
         self.args = args
         self.project_root = ctx.project_root
         self.timestamp = datetime.now(UTC)
@@ -125,23 +125,23 @@ class DatabaseReleaseWorkflow:
             self._maybe_verify_billing_plans()
         except CLIError as exc:
             self.summary_status = "failed"
-            console.error(str(exc), topic="release")
+            self.console.error(str(exc), topic="release")
         except Exception as exc:  # pragma: no cover - defensive catch
             self.summary_status = "failed"
-            console.error(f"Unexpected release failure: {exc}", topic="release")
+            self.console.error(f"Unexpected release failure: {exc}", topic="release")
         finally:
             self._write_summary()
 
         summary_display = self._relative_summary_path()
         if self.summary_status != "success":
-            console.error(
+            self.console.error(
                 f"Release workflow failed; summary saved to {summary_display}",
                 topic="release",
             )
             if self.args.json:
                 print(self.summary_path.read_text(encoding="utf-8"))
             return 1
-        console.success(
+        self.console.success(
             f"Release workflow succeeded; summary saved to {summary_display}",
             topic="release",
         )

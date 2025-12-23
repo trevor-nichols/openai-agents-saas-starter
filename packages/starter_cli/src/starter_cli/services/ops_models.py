@@ -1,0 +1,166 @@
+from __future__ import annotations
+
+from collections.abc import Mapping
+from dataclasses import dataclass
+from datetime import date
+from pathlib import Path
+from typing import Any
+
+DEFAULT_LOG_ROOT = Path("var/log")
+
+
+@dataclass(frozen=True, slots=True)
+class LogEntry:
+    name: str
+    path: Path
+    exists: bool
+
+
+@dataclass(frozen=True, slots=True)
+class UsageSummary:
+    generated_at: str | None
+    tenant_count: int
+    feature_count: int
+    warning_count: int
+
+
+def resolve_log_root(project_root: Path, env: Mapping[str, str]) -> Path:
+    raw = env.get("LOG_ROOT") or str(DEFAULT_LOG_ROOT)
+    candidate = Path(raw).expanduser()
+    if not candidate.is_absolute():
+        candidate = (project_root / candidate).resolve()
+    return candidate
+
+
+def resolve_active_log_dir(log_root: Path) -> Path:
+    current = log_root / "current"
+    if current.exists():
+        return current.resolve()
+    if not log_root.exists():
+        return log_root
+    dated_dirs = [
+        entry
+        for entry in log_root.iterdir()
+        if entry.is_dir() and _is_date_dir(entry.name)
+    ]
+    if not dated_dirs:
+        return log_root
+    latest = max(dated_dirs, key=lambda entry: entry.name)
+    return latest.resolve()
+
+
+def collect_log_entries(log_dir: Path) -> list[LogEntry]:
+    entries: list[LogEntry] = []
+    candidates = {
+        "api/all.log": log_dir / "api" / "all.log",
+        "api/error.log": log_dir / "api" / "error.log",
+        "frontend/all.log": log_dir / "frontend" / "all.log",
+        "frontend/error.log": log_dir / "frontend" / "error.log",
+    }
+    for name, path in candidates.items():
+        entries.append(LogEntry(name=name, path=path, exists=path.exists()))
+
+    cli_dir = log_dir / "cli"
+    cli_files = list(cli_dir.glob("*.log")) if cli_dir.exists() else []
+    entries.append(
+        LogEntry(
+            name="cli/*.log",
+            path=cli_dir,
+            exists=bool(cli_files),
+        )
+    )
+    return entries
+
+
+def mask_value(value: str | None) -> str:
+    if not value:
+        return "(missing)"
+    if len(value) <= 8:
+        return "*" * len(value)
+    return f"{value[:4]}...{value[-4:]}"
+
+
+def load_usage_summary(path: Path) -> UsageSummary | None:
+    if not path.exists():
+        return None
+    try:
+        payload = _read_json(path)
+    except Exception:
+        return None
+    generated_at = _as_str(payload.get("generated_at"))
+    raw_tenants = payload.get("tenants")
+    tenants: list[dict[str, Any]] = (
+        [tenant for tenant in raw_tenants if isinstance(tenant, dict)]
+        if isinstance(raw_tenants, list)
+        else []
+    )
+    tenant_count = _as_int(payload.get("tenant_count"))
+    if tenant_count == 0 and tenants:
+        tenant_count = len(tenants)
+    feature_count = _as_int(payload.get("feature_count"))
+    if feature_count == 0 and tenants:
+        feature_count = sum(len(tenant.get("features", [])) for tenant in tenants)
+    warning_count = _count_warnings(tenants)
+    return UsageSummary(
+        generated_at=generated_at,
+        tenant_count=tenant_count,
+        feature_count=feature_count,
+        warning_count=warning_count,
+    )
+
+
+def _read_json(path: Path) -> dict[str, Any]:
+    import json
+
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _as_int(value: Any) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _as_str(value: Any) -> str | None:
+    if value is None:
+        return None
+    return str(value)
+
+
+def _count_warnings(tenants: list[dict[str, Any]]) -> int:
+    warning_states = {
+        "approaching",
+        "soft_limit_exceeded",
+        "hard_limit_exceeded",
+    }
+    count = 0
+    for tenant in tenants:
+        features = tenant.get("features")
+        if not isinstance(features, list):
+            continue
+        for feature in features:
+            status = feature.get("status")
+            if status in warning_states:
+                count += 1
+    return count
+
+
+def _is_date_dir(name: str) -> bool:
+    try:
+        date.fromisoformat(name)
+    except ValueError:
+        return False
+    return True
+
+
+__all__ = [
+    "DEFAULT_LOG_ROOT",
+    "LogEntry",
+    "UsageSummary",
+    "collect_log_entries",
+    "load_usage_summary",
+    "mask_value",
+    "resolve_active_log_dir",
+    "resolve_log_root",
+]

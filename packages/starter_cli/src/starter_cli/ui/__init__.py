@@ -1,9 +1,8 @@
-"""Textual-based TUI for the starter CLI.
+"""Textual hub for the Starter CLI.
 
-This package hosts the shared app shell and page definitions used by
-both the `home` command and the setup hub. Screens are registered
-through the router in :mod:`starter_cli.ui.app` and consume the
-existing workflow/domain logic instead of spawning subprocesses.
+This package defines the interactive TUI shell, navigation, and screen
+placeholders that host workflow-driven views. The hub is the default
+entrypoint when no subcommand is provided.
 """
 
 from .app import StarterTUI

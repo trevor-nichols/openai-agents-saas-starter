@@ -1,5 +1,3 @@
-"""Adapter layer for IO, env files, and provider SDKs."""
+"""Adapter layer for env files and provider SDKs."""
 
-from .io import console
-
-__all__ = ["console"]
+__all__: list[str] = []

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from starter_cli.adapters.io.console import console
-from starter_cli.commands.infra import collect_dependency_statuses
+from starter_cli.services.infra import collect_dependency_statuses
 
 
 def run_preflight(context) -> None:
     """Collect dependency health and store it on the wizard context."""
 
+    console = context.console
     console.info("Running preflight dependency checks …", topic="preflight")
     statuses = list(collect_dependency_statuses())
     context.dependency_statuses = statuses

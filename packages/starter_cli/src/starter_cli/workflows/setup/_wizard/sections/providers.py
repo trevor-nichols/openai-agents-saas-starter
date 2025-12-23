@@ -7,7 +7,6 @@ from urllib.parse import quote, urlparse
 
 from redis import Redis
 
-from starter_cli.adapters.io.console import console
 from starter_cli.commands.stripe import WebhookSecretFlow
 from starter_cli.core import CLIError
 
@@ -21,7 +20,7 @@ _LOCAL_DB_MODES = ("compose", "external")
 
 
 def run(context: WizardContext, provider: InputProvider) -> None:
-    console.section(
+    context.console.section(
         "Providers & Infra",
         "Wire up databases, AI providers, Redis, billing, and email transports.",
     )
@@ -229,7 +228,7 @@ def _collect_redis(context: WizardContext, provider: InputProvider) -> None:
         else:
             context.set_backend(key, "")
             if context.profile != "demo":
-                console.warn(
+                context.console.warn(
                     f"{label} Redis workloads will reuse the primary Redis instance. "
                     "Provision a dedicated pool in production.",
                     topic="redis",
@@ -252,7 +251,7 @@ def _collect_redis(context: WizardContext, provider: InputProvider) -> None:
     else:
         context.set_backend("BILLING_EVENTS_REDIS_URL", "")
         if context.profile != "demo":
-            console.warn(
+            context.console.warn(
                 "Using the primary Redis instance for billing streams. Provision a dedicated "
                 "instance for production.",
                 topic="redis",
@@ -277,7 +276,7 @@ def _collect_billing(context: WizardContext, provider: InputProvider) -> None:
     context.set_backend_bool("ENABLE_BILLING_STREAM", enable_stream)
 
     if not enable_billing:
-        console.info("Stripe secrets skipped (ENABLE_BILLING=false).", topic="wizard")
+        context.console.info("Stripe secrets skipped (ENABLE_BILLING=false).", topic="wizard")
         return
 
     secret = provider.prompt_secret(
@@ -337,10 +336,10 @@ def _maybe_generate_webhook_secret(context: WizardContext, provider: InputProvid
         )
         secret = flow._capture_webhook_secret(forward_url)
     except CLIError as exc:
-        console.warn(f"Stripe CLI webhook capture failed: {exc}", topic="stripe")
+        context.console.warn(f"Stripe CLI webhook capture failed: {exc}", topic="stripe")
         return None
 
-    console.success("Captured webhook signing secret via Stripe CLI.", topic="stripe")
+    context.console.success("Captured webhook signing secret via Stripe CLI.", topic="stripe")
     return secret
 
 
@@ -395,7 +394,7 @@ def _warmup_redis(context: WizardContext, targets: dict[str, str]) -> None:
     if not record.enabled:
         return
     if record.status == AutomationStatus.BLOCKED:
-        console.warn(record.note or "Redis automation blocked.", topic="redis")
+        context.console.warn(record.note or "Redis automation blocked.", topic="redis")
         context.refresh_automation_ui(AutomationPhase.REDIS)
         return
     context.automation.update(
@@ -421,7 +420,7 @@ def _warmup_redis(context: WizardContext, targets: dict[str, str]) -> None:
             "Redis warm-up succeeded.",
         )
         context.refresh_automation_ui(AutomationPhase.REDIS)
-        console.success("Redis pools validated.", topic="redis")
+        context.console.success("Redis pools validated.", topic="redis")
 
 
 def _ping_all_redis(targets: dict[str, str]) -> None:
@@ -441,7 +440,7 @@ def _maybe_run_migrations(context: WizardContext, provider: InputProvider) -> No
     record = context.automation.get(AutomationPhase.MIGRATIONS)
     if record.enabled:
         if record.status == AutomationStatus.BLOCKED:
-            console.warn(record.note or "Migrations automation blocked.", topic="migrate")
+            context.console.warn(record.note or "Migrations automation blocked.", topic="migrate")
             context.refresh_automation_ui(AutomationPhase.MIGRATIONS)
             return
         context.automation.update(
@@ -480,13 +479,13 @@ def _maybe_run_stripe_setup(context: WizardContext, provider: InputProvider) -> 
     record = context.automation.get(AutomationPhase.STRIPE)
     if record.enabled:
         if record.status == AutomationStatus.BLOCKED:
-            console.warn(
+            context.console.warn(
                 f"Stripe automation blocked: {record.note or 'unmet prerequisites.'}",
                 topic="stripe",
             )
             return
         if context.is_headless:
-            console.warn(
+            context.console.warn(
                 "Stripe automation skipped in headless mode; run the setup command manually.",
                 topic="stripe",
             )
@@ -503,7 +502,7 @@ def _maybe_run_stripe_setup(context: WizardContext, provider: InputProvider) -> 
             "Running `stripe setup` helper.",
         )
         context.refresh_automation_ui(AutomationPhase.STRIPE)
-        console.info("Running embedded Stripe setup flow …", topic="stripe")
+        context.console.info("Running embedded Stripe setup flow …", topic="stripe")
         try:
             context.run_subprocess(
                 ["python", "-m", "starter_cli.app", "stripe", "setup"],
@@ -534,7 +533,7 @@ def _maybe_run_stripe_setup(context: WizardContext, provider: InputProvider) -> 
         return
 
     if context.is_headless:
-        console.warn(
+        context.console.warn(
             "Headless run detected. Run `python -m starter_cli.app stripe setup` manually to seed "
             "plans.",
             topic="stripe",

@@ -1,0 +1,99 @@
+from __future__ import annotations
+
+from datetime import datetime
+
+from starter_cli.core.status_models import ProbeResult, ProbeState, ServiceStatus
+from starter_cli.workflows.setup_menu.models import SetupItem
+
+
+def status_label(state: ProbeState) -> str:
+    return state.value.upper()
+
+
+def format_summary(
+    summary: dict[str, int],
+    *,
+    profile: str,
+    strict: bool,
+    stack_state: str | None,
+) -> str:
+    strict_label = "yes" if strict else "no"
+    parts = [
+        f"Profile: {profile}",
+        f"Strict: {strict_label}",
+    ]
+    if stack_state:
+        parts.append(f"Stack: {stack_state}")
+    parts.append(
+        "Probes: "
+        f"ok={summary.get('ok', 0)} "
+        f"warn={summary.get('warn', 0)} "
+        f"error={summary.get('error', 0)} "
+        f"skipped={summary.get('skipped', 0)}"
+    )
+    return " | ".join(parts)
+
+
+def sort_probes(probes: list[ProbeResult]) -> list[ProbeResult]:
+    return sorted(probes, key=lambda probe: (-probe.severity_rank, probe.name))
+
+
+def probe_rows(probes: list[ProbeResult]) -> list[tuple[str, str, str]]:
+    rows: list[tuple[str, str, str]] = []
+    for probe in sort_probes(probes):
+        rows.append(
+            (
+                probe.name,
+                status_label(probe.state),
+                probe.detail or "—",
+            )
+        )
+    return rows
+
+
+def service_rows(services: list[ServiceStatus]) -> list[tuple[str, str, str]]:
+    rows: list[tuple[str, str, str]] = []
+    for service in services:
+        detail = service.detail or "—"
+        if service.endpoints:
+            detail = f"{detail} ({', '.join(service.endpoints)})"
+        rows.append(
+            (
+                service.label,
+                status_label(service.state),
+                detail,
+            )
+        )
+    return rows
+
+
+def setup_row(item: SetupItem) -> tuple[str, str, str, str, str]:
+    status = item.status.upper()
+    detail = item.detail or ""
+    if item.optional and item.status in {"missing", "unknown"}:
+        detail = (detail + " " if detail else "") + "(optional)"
+    if item.progress_label:
+        progress = item.progress_label
+    elif item.progress is None:
+        progress = "—"
+    else:
+        progress = f"{max(0, min(int(item.progress * 100), 100))}%"
+    last_run = item.last_run.isoformat(timespec="seconds") if item.last_run else "—"
+    return (status, item.label, detail, progress, last_run)
+
+
+def format_timestamp(value: datetime | None) -> str:
+    if value is None:
+        return "—"
+    return value.isoformat(timespec="seconds")
+
+
+__all__ = [
+    "format_summary",
+    "format_timestamp",
+    "probe_rows",
+    "service_rows",
+    "setup_row",
+    "sort_probes",
+    "status_label",
+]

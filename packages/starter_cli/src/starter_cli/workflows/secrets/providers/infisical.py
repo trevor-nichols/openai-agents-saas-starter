@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 import httpx
 from starter_contracts.secrets.models import SecretsProviderLiteral
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext
 from starter_cli.telemetry import VerificationArtifact
 
@@ -24,6 +23,7 @@ def run_infisical_cloud(
     return _run_infisical_flow(
         ctx,
         provider,
+        console=ctx.console,
         default_base_url="https://app.infisical.com",
         label="Infisical Cloud",
         prompt_ca_bundle=False,
@@ -39,6 +39,7 @@ def run_infisical_self_hosted(
     return _run_infisical_flow(
         ctx,
         provider,
+        console=ctx.console,
         default_base_url="http://localhost:8080",
         label="Infisical Self-Hosted",
         prompt_ca_bundle=True,
@@ -49,6 +50,7 @@ def _run_infisical_flow(
     ctx: CLIContext,
     provider: InputProvider,
     *,
+    console,
     default_base_url: str,
     label: str,
     prompt_ca_bundle: bool,
@@ -127,6 +129,7 @@ def _run_infisical_flow(
         secret_path=secret_path,
         secret_name=signing_secret,
         ca_bundle_path=ca_bundle or None,
+        console=console,
     )
 
     steps = [
@@ -183,6 +186,7 @@ def _probe_infisical_secret(
     secret_path: str,
     secret_name: str,
     ca_bundle_path: str | None,
+    console,
 ) -> bool:
     params = {
         "environment": environment,

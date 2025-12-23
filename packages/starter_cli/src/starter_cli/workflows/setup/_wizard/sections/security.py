@@ -5,7 +5,6 @@ from __future__ import annotations
 import secrets
 from collections.abc import Sequence
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIError
 
 from ...inputs import InputProvider, is_headless_provider
@@ -86,7 +85,7 @@ _PLACEHOLDER_JWKS_SALT = "local-jwks-salt"
 
 
 def run(context: WizardContext, provider: InputProvider) -> None:
-    console.section(
+    context.console.section(
         "Security & Rate Limits",
         "Dial in lockouts, token lifetimes, and email/reset policies before launch.",
     )
@@ -128,7 +127,7 @@ def _configure_jwks_cache(context: WizardContext, provider: InputProvider) -> No
     ).strip()
     if not salt:
         salt = secrets.token_urlsafe(16)
-        console.info("Generated random JWKS ETag salt.", topic="wizard")
+        context.console.info("Generated random JWKS ETag salt.", topic="wizard")
     context.set_backend("AUTH_JWKS_ETAG_SALT", salt)
 
 
@@ -188,12 +187,12 @@ def _prompt_positive_int(
         except ValueError:
             if is_headless_provider(provider):
                 raise CLIError(f"{key} must be an integer.") from None
-            console.warn(f"{key} must be an integer.", topic="wizard")
+            context.console.warn(f"{key} must be an integer.", topic="wizard")
             continue
         if parsed <= 0:
             if is_headless_provider(provider):
                 raise CLIError(f"{key} must be greater than zero.")
-            console.warn(f"{key} must be greater than zero.", topic="wizard")
+            context.console.warn(f"{key} must be greater than zero.", topic="wizard")
             continue
         context.set_backend(key, str(parsed))
         return parsed

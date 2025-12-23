@@ -1,14 +1,14 @@
 from __future__ import annotations
 
+import argparse
+
 from starter_cli.core.context import build_context
-from starter_cli.workflows.home import service as home_service
-from starter_cli.workflows.home.service import HomeController
+from starter_cli.commands import home as home_command
+from starter_cli import ui as ui_module
 
 
-def test_home_controller_invokes_textual(monkeypatch):
+def test_home_command_invokes_textual(monkeypatch):
     ctx = build_context()
-    controller = HomeController(ctx)
-
     calls: dict[str, object] = {}
 
     class DummyApp:
@@ -19,9 +19,10 @@ def test_home_controller_invokes_textual(monkeypatch):
         def run(self) -> None:
             calls["run"] = True
 
-    monkeypatch.setattr(home_service, "StarterTUI", DummyApp)
+    monkeypatch.setattr(ui_module, "StarterTUI", DummyApp)
 
-    result = controller.run(use_tui=True)
+    args = argparse.Namespace(no_tui=False)
+    result = home_command._handle_home(args, ctx)
 
     assert result == 0
     assert calls["initial"] == "home"

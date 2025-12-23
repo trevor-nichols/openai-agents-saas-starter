@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 
 from starter_contracts.secrets.models import SecretsProviderLiteral
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext
 from starter_cli.telemetry import VerificationArtifact
 
@@ -64,9 +63,15 @@ def run_vault_dev(
         "Re-run `just verify-vault` after updating FastAPI env to ensure end-to-end signing works.",
     ]
 
-    if not options.skip_automation and _prompt_yes_no("Run `just vault-up` now?", default=True):
-        _run_just_recipe(ctx, "vault-up", topic="secrets")
-        steps[0] = "Started the dev signer via `just vault-up`."
+    if not options.skip_automation:
+        auto_start = provider.prompt_bool(
+            key="VAULT_DEV_AUTO_START",
+            prompt="Run `just vault-up` now?",
+            default=True,
+        )
+        if auto_start:
+            _run_just_recipe(ctx, ctx.console, "vault-up", topic="secrets")
+            steps[0] = "Started the dev signer via `just vault-up`."
 
     warnings: list[str] = [
         (
@@ -180,20 +185,7 @@ def run_vault_hcp(
     )
 
 
-def _prompt_yes_no(question: str, *, default: bool) -> bool:
-    hint = "Y/n" if default else "y/N"
-    while True:
-        raw = input(f"{question} ({hint}) ").strip().lower()
-        if not raw:
-            return default
-        if raw in {"y", "yes"}:
-            return True
-        if raw in {"n", "no"}:
-            return False
-        console.warn("Please answer yes or no.", topic="secrets")
-
-
-def _run_just_recipe(ctx: CLIContext, target: str, *, topic: str) -> None:
+def _run_just_recipe(ctx: CLIContext, console, target: str, *, topic: str) -> None:
     console.info(f"Running `just {target}` …", topic=topic)
     subprocess.run(["just", target], cwd=ctx.project_root, check=True)
 

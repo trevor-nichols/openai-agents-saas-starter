@@ -6,7 +6,6 @@ from typing import Any
 
 import httpx
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext, CLIError
 
 
@@ -57,6 +56,7 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
 
 
 def handle_subscriptions_list(args: argparse.Namespace, ctx: CLIContext) -> int:
+    console = ctx.console
     params: dict[str, Any] = {"limit": args.limit}
     if args.cursor is not None:
         params["cursor"] = args.cursor
@@ -89,6 +89,7 @@ def handle_subscriptions_list(args: argparse.Namespace, ctx: CLIContext) -> int:
 
 
 def handle_subscriptions_revoke(args: argparse.Namespace, ctx: CLIContext) -> int:
+    console = ctx.console
     _request(
         method="DELETE",
         path=f"/api/v1/status/subscriptions/{args.subscription_id}",
@@ -98,6 +99,7 @@ def handle_subscriptions_revoke(args: argparse.Namespace, ctx: CLIContext) -> in
 
 
 def handle_incident_resend(args: argparse.Namespace, ctx: CLIContext) -> int:
+    console = ctx.console
     payload: dict[str, Any] = {"severity": args.severity}
     if args.tenant_id:
         payload["tenant_id"] = args.tenant_id

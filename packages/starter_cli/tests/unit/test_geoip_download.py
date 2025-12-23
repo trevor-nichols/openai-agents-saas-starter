@@ -8,6 +8,7 @@ import httpx
 import pytest
 from starter_cli.core import CLIError
 from starter_cli.workflows.setup.geoip import download_maxmind_database
+from starter_cli.ports.console import StdConsole
 
 
 def _build_tarball() -> bytes:
@@ -44,9 +45,9 @@ def test_download_maxmind_database(
     monkeypatch.setattr(httpx, "Client", DummyClient)
     target = tmp_path / "GeoLite2-City.mmdb"
     if status == 200:
-        download_maxmind_database(license_key="abc", target_path=target)
+        download_maxmind_database(license_key="abc", target_path=target, console=StdConsole())
         assert target.exists()
         assert target.read_bytes() == b"geoip"
     else:
         with pytest.raises(CLIError):
-            download_maxmind_database(license_key="abc", target_path=target)
+            download_maxmind_database(license_key="abc", target_path=target, console=StdConsole())

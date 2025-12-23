@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING, Protocol
 
 from starter_contracts.secrets.models import SecretsProviderLiteral
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext
 from starter_cli.core.constants import TELEMETRY_ENV_FLAG as TELEMETRY_ENV
+from starter_cli.ports.console import ConsolePort
 from starter_cli.telemetry import VerificationArtifact
 
 if TYPE_CHECKING:
@@ -50,7 +50,7 @@ class SecretsWorkflow(Protocol):
         ...
 
 
-def render_onboard_result(result: OnboardResult) -> None:
+def render_onboard_result(console: ConsolePort, result: OnboardResult) -> None:
     console.success(
         f"Secrets provider configured: {result.provider.value}",
         topic="secrets",
@@ -81,7 +81,7 @@ def render_onboard_result(result: OnboardResult) -> None:
             )
 
 
-def emit_cli_telemetry(provider: str, *, success: bool) -> None:
+def emit_cli_telemetry(console: ConsolePort, provider: str, *, success: bool) -> None:
     if os.getenv(TELEMETRY_ENV, "false").lower() not in {"1", "true", "yes"}:
         return
     console.info(

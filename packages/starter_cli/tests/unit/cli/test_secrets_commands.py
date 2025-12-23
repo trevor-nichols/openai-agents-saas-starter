@@ -1,20 +1,35 @@
 from __future__ import annotations
 
-import builtins
-
 import pytest
-from starter_cli.commands.secrets import PROVIDER_OPTIONS, _resolve_provider_choice
+
 from starter_cli.core import CLIError
+from starter_cli.ports.console import StdConsole
+from ._stubs import StubInputProvider
+from starter_cli.workflows.secrets import registry
+from starter_cli.workflows.secrets.flow import select_provider
+from starter_cli.workflows.secrets.models import ProviderOption
 
 
-def test_resolve_provider_choice_non_interactive_requires_arg() -> None:
+def test_select_provider_non_interactive_requires_arg() -> None:
     with pytest.raises(CLIError):
-        _resolve_provider_choice(None, True)
+        select_provider(
+            None,
+            non_interactive=True,
+            prompt=StubInputProvider(),
+            console=StdConsole(),
+        )
 
 
-def test_resolve_provider_choice_interactive(monkeypatch) -> None:
-    # simulate selecting the second option
-    monkeypatch.setattr(builtins, "input", lambda _: "2")
+def test_select_provider_interactive() -> None:
+    options: tuple[ProviderOption, ...] = registry.provider_options()
+    target = options[1]
+    prompt = StubInputProvider(strings={"SECRETS_PROVIDER": target.literal.value})
 
-    option = _resolve_provider_choice(None, False)
-    assert option is PROVIDER_OPTIONS[1]
+    option = select_provider(
+        None,
+        non_interactive=False,
+        prompt=prompt,
+        console=StdConsole(),
+        options=options,
+    )
+    assert option is target

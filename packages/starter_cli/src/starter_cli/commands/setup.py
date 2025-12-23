@@ -3,11 +3,9 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext, CLIError
 from starter_cli.workflows.setup import (
     HeadlessInputProvider,
-    InteractiveInputProvider,
     SetupWizard,
     load_answers_files,
     merge_answer_overrides,
@@ -62,12 +60,7 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     wizard_parser.add_argument(
         "--no-tui",
         action="store_true",
-        help="Disable the Rich status dashboard (use plain console output).",
-    )
-    wizard_parser.add_argument(
-        "--legacy-flow",
-        action="store_true",
-        help="Use the legacy sequential prompts instead of the interactive shell dashboard.",
+        help="Disable the Textual wizard UI (requires --non-interactive or --report-only).",
     )
     wizard_parser.add_argument(
         "--no-schema",
@@ -265,11 +258,11 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
 
     provider: InputProvider | None = None
     if args.report_only:
-        console.info("Report-only mode selected; skipping wizard prompts.", topic="wizard")
+        ctx.console.info("Report-only mode selected; skipping wizard prompts.", topic="wizard")
     elif args.non_interactive:
         provider = HeadlessInputProvider(answers=answers)
-    else:
-        provider = InteractiveInputProvider(prefill=dict(answers))
+    elif args.no_tui:
+        raise CLIError("--no-tui is only supported with --non-interactive or --report-only.")
 
     automation_overrides = {
         phase: value
@@ -287,8 +280,27 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
     }
 
     interactive_run = not args.non_interactive and not args.report_only
-    shell_enabled = interactive_run and not args.legacy_flow and not args.no_tui
-    tui_enabled = interactive_run and not args.no_tui and not args.legacy_flow
+    if interactive_run:
+        from starter_cli.ui import StarterTUI
+        from starter_cli.ui.wizard_pane import WizardLaunchConfig
+
+        wizard_config = WizardLaunchConfig(
+            profile=args.profile,
+            output_format=args.output,
+            answers=dict(answers),
+            summary_path=Path(args.summary_path).expanduser() if args.summary_path else None,
+            markdown_summary_path=Path(args.markdown_summary_path).expanduser()
+            if args.markdown_summary_path
+            else None,
+            export_answers_path=Path(args.export_answers).expanduser()
+            if args.export_answers
+            else None,
+            automation_overrides=automation_overrides,
+            enable_schema=not args.no_schema,
+            auto_start=True,
+        )
+        StarterTUI(ctx, initial_screen="wizard", wizard_config=wizard_config).run()
+        return 0
 
     wizard = SetupWizard(
         ctx=ctx,
@@ -300,9 +312,8 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
         if args.markdown_summary_path
         else None,
         automation_overrides=automation_overrides,
-        enable_tui=tui_enabled,
+        enable_tui=False,
         enable_schema=not args.no_schema,
-        enable_shell=shell_enabled,
     )
     if args.summary_path:
         wizard.summary_path = Path(args.summary_path).expanduser()
@@ -325,7 +336,12 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
 def handle_setup_menu(args: argparse.Namespace, ctx: CLIContext) -> int:
     controller = SetupMenuController(ctx)
     use_tui = not args.no_tui and not args.json
-    return controller.run(use_tui=use_tui, output_json=args.json)
+    if use_tui:
+        from starter_cli.ui import StarterTUI
+
+        StarterTUI(ctx, initial_screen="setup").run()
+        return 0
+    return controller.run(output_json=args.json)
 
 
 __all__ = ["register"]

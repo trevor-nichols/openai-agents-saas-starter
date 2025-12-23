@@ -7,8 +7,8 @@ from typing import Final
 
 import httpx
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIError
+from starter_cli.ports.console import ConsolePort
 
 MAXMIND_DEFAULT_EDITION: Final[str] = "GeoLite2-City"
 
@@ -18,6 +18,7 @@ def download_maxmind_database(
     license_key: str,
     target_path: Path,
     edition_id: str = MAXMIND_DEFAULT_EDITION,
+    console: ConsolePort,
 ) -> Path:
     if not license_key:
         raise CLIError("MaxMind license key is required before downloading the database.")

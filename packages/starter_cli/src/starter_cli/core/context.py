@@ -10,6 +10,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 from starter_contracts.config import StarterSettingsProtocol, get_settings
 
+from ..ports.console import ConsolePort, StdConsole
+from ..ports.presentation import Presenter
+from ..presenters.headless import build_headless_presenter
 from .constants import DEFAULT_ENV_FILES, PROJECT_ROOT, SKIP_ENV_FLAG, TRUE_LITERALS
 from .exceptions import CLIError
 
@@ -22,6 +25,12 @@ class CLIContext:
     env_files: tuple[Path, ...] = DEFAULT_ENV_FILES
     loaded_env_files: list[Path] = field(default_factory=list)
     settings: StarterSettingsProtocol | None = None
+    console: ConsolePort = field(default_factory=StdConsole)
+    presenter: Presenter | None = None
+
+    def __post_init__(self) -> None:
+        if self.presenter is None:
+            self.presenter = build_headless_presenter(self.console)
 
     def load_environment(
         self,
@@ -59,12 +68,23 @@ class CLIContext:
         return settings
 
 
-def build_context(*, env_files: Sequence[Path] | None = None) -> CLIContext:
+def build_context(
+    *,
+    env_files: Sequence[Path] | None = None,
+    console: ConsolePort | None = None,
+    presenter: Presenter | None = None,
+) -> CLIContext:
     if env_files:
         unique_files = tuple(dict.fromkeys(env_files))
     else:
         unique_files = DEFAULT_ENV_FILES
-    return CLIContext(env_files=unique_files)
+    resolved_console = console or StdConsole()
+    resolved_presenter = presenter or build_headless_presenter(resolved_console)
+    return CLIContext(
+        env_files=unique_files,
+        console=resolved_console,
+        presenter=resolved_presenter,
+    )
 
 
 def iter_env_files(paths: Iterable[str]) -> list[Path]:

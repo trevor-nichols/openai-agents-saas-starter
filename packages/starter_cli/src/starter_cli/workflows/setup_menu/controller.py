@@ -1,22 +1,13 @@
 from __future__ import annotations
 
-import importlib
 from collections.abc import Iterable
 from datetime import timedelta
 
-from rich import box
-from rich.console import RenderableType
-from rich.table import Table
-from rich.text import Text
-
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext
+from starter_cli.services.hub import HubService
 
-from .detection import STALE_AFTER_DAYS, collect_setup_items
+from .detection import STALE_AFTER_DAYS
 from .models import SetupItem
-
-# Exposed for tests; populated at runtime to avoid circular imports.
-StarterTUI = None
 
 
 class SetupMenuController:
@@ -24,60 +15,49 @@ class SetupMenuController:
         self.ctx = ctx
         self.stale_window = timedelta(days=stale_days)
 
-    def run(self, *, use_tui: bool, output_json: bool) -> int:
-        items = collect_setup_items(self.ctx, stale_after=self.stale_window)
+    def run(self, *, output_json: bool) -> int:
+        console = self.ctx.console
+        items = HubService(self.ctx).load_setup(stale_days=self.stale_window.days).items
         if output_json:
-            console._rich_out.print_json(data=_to_dict(items))
-            return 0
-        if not use_tui:
-            self._render_table(items)
-            return 0
-        tui_cls = globals().get("StarterTUI")
-        if tui_cls is None:
-            module = importlib.import_module("starter_cli.ui")
-            tui_cls = module.StarterTUI
-            globals()["StarterTUI"] = tui_cls
+            import json
 
-        tui_cls(self.ctx, initial_screen="setup").run()
+            json.dump(_to_dict(items), console.stream, indent=2)
+            console.stream.write("\n")
+            return 0
+        self._render_table(console, items)
         return 0
 
     # ------------------------------------------------------------------
     # Rendering
     # ------------------------------------------------------------------
 
-    def _render_table(self, items: Iterable[SetupItem], *, show_index: bool = False) -> None:
-        table: Table = Table(
-            title="Setup Hub",
-            box=box.SQUARE,
-            show_header=True,
-            header_style="bold",
-            expand=True,
-        )
-        if show_index:
-            table.add_column("#", justify="right", width=3, no_wrap=True)
-        table.add_column("Status", no_wrap=True)
-        table.add_column("Setup")
-        table.add_column("Detail")
-        table.add_column("Progress", no_wrap=True)
-        table.add_column("Last Run", no_wrap=True)
-
+    def _render_table(
+        self,
+        console,
+        items: Iterable[SetupItem],
+        *,
+        show_index: bool = False,
+    ) -> None:
+        headers = ["Status", "Setup", "Detail", "Progress", "Last Run"]
+        rows: list[list[str]] = []
         for idx, item in enumerate(items, start=1):
-            status = _status_badge(item)
-            progress = item.progress_label or _progress_from_float(item.progress)
-            last = item.last_run.isoformat(timespec="seconds") if item.last_run else "—"
+            status = _status_label(item)
+            progress = item.progress_label or _progress_from_float(item.progress) or "-"
+            last = item.last_run.isoformat(timespec="seconds") if item.last_run else "-"
             detail = item.detail or ""
             if item.optional and item.status in {"missing", "unknown"}:
                 detail = (detail + " " if detail else "") + "(optional)"
-
-            label = Text(item.label, style="bold")
-            detail_text: RenderableType | str = Text(detail)
-            progress_val: RenderableType | str = progress or "—"
-            cells: list[RenderableType | str] = [status, label, detail_text, progress_val, last]
+            row = [status, item.label, detail or "-", progress, last]
             if show_index:
-                cells.insert(0, str(idx))
-            table.add_row(*cells)
+                row.insert(0, str(idx))
+            rows.append(row)
 
-        console.print(table)
+        if show_index:
+            headers = ["#", *headers]
+
+        lines = _format_table(headers, rows)
+        for line in lines:
+            console.print(line)
 
 
 
@@ -86,17 +66,16 @@ class SetupMenuController:
 # ---------------------------------------------------------------------------
 
 
-def _status_badge(item: SetupItem) -> Text:
-    styles = {
-        "done": ("DONE", "bold green"),
-        "partial": ("PARTIAL", "bold yellow"),
-        "stale": ("STALE", "yellow"),
-        "missing": ("MISSING", "bold red"),
-        "failed": ("FAILED", "bold red"),
-        "unknown": ("UNKNOWN", "bright_black"),
+def _status_label(item: SetupItem) -> str:
+    labels = {
+        "done": "DONE",
+        "partial": "PARTIAL",
+        "stale": "STALE",
+        "missing": "MISSING",
+        "failed": "FAILED",
+        "unknown": "UNKNOWN",
     }
-    label, style = styles.get(item.status, (item.status.upper(), "white"))
-    return Text(label, style=style, justify="center")
+    return labels.get(item.status, item.status.upper())
 
 
 def _progress_from_float(progress: float | None) -> str | None:
@@ -104,6 +83,22 @@ def _progress_from_float(progress: float | None) -> str | None:
         return None
     pct = max(0, min(int(progress * 100), 100))
     return f"{pct}%"
+
+
+def _format_table(headers: list[str], rows: list[list[str]]) -> list[str]:
+    widths = [len(header) for header in headers]
+    for row in rows:
+        for idx, cell in enumerate(row):
+            widths[idx] = max(widths[idx], len(cell))
+
+    def fmt_row(row: list[str]) -> str:
+        padded = [cell.ljust(widths[idx]) for idx, cell in enumerate(row)]
+        return " | ".join(padded)
+
+    line = "-+-".join("-" * width for width in widths)
+    output = [fmt_row(headers), line]
+    output.extend(fmt_row(row) for row in rows)
+    return output
 
 
 def _to_dict(items: Iterable[SetupItem]) -> list[dict[str, object]]:

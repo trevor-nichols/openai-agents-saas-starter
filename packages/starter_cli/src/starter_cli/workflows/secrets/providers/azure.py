@@ -13,7 +13,6 @@ from azure.identity import (
 from azure.keyvault.secrets import SecretClient
 from starter_contracts.secrets.models import SecretsProviderLiteral
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext
 from starter_cli.telemetry import VerificationArtifact
 
@@ -82,6 +81,7 @@ def run_azure_kv(
         client_id=client_id or None,
         client_secret=client_secret or None,
         managed_identity_client_id=managed_identity_client_id or None,
+        console=ctx.console,
     )
 
     env_updates = {
@@ -160,6 +160,7 @@ def _probe_azure_secret(
     client_id: str | None,
     client_secret: str | None,
     managed_identity_client_id: str | None,
+    console,
 ) -> bool:
     try:
         credentials: list[TokenCredential] = []

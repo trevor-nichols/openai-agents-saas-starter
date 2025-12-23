@@ -8,7 +8,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext, CLIError
 
 
@@ -74,6 +73,7 @@ class OpenAPIExporter:
         version: str | None,
     ) -> None:
         self.ctx = ctx
+        self.console = ctx.console
         self.output = Path(output)
         self.enable_billing = enable_billing
         self.enable_test_fixtures = enable_test_fixtures
@@ -126,14 +126,14 @@ class OpenAPIExporter:
         try:
             destination.relative_to(repo_root)
         except ValueError:
-            console.warn(
+            self.console.warn(
                 f"Output path {destination} is outside the repository root ({repo_root}). "
                 "Paths are repo-root relative; drop any leading '../' when running this command.",
                 topic="api",
             )
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(json.dumps(schema, indent=2), encoding="utf-8")
-        console.success(f"OpenAPI schema written to {destination}", topic="api")
+        self.console.success(f"OpenAPI schema written to {destination}", topic="api")
 
     @staticmethod
     def _load_module(name: str, path: Path) -> Any:

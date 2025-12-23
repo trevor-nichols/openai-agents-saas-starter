@@ -10,7 +10,6 @@ Operator tooling for the OpenAI Agents SaaS starter. It bootstraps local infra, 
 
 ## Running the CLI
 - Entry: `python -m starter_cli.app <command> [flags]`
-- Console: `--console-theme`, `--console-width`, `--no-color`
 - Headless: most flows support `--non-interactive` plus `--answers-file`/`--var`; TUIs can be forced off with `--no-tui` where supported.
 
 ## Quick starts

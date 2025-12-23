@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-import starter_cli.workflows.setup_menu.controller as controller_module
+import argparse
+
 from starter_cli.core.context import build_context
-from starter_cli.workflows.setup_menu.controller import SetupMenuController
+from starter_cli.commands import setup as setup_command
+from starter_cli import ui as ui_module
 
 
 def test_setup_menu_uses_textual(monkeypatch):
@@ -17,10 +19,10 @@ def test_setup_menu_uses_textual(monkeypatch):
         def run(self) -> None:
             calls["ran"] = True
 
-    monkeypatch.setattr(controller_module, "StarterTUI", DummyTUI)
+    monkeypatch.setattr(ui_module, "StarterTUI", DummyTUI)
 
-    controller = SetupMenuController(ctx)
-    controller.run(use_tui=True, output_json=False)
+    args = argparse.Namespace(no_tui=False, json=False)
+    setup_command.handle_setup_menu(args, ctx)
 
     assert calls.get("ran") is True
     assert calls["initial"] == "setup"

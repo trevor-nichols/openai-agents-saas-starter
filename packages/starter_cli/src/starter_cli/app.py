@@ -6,7 +6,6 @@ import argparse
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
-from .adapters.io.console import AVAILABLE_THEMES, console
 from .commands import register_all
 from .container import ApplicationContainer, build_container
 from .core import CLIContext, CLIError
@@ -41,22 +40,6 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Suppress informational logs when loading env files.",
     )
-    parser.add_argument(
-        "--console-theme",
-        choices=AVAILABLE_THEMES,
-        help="Override the CLI color theme (defaults to STARTER_CLI_THEME or midnight).",
-    )
-    parser.add_argument(
-        "--console-width",
-        type=int,
-        help="Wrap CLI output at a fixed width (defaults to auto).",
-    )
-    parser.add_argument(
-        "--no-color",
-        action="store_true",
-        help="Disable ANSI styling (same as STARTER_CLI_NO_COLOR=1).",
-    )
-
     subparsers = parser.add_subparsers(dest="command")
     register_all(subparsers)
     return parser
@@ -92,11 +75,6 @@ def main(argv: list[str] | None = None, *, container: ApplicationContainer | Non
     app_container = container or build_container()
     parser = build_parser()
     args = parser.parse_args(argv)
-    app_container.configure_console(
-        theme=args.console_theme,
-        width=args.console_width,
-        no_color=args.no_color,
-    )
     if (
         getattr(args, "command", None) == "util"
         and getattr(args, "util_command", None) == "run-with-env"
@@ -108,14 +86,24 @@ def main(argv: list[str] | None = None, *, container: ApplicationContainer | Non
 
     handler: Handler | None = getattr(args, "handler", None)
     if handler is None:
-        parser.print_help()
-        return 0
+        return _launch_tui(ctx, initial_screen="home")
 
     try:
         return handler(args, ctx)
     except CLIError as exc:
-        console.error(str(exc))
+        ctx.console.error(str(exc))
         return 1
+
+
+def _launch_tui(ctx: CLIContext, *, initial_screen: str) -> int:
+    try:
+        from starter_cli.ui import StarterTUI
+
+        StarterTUI(ctx, initial_screen=initial_screen).run()
+        return 0
+    except KeyboardInterrupt:
+        ctx.console.warn("Interrupted. Goodbye!", topic="tui")
+        return 130
 
 
 __all__ = ["build_parser", "main"]

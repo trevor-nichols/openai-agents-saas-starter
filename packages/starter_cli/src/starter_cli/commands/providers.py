@@ -5,7 +5,6 @@ from dataclasses import replace
 
 from starter_contracts.provider_validation import validate_providers
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext
 
 _DOC_PATH = "docs/ops/provider-parity.md"
@@ -31,6 +30,7 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
 
 
 def handle_validate_providers(args: argparse.Namespace, ctx: CLIContext) -> int:
+    console = ctx.console
     settings = ctx.require_settings()
     strict = bool(args.strict) or settings.should_enforce_secret_overrides()
 

@@ -6,7 +6,6 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 from starter_contracts.secrets.models import SecretsProviderLiteral
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext, CLIError
 from starter_cli.telemetry import VerificationArtifact
 
@@ -93,6 +92,7 @@ def run_aws_sm(
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
         session_token=session_token,
+        console=ctx.console,
     )
 
     env_updates = {
@@ -151,6 +151,7 @@ def _probe_aws_secret(
     access_key_id: str | None,
     secret_access_key: str | None,
     session_token: str | None,
+    console,
 ) -> bool:
     try:
         session = boto3.Session(

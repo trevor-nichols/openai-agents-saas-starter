@@ -7,7 +7,6 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext
 from starter_cli.core.constants import PROJECT_ROOT, SAFE_ENVIRONMENTS
 from starter_cli.core.status_models import ProbeResult, ProbeState, ServiceStatus
@@ -21,6 +20,7 @@ DEFAULT_MD_REPORT = PROJECT_ROOT / "var" / "reports" / "operator-dashboard.md"
 class DoctorRunner:
     def __init__(self, ctx: CLIContext, *, profile: str, strict: bool) -> None:
         self.ctx = ctx
+        self.console = ctx.console
         self.profile = profile
         self.strict = strict
         self.warn_only = (profile.lower() in SAFE_ENVIRONMENTS) and not strict
@@ -62,7 +62,7 @@ class DoctorRunner:
             warn_only=self.warn_only,
         )
         if log_suppressed and self.expect_down:
-            console.info(
+            self.console.info(
                 "Suppressed probes via EXPECT_*_DOWN: " + ", ".join(sorted(self.expect_down)),
                 topic="probes",
             )
@@ -130,21 +130,21 @@ class DoctorRunner:
         probes: list[ProbeResult],
         services: list[ServiceStatus],
     ) -> None:
-        console.rule("Doctor report")
-        console.info(
+        self.console.rule("Doctor report")
+        self.console.info(
             f"Profile={self.profile} strict={'yes' if self.strict else 'no'} "
             f"warn_only={self.warn_only}"
         )
-        console.info(
+        self.console.info(
             f"Probes: ok={summary.get('ok',0)} warn={summary.get('warn',0)} "
             f"error={summary.get('error',0)} skipped={summary.get('skipped',0)}"
         )
         for probe in sorted(probes, key=lambda p: (-p.severity_rank, p.name)):
-            console.info(
+            self.console.info(
                 f"[{probe.state.value}] {probe.name}: {probe.detail or 'n/a'}",
             )
         for service in services:
-            console.info(
+            self.console.info(
                 f"service {service.label}: {service.state.value} ({service.detail or 'n/a'})"
             )
 
@@ -166,7 +166,7 @@ class DoctorRunner:
         }
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-        console.success(f"Wrote doctor JSON report to {path}")
+        self.console.success(f"Wrote doctor JSON report to {path}")
 
     def _write_markdown(
         self, path: Path, probes: list[ProbeResult], summary: dict[str, int]
@@ -187,7 +187,7 @@ class DoctorRunner:
             lines.append(f"| {probe.name} | {probe.state.value} | {detail} |")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("\n".join(lines), encoding="utf-8")
-        console.success(f"Wrote doctor Markdown report to {path}")
+        self.console.success(f"Wrote doctor Markdown report to {path}")
 
     @staticmethod
     def _serialize_probe(probe: ProbeResult) -> dict[str, object]:

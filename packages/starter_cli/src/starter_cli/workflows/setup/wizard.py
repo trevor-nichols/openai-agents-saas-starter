@@ -4,7 +4,6 @@ from collections.abc import Callable, Sequence
 from functools import partial
 from pathlib import Path
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext, CLIError
 
 from ._wizard import audit
@@ -33,7 +32,6 @@ from .preflight import run_preflight
 from .schema import load_schema
 from .schema_provider import SchemaAwareInputProvider
 from .section_specs import SECTION_LABELS, SECTION_SPECS
-from .shell import WizardShell
 from .state import WizardStateStore
 from .tenant_summary import capture_tenant_summary
 from .ui import WizardUIView
@@ -119,6 +117,10 @@ _AUTOMATION_LABELS: dict[AutomationPhase, str] = {
 }
 
 
+def build_automation_labels() -> list[tuple[str, str]]:
+    return [(phase.value, _AUTOMATION_LABELS[phase]) for phase in ALL_AUTOMATION_PHASES]
+
+
 class SetupWizard:
     def __init__(
         self,
@@ -133,7 +135,7 @@ class SetupWizard:
         automation_overrides: dict[AutomationPhase, bool | None] | None = None,
         enable_tui: bool = True,
         enable_schema: bool = True,
-        enable_shell: bool = True,
+        wizard_ui: WizardUIView | None = None,
     ) -> None:
         backend_env, frontend_env, frontend_path = build_env_files(ctx)
         self.ctx = ctx
@@ -141,7 +143,7 @@ class SetupWizard:
         self.input_provider = input_provider
         self.automation_overrides = automation_overrides or {}
         self.enable_tui = enable_tui
-        self.enable_shell = enable_shell
+        self.console = ctx.console
         self.schema = load_schema() if enable_schema else None
         self.state_store = WizardStateStore(ctx.project_root / "var/reports/wizard-state.json")
         self.export_answers_path = export_answers_path
@@ -158,17 +160,21 @@ class SetupWizard:
             schema=self.schema,
             state_store=self.state_store,
         )
-        automation_labels = [
-            (phase.value, _AUTOMATION_LABELS[phase]) for phase in ALL_AUTOMATION_PHASES
-        ]
-        self.ui = WizardUIView(
-            sections=[(spec.key, spec.label) for spec in SECTION_SPECS],
-            automation=automation_labels,
-            section_prompts=section_prompt_metadata,
-            enabled=enable_tui,
-        )
+        automation_labels = build_automation_labels()
+        if wizard_ui is None and enable_tui:
+            wizard_ui = WizardUIView(
+                sections=[(spec.key, spec.label) for spec in SECTION_SPECS],
+                automation=automation_labels,
+                section_prompts=section_prompt_metadata,
+                enabled=enable_tui,
+            )
+        self.ui = wizard_ui
         self.context.ui = self.ui
-        if isinstance(self.input_provider, InteractiveInputProvider) and self.ui.enabled:
+        if (
+            isinstance(self.input_provider, InteractiveInputProvider)
+            and self.ui
+            and self.ui.enabled
+        ):
             handler = WizardUICommandHandler(self.ui, SECTION_SPECS)
             self.input_provider.bind_ui_commands(handler)
         self.context.refresh_ui_prompts()
@@ -184,7 +190,7 @@ class SetupWizard:
         if ui is not None:
             ui.start()
             ui.log("Starting setup wizard …")
-        console.info("Starting setup wizard …", topic="wizard")
+        self.console.info("Starting setup wizard …", topic="wizard")
         infra_session: InfraSession | None = None
         try:
             run_preflight(self.context)
@@ -196,7 +202,7 @@ class SetupWizard:
 
             sections_completed = self._run_sections(provider)
             if not sections_completed:
-                console.warn(
+                self.console.warn(
                     "Wizard exited before completing all sections; skipping finalization.",
                     topic="wizard",
                 )
@@ -205,7 +211,7 @@ class SetupWizard:
             self._post_sections(provider)
             self._maybe_export_answers()
         except KeyboardInterrupt:
-            console.warn("Setup wizard interrupted. Goodbye!", topic="wizard")
+            self.console.warn("Setup wizard interrupted. Goodbye!", topic="wizard")
         finally:
             if infra_session is not None:
                 infra_session.cleanup()
@@ -223,20 +229,6 @@ class SetupWizard:
     # ------------------------------------------------------------------
     def _run_sections(self, provider: InputProvider) -> bool:
         runners = self._build_section_runners(provider)
-        if self._should_use_shell():
-            shell = WizardShell(
-                context=self.context,
-                sections=SECTION_SPECS,
-                section_states=self.section_states,
-                runners=runners,
-                run_section=lambda key, runner: self._run_section(
-                    key,
-                    runner,
-                    fail_soft=True,
-                ),
-            )
-            return shell.run()
-
         for spec in SECTION_SPECS:
             runner = runners[spec.key]
             self._run_section(spec.key, runner)
@@ -272,9 +264,6 @@ class SetupWizard:
             "frontend": partial(frontend.configure, self.context, provider),
         }
 
-    def _should_use_shell(self) -> bool:
-        return self.enable_shell and not self.context.is_headless
-
     def _should_render_ui(self) -> bool:
         return bool(self.ui and self.ui.enabled)
 
@@ -308,7 +297,7 @@ class SetupWizard:
             return
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text.rstrip() + "\n", encoding="utf-8")
-        console.success(f"Checklist written to {path}", topic="wizard")
+        self.console.success(f"Checklist written to {path}", topic="wizard")
 
     def _run_section(
         self,
@@ -353,23 +342,26 @@ class SetupWizard:
             )
         if keep_compose and self.context.infra_session:
             self.context.infra_session.keep_compose_active = True
-            console.info("Docker compose will remain running for backend services.", topic="infra")
+            self.console.info(
+                "Docker compose will remain running for backend services.",
+                topic="infra",
+            )
             if self.ui:
                 self.ui.log("Docker compose left running.")
         else:
-            console.info(
+            self.console.info(
                 "Docker compose will stop during cleanup (re-run `infra compose up` later).",
                 topic="infra",
             )
-        console.newline()
-        console.section("Next Actions", "Bring the stack online and smoke-test the flow.")
-        console.step("1.", "Backend: run `cd apps/api-service && hatch run serve`")
-        console.step("2.", "Frontend: run `pnpm --filter web-app dev` inside apps/web-app")
+        self.console.newline()
+        self.console.section("Next Actions", "Bring the stack online and smoke-test the flow.")
+        self.console.step("1.", "Backend: run `cd apps/api-service && hatch run serve`")
+        self.console.step("2.", "Frontend: run `pnpm --filter web-app dev` inside apps/web-app")
         if self.ui:
             self.ui.log("Ready for `cd apps/api-service && hatch run serve` + `pnpm dev`.")
 
     def _configure_automation(self, provider: InputProvider) -> None:
-        console.section(
+        self.console.section(
             "Automation Preferences",
             "Decide which helper workflows (Docker, Vault, Stripe, etc.) should auto-run.",
         )
@@ -391,13 +383,13 @@ class SetupWizard:
             )
             if override is not None:
                 state = "enabled" if enabled else "disabled"
-                console.info(
+                self.console.info(
                     f"{phase.value} automation {state} via {source}.",
                     topic="wizard",
                 )
             if blockers and enabled:
                 blocker_list = ", ".join(blockers)
-                console.warn(
+                self.console.warn(
                     (
                         f"{phase.value.capitalize()} automation blocked due to "
                         f"missing dependencies: {blocker_list}."
@@ -405,9 +397,15 @@ class SetupWizard:
                     topic="wizard",
                 )
             elif enabled:
-                console.success(f"{phase.value.capitalize()} automation enabled.", topic="wizard")
+                self.console.success(
+                    f"{phase.value.capitalize()} automation enabled.",
+                    topic="wizard",
+                )
             else:
-                console.info(f"{phase.value.capitalize()} automation disabled.", topic="wizard")
+                self.console.info(
+                    f"{phase.value.capitalize()} automation disabled.",
+                    topic="wizard",
+                )
             self._sync_automation_ui(phase)
 
     def _missing_dependencies_for_phase(self, phase: AutomationPhase) -> list[str]:
@@ -472,15 +470,15 @@ class SetupWizard:
         try:
             self._answer_recorder.export(self.export_answers_path)
         except OSError as exc:  # pragma: no cover - filesystem failures
-            console.error(
+            self.console.error(
                 f"Failed to export answers to {self.export_answers_path}: {exc}",
                 topic="wizard",
             )
             return
-        console.success(
+        self.console.success(
             f"Wrote prompt answers to {self.export_answers_path}",
             topic="wizard",
         )
 
 
-__all__ = ["SetupWizard", "PROFILE_CHOICES", "FRONTEND_ENV_RELATIVE"]
+__all__ = ["SetupWizard", "PROFILE_CHOICES", "FRONTEND_ENV_RELATIVE", "build_automation_labels"]

@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIError
+from starter_cli.ports.presentation import Presenter, PromptPort
 
 if TYPE_CHECKING:
     from .ui.commands import WizardUICommandHandler
@@ -48,40 +48,14 @@ def merge_answer_overrides(base: ParsedAnswers, overrides: Sequence[str]) -> Par
     return merged
 
 
-class InputProvider(Protocol):
-    def prompt_string(
-        self,
-        *,
-        key: str,
-        prompt: str,
-        default: str | None,
-        required: bool,
-    ) -> str: ...
-
-    def prompt_choice(
-        self,
-        *,
-        key: str,
-        prompt: str,
-        choices: Sequence[str],
-        default: str | None = None,
-    ) -> str: ...
-
-    def prompt_bool(self, *, key: str, prompt: str, default: bool) -> bool: ...
-
-    def prompt_secret(
-        self,
-        *,
-        key: str,
-        prompt: str,
-        existing: str | None,
-        required: bool,
-    ) -> str: ...
+class InputProvider(PromptPort, Protocol):
+    """Wizard prompt surface used by setup and secrets workflows."""
 
 
 @dataclass(slots=True)
 class InteractiveInputProvider(InputProvider):
     prefill: ParsedAnswers
+    presenter: Presenter
     ui_commands: WizardUICommandHandler | None = None
 
     def bind_ui_commands(self, handler: WizardUICommandHandler) -> None:
@@ -90,27 +64,27 @@ class InteractiveInputProvider(InputProvider):
     def prompt_string(self, *, key: str, prompt: str, default: str | None, required: bool) -> str:
         normalized = _normalize_key(key)
         if (value := self.prefill.pop(normalized, None)) is not None:
-            console.note(f"{key} supplied via answers file / override.", topic="wizard")
+            self.presenter.notify.note(
+                f"{key} supplied via answers file / override.",
+                topic="wizard",
+            )
             return value
-        return console.ask_text(
+        return self.presenter.prompt.prompt_string(
             key=key,
             prompt=prompt,
             default=default,
             required=required,
-            command_hook=self._handle_command,
         )
 
     def prompt_bool(self, *, key: str, prompt: str, default: bool) -> bool:
         normalized = _normalize_key(key)
         if (value := self.prefill.pop(normalized, None)) is not None:
-            console.note(f"{key} supplied via answers file / override.", topic="wizard")
+            self.presenter.notify.note(
+                f"{key} supplied via answers file / override.",
+                topic="wizard",
+            )
             return _coerce_bool(value, key)
-        return console.ask_bool(
-            key=key,
-            prompt=prompt,
-            default=default,
-            command_hook=self._handle_command,
-        )
+        return self.presenter.prompt.prompt_bool(key=key, prompt=prompt, default=default)
 
     def prompt_choice(
         self,
@@ -124,19 +98,21 @@ class InteractiveInputProvider(InputProvider):
         if (value := self.prefill.pop(normalized, None)) is not None:
             if value not in choices:
                 raise CLIError(f"Invalid choice for {key}: {value} (expected one of {choices})")
-            console.note(f"{key} supplied via answers file / override.", topic="wizard")
+            self.presenter.notify.note(
+                f"{key} supplied via answers file / override.",
+                topic="wizard",
+            )
             return value
         while True:
-            value = console.ask_text(
+            value = self.presenter.prompt.prompt_string(
                 key=key,
                 prompt=f"{prompt} [{'/'.join(choices)}]",
                 default=default,
                 required=True,
-                command_hook=self._handle_command,
             )
             if value in choices:
                 return value
-            console.warn(
+            self.presenter.notify.warn(
                 f"Invalid choice '{value}'. Valid options: {', '.join(choices)}.",
                 topic="wizard",
             )
@@ -151,28 +127,29 @@ class InteractiveInputProvider(InputProvider):
     ) -> str:
         normalized = _normalize_key(key)
         if (value := self.prefill.pop(normalized, None)) is not None:
-            console.note(f"{key} supplied via answers file / override.", topic="wizard")
+            self.presenter.notify.note(
+                f"{key} supplied via answers file / override.",
+                topic="wizard",
+            )
             return value
         if existing:
-            console.note(
+            self.presenter.notify.note(
                 f"{prompt} already set; press Enter to keep the current value.",
                 topic="wizard",
             )
         while True:
-            value = console.ask_text(
+            value = self.presenter.prompt.prompt_secret(
                 key=key,
                 prompt=prompt,
-                default=existing,
+                existing=existing,
                 required=required and not existing,
-                secret=True,
-                command_hook=self._handle_command,
             )
             if value:
                 return value
             if existing:
                 return existing
             if required:
-                console.warn("A value is required for this secret.")
+                self.presenter.notify.warn("A value is required for this secret.")
             else:
                 return ""
 

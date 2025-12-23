@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from starter_contracts.storage.models import StorageProviderLiteral
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIError
 
 from ...inputs import InputProvider
@@ -10,7 +9,7 @@ from ..context import WizardContext
 
 
 def run(context: WizardContext, provider: InputProvider) -> None:
-    console.section(
+    context.console.section(
         "Storage",
         "Choose object storage backend (MinIO, S3, Azure Blob, or Google Cloud Storage).",
     )
@@ -210,7 +209,7 @@ def _configure_azure_blob(context: WizardContext, provider: InputProvider) -> No
 
 
 def _configure_image_defaults(context: WizardContext, provider: InputProvider) -> None:
-    console.note(
+    context.console.note(
         "Generated images will be stored in the configured provider; defaults below can be"
         " overridden per-agent via tool_configs.",
         topic="image-generation",

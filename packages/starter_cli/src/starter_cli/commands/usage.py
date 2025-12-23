@@ -5,8 +5,8 @@ import asyncio
 from datetime import UTC, datetime
 from pathlib import Path
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext, CLIError
+from starter_cli.ports.console import ConsolePort
 from starter_cli.workflows.usage import (
     EntitlementLoaderError,
     PlanSyncResult,
@@ -133,6 +133,7 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
 
 
 def handle_sync_entitlements(args: argparse.Namespace, ctx: CLIContext) -> int:
+    console = ctx.console
     settings = ctx.require_settings()
     database_url = getattr(settings, "database_url", None)
     if not database_url:
@@ -157,7 +158,7 @@ def handle_sync_entitlements(args: argparse.Namespace, ctx: CLIContext) -> int:
     except EntitlementLoaderError as exc:
         raise CLIError(str(exc)) from exc
 
-    _render_summary(result)
+    _render_summary(console, result)
     if result.dry_run:
         console.warn(
             "Dry-run complete. Re-run without --dry-run to apply changes.",
@@ -181,7 +182,7 @@ def _resolve_artifact_path(ctx: CLIContext, override: str | None) -> Path:
     return path
 
 
-def _render_summary(result: UsageEntitlementSyncResult) -> None:
+def _render_summary(console: ConsolePort, result: UsageEntitlementSyncResult) -> None:
     console.info(
         f"Artifact: {result.artifact_path} (enabled={result.artifact_enabled})",
         topic="usage",
@@ -203,6 +204,7 @@ def _format_plan_summary(plan_result: PlanSyncResult) -> str:
 
 
 def handle_export_report(args: argparse.Namespace, ctx: CLIContext) -> int:
+    console = ctx.console
     settings = ctx.require_settings()
     database_url = getattr(settings, "database_url", None)
     if not database_url:
@@ -238,7 +240,7 @@ def handle_export_report(args: argparse.Namespace, ctx: CLIContext) -> int:
 
     artifacts = write_usage_report_files(report, json_path=json_path, csv_path=csv_path)
 
-    _render_report_summary(report, artifacts)
+    _render_report_summary(console, report, artifacts)
     console.success(
         f"Usage report generated for {len(report.tenants)} tenant(s).",
         topic="usage",
@@ -286,7 +288,11 @@ def _build_output_path(override: str | None, default_path: Path) -> Path:
     return default_path
 
 
-def _render_report_summary(report: UsageReport, artifacts: UsageReportArtifacts) -> None:
+def _render_report_summary(
+    console: ConsolePort,
+    report: UsageReport,
+    artifacts: UsageReportArtifacts,
+) -> None:
     console.info(
         (
             f"Tenants processed: {len(report.tenants)} | "

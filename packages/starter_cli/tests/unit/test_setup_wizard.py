@@ -7,6 +7,8 @@ from pathlib import Path
 import httpx
 import pytest
 from starter_cli.core import CLIContext, CLIError
+from starter_cli.ports.console import StdConsole
+from starter_cli.presenters import build_headless_presenter
 from starter_cli.workflows.setup import (
     HeadlessInputProvider,
     InteractiveInputProvider,
@@ -119,7 +121,6 @@ def _local_headless_answers() -> dict[str, str]:
 
 
 def _create_setup_wizard(**kwargs) -> SetupWizard:
-    kwargs.setdefault("enable_shell", False)
     kwargs.setdefault("enable_tui", False)
     kwargs.setdefault(
         "automation_overrides", {phase: False for phase in AutomationPhase}
@@ -922,16 +923,6 @@ def test_interactive_wizard_runs_tui_alongside_shell(
         def sync_prompt_states(self, *_: object) -> None:
             return None
 
-    class DummyShell:
-        ran = False
-
-        def __init__(self, *_, **__):
-            return None
-
-        def run(self) -> bool:
-            DummyShell.ran = True
-            return True
-
     class DummyInfraSession:
         def __init__(self, *_: object, **__: object) -> None:
             return None
@@ -943,7 +934,6 @@ def test_interactive_wizard_runs_tui_alongside_shell(
             return None
 
     monkeypatch.setattr(wizard_module, "WizardUIView", DummyUI)
-    monkeypatch.setattr(wizard_module, "WizardShell", DummyShell)
     monkeypatch.setattr(wizard_module, "InfraSession", DummyInfraSession)
     monkeypatch.setattr(wizard_module, "run_preflight", lambda *_: None)
     monkeypatch.setattr(SetupWizard, "_configure_automation", lambda self, provider: None)
@@ -954,18 +944,17 @@ def test_interactive_wizard_runs_tui_alongside_shell(
 
     monkeypatch.setattr(SetupWizard, "_build_section_runners", _dummy_runners)
 
-    provider = InteractiveInputProvider(prefill={})
+    presenter = build_headless_presenter(StdConsole())
+    provider = InteractiveInputProvider(prefill={}, presenter=presenter)
     wizard = SetupWizard(
         ctx=temp_ctx,
         profile="demo",
         output_format="summary",
         input_provider=provider,
-        enable_shell=True,
         enable_tui=True,
         enable_schema=False,
     )
     wizard.execute()
 
-    assert DummyShell.ran is True
     assert DummyUI.started is True
     assert DummyUI.stopped is True

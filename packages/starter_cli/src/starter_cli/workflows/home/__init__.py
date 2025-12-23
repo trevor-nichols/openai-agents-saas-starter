@@ -1,9 +1,6 @@
-"""Home hub workflows.
+"""Home hub workflows and probes."""
 
-Provides the interactive/summary home hub that surfaces probe results and
-quick actions. Uses the same probe engine as the doctor command.
-"""
+from . import stack_state
+from .doctor import DoctorRunner, detect_profile
 
-from .service import HomeController, HomeSummary
-
-__all__ = ["HomeController", "HomeSummary"]
+__all__ = ["DoctorRunner", "detect_profile", "stack_state"]

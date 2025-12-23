@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from starter_cli.adapters.io.console import console
-
 from ...inputs import InputProvider
 from ..context import WizardContext
 
 
 def configure(context: WizardContext, provider: InputProvider) -> None:
+    console = context.console
     if not context.frontend_env:
         return
     console.section(

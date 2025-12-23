@@ -8,8 +8,10 @@ from pathlib import Path
 
 @dataclass(slots=True)
 class SetupAction:
+    key: str
     label: str
-    command: Sequence[str]
+    command: Sequence[str] = field(default_factory=tuple)
+    route: str | None = None
     warn_overwrite: bool = False
 
 

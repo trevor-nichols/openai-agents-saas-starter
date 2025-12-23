@@ -4,12 +4,10 @@ import argparse
 
 from starter_contracts.secrets.models import SecretsProviderLiteral
 
-from starter_cli.adapters.io.console import console
-from starter_cli.core import CLIContext, CLIError
-from starter_cli.telemetry import append_verification_artifact
-from starter_cli.workflows.secrets import registry
+from starter_cli.core import CLIContext
+from starter_cli.presenters.headless import build_headless_presenter
+from starter_cli.workflows.secrets.flow import record_artifacts, run_onboard, select_provider
 from starter_cli.workflows.secrets.models import (
-    ProviderOption,
     SecretsWorkflowOptions,
     emit_cli_telemetry,
     render_onboard_result,
@@ -69,11 +67,22 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     onboard_parser.set_defaults(handler=handle_onboard)
 
 
-PROVIDER_OPTIONS: tuple[ProviderOption, ...] = registry.provider_options()
-
-
 def handle_onboard(args: argparse.Namespace, ctx: CLIContext) -> int:
-    option = _resolve_provider_choice(args.provider, args.non_interactive)
+    console = ctx.console
+    answers = _load_answers(args)
+    input_provider: InputProvider
+    if args.non_interactive:
+        input_provider = HeadlessInputProvider(answers)
+    else:
+        presenter = ctx.presenter or build_headless_presenter(ctx.console)
+        input_provider = InteractiveInputProvider(answers, presenter=presenter)
+
+    option = select_provider(
+        args.provider,
+        non_interactive=args.non_interactive,
+        prompt=input_provider,
+        console=console,
+    )
     if not option.available:
         console.warn(
             f"{option.label} is not yet available. "
@@ -82,55 +91,13 @@ def handle_onboard(args: argparse.Namespace, ctx: CLIContext) -> int:
         )
         return 1
 
-    answers = _load_answers(args)
-    input_provider: InputProvider
-    if args.non_interactive:
-        input_provider = HeadlessInputProvider(answers)
-    else:
-        input_provider = InteractiveInputProvider(answers)
-
-    runner = registry.get_runner(option.literal)
     options = SecretsWorkflowOptions(skip_automation=args.skip_automation)
-    result = runner(ctx, input_provider, options=options)
-    render_onboard_result(result)
-    emit_cli_telemetry(result.provider.value, success=True)
-    if result.artifacts:
-        log_path = ctx.project_root / "var/reports/verification-artifacts.json"
-        for artifact in result.artifacts:
-            append_verification_artifact(log_path, artifact)
-        console.info(
-            f"Logged {len(result.artifacts)} verification artifact(s) to {log_path}",
-            topic="secrets",
-        )
+    result = run_onboard(ctx, provider=input_provider, option=option, options=options)
+    render_onboard_result(console, result)
+    emit_cli_telemetry(console, result.provider.value, success=True)
+    log_path = ctx.project_root / "var/reports/verification-artifacts.json"
+    record_artifacts(console, log_path=log_path, result=result)
     return 0
-
-
-def _resolve_provider_choice(
-    provider_arg: str | None,
-    non_interactive: bool,
-) -> ProviderOption:
-    if provider_arg:
-        literal = SecretsProviderLiteral(provider_arg)
-        return next(option for option in PROVIDER_OPTIONS if option.literal is literal)
-
-    if non_interactive:
-        raise CLIError("--provider is required when --non-interactive is set.")
-
-    console.info("Select a secrets provider:", topic="secrets")
-    for idx, option in enumerate(PROVIDER_OPTIONS, start=1):
-        status = "" if option.available else " (coming soon)"
-        console.info(f"{idx}. {option.label}{status}", topic="secrets")
-        console.info(f"   {option.description}", topic="secrets")
-
-    while True:
-        choice = input("Enter provider number: ").strip()
-        if not choice.isdigit():
-            console.warn("Please enter a numeric choice.", topic="secrets")
-            continue
-        idx = int(choice)
-        if 1 <= idx <= len(PROVIDER_OPTIONS):
-            return PROVIDER_OPTIONS[idx - 1]
-        console.warn("Choice out of range.", topic="secrets")
 
 
 def _load_answers(args: argparse.Namespace) -> ParsedAnswers:

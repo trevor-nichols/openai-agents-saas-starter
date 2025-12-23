@@ -6,21 +6,22 @@ import json
 
 import httpx
 
-from starter_cli.adapters.io.console import console
-
 from ...inputs import InputProvider
 from ..context import WizardContext
 
 
 def run(context: WizardContext, provider: InputProvider) -> None:
-    console.section(
+    context.console.section(
         "Integrations",
         "Connect operator tooling such as Slack for proactive notifications.",
     )
     _configure_slack_status(context, provider)
 
 
-def _configure_slack_status(context: WizardContext, provider: InputProvider) -> None:
+def _configure_slack_status(
+    context: WizardContext,
+    provider: InputProvider,
+) -> None:
     default_enabled = context.current_bool("ENABLE_SLACK_STATUS_NOTIFICATIONS", False)
     enabled = provider.prompt_bool(
         key="ENABLE_SLACK_STATUS_NOTIFICATIONS",
@@ -29,7 +30,7 @@ def _configure_slack_status(context: WizardContext, provider: InputProvider) -> 
     )
     context.set_backend_bool("ENABLE_SLACK_STATUS_NOTIFICATIONS", enabled)
     if not enabled:
-        console.info("Slack status notifications disabled.", topic="wizard")
+        context.console.info("Slack status notifications disabled.", topic="wizard")
         return
 
     token = provider.prompt_secret(
@@ -74,7 +75,7 @@ def _configure_slack_status(context: WizardContext, provider: InputProvider) -> 
 def _send_test_message(context: WizardContext, *, token: str, channels_input: str) -> None:
     channels = _parse_channels_input(channels_input)
     if not channels:
-        console.warn("No Slack channels provided; skipping test message.", topic="wizard")
+        context.console.warn("No Slack channels provided; skipping test message.", topic="wizard")
         return
     base_url = context.current("SLACK_API_BASE_URL") or "https://slack.com/api"
     timeout = float(context.current("SLACK_HTTP_TIMEOUT_SECONDS") or 5.0)
@@ -91,7 +92,7 @@ def _send_test_message(context: WizardContext, *, token: str, channels_input: st
             response = client.post("/chat.postMessage", headers=headers, json=payload)
         data = response.json()
     except Exception as exc:  # pragma: no cover - network failures
-        console.error(f"Slack test failed: {exc}", topic="wizard")
+        context.console.error(f"Slack test failed: {exc}", topic="wizard")
         context.record_verification(
             provider="slack",
             identifier=channels[0],
@@ -100,7 +101,7 @@ def _send_test_message(context: WizardContext, *, token: str, channels_input: st
         )
         return
     if response.status_code == 200 and data.get("ok"):
-        console.success("Slack test message delivered.", topic="wizard")
+        context.console.success("Slack test message delivered.", topic="wizard")
         context.record_verification(
             provider="slack",
             identifier=channels[0],
@@ -109,7 +110,7 @@ def _send_test_message(context: WizardContext, *, token: str, channels_input: st
         )
         return
     detail = str(data.get("error") or response.text)
-    console.warn(f"Slack test returned {detail}.", topic="wizard")
+    context.console.warn(f"Slack test returned {detail}.", topic="wizard")
     context.record_verification(
         provider="slack",
         identifier=channels[0],

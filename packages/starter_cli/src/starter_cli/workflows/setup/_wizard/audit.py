@@ -4,7 +4,6 @@ import json
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core.inventory import WIZARD_PROMPTED_ENV_VARS
 from starter_cli.telemetry import artifacts_to_dict
 
@@ -52,32 +51,32 @@ def render_sections(
         return text
     if output_format == "checklist":
         text = _build_checklist_markdown(context, sections)
-        console.stream.write(text + "\n")
+        context.console.stream.write(text + "\n")
         return text
 
-    console.info(f"Profile: {context.profile}")
+    context.console.info(f"Profile: {context.profile}")
     if context.cli_ctx.loaded_env_files:
-        console.info(
+        context.console.info(
             "Loaded env files: "
             + ", ".join(str(path) for path in context.cli_ctx.loaded_env_files),
             topic="env",
         )
     else:
-        console.warn("No env files loaded. Provide values via --env-file or environment.")
+        context.console.warn("No env files loaded. Provide values via --env-file or environment.")
 
     for section in sections:
-        console.newline()
-        console.info(f"{section.milestone} — {section.focus}")
+        context.console.newline()
+        context.console.info(f"{section.milestone} — {section.focus}")
         for check in section.checks:
             detail = f" ({check.detail})" if check.detail else ""
-            console.info(f"- {check.name}: {check.status}{detail}")
+            context.console.info(f"- {check.name}: {check.status}{detail}")
     return None
 
 
 def render_schema_summary(context: WizardContext) -> None:
     settings = context.cli_ctx.optional_settings()
     if not settings:
-        console.warn(
+        context.console.warn(
             "Unable to load settings for inventory summary; run `starter_cli config dump-schema` "
             "manually.",
             topic="wizard",
@@ -88,14 +87,14 @@ def render_schema_summary(context: WizardContext) -> None:
     wizard_coverage = len(aliases & WIZARD_PROMPTED_ENV_VARS)
     total = len(aliases)
     remaining = sorted(aliases - WIZARD_PROMPTED_ENV_VARS)
-    console.info(
+    context.console.info(
         f"Wizard prompts now cover {wizard_coverage}/{total} backend env vars.",
         topic="wizard",
     )
     if remaining:
         preview = ", ".join(remaining[:5])
         suffix = " …" if len(remaining) > 5 else ""
-        console.info(
+        context.console.info(
             "Review remaining variables via `starter_cli config dump-schema` or "
             f"docs/trackers/CLI_ENV_INVENTORY.md (next: {preview}{suffix}).",
             topic="wizard",
@@ -133,7 +132,7 @@ def write_summary(context: WizardContext, sections: list[SectionResult]) -> None
     }
     context.summary_path.parent.mkdir(parents=True, exist_ok=True)
     context.summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
-    console.success(f"Summary written to {context.summary_path}", topic="wizard")
+    context.console.success(f"Summary written to {context.summary_path}", topic="wizard")
 
 
 def write_markdown_summary(context: WizardContext, sections: list[SectionResult]) -> None:
@@ -197,7 +196,7 @@ def write_markdown_summary(context: WizardContext, sections: list[SectionResult]
     for section in sections:
         lines.append(f"| {section.milestone} | {section.overall_status} | {section.focus} |")
     path.write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
-    console.success(f"Markdown summary written to {path}", topic="wizard")
+    context.console.success(f"Markdown summary written to {path}", topic="wizard")
 
 
 def _secrets_section(profile: str, settings, env_snapshot: dict[str, str]) -> SectionResult:

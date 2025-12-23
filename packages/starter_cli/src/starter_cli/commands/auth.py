@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
 from typing import TYPE_CHECKING, Any, TypeAlias
 
 import httpx
@@ -14,7 +13,6 @@ from starter_contracts.keys import (
     save_keyset,
 )
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext, CLIError, build_context
 from starter_cli.core.context import should_skip_env_loading
 from starter_cli.services.security import build_vault_headers
@@ -124,11 +122,12 @@ def handle_issue_service_account(
     ctx: CLIContext | None = None,
 ) -> int:
     ctx = _ensure_context(ctx)
+    console = ctx.console
     payload = _build_issue_payload(args)
     try:
         response = _post_issue_service_account(base_url=args.base_url, payload=payload, ctx=ctx)
     except CLIError as exc:
-        print(f"error: {exc}", file=sys.stderr)
+        console.error(str(exc), topic="auth")
         return 1
     output = _render_issue_output(response, args.output)
     print(output)
@@ -137,6 +136,7 @@ def handle_issue_service_account(
 
 def handle_keys_rotate(args: argparse.Namespace, ctx: CLIContext | None = None) -> int:
     ctx = _ensure_context(ctx)
+    console = ctx.console
     settings = ctx.require_settings()
     configure_key_storage_secret_manager(ctx)
 
@@ -220,7 +220,11 @@ def _post_issue_service_account(
         raise CLIError(f"Issuance failed ({response.status_code}): {detail}")
 
     document = response.json()
-    console.success("Service-account token issued.", topic="auth", stream=console.err_stream)
+    ctx.console.success(
+        "Service-account token issued.",
+        topic="auth",
+        stream=ctx.console.err_stream,
+    )
     return document
 
 

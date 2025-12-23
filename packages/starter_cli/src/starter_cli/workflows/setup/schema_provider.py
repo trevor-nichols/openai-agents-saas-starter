@@ -6,8 +6,6 @@ import os
 from collections.abc import Mapping
 from typing import Protocol, runtime_checkable
 
-from starter_cli.adapters.io.console import console
-
 from .schema import SchemaDecision, ValueLookup, WizardSchema
 from .state import WizardStateStore
 
@@ -147,7 +145,7 @@ class SchemaAwareInputProvider:
 
     def _record_skip(self, key: str, reason: str) -> None:
         normalized = _normalize(key)
-        console.info(f"Skipping {key}: {reason}", topic="wizard")
+        self._context.console.info(f"Skipping {key}: {reason}", topic="wizard")
         self._state.record_skip(normalized, reason)
 
     def _fallback_string(

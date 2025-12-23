@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 
 from dotenv import dotenv_values
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIError
 
 from .automation import AutomationPhase, AutomationStatus
@@ -204,18 +203,24 @@ def seed_dev_user(context: WizardContext, config: DevUserConfig) -> str:
 
 def _persist_and_announce(context: WizardContext, config: DevUserConfig, status: str) -> None:
     # Console output (Rich) and plain stdout for shells that suppress styling.
-    console.section("Dev User Ready", "Use these credentials to sign in for the demo.")
-    console.info(f"Email: {config.email}", topic="dev-user")
-    console.info(
+    context.console.section("Dev User Ready", "Use these credentials to sign in for the demo.")
+    context.console.info(f"Email: {config.email}", topic="dev-user")
+    context.console.info(
         f"Tenant: {config.tenant_slug} ({config.tenant_name})",
         topic="dev-user",
     )
-    console.info(f"Role: {config.role}", topic="dev-user")
+    context.console.info(f"Role: {config.role}", topic="dev-user")
 
     if status in {"created", "rotated"}:
-        console.warn(f"Password (copy now, not stored): {config.password}", topic="dev-user")
+        context.console.warn(
+            f"Password (copy now, not stored): {config.password}",
+            topic="dev-user",
+        )
     else:
-        console.info("Password unchanged from previous run (not recoverable).", topic="dev-user")
+        context.console.info(
+            "Password unchanged from previous run (not recoverable).",
+            topic="dev-user",
+        )
 
     # Plain prints for minimal environments (and for the user transcript).
     print(
@@ -243,7 +248,7 @@ def _persist_and_announce(context: WizardContext, config: DevUserConfig, status:
         payload["password"] = config.password
 
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    console.info(
+    context.console.info(
         f"Dev user credentials saved to {path.relative_to(context.cli_ctx.project_root)}",
         topic="dev-user",
     )
@@ -254,7 +259,7 @@ def run_dev_user_automation(context: WizardContext) -> None:
     if not record.enabled:
         return
     if record.status == AutomationStatus.BLOCKED:
-        console.warn(record.note or "Dev user automation blocked.", topic="dev-user")
+        context.console.warn(record.note or "Dev user automation blocked.", topic="dev-user")
         context.refresh_automation_ui(AutomationPhase.DEV_USER)
         return
 
@@ -270,7 +275,7 @@ def run_dev_user_automation(context: WizardContext) -> None:
             "Dev user seeding waits for migrations to complete.",
         )
         context.refresh_automation_ui(AutomationPhase.DEV_USER)
-        console.warn(
+        context.console.warn(
             "Dev user automation blocked until migrations succeed.",
             topic="dev-user",
         )
@@ -295,7 +300,7 @@ def run_dev_user_automation(context: WizardContext) -> None:
             f"Dev user seeding failed: {exc}",
         )
         context.refresh_automation_ui(AutomationPhase.DEV_USER)
-        console.error(f"Dev user seeding failed: {exc}", topic="dev-user")
+        context.console.error(f"Dev user seeding failed: {exc}", topic="dev-user")
         return
 
     note = {

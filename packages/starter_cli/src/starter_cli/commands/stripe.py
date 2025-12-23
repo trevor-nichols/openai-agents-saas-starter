@@ -10,7 +10,7 @@ import subprocess
 import time
 import uuid
 from collections.abc import Awaitable, Callable, Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from types import FrameType
@@ -29,10 +29,10 @@ from starter_cli.adapters.env import (
     build_env_scope,
     expand_env_placeholders,
 )
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext, CLIError
+from starter_cli.ports.console import ConsolePort
+from starter_cli.services.stripe_status import REQUIRED_ENV_KEYS
 
-REQUIRED_ENV_KEYS = ("STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_PRODUCT_PRICE_MAP")
 AGGREGATED_KEYS = (*REQUIRED_ENV_KEYS, "DATABASE_URL")
 DEFAULT_WEBHOOK_FORWARD_URL = "http://localhost:8000/api/v1/webhooks/stripe"
 WHSEC_PATTERN = re.compile(r"whsec_[A-Za-z0-9]+")
@@ -54,25 +54,26 @@ PLAN_METADATA_KEY = "starter_cli_plan_code"
 class StripeCLIBase:
     """Shared Stripe CLI helpers used across flows."""
 
+    console: ConsolePort
     skip_stripe_cli: bool
     non_interactive: bool
 
     def _ensure_stripe_cli(self) -> None:
         if self.skip_stripe_cli:
             return
-        console.info("Checking Stripe CLI installation…", topic="stripe")
+        self.console.info("Checking Stripe CLI installation…", topic="stripe")
         try:
             result = self._run_command(["stripe", "--version"], capture_output=True)
         except (subprocess.CalledProcessError, FileNotFoundError) as exc:
             raise CLIError(
                 "Stripe CLI not found. Install from https://docs.stripe.com/stripe-cli."
             ) from exc
-        console.success(result.stdout.strip(), topic="stripe")
+        self.console.success(result.stdout.strip(), topic="stripe")
         try:
             self._run_command(["stripe", "config", "--list"], capture_output=True)
-            console.success("Stripe CLI authentication verified.", topic="stripe")
+            self.console.success("Stripe CLI authentication verified.", topic="stripe")
         except subprocess.CalledProcessError as exc:
-            console.warn("Stripe CLI is not authenticated.", topic="stripe")
+            self.console.warn("Stripe CLI is not authenticated.", topic="stripe")
             if not self.non_interactive and self._prompt_yes_no(
                 "Open the Stripe CLI auth page?", default=False
             ):
@@ -82,7 +83,7 @@ class StripeCLIBase:
             ):
                 self._run_interactive(["stripe", "login", "--interactive"])
                 self._run_command(["stripe", "config", "--list"], capture_output=True)
-                console.success("Stripe CLI authentication confirmed.", topic="stripe")
+                self.console.success("Stripe CLI authentication confirmed.", topic="stripe")
             else:
                 raise CLIError(
                     "Cannot continue without Stripe CLI authentication."
@@ -91,7 +92,7 @@ class StripeCLIBase:
     def _capture_webhook_secret(self, forward_url: str, *, timeout_sec: float = 15.0) -> str:
         if not self.skip_stripe_cli:
             self._ensure_stripe_cli()
-        console.info(
+        self.console.info(
             f"Requesting webhook secret via Stripe CLI (forward → {forward_url})",
             topic="stripe",
         )
@@ -142,11 +143,10 @@ class StripeCLIBase:
                 "Ensure `stripe login` has completed and try again." + detail
             )
 
-        console.success("Captured webhook signing secret via Stripe CLI.", topic="stripe")
+        self.console.success("Captured webhook signing secret via Stripe CLI.", topic="stripe")
         return secret
 
-    @staticmethod
-    def _prompt_yes_no(question: str, *, default: bool = True) -> bool:
+    def _prompt_yes_no(self, question: str, *, default: bool = True) -> bool:
         hint = "Y/n" if default else "y/N"
         while True:
             answer = input(f"{question} ({hint}) ").strip().lower()
@@ -156,7 +156,7 @@ class StripeCLIBase:
                 return True
             if answer in {"n", "no"}:
                 return False
-            console.warn("Please answer yes or no.")
+            self.console.warn("Please answer yes or no.")
 
     @staticmethod
     def _prompt_input(question: str) -> str:
@@ -173,9 +173,8 @@ class StripeCLIBase:
             capture_output=capture_output,
         )
 
-    @staticmethod
-    def _run_interactive(cmd: list[str]) -> None:
-        console.info(" ".join(cmd), topic="exec")
+    def _run_interactive(self, cmd: list[str]) -> None:
+        self.console.info(" ".join(cmd), topic="exec")
         subprocess.run(cmd, check=True)
 
     @staticmethod
@@ -186,8 +185,7 @@ class StripeCLIBase:
             return "*" * len(value)
         return f"{value[:4]}…{value[-4:]}"
 
-    @staticmethod
-    def _open_url(url: str) -> None:
+    def _open_url(self, url: str) -> None:
         import sys
 
         if sys.platform.startswith("darwin"):
@@ -198,9 +196,9 @@ class StripeCLIBase:
             opener = "xdg-open"
         try:
             subprocess.Popen([opener, url])
-            console.info(f"Opened {url} in your browser.")
+            self.console.info(f"Opened {url} in your browser.")
         except OSError:
-            console.warn(f"Unable to open {url}. Please visit it manually.")
+            self.console.warn(f"Unable to open {url}. Please visit it manually.")
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -406,6 +404,7 @@ def handle_webhook_secret(args: argparse.Namespace, ctx: CLIContext) -> int:
 @dataclass(slots=True)
 class StripeSetupFlow(StripeCLIBase):
     ctx: CLIContext
+    console: ConsolePort = field(init=False)
     currency: str
     trial_days: int
     non_interactive: bool
@@ -416,6 +415,9 @@ class StripeSetupFlow(StripeCLIBase):
     plan_overrides: Iterable[str]
     skip_postgres: bool
     skip_stripe_cli: bool
+
+    def __post_init__(self) -> None:
+        self.console = self.ctx.console
 
     def run(self) -> None:
         self._require_stripe_dependency()
@@ -438,11 +440,11 @@ class StripeSetupFlow(StripeCLIBase):
         webhook_secret = self._collect_webhook_secret(aggregated.get("STRIPE_WEBHOOK_SECRET"))
 
         plan_amounts = self._resolve_plan_amounts()
-        console.info("Provisioning Stripe products/prices…", topic="stripe")
+        self.console.info("Provisioning Stripe products/prices…", topic="stripe")
         price_map = self._provision_plans(secret_key, plan_amounts)
         self._update_env(env_files[0], price_map, secret_key, webhook_secret)
 
-        console.success(
+        self.console.success(
             "Stripe configuration captured in apps/api-service/.env.local",
             topic="stripe",
         )
@@ -455,7 +457,7 @@ class StripeSetupFlow(StripeCLIBase):
             },
             indent=2,
         )
-        console.info("Summary:", topic="stripe")
+        self.console.info("Summary:", topic="stripe")
         print(summary)
 
     def _require_stripe_dependency(self) -> None:
@@ -476,19 +478,19 @@ class StripeSetupFlow(StripeCLIBase):
         return (env_local, env_fallback, env_compose)
 
     def _ensure_stripe_cli(self) -> None:
-        console.info("Checking Stripe CLI installation…", topic="stripe")
+        self.console.info("Checking Stripe CLI installation…", topic="stripe")
         try:
             result = self._run_command(["stripe", "--version"], capture_output=True)
         except (subprocess.CalledProcessError, FileNotFoundError) as exc:
             raise CLIError(
                 "Stripe CLI not found. Install from https://docs.stripe.com/stripe-cli."
             ) from exc
-        console.success(result.stdout.strip(), topic="stripe")
+        self.console.success(result.stdout.strip(), topic="stripe")
         try:
             self._run_command(["stripe", "config", "--list"], capture_output=True)
-            console.success("Stripe CLI authentication verified.", topic="stripe")
+            self.console.success("Stripe CLI authentication verified.", topic="stripe")
         except subprocess.CalledProcessError as exc:
-            console.warn("Stripe CLI is not authenticated.", topic="stripe")
+            self.console.warn("Stripe CLI is not authenticated.", topic="stripe")
             if not self.non_interactive and self._prompt_yes_no(
                 "Open the Stripe CLI auth page?", default=False
             ):
@@ -498,7 +500,7 @@ class StripeSetupFlow(StripeCLIBase):
             ):
                 self._run_interactive(["stripe", "login", "--interactive"])
                 self._run_command(["stripe", "config", "--list"], capture_output=True)
-                console.success("Stripe CLI authentication confirmed.", topic="stripe")
+                self.console.success("Stripe CLI authentication confirmed.", topic="stripe")
             else:
                 raise CLIError(
                     "Cannot continue without Stripe CLI authentication."
@@ -516,12 +518,12 @@ class StripeSetupFlow(StripeCLIBase):
         )
         if self.non_interactive:
             return
-        console.info("Postgres helper", topic="postgres")
+        self.console.info("Postgres helper", topic="postgres")
         if self._prompt_yes_no("Start or refresh the local Postgres stack via `just dev-up`?"):
             try:
                 self._run_interactive(["just", "dev-up"])
             except (FileNotFoundError, subprocess.CalledProcessError) as exc:
-                console.warn(
+                self.console.warn(
                     f"`just dev-up` failed ({exc}). Fix Postgres manually.",
                     topic="postgres",
                 )
@@ -535,9 +537,12 @@ class StripeSetupFlow(StripeCLIBase):
             )
             try:
                 self._run_command(["psql", normalized, "-c", "\\q"], check=True)
-                console.success("psql connectivity verified.", topic="postgres")
+                self.console.success("psql connectivity verified.", topic="postgres")
             except (FileNotFoundError, subprocess.CalledProcessError):
-                console.warn("psql test failed. Ensure Postgres is reachable.", topic="postgres")
+                self.console.warn(
+                    "psql test failed. Ensure Postgres is reachable.",
+                    topic="postgres",
+                )
 
     def _collect_webhook_secret(self, existing: str | None) -> str:
         if self.webhook_secret:
@@ -574,11 +579,11 @@ class StripeSetupFlow(StripeCLIBase):
             suffix = f" (leave blank to keep {self._mask(existing)})" if existing else ""
             value = input(f"{label}:{suffix} ").strip()
             if not value and existing:
-                console.info("Keeping existing value.", topic="stripe")
+                self.console.info("Keeping existing value.", topic="stripe")
                 return existing
             if value:
                 return value
-            console.warn("Value cannot be empty.", topic="stripe")
+            self.console.warn("Value cannot be empty.", topic="stripe")
 
     def _resolve_plan_amounts(self) -> dict[str, int]:
         overrides = self._parse_plan_overrides()
@@ -622,7 +627,7 @@ class StripeSetupFlow(StripeCLIBase):
             try:
                 cents = self._parse_amount_cents(raw)
             except CLIError as exc:
-                console.warn(str(exc), topic="stripe")
+                self.console.warn(str(exc), topic="stripe")
                 continue
             return cents
 
@@ -645,7 +650,7 @@ class StripeSetupFlow(StripeCLIBase):
             product: Any = self._ensure_product(code=code, name=plan["name"])
             price: Any = self._ensure_price(product.id, code, amount)
             price_map[code] = price.id
-            console.success(
+            self.console.success(
                 f"Configured {plan['name']} "
                 f"({self.currency.upper()} {amount / 100:.2f}) → {price.id}",
                 topic="stripe",
@@ -702,7 +707,7 @@ class StripeSetupFlow(StripeCLIBase):
     def _update_frontend_env(self) -> None:
         frontend_path = self.ctx.project_root / "apps" / "web-app" / ".env.local"
         if not frontend_path.parent.exists():
-            console.warn(
+            self.console.warn(
                 "Frontend directory missing; skipped web-app/.env.local.",
                 topic="stripe",
             )
@@ -711,20 +716,23 @@ class StripeSetupFlow(StripeCLIBase):
         env_frontend = EnvFile(frontend_path)
         env_frontend.set("NEXT_PUBLIC_ENABLE_BILLING", "true")
         env_frontend.save()
-        console.success("Updated web-app/.env.local", topic="stripe")
+        self.console.success("Updated web-app/.env.local", topic="stripe")
 
-    @staticmethod
-    def _graceful_exit(signum: int, _frame: FrameType | None) -> None:
-        console.warn(f"Received signal {signum}. Exiting.")
+    def _graceful_exit(self, signum: int, _frame: FrameType | None) -> None:
+        self.console.warn(f"Received signal {signum}. Exiting.")
         raise SystemExit(1)
 
 @dataclass(slots=True)
 class WebhookSecretFlow(StripeCLIBase):
     ctx: CLIContext
+    console: ConsolePort = field(init=False)
     forward_url: str
     print_only: bool
     skip_stripe_cli: bool
     non_interactive: bool = False
+
+    def __post_init__(self) -> None:
+        self.console = self.ctx.console
 
     def run(self) -> None:
         if not self.skip_stripe_cli:
@@ -732,7 +740,7 @@ class WebhookSecretFlow(StripeCLIBase):
         secret = self._capture_webhook_secret(self.forward_url)
 
         if self.print_only:
-            console.info("Webhook signing secret (not saved):", topic="stripe")
+            self.console.info("Webhook signing secret (not saved):", topic="stripe")
             print(secret)
             return
 
@@ -740,7 +748,7 @@ class WebhookSecretFlow(StripeCLIBase):
         env_local.set("STRIPE_WEBHOOK_SECRET", secret)
         env_local.save()
         os.environ["STRIPE_WEBHOOK_SECRET"] = secret
-        console.success(
+        self.console.success(
             f"Saved STRIPE_WEBHOOK_SECRET={self._mask(secret)} to apps/api-service/.env.local",
             topic="stripe",
         )
@@ -749,18 +757,21 @@ class WebhookSecretFlow(StripeCLIBase):
 # --- Dispatch inspection/replay helpers ---
 
 
-def handle_dispatch_list(args: argparse.Namespace, _ctx: CLIContext) -> int:
+def handle_dispatch_list(args: argparse.Namespace, ctx: CLIContext) -> int:
+    console = ctx.console
     return _run_dispatch_task(
         lambda: _list_dispatches(
             handler=args.handler,
             status=args.status,
             limit=args.limit,
             page=args.page,
+            console=console,
         )
     )
 
 
-def handle_dispatch_replay(args: argparse.Namespace, _ctx: CLIContext) -> int:
+def handle_dispatch_replay(args: argparse.Namespace, ctx: CLIContext) -> int:
+    console = ctx.console
     return _run_dispatch_task(
         lambda: _replay_dispatches(
             dispatch_ids=args.dispatch_id,
@@ -769,11 +780,13 @@ def handle_dispatch_replay(args: argparse.Namespace, _ctx: CLIContext) -> int:
             limit=args.limit,
             handler=args.handler,
             assume_yes=args.yes,
+            console=console,
         )
     )
 
 
 def handle_dispatch_validate_fixtures(args: argparse.Namespace, ctx: CLIContext) -> int:
+    console = ctx.console
     directory = Path(args.path)
     if not directory.is_absolute():
         directory = (ctx.project_root / directory).resolve()
@@ -862,6 +875,7 @@ async def _list_dispatches(
     status: str,
     limit: int,
     page: int,
+    console: ConsolePort,
 ) -> int:
     repo = await _init_dispatch_repo()
     status_filter = None if status == "all" else status
@@ -894,6 +908,7 @@ async def _replay_dispatches(
     limit: int,
     handler: str,
     assume_yes: bool,
+    console: ConsolePort,
 ) -> int:
     repo = await _init_dispatch_repo()
     return await replay_dispatches_with_repo(
@@ -904,6 +919,7 @@ async def _replay_dispatches(
         limit=limit,
         handler=handler,
         assume_yes=assume_yes,
+        console=console,
     )
 
 
@@ -916,6 +932,7 @@ async def replay_dispatches_with_repo(
     limit: int,
     handler: str,
     assume_yes: bool,
+    console: ConsolePort,
     dispatcher: Any | None = None,
     billing: Any | None = None,
     confirm: Callable[[list[uuid.UUID]], bool] | None = None,
@@ -957,7 +974,7 @@ async def replay_dispatches_with_repo(
         console.info("No dispatches to replay.", topic="stripe")
         return 0
 
-    confirmation = confirm or _confirm_replay
+    confirmation = confirm or (lambda ids: _confirm_replay(console, ids))
     if not assume_yes and not confirmation(targets):
         console.info("Replay aborted by user.", topic="stripe")
         return 0
@@ -975,7 +992,7 @@ async def replay_dispatches_with_repo(
     return 0
 
 
-def _confirm_replay(targets: list[uuid.UUID]) -> bool:
+def _confirm_replay(console: ConsolePort, targets: list[uuid.UUID]) -> bool:
     preview = "\n".join(str(t) for t in targets[:5])
     if len(targets) > 5:
         preview += f"\n...and {len(targets) - 5} more"

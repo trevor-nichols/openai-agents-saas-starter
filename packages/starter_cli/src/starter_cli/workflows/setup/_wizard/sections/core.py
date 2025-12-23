@@ -4,7 +4,6 @@ import json
 
 from starter_contracts.secrets.models import SecretsProviderLiteral
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIError
 
 from ...inputs import InputProvider, is_headless_provider
@@ -20,7 +19,7 @@ _KEY_STORAGE_PROVIDER_CHOICES = {literal.value for literal in SecretsProviderLit
 def run(context: WizardContext, provider: InputProvider) -> None:
     """Collect deployment metadata shared across all milestones."""
 
-    console.section(
+    context.console.section(
         "Core & Metadata",
         "Establish baseline URLs, auth defaults, and service metadata for every profile.",
     )
@@ -179,12 +178,13 @@ def _configure_authentication(context: WizardContext, provider: InputProvider) -
 
     if context.profile in {"staging", "production"}:
         backend_choice = "secret-manager"
-        console.info(
+        context.console.info(
             "Key storage backend is forced to secret-manager for staging/production.",
             topic="wizard",
         )
     else:
         backend_choice = _prompt_choice(
+            context,
             provider,
             key="AUTH_KEY_STORAGE_BACKEND",
             prompt="Key storage backend (file or secret-manager)",
@@ -215,6 +215,7 @@ def _configure_authentication(context: WizardContext, provider: InputProvider) -
             )
         )
         provider_choice = _prompt_choice(
+            context,
             provider,
             key="AUTH_KEY_STORAGE_PROVIDER",
             prompt="Key storage provider (vault/infisical/aws/azure)",
@@ -235,7 +236,7 @@ def _configure_authentication(context: WizardContext, provider: InputProvider) -
         if secret_required and not secret_name:
             if _is_headless(provider):
                 raise CLIError("AUTH_KEY_SECRET_NAME is required when using secret-manager.")
-            console.warn(
+            context.console.warn(
                 "AUTH_KEY_SECRET_NAME is required when using secret-manager.",
                 topic="wizard",
             )
@@ -322,7 +323,7 @@ def _prompt_nonempty_string(
             return value
         if _is_headless(provider):
             raise CLIError(f"{key} cannot be blank.")
-        console.warn(f"{key} cannot be blank.", topic="wizard")
+        context.console.warn(f"{key} cannot be blank.", topic="wizard")
 
 
 def _normalize_audience_value(raw_value: str) -> str:
@@ -345,6 +346,7 @@ def _normalize_audience_value(raw_value: str) -> str:
 
 
 def _prompt_choice(
+    context: WizardContext,
     provider: InputProvider,
     *,
     key: str,
@@ -364,7 +366,7 @@ def _prompt_choice(
             return value
         if _is_headless(provider):
             raise CLIError(f"{key} must be one of {sorted(choices_lower)}.")
-        console.warn(f"{key} must be one of {sorted(choices_lower)}.", topic="wizard")
+        context.console.warn(f"{key} must be one of {sorted(choices_lower)}.", topic="wizard")
 
 
 def _prompt_positive_int(
@@ -387,12 +389,12 @@ def _prompt_positive_int(
         except ValueError:
             if _is_headless(provider):
                 raise CLIError(f"{key} must be an integer.") from None
-            console.warn(f"{key} must be an integer.", topic="wizard")
+            context.console.warn(f"{key} must be an integer.", topic="wizard")
             continue
         if value <= 0:
             if _is_headless(provider):
                 raise CLIError(f"{key} must be greater than zero.")
-            console.warn(f"{key} must be greater than zero.", topic="wizard")
+            context.console.warn(f"{key} must be greater than zero.", topic="wizard")
             continue
         context.set_backend(key, str(value))
         return value
@@ -418,12 +420,12 @@ def _prompt_positive_float(
         except ValueError:
             if _is_headless(provider):
                 raise CLIError(f"{key} must be a number.") from None
-            console.warn(f"{key} must be a number.", topic="wizard")
+            context.console.warn(f"{key} must be a number.", topic="wizard")
             continue
         if value <= 0:
             if _is_headless(provider):
                 raise CLIError(f"{key} must be greater than zero.")
-            console.warn(f"{key} must be greater than zero.", topic="wizard")
+            context.console.warn(f"{key} must be greater than zero.", topic="wizard")
             continue
         context.set_backend(key, str(value))
         return value

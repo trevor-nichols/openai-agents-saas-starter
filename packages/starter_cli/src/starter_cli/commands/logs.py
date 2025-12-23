@@ -12,9 +12,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
-from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext
 from starter_cli.core.constants import DEFAULT_COMPOSE_FILE
+from starter_cli.ports.console import ConsolePort
 
 DEFAULT_LINES = 200
 SERVICE_CHOICES = ("all", "api", "frontend", "collector", "postgres", "redis")
@@ -73,10 +73,19 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         "--lines",
         "-n",
         type=int,
-        default=DEFAULT_LINES,
-        help=f"Number of recent lines to show (default {DEFAULT_LINES}).",
+        default=None,
+        help=(
+            "Number of recent lines to show. When set, the command exits after printing "
+            "the lines unless --follow is also supplied."
+        ),
     )
-    tail_parser.add_argument(
+    follow_group = tail_parser.add_mutually_exclusive_group()
+    follow_group.add_argument(
+        "--follow",
+        action="store_true",
+        help="Always follow log updates (even when --lines is provided).",
+    )
+    follow_group.add_argument(
         "--no-follow",
         action="store_true",
         help="Do not follow; exit after printing the last buffered lines.",
@@ -90,11 +99,17 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
 
 
 def _handle_tail(args: argparse.Namespace, ctx: CLIContext) -> int:
-    follow = not args.no_follow
+    console = ctx.console
+    lines, follow = _resolve_tail_settings(args)
     services = args.service or ["all"]
 
     targets, notes = _plan_targets(
-        ctx, services, lines=max(args.lines, 1), follow=follow, errors_only=args.errors
+        ctx,
+        services,
+        lines=lines,
+        follow=follow,
+        errors_only=args.errors,
+        console=console,
     )
 
     for level, message in notes:
@@ -113,7 +128,7 @@ def _handle_tail(args: argparse.Namespace, ctx: CLIContext) -> int:
         for target in targets:
             thread = threading.Thread(
                 target=_stream_target,
-                args=(target, errors),
+                args=(console, target, errors),
                 daemon=True,
             )
             thread.start()
@@ -132,6 +147,7 @@ def _handle_tail(args: argparse.Namespace, ctx: CLIContext) -> int:
 
 
 def _handle_archive(args: argparse.Namespace, ctx: CLIContext) -> int:
+    console = ctx.console
     base_root_raw = (args.log_root or Path(os.getenv("LOG_ROOT", DEFAULT_LOG_ROOT))).expanduser()
     base_root = (
         base_root_raw
@@ -176,6 +192,20 @@ def _handle_archive(args: argparse.Namespace, ctx: CLIContext) -> int:
     return 0
 
 
+def _resolve_tail_settings(args: argparse.Namespace) -> tuple[int, bool]:
+    lines_raw = args.lines
+    lines = DEFAULT_LINES if lines_raw is None else max(lines_raw, 1)
+    explicit_lines = lines_raw is not None
+
+    if getattr(args, "follow", False):
+        follow = True
+    elif args.no_follow:
+        follow = False
+    else:
+        follow = not explicit_lines
+    return lines, follow
+
+
 def _plan_targets(
     ctx: CLIContext,
     requested: Iterable[str],
@@ -183,6 +213,7 @@ def _plan_targets(
     lines: int,
     follow: bool,
     errors_only: bool,
+    console: ConsolePort,
 ) -> tuple[list[TailTarget], list[tuple[str, str]]]:
     settings = ctx.optional_settings()
     env = os.environ
@@ -213,7 +244,11 @@ def _plan_targets(
     date_root = base_root / today_dir
     resolved_root = current_root if current_root and current_root.exists() else date_root
 
-    normalized = _normalize_services(requested, enable_collector=env_bool("ENABLE_OTEL_COLLECTOR"))
+    normalized = _normalize_services(
+        requested,
+        enable_collector=env_bool("ENABLE_OTEL_COLLECTOR"),
+        console=console,
+    )
 
     compose_cmd = _detect_compose_command()
     compose_file = DEFAULT_COMPOSE_FILE
@@ -257,9 +292,10 @@ def _plan_targets(
         )
 
         if log_path:
-            cmd = ["tail", "-n", str(lines), str(log_path)]
+            cmd = ["tail"]
             if follow:
-                cmd.insert(2, "-f")
+                cmd.append("-f")
+            cmd.extend(["-n", str(lines), str(log_path)])
             targets.append(TailTarget(name="api", command=cmd, cwd=ctx.project_root))
         else:
             if sink_has_file or resolved_sink == "file":
@@ -341,7 +377,12 @@ def _resolve_api_log_path(
     return None
 
 
-def _normalize_services(requested: Iterable[str], *, enable_collector: bool) -> set[str]:
+def _normalize_services(
+    requested: Iterable[str],
+    *,
+    enable_collector: bool,
+    console: ConsolePort,
+) -> set[str]:
     requested_set = {svc.lower() for svc in requested}
     if "all" in requested_set:
         base = {"api", "frontend", "postgres", "redis"}
@@ -355,7 +396,7 @@ def _normalize_services(requested: Iterable[str], *, enable_collector: bool) -> 
     return normalized
 
 
-def _stream_target(target: TailTarget, errors: list[str]) -> None:
+def _stream_target(console: ConsolePort, target: TailTarget, errors: list[str]) -> None:
     try:
         proc = subprocess.Popen(
             target.command,
