@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from datetime import timedelta
 
 from starter_cli.core import CLIContext
-from starter_cli.services.hub import HubService
+from starter_cli.workflows.home.hub import HubService
 
 from .detection import STALE_AFTER_DAYS
 from .models import SetupItem

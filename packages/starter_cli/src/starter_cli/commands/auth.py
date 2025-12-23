@@ -7,10 +7,15 @@ import sys
 from typing import TYPE_CHECKING, Any, TypeAlias
 
 import httpx
+from starter_contracts.keys import KeyStorageError, load_keyset
 
 from starter_cli.core import CLIContext, CLIError, build_context
 from starter_cli.core.context import should_skip_env_loading
-from starter_cli.services.security import build_vault_headers, rotate_signing_keys
+from starter_cli.services.security import (
+    build_vault_headers,
+    configure_key_storage_secret_manager,
+    rotate_signing_keys,
+)
 
 # `_SubParsersAction` is not parametrized at runtime on Python 3.11, so provide a
 # typed alias only when running type checkers.

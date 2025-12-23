@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from starter_cli.core.context import build_context
 from starter_cli.core.status_models import ProbeResult, ProbeState, ServiceStatus
-from starter_cli.services.hub import HubService
-from starter_cli.services import hub as hub_service
+from starter_cli.workflows.home.hub import HubService
+from starter_cli.workflows.home import hub as hub_service
 
 
 def test_hub_service_load_home(monkeypatch):

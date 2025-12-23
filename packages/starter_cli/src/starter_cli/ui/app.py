@@ -8,7 +8,7 @@ from textual.containers import Horizontal, Vertical
 from textual.widgets import ContentSwitcher, Footer, Header, ListView, Static
 
 from starter_cli.core import CLIContext
-from starter_cli.services.hub import HubService
+from starter_cli.workflows.home.hub import HubService
 
 from .palette import CommandPaletteScreen, CommandSpec
 from .panes import build_panes

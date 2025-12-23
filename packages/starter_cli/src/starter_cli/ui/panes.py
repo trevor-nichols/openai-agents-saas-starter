@@ -14,10 +14,10 @@ from textual.widgets import Button, DataTable, Static
 
 from starter_cli.core import CLIContext
 from starter_cli.core.status_models import ProbeResult, ServiceStatus
-from starter_cli.services.hub import HubService
 from starter_cli.services.infra import DependencyStatus
 from starter_cli.services.ops_models import LogEntry, UsageSummary, mask_value
 from starter_cli.services.stripe_status import REQUIRED_ENV_KEYS, StripeStatus
+from starter_cli.workflows.home.hub import HubService
 from starter_cli.workflows.setup_menu.detection import STALE_AFTER_DAYS
 from starter_cli.workflows.setup_menu.models import SetupAction, SetupItem
 

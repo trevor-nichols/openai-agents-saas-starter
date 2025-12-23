@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 
 from starter_cli.core import CLIContext
-from starter_cli.services.hub import HubService
+from starter_cli.workflows.home.hub import HubService
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:

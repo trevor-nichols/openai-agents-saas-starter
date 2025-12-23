@@ -6,8 +6,8 @@ from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import cast
 
-from .core import CLIContext, CLIError, build_context, iter_env_files
 from .adapters.io.console import console as shared_console
+from .core import CLIContext, CLIError, build_context, iter_env_files
 from .ports.console import ConsolePort
 
 

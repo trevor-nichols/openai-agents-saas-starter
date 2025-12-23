@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import importlib
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from . import home, secrets, setup, setup_menu, stripe, usage
 
 _SUBMODULES = {
     "home": "starter_cli.workflows.home",
@@ -22,4 +25,11 @@ def __getattr__(name: str) -> Any:
     return importlib.import_module(target)
 
 
-__all__ = sorted(_SUBMODULES.keys())
+__all__ = [
+    "home",
+    "secrets",
+    "setup",
+    "setup_menu",
+    "stripe",
+    "usage",
+]

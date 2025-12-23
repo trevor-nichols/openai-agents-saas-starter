@@ -9,13 +9,12 @@ from starter_contracts.provider_validation import ProviderViolation, validate_pr
 
 from starter_cli.core import CLIContext
 from starter_cli.core.status_models import ProbeResult, ServiceStatus
+from starter_cli.services import ops_models
+from starter_cli.services.infra import DependencyStatus, collect_dependency_statuses
+from starter_cli.services.stripe_status import StripeStatus, load_stripe_status
 from starter_cli.workflows.home.doctor import DoctorRunner, detect_profile
 from starter_cli.workflows.setup_menu.detection import STALE_AFTER_DAYS, collect_setup_items
 from starter_cli.workflows.setup_menu.models import SetupItem
-
-from . import ops_models
-from .infra import DependencyStatus, collect_dependency_statuses
-from .stripe_status import StripeStatus, load_stripe_status
 
 
 @dataclass(frozen=True, slots=True)
