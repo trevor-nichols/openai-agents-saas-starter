@@ -13,6 +13,7 @@ apps/
 packages/
   starter_cli/          # operator CLI
   starter_contracts/    # shared contracts/lib
+  starter_providers/    # shared cloud SDK clients
 tools/                  # shared scripts (typecheck, smoke, moduleviz, vault helpers)
 var/                    # runtime artifacts (keys/, logs/, reports/) — gitignored
 .env.compose(.example)  # docker-compose defaults

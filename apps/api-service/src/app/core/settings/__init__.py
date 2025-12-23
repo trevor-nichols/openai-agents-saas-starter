@@ -78,10 +78,31 @@ def enforce_vault_verification(settings: Settings) -> None:
         )
 
 
+def enforce_key_storage_backend(settings: Settings) -> None:
+    if settings.requires_secret_manager_for_key_storage():
+        if settings.auth_key_storage_backend != "secret-manager":
+            raise RuntimeError(
+                "Production environments must use AUTH_KEY_STORAGE_BACKEND=secret-manager. "
+                "Update AUTH_KEY_STORAGE_BACKEND and AUTH_KEY_SECRET_NAME "
+                "via the Starter CLI wizard or your secret manager configuration."
+            )
+    if settings.auth_key_storage_backend == "secret-manager":
+        if not settings.auth_key_secret_name:
+            raise RuntimeError(
+                "AUTH_KEY_SECRET_NAME is required when AUTH_KEY_STORAGE_BACKEND=secret-manager."
+            )
+        if settings.auth_key_storage_provider is None:
+            raise RuntimeError(
+                "AUTH_KEY_STORAGE_PROVIDER is required when "
+                "AUTH_KEY_STORAGE_BACKEND=secret-manager."
+            )
+
+
 __all__ = [
     "Settings",
     "SignupAccessPolicyLiteral",
     "get_settings",
     "enforce_secret_overrides",
+    "enforce_key_storage_backend",
     "enforce_vault_verification",
 ]

@@ -21,7 +21,7 @@ from tests.utils.sqlalchemy import create_tables
 TABLES: tuple[Table, ...] = cast(
     tuple[Table, ...],
     (
-        conversation_models.TenantAccount.__table__,
+        tenant_models.TenantAccount.__table__,
         auth_models.UserAccount.__table__,
         auth_models.UserProfile.__table__,
         auth_models.PasswordHistory.__table__,
@@ -97,8 +97,8 @@ async def test_apply_spec_seeds_tenant_user_subscription() -> None:
 
     async with session_factory() as session:
         tenant = await session.scalar(
-            select(conversation_models.TenantAccount).where(
-                conversation_models.TenantAccount.slug == "playwright-starter"
+            select(tenant_models.TenantAccount).where(
+                tenant_models.TenantAccount.slug == "playwright-starter"
             )
         )
         assert tenant is not None

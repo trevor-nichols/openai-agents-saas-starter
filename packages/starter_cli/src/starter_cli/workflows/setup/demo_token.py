@@ -125,7 +125,7 @@ def run_demo_token_automation(context: WizardContext) -> None:
     context.refresh_automation_ui(AutomationPhase.DEMO_TOKEN)
 
     token = result.get("refresh_token") if isinstance(result, dict) else None
-    console.section("Demo Token Ready", "Use this refresh token for local testing (not stored).")
+    console.section("Demo Token Ready", "Use this refresh token for demo testing (not stored).")
     console.warn("Copy this now; it will not be written to disk.", topic="demo-token")
     if token:
         console.info(token, topic="demo-token")

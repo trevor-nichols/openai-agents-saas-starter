@@ -22,6 +22,10 @@ class _FakeSettings:
         default_factory=lambda: ["text/plain", "application/json"]
     )
     minio_region: str | None = None
+    gcs_bucket: str | None = None
+    s3_region: str | None = None
+    s3_bucket: str | None = None
+    azure_blob_container: str | None = None
 
 
 @dataclass
@@ -188,3 +192,32 @@ async def test_presign_upload_rejects_oversize():
             mime_type="application/octet-stream",
             size_bytes=2 * 1024 * 1024,  # 2 MB > 1 MB limit
         )
+
+
+def test_bucket_name_prefers_fixed_provider_container_or_bucket():
+    repo = _FakeRepo()
+    tenant_id = uuid.uuid4()
+
+    s3_settings = _FakeSettings(
+        storage_provider=StorageProviderLiteral.S3,
+        s3_bucket="prod-bucket",
+    )
+    service = _service(repo, settings=s3_settings)
+    assert service._bucket_name(s3_settings, tenant_id) == "prod-bucket"
+
+    azure_settings = _FakeSettings(
+        storage_provider=StorageProviderLiteral.AZURE_BLOB,
+        azure_blob_container="asset-container",
+    )
+    service = _service(repo, settings=azure_settings)
+    assert service._bucket_name(azure_settings, tenant_id) == "asset-container"
+
+
+def test_bucket_region_uses_provider_specific_setting():
+    repo = _FakeRepo()
+    settings = _FakeSettings(
+        storage_provider=StorageProviderLiteral.S3,
+        s3_region="us-east-2",
+    )
+    service = _service(repo, settings=settings)
+    assert service._bucket_region(settings) == "us-east-2"

@@ -12,7 +12,7 @@ from pydantic_settings.sources import PydanticBaseSettingsSource
 
 from app.domain.secrets import SecretsProviderLiteral
 
-SAFE_ENVIRONMENTS = {"development", "dev", "local", "test"}
+SAFE_ENVIRONMENTS = {"development", "dev", "demo", "test"}
 SignupAccessPolicyLiteral = Literal["public", "invite_only", "approval"]
 
 VAULT_PROVIDER_KEYS = {

@@ -4,7 +4,7 @@ Operator tooling for the OpenAI Agents SaaS starter. It bootstraps local infra, 
 
 ## Prereqs & install
 - Recommended: run `just python-bootstrap` (installs Python 3.11 + Hatch via `uv`), then `cd packages/starter_cli && hatch env create`.
-- Alternative: from repo root run `just dev-install` (editable installs for `starter_cli` + `starter_contracts`).
+- Alternative: from repo root run `just dev-install` (editable installs for `starter_cli` + `starter_contracts` + `starter_providers`).
 - Run commands from the repo root (paths are repo-root relative even if you `cd packages/starter_cli`).
 - Env loading: defaults to `.env.compose`, `apps/api-service/.env.local`, `apps/api-service/.env`, `.env`. Override with `--env-file`, or skip with `--skip-env`. Quiet logging with `--quiet-env`.
 
@@ -14,13 +14,13 @@ Operator tooling for the OpenAI Agents SaaS starter. It bootstraps local infra, 
 - Headless: most flows support `--non-interactive` plus `--answers-file`/`--var`; TUIs can be forced off with `--no-tui` where supported.
 
 ## Quick starts
-- Local bootstrap: `just setup-local-lite` (deps, wizard, dev user) then `just api`; mint a token with `just issue-demo-token`.
+- Demo bootstrap: `just setup-demo-lite` (deps, wizard, dev user) then `just api`; mint a token with `just issue-demo-token`.
 - Start/stop services: `python -m starter_cli.app start dev|backend|frontend [--detached]`; stop detached stacks with `python -m starter_cli.app stop`.
 - Health: `python -m starter_cli.app home` (TUI) or `python -m starter_cli.app doctor --strict --json var/reports/operator-dashboard.json`.
 - Seed users/tokens: `python -m starter_cli.app users ensure-dev` and `python -m starter_cli.app auth tokens issue-service-account --account demo-bot --scopes chat:write,conversations:read`.
 
 ## Command catalog (what each one does)
-- `setup menu|wizard`: Setup hub + milestone-aware wizard with automation toggles for infra, secrets, Stripe, migrations, Redis, GeoIP, dev user; supports headless runs, schema-driven prompts, JSON/Markdown summaries, and answer export. For `--profile local`, the wizard can manage Docker Postgres end-to-end (writes `POSTGRES_*` and derives `DATABASE_URL`) or accept an external `DATABASE_URL` and set `STARTER_LOCAL_DATABASE_MODE=external` so `infra compose up` starts Redis without launching Postgres.
+- `setup menu|wizard`: Setup hub + milestone-aware wizard with automation toggles for infra, secrets, Stripe, migrations, Redis, GeoIP, dev user; supports headless runs, schema-driven prompts, JSON/Markdown summaries, and answer export. For `--profile demo`, the wizard can manage Docker Postgres end-to-end (writes `POSTGRES_*` and derives `DATABASE_URL`) or accept an external `DATABASE_URL` and set `STARTER_LOCAL_DATABASE_MODE=external` so `infra compose up` starts Redis without launching Postgres.
 - `infra deps|compose|vault`: Check local prerequisites; run Just recipes for docker-compose dev stack and Vault dev signer (up/down/logs/verify).
 - `start` / `stop`: Start dev/backend/frontend with health checks; detached mode tracks PIDs/logs and can auto-run infra; stop clears state and optionally runs compose down.
 - `home`: TUI/summary showing stack status, detached processes, and shortcuts.

@@ -10,7 +10,7 @@ from starter_cli.core import CLIContext, CLIError
 
 def _build_args(**overrides) -> argparse.Namespace:
     defaults = {
-        "profile": "local",
+        "profile": "demo",
         "output": "summary",
         "answers_file": None,
         "var": None,

@@ -4,18 +4,18 @@ This tracker captures the Starter CLI setup flow plus the recommended environmen
 
 ## Goals
 - Guarantee that `python -m starter_cli.app setup wizard` guides an operator from zero env vars to a runnable stack with auditable artifacts.
-- Keep the local profile blazing fast by prefilling sensible defaults, deferring optional providers, and embracing Docker Compose for Postgres/Redis.
+- Keep the demo profile blazing fast by prefilling sensible defaults, deferring optional providers, and embracing Docker Compose for Postgres/Redis.
 - Maintain parity between the wizard questionnaire and the docs so every prompt has clear rationale and fallback guidance.
 
 ## Profiles To Support
-1. **Local-Lite (default `--profile local`)**
+1. **Demo-Lite (default `--profile demo`)**
    - Compose-managed Postgres + Redis (leave `DATABASE_URL` blank to rely on docker-compose defaults).
    - Secrets provider `vault_dev` with verification disabled for speed.
    - Billing, Resend, Slack, GeoIP all **off** to shrink dependencies.
    - Inline billing worker with replay enabled, insecure cookies allowed.
    - Automation: `--auto-infra`, `--auto-secrets`, `--auto-migrations`, `--auto-redis`, `--no-auto-geoip`.
-2. **Local-Full (still `--profile local`, but “parity mode”)**
-   - Same infra automation as Local-Lite, but flip on billing + Stripe plan map, Resend, Slack test message, GeoIP (MaxMind download).
+2. **Demo-Full (still `--profile demo`, but “parity mode”)**
+   - Same infra automation as Demo-Lite, but flip on billing + Stripe plan map, Resend, Slack test message, GeoIP (MaxMind download).
    - Use this before handing off to QA so we verify integrations without leaving localhost.
 3. **Staging**
    - Requires managed Postgres URL + TLS Redis endpoints.
@@ -27,7 +27,7 @@ This tracker captures the Starter CLI setup flow plus the recommended environmen
    - Stripe provisioning and Resend onboarding run outside the wizard; the setup flow just validates keys.
 
 ## Wizard Sections & Expectations
-| Section | Purpose | Local-Lite Defaults | Higher Environment Requirements |
+| Section | Purpose | Demo-Lite Defaults | Higher Environment Requirements |
 | --- | --- | --- | --- |
 | Core & Metadata | ENV label, URLs, auth defaults | Keep defaults (`ENVIRONMENT=development`; `DEBUG` auto-derives); auto migrations true | Explicit hostnames; derived `DEBUG=false` outside dev; stricter CORS |
 | Secrets & Vault | Generate peppers, choose provider, optional signing key rotation | Autogenerate peppers, `vault_dev`, verification off | Real secret manager, Vault verification on, rotate keys each milestone |
@@ -37,15 +37,15 @@ This tracker captures the Starter CLI setup flow plus the recommended environmen
 | Observability | Tenant slug, logging sink, GeoIP | `LOGGING_SINK=stdout`, `GEOIP_PROVIDER=none` | Datadog/OTLP endpoints, GeoIP provider tokens, optional collector exporters |
 | Integrations | Slack incident notifications | Disabled | Slack bot token, channel map, send test |
 | Signup & Worker | Signup policy, rate limits, billing worker topology | `invite_only`, inline worker, insecure cookies allowed | `approval` or `invite_only`, dedicated worker, auto-generated worker overlay |
-| Frontend | Next.js envs (API URL, Playwright, cookie posture) | `API_BASE_URL` canonical; frontend mirrors to `NEXT_PUBLIC_API_URL`; allow insecure cookies in local | HTTPS URLs only, secure cookies, Playwright hitting deployed host |
+| Frontend | Next.js envs (API URL, Playwright, cookie posture) | `API_BASE_URL` canonical; frontend mirrors to `NEXT_PUBLIC_API_URL`; allow insecure cookies in demo | HTTPS URLs only, secure cookies, Playwright hitting deployed host |
 
 ## Suggested Workflow
 1. **Verify dependencies once**  
    `python -m starter_cli.app infra deps`
-2. **Bootstrap Local-Lite**  
+2. **Bootstrap Demo-Lite**  
    ```bash
    python -m starter_cli.app setup wizard \
-     --profile local \
+     --profile demo \
      --auto-infra --auto-secrets --auto-migrations --auto-redis \
      --no-auto-geoip
    ```
@@ -75,8 +75,8 @@ Use the new Make targets to keep each milestone repeatable:
 
 | Target | Description | Notes |
 | --- | --- | --- |
-| `just setup-local-lite` | Runs dependency check, launches the wizard with Local-Lite flags, then seeds a dev user. | Requires user input for secrets; auto-starts Compose for seeding. Afterwards run `just api` + `just issue-demo-token`. |
-| `just setup-local-full` | Same as Local-Lite but keeps every automation switch on (`--auto-geoip`, `--auto-stripe`). | Useful for parity testing once Resend/Stripe creds exist. |
+| `just setup-demo-lite` | Runs dependency check, launches the wizard with Demo-Lite flags, then seeds a dev user. | Requires user input for secrets; auto-starts Compose for seeding. Afterwards run `just api` + `just issue-demo-token`. |
+| `just setup-demo-full` | Same as Demo-Lite but keeps every automation switch on (`--auto-geoip`, `--auto-stripe`). | Useful for parity testing once Resend/Stripe creds exist. |
 | `just setup-staging [setup_staging_answers=path]` | Runs the wizard with staging-safe automation; optional answers file enables headless mode. | Compose/Vault helpers disabled; ensure hosted Postgres/Redis URLs exist beforehand. |
 | `just setup-production setup_production_answers=path` | Strict, headless production run. | Provide an answers JSON per environment (committed to a secure store). |
 | `just seed-dev-user` | Starts Compose (if needed) and uses `starter_cli users seed`. | Customize via `SETUP_USER_EMAIL`, `SETUP_USER_PASSWORD`, `SETUP_USER_TENANT`, etc. |

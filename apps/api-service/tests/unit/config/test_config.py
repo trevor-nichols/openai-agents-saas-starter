@@ -5,7 +5,7 @@ from typing import Any, cast
 
 import pytest
 
-from app.core.settings import Settings, enforce_vault_verification
+from app.core.settings import Settings, enforce_key_storage_backend, enforce_vault_verification
 
 
 def make_settings(**overrides) -> Settings:
@@ -351,3 +351,44 @@ def test_enforce_vault_verification_requires_vault_config_when_enabled() -> None
         enforce_vault_verification(settings)
 
     assert "VAULT_ADDR" in str(exc.value)
+
+
+def test_enforce_key_storage_backend_requires_secret_manager_in_prod() -> None:
+    settings = make_settings(
+        ENVIRONMENT="production",
+        debug=False,
+        AUTH_KEY_STORAGE_BACKEND="file",
+    )
+
+    with pytest.raises(RuntimeError):
+        enforce_key_storage_backend(settings)
+
+
+def test_enforce_key_storage_backend_requires_provider_and_secret_name() -> None:
+    settings = make_settings(
+        ENVIRONMENT="development",
+        debug=True,
+        AUTH_KEY_STORAGE_BACKEND="secret-manager",
+        AUTH_KEY_STORAGE_PROVIDER=None,
+        AUTH_KEY_SECRET_NAME=None,
+    )
+
+    with pytest.raises(RuntimeError) as exc:
+        enforce_key_storage_backend(settings)
+
+    assert "AUTH_KEY_SECRET_NAME" in str(exc.value)
+
+
+def test_enforce_key_storage_backend_requires_provider() -> None:
+    settings = make_settings(
+        ENVIRONMENT="development",
+        debug=True,
+        AUTH_KEY_STORAGE_BACKEND="secret-manager",
+        AUTH_KEY_STORAGE_PROVIDER=None,
+        AUTH_KEY_SECRET_NAME="kv/keyset",
+    )
+
+    with pytest.raises(RuntimeError) as exc:
+        enforce_key_storage_backend(settings)
+
+    assert "AUTH_KEY_STORAGE_PROVIDER" in str(exc.value)

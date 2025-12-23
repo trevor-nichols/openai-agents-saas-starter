@@ -6,6 +6,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.domain.secrets import SecretsProviderLiteral
+
 from .base import SAFE_ENVIRONMENTS, BaseAppSettings
 
 DEFAULT_SECRET_KEY = "your-secret-key-here-change-in-production"
@@ -41,14 +43,25 @@ class SecuritySettingsMixin(BaseModel):
     auth_key_storage_backend: str = Field(
         default="file",
         description="Key storage backend (file or secret-manager).",
+        alias="AUTH_KEY_STORAGE_BACKEND",
+    )
+    auth_key_storage_provider: SecretsProviderLiteral | None = Field(
+        default=None,
+        description=(
+            "Secrets provider used for Ed25519 keyset storage when "
+            "auth_key_storage_backend=secret-manager."
+        ),
+        alias="AUTH_KEY_STORAGE_PROVIDER",
     )
     auth_key_storage_path: str = Field(
         default=DEFAULT_KEY_STORAGE_PATH,
         description="Filesystem path for keyset JSON when using file backend.",
+        alias="AUTH_KEY_STORAGE_PATH",
     )
     auth_key_secret_name: str | None = Field(
         default=None,
         description="Secret-manager key/path storing keyset JSON when backend=secret-manager.",
+        alias="AUTH_KEY_SECRET_NAME",
     )
     auth_jwks_cache_seconds: int = Field(
         default=300,
@@ -317,6 +330,11 @@ class SecuritySettingsMixin(BaseModel):
         return normalized in placeholders
 
     def should_enforce_secret_overrides(self) -> bool:
+        env = str(getattr(self, "environment", "") or "").lower()
+        debug_mode = bool(getattr(self, "debug", False))
+        return not debug_mode and env not in SAFE_ENVIRONMENTS
+
+    def requires_secret_manager_for_key_storage(self) -> bool:
         env = str(getattr(self, "environment", "") or "").lower()
         debug_mode = bool(getattr(self, "debug", False))
         return not debug_mode and env not in SAFE_ENVIRONMENTS

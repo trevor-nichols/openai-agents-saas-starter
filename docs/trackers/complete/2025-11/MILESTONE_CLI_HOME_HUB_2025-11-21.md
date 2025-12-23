@@ -40,7 +40,7 @@ Deliver a first-class operator “home hub” inside the Starter CLI that surfac
 | - | ---- | ----- | ------ | ------ |
 | 1 | Define status models (`ProbeResult`, `ServiceStatus`, `ActionShortcut`, `LaunchPlan`) in `starter_cli/core/status_models.py`. | Platform Foundations | ✅ Completed | Dec 2025 |
 | 2 | Add probe library under `starter_cli/workflows/home/probes/` (db, redis, api, frontend, ports, env coverage, migrations, stripe, vault). | Platform Foundations | ✅ Completed | Dec 2025 |
-| 3 | Implement `doctor` command composing probes; supports `--json/--markdown/--strict`; warn-only for Stripe/Vault in local profile. | Platform Foundations | ✅ Completed | Dec 2025 |
+| 3 | Implement `doctor` command composing probes; supports `--json/--markdown/--strict`; warn-only for Stripe/Vault in demo profile. | Platform Foundations | ✅ Completed | Dec 2025 |
 | 4 | Build `home` hub workflow + TUI (Rich/Textual) with shortcuts and fallback summary output. | Platform Foundations | ✅ Completed | Dec 2025 |
 | 5 | Add `start dev|backend|frontend` orchestrator with process supervision, health polling, and opt-in browser open. | Platform Foundations | ✅ Completed | Dec 2025 |
 | 6 | Emit consolidated operator report (`var/reports/operator-dashboard.*`) and document CI usage (`doctor --json --strict`). | Platform Foundations | ✅ Completed | Dec 2025 |
@@ -94,5 +94,5 @@ Phased, review-after-each-step cadence. Owners: Platform Foundations unless note
 - **UI stack**: Rich remains baseline; Textual added as optional extra (`starter_cli[tui]`) for the hub. Fallback to plain console with `--no-tui`.
 - **Doctor schema**: Versioned at `starter_contracts/doctor_v1.json` (draft 2020-12), enumerating probes and services with states `ok|warn|error|skipped`.
 - **Health timeouts**: Default overall start timeout 120s; per-service health wait 30s unless overridden by flag. Timeouts will be configurable per command.
-- **Strictness policy**: Stripe/Vault probes are warn-only on `local` profile; elevated to errors under `--strict` or non-local profiles.
+- **Strictness policy**: Stripe/Vault probes are warn-only on `demo` profile; elevated to errors under `--strict` or non-demo profiles.
 - **Browser open**: Opt-in via `--open-browser`; default is off.

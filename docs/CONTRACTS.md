@@ -9,6 +9,7 @@ Source of truth for shared config/secrets/key contracts consumed by:
 - Only the surfaces above should import `starter_contracts.*`.
 - `starter_contracts` must **not** import `app.*` (backend) or `starter_cli.*` at module import time.
 - Import-time side effects are forbidden; `get_settings()` is lazy and should only fire when called.
+ - Cloud SDK clients now live in `starter_providers`; contracts must remain dependency-light and not import provider SDKs.
 
 ## Modules
 - `config`: `StarterSettingsProtocol`, `get_settings()` lazy loader for backend settings.
@@ -16,6 +17,11 @@ Source of truth for shared config/secrets/key contracts consumed by:
 - `provider_validation`: Shared Stripe/Resend validation helpers.
 - `secrets.models`: Enums + dataclasses + protocols for secret providers (Vault, Infisical, AWS SM, Azure KV).
 - `vault_kv`: Minimal Vault KV v2 client + registration helper when keys live in a secret manager.
+
+## Related package: `starter_providers`
+- Houses concrete SDK clients for AWS Secrets Manager, Azure Key Vault, and Infisical.
+- May depend on provider SDKs, but must not import `app.*` or `starter_cli.*` at module import time.
+- Both backend and CLI should import SDK clients from `starter_providers.secrets.*`.
 
 ## Snapshots (drift blockers)
 - `docs/contracts/settings.schema.json`: JSON Schema snapshot of `app.core.settings.Settings`.

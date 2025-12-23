@@ -219,7 +219,7 @@ def _dev_user_item(ctx: CLIContext, stale_after: timedelta) -> SetupItem:
             key="dev_user",
             label="Dev Admin User",
             status="missing",
-            detail="Seed a local dev admin account.",
+            detail="Seed a demo dev admin account.",
             progress=0.0,
             progress_label=_progress_label(0.0),
             actions=[_dev_user_action()],

@@ -18,7 +18,8 @@ from app.infrastructure.persistence.conversations.ledger_models import (
     ConversationLedgerSegment,
 )
 from app.infrastructure.persistence.conversations.ledger_query_store import ConversationLedgerQueryStore
-from app.infrastructure.persistence.conversations.models import AgentConversation, TenantAccount
+from app.infrastructure.persistence.conversations.models import AgentConversation
+from app.infrastructure.persistence.tenants.models import TenantAccount
 from app.infrastructure.persistence.models.base import Base
 from app.services.containers.files_gateway import (
     ContainerFileContent,

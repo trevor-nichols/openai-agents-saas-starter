@@ -13,12 +13,12 @@ from ..context import WizardContext
 def run(context: WizardContext, provider: InputProvider) -> None:
     console.section(
         "Dev User",
-        "Capture the local dev user you want seeded after setup. Leave the password blank to "
+        "Capture the demo dev user you want seeded after setup. Leave the password blank to "
         "auto-generate a strong one; it will be shown once and never written to disk.",
     )
 
-    if context.profile != "local":
-        console.info("Dev user seeding only runs for local profile; skipping.", topic="dev-user")
+    if context.profile != "demo":
+        console.info("Dev user seeding only runs for demo profile; skipping.", topic="dev-user")
         context.dev_user_config = None
         return
 

@@ -13,7 +13,8 @@ from app.infrastructure.persistence.conversations.ledger_models import (
 from app.infrastructure.persistence.conversations.ledger_query_store import (
     ConversationLedgerQueryStore,
 )
-from app.infrastructure.persistence.conversations.models import AgentConversation, TenantAccount
+from app.infrastructure.persistence.conversations.models import AgentConversation
+from app.infrastructure.persistence.tenants.models import TenantAccount
 
 
 @pytest.mark.asyncio

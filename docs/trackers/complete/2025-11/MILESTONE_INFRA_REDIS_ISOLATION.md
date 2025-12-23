@@ -23,7 +23,7 @@ Give every Redis-backed subsystem (rate limiting, auth/session caches, nonce + t
 | Billing streams | Stripe replay/backfill service + SSE endpoints | `BILLING_EVENTS_REDIS_URL` (`REDIS_URL`) | Streams need persistence + higher maxlen; SSE readiness gated on connectivity |
 
 ## Execution Plan
-1. **Config & CLI surfaces** — Introduce the new env vars in `Settings`, Starter CLI wizard, env templates, and trackers. Harden validation (TLS/auth) for non-local profiles.
+1. **Config & CLI surfaces** — Introduce the new env vars in `Settings`, Starter CLI wizard, env templates, and trackers. Harden validation (TLS/auth) for non-demo profiles.
 2. **Redis client factory** — Centralize client creation per purpose with TLS/auth enforcement + clean shutdown hooks; wire into the FastAPI container.
 3. **Service refactors** — Route `RateLimiter`, auth/login throttles, lockout store, refresh-token cache, nonce/token stores, and billing stream backend through the factory so each purpose uses its own pool.
 4. **Docs & validation** — Document rollout guidance, update ISSUE_TRACKER + CLI inventory, and add tests covering fallbacks + wizard prompts.

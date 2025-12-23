@@ -9,12 +9,12 @@ def test_build_vault_headers_returns_dev_local_for_safe_env(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("ENVIRONMENT", "development")
-    monkeypatch.setenv("AUTH_CLI_DEV_AUTH_MODE", "local")
+    monkeypatch.setenv("AUTH_CLI_DEV_AUTH_MODE", "demo")
     monkeypatch.delenv("VAULT_VERIFY_ENABLED", raising=False)
 
     header, extras = build_vault_headers({}, None)
 
-    assert header == "Bearer dev-local"
+    assert header == "Bearer dev-demo"
     assert extras == {}
 
 
@@ -23,7 +23,7 @@ def test_build_vault_headers_rejects_dev_local_when_hardened(
 ) -> None:
     monkeypatch.setenv("ENVIRONMENT", "production")
     monkeypatch.setenv("VAULT_VERIFY_ENABLED", "true")
-    monkeypatch.setenv("AUTH_CLI_DEV_AUTH_MODE", "local")
+    monkeypatch.setenv("AUTH_CLI_DEV_AUTH_MODE", "demo")
 
     with pytest.raises(CLIError):
         build_vault_headers({}, None)

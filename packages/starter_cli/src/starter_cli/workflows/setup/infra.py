@@ -62,11 +62,11 @@ class InfraSession:
                 "Vault automation skipped (verification disabled).",
             )
             return
-        if self.context.profile != "local":
+        if self.context.profile != "demo":
             self.context.automation.update(
                 AutomationPhase.SECRETS,
                 AutomationStatus.BLOCKED,
-                "Vault automation only supported for local profile.",
+                "Vault automation only supported for demo profile.",
             )
             return
         if record.status not in {AutomationStatus.PENDING, AutomationStatus.RUNNING}:

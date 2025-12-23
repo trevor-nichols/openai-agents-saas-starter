@@ -20,6 +20,7 @@ classifiers = [
 
 dependencies = [
   "starter-contracts>=0.1.1",
+  "starter-providers>=0.1.1",
   "httpx>=0.28.1,<0.29.0",
   "pydantic>=2.12.3,<2.13.0",
   "pyyaml>=6.0.2,<7.0.0",
@@ -81,7 +82,10 @@ starter_cli = ["py.typed"]
 features = ["dev"]
 python = "3.11"
 path = ".venv"
-pre-install-commands = ["python -m pip install --editable ../starter_contracts"]
+pre-install-commands = [
+  "python -m pip install --editable ../starter_contracts",
+  "python -m pip install --editable ../starter_providers",
+]
 
 [tool.hatch.envs.default.scripts]
 lint = "ruff check src"
@@ -109,7 +113,7 @@ warn_unused_configs = true
 warn_unused_ignores = true
 strict_equality = true
 namespace_packages = true
-mypy_path = ["src", "../starter_contracts/src"]
+mypy_path = ["src", "../starter_contracts/src", "../starter_providers/src"]
 disallow_any_generics = true
 disallow_subclassing_any = true
 ignore_missing_imports = true
@@ -118,11 +122,11 @@ ignore_missing_imports = true
 include = ["src"]
 typeCheckingMode = "basic"
 pythonVersion = "3.11"
-extraPaths = ["src", "../starter_contracts/src"]
+extraPaths = ["src", "../starter_contracts/src", "../starter_providers/src"]
 venvPath = "."
 venv = ".venv"
 
 [tool.pytest.ini_options]
-pythonpath = ["src", "../starter_contracts/src", "../api-service/src"]
+pythonpath = ["src", "../starter_contracts/src", "../starter_providers/src", "../api-service/src"]
 testpaths = ["tests"]
 asyncio_mode = "auto"

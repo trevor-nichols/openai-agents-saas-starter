@@ -46,7 +46,7 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     wizard_parser.add_argument(
         "--profile",
         choices=PROFILE_CHOICES,
-        default="local",
+        default="demo",
         help="Target deployment profile. Influences required checks and defaults.",
     )
     wizard_parser.add_argument(
@@ -220,7 +220,7 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         action="store_const",
         const=True,
         default=None,
-        help="Seed the local dev user automatically after setup completes.",
+        help="Seed the demo dev user automatically after setup completes.",
     )
     wizard_parser.add_argument(
         "--no-auto-dev-user",
@@ -235,7 +235,7 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         action="store_const",
         const=True,
         default=None,
-        help="Mint a demo service-account token at the end of setup (local profile).",
+        help="Mint a demo service-account token at the end of setup (demo profile).",
     )
     wizard_parser.add_argument(
         "--no-auto-demo-token",

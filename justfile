@@ -9,6 +9,7 @@ env_runner := "cd " + repo_root + "/packages/starter_cli && hatch run python -m 
 api_just := "just -f apps/api-service/justfile"
 cli_just := "just -f packages/starter_cli/justfile"
 contracts_just := "just -f packages/starter_contracts/justfile"
+providers_just := "just -f packages/starter_providers/justfile"
 web_just := "just -f apps/web-app/justfile"
 compose_file := "ops/compose/docker-compose.yml"
 vault_compose_file := "ops/compose/docker-compose.vault-dev.yml"
@@ -68,8 +69,9 @@ help:
     echo "  just backend-lint|typecheck|test    # Delegates to api-service" && \
     echo "  just cli-lint|typecheck|test        # Delegates to packages/starter_cli" && \
     echo "  just contracts-lint|typecheck|test  # Delegates to packages/starter_contracts" && \
+    echo "  just providers-lint|typecheck|test  # Delegates to packages/starter_providers" && \
     echo "  just web-lint|typecheck|dev|test    # Delegates to apps/web-app"
-    @echo "  just dev-install            # Editable installs for CLI + contracts (no PYTHONPATH hacks)"
+    @echo "  just dev-install            # Editable installs for CLI + contracts + providers (no PYTHONPATH hacks)"
 
 # -------------------------
 # Package delegation
@@ -117,6 +119,15 @@ contracts-typecheck:
 contracts-test:
     {{contracts_just}} test
 
+providers-lint:
+    {{providers_just}} lint
+
+providers-typecheck:
+    {{providers_just}} typecheck
+
+providers-test:
+    {{providers_just}} test
+
 web-lint:
     {{web_just}} lint
 
@@ -140,6 +151,7 @@ python-bootstrap:
 
 dev-install:
     python -m pip install -e packages/starter_contracts
+    python -m pip install -e packages/starter_providers
     python -m pip install -e packages/starter_cli
 
 # -------------------------
@@ -150,12 +162,14 @@ lint-all:
     just backend-lint
     just cli-lint
     just contracts-lint
+    just providers-lint
     just web-lint
 
 typecheck-all:
     just backend-typecheck
     just cli-typecheck
     just contracts-typecheck
+    just providers-typecheck
     just web-typecheck
 # -------------------------
 # Infra (compose)
@@ -303,10 +317,10 @@ start-frontend: _check_env
 
 # Wizards & seeding
 
-setup-local-lite:
+setup-demo-lite:
     cd packages/starter_cli && hatch run python -m starter_cli.app infra deps
     cd packages/starter_cli && hatch run python -m starter_cli.app setup wizard \
-        --profile local \
+        --profile demo \
         --auto-infra \
         --auto-secrets \
         --auto-migrations \
@@ -316,10 +330,10 @@ setup-local-lite:
     cd packages/starter_cli && hatch run python -m starter_cli.app users ensure-dev
     @echo "" && echo "Next: run 'just api' in a new terminal; optionally 'just issue-demo-token' after API is up."
 
-setup-local-full:
+setup-demo-full:
     cd packages/starter_cli && hatch run python -m starter_cli.app infra deps
     cd packages/starter_cli && hatch run python -m starter_cli.app setup wizard \
-        --profile local \
+        --profile demo \
         --auto-infra \
         --auto-secrets \
         --auto-migrations \

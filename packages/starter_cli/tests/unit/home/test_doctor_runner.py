@@ -22,7 +22,7 @@ def _empty_services(_probes):
 
 def test_doctor_exit_code_respects_strict(monkeypatch, tmp_path: Path):
     ctx = build_context()
-    runner = DoctorRunner(ctx, profile="local", strict=False)
+    runner = DoctorRunner(ctx, profile="demo", strict=False)
     monkeypatch.setattr(runner, "_run_probes", _stub_probes_ok_warn)
     monkeypatch.setattr(runner, "_build_services", _empty_services)
 
@@ -32,7 +32,7 @@ def test_doctor_exit_code_respects_strict(monkeypatch, tmp_path: Path):
     data = json.loads((tmp_path / "report.json").read_text())
     assert data["summary"]["warn"] == 1
 
-    runner_strict = DoctorRunner(ctx, profile="local", strict=True)
+    runner_strict = DoctorRunner(ctx, profile="demo", strict=True)
     monkeypatch.setattr(runner_strict, "_run_probes", _stub_probes_ok_warn)
     monkeypatch.setattr(runner_strict, "_build_services", _empty_services)
     code = runner_strict.run()
@@ -41,7 +41,7 @@ def test_doctor_exit_code_respects_strict(monkeypatch, tmp_path: Path):
 
 def test_doctor_markdown_writes_file(monkeypatch, tmp_path: Path):
     ctx = build_context()
-    runner = DoctorRunner(ctx, profile="local", strict=False)
+    runner = DoctorRunner(ctx, profile="demo", strict=False)
     monkeypatch.setattr(runner, "_run_probes", _stub_probes_ok_warn)
     monkeypatch.setattr(runner, "_build_services", _empty_services)
     md_path = tmp_path / "report.md"
@@ -54,7 +54,7 @@ def test_doctor_markdown_writes_file(monkeypatch, tmp_path: Path):
 
 def test_doctor_json_matches_schema(monkeypatch, tmp_path: Path):
     ctx = build_context()
-    runner = DoctorRunner(ctx, profile="local", strict=False)
+    runner = DoctorRunner(ctx, profile="demo", strict=False)
     monkeypatch.setattr(runner, "_run_probes", _stub_probes_ok_warn)
     monkeypatch.setattr(runner, "_build_services", _empty_services)
     json_path = tmp_path / "report.json"

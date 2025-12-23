@@ -114,7 +114,7 @@ class HomeScreen(Screen[None]):
         self._summary: dict[str, int] = {}
         self._probes: list[ProbeResult] = []
         self._services: list[ServiceStatus] = []
-        self._profile: str = "local"
+        self._profile: str = "demo"
         self._strict: bool = False
         self._stack_state: str | None = None
         self._shortcuts = self._build_shortcuts()

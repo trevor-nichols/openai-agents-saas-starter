@@ -25,6 +25,7 @@ from app.core.provider_validation import (
 )
 from app.core.settings import (
     Settings,
+    enforce_key_storage_backend,
     enforce_secret_overrides,
     enforce_vault_verification,
     get_settings,
@@ -63,7 +64,7 @@ from app.infrastructure.persistence.tenants import PostgresTenantSettingsReposit
 from app.infrastructure.providers.openai import build_openai_provider
 from app.infrastructure.redis.factory import get_redis_factory
 from app.infrastructure.redis_types import RedisBytesClient
-from app.infrastructure.security.vault_kv import configure_vault_secret_manager
+from app.infrastructure.security.secret_manager import configure_secret_manager_client
 from app.middleware.logging import LoggingMiddleware
 from app.observability.logging import configure_logging
 from app.presentation import health as health_routes
@@ -174,8 +175,9 @@ async def lifespan(app: FastAPI):
                 settings.environment,
                 "; ".join(warnings),
             )
+    enforce_key_storage_backend(settings)
     enforce_vault_verification(settings)
-    configure_vault_secret_manager(settings)
+    configure_secret_manager_client(settings)
 
     stripe_repo: StripeEventRepository | None = None
     redis_factory = get_redis_factory(settings)

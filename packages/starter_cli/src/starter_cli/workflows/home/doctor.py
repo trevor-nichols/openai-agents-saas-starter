@@ -250,7 +250,7 @@ def _detect_expect_down(env: Mapping[str, str]) -> set[str]:
 
 
 def detect_profile() -> str:
-    return os.getenv("ENVIRONMENT", "local")
+    return os.getenv("ENVIRONMENT", "demo")
 
 
 __all__ = ["DoctorRunner", "detect_profile"]

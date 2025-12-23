@@ -166,7 +166,7 @@ export function IssueTokenDialog({
                 onChange={(event) => updateField('vaultPayload', event.target.value)}
                 rows={3}
               />
-              <p className="text-xs text-foreground/60">Optional for dev-local mode. Required when sending real Vault signatures.</p>
+              <p className="text-xs text-foreground/60">Optional for dev-demo mode. Required when sending real Vault signatures.</p>
             </div>
           </div>
         ) : null}

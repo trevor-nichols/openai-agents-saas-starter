@@ -13,12 +13,12 @@ from starter_contracts.keys import (
     load_keyset,
     save_keyset,
 )
-from starter_contracts.vault_kv import configure_vault_secret_manager
 
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIContext, CLIError, build_context
 from starter_cli.core.context import should_skip_env_loading
 from starter_cli.services.security import build_vault_headers
+from starter_cli.services.security.key_storage import configure_key_storage_secret_manager
 
 # `_SubParsersAction` is not parametrized at runtime on Python 3.11, so provide a
 # typed alias only when running type checkers.
@@ -138,7 +138,7 @@ def handle_issue_service_account(
 def handle_keys_rotate(args: argparse.Namespace, ctx: CLIContext | None = None) -> int:
     ctx = _ensure_context(ctx)
     settings = ctx.require_settings()
-    configure_vault_secret_manager(settings)
+    configure_key_storage_secret_manager(ctx)
 
     try:
         keyset = load_keyset(settings)
@@ -165,7 +165,7 @@ def handle_keys_rotate(args: argparse.Namespace, ctx: CLIContext | None = None) 
 def handle_jwks_print(_: argparse.Namespace, ctx: CLIContext) -> int:
     ctx = _ensure_context(ctx)
     settings = ctx.require_settings()
-    configure_vault_secret_manager(settings)
+    configure_key_storage_secret_manager(ctx)
 
     try:
         keyset = load_keyset(settings)

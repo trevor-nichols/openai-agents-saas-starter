@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.infrastructure.persistence.activity import models as _activity_models  # noqa: F401
 from app.infrastructure.persistence.auth import models as _auth_models  # noqa: F401
 from app.infrastructure.persistence.containers.models import AgentContainer, Container
-from app.infrastructure.persistence.conversations.models import TenantAccount
+from app.infrastructure.persistence.tenants.models import TenantAccount
 from app.infrastructure.persistence.models.base import Base
 from app.infrastructure.persistence.stripe.models import StripeEvent
 from openai import AsyncOpenAI

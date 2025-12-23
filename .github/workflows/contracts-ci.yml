@@ -31,11 +31,20 @@ jobs:
       - name: Bootstrap contracts env
         run: just -f packages/starter_contracts/justfile bootstrap
 
+      - name: Bootstrap providers env
+        run: just -f packages/starter_providers/justfile bootstrap
+
       - name: Lint
-        run: just contracts-lint
+        run: |
+          just contracts-lint
+          just providers-lint
 
       - name: Type check
-        run: just contracts-typecheck
+        run: |
+          just contracts-typecheck
+          just providers-typecheck
 
       - name: Tests
-        run: just contracts-test
+        run: |
+          just contracts-test
+          just providers-test

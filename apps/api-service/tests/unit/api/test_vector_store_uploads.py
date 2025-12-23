@@ -65,6 +65,8 @@ def _fake_file() -> SimpleNamespace:
         size_bytes=128,
         usage_bytes=128,
         status="completed",
+        attributes={},
+        chunking=None,
         attributes_json={},
         chunking_json=None,
         last_error=None,

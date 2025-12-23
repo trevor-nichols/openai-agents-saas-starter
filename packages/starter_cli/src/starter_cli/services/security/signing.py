@@ -9,18 +9,10 @@ import time
 import uuid
 from typing import Any
 
-import boto3
 import httpx
-from azure.core.credentials import TokenCredential
-from azure.identity import (
-    ChainedTokenCredential,
-    ClientSecretCredential,
-    DefaultAzureCredential,
-    ManagedIdentityCredential,
-)
-from azure.keyvault.secrets import SecretClient
 from starter_contracts.config import StarterSettingsProtocol
 from starter_contracts.secrets.models import SecretsProviderLiteral
+from starter_providers.secrets import AWSSecretsManagerClient, AzureKeyVaultClient
 
 from ...core.constants import SAFE_ENVIRONMENTS
 from ...core.exceptions import CLIError
@@ -37,18 +29,18 @@ def build_vault_headers(
 ) -> tuple[str, dict[str, str]]:
     """Build Authorization headers for Vault/HMAC-backed signing."""
 
-    dev_mode = os.getenv("AUTH_CLI_DEV_AUTH_MODE", "vault").lower() == "local"
+    dev_mode = os.getenv("AUTH_CLI_DEV_AUTH_MODE", "vault").lower() == "demo"
     hardened = _requires_vault_verification(settings)
 
     if dev_mode and hardened:
         raise CLIError(
-            "AUTH_CLI_DEV_AUTH_MODE=local is not permitted when Vault verification is required."
+            "AUTH_CLI_DEV_AUTH_MODE=demo is not permitted when Vault verification is required."
         )
     if dev_mode:
-        return "Bearer dev-local", {}
+        return "Bearer dev-demo", {}
 
     if settings is None and not hardened:
-        return "Bearer dev-local", {}
+        return "Bearer dev-demo", {}
     if settings is None and hardened:
         raise CLIError(
             "Application settings unavailable; cannot sign service-account requests in "
@@ -74,7 +66,7 @@ def build_vault_headers(
                     "Vault signing requires complete configuration. "
                     f"Set {joined} or run the setup wizard."
                 )
-            return "Bearer dev-local", {}
+            return "Bearer dev-demo", {}
         base_url, token, key_name = config
         signature = _vault_sign_payload(
             base_url=base_url,
@@ -246,55 +238,36 @@ def _fetch_aws_secret(settings: StarterSettingsProtocol) -> str:
     aws = settings.aws_settings
     if not (aws.region and aws.signing_secret_arn):
         raise CLIError("AWS configuration is incomplete; rerun secrets onboarding.")
-    session = boto3.Session(
-        profile_name=aws.profile,
-        aws_access_key_id=aws.access_key_id,
-        aws_secret_access_key=aws.secret_access_key,
-        aws_session_token=aws.session_token,
-        region_name=aws.region,
+    client = AWSSecretsManagerClient(
+        region=aws.region,
+        profile=aws.profile,
+        access_key_id=aws.access_key_id,
+        secret_access_key=aws.secret_access_key,
+        session_token=aws.session_token,
     )
-    client = session.client("secretsmanager")
     try:
-        response = client.get_secret_value(SecretId=aws.signing_secret_arn)
+        value = client.get_secret_value(aws.signing_secret_arn)
     except Exception as exc:  # pragma: no cover
         raise CLIError(f"AWS secret fetch failed: {exc}") from exc
-    if "SecretString" in response and isinstance(response["SecretString"], str):
-        return response["SecretString"]
-    if "SecretBinary" in response:
-        value = response["SecretBinary"]
-        if isinstance(value, bytes | bytearray):
-            return value.decode("utf-8")
-    raise CLIError("AWS secret missing string payload.")
+    return value
 
 
 def _fetch_azure_secret(settings: StarterSettingsProtocol) -> str:
     az = settings.azure_settings
     if not (az.vault_url and az.signing_secret_name):
         raise CLIError("Azure Key Vault configuration is incomplete; rerun secrets onboarding.")
-
-    credentials: list[TokenCredential] = []
-    if az.tenant_id and az.client_id and az.client_secret:
-        credentials.append(
-            ClientSecretCredential(
-                tenant_id=az.tenant_id,
-                client_id=az.client_id,
-                client_secret=az.client_secret,
-            )
-        )
-    if az.managed_identity_client_id:
-        credentials.append(
-            ManagedIdentityCredential(client_id=az.managed_identity_client_id)
-        )
-    credentials.append(DefaultAzureCredential(exclude_interactive_browser_credential=True))
-    credential = credentials[0] if len(credentials) == 1 else ChainedTokenCredential(*credentials)
-    client = SecretClient(vault_url=az.vault_url, credential=credential)
+    client = AzureKeyVaultClient(
+        vault_url=az.vault_url,
+        tenant_id=az.tenant_id,
+        client_id=az.client_id,
+        client_secret=az.client_secret,
+        managed_identity_client_id=az.managed_identity_client_id,
+    )
     try:
         secret = client.get_secret(az.signing_secret_name)
     except Exception as exc:  # pragma: no cover
         raise CLIError(f"Azure Key Vault secret fetch failed: {exc}") from exc
-    if not secret.value:
-        raise CLIError("Azure Key Vault secret has no value.")
-    return secret.value
+    return secret
 
 
 __all__ = ["build_vault_headers"]

@@ -93,7 +93,7 @@ def env_snapshot():
     yield
 
 
-def _build_context(cli_ctx: CLIContext, *, profile: str = "local") -> WizardContext:
+def _build_context(cli_ctx: CLIContext, *, profile: str = "demo") -> WizardContext:
     backend_env = EnvFile(cli_ctx.project_root / "apps" / "api-service" / ".env.local")
     return WizardContext(
         cli_ctx=cli_ctx,
@@ -144,6 +144,7 @@ def test_core_section_extended_prompts(cli_ctx: CLIContext) -> None:
             "JWT_ALGORITHM": "EdDSA",
             "AUTH_KEY_STORAGE_BACKEND": "secret-manager",
             "AUTH_KEY_STORAGE_PATH": "/secrets/keyset",
+            "AUTH_KEY_STORAGE_PROVIDER": "aws_sm",
             "AUTH_KEY_SECRET_NAME": "kv/signing",
             "DATABASE_POOL_SIZE": "12",
             "DATABASE_MAX_OVERFLOW": "4",
@@ -166,6 +167,7 @@ def test_core_section_extended_prompts(cli_ctx: CLIContext) -> None:
     assert env.get("ALLOWED_METHODS") == "GET,POST"
     assert env.get("AUTH_AUDIENCE") == '["agent-api", "billing"]'
     assert env.get("AUTH_KEY_STORAGE_BACKEND") == "secret-manager"
+    assert env.get("AUTH_KEY_STORAGE_PROVIDER") == "aws_sm"
     assert env.get("AUTH_KEY_SECRET_NAME") == "kv/signing"
     assert env.get("DATABASE_POOL_SIZE") == "12"
     assert env.get("DATABASE_POOL_TIMEOUT") == "45.5"

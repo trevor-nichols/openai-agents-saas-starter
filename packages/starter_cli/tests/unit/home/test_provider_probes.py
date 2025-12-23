@@ -10,7 +10,7 @@ def _ctx(env: dict[str, str], *, warn_only: bool = True) -> ProbeContext:
     return ProbeContext(
         env=env,
         settings=None,
-        profile="local",
+        profile="demo",
         strict=not warn_only,
         warn_only=warn_only,
     )
@@ -147,6 +147,6 @@ def test_doctor_attaches_category(monkeypatch):
         "PROBE_SPECS",
         (ProbeSpec(name="alpha", factory=lambda ctx: fake_probe(ctx), category="secrets"),),
     )
-    runner = doctor_mod.DoctorRunner(build_context(), profile="local", strict=False)
+    runner = doctor_mod.DoctorRunner(build_context(), profile="demo", strict=False)
     probes = runner._run_probes()
     assert probes[0].metadata.get("category") == "secrets"

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 
+from starter_contracts.secrets.models import SecretsProviderLiteral
+
 from starter_cli.adapters.io.console import console
 from starter_cli.core import CLIError
 
@@ -12,6 +14,7 @@ _DEFAULT_AUTH_AUDIENCE = (
     "agent-api,analytics-service,billing-worker,support-console,synthetic-monitor"
 )
 _KEY_STORAGE_CHOICES = {"file", "secret-manager"}
+_KEY_STORAGE_PROVIDER_CHOICES = {literal.value for literal in SecretsProviderLiteral}
 
 
 def run(context: WizardContext, provider: InputProvider) -> None:
@@ -23,7 +26,7 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     )
 
     env_default = {
-        "local": "development",
+        "demo": "development",
         "staging": "staging",
         "production": "production",
     }[context.profile]
@@ -35,7 +38,7 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     )
     context.set_backend("ENVIRONMENT", environment)
 
-    debug_default = context.current_bool("DEBUG", default=context.profile == "local")
+    debug_default = context.current_bool("DEBUG", default=context.profile == "demo")
     debug = provider.prompt_bool(
         key="DEBUG",
         prompt="Enable FastAPI debug mode?",
@@ -98,7 +101,7 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     auto_run = provider.prompt_bool(
         key="AUTO_RUN_MIGRATIONS",
         prompt="Automatically run migrations on startup?",
-        default=context.current_bool("AUTO_RUN_MIGRATIONS", default=context.profile == "local"),
+        default=context.current_bool("AUTO_RUN_MIGRATIONS", default=context.profile == "demo"),
     )
     context.set_backend_bool("AUTO_RUN_MIGRATIONS", auto_run)
 
@@ -174,23 +177,51 @@ def _configure_authentication(context: WizardContext, provider: InputProvider) -
     )
     context.set_backend("JWT_ALGORITHM", jwt_algorithm)
 
-    backend_choice = _prompt_choice(
-        provider,
-        key="AUTH_KEY_STORAGE_BACKEND",
-        prompt="Key storage backend (file or secret-manager)",
-        default=context.current("AUTH_KEY_STORAGE_BACKEND") or "file",
-        choices=_KEY_STORAGE_CHOICES,
-    )
+    if context.profile in {"staging", "production"}:
+        backend_choice = "secret-manager"
+        console.info(
+            "Key storage backend is forced to secret-manager for staging/production.",
+            topic="wizard",
+        )
+    else:
+        backend_choice = _prompt_choice(
+            provider,
+            key="AUTH_KEY_STORAGE_BACKEND",
+            prompt="Key storage backend (file or secret-manager)",
+            default=context.current("AUTH_KEY_STORAGE_BACKEND") or "file",
+            choices=_KEY_STORAGE_CHOICES,
+        )
     context.set_backend("AUTH_KEY_STORAGE_BACKEND", backend_choice)
 
-    storage_path = _prompt_nonempty_string(
-        context,
-        provider,
-        key="AUTH_KEY_STORAGE_PATH",
-        prompt="Key storage path",
-        default=context.current("AUTH_KEY_STORAGE_PATH") or "var/keys/keyset.json",
-    )
-    context.set_backend("AUTH_KEY_STORAGE_PATH", storage_path)
+    if backend_choice == "file":
+        storage_path = _prompt_nonempty_string(
+            context,
+            provider,
+            key="AUTH_KEY_STORAGE_PATH",
+            prompt="Key storage path",
+            default=context.current("AUTH_KEY_STORAGE_PATH") or "var/keys/keyset.json",
+        )
+        context.set_backend("AUTH_KEY_STORAGE_PATH", storage_path)
+        context.unset_backend("AUTH_KEY_STORAGE_PROVIDER")
+    else:
+        context.unset_backend("AUTH_KEY_STORAGE_PATH")
+        provider_default = (
+            context.current("AUTH_KEY_STORAGE_PROVIDER")
+            or context.current("SECRETS_PROVIDER")
+            or (
+                SecretsProviderLiteral.VAULT_DEV.value
+                if context.profile == "demo"
+                else SecretsProviderLiteral.AWS_SM.value
+            )
+        )
+        provider_choice = _prompt_choice(
+            provider,
+            key="AUTH_KEY_STORAGE_PROVIDER",
+            prompt="Key storage provider (vault/infisical/aws/azure)",
+            default=provider_default,
+            choices=_KEY_STORAGE_PROVIDER_CHOICES,
+        )
+        context.set_backend("AUTH_KEY_STORAGE_PROVIDER", provider_choice)
 
     secret_required = backend_choice != "file"
     secret_default = context.current("AUTH_KEY_SECRET_NAME") or ""

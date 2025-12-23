@@ -132,7 +132,7 @@ def test_wizard_headless_local_generates_env(temp_ctx: CLIContext) -> None:
     answers = _local_headless_answers()
     wizard = _create_setup_wizard(
         ctx=temp_ctx,
-        profile="local",
+        profile="demo",
         output_format="summary",
         input_provider=HeadlessInputProvider(answers=answers),
     )
@@ -161,7 +161,7 @@ def test_wizard_prompts_all_selected_sinks(temp_ctx: CLIContext) -> None:
 
     wizard = _create_setup_wizard(
         ctx=temp_ctx,
-        profile="local",
+        profile="demo",
         output_format="summary",
         input_provider=HeadlessInputProvider(answers=answers),
     )
@@ -185,7 +185,7 @@ def test_wizard_configures_slack_section(temp_ctx: CLIContext) -> None:
     }
     wizard = _create_setup_wizard(
         ctx=temp_ctx,
-        profile="local",
+        profile="demo",
         output_format="summary",
         input_provider=HeadlessInputProvider(answers=answers),
     )
@@ -204,7 +204,7 @@ def test_wizard_exports_answers_when_requested(temp_ctx: CLIContext) -> None:
     export_path = temp_ctx.project_root / "ops" / "local.json"
     wizard = _create_setup_wizard(
         ctx=temp_ctx,
-        profile="local",
+        profile="demo",
         output_format="summary",
         input_provider=HeadlessInputProvider(answers=answers),
         export_answers_path=export_path,
@@ -235,7 +235,7 @@ def test_wizard_configures_bundled_collector(temp_ctx: CLIContext) -> None:
     }
     wizard = _create_setup_wizard(
         ctx=temp_ctx,
-        profile="local",
+        profile="demo",
         output_format="summary",
         input_provider=HeadlessInputProvider(answers=answers),
     )
@@ -257,7 +257,7 @@ def test_wizard_headless_requires_worker_mode(temp_ctx: CLIContext) -> None:
     answers.pop("BILLING_RETRY_DEPLOYMENT_MODE")
     wizard = _create_setup_wizard(
         ctx=temp_ctx,
-        profile="local",
+        profile="demo",
         output_format="summary",
         input_provider=HeadlessInputProvider(answers=answers),
     )
@@ -273,7 +273,7 @@ def test_wizard_headless_invalid_number_raises(temp_ctx: CLIContext) -> None:
     answers = _local_headless_answers() | {"SIGNUP_RATE_LIMIT_PER_HOUR": "abc"}
     wizard = _create_setup_wizard(
         ctx=temp_ctx,
-        profile="local",
+        profile="demo",
         output_format="summary",
         input_provider=HeadlessInputProvider(answers=answers),
     )
@@ -290,7 +290,7 @@ def test_wizard_headless_export_invalid_number_raises(temp_ctx: CLIContext) -> N
     export_path = temp_ctx.project_root / "ops" / "local.json"
     wizard = _create_setup_wizard(
         ctx=temp_ctx,
-        profile="local",
+        profile="demo",
         output_format="summary",
         input_provider=HeadlessInputProvider(answers=answers),
         export_answers_path=export_path,
@@ -321,7 +321,7 @@ def test_dev_user_automation_invoked_when_enabled(
     overrides[AutomationPhase.DEV_USER] = True
     wizard = _create_setup_wizard(
         ctx=temp_ctx,
-        profile="local",
+        profile="demo",
         output_format="summary",
         input_provider=HeadlessInputProvider(answers=answers),
         automation_overrides=overrides,
@@ -351,7 +351,7 @@ def test_demo_token_automation_invoked_when_enabled(
     overrides[AutomationPhase.DEMO_TOKEN] = True
     wizard = _create_setup_wizard(
         ctx=temp_ctx,
-        profile="local",
+        profile="demo",
         output_format="summary",
         input_provider=HeadlessInputProvider(answers=answers),
         automation_overrides=overrides,
@@ -495,7 +495,7 @@ def test_wizard_refreshes_cached_settings(temp_ctx: CLIContext) -> None:
 
     wizard = _create_setup_wizard(
         ctx=temp_ctx,
-        profile="local",
+        profile="demo",
         output_format="summary",
         input_provider=HeadlessInputProvider(answers=answers),
     )
@@ -568,7 +568,7 @@ def test_wizard_clears_optional_provider_keys(temp_ctx: CLIContext) -> None:
 
     wizard = _create_setup_wizard(
         ctx=temp_ctx,
-        profile="local",
+        profile="demo",
         output_format="summary",
         input_provider=HeadlessInputProvider(answers=answers),
     )
@@ -632,7 +632,7 @@ def test_wizard_does_not_leak_env_values(temp_ctx: CLIContext) -> None:
 
     wizard = _create_setup_wizard(
         ctx=temp_ctx,
-        profile="local",
+        profile="demo",
         output_format="summary",
         input_provider=HeadlessInputProvider(answers=answers),
     )
@@ -709,7 +709,7 @@ def test_wizard_rotates_new_peppers(monkeypatch, temp_ctx: CLIContext) -> None:
 
     wizard = _create_setup_wizard(
         ctx=temp_ctx,
-        profile="local",
+        profile="demo",
         output_format="summary",
         input_provider=HeadlessInputProvider(answers=answers),
     )
@@ -799,7 +799,7 @@ def test_wizard_staging_verifies_vault(
 def test_wizard_summary_writes_milestones(temp_ctx: CLIContext) -> None:
     wizard = _create_setup_wizard(
         ctx=temp_ctx,
-        profile="local",
+        profile="demo",
         output_format="summary",
         input_provider=None,
     )
@@ -831,7 +831,7 @@ def test_wizard_summary_writes_milestones(temp_ctx: CLIContext) -> None:
 def test_collect_database_local_compose_derives_database_url(temp_ctx: CLIContext) -> None:
     wizard = _create_setup_wizard(
         ctx=temp_ctx,
-        profile="local",
+        profile="demo",
         output_format="summary",
         input_provider=None,
     )
@@ -858,7 +858,7 @@ def test_collect_database_local_compose_derives_database_url(temp_ctx: CLIContex
 def test_collect_database_local_external_uses_provided_url(temp_ctx: CLIContext) -> None:
     wizard = _create_setup_wizard(
         ctx=temp_ctx,
-        profile="local",
+        profile="demo",
         output_format="summary",
         input_provider=None,
     )
@@ -957,7 +957,7 @@ def test_interactive_wizard_runs_tui_alongside_shell(
     provider = InteractiveInputProvider(prefill={})
     wizard = SetupWizard(
         ctx=temp_ctx,
-        profile="local",
+        profile="demo",
         output_format="summary",
         input_provider=provider,
         enable_shell=True,

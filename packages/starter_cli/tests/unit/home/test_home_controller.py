@@ -20,7 +20,7 @@ def test_home_controller_summary(monkeypatch):
         return probes, services, summary
 
     class FakeRunner:
-        profile = "local"
+        profile = "demo"
         strict = False
 
         def collect(self):
@@ -36,7 +36,7 @@ def test_home_shortcuts_include_setup():
     controller = HomeController(ctx)
 
     class DummyRunner:
-        profile = "local"
+        profile = "demo"
         strict = False
 
     shortcuts = controller._build_shortcuts(cast(DoctorRunner, DummyRunner()))

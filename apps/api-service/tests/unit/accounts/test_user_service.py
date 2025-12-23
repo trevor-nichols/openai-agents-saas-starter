@@ -30,7 +30,7 @@ from app.infrastructure.persistence.auth.user_repository import (
     PostgresUserRepository,
     RedisLockoutStore,
 )
-from app.infrastructure.persistence.conversations.models import TenantAccount
+from app.infrastructure.persistence.tenants.models import TenantAccount
 from app.services.users import (
     InvalidCredentialsError,
     IpThrottledError,

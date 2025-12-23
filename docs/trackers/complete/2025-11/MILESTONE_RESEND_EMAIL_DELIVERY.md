@@ -4,7 +4,7 @@
 We need to replace the placeholder logging notifiers with a production-ready Resend integration for both email verification and password reset flows. The work must keep the existing FastAPI contracts, maintain Redis token storage, and meet the repo's reliability/observability standards.
 
 ## Success Criteria
-- All verification/reset emails go through Resend in non-local environments, with graceful fallbacks for dev/test.
+- All verification/reset emails go through Resend in non-demo environments, with graceful fallbacks for dev/test.
 - Operators can configure sender domains, template IDs, and API keys solely via settings/env vars.
 - Failures bubble up with actionable logs/metrics, and tests cover the new integration path.
 

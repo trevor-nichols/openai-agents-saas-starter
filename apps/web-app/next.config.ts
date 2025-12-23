@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
+  output: "standalone",
   outputFileTracingRoot: __dirname,
   turbopack: {
     // Explicitly set the project root so Next doesn't mis-infer it as app/

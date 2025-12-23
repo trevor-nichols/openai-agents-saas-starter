@@ -12,19 +12,21 @@ from ..context import WizardContext
 def run(context: WizardContext, provider: InputProvider) -> None:
     console.section(
         "Storage",
-        "Choose object storage backend (MinIO self-hosted or Google Cloud Storage).",
+        "Choose object storage backend (MinIO, S3, Azure Blob, or Google Cloud Storage).",
     )
 
     current = context.current("STORAGE_PROVIDER") or (
         StorageProviderLiteral.MINIO.value
-        if context.profile == "local"
-        else StorageProviderLiteral.GCS.value
+        if context.profile == "demo"
+        else StorageProviderLiteral.S3.value
     )
     choice = provider.prompt_choice(
         key="STORAGE_PROVIDER",
         prompt="Select storage provider",
         choices=[
             StorageProviderLiteral.MINIO.value,
+            StorageProviderLiteral.S3.value,
+            StorageProviderLiteral.AZURE_BLOB.value,
             StorageProviderLiteral.GCS.value,
         ],
         default=current,
@@ -45,6 +47,10 @@ def run(context: WizardContext, provider: InputProvider) -> None:
 
     if provider_literal == StorageProviderLiteral.MINIO:
         _configure_minio(context, provider)
+    elif provider_literal == StorageProviderLiteral.S3:
+        _configure_s3(context, provider)
+    elif provider_literal == StorageProviderLiteral.AZURE_BLOB:
+        _configure_azure_blob(context, provider)
     elif provider_literal == StorageProviderLiteral.GCS:
         _configure_gcs(context, provider)
 
@@ -53,7 +59,7 @@ def run(context: WizardContext, provider: InputProvider) -> None:
 
 def _configure_minio(context: WizardContext, provider: InputProvider) -> None:
     default_endpoint = context.current("MINIO_ENDPOINT") or (
-        "http://localhost:9000" if context.profile == "local" else ""
+        "http://localhost:9000" if context.profile == "demo" else ""
     )
     endpoint = provider.prompt_string(
         key="MINIO_ENDPOINT",
@@ -65,11 +71,11 @@ def _configure_minio(context: WizardContext, provider: InputProvider) -> None:
         key="MINIO_ACCESS_KEY",
         prompt="MinIO access key",
         default=context.current("MINIO_ACCESS_KEY")
-        or ("minioadmin" if context.profile == "local" else ""),
+        or ("minioadmin" if context.profile == "demo" else ""),
         required=True,
     )
     default_secret = context.current("MINIO_SECRET_KEY") or (
-        "minioadmin" if context.profile == "local" else ""
+        "minioadmin" if context.profile == "demo" else ""
     )
     secret_key = provider.prompt_secret(
         key="MINIO_SECRET_KEY",
@@ -83,7 +89,7 @@ def _configure_minio(context: WizardContext, provider: InputProvider) -> None:
         default=context.current("MINIO_REGION") or "",
         required=False,
     )
-    secure_default = context.profile != "local"
+    secure_default = context.profile != "demo"
     secure = provider.prompt_bool(
         key="MINIO_SECURE",
         prompt="Use HTTPS for MinIO?",
@@ -140,6 +146,67 @@ def _configure_gcs(context: WizardContext, provider: InputProvider) -> None:
     context.set_backend("GCS_CREDENTIALS_JSON", creds_json, mask=True)
     context.set_backend("GCS_SIGNING_EMAIL", signing_email)
     context.set_backend_bool("GCS_UNIFORM_ACCESS", uniform_access)
+
+
+def _configure_s3(context: WizardContext, provider: InputProvider) -> None:
+    bucket = provider.prompt_string(
+        key="S3_BUCKET",
+        prompt="S3 bucket name",
+        default=context.current("S3_BUCKET") or "",
+        required=True,
+    )
+    region = provider.prompt_string(
+        key="S3_REGION",
+        prompt="S3 region (blank = SDK default)",
+        default=context.current("S3_REGION") or "",
+        required=False,
+    )
+    endpoint = provider.prompt_string(
+        key="S3_ENDPOINT_URL",
+        prompt="Custom S3 endpoint URL (blank = AWS)",
+        default=context.current("S3_ENDPOINT_URL") or "",
+        required=False,
+    )
+    force_path_style = provider.prompt_bool(
+        key="S3_FORCE_PATH_STYLE",
+        prompt="Force path-style addressing?",
+        default=context.current_bool("S3_FORCE_PATH_STYLE", False),
+    )
+
+    context.set_backend("S3_BUCKET", bucket)
+    context.set_backend("S3_REGION", region)
+    context.set_backend("S3_ENDPOINT_URL", endpoint)
+    context.set_backend_bool("S3_FORCE_PATH_STYLE", force_path_style)
+
+
+def _configure_azure_blob(context: WizardContext, provider: InputProvider) -> None:
+    container = provider.prompt_string(
+        key="AZURE_BLOB_CONTAINER",
+        prompt="Azure Blob container name",
+        default=context.current("AZURE_BLOB_CONTAINER") or "",
+        required=True,
+    )
+    connection_string = provider.prompt_secret(
+        key="AZURE_BLOB_CONNECTION_STRING",
+        prompt="Azure Blob connection string (blank to use account URL + managed identity)",
+        existing=context.current("AZURE_BLOB_CONNECTION_STRING"),
+        required=False,
+    )
+    account_url = provider.prompt_string(
+        key="AZURE_BLOB_ACCOUNT_URL",
+        prompt="Azure Blob account URL (required if no connection string)",
+        default=context.current("AZURE_BLOB_ACCOUNT_URL") or "",
+        required=not bool(connection_string),
+    )
+    if not connection_string and not account_url:
+        raise CLIError(
+            "AZURE_BLOB_ACCOUNT_URL is required when no connection string is provided."
+        )
+
+    context.set_backend("AZURE_BLOB_CONTAINER", container)
+    if connection_string:
+        context.set_backend("AZURE_BLOB_CONNECTION_STRING", connection_string, mask=True)
+    context.set_backend("AZURE_BLOB_ACCOUNT_URL", account_url)
 
 
 def _configure_image_defaults(context: WizardContext, provider: InputProvider) -> None:

@@ -254,7 +254,7 @@ def test_service_account_issue_returns_eddsa_token(monkeypatch: pytest.MonkeyPat
         response = client.post(
             "/api/v1/auth/service-accounts/issue",
             json=payload,
-            headers={"Authorization": "Bearer dev-local"},
+            headers={"Authorization": "Bearer dev-demo"},
         )
 
         assert response.status_code == 201, response.text

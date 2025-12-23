@@ -19,7 +19,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from ._wizard.context import WizardContext
 
 
-# Defaults that match the marketing promise: one-command local setup.
+# Defaults that match the marketing promise: one-command demo setup.
 DEFAULT_EMAIL = "dev@example.com"
 DEFAULT_NAME = "Dev Admin"
 DEFAULT_TENANT = "default"
@@ -204,7 +204,7 @@ def seed_dev_user(context: WizardContext, config: DevUserConfig) -> str:
 
 def _persist_and_announce(context: WizardContext, config: DevUserConfig, status: str) -> None:
     # Console output (Rich) and plain stdout for shells that suppress styling.
-    console.section("Dev User Ready", "Use these credentials to sign in locally.")
+    console.section("Dev User Ready", "Use these credentials to sign in for the demo.")
     console.info(f"Email: {config.email}", topic="dev-user")
     console.info(
         f"Tenant: {config.tenant_slug} ({config.tenant_name})",

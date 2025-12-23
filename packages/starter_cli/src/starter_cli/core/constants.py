@@ -18,4 +18,4 @@ DEFAULT_COMPOSE_FILE = REPO_ROOT / "ops" / "compose" / "docker-compose.yml"
 TELEMETRY_ENV_FLAG = "STARTER_CLI_TELEMETRY_OPT_IN"
 SKIP_ENV_FLAG = "STARTER_CLI_SKIP_ENV"
 TRUE_LITERALS = {"1", "true", "yes"}
-SAFE_ENVIRONMENTS = {"development", "dev", "local", "test"}
+SAFE_ENVIRONMENTS = {"development", "dev", "demo", "test"}

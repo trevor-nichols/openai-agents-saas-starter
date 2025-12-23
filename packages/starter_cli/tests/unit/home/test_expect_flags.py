@@ -18,7 +18,7 @@ def test_expect_flags_skip_probes(monkeypatch):
         ),
     )
     monkeypatch.setenv("EXPECT_API_DOWN", "true")
-    runner = doctor_mod.DoctorRunner(build_context(), profile="local", strict=False)
+    runner = doctor_mod.DoctorRunner(build_context(), profile="demo", strict=False)
     probes = runner._run_probes()
     assert probes[0].state is ProbeState.SKIPPED
     assert "suppressed" in (probes[0].detail or "")

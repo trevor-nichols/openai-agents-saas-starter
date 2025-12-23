@@ -142,7 +142,7 @@ Operator / CI Job
 
 - CLI never logs refresh token contents by default; `--verbose` redacts secrets.  
 - Vault credentials retrieved from environment/CI secrets with minimal TTL.  
-- Enforce Vault-signed request JWTs in staging/prod; mTLS fallback limited to local/test modes.  
+- Enforce Vault-signed request JWTs in staging/prod; mTLS fallback limited to demo/test modes.  
 - Rate limit service-account issuance to prevent brute-force or misconfigured jobs; alerts fire when per-account or global caps are exceeded.
 
 ## 9. Implementation Checklist

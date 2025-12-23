@@ -169,7 +169,7 @@ VAULT_TOKEN=
 VAULT_TRANSIT_KEY=auth-service
 ```
 
-Flip `RESEND_EMAIL_ENABLED=true` only after you have verified the sender domain inside Resend and populated both `RESEND_API_KEY` and `RESEND_DEFAULT_FROM`. Leave the template ID and Vault fields empty for local development—the backend uses safe defaults until you enable those features—but treat every pepper/secret as mandatory before staging or production. As of November 2025 the API refuses to boot with `ENVIRONMENT` other than `development/dev/local/test` (or with `DEBUG=false`) unless `VAULT_VERIFY_ENABLED=true` **and** the Vault fields are populated. The Starter CLI wizard enforces this automatically for `--profile staging|production` runs, prompting for Vault Transit connectivity and writing the necessary env vars.
+Flip `RESEND_EMAIL_ENABLED=true` only after you have verified the sender domain inside Resend and populated both `RESEND_API_KEY` and `RESEND_DEFAULT_FROM`. Leave the template ID and Vault fields empty for local development—the backend uses safe defaults until you enable those features—but treat every pepper/secret as mandatory before staging or production. As of November 2025 the API refuses to boot with `ENVIRONMENT` other than `development/dev/demo/test` (or with `DEBUG=false`) unless `VAULT_VERIFY_ENABLED=true` **and** the Vault fields are populated. The Starter CLI wizard enforces this automatically for `--profile staging|production` runs, prompting for Vault Transit connectivity and writing the necessary env vars.
 
 ### Unified CLI (backend + frontend tooling)
 
@@ -183,7 +183,7 @@ python -m starter_cli.app infra compose up    # start Postgres + Redis via docke
 python -m starter_cli.app infra vault up      # run the Vault dev signer helper
 ```
 
-The wizard now walks through profiles (local/staging/production), captures required vs. optional secrets, verifies Vault Transit connectivity before enabling service-account issuance, validates Stripe/Redis/Resend inputs (with optional migration + seeding helpers), and records tenant/logging/GeoIP/signup policies so auditors can trace every decision. It writes `apps/api-service/.env.local` + `web-app/.env.local`, then emits a milestone-aligned report. Stripe provisioning and auth tooling now live exclusively under the consolidated CLI (`python -m starter_cli.app stripe …`, `python -m starter_cli.app auth …`).
+The wizard now walks through profiles (demo/staging/production), captures required vs. optional secrets, verifies Vault Transit connectivity before enabling service-account issuance, validates Stripe/Redis/Resend inputs (with optional migration + seeding helpers), and records tenant/logging/GeoIP/signup policies so auditors can trace every decision. It writes `apps/api-service/.env.local` + `web-app/.env.local`, then emits a milestone-aligned report. Stripe provisioning and auth tooling now live exclusively under the consolidated CLI (`python -m starter_cli.app stripe …`, `python -m starter_cli.app auth …`).
 
 After the wizard, use the new `infra` command group instead of raw Just recipes:
 
@@ -204,7 +204,7 @@ The API will be available at `http://localhost:8000`
 > **Compose vs. application env files**
 > - `.env.compose` (gitignored; copy from `.env.compose.example`) holds non-sensitive defaults that Docker Compose and local helpers consume (ports, default credentials, feature toggles). It is safe to edit locally.
 > - `apps/api-service/.env.local` (gitignored) contains your secrets and any overrides. The Make targets below source **both** files, so you never have to `export` variables manually.
-> - For local development, `starter_cli setup wizard --profile local` keeps the Docker Postgres settings (`POSTGRES_*`) and `DATABASE_URL` consistent, and `just dev-up` respects `STARTER_LOCAL_DATABASE_MODE` (defaults to `compose`).
+> - For demo development, `starter_cli setup wizard --profile demo` keeps the Docker Postgres settings (`POSTGRES_*`) and `DATABASE_URL` consistent, and `just dev-up` respects `STARTER_LOCAL_DATABASE_MODE` (defaults to `compose`).
 
 ### 5. Database & Migrations
 
@@ -254,6 +254,18 @@ hatch run lint
 hatch run typecheck
 hatch run pyright
 hatch run test
+```
+
+Targeted suites (faster, scoped runs):
+
+```bash
+cd api-service
+hatch run test:contract
+hatch run test:integration
+hatch run test:smoke
+hatch run test:manual
+hatch run test:unit-storage
+hatch run test:unit-storage-file tests/unit/storage/test_storage_azure_blob_provider.py
 ```
 
 ### 8. Postgres Integration Smoke Tests
@@ -516,27 +528,19 @@ response2 = requests.post("http://localhost:8000/api/v1/agents/chat", json={
 
 ### Docker (Recommended)
 
-```dockerfile
-FROM python:3.11-slim
-WORKDIR /app
+Use the production Dockerfile at `apps/api-service/Dockerfile`:
 
-# Install runtime dependencies and the service package
-COPY api-service/pyproject.toml ./pyproject.toml
-COPY api-service/src ./src
-COPY api-service/alembic ./alembic
-COPY packages/starter_contracts ./starter_contracts
-COPY LICENSE ./LICENSE
-RUN pip install --upgrade pip \
- && pip install --no-cache-dir ./starter_contracts \
- && pip install --no-cache-dir .
-
-# Provide application defaults (optional)
-ENV HOST=0.0.0.0 \
-    PORT=8000 \
-    RELOAD=false
-
-CMD ["api-service"]
+```bash
+docker build -f apps/api-service/Dockerfile -t openai-agent-api .
+docker run --rm \
+  --env-file .env.compose \
+  --env-file apps/api-service/.env.local \
+  -v ./var/keys:/app/var/keys \
+  -p 8000:8000 \
+  openai-agent-api
 ```
+
+See `docs/ops/container-deployments.md` for full-stack compose instructions.
 
 ### Production Considerations
 

@@ -150,10 +150,10 @@ def run(context: WizardContext, provider: InputProvider) -> None:
         )
     )
     context.set_backend("GEOIP_PROVIDER", geo)
-    if context.profile != "local" and geo == "none":
+    if context.profile != "demo" and geo == "none":
         console.warn(
             (
-                "GeoIP provider is disabled for a non-local profile; session telemetry "
+                "GeoIP provider is disabled for a non-demo profile; session telemetry "
                 "will lack location data."
             ),
             topic="geoip",
@@ -233,7 +233,7 @@ def _collector_default(context: WizardContext) -> bool:
     current = context.current("ENABLE_OTEL_COLLECTOR")
     if current is not None:
         return context.current_bool("ENABLE_OTEL_COLLECTOR")
-    return context.profile == "local"
+    return context.profile == "demo"
 
 
 def _clear_collector_exporters(context: WizardContext) -> None:
@@ -323,7 +323,7 @@ def _maybe_download_maxmind_db(
     raw_path: str,
 ) -> None:
     target = _resolve_geoip_path(context, raw_path)
-    default_download = context.profile != "local"
+    default_download = context.profile != "demo"
     record = context.automation.get(AutomationPhase.GEOIP)
     if record.enabled:
         if record.status == AutomationStatus.BLOCKED:

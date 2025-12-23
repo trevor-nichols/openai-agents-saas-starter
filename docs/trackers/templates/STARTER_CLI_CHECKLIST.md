@@ -4,7 +4,7 @@
 - Generated: 2025-11-18 23:48:23 UTC
 - Loaded env files: _(none loaded via --env-file)_
 - Tracker reference: `docs/trackers/complete/MILESTONE_TRACKER.md`
-- Regenerate: `python -m starter_cli.app setup wizard --profile local --report-only --output checklist --markdown-summary-path <path>`
+- Regenerate: `python -m starter_cli.app setup wizard --profile demo --report-only --output checklist --markdown-summary-path <path>`
 
 ## M1 - Secrets & Key Management
 Rotate and harden keys.

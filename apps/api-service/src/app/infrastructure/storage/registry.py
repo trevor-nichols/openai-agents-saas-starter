@@ -7,14 +7,18 @@ from collections.abc import Callable, Mapping
 
 from app.core.settings import Settings, get_settings
 from app.domain.storage import (
+    AzureBlobProviderConfig,
     GCSProviderConfig,
     MinioProviderConfig,
+    S3ProviderConfig,
     StorageProviderLiteral,
     StorageProviderProtocol,
 )
+from app.infrastructure.storage.providers.azure_blob import AzureBlobStorageProvider
 from app.infrastructure.storage.providers.gcs import GCSStorageProvider
 from app.infrastructure.storage.providers.memory import MemoryStorageProvider
 from app.infrastructure.storage.providers.minio import MinioStorageProvider
+from app.infrastructure.storage.providers.s3 import S3StorageProvider
 
 ProviderFactory = Callable[[Settings], StorageProviderProtocol]
 logger = logging.getLogger(__name__)
@@ -25,6 +29,8 @@ def _build_registry() -> Mapping[StorageProviderLiteral, ProviderFactory]:
         StorageProviderLiteral.MEMORY: lambda _settings: MemoryStorageProvider(),
         StorageProviderLiteral.MINIO: _build_minio_provider,
         StorageProviderLiteral.GCS: _build_gcs_provider,
+        StorageProviderLiteral.S3: _build_s3_provider,
+        StorageProviderLiteral.AZURE_BLOB: _build_azure_blob_provider,
     }
 
 
@@ -46,6 +52,25 @@ def _build_gcs_provider(settings: Settings) -> StorageProviderProtocol:
             "GCS_CREDENTIALS_PATH to be explicit."
         )
     return GCSStorageProvider(cfg)
+
+
+def _build_s3_provider(settings: Settings) -> StorageProviderProtocol:
+    cfg: S3ProviderConfig = settings.s3_settings
+    if not cfg.bucket:
+        raise RuntimeError("S3_BUCKET is required when STORAGE_PROVIDER=s3")
+    return S3StorageProvider(cfg)
+
+
+def _build_azure_blob_provider(settings: Settings) -> StorageProviderProtocol:
+    cfg: AzureBlobProviderConfig = settings.azure_blob_settings
+    if not cfg.container:
+        raise RuntimeError("AZURE_BLOB_CONTAINER is required when STORAGE_PROVIDER=azure_blob")
+    if not (cfg.connection_string or cfg.account_url):
+        raise RuntimeError(
+            "AZURE_BLOB_CONNECTION_STRING or AZURE_BLOB_ACCOUNT_URL is required "
+            "when STORAGE_PROVIDER=azure_blob"
+        )
+    return AzureBlobStorageProvider(cfg)
 
 
 _PROVIDER_CACHE: StorageProviderProtocol | None = None

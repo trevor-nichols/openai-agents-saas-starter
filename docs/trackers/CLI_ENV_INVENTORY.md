@@ -1,7 +1,7 @@
 # Starter CLI Environment Inventory
 
 This file is generated via `python -m starter_cli.app config write-inventory`.
-Last updated: 2025-12-13 16:35:32 UTC
+Last updated: 2025-12-22 18:45:56 UTC
 
 Legend: `✅` = wizard prompts for it, blank = requires manual population.
 
@@ -41,6 +41,7 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | AUTH_JWKS_MAX_AGE_SECONDS | int | 300 |  | ✅ | Preferred Cache-Control max-age for JWKS responses. |
 | AUTH_KEY_SECRET_NAME | str \| NoneType | — |  | ✅ | Secret-manager key/path storing keyset JSON when backend=secret-manager. |
 | AUTH_KEY_STORAGE_BACKEND | str | file |  | ✅ | Key storage backend (file or secret-manager). |
+| AUTH_KEY_STORAGE_PROVIDER | SecretsProviderLiteral \| NoneType | — |  | ✅ | Secrets provider used for keyset storage when AUTH_KEY_STORAGE_BACKEND=secret-manager. |
 | AUTH_KEY_STORAGE_PATH | str | var/keys/keyset.json |  | ✅ | Filesystem path for keyset JSON when using file backend. |
 | AUTH_LOCKOUT_DURATION_MINUTES | float | 60.0 |  | ✅ | Automatic unlock window for locked users (minutes). |
 | AUTH_LOCKOUT_THRESHOLD | int | 5 |  | ✅ | Failed login attempts allowed before locking the account. |
@@ -62,6 +63,9 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | AWS_SESSION_TOKEN | str \| NoneType | — |  | ✅ | AWS session token (for temporary credentials). |
 | AWS_SM_CACHE_TTL_SECONDS | int | 60 |  | ✅ | TTL (seconds) for cached Secrets Manager values. |
 | AWS_SM_SIGNING_SECRET_ARN | str \| NoneType | — |  | ✅ | Secrets Manager ARN/name containing the signing secret value. |
+| AZURE_BLOB_ACCOUNT_URL | str \| NoneType | — |  | ✅ | Azure Blob account URL (https://<account>.blob.core.windows.net). |
+| AZURE_BLOB_CONNECTION_STRING | str \| NoneType | — |  | ✅ | Azure Blob connection string (optional, overrides account URL auth). |
+| AZURE_BLOB_CONTAINER | str \| NoneType | — |  | ✅ | Azure Blob container name for storage operations. |
 | AZURE_CLIENT_ID | str \| NoneType | — |  | ✅ | Azure AD application (client) ID. |
 | AZURE_CLIENT_SECRET | str \| NoneType | — |  | ✅ | Azure AD application secret. |
 | AZURE_KEY_VAULT_URL | str \| NoneType | — |  | ✅ | Azure Key Vault URL (https://<name>.vault.azure.net). |
@@ -108,12 +112,12 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | ENABLE_VECTOR_STORE_SYNC_WORKER | bool | True |  |  | Run background sync worker to refresh vector store/file status and expiry. Set false only for constrained/local dev. |
 | ENVIRONMENT | str | development |  | ✅ | Deployment environment label (development, staging, production, etc.) |
 | FRONTEND_LOG_SHARED_SECRET | str \| NoneType | — |  |  | Shared secret for signed anonymous frontend logs. |
-| GCS_BUCKET | str \| NoneType | — |  |  | Default bucket name when using GCS provider. |
-| GCS_CREDENTIALS_JSON | str \| NoneType | — |  |  | Inline JSON credentials for GCS (service account). Optional if using ADC or credentials path. |
-| GCS_CREDENTIALS_PATH | str \| NoneType | — |  |  | Path to GCS credentials JSON file. |
-| GCS_PROJECT_ID | str \| NoneType | — |  |  | GCP project ID for GCS operations. |
-| GCS_SIGNING_EMAIL | str \| NoneType | — |  |  | Service account email used for V4 signed URLs (GCS). |
-| GCS_UNIFORM_ACCESS | bool | True |  |  | Assume uniform bucket-level access (UBLA) is enabled. |
+| GCS_BUCKET | str \| NoneType | — |  | ✅ | Default bucket name when using GCS provider. |
+| GCS_CREDENTIALS_JSON | str \| NoneType | — |  | ✅ | Inline JSON credentials for GCS (service account). Optional if using ADC or credentials path. |
+| GCS_CREDENTIALS_PATH | str \| NoneType | — |  | ✅ | Path to GCS credentials JSON file. |
+| GCS_PROJECT_ID | str \| NoneType | — |  | ✅ | GCP project ID for GCS operations. |
+| GCS_SIGNING_EMAIL | str \| NoneType | — |  | ✅ | Service account email used for V4 signed URLs (GCS). |
+| GCS_UNIFORM_ACCESS | bool | True |  | ✅ | Assume uniform bucket-level access (UBLA) is enabled. |
 | GEMINI_API_KEY | str \| NoneType | — |  | ✅ | Google Gemini API key |
 | GEOIP_CACHE_MAX_ENTRIES | int | 4096 |  |  | Maximum cached GeoIP lookups to retain in memory. |
 | GEOIP_CACHE_TTL_SECONDS | float | 900.0 |  |  | TTL (seconds) for GeoIP lookup cache entries. |
@@ -157,11 +161,11 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | MCP_TOOLS | list[MCPToolSettings] | — |  |  | Hosted MCP tool definitions registered into the tool registry. |
 | MFA_CHALLENGE_TTL_MINUTES | int | 5 |  |  | Lifetime of MFA challenge tokens issued during login. |
 | MFA_VERIFY_RATE_LIMIT_PER_HOUR | int | 10 |  |  | Maximum MFA verification attempts per user per hour. |
-| MINIO_ACCESS_KEY | str \| NoneType | — |  |  | MinIO access key. |
-| MINIO_ENDPOINT | str \| NoneType | — |  |  | MinIO endpoint (http(s)://host:port). Required when storage_provider=minio. |
-| MINIO_REGION | str \| NoneType | — |  |  | MinIO region (optional). |
-| MINIO_SECRET_KEY | str \| NoneType | — |  |  | MinIO secret key. |
-| MINIO_SECURE | bool | True |  |  | Use HTTPS when connecting to MinIO. |
+| MINIO_ACCESS_KEY | str \| NoneType | — |  | ✅ | MinIO access key. |
+| MINIO_ENDPOINT | str \| NoneType | — |  | ✅ | MinIO endpoint (http(s)://host:port). Required when storage_provider=minio. |
+| MINIO_REGION | str \| NoneType | — |  | ✅ | MinIO region (optional). |
+| MINIO_SECRET_KEY | str \| NoneType | — |  | ✅ | MinIO secret key. |
+| MINIO_SECURE | bool | True |  | ✅ | Use HTTPS when connecting to MinIO. |
 | OPENAI_API_KEY | str \| NoneType | — |  | ✅ | OpenAI API key |
 | PASSWORD_RESET_EMAIL_RATE_LIMIT_PER_HOUR | int | 5 |  | ✅ | Password reset requests allowed per email per hour. |
 | PASSWORD_RESET_IP_RATE_LIMIT_PER_HOUR | int | 20 |  | ✅ | Password reset requests allowed per IP per hour. |
@@ -180,6 +184,10 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | RUN_EVENTS_CLEANUP_BATCH | int | 10000 |  |  | Delete batch size for run-event cleanup jobs. |
 | RUN_EVENTS_CLEANUP_SLEEP_MS | int | 0 |  |  | Sleep between cleanup batches in milliseconds (throttle). |
 | RUN_EVENTS_TTL_DAYS | int | 180 |  |  | Number of days to retain agent_run_events before cleanup. |
+| S3_BUCKET | str \| NoneType | — |  | ✅ | S3 bucket name for storage operations. |
+| S3_ENDPOINT_URL | str \| NoneType | — |  | ✅ | Optional custom S3 endpoint URL (leave blank for AWS). |
+| S3_FORCE_PATH_STYLE | bool | False |  | ✅ | Force path-style addressing for S3-compatible endpoints. |
+| S3_REGION | str \| NoneType | — |  | ✅ | AWS region for S3 operations (optional; falls back to SDK defaults). |
 | SECRETS_PROVIDER | SecretsProviderLiteral | vault_dev |  | ✅ | Which secrets provider implementation to use (vault_dev, vault_hcp, infisical_cloud, infisical_self_host, aws_sm, azure_kv). |
 | SECRET_KEY | str | your-secret-key-here-change-in-production |  | ✅ | JWT secret key |
 | SECURITY_TOKEN_REDIS_URL | str \| NoneType | — |  | ✅ | Redis URL dedicated to nonce/email/password token stores (falls back to REDIS_URL). |
@@ -206,9 +214,9 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | STATUS_SUBSCRIPTION_TOKEN_TTL_MINUTES | int | 60 |  | ✅ | Status subscription email verification token lifetime in minutes. |
 | STATUS_SUBSCRIPTION_WEBHOOK_TIMEOUT_SECONDS | int | 5 |  | ✅ | HTTP timeout applied when delivering webhook challenges (seconds). |
 | STORAGE_ALLOWED_MIME_TYPES | list[str] | — |  |  | Allowed MIME types for uploaded objects. |
-| STORAGE_BUCKET_PREFIX | str \| NoneType | agent-data |  |  | Prefix used when creating tenant buckets/prefixes. |
+| STORAGE_BUCKET_PREFIX | str \| NoneType | agent-data |  | ✅ | Prefix used when creating tenant buckets/prefixes. |
 | STORAGE_MAX_FILE_MB | int | 512 |  |  | Maximum upload size enforced by the service (MB). |
-| STORAGE_PROVIDER | StorageProviderLiteral | memory |  |  | Which storage provider implementation to use (minio, gcs, memory). |
+| STORAGE_PROVIDER | StorageProviderLiteral | memory |  | ✅ | Which storage provider implementation to use (minio, gcs, s3, azure_blob, memory). |
 | STORAGE_SIGNED_URL_TTL_SECONDS | int | 900 |  |  | TTL (seconds) for presigned URLs returned to clients. |
 | STRIPE_PRODUCT_PRICE_MAP | dict[str, str] | — |  | ✅ | Mapping of billing plan codes to Stripe price IDs. Provide as JSON or comma-delimited entries such as 'starter=price_123,pro=price_456'. |
 | STRIPE_SECRET_KEY | str \| NoneType | — |  | ✅ | Stripe secret API key (sk_live_*/sk_test_*). |

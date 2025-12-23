@@ -18,20 +18,20 @@ Fold the local dev-user seeding flow into the Starter CLI setup wizard so operat
 | --- | --- | --- | --- |
 | P1 Tracker & design | Create tracker, outline approach. | ✅ Done | Nov 20 |
 | P2 Implementation | Code + tests + docs updates. | ✅ Done | Nov 20 |
-| P3 Verification | Manual happy-path run via `just setup-local-lite`; update tracker. | ⏳ Pending | Nov 20 |
+| P3 Verification | Manual happy-path run via `just setup-demo-lite`; update tracker. | ⏳ Pending | Nov 20 |
 
 ## Task List
-- [x] Add automation phase `DEV_USER` with profile gating to `local` and dependency on migrations.
+- [x] Add automation phase `DEV_USER` with profile gating to `demo` and dependency on migrations.
 - [x] Add “Dev User” section prompts (email, display, tenant slug/name, role, password/auto-generate).
 - [x] Implement reusable `seed_dev_user(...)` helper inside `starter_cli` (no disk secret leaks).
 - [x] Wire automation to run post-wizard, update UI + summary artifacts.
-- [x] Remove post-wizard `just seed-dev-user` call from `setup-local-lite/full`; keep standalone recipe.
+- [x] Remove post-wizard `just seed-dev-user` call from `setup-demo-lite/full`; keep standalone recipe.
 - [x] Update docs: `starter_cli/README.md` and milestone tracker references.
 - [x] Add unit test covering automation gating + invocation.
-- [x] Add demo-token automation to mint a local service-account token without starting the API.
+- [x] Add demo-token automation to mint a demo service-account token without starting the API.
 - [x] Add catalog entry for `demo-bot` service account (chat:write, conversations:read).
 - [x] Add unit test covering demo-token automation trigger.
-- [x] Manual verification: `just setup-local-lite` end-to-end run and confirm console password handling + demo token output.
+- [x] Manual verification: `just setup-demo-lite` end-to-end run and confirm console password handling + demo token output.
 - [ ] Fix CLI inventory parsing to tolerate generated format and re-run full CLI unit suite.
 
 ## Notes / Risks

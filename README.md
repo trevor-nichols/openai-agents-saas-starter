@@ -25,9 +25,15 @@ Production-ready starter kit for building AI Agent SaaS products. The repo bundl
 - **Compute/runtime** — FastAPI ASGI service + optional worker process. Supports single-instance or multi-replica deployments; billing retry/stream workers can run inline or as a dedicated deployment to avoid double-processing.
 - **Datastores** — Postgres (durable state) and Redis (refresh tokens, rate limits, billing streams). Both are first-class in the CLI wizard and health probes.
 - **Secrets providers** — Vault (dev/HCP), Infisical (cloud/self-host), AWS Secrets Manager, Azure Key Vault (all wired through the Starter CLI).
-- **Object storage providers** — In-memory (dev/test), MinIO/S3-compatible, or Google Cloud Storage (GCS) with presigned upload/download flows.
+- **Object storage providers** — In-memory (dev/test), MinIO/S3-compatible, AWS S3, Azure Blob, or Google Cloud Storage (GCS) with presigned upload/download flows.
 - **Observability** — JSON logs to stdout or file sink; optional OTLP export via the bundled OpenTelemetry collector or external endpoints.
 - **Local dev stack** — Docker Compose helpers for Postgres/Redis/Vault/OTel collector via `just dev-up` and CLI automation.
+- **Reference blueprints** — Terraform reference deployments for AWS (ECS/Fargate) and Azure (Container Apps) under `ops/infra/` with guidance in `docs/ops/hosting-overview.md`.
+- **Ops runbook** — Release, migrations, and rollback guidance in `docs/ops/runbook-release.md`.
+
+> Default hosting posture: the AWS/Azure blueprints assume cloud‑native secrets (Secrets Manager on AWS,
+> Key Vault on Azure). Vault/Infisical are optional enterprise paths and require explicit env wiring in
+> Terraform (`api_env` / `api_secrets`).
 
 ## Repo Layout (current)
 ```
@@ -47,7 +53,7 @@ apps/api-service/.env.local(.example)    # backend service secrets
 pnpm-workspace.yaml     # JS/TS workspaces (apps/*, packages/*)
 tsconfig.scripts.json   # TS config for repo scripts
 ```
-See `docs/architecture/repo-layout.md` for rules and ownership.
+See `docs/architecture/repo-layout.md` for rules and ownership. Hosting reference docs live in `docs/ops/hosting-overview.md`.
 
 ## Quick Command Map (Just)
 - `just api` / `just migrate` / `just migration-revision "msg"` – backend serve + migrations (delegates to `api-service/justfile`).
@@ -68,6 +74,7 @@ See `docs/architecture/repo-layout.md` for rules and ownership.
 | pnpm | 8+ | `pnpm install` in `apps/web-app/`. |
 | just | Latest | Task runner replacing the old Makefile; install via `brew install just` or `sudo apt-get install just`. |
 | Docker & Compose v2 | — | Used by Just recipes for Postgres/Redis/Vault. |
+| Terraform | 1.14.x | Required for `ops/infra/*` reference blueprints (pinned in `.tool-versions`). |
 | Stripe CLI | — | Required for `starter_cli stripe setup` unless `--skip-stripe-cli`. |
 
 > Tip: macOS users can run `brew install just`; Ubuntu runners can use `sudo apt-get install just`.
@@ -90,8 +97,8 @@ See `docs/architecture/repo-layout.md` for rules and ownership.
    ```
 4. **Guided environment wizard**  
    ```bash
-   python -m starter_cli.app setup wizard --profile local
-   # OR from repo root: just cli cmd="setup wizard --profile local"
+   python -m starter_cli.app setup wizard --profile demo
+   # OR from repo root: just cli cmd="setup wizard --profile demo"
    ```  
    The wizard writes `apps/api-service/.env.local` (backend) and `apps/web-app/.env.local`, covering secrets, providers, tenants, signup policy, and frontend runtime config. Use `--non-interactive`, `--answers-file`, and `--summary-path` for headless or auditable runs.
 5. **Bring up local infrastructure**  
@@ -102,6 +109,10 @@ See `docs/architecture/repo-layout.md` for rules and ownership.
    If you're pointing `DATABASE_URL` at an external Postgres instance for local development, set
    `STARTER_LOCAL_DATABASE_MODE=external` to start Redis (and optional collectors) without starting
    the bundled Postgres container.
+
+## Key Storage (Demo/Dev vs Production)
+- **Demo/Dev**: `AUTH_KEY_STORAGE_BACKEND=file` writes Ed25519 keysets under `var/keys/` (default `var/keys/keyset.json`). When running the API in Docker, mount `./var/keys:/app/var/keys` so keys persist across container restarts.
+- **Production/Staging**: `AUTH_KEY_STORAGE_BACKEND=secret-manager` is required. Set `AUTH_KEY_STORAGE_PROVIDER` and `AUTH_KEY_SECRET_NAME` so keysets live in the chosen secrets provider (AWS Secrets Manager, Azure Key Vault, Vault, or Infisical) instead of the filesystem.
 
 ## Running The Stack
 - **Backend API**  
@@ -152,6 +163,7 @@ Refer to `starter_cli/README.md` for detailed flags, answers-file formats, and c
 - `docs/frontend/data-access.md` & `docs/frontend/ui/components.md` – frontend architecture + component inventory.
 - `docs/trackers/CLI_MILESTONE.md` – CLI roadmap and status.
 - `docs/ops/usage-guardrails-runbook.md` – plan-aware usage guardrails enablement, metrics, and troubleshooting steps.
+- `docs/ops/container-deployments.md` – container build/run guidance for API + web (local and cloud baseline).
 - `python -m starter_cli.app usage sync-entitlements` – CLI helper that syncs `var/reports/usage-entitlements.json` into `plan_features` so guardrails enforce the latest plan limits.
 - `justfile` – curated commands for API, migrations, infra, Stripe tooling, and CLI invocation.
 

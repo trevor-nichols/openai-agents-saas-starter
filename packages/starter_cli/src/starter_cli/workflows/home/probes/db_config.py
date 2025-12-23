@@ -16,11 +16,11 @@ def db_config_probe(ctx: ProbeContext) -> ProbeResult:
     are changed without regenerating DATABASE_URL (or vice-versa).
     """
 
-    if ctx.profile != "local":
+    if ctx.profile != "demo":
         return ProbeResult(
             name="database_config",
             state=ProbeState.SKIPPED,
-            detail="not a local profile",
+            detail="not a demo profile",
         )
 
     mode = (ctx.env.get(_LOCAL_DB_MODE_KEY) or "compose").strip().lower()
@@ -37,8 +37,8 @@ def db_config_probe(ctx: ProbeContext) -> ProbeResult:
             name="database_config",
             success=False,
             warn_on_failure=True,
-            detail="DATABASE_URL not set (expected wizard-derived value for local compose mode)",
-            remediation="Run `starter_cli setup wizard --profile local` to generate DATABASE_URL.",
+            detail="DATABASE_URL not set (expected wizard-derived value for demo compose mode)",
+            remediation="Run `starter_cli setup wizard --profile demo` to generate DATABASE_URL.",
         )
 
     expected = _expected_local_postgres(ctx)
@@ -63,7 +63,7 @@ def db_config_probe(ctx: ProbeContext) -> ProbeResult:
     return simple_result(
         name="database_config",
         success=True,
-        detail="DATABASE_URL matches local compose POSTGRES_* settings",
+        detail="DATABASE_URL matches demo compose POSTGRES_* settings",
         metadata={"expected": expected},
     )
 

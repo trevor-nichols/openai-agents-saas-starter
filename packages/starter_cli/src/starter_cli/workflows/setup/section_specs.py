@@ -59,7 +59,7 @@ SECTION_SPECS: list[SectionSpec] = [
     SectionSpec(
         key="dev_user",
         label="Dev User",
-        summary="Collect local dev user defaults and credentials for seeding.",
+        summary="Collect demo dev user defaults and credentials for seeding.",
     ),
     SectionSpec(
         key="frontend",

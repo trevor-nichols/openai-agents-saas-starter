@@ -24,6 +24,7 @@ sys.path = [
     str(ROOT / "apps" / "api-service" / "src"),
     str(ROOT / "apps" / "api-service"),
     str(ROOT / "packages" / "starter_contracts" / "src"),
+    str(ROOT / "packages" / "starter_providers" / "src"),
     str(ROOT),
     *_stdlib_paths,
     *_site_packages,

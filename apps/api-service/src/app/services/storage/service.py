@@ -69,14 +69,14 @@ class StorageService:
         bucket_name = self._bucket_name(settings, tenant_id)
         await provider.ensure_bucket(
             bucket_name,
-            region=settings.minio_region,
-            create_if_missing=settings.storage_provider != StorageProviderLiteral.GCS,
+            region=self._bucket_region(settings),
+            create_if_missing=self._should_auto_create_bucket(settings),
         )
         bucket = await self._repository.get_or_create_bucket(
             tenant_id=tenant_id,
             provider=settings.storage_provider.value,
             bucket_name=bucket_name,
-            region=settings.minio_region,
+            region=self._bucket_region(settings),
             prefix=settings.storage_bucket_prefix,
         )
 
@@ -308,14 +308,14 @@ class StorageService:
         bucket_name = self._bucket_name(settings, tenant_id)
         await provider.ensure_bucket(
             bucket_name,
-            region=settings.minio_region,
-            create_if_missing=settings.storage_provider != StorageProviderLiteral.GCS,
+            region=self._bucket_region(settings),
+            create_if_missing=self._should_auto_create_bucket(settings),
         )
         bucket = await self._repository.get_or_create_bucket(
             tenant_id=tenant_id,
             provider=settings.storage_provider.value,
             bucket_name=bucket_name,
-            region=settings.minio_region,
+            region=self._bucket_region(settings),
             prefix=settings.storage_bucket_prefix,
         )
 
@@ -384,14 +384,32 @@ class StorageService:
             raise ValueError("MIME type is not allowed")
 
     def _bucket_name(self, settings: Settings, tenant_id: uuid.UUID) -> str:
-        if (
-            settings.storage_provider == StorageProviderLiteral.GCS
-            and settings.gcs_bucket
-        ):
+        if settings.storage_provider == StorageProviderLiteral.GCS and settings.gcs_bucket:
             return settings.gcs_bucket
+        if settings.storage_provider == StorageProviderLiteral.S3 and settings.s3_bucket:
+            return settings.s3_bucket
+        if (
+            settings.storage_provider == StorageProviderLiteral.AZURE_BLOB
+            and settings.azure_blob_container
+        ):
+            return settings.azure_blob_container
         prefix = settings.storage_bucket_prefix or "agent-data"
         tenant_token = str(tenant_id).replace("-", "")
         return f"{prefix}-{tenant_token}"
+
+    def _bucket_region(self, settings: Settings) -> str | None:
+        if settings.storage_provider == StorageProviderLiteral.MINIO:
+            return settings.minio_region
+        if settings.storage_provider == StorageProviderLiteral.S3:
+            return settings.s3_region
+        return None
+
+    def _should_auto_create_bucket(self, settings: Settings) -> bool:
+        return settings.storage_provider not in {
+            StorageProviderLiteral.GCS,
+            StorageProviderLiteral.S3,
+            StorageProviderLiteral.AZURE_BLOB,
+        }
 
     def signed_url_ttl(self) -> int:
         return self._settings_provider().storage_signed_url_ttl_seconds

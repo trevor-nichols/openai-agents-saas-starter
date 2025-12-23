@@ -1,9 +1,9 @@
 # Starter Contracts
 
-Shared, import-safe contracts and helpers that both the FastAPI backend and the Starter CLI rely on. This package keeps configuration, secrets, storage, and key-management logic decoupled from app code so the CLI can run without importing the server stack.
+Shared, import-safe contracts and helpers that both the FastAPI backend and the Starter CLI rely on. This package keeps configuration, secrets, storage, and key-management logic decoupled from app code so the CLI can run without importing the server stack. Concrete cloud SDK clients live in `starter_providers`.
 
 ## What this package does
-- Defines provider-neutral contracts for secrets and storage (`secrets/`, `storage/`) plus health and signing interfaces.
+- Defines provider-neutral contracts for secrets and storage (`secrets/`, `storage/`) plus health and signing interfaces. (Concrete SDK clients live in `starter_providers`.)
 - Validates external provider setup (`provider_validation.py`) for OpenAI, Stripe, Resend, and web search parity.
 - Bridges backend settings into the CLI without importing `app.core.settings` eagerly (`config.py`).
 - Manages Ed25519 auth key generation, JWKS materialization, and pluggable key storage backends (`keys.py`).

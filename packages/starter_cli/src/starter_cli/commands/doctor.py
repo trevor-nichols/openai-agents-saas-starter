@@ -10,12 +10,12 @@ from starter_cli.workflows.home.doctor import DoctorRunner, detect_profile
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     parser = subparsers.add_parser(
         "doctor",
-        help="Run consolidated readiness checks for local or remote profiles.",
+        help="Run consolidated readiness checks for demo or remote profiles.",
     )
     parser.add_argument(
         "--profile",
         default=None,
-        help="Deployment profile (defaults to ENVIRONMENT or 'local').",
+        help="Deployment profile (defaults to ENVIRONMENT or 'demo').",
     )
     parser.add_argument(
         "--json",
@@ -32,7 +32,7 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     parser.add_argument(
         "--strict",
         action="store_true",
-        help="Treat warnings as errors (useful outside local profile).",
+        help="Treat warnings as errors (useful outside demo profile).",
     )
     parser.set_defaults(handler=_handle_doctor)
 

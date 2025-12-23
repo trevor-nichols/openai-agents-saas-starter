@@ -69,7 +69,7 @@ def validate_redis_url(url: str, *, require_tls: bool, role: str) -> None:
         raise CLIError(f"{role} Redis URL is missing a hostname.")
     if require_tls and parsed.scheme != "rediss":
         raise CLIError(
-            f"{role} Redis URL must use rediss:// (TLS) outside local environments."
+            f"{role} Redis URL must use rediss:// (TLS) outside demo environments."
         )
     if parsed.hostname not in {"localhost", "127.0.0.1"} and parsed.password is None:
         raise CLIError(f"{role} Redis URL should include an AUTH token for managed deployments.")

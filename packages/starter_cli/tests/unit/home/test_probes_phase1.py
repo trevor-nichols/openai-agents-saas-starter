@@ -78,7 +78,7 @@ def test_db_config_probe_skips_external_mode():
     ctx = ProbeContext(
         env={"STARTER_LOCAL_DATABASE_MODE": "external"},
         settings=None,
-        profile="local",
+        profile="demo",
         strict=False,
         warn_only=True,
     )
@@ -97,7 +97,7 @@ def test_db_config_probe_warns_on_mismatch():
             "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/saas_starter_db",
         },
         settings=None,
-        profile="local",
+        profile="demo",
         strict=False,
         warn_only=True,
     )
@@ -117,7 +117,7 @@ def test_db_config_probe_ok_when_consistent():
             "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/saas_starter_db",
         },
         settings=None,
-        profile="local",
+        profile="demo",
         strict=False,
         warn_only=True,
     )

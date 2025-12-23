@@ -35,17 +35,17 @@ def configure(context: WizardContext, provider: InputProvider) -> None:
         prompt="Force secure cookies on the frontend?",
         default=context.current_frontend_bool(
             "AGENT_FORCE_SECURE_COOKIES",
-            context.profile != "local",
+            context.profile != "demo",
         ),
     )
     context.set_frontend_bool("AGENT_FORCE_SECURE_COOKIES", force_secure)
 
     allow_insecure = provider.prompt_bool(
         key="AGENT_ALLOW_INSECURE_COOKIES",
-        prompt="Allow insecure cookies (helps local dev without HTTPS)?",
+        prompt="Allow insecure cookies (helps demo/dev without HTTPS)?",
         default=context.current_frontend_bool(
             "AGENT_ALLOW_INSECURE_COOKIES",
-            context.profile == "local",
+            context.profile == "demo",
         ),
     )
     context.set_frontend_bool("AGENT_ALLOW_INSECURE_COOKIES", allow_insecure)

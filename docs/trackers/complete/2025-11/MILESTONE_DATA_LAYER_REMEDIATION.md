@@ -44,7 +44,7 @@ Close the remaining data-layer gaps uncovered during the 11 Nov 2025 review so t
 - [x] Update `docs/trackers/ISSUE_TRACKER.md` statuses to “In Progress” / “Resolved” as tasks complete.
 
 ## Open Questions / Dependencies
-- How do we authenticate Vault-signature headers in local dev without blocking contributors? (Proposal: keep `dev-local` fallback behind `ENABLE_VAULT_ISSUANCE`.)
+- How do we authenticate Vault-signature headers in demo dev without blocking contributors? (Proposal: keep `dev-demo` fallback behind `ENABLE_VAULT_ISSUANCE`.)
 - Should the session tenant filter default to the user’s primary tenant or expose a dropdown? (Needs Product input.)
 - Do we want to keep the legacy hooks as thin wrappers re-exporting the new ones for backwards compatibility, or remove them outright? (My vote: remove to avoid drift.)
 

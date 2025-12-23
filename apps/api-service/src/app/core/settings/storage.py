@@ -1,11 +1,13 @@
-"""Object storage provider settings (MinIO, GCS, memory)."""
+"""Object storage provider settings (MinIO, S3, Azure Blob, GCS, memory)."""
 
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
 from starter_contracts.storage.models import (
+    AzureBlobProviderConfig,
     GCSProviderConfig,
     MinioProviderConfig,
+    S3ProviderConfig,
     StorageProviderLiteral,
 )
 
@@ -14,7 +16,10 @@ class StorageSettingsMixin(BaseModel):
     storage_provider: StorageProviderLiteral = Field(
         default=StorageProviderLiteral.MEMORY,
         alias="STORAGE_PROVIDER",
-        description="Which storage provider implementation to use (minio, gcs, memory).",
+        description=(
+            "Which storage provider implementation to use "
+            "(minio, gcs, s3, azure_blob, memory)."
+        ),
     )
     storage_bucket_prefix: str | None = Field(
         default="agent-data",
@@ -111,6 +116,38 @@ class StorageSettingsMixin(BaseModel):
         description="Assume uniform bucket-level access (UBLA) is enabled.",
     )
 
+    # S3
+    s3_region: str | None = Field(
+        default=None,
+        description="AWS region for S3 operations (optional; falls back to SDK defaults).",
+    )
+    s3_bucket: str | None = Field(
+        default=None,
+        description="S3 bucket name for storage operations.",
+    )
+    s3_endpoint_url: str | None = Field(
+        default=None,
+        description="Optional custom S3 endpoint URL (leave blank for AWS).",
+    )
+    s3_force_path_style: bool = Field(
+        default=False,
+        description="Force path-style addressing for S3-compatible endpoints.",
+    )
+
+    # Azure Blob
+    azure_blob_account_url: str | None = Field(
+        default=None,
+        description="Azure Blob account URL (https://<account>.blob.core.windows.net).",
+    )
+    azure_blob_container: str | None = Field(
+        default=None,
+        description="Azure Blob container name for storage operations.",
+    )
+    azure_blob_connection_string: str | None = Field(
+        default=None,
+        description="Azure Blob connection string (optional, overrides account URL auth).",
+    )
+
     @property
     def minio_settings(self) -> MinioProviderConfig:
         return MinioProviderConfig(
@@ -130,6 +167,23 @@ class StorageSettingsMixin(BaseModel):
             credentials_path=self.gcs_credentials_path,
             signing_email=self.gcs_signing_email,
             uniform_access=self.gcs_uniform_access,
+        )
+
+    @property
+    def s3_settings(self) -> S3ProviderConfig:
+        return S3ProviderConfig(
+            region=self.s3_region,
+            bucket=self.s3_bucket,
+            endpoint_url=self.s3_endpoint_url,
+            force_path_style=self.s3_force_path_style,
+        )
+
+    @property
+    def azure_blob_settings(self) -> AzureBlobProviderConfig:
+        return AzureBlobProviderConfig(
+            account_url=self.azure_blob_account_url,
+            container=self.azure_blob_container,
+            connection_string=self.azure_blob_connection_string,
         )
 
 

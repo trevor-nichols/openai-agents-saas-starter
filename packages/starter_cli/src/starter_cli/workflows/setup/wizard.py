@@ -40,7 +40,7 @@ from .ui import WizardUIView
 from .ui.commands import WizardUICommandHandler
 from .ui.schema_metadata import build_section_prompt_metadata
 
-PROFILE_CHOICES = ("local", "staging", "production")
+PROFILE_CHOICES = ("demo", "staging", "production")
 
 _AUTOMATION_PROMPTS: dict[AutomationPhase, tuple[str, str, bool]] = {
     AutomationPhase.INFRA: (
@@ -75,12 +75,12 @@ _AUTOMATION_PROMPTS: dict[AutomationPhase, tuple[str, str, bool]] = {
     ),
     AutomationPhase.DEV_USER: (
         "AUTO_DEV_USER",
-        "Seed a local dev user after setup completes?",
+        "Seed a demo dev user after setup completes?",
         True,
     ),
     AutomationPhase.DEMO_TOKEN: (
         "AUTO_DEMO_TOKEN",
-        "Mint a demo service-account token for local testing?",
+        "Mint a demo service-account token for demo testing?",
         True,
     ),
 }
@@ -97,18 +97,18 @@ _AUTOMATION_DEPENDENCIES: dict[AutomationPhase, set[str]] = {
 }
 
 _AUTOMATION_PROFILE_LIMITS: dict[AutomationPhase, set[str] | None] = {
-    AutomationPhase.INFRA: {"local"},
-    AutomationPhase.SECRETS: {"local"},
+    AutomationPhase.INFRA: {"demo"},
+    AutomationPhase.SECRETS: {"demo"},
     AutomationPhase.STRIPE: None,
     AutomationPhase.MIGRATIONS: None,
     AutomationPhase.REDIS: None,
     AutomationPhase.GEOIP: None,
-    AutomationPhase.DEV_USER: {"local"},
-    AutomationPhase.DEMO_TOKEN: {"local"},
+    AutomationPhase.DEV_USER: {"demo"},
+    AutomationPhase.DEMO_TOKEN: {"demo"},
 }
 
 _AUTOMATION_LABELS: dict[AutomationPhase, str] = {
-    AutomationPhase.INFRA: "Local Infra",
+    AutomationPhase.INFRA: "Demo Infra",
     AutomationPhase.SECRETS: "Vault Helpers",
     AutomationPhase.STRIPE: "Stripe Provisioning",
     AutomationPhase.MIGRATIONS: "DB Migrations",
