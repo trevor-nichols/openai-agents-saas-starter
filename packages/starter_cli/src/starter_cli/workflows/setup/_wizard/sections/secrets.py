@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import argparse
+import json
 
 from starter_contracts.secrets.models import SecretsProviderLiteral
 
-from starter_cli.commands.auth import handle_keys_rotate
 from starter_cli.core import CLIError
+from starter_cli.services.security import rotate_signing_keys
 from starter_cli.workflows.secrets import registry
 
 from ...automation import AutomationPhase, AutomationStatus
@@ -458,6 +458,10 @@ def _force_verification_flag(context: WizardContext) -> None:
 
 
 def _rotate_signing_keys(context: WizardContext) -> None:
-    result = handle_keys_rotate(argparse.Namespace(kid=None), context.cli_ctx)
-    if result != 0:
-        raise CLIError("Key rotation failed; see logs above.")
+    result = rotate_signing_keys(context.cli_ctx, kid=None)
+    context.console.success(
+        "Generated new Ed25519 key pair.",
+        topic="auth",
+        stream=context.console.err_stream,
+    )
+    context.console.print(json.dumps(result.to_dict(), indent=2))

@@ -7,14 +7,15 @@ from pathlib import Path
 from typing import cast
 
 from .core import CLIContext, CLIError, build_context, iter_env_files
-from .ports.console import ConsolePort, StdConsole
+from .adapters.io.console import console as shared_console
+from .ports.console import ConsolePort
 
 
 class ApplicationContainer:
     """Simple service locator for the CLI."""
 
     def __init__(self) -> None:
-        self.console = StdConsole()
+        self.console = shared_console
 
     def create_context(self, *, env_files: Sequence[Path] | None = None) -> CLIContext:
         return build_context(env_files=env_files, console=cast(ConsolePort, self.console))

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from getpass import getpass
 from typing import Any, Protocol, TextIO
@@ -86,8 +86,8 @@ class ConsolePort(NotifyPort, Protocol):
 
 @dataclass(slots=True)
 class StdConsole(ConsolePort):
-    stream: TextIO = sys.stdout
-    err_stream: TextIO = sys.stderr
+    stream: TextIO = field(default_factory=lambda: sys.stdout)
+    err_stream: TextIO = field(default_factory=lambda: sys.stderr)
 
     def info(
         self,

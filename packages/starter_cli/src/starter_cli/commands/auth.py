@@ -3,20 +3,14 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 from typing import TYPE_CHECKING, Any, TypeAlias
 
 import httpx
-from starter_contracts.keys import (
-    KeyStorageError,
-    generate_ed25519_keypair,
-    load_keyset,
-    save_keyset,
-)
 
 from starter_cli.core import CLIContext, CLIError, build_context
 from starter_cli.core.context import should_skip_env_loading
-from starter_cli.services.security import build_vault_headers
-from starter_cli.services.security.key_storage import configure_key_storage_secret_manager
+from starter_cli.services.security import build_vault_headers, rotate_signing_keys
 
 # `_SubParsersAction` is not parametrized at runtime on Python 3.11, so provide a
 # typed alias only when running type checkers.
@@ -122,12 +116,11 @@ def handle_issue_service_account(
     ctx: CLIContext | None = None,
 ) -> int:
     ctx = _ensure_context(ctx)
-    console = ctx.console
     payload = _build_issue_payload(args)
     try:
         response = _post_issue_service_account(base_url=args.base_url, payload=payload, ctx=ctx)
     except CLIError as exc:
-        console.error(str(exc), topic="auth")
+        print(f"error: {exc}", file=sys.stderr)
         return 1
     output = _render_issue_output(response, args.output)
     print(output)
@@ -137,28 +130,9 @@ def handle_issue_service_account(
 def handle_keys_rotate(args: argparse.Namespace, ctx: CLIContext | None = None) -> int:
     ctx = _ensure_context(ctx)
     console = ctx.console
-    settings = ctx.require_settings()
-    configure_key_storage_secret_manager(ctx)
-
-    try:
-        keyset = load_keyset(settings)
-    except KeyStorageError as exc:  # pragma: no cover - depends on env
-        raise CLIError(str(exc)) from exc
-
-    try:
-        material = generate_ed25519_keypair(kid=args.kid)
-        keyset.set_active(material)
-        save_keyset(keyset, settings)
-    except KeyStorageError as exc:  # pragma: no cover - depends on env
-        raise CLIError(str(exc)) from exc
-
-    document = {
-        "kid": material.kid,
-        "public_jwk": material.public_jwk,
-        "storage_backend": settings.auth_key_storage_backend,
-    }
+    result = rotate_signing_keys(ctx, kid=args.kid)
     console.success("Generated new Ed25519 key pair.", topic="auth", stream=console.err_stream)
-    print(json.dumps(document, indent=2))
+    print(json.dumps(result.to_dict(), indent=2))
     return 0
 
 
