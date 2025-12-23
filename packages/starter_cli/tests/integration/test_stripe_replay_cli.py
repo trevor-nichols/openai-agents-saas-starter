@@ -8,7 +8,8 @@ from typing import Any, cast
 import pytest
 from sqlalchemy import Table
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from starter_cli.commands.stripe import replay_dispatches_with_repo
+from starter_cli.ports.console import StdConsole
+from starter_cli.workflows.stripe.dispatch import replay_dispatches_with_repo
 
 import app.infrastructure.persistence.tenants.models  # noqa: F401  # register tenant models for SA relationships
 from app.infrastructure.persistence.stripe.models import (
@@ -78,6 +79,7 @@ async def test_cli_replay_completes_failed_dispatch(sqlite_repo, capsys):
         limit=1,
         handler="billing_sync",
         assume_yes=True,
+        console=StdConsole(),
         dispatcher=dispatcher,
         billing=cast(BillingService, fake_billing),
         confirm=lambda _targets: True,

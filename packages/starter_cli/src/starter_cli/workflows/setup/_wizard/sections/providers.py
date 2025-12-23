@@ -7,8 +7,9 @@ from urllib.parse import quote, urlparse
 
 from redis import Redis
 
-from starter_cli.commands.stripe import WebhookSecretFlow
+from starter_cli.adapters.stripe_cli import StripeCli
 from starter_cli.core import CLIError
+from starter_cli.workflows.stripe.cli_helpers import ensure_stripe_cli
 
 from ...automation import AutomationPhase, AutomationStatus
 from ...inputs import InputProvider
@@ -328,13 +329,17 @@ def _maybe_generate_webhook_secret(context: WizardContext, provider: InputProvid
 
     forward_url = f"{context.api_base_url.rstrip('/')}/api/v1/webhooks/stripe"
     try:
-        flow = WebhookSecretFlow(
-            ctx=context.cli_ctx,
-            forward_url=forward_url,
-            print_only=True,
-            skip_stripe_cli=False,
+        if context.cli_ctx.presenter is None:  # pragma: no cover - defensive
+            raise CLIError("Presenter not initialized.")
+        prompt = context.cli_ctx.presenter.prompt
+        stripe_cli = StripeCli()
+        ensure_stripe_cli(
+            cli=stripe_cli,
+            console=context.console,
+            prompt=prompt,
+            non_interactive=False,
         )
-        secret = flow._capture_webhook_secret(forward_url)
+        secret = stripe_cli.capture_webhook_secret(forward_url)
     except CLIError as exc:
         context.console.warn(f"Stripe CLI webhook capture failed: {exc}", topic="stripe")
         return None

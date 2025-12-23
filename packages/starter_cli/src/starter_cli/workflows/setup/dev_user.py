@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import json
-import os
 import secrets
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from dotenv import dotenv_values
-
 from starter_cli.core import CLIError
+from starter_cli.services.backend_scripts import (
+    extract_json_payload,
+    run_backend_script,
+)
 
 from .automation import AutomationPhase, AutomationStatus
 
@@ -65,54 +65,8 @@ def _resolve_config(context: WizardContext) -> DevUserConfig:
     )
 
 
-def _resolve_backend_env_files(project_root: Path) -> list[Path]:
-    env_files: list[Path] = []
-    compose = project_root / ".env.compose"
-    if compose.is_file():
-        env_files.append(compose)
-
-    backend_root = project_root / "apps" / "api-service"
-    env_local = backend_root / ".env.local"
-    env_default = backend_root / ".env"
-
-    if env_local.is_file():
-        env_files.append(env_local)
-    elif env_default.is_file():
-        env_files.append(env_default)
-    else:
-        raise CLIError(
-            "No apps/api-service/.env.local or apps/api-service/.env found; "
-            "run the setup wizard first."
-        )
-
-    return env_files
-
-
-def _merge_env_files(paths: list[Path]) -> dict[str, str]:
-    merged: dict[str, str] = {}
-    for path in paths:
-        values = dotenv_values(path)
-        for key, value in values.items():
-            if key and value is not None:
-                merged[key] = value
-    return merged
-
-
 def _run_backend_seed_script(project_root: Path, config: DevUserConfig) -> str:
-    backend_root = project_root / "apps" / "api-service"
-    script_path = backend_root / "scripts" / "seed_dev_user.py"
-    if not script_path.is_file():
-        raise CLIError(f"Backend seed script missing: {script_path}")
-
-    env_files = _resolve_backend_env_files(project_root)
-    env = os.environ.copy()
-    env.update(_merge_env_files(env_files))
-
-    cmd = [
-        "hatch",
-        "run",
-        "python",
-        "scripts/seed_dev_user.py",
+    cmd_args = [
         "--email",
         config.email,
         "--password",
@@ -127,17 +81,14 @@ def _run_backend_seed_script(project_root: Path, config: DevUserConfig) -> str:
         config.display_name,
     ]
     if config.locked:
-        cmd.append("--locked")
+        cmd_args.append("--locked")
     if not config.rotate_existing:
-        cmd.append("--no-rotate-existing")
+        cmd_args.append("--no-rotate-existing")
 
-    completed = subprocess.run(
-        cmd,
-        cwd=backend_root,
-        env=env,
-        text=True,
-        capture_output=True,
-        check=False,
+    completed = run_backend_script(
+        project_root=project_root,
+        script_name="seed_dev_user.py",
+        args=cmd_args,
     )
     if completed.returncode != 0:
         stderr = (completed.stderr or "").strip()
@@ -145,35 +96,12 @@ def _run_backend_seed_script(project_root: Path, config: DevUserConfig) -> str:
         detail = stderr or stdout or "unknown error"
         raise CLIError(f"Dev user seeding failed: {detail}")
 
-    payload = _extract_seed_payload(completed.stdout or "")
+    payload = extract_json_payload(completed.stdout or "", required_keys=["result"])
 
     result = payload.get("result")
     if not isinstance(result, str) or not result.strip():
         raise CLIError(f"Dev user seeding returned unexpected payload: {payload}")
     return result
-
-
-def _extract_seed_payload(stdout: str) -> dict[str, object]:
-    raw = stdout.strip()
-    if not raw:
-        raise CLIError("Dev user seeding produced no output.")
-
-    last_error: json.JSONDecodeError | None = None
-    for line in reversed(raw.splitlines()):
-        candidate = line.strip()
-        if not candidate:
-            continue
-        try:
-            payload = json.loads(candidate)
-        except json.JSONDecodeError as exc:
-            last_error = exc
-            continue
-        if isinstance(payload, dict) and "result" in payload:
-            return payload
-
-    if last_error is not None:
-        raise CLIError(f"Dev user seeding returned invalid JSON: {last_error}") from last_error
-    raise CLIError("Dev user seeding returned invalid JSON output.")
 
 
 def seed_dev_user(context: WizardContext, config: DevUserConfig) -> str:

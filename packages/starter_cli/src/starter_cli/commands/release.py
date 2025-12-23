@@ -21,8 +21,12 @@ from starter_cli.adapters.env import (
     expand_env_placeholders,
 )
 from starter_cli.core import CLIContext, CLIError
-
-from .stripe import DEFAULT_WEBHOOK_FORWARD_URL, PLAN_CATALOG, StripeSetupFlow
+from starter_cli.services.stripe.catalog import PLAN_CATALOG
+from starter_cli.workflows.stripe import (
+    DEFAULT_WEBHOOK_FORWARD_URL,
+    StripeSetupConfig,
+    run_stripe_setup,
+)
 
 _ENV_KEYS = (
     "DATABASE_URL",
@@ -31,7 +35,7 @@ _ENV_KEYS = (
     "STRIPE_WEBHOOK_SECRET",
     "STRIPE_PRODUCT_PRICE_MAP",
 )
-_PLAN_CODES = tuple(plan["code"] for plan in PLAN_CATALOG)
+_PLAN_CODES = tuple(plan.code for plan in PLAN_CATALOG)
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -199,8 +203,7 @@ class DatabaseReleaseWorkflow:
             return
 
         def _run() -> str:
-            flow = StripeSetupFlow(
-                ctx=self.ctx,
+            config = StripeSetupConfig(
                 currency="usd",
                 trial_days=14,
                 non_interactive=self.args.non_interactive,
@@ -212,7 +215,7 @@ class DatabaseReleaseWorkflow:
                 skip_postgres=True,
                 skip_stripe_cli=self.args.non_interactive,
             )
-            flow.run()
+            run_stripe_setup(self.ctx, config)
             return "Stripe provisioning completed."
 
         self._execute_step(name="stripe_setup", func=_run)
