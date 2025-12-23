@@ -5,7 +5,7 @@ from starter_cli.core import CLIError
 from starter_cli.workflows.secrets.models import SecretsWorkflowOptions
 from starter_cli.workflows.secrets.providers import aws
 
-from .._stubs import StubInputProvider
+from tests.unit.support.stubs import StubInputProvider
 
 
 def test_aws_sm_with_profile(cli_ctx, monkeypatch) -> None:

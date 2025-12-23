@@ -3,7 +3,7 @@ from __future__ import annotations
 from starter_cli.workflows.secrets.models import SecretsWorkflowOptions
 from starter_cli.workflows.secrets.providers import azure
 
-from .._stubs import StubInputProvider
+from tests.unit.support.stubs import StubInputProvider
 
 
 def test_azure_kv_success(cli_ctx, monkeypatch) -> None:

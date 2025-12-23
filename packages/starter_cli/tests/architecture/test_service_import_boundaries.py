@@ -9,14 +9,19 @@ from pathlib import Path
 def _find_repo_root() -> Path:
     current = Path(__file__).resolve()
     for candidate in current.parents:
-        if (candidate / "pyproject.toml").exists():
+        if (candidate / "pnpm-workspace.yaml").exists():
             return candidate
-    raise RuntimeError("Unable to locate repository root (pyproject.toml not found)")
+    for candidate in current.parents:
+        if (candidate / "apps").is_dir() and (candidate / "packages").is_dir():
+            return candidate
+    raise RuntimeError(
+        "Unable to locate repository root (pnpm-workspace.yaml or apps/packages not found)"
+    )
 
 
 REPO_ROOT = _find_repo_root()
-APP_ROOT = REPO_ROOT / "api-service" / "app"
-CLI_ROOT = REPO_ROOT / "starter_cli"
+APP_ROOT = REPO_ROOT / "apps" / "api-service" / "src" / "app"
+CLI_ROOT = REPO_ROOT / "packages" / "starter_cli" / "src" / "starter_cli"
 SCRIPTS_ROOT = REPO_ROOT / "scripts"
 SCAN_ROOTS = [APP_ROOT, CLI_ROOT, SCRIPTS_ROOT]
 

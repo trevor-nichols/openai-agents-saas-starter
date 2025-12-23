@@ -5,7 +5,7 @@ from types import SimpleNamespace
 from starter_cli.workflows.secrets.models import SecretsWorkflowOptions
 from starter_cli.workflows.secrets.providers import vault
 
-from .._stubs import StubInputProvider
+from tests.unit.support.stubs import StubInputProvider
 
 
 def test_run_vault_dev_collects_env(cli_ctx) -> None:

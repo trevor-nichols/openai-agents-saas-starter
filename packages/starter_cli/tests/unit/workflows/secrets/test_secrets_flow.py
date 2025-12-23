@@ -4,7 +4,7 @@ import pytest
 
 from starter_cli.core import CLIError
 from starter_cli.ports.console import StdConsole
-from ._stubs import StubInputProvider
+from tests.unit.support.stubs import StubInputProvider
 from starter_cli.workflows.secrets import registry
 from starter_cli.workflows.secrets.flow import select_provider
 from starter_cli.workflows.secrets.models import ProviderOption
