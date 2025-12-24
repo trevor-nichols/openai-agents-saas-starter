@@ -192,7 +192,8 @@ openai-agents-saas-starter/
 ├── packages/                      # Shared Python libraries (reused across apps)
 │   ├── starter_cli/               # Operator CLI (Typer/Rich TUI, setup wizard, probes, tests)
 │   │   └── justfile               # Package-scoped tasks
-│   └── starter_contracts/         # Shared contracts/models/config used by CLI + backend (tests, py.typed)
+│   ├── starter_contracts/         # Shared contracts/models/config used by CLI + backend (tests, py.typed)
+│   └── starter_providers/         # Cloud provider SDK helpers shared across the backend and the Starter CLI.
 ├── ops/                           # Local infra configs
 │   ├── compose/                   # Docker compose stacks (vault/minio/etc.)
 │   └── observability/             # Collector/config generation helpers
