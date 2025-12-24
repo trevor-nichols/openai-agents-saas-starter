@@ -102,8 +102,7 @@ class CommandPaletteScreen(ModalScreen[None]):
         item = event.item
         if not isinstance(item, CommandItem):
             return
-        item.command.action()
-        self.dismiss()
+        self._run_command(item.command)
 
     def action_close(self) -> None:
         self.dismiss()
@@ -112,8 +111,7 @@ class CommandPaletteScreen(ModalScreen[None]):
         command = self._current_command()
         if command is None:
             return
-        command.action()
-        self.dismiss()
+        self._run_command(command)
 
     def _render_list(self) -> None:
         list_view = self.query_one("#palette-list", ListView)
@@ -131,6 +129,10 @@ class CommandPaletteScreen(ModalScreen[None]):
         if index >= len(self._visible):
             return None
         return self._visible[index]
+
+    def _run_command(self, command: CommandSpec) -> None:
+        self.dismiss()
+        self.app.call_later(command.action)
 
 
 __all__ = ["CommandPaletteScreen", "CommandSpec"]
