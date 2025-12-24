@@ -370,6 +370,8 @@ def test_demo_token_automation_invoked_when_enabled(
 def test_wizard_writes_dedicated_worker_artifacts(temp_ctx: CLIContext) -> None:
     snapshot = dict(os.environ)
     answers = {
+        "SETUP_HOSTING_PRESET": "enterprise_custom",
+        "SECRETS_PROVIDER": "vault_hcp",
         "ENVIRONMENT": "production",
         "DEBUG": "false",
         "PORT": "8000",
@@ -735,6 +737,8 @@ def test_wizard_staging_verifies_vault(
 ) -> None:
     snapshot = dict(os.environ)
     answers = {
+        "SETUP_HOSTING_PRESET": "enterprise_custom",
+        "SECRETS_PROVIDER": "vault_hcp",
         "ENVIRONMENT": "staging",
         "DEBUG": "false",
         "PORT": "8000",

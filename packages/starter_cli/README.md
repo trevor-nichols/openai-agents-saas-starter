@@ -19,7 +19,7 @@ Operator tooling for the OpenAI Agents SaaS starter. It bootstraps local infra, 
 - Seed users/tokens: `python -m starter_cli.app users ensure-dev` and `python -m starter_cli.app auth tokens issue-service-account --account demo-bot --scopes chat:write,conversations:read`.
 
 ## Command catalog (what each one does)
-- `setup menu|wizard`: Setup hub + milestone-aware wizard with automation toggles for infra, secrets, Stripe, migrations, Redis, GeoIP, dev user; supports headless runs, schema-driven prompts, JSON/Markdown summaries, and answer export. For `--profile demo`, the wizard can manage Docker Postgres end-to-end (writes `POSTGRES_*` and derives `DATABASE_URL`) or accept an external `DATABASE_URL` and set `STARTER_LOCAL_DATABASE_MODE=external` so `infra compose up` starts Redis without launching Postgres.
+- `setup menu|wizard`: Setup hub + milestone-aware wizard with hosting presets (`local_docker`, `cloud_managed`, `enterprise_custom`) and automation toggles for infra, secrets, Stripe, migrations, Redis, GeoIP, dev user; supports headless runs, schema-driven prompts, JSON/Markdown summaries, and answer export. For `--profile demo`, the wizard can manage Docker Postgres end-to-end (writes `POSTGRES_*` and derives `DATABASE_URL`) or accept an external `DATABASE_URL` and set `STARTER_LOCAL_DATABASE_MODE=external` so `infra compose up` starts Redis without launching Postgres.
 - `infra deps|compose|vault`: Check local prerequisites; run Just recipes for docker-compose dev stack and Vault dev signer (up/down/logs/verify).
 - `start` / `stop`: Start dev/backend/frontend with health checks; detached mode tracks PIDs/logs and can auto-run infra; stop clears state and optionally runs compose down.
 - `home`: TUI/summary showing stack status, detached processes, and shortcuts.
@@ -55,3 +55,5 @@ OPENAPI_INPUT=../api-service/.artifacts/openapi-fixtures.json pnpm generate:fixt
 - TUIs auto-enable when a tty is present; prefer `--json`/`--markdown` or `--no-tui` in CI.
 - Detached stacks track state under `packages/starter_cli/var`; `home` and `doctor` read it.
 - Wizard prompts are declared in `setup/schema.yaml`; extend there to add new setup items.
+- Each wizard run writes a redacted snapshot + diff under `var/reports/setup-snapshot.json` and `var/reports/setup-diff.md` for auditability.
+- Hosting preset guidance lives in `docs/ops/setup-wizard-presets.md`.

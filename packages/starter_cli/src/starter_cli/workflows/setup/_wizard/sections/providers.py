@@ -22,7 +22,7 @@ _LOCAL_DB_MODES = ("compose", "external")
 
 def run(context: WizardContext, provider: InputProvider) -> None:
     context.console.section(
-        "Providers & Infra",
+        "Infra & Providers",
         "Wire up databases, AI providers, Redis, billing, and email transports.",
     )
     collect_database(context, provider)

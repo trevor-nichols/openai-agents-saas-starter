@@ -21,7 +21,7 @@ _VAULT_PROVIDERS = {
 
 def run(context: WizardContext, provider: InputProvider) -> None:
     context.console.section(
-        "Secrets & Vault",
+        "Secrets & Key Management",
         "Generate peppers, provision signing keys, and choose a secrets provider.",
     )
     _collect_secrets(context, provider)

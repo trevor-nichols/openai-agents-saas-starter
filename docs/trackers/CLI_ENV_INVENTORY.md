@@ -1,7 +1,7 @@
 # Starter CLI Environment Inventory
 
 This file is generated via `python -m starter_cli.app config write-inventory`.
-Last updated: 2025-12-22 18:45:56 UTC
+Last updated: 2025-12-24 14:17:32 UTC
 
 Legend: `✅` = wizard prompts for it, blank = requires manual population.
 
@@ -41,8 +41,8 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | AUTH_JWKS_MAX_AGE_SECONDS | int | 300 |  | ✅ | Preferred Cache-Control max-age for JWKS responses. |
 | AUTH_KEY_SECRET_NAME | str \| NoneType | — |  | ✅ | Secret-manager key/path storing keyset JSON when backend=secret-manager. |
 | AUTH_KEY_STORAGE_BACKEND | str | file |  | ✅ | Key storage backend (file or secret-manager). |
-| AUTH_KEY_STORAGE_PROVIDER | SecretsProviderLiteral \| NoneType | — |  | ✅ | Secrets provider used for keyset storage when AUTH_KEY_STORAGE_BACKEND=secret-manager. |
 | AUTH_KEY_STORAGE_PATH | str | var/keys/keyset.json |  | ✅ | Filesystem path for keyset JSON when using file backend. |
+| AUTH_KEY_STORAGE_PROVIDER | SecretsProviderLiteral \| NoneType | — |  | ✅ | Secrets provider used for Ed25519 keyset storage when auth_key_storage_backend=secret-manager. |
 | AUTH_LOCKOUT_DURATION_MINUTES | float | 60.0 |  | ✅ | Automatic unlock window for locked users (minutes). |
 | AUTH_LOCKOUT_THRESHOLD | int | 5 |  | ✅ | Failed login attempts allowed before locking the account. |
 | AUTH_LOCKOUT_WINDOW_MINUTES | float | 60.0 |  | ✅ | Rolling window in minutes for lockout threshold calculations. |

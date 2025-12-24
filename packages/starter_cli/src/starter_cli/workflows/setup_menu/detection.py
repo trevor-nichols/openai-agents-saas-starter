@@ -66,6 +66,12 @@ def _wizard_item(ctx: CLIContext, stale_after: timedelta) -> SetupItem:
     progress = ok_count / total if total else None
     status = "done" if ok_count == total else "partial"
     detail = f"{ok_count}/{total} sections ok"
+    snapshot_path = ctx.project_root / "var/reports/setup-snapshot.json"
+    diff_path = ctx.project_root / "var/reports/setup-diff.md"
+    if snapshot_path.exists():
+        detail = f"{detail}; snapshot ready"
+    if diff_path.exists():
+        detail = f"{detail}; diff ready"
 
     last_run = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC)
     if datetime.now(tz=UTC) - last_run > stale_after:
@@ -81,6 +87,10 @@ def _wizard_item(ctx: CLIContext, stale_after: timedelta) -> SetupItem:
         progress_label=f"{ok_count}/{total}",
         last_run=last_run,
         artifact=path,
+        metadata={
+            "snapshot": str(snapshot_path) if snapshot_path.exists() else "",
+            "diff": str(diff_path) if diff_path.exists() else "",
+        },
         actions=[_wizard_action()],
         optional=False,
     )

@@ -8,21 +8,27 @@ from starter_cli.core import CLIError
 
 from ...inputs import InputProvider, is_headless_provider
 from ..context import WizardContext
+from ..presets import apply_hosting_preset
 
 _DEFAULT_AUTH_AUDIENCE = (
     "agent-api,analytics-service,billing-worker,support-console,synthetic-monitor"
 )
 _KEY_STORAGE_CHOICES = {"file", "secret-manager"}
 _KEY_STORAGE_PROVIDER_CHOICES = {literal.value for literal in SecretsProviderLiteral}
+_HOSTING_PRESET_CHOICES = ["local_docker", "cloud_managed", "enterprise_custom"]
+_CLOUD_PROVIDER_CHOICES = ["aws", "azure", "gcp", "other"]
 
 
 def run(context: WizardContext, provider: InputProvider) -> None:
     """Collect deployment metadata shared across all milestones."""
 
     context.console.section(
-        "Core & Metadata",
-        "Establish baseline URLs, auth defaults, and service metadata for every profile.",
+        "Profile & Core",
+        "Choose hosting defaults, then establish baseline URLs and auth defaults.",
     )
+
+    _configure_setup_preferences(context, provider)
+    apply_hosting_preset(context)
 
     env_default = {
         "demo": "development",
@@ -118,6 +124,46 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     _configure_authentication(context, provider)
     _configure_database(context, provider)
     _configure_logging(context, provider)
+
+
+def _configure_setup_preferences(context: WizardContext, provider: InputProvider) -> None:
+    preset_default = _state_default(context, "SETUP_HOSTING_PRESET") or (
+        "local_docker" if context.profile == "demo" else "cloud_managed"
+    )
+    hosting_preset = provider.prompt_choice(
+        key="SETUP_HOSTING_PRESET",
+        prompt="Hosting preset",
+        choices=_HOSTING_PRESET_CHOICES,
+        default=preset_default,
+    )
+    context.hosting_preset = hosting_preset
+
+    cloud_provider = None
+    if hosting_preset == "cloud_managed":
+        cloud_default = _state_default(context, "SETUP_CLOUD_PROVIDER") or "aws"
+        cloud_provider = provider.prompt_choice(
+            key="SETUP_CLOUD_PROVIDER",
+            prompt="Cloud provider (if using cloud managed hosting)",
+            choices=_CLOUD_PROVIDER_CHOICES,
+            default=cloud_default,
+        )
+    context.cloud_provider = cloud_provider
+
+    advanced_default = _state_bool_default(
+        context,
+        "SETUP_SHOW_ADVANCED",
+        default=context.profile in {"staging", "production"},
+    )
+    show_advanced = provider.prompt_bool(
+        key="SETUP_SHOW_ADVANCED",
+        prompt="Show advanced tuning prompts?",
+        default=advanced_default,
+    )
+    context.show_advanced_prompts = show_advanced
+    if show_advanced:
+        context.console.info("Advanced prompts enabled.", topic="wizard")
+    else:
+        context.console.info("Advanced prompts hidden (defaults will apply).", topic="wizard")
 
 
 def _configure_branding(context: WizardContext, provider: InputProvider) -> None:
@@ -433,3 +479,21 @@ def _prompt_positive_float(
 
 def _is_headless(provider: InputProvider) -> bool:
     return is_headless_provider(provider)
+
+
+def _state_default(context: WizardContext, key: str) -> str | None:
+    if context.state_store is None:
+        return None
+    return context.state_store.snapshot().get(key)
+
+
+def _state_bool_default(context: WizardContext, key: str, *, default: bool) -> bool:
+    raw = _state_default(context, key)
+    if raw is None:
+        return default
+    normalized = raw.strip().lower()
+    if normalized in {"1", "true", "yes", "y"}:
+        return True
+    if normalized in {"0", "false", "no", "n"}:
+        return False
+    return default

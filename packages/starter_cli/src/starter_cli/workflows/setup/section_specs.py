@@ -13,12 +13,17 @@ class SectionSpec:
 SECTION_SPECS: list[SectionSpec] = [
     SectionSpec(
         key="core",
-        label="Core & Metadata",
-        summary="Establish environment labels, URLs, branding, and auth defaults.",
+        label="Profile & Core",
+        summary="Choose hosting mode, then set baseline URLs, branding, and auth defaults.",
+    ),
+    SectionSpec(
+        key="providers",
+        label="Infra & Providers",
+        summary="Wire databases, AI providers, Redis, billing, and email transports.",
     ),
     SectionSpec(
         key="secrets",
-        label="Secrets & Vault",
+        label="Secrets & Key Management",
         summary="Generate peppers/keys, select the secrets provider, and rotate signing keys.",
     ),
     SectionSpec(
@@ -27,14 +32,9 @@ SECTION_SPECS: list[SectionSpec] = [
         summary="Configure lockouts, JWKS cache, and email/reset throttles.",
     ),
     SectionSpec(
-        key="providers",
-        label="Providers & Infra",
-        summary="Wire databases, AI providers, Redis pools, Stripe, and email transports.",
-    ),
-    SectionSpec(
         key="storage",
         label="Storage",
-        summary="Select MinIO or GCS for object storage and configure credentials.",
+        summary="Select an object storage provider and configure credentials.",
     ),
     SectionSpec(
         key="usage",
@@ -57,14 +57,14 @@ SECTION_SPECS: list[SectionSpec] = [
         summary="Choose signup access policy, throttles, and billing worker defaults.",
     ),
     SectionSpec(
-        key="dev_user",
-        label="Dev User",
-        summary="Collect demo dev user defaults and credentials for seeding.",
-    ),
-    SectionSpec(
         key="frontend",
         label="Frontend",
         summary="Finalize Next.js env config for API URLs, Playwright, and cookie posture.",
+    ),
+    SectionSpec(
+        key="dev_user",
+        label="Dev User",
+        summary="Collect demo dev user defaults and credentials for seeding.",
     ),
 ]
 

@@ -149,7 +149,6 @@ class StarterTUI(App[None]):
     .stripe-options-actions {
         height: auto;
         align: left middle;
-        gap: 1;
         padding-bottom: 1;
     }
 

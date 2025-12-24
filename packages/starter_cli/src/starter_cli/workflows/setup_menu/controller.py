@@ -112,9 +112,12 @@ def _to_dict(items: Iterable[SetupItem]) -> list[dict[str, object]]:
                 "detail": item.detail,
                 "progress": item.progress,
                 "progress_label": item.progress_label,
-                "last_run": item.last_run.isoformat(timespec="seconds") if item.last_run else None,
+                "last_run": item.last_run.isoformat(timespec="seconds")
+                if item.last_run
+                else None,
                 "artifact": str(item.artifact) if item.artifact else None,
                 "optional": item.optional,
+                "metadata": item.metadata or None,
             }
         )
     return result

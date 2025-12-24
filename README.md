@@ -147,6 +147,7 @@ Refer to `starter_cli/README.md` for detailed flags, answers-file formats, and c
   - `var/reports/setup-summary.json` — machine-readable milestone report.
   - `var/reports/cli-one-stop-summary.md` — resume-ready Markdown recap (profile, automation status, verification snapshot).
   - `var/reports/verification-artifacts.json` — append-only ledger of provider verification artifacts (Vault transit probes, AWS/Azure/Infisical checks, Stripe seeding).
+  - `var/reports/setup-snapshot.json` + `var/reports/setup-diff.md` — redacted snapshot + diff for auditing setup changes over time.
 - Use these artifacts to prove the environment was bootstrapped correctly (attach the Markdown snippet to onboarding tickets or demos).
 
 ## Development Workflow

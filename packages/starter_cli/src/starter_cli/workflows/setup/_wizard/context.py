@@ -43,6 +43,9 @@ class WizardContext:
     backend_env: EnvFile
     frontend_env: EnvFile | None
     frontend_path: Path | None
+    hosting_preset: str | None = None
+    cloud_provider: str | None = None
+    show_advanced_prompts: bool = False
     api_base_url: str = "http://127.0.0.1:8000"
     is_headless: bool = False
     summary_path: Path | None = None
@@ -117,6 +120,16 @@ class WizardContext:
 
     def set_backend_bool(self, key: str, value: bool) -> None:
         self.set_backend(key, "true" if value else "false")
+
+    def set_backend_default(self, key: str, value: str, *, mask: bool = False) -> None:
+        current = self.current(key)
+        if current is None or current == "":
+            self.set_backend(key, value, mask=mask)
+
+    def set_backend_bool_default(self, key: str, value: bool) -> None:
+        current = self.current(key)
+        if current is None or current == "":
+            self.set_backend_bool(key, value)
 
     def set_frontend(self, key: str, value: str) -> None:
         if not self.frontend_env:

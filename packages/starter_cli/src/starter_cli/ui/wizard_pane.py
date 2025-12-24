@@ -202,12 +202,33 @@ class WizardPane(Vertical):
         yield Static("Setup Wizard", classes="section-title")
         yield Static("", id="wizard-summary", classes="section-summary")
         with Horizontal(id="wizard-controls"):
-            yield Static("Profile", classes="wizard-control-label")
+            yield Static("Profile", id="wizard-profile-label", classes="wizard-control-label")
             yield RadioSet(
                 RadioButton("Demo", id="profile-demo"),
                 RadioButton("Staging", id="profile-staging"),
                 RadioButton("Production", id="profile-production"),
                 id="wizard-profile",
+            )
+            yield Static("Hosting", id="wizard-preset-label", classes="wizard-control-label")
+            yield RadioSet(
+                RadioButton("Local Docker", id="preset-local"),
+                RadioButton("Cloud Managed", id="preset-cloud"),
+                RadioButton("Enterprise", id="preset-enterprise"),
+                id="wizard-preset",
+            )
+            yield Static("Cloud", id="wizard-cloud-label", classes="wizard-control-label")
+            yield RadioSet(
+                RadioButton("AWS", id="cloud-aws"),
+                RadioButton("Azure", id="cloud-azure"),
+                RadioButton("GCP", id="cloud-gcp"),
+                RadioButton("Other", id="cloud-other"),
+                id="wizard-cloud",
+            )
+            yield Static("Advanced", id="wizard-advanced-label", classes="wizard-control-label")
+            yield RadioSet(
+                RadioButton("On", id="advanced-on"),
+                RadioButton("Off", id="advanced-off"),
+                id="wizard-advanced",
             )
             yield Button("Start Wizard", id="wizard-start", variant="primary")
         yield ProgressBar(id="wizard-progress", total=len(SECTION_SPECS))
@@ -228,6 +249,7 @@ class WizardPane(Vertical):
 
     def on_mount(self) -> None:
         self._configure_profile()
+        self._configure_presets()
         self._configure_tables()
         self._prompt_controller.set_visibility(False)
         self.set_interval(0.5, self._refresh_view)
@@ -252,6 +274,17 @@ class WizardPane(Vertical):
             return
         self._prompt_controller.submit_choice(event.option_index)
 
+    def on_radio_set_changed(self, event: RadioSet.Changed) -> None:
+        if event.radio_set.id in {
+            "wizard-profile",
+            "wizard-preset",
+            "wizard-cloud",
+            "wizard-advanced",
+        }:
+            self._sync_preset_controls()
+            if not self._session:
+                self._update_summary_preview()
+
     # ------------------------------------------------------------------
     # Wizard lifecycle
     # ------------------------------------------------------------------
@@ -259,6 +292,7 @@ class WizardPane(Vertical):
         if self._session and self._session.running:
             return
         config = replace(self._config, profile=self._selected_profile())
+        config.answers = self._merged_answers(config.answers)
         self._session = WizardSession(self._ctx, config)
         self._prompt_controller.set_channel(self._session.prompt_channel)
         self._session.start()
@@ -276,6 +310,46 @@ class WizardPane(Vertical):
             return self._config.profile
         return profiles.get(selected.id or "", self._config.profile)
 
+    def _selected_preset(self) -> str:
+        presets = {
+            "preset-local": "local_docker",
+            "preset-cloud": "cloud_managed",
+            "preset-enterprise": "enterprise_custom",
+        }
+        radio = self.query_one("#wizard-preset", RadioSet)
+        selected = radio.pressed_button
+        if selected is None:
+            return self._default_preset()
+        return presets.get(selected.id or "", self._default_preset())
+
+    def _selected_cloud(self) -> str:
+        clouds = {
+            "cloud-aws": "aws",
+            "cloud-azure": "azure",
+            "cloud-gcp": "gcp",
+            "cloud-other": "other",
+        }
+        radio = self.query_one("#wizard-cloud", RadioSet)
+        selected = radio.pressed_button
+        if selected is None:
+            return self._default_cloud()
+        return clouds.get(selected.id or "", self._default_cloud())
+
+    def _selected_advanced(self) -> bool:
+        radio = self.query_one("#wizard-advanced", RadioSet)
+        selected = radio.pressed_button
+        if selected is None:
+            return self._default_advanced()
+        return (selected.id or "") == "advanced-on"
+
+    def _merged_answers(self, base_answers: ParsedAnswers) -> ParsedAnswers:
+        answers = dict(base_answers)
+        preset = self._selected_preset()
+        answers.setdefault("SETUP_HOSTING_PRESET", preset)
+        answers.setdefault("SETUP_CLOUD_PROVIDER", self._selected_cloud())
+        answers.setdefault("SETUP_SHOW_ADVANCED", "true" if self._selected_advanced() else "false")
+        return answers
+
     # ------------------------------------------------------------------
     # UI updates
     # ------------------------------------------------------------------
@@ -289,6 +363,7 @@ class WizardPane(Vertical):
         elapsed = state.elapsed_text()
         if elapsed:
             summary += f" | {elapsed}"
+        summary += self._build_setup_summary()
         self.query_one("#wizard-summary", Static).update(summary)
         progress = self.query_one("#wizard-progress", ProgressBar)
         progress.update(total=state.total_sections, progress=state.completed_sections)
@@ -378,6 +453,79 @@ class WizardPane(Vertical):
         }[profile]
         button = self.query_one(f"#{selection}", RadioButton)
         button.value = True
+        self._update_summary_preview()
+
+    def _configure_presets(self) -> None:
+        preset = self._config.answers.get("SETUP_HOSTING_PRESET") if self._config.answers else None
+        if not preset:
+            preset = self._default_preset()
+        preset_id = {
+            "local_docker": "preset-local",
+            "cloud_managed": "preset-cloud",
+            "enterprise_custom": "preset-enterprise",
+        }.get(preset, "preset-local")
+        self.query_one(f"#{preset_id}", RadioButton).value = True
+
+        cloud = self._config.answers.get("SETUP_CLOUD_PROVIDER") if self._config.answers else None
+        if not cloud:
+            cloud = self._default_cloud()
+        cloud_id = {
+            "aws": "cloud-aws",
+            "azure": "cloud-azure",
+            "gcp": "cloud-gcp",
+            "other": "cloud-other",
+        }.get(cloud, "cloud-aws")
+        self.query_one(f"#{cloud_id}", RadioButton).value = True
+
+        advanced = self._config.answers.get("SETUP_SHOW_ADVANCED") if self._config.answers else None
+        is_advanced = self._default_advanced()
+        if advanced is not None:
+            is_advanced = advanced.lower() in {"1", "true", "yes", "y"}
+        advanced_id = "advanced-on" if is_advanced else "advanced-off"
+        self.query_one(f"#{advanced_id}", RadioButton).value = True
+        self._sync_preset_controls()
+
+    def _default_preset(self) -> str:
+        return "local_docker" if self._config.profile == "demo" else "cloud_managed"
+
+    def _default_cloud(self) -> str:
+        return "aws"
+
+    def _default_advanced(self) -> bool:
+        return self._config.profile in {"staging", "production"}
+
+    def _sync_preset_controls(self) -> None:
+        preset = self._selected_preset()
+        cloud_label = self.query_one("#wizard-cloud-label", Static)
+        cloud_radio = self.query_one("#wizard-cloud", RadioSet)
+        is_cloud = preset == "cloud_managed"
+        cloud_label.display = is_cloud
+        cloud_radio.display = is_cloud
+        if not is_cloud:
+            default_cloud = self._default_cloud()
+            cloud_id = {
+                "aws": "cloud-aws",
+                "azure": "cloud-azure",
+                "gcp": "cloud-gcp",
+                "other": "cloud-other",
+            }[default_cloud]
+            self.query_one(f"#{cloud_id}", RadioButton).value = True
+
+    def _build_setup_summary(self) -> str:
+        preset = self._selected_preset()
+        advanced = "on" if self._selected_advanced() else "off"
+        summary = f" | Preset: {preset}"
+        if preset == "cloud_managed":
+            summary += f" ({self._selected_cloud()})"
+        summary += f" | Advanced: {advanced}"
+        return summary
+
+    def _update_summary_preview(self) -> None:
+        summary = f"Preset: {self._selected_preset()}"
+        if self._selected_preset() == "cloud_managed":
+            summary += f" ({self._selected_cloud()})"
+        summary += f" | Advanced: {'on' if self._selected_advanced() else 'off'}"
+        self.query_one("#wizard-summary", Static).update(summary)
 
 
 def _empty_state():

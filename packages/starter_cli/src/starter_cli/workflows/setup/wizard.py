@@ -21,6 +21,7 @@ from ._wizard.sections import (
     storage,
     usage,
 )
+from ._wizard.snapshot import write_snapshot_and_diff
 from .answer_recorder import AnswerRecorder, RecordingInputProvider
 from .automation import ALL_AUTOMATION_PHASES, AutomationPhase
 from .demo_token import run_demo_token_automation
@@ -247,6 +248,9 @@ class SetupWizard:
         audit.render_schema_summary(self.context)
         audit.write_summary(self.context, sections)
         audit.write_markdown_summary(self.context, sections)
+        snapshot_path, diff_path = write_snapshot_and_diff(self.context)
+        self.console.success(f"Snapshot written to {snapshot_path}", topic="wizard")
+        self.console.success(f"Diff written to {diff_path}", topic="wizard")
         self._finalize_run(provider)
 
     def _build_section_runners(self, provider: InputProvider) -> dict[str, Callable[[], None]]:
