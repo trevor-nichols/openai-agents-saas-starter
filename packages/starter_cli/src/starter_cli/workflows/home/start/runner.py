@@ -1,16 +1,13 @@
 from __future__ import annotations
 
 import atexit
-import datetime
 import os
 import signal
 import subprocess
 import threading
 import time
 import webbrowser
-from collections import deque
 from collections.abc import Sequence
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -22,19 +19,10 @@ from starter_cli.workflows.home.probes.api import api_probe
 from starter_cli.workflows.home.probes.frontend import frontend_probe
 from starter_cli.workflows.home.probes.util import tcp_check
 
-TODAY = datetime.date.today().isoformat()
-
-
-@dataclass(slots=True)
-class LaunchResult:
-    label: str
-    command: Sequence[str]
-    process: subprocess.Popen[Any] | None
-    isolated: bool = False
-    pgid: int | None = None
-    error: str | None = None
-    log_tail: deque[str] = field(default_factory=lambda: deque(maxlen=50))
-    log_path: Path | None = None
+from . import env as env_utils
+from .logs import LogSession
+from .models import LaunchResult
+from .processes import resolve_pgid, subprocess_start_opts, terminate_launch
 
 
 class StartRunner:
@@ -60,12 +48,16 @@ class StartRunner:
         self.detach = detach
         self.force = force
         self.pidfile = pidfile or stack_state.STACK_STATE_PATH
-        self.log_dir = log_dir or PROJECT_ROOT / "var" / "log"
         self._launches: list[LaunchResult] = []
         self._stop_event = threading.Event()
-        self._log_files: list[Any] = []
         self._infra_started = (self.target == "dev") and not self.skip_infra
-        self._base_log_root, self.log_dir = self._resolve_log_dir(log_dir)
+        self._logs = LogSession(
+            project_root=PROJECT_ROOT,
+            env=os.environ,
+            override=log_dir,
+        )
+        self._base_log_root = self._logs.base_log_root
+        self.log_dir = self._logs.log_dir
 
     def run(self) -> int:
         self._install_signal_handlers()
@@ -102,7 +94,8 @@ class StartRunner:
                     stack_state.stop_processes(safe_state)
                 else:
                     self.console.info(
-                        "No running PIDs in prior state; skipping process stop", topic="start"
+                        "No running PIDs in prior state; skipping process stop",
+                        topic="start",
                     )
                 stack_state.clear(self.pidfile)
 
@@ -192,7 +185,7 @@ class StartRunner:
                 self._record_state()
                 self.console.success("Stack is running in background (managed by CLI).")
                 self._print_ready_urls()
-                self._close_logs()
+                self._logs.close()
                 return 0
 
             self.console.success(
@@ -224,10 +217,10 @@ class StartRunner:
             stdout_target: Any
             log_path: Path | None = None
             if self.detach:
-                log_path, stdout_target = self._open_log(label)
+                log_path, stdout_target = self._logs.open_log(label)
             else:
                 stdout_target = subprocess.PIPE
-            start_opts = self._subprocess_start_opts()
+            start_opts = subprocess_start_opts(self.detach)
             proc = subprocess.Popen(
                 command,
                 cwd=cwd or PROJECT_ROOT,
@@ -237,12 +230,7 @@ class StartRunner:
                 text=not self.detach,
                 **start_opts,
             )
-            pgid = None
-            if start_opts and hasattr(os, "getpgid"):
-                try:
-                    pgid = os.getpgid(proc.pid)
-                except OSError:
-                    pgid = None
+            pgid = resolve_pgid(proc, start_opts)
 
             launch = LaunchResult(
                 label=label,
@@ -255,34 +243,16 @@ class StartRunner:
             self._launches.append(launch)
             self.console.info(f"Started {label} pid={proc.pid} cmd={' '.join(command)}")
             if not self.detach:
-                self._start_log_thread(launch)
+                self._logs.start_log_thread(launch, self.console, self._stop_event)
             return launch
         except FileNotFoundError as exc:
             return LaunchResult(label=label, command=command, process=None, error=str(exc))
         except Exception as exc:  # pragma: no cover - defensive
             return LaunchResult(label=label, command=command, process=None, error=str(exc))
 
-    def _start_log_thread(self, launch: LaunchResult) -> None:
-        if launch.process is None or launch.process.stdout is None:
-            return
-
-        def _consume() -> None:
-            assert launch.process and launch.process.stdout
-            for line in launch.process.stdout:
-                if self._stop_event.is_set():
-                    break
-                line = line.rstrip()
-                if line:
-                    launch.log_tail.append(f"{launch.label}: {line}")
-                    self.console.info(f"{launch.label}> {line}")
-
-        threading.Thread(target=_consume, daemon=True).start()
-
     def _open_browser(self) -> None:
         # Use APP_PUBLIC_URL when present
-        import os
-
-        url = os.getenv("APP_PUBLIC_URL", "http://localhost:3000")
+        url = os.getenv("APP_PUBLIC_URL", env_utils.DEFAULT_APP_URL)
         try:
             webbrowser.open(url)
             self.console.success(f"Opened browser at {url}")
@@ -290,21 +260,7 @@ class StartRunner:
             self.console.warn(f"Failed to open browser: {exc}")
 
     def _dump_tail(self) -> None:
-        for launch in self._launches:
-            if launch.log_tail:
-                self.console.info(f"--- last {len(launch.log_tail)} lines from {launch.label} ---")
-                for line in launch.log_tail:
-                    self.console.info(line)
-            elif launch.log_path and launch.log_path.exists():
-                tail = (
-                    launch.log_path.read_text(encoding="utf-8", errors="ignore").splitlines()[-20:]
-                )
-                if tail:
-                    self.console.info(
-                        f"--- last {len(tail)} lines from {launch.label} ({launch.log_path}) ---"
-                    )
-                    for line in tail:
-                        self.console.info(line)
+        self._logs.dump_tail(self._launches, self.console)
 
     def _poll_launch_failures(self) -> str | None:
         """Detect early exits during the health wait and fail fast."""
@@ -366,17 +322,15 @@ class StartRunner:
     def _print_ready_urls(self) -> None:
         """Surface ready endpoints once the stack is healthy."""
 
-        import os
-
-        api_url = os.getenv("API_BASE_URL", "http://localhost:8000")
-        app_url = os.getenv("APP_PUBLIC_URL", "http://localhost:3000")
+        api_url = env_utils.api_base_url(os.environ)
+        app_url = env_utils.app_public_url(os.environ)
         self.console.info(f"Backend: {api_url}")
         self.console.info(f"Frontend: {app_url}")
 
     def _cleanup_processes(self) -> None:
         self._stop_event.set()
         for launch in self._launches:
-            self._terminate_launch(launch, force=False)
+            terminate_launch(launch, force=False)
 
         deadline = time.time() + 2.0
         while time.time() < deadline:
@@ -393,55 +347,8 @@ class StartRunner:
         for launch in self._launches:
             proc = launch.process
             if proc and proc.poll() is None:
-                self._terminate_launch(launch, force=True)
-        self._close_logs()
-
-    def _terminate_launch(self, launch: LaunchResult, *, force: bool) -> None:
-        """Best-effort teardown for a spawned process tree.
-
-        Uses the recorded process group first (covers cases where the leader exited
-        before cleanup), then falls back to the live Popen handle.
-        """
-
-        if launch.isolated:
-            sig = signal.SIGKILL if force else signal.SIGTERM
-        else:
-            sig = signal.SIGKILL if force else signal.SIGINT
-
-        if launch.isolated and launch.pgid and os.name != "nt":
-            try:
-                os.killpg(launch.pgid, sig)
-                return
-            except ProcessLookupError:
-                # Group already gone; nothing to do.
-                return
-            except PermissionError:
-                # Fallback to per-process termination below.
-                pass
-            except Exception:
-                pass
-
-        proc = launch.process
-        if proc is None:
-            return
-        # If the leader already exited, we may still have live children under the
-        # same pgid. When pgid is missing (Windows or earlier failure), send the
-        # signal to the leader pid as a last resort.
-        if proc.poll() is None:
-            if launch.isolated:
-                self._terminate_process(proc, force=force)
-            else:
-                self._terminate_process_tree(proc.pid, sig)
-            return
-        if launch.isolated and os.name != "nt":
-            try:
-                pgid = os.getpgid(proc.pid)
-            except OSError:
-                return
-            try:
-                os.killpg(pgid, sig)
-            except Exception:
-                return
+                terminate_launch(launch, force=True)
+        self._logs.close()
 
     def _install_signal_handlers(self) -> None:
         def _handler(signum, frame):
@@ -465,39 +372,6 @@ class StartRunner:
     # ------------------------------------------------------------------
     # Detached + port guard helpers
     # ------------------------------------------------------------------
-    def _open_log(self, label: str) -> tuple[Path, Any]:
-        self.log_dir.mkdir(parents=True, exist_ok=True)
-        path = self.log_dir / f"{label}.log"
-        self._rotate_log(path)
-        # append to keep previous runs; rotation keeps size bounded
-        fh = open(path, "a", buffering=1, encoding="utf-8")
-        self._log_files.append(fh)
-        return path, fh
-
-    def _rotate_log(self, path: Path, *, max_bytes: int = 5_000_000, keep: int = 3) -> None:
-        try:
-            if not path.exists() or path.stat().st_size < max_bytes:
-                return
-        except OSError:
-            return
-
-        for idx in range(keep - 1, -1, -1):
-            src = path if idx == 0 else path.with_name(f"{path.name}.{idx}")
-            dest = path.with_name(f"{path.name}.{idx + 1}")
-            if src.exists():
-                try:
-                    os.replace(src, dest)
-                except OSError:
-                    continue
-
-    def _close_logs(self) -> None:
-        for fh in self._log_files:
-            try:
-                fh.close()
-            except Exception:
-                continue
-        self._log_files.clear()
-
     def _record_state(self) -> None:
         procs = [
             stack_state.StackProcess(
@@ -520,11 +394,13 @@ class StartRunner:
     def _ports_available(self) -> bool:
         checks: list[tuple[str, str, int]] = []
         if self.target in {"dev", "backend"}:
-            host, port = _parse_host_port(self._api_base_url(), default_port=8000)
+            host, port = env_utils.parse_host_port(
+                env_utils.api_base_url(os.environ), default_port=8000
+            )
             checks.append(("api", host, port))
         if self.target in {"dev", "frontend"}:
             # Next.js binds locally; guard the local port even when APP_PUBLIC_URL is remote
-            port = self._frontend_listen_port()
+            port = env_utils.frontend_listen_port(os.environ)
             checks.append(("frontend", "127.0.0.1", port))
 
         busy: list[str] = []
@@ -544,217 +420,17 @@ class StartRunner:
     # Environment overlays per process
     # ------------------------------------------------------------------
     def _backend_env(self) -> dict[str, str]:
-        env = os.environ.copy()
-        env.pop("PORT", None)  # avoid inheriting frontend port for uvicorn
-        env["LOG_ROOT"] = str(self._base_log_root)
-        env.setdefault(
-            "ALEMBIC_CONFIG",
-            str(PROJECT_ROOT / "apps" / "api-service" / "alembic.ini"),
+        return env_utils.build_backend_env(
+            os.environ,
+            project_root=PROJECT_ROOT,
+            base_log_root=self._base_log_root,
         )
-        env.setdefault(
-            "ALEMBIC_SCRIPT_LOCATION",
-            str(PROJECT_ROOT / "apps" / "api-service" / "alembic"),
-        )
-        return env
 
     def _frontend_env(self) -> dict[str, str]:
-        env = os.environ.copy()
-        port = self._frontend_listen_port()
-        env["PORT"] = str(port)
-        env.setdefault("APP_PUBLIC_URL", "http://localhost:3000")
-        env["LOG_ROOT"] = str(self._base_log_root)
-        return env
-
-    def _frontend_listen_port(self) -> int:
-        host, url_port = _parse_host_port(self._app_public_url(), default_port=3000)
-        if _is_local_host(host):
-            return url_port
-
-        env_port = os.getenv("PORT")
-        if env_port and env_port.isdigit():
-            return int(env_port)
-
-        return 3000
-
-    def _api_base_url(self) -> str:
-        return os.getenv("API_BASE_URL") or "http://localhost:8000"
-
-    def _app_public_url(self) -> str:
-        return os.getenv("APP_PUBLIC_URL") or "http://localhost:3000"
-
-    # ------------------------------------------------------------------
-    # Logging helpers
-    # ------------------------------------------------------------------
-    def _resolve_log_dir(self, configured: Path | None) -> tuple[Path, Path]:
-        """
-        Resolve the daily log root and CLI log directory.
-
-        - base_root: LOG_ROOT env or project var/log
-        - date_root: base_root/YYYY-MM-DD
-        - cli_root: date_root/cli
-        """
-
-        env_root = os.getenv("LOG_ROOT")
-        base_root_raw = Path(env_root).expanduser() if env_root else (PROJECT_ROOT / "var" / "log")
-        if configured:
-            base_root_raw = configured
-        base_root = base_root_raw if base_root_raw.is_absolute() else (PROJECT_ROOT / base_root_raw)
-        date_root = base_root / TODAY
-        cli_root = date_root / "cli"
-        try:
-            base_root.mkdir(parents=True, exist_ok=True)
-            date_root.mkdir(parents=True, exist_ok=True)
-            cli_root.mkdir(parents=True, exist_ok=True)
-            current_link = base_root / "current"
-            if current_link.exists() or current_link.is_symlink():
-                current_link.unlink()
-            current_link.symlink_to(date_root, target_is_directory=True)
-        except OSError:
-            # Non-fatal; fall back to base_root when symlink fails
-            cli_root = base_root
-        return base_root, cli_root
-
-    def _subprocess_start_opts(self) -> dict[str, Any]:
-        """
-        In detached mode, ensure each child becomes its own process group so the
-        CLI can stop it later via recorded PIDs without relying on the terminal
-        foreground process group.
-
-        In foreground mode, keep children attached to the terminal process group
-        so Ctrl+C reliably reaches the dev servers even if intermediate wrappers
-        (just/hatch) terminate quickly.
-        """
-
-        if not self.detach:
-            return {}
-        if os.name == "nt":
-            return {"creationflags": getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)}
-        return {"start_new_session": True}
-
-    def _terminate_process(self, proc: subprocess.Popen[Any], *, force: bool) -> None:
-        """
-        Terminate a process and its process group to avoid orphaned children
-        (e.g., Next.js dev server continuing after pnpm is killed).
-        """
-
-        try:
-            if os.name == "nt":
-                # CTRL_BREAK reaches the new process group created above
-                ctrl_break = getattr(signal, "CTRL_BREAK_EVENT", signal.SIGTERM)
-                sig = ctrl_break if not force else signal.SIGTERM
-                proc.send_signal(sig)
-            else:
-                sig = signal.SIGKILL if force else signal.SIGTERM
-                os.killpg(proc.pid, sig)
-        except ProcessLookupError:
-            return
-        except Exception:
-            try:
-                proc.kill() if force else proc.terminate()
-            except Exception:
-                pass
-
-    def _terminate_process_tree(self, root_pid: int, sig: int) -> None:
-        """
-        Best-effort process-tree teardown (POSIX + Windows).
-
-        Foreground mode intentionally avoids creating new sessions/process groups
-        so Ctrl+C can reach children. When we need to stop early (health failure,
-        error, etc.), we fall back to killing the spawned process tree by PID.
-        """
-
-        if root_pid <= 0:
-            return
-
-        if os.name == "nt":
-            # /T terminates the child process tree; /F forces.
-            cmd = ["taskkill", "/PID", str(root_pid), "/T"]
-            if sig == getattr(signal, "SIGKILL", None):
-                cmd.append("/F")
-            try:
-                subprocess.run(
-                    cmd,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    check=False,
-                )
-            except Exception:
-                return
-            return
-
-        pids = _collect_descendant_pids(root_pid)
-        for pid in pids:
-            try:
-                os.kill(pid, sig)
-            except ProcessLookupError:
-                continue
-            except PermissionError:
-                continue
-            except Exception:
-                continue
-
-
-def _parse_host_port(url: str, *, default_port: int) -> tuple[str, int]:
-    from urllib.parse import urlparse
-
-    parsed = urlparse(url)
-    host = parsed.hostname or "localhost"
-    port = parsed.port or default_port
-    return host, port
-
-
-def _is_local_host(host: str) -> bool:
-    if host in {"localhost", "::1", "0.0.0.0"}:
-        return True
-    # IPv4 loopback range (RFC 1122) is 127.0.0.0/8, not just 127.0.0.1.
-    if host.startswith("127."):
-        return True
-    return host.endswith(".local")
-
-
-def _collect_descendant_pids(root_pid: int) -> list[int]:
-    """
-    Return a post-order list of PIDs: children first, then root.
-
-    Uses `ps` to avoid adding runtime dependencies (psutil) to the CLI.
-    """
-
-    try:
-        result = subprocess.run(
-            ["ps", "-Ao", "pid=,ppid="],
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
+        return env_utils.build_frontend_env(
+            os.environ,
+            base_log_root=self._base_log_root,
         )
-    except Exception:
-        return [root_pid]
-
-    children_by_ppid: dict[int, list[int]] = {}
-    for line in result.stdout.splitlines():
-        parts = line.strip().split(None, 1)
-        if len(parts) != 2:
-            continue
-        try:
-            pid = int(parts[0])
-            ppid = int(parts[1])
-        except ValueError:
-            continue
-        children_by_ppid.setdefault(ppid, []).append(pid)
-
-    order: list[int] = []
-    stack: list[int] = [root_pid]
-    seen: set[int] = set()
-    while stack:
-        pid = stack.pop()
-        if pid in seen:
-            continue
-        seen.add(pid)
-        order.append(pid)
-        stack.extend(children_by_ppid.get(pid, ()))
-
-    # Reverse pre-order => children before parents.
-    return list(reversed(order))
 
 
-__all__ = ["LaunchResult", "StartRunner"]
+__all__ = ["StartRunner"]

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import os
 from types import SimpleNamespace
 
 from starter_cli.core.context import build_context
 from starter_cli.core.status_models import ProbeResult, ProbeState
-from starter_cli.workflows.home import start as start_mod
 from starter_cli.workflows.home.start import StartRunner
+from starter_cli.workflows.home.start import env as env_utils
+from starter_cli.workflows.home.start import runner as start_mod
 
 
 class FakeProc(SimpleNamespace):
@@ -100,7 +102,7 @@ def test_frontend_remote_app_public_url_keeps_local_port(monkeypatch):
 
     monkeypatch.setattr(start_mod, "tcp_check", fake_tcp_check)
 
-    assert runner._frontend_listen_port() == 3000
+    assert env_utils.frontend_listen_port(os.environ) == 3000
     assert runner._ports_available() is True
     assert calls == [("127.0.0.1", 3000, 0.5)]
 
@@ -121,6 +123,19 @@ def test_frontend_env_sets_port_from_app_public_url(monkeypatch):
     env = runner._frontend_env()
     assert env["PORT"] == "3100"
     assert env["APP_PUBLIC_URL"].endswith(":3100")
+
+
+def test_log_dir_override_resolves_under_override(tmp_path):
+    ctx = build_context()
+    override = tmp_path / "logs-root"
+    runner = StartRunner(
+        ctx,
+        target="backend",
+        timeout=0.1,
+        open_browser=False,
+        log_dir=override,
+    )
+    assert str(runner.log_dir).startswith(str(override))
 
 
 def test_force_skips_stop_when_no_running(monkeypatch):

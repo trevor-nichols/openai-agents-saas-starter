@@ -32,6 +32,20 @@ def resolve_log_root(project_root: Path, env: Mapping[str, str]) -> Path:
     return candidate
 
 
+def resolve_log_root_override(
+    project_root: Path,
+    env: Mapping[str, str],
+    *,
+    override: Path | None,
+) -> Path:
+    if override is not None:
+        candidate = override.expanduser()
+        if not candidate.is_absolute():
+            candidate = (project_root / candidate).resolve()
+        return candidate
+    return resolve_log_root(project_root, env)
+
+
 def resolve_active_log_dir(log_root: Path) -> Path:
     current = log_root / "current"
     if current.exists():
@@ -163,4 +177,5 @@ __all__ = [
     "mask_value",
     "resolve_active_log_dir",
     "resolve_log_root",
+    "resolve_log_root_override",
 ]

@@ -15,6 +15,7 @@ from typing import cast
 from starter_cli.core import CLIContext
 from starter_cli.core.constants import DEFAULT_COMPOSE_FILE
 from starter_cli.ports.console import ConsolePort
+from starter_cli.services import ops_models
 
 DEFAULT_LINES = 200
 SERVICE_CHOICES = ("all", "api", "frontend", "collector", "postgres", "redis")
@@ -148,11 +149,10 @@ def _handle_tail(args: argparse.Namespace, ctx: CLIContext) -> int:
 
 def _handle_archive(args: argparse.Namespace, ctx: CLIContext) -> int:
     console = ctx.console
-    base_root_raw = (args.log_root or Path(os.getenv("LOG_ROOT", DEFAULT_LOG_ROOT))).expanduser()
-    base_root = (
-        base_root_raw
-        if base_root_raw.is_absolute()
-        else (ctx.project_root / base_root_raw).resolve()
+    base_root = ops_models.resolve_log_root_override(
+        ctx.project_root,
+        os.environ,
+        override=args.log_root,
     )
 
     days = max(args.days, 0)
