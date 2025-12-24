@@ -1,9 +1,9 @@
 # Milestone: Frontend Data Layer Remediation
 
-**Status:** Not Started  
+**Status:** Completed
 **DOR (Definition of Ready):** Backend contracts exist for all flows; HeyAPI SDK v0.5.0 generated 10 Nov 2025; design approves consolidation of redundant hooks.  
 **Milestone Owner:** *@codex*  
-**Target Window:** 12–19 Nov 2025  
+**Target Window:** 19 Nov 2025  
 
 ## Objective
 Close the remaining data-layer gaps uncovered during the 11 Nov 2025 review so the Next.js frontend consistently routes through the generated HeyAPI client, enforces auth boundaries via Next API routes, and eliminates dead code that could drift from production pathways.
