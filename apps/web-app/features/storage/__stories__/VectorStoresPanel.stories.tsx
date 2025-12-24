@@ -2,7 +2,7 @@
 
 import type { Meta, StoryObj } from '@storybook/react';
 
-import { VectorStoresPanel } from '../components/VectorStoresPanel';
+import { VectorStoresPanel } from '../components';
 
 const meta: Meta<typeof VectorStoresPanel> = {
   title: 'Storage/VectorStoresPanel',

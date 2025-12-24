@@ -2,7 +2,7 @@
 
 import type { Meta, StoryObj } from '@storybook/react';
 
-import { StorageObjectsPanel } from '../components/StorageObjectsPanel';
+import { StorageObjectsPanel } from '../components';
 
 const meta: Meta<typeof StorageObjectsPanel> = {
   title: 'Storage/StorageObjectsPanel',

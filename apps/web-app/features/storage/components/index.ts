@@ -1,3 +1,2 @@
-export { StorageObjectsPanel } from './StorageObjectsPanel';
-export { UploadObjectForm } from './UploadObjectForm';
-export { VectorStoresPanel } from './VectorStoresPanel';
+export { StorageObjectsPanel, UploadObjectForm } from './StorageObjects';
+export { VectorStoresPanel } from './VectorStores';
