@@ -4,19 +4,19 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any, cast
 
-stripe_module: Any | None
-try:  # pragma: no cover - optional dependency
-    import stripe as _stripe_module
-    stripe_module = _stripe_module
-except ImportError:  # pragma: no cover - handled at runtime
-    stripe_module = None
-
 from starter_cli.core import CLIError
 from starter_cli.services.stripe.provisioner import (
     StripeClient,
     StripePrice,
     StripeProduct,
 )
+
+stripe_module: Any | None
+try:  # pragma: no cover - optional dependency
+    import stripe as _stripe_module
+    stripe_module = _stripe_module
+except ImportError:  # pragma: no cover - handled at runtime
+    stripe_module = None
 
 
 def require_stripe_sdk() -> Any:

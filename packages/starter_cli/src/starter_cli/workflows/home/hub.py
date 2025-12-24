@@ -54,6 +54,7 @@ class ProvidersSnapshot:
 @dataclass(frozen=True, slots=True)
 class UsageSnapshot:
     summary: ops_models.UsageSummary | None
+    warnings: tuple[ops_models.UsageWarning, ...]
 
 
 class HubService:
@@ -112,8 +113,10 @@ class HubService:
     def load_usage(self) -> UsageSnapshot:
         reports_dir = self.ctx.project_root / "var" / "reports"
         report_path = reports_dir / "usage-dashboard.json"
-        summary = ops_models.load_usage_summary(report_path)
-        return UsageSnapshot(summary=summary)
+        report = ops_models.load_usage_report(report_path)
+        if report is None:
+            return UsageSnapshot(summary=None, warnings=())
+        return UsageSnapshot(summary=report.summary, warnings=report.warnings)
 
 
 __all__ = [

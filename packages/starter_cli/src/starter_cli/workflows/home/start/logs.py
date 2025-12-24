@@ -3,10 +3,10 @@ from __future__ import annotations
 import datetime
 import os
 import threading
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import IO
-from collections.abc import Mapping
 
 from starter_cli.ports.console import ConsolePort
 from starter_cli.services import ops_models

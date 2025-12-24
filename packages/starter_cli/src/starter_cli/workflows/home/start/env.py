@@ -4,7 +4,6 @@ from collections.abc import Mapping
 from pathlib import Path
 from urllib.parse import urlparse
 
-
 DEFAULT_API_URL = "http://localhost:8000"
 DEFAULT_APP_URL = "http://localhost:3000"
 

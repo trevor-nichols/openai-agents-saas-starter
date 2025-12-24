@@ -7,6 +7,11 @@ from pathlib import Path
 from typing import Any
 
 DEFAULT_LOG_ROOT = Path("var/log")
+_WARNING_STATES = {
+    "approaching",
+    "soft_limit_exceeded",
+    "hard_limit_exceeded",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,6 +27,19 @@ class UsageSummary:
     tenant_count: int
     feature_count: int
     warning_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class UsageWarning:
+    tenant_slug: str
+    feature_key: str
+    status: str
+
+
+@dataclass(frozen=True, slots=True)
+class UsageReport:
+    summary: UsageSummary
+    warnings: tuple[UsageWarning, ...]
 
 
 def resolve_log_root(project_root: Path, env: Mapping[str, str]) -> Path:
@@ -94,20 +112,37 @@ def mask_value(value: str | None) -> str:
     return f"{value[:4]}...{value[-4:]}"
 
 
-def load_usage_summary(path: Path) -> UsageSummary | None:
+def load_usage_report(path: Path, *, warning_limit: int = 5) -> UsageReport | None:
     if not path.exists():
         return None
     try:
         payload = _read_json(path)
     except Exception:
         return None
-    generated_at = _as_str(payload.get("generated_at"))
+    tenants = _collect_tenants(payload)
+    summary = _build_summary(payload, tenants)
+    warnings = tuple(_collect_warning_rows(tenants, limit=warning_limit))
+    return UsageReport(summary=summary, warnings=warnings)
+
+
+def load_usage_summary(path: Path) -> UsageSummary | None:
+    report = load_usage_report(path, warning_limit=0)
+    if report is None:
+        return None
+    return report.summary
+
+
+def _collect_tenants(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
     raw_tenants = payload.get("tenants")
-    tenants: list[dict[str, Any]] = (
+    return (
         [tenant for tenant in raw_tenants if isinstance(tenant, dict)]
         if isinstance(raw_tenants, list)
         else []
     )
+
+
+def _build_summary(payload: Mapping[str, Any], tenants: list[dict[str, Any]]) -> UsageSummary:
+    generated_at = _as_str(payload.get("generated_at"))
     tenant_count = _as_int(payload.get("tenant_count"))
     if tenant_count == 0 and tenants:
         tenant_count = len(tenants)
@@ -121,6 +156,32 @@ def load_usage_summary(path: Path) -> UsageSummary | None:
         feature_count=feature_count,
         warning_count=warning_count,
     )
+
+
+def _collect_warning_rows(
+    tenants: list[dict[str, Any]],
+    *,
+    limit: int,
+) -> list[UsageWarning]:
+    if limit <= 0:
+        return []
+    rows: list[UsageWarning] = []
+    for tenant in tenants:
+        slug = _as_str(tenant.get("tenant_slug")) or "unknown"
+        features = tenant.get("features")
+        if not isinstance(features, list):
+            continue
+        for feature in features:
+            if not isinstance(feature, dict):
+                continue
+            status = feature.get("status")
+            if status not in _WARNING_STATES:
+                continue
+            feature_key = _as_str(feature.get("feature_key")) or ""
+            rows.append(UsageWarning(slug, feature_key, str(status)))
+            if len(rows) >= limit:
+                return rows
+    return rows
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -143,11 +204,6 @@ def _as_str(value: Any) -> str | None:
 
 
 def _count_warnings(tenants: list[dict[str, Any]]) -> int:
-    warning_states = {
-        "approaching",
-        "soft_limit_exceeded",
-        "hard_limit_exceeded",
-    }
     count = 0
     for tenant in tenants:
         features = tenant.get("features")
@@ -155,7 +211,7 @@ def _count_warnings(tenants: list[dict[str, Any]]) -> int:
             continue
         for feature in features:
             status = feature.get("status")
-            if status in warning_states:
+            if status in _WARNING_STATES:
                 count += 1
     return count
 
@@ -171,8 +227,11 @@ def _is_date_dir(name: str) -> bool:
 __all__ = [
     "DEFAULT_LOG_ROOT",
     "LogEntry",
+    "UsageReport",
     "UsageSummary",
+    "UsageWarning",
     "collect_log_entries",
+    "load_usage_report",
     "load_usage_summary",
     "mask_value",
     "resolve_active_log_dir",

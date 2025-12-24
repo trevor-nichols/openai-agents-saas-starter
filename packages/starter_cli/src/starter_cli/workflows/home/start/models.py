@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import subprocess
 from collections import deque
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
-import subprocess
 
 
 @dataclass(slots=True)
