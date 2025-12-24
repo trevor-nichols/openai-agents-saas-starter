@@ -23,7 +23,8 @@ from starter_cli.core import CLIContext
 from starter_cli.ports.presentation import NotifyPort
 from starter_cli.presenters import PresenterConsoleAdapter, build_textual_presenter
 from starter_cli.ui.context import derive_presenter_context
-from starter_cli.ui.prompting import PromptChannel, PromptRequest, TextualPromptPort
+from starter_cli.ui.prompt_controller import PromptController
+from starter_cli.ui.prompting import PromptChannel, TextualPromptPort
 from starter_cli.workflows.setup import SetupWizard
 from starter_cli.workflows.setup.automation import AutomationPhase
 from starter_cli.workflows.setup.inputs import ParsedAnswers
@@ -195,8 +196,7 @@ class WizardPane(Vertical):
         self._ctx = ctx
         self._config = config or WizardLaunchConfig()
         self._session: WizardSession | None = None
-        self._current_prompt: PromptRequest | None = None
-        self._choice_values: tuple[str, ...] = ()
+        self._prompt_controller = PromptController(self, prefix="wizard")
 
     def compose(self) -> ComposeResult:
         yield Static("Setup Wizard", classes="section-title")
@@ -229,7 +229,7 @@ class WizardPane(Vertical):
     def on_mount(self) -> None:
         self._configure_profile()
         self._configure_tables()
-        self._set_prompt_visibility(False)
+        self._prompt_controller.set_visibility(False)
         self.set_interval(0.5, self._refresh_view)
         self.set_interval(0.2, self._poll_prompt)
         if self._config.auto_start:
@@ -239,23 +239,18 @@ class WizardPane(Vertical):
         if event.button.id == "wizard-start":
             self._start_wizard()
         elif event.button.id == "wizard-submit":
-            self._submit_prompt()
+            self._prompt_controller.submit_current()
         elif event.button.id == "wizard-clear":
-            self.query_one("#wizard-input", Input).value = ""
-            self._set_prompt_status("")
+            self._prompt_controller.clear_input()
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         if event.input.id == "wizard-input":
-            self._submit_prompt()
+            self._prompt_controller.submit_current()
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         if event.option_list.id != "wizard-options":
             return
-        if not self._choice_values:
-            return
-        if event.option_index >= len(self._choice_values):
-            return
-        self._submit_value(self._choice_values[event.option_index])
+        self._prompt_controller.submit_choice(event.option_index)
 
     # ------------------------------------------------------------------
     # Wizard lifecycle
@@ -265,8 +260,9 @@ class WizardPane(Vertical):
             return
         config = replace(self._config, profile=self._selected_profile())
         self._session = WizardSession(self._ctx, config)
+        self._prompt_controller.set_channel(self._session.prompt_channel)
         self._session.start()
-        self._set_prompt_status("Wizard running. Awaiting prompts...")
+        self._prompt_controller.set_status("Wizard running. Awaiting prompts...")
 
     def _selected_profile(self) -> str:
         profiles = {
@@ -301,7 +297,7 @@ class WizardPane(Vertical):
         self._render_conditional(state)
         self._render_activity(state.events)
         if self._session.done:
-            self._set_prompt_status("Wizard complete.")
+            self._prompt_controller.set_status("Wizard complete.")
 
     def _render_sections(self, sections: Iterable[SectionStatus]) -> None:
         table = self.query_one("#wizard-sections", DataTable)
@@ -353,78 +349,16 @@ class WizardPane(Vertical):
     def _poll_prompt(self) -> None:
         if not self._session:
             return
-        request = self._session.prompt_channel.poll()
-        if request is None:
-            return
-        self._current_prompt = request
-        self._choice_values = request.choices
-        self._set_prompt_status("")
-        self._render_prompt(request)
-
-    def _render_prompt(self, request: PromptRequest) -> None:
-        label = f"{request.prompt} [{request.key}]"
-        self.query_one("#wizard-prompt-label", Static).update(label)
-        detail = "Required" if request.required else "Optional"
-        if request.default:
-            detail += f" | Default: {request.default}"
-        self.query_one("#wizard-prompt-detail", Static).update(detail)
-        input_field = self.query_one("#wizard-input", Input)
-        option_list = self.query_one("#wizard-options", OptionList)
-        if request.kind in {"string", "secret"}:
-            input_field.password = request.kind == "secret"
-            input_field.value = request.default or ""
-            option_list.clear_options()
-            self._set_prompt_visibility(True, show_input=True)
-            input_field.focus()
-        else:
-            input_field.value = ""
-            option_list.clear_options()
-            for choice in request.choices:
-                option_list.add_option(choice)
-            if request.default and request.default in request.choices:
-                option_list.highlighted = request.choices.index(request.default)
-            self._set_prompt_visibility(True, show_input=False)
-            option_list.focus()
-
-    def _submit_prompt(self) -> None:
-        if not self._current_prompt:
-            return
-        if self._current_prompt.kind in {"string", "secret"}:
-            input_field = self.query_one("#wizard-input", Input)
-            value = input_field.value.strip()
-            if not value and self._current_prompt.default:
-                value = self._current_prompt.default
-            if self._current_prompt.required and not value:
-                self._set_prompt_status("Value is required.")
-                return
-            self._submit_value(value)
-            return
-        option_list = self.query_one("#wizard-options", OptionList)
-        index = option_list.highlighted
-        if index is None or index < 0 or index >= len(self._choice_values):
-            if self._current_prompt.default:
-                self._submit_value(self._current_prompt.default)
-                return
-            self._set_prompt_status("Choose an option.")
-            return
-        self._submit_value(self._choice_values[index])
-
-    def _submit_value(self, value: str) -> None:
-        if not self._session:
-            return
-        self._session.prompt_channel.submit(value)
-        self._current_prompt = None
-        self._choice_values = ()
-        self._set_prompt_visibility(False)
-        self._set_prompt_status("Awaiting next prompt...")
+        self._prompt_controller.poll()
 
     def submit_current_prompt(self, value: str | None = None) -> None:
-        if not self._current_prompt:
+        request = self._prompt_controller.state.current
+        if not request:
             return
-        if value is not None and self._current_prompt.kind in {"string", "secret"}:
+        if value is not None and request.kind in {"string", "secret"}:
             input_field = self.query_one("#wizard-input", Input)
             input_field.value = value
-        self._submit_prompt()
+        self._prompt_controller.submit_current()
 
     def _configure_tables(self) -> None:
         self._render_sections([])
@@ -432,15 +366,6 @@ class WizardPane(Vertical):
         self._render_conditional(
             self._session.state.snapshot() if self._session else _empty_state()
         )
-
-    def _set_prompt_visibility(self, visible: bool, *, show_input: bool = True) -> None:
-        input_field = self.query_one("#wizard-input", Input)
-        option_list = self.query_one("#wizard-options", OptionList)
-        input_field.display = visible and show_input
-        option_list.display = visible and not show_input
-
-    def _set_prompt_status(self, message: str) -> None:
-        self.query_one("#wizard-prompt-status", Static).update(message)
 
     def _configure_profile(self) -> None:
         profile = self._config.profile

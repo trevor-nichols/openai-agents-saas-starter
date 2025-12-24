@@ -141,6 +141,40 @@ class StarterTUI(App[None]):
         color: $text-muted;
     }
 
+    .stripe-options {
+        height: auto;
+        padding-bottom: 1;
+    }
+
+    .stripe-options-actions {
+        height: auto;
+        align: left middle;
+        gap: 1;
+        padding-bottom: 1;
+    }
+
+    .stripe-reset {
+        height: auto;
+        padding: 0 1;
+    }
+
+    #stripe-output {
+        height: auto;
+        color: $text-muted;
+        padding-top: 1;
+    }
+
+    #stripe-prompt {
+        margin-top: 1;
+        padding-top: 1;
+        border-top: solid $panel-darken-1;
+    }
+
+    #stripe-prompt-actions {
+        height: auto;
+        padding-top: 1;
+    }
+
     #wizard-main DataTable {
         width: 1fr;
     }

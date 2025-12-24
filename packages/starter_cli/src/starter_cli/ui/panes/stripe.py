@@ -4,12 +4,30 @@ import asyncio
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
-from textual.widgets import Button, DataTable, Static
+from textual.widgets import (
+    Button,
+    Collapsible,
+    DataTable,
+    Input,
+    OptionList,
+    RadioButton,
+    RadioSet,
+    Static,
+)
 
 from starter_cli.core import CLIContext
 from starter_cli.services.ops_models import mask_value
 from starter_cli.services.stripe_status import REQUIRED_ENV_KEYS, StripeStatus
+from starter_cli.ui.prompt_controller import PromptController
+from starter_cli.ui.workflow_session import InteractiveWorkflowSession, render_log_lines
 from starter_cli.workflows.home.hub import HubService
+from starter_cli.workflows.stripe import (
+    DEFAULT_WEBHOOK_FORWARD_URL,
+    StripeSetupConfig,
+    WebhookSecretConfig,
+    run_stripe_setup,
+    run_webhook_secret,
+)
 
 
 class StripePane(Vertical):
@@ -18,31 +36,111 @@ class StripePane(Vertical):
         self.ctx = ctx
         self.hub = hub
         self._env_values: dict[str, str | None] = {}
+        self._session: InteractiveWorkflowSession[object] | None = None
+        self._session_handled = False
+        self._active_action: str | None = None
+        self._prompt_controller = PromptController(self, prefix="stripe")
+        self._last_log: tuple[str, ...] = ()
+        self._refresh_task: asyncio.Task[None] | None = None
 
     def compose(self) -> ComposeResult:
         yield Static("Stripe", classes="section-title")
         yield Static("Stripe billing configuration overview.", classes="section-description")
         with Horizontal(classes="ops-actions"):
             yield Button("Refresh", id="stripe-refresh", variant="primary")
-            yield Button("Show Setup Command", id="stripe-setup")
-            yield Button("Show Webhook Command", id="stripe-webhook")
+            yield Button("Run Stripe Setup", id="stripe-run-setup", variant="primary")
+            yield Button("Capture Webhook Secret", id="stripe-run-webhook")
+        with Horizontal(classes="stripe-options-actions"):
+            yield Static("Setup options", classes="section-summary")
+            yield Button("Reset defaults", id="stripe-reset-defaults", classes="stripe-reset")
+        with Collapsible(
+            title="Stripe setup options",
+            id="stripe-options-collapsible",
+            collapsed=True,
+        ):
+            with Horizontal(classes="stripe-options"):
+                yield Static("Currency", classes="wizard-control-label")
+                yield Input(id="stripe-currency")
+                yield Static("Trial days", classes="wizard-control-label")
+                yield Input(id="stripe-trial-days")
+            with Horizontal(classes="stripe-options"):
+                yield Static("Webhook forward URL", classes="wizard-control-label")
+                yield Input(id="stripe-forward-url")
+            with Horizontal(classes="stripe-options"):
+                yield Static(
+                    "Plan overrides (code=cents, comma-separated)",
+                    classes="wizard-control-label",
+                )
+                yield Input(id="stripe-plan-overrides")
+            with Horizontal(classes="stripe-options"):
+                yield Static("Auto webhook", classes="wizard-control-label")
+                yield RadioSet(
+                    RadioButton("Yes", id="stripe-auto-webhook-yes"),
+                    RadioButton("No", id="stripe-auto-webhook-no"),
+                    id="stripe-auto-webhook",
+                )
+                yield Static("Skip Postgres", classes="wizard-control-label")
+                yield RadioSet(
+                    RadioButton("Yes", id="stripe-skip-postgres-yes"),
+                    RadioButton("No", id="stripe-skip-postgres-no"),
+                    id="stripe-skip-postgres",
+                )
+            with Horizontal(classes="stripe-options"):
+                yield Static("Skip Stripe CLI", classes="wizard-control-label")
+                yield RadioSet(
+                    RadioButton("Yes", id="stripe-skip-cli-yes"),
+                    RadioButton("No", id="stripe-skip-cli-no"),
+                    id="stripe-skip-cli",
+                )
+                yield Static("Webhook print-only", classes="wizard-control-label")
+                yield RadioSet(
+                    RadioButton("Yes", id="stripe-webhook-print-yes"),
+                    RadioButton("No", id="stripe-webhook-print-no"),
+                    id="stripe-webhook-print",
+                )
         yield DataTable(id="stripe-table", zebra_stripes=True)
+        yield Static("", id="stripe-output", classes="ops-output")
+        with Vertical(id="stripe-prompt"):
+            yield Static("", id="stripe-prompt-label")
+            yield Static("", id="stripe-prompt-detail")
+            yield Input(id="stripe-input")
+            yield OptionList(id="stripe-options")
+            with Horizontal(id="stripe-prompt-actions"):
+                yield Button("Submit", id="stripe-submit", variant="primary")
+                yield Button("Clear", id="stripe-clear")
+            yield Static("", id="stripe-prompt-status", classes="section-footnote")
         yield Static("", id="stripe-status", classes="section-footnote")
 
     async def on_mount(self) -> None:
+        self._configure_defaults()
+        self._prompt_controller.set_visibility(False)
+        self.set_interval(0.2, self._poll_prompt)
+        self.set_interval(0.4, self._refresh_output)
         await self.refresh_data()
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "stripe-refresh":
             await self.refresh_data()
-        elif event.button.id == "stripe-setup":
-            self.query_one("#stripe-status", Static).update(
-                "Run: starter-cli stripe setup"
-            )
-        elif event.button.id == "stripe-webhook":
-            self.query_one("#stripe-status", Static).update(
-                "Run: starter-cli stripe webhook-secret"
-            )
+        elif event.button.id == "stripe-run-setup":
+            self._start_setup()
+        elif event.button.id == "stripe-run-webhook":
+            self._start_webhook()
+        elif event.button.id == "stripe-reset-defaults":
+            self._configure_defaults()
+            self.query_one("#stripe-status", Static).update("Stripe defaults restored.")
+        elif event.button.id == "stripe-submit":
+            self._prompt_controller.submit_current()
+        elif event.button.id == "stripe-clear":
+            self._prompt_controller.clear_input()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        if event.input.id == "stripe-input":
+            self._prompt_controller.submit_current()
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        if event.option_list.id != "stripe-options":
+            return
+        self._prompt_controller.submit_choice(event.option_index)
 
     async def refresh_data(self) -> None:
         snapshot = await asyncio.to_thread(self._load)
@@ -61,6 +159,139 @@ class StripePane(Vertical):
         if enable_billing:
             table.add_row("ENABLE_BILLING", "set", enable_billing)
         self.query_one("#stripe-status", Static).update("Stripe status loaded.")
+
+    def _start_setup(self) -> None:
+        config = self._build_setup_config()
+        self._start_session("Stripe setup", lambda ctx: run_stripe_setup(ctx, config))
+
+    def _start_webhook(self) -> None:
+        config = self._build_webhook_config()
+        self._start_session("Webhook secret", lambda ctx: run_webhook_secret(ctx, config))
+
+    def _start_session(self, label: str, runner) -> None:
+        if self._session and self._session.running:
+            self.query_one("#stripe-status", Static).update("Stripe task already running.")
+            return
+        self._session = InteractiveWorkflowSession(self.ctx, runner=runner)
+        self._session_handled = False
+        self._active_action = label
+        self._prompt_controller.set_channel(self._session.prompt_channel)
+        self._prompt_controller.set_status(f"{label} running. Awaiting prompts...")
+        self._set_action_state(running=True)
+        self._session.start()
+
+    def _poll_prompt(self) -> None:
+        if not self._session:
+            return
+        self._prompt_controller.poll()
+
+    def _refresh_output(self) -> None:
+        if not self._session:
+            return
+        lines = self._session.log.snapshot()
+        if lines != self._last_log:
+            self.query_one("#stripe-output", Static).update(render_log_lines(lines))
+            self._last_log = lines
+        if self._session.done and not self._session_handled:
+            self._handle_session_complete()
+
+    def _handle_session_complete(self) -> None:
+        if not self._session:
+            return
+        self._session_handled = True
+        self._set_action_state(running=False)
+        label = self._active_action or "Stripe task"
+        if self._session.result.error:
+            self._prompt_controller.set_status(f"{label} failed: {self._session.result.error}")
+            return
+        self._prompt_controller.set_status(f"{label} complete.")
+        if self._active_action == "Stripe setup":
+            self._refresh_task = asyncio.create_task(self.refresh_data())
+        self._active_action = None
+
+    def _set_action_state(self, *, running: bool) -> None:
+        self.query_one("#stripe-run-setup", Button).disabled = running
+        self.query_one("#stripe-run-webhook", Button).disabled = running
+
+    def _build_setup_config(self) -> StripeSetupConfig:
+        currency = self._string_value("stripe-currency", default="usd")
+        trial_days = self._int_value("stripe-trial-days", default=7)
+        forward_url = self._string_value("stripe-forward-url", default=DEFAULT_WEBHOOK_FORWARD_URL)
+        overrides = self._plan_overrides()
+        auto_webhook = self._radio_bool("stripe-auto-webhook", default=True)
+        skip_postgres = self._radio_bool("stripe-skip-postgres", default=False)
+        skip_cli = self._radio_bool("stripe-skip-cli", default=False)
+        return StripeSetupConfig(
+            currency=currency,
+            trial_days=trial_days,
+            non_interactive=False,
+            secret_key=None,
+            webhook_secret=None,
+            auto_webhook_secret=auto_webhook,
+            webhook_forward_url=forward_url,
+            plan_overrides=overrides,
+            skip_postgres=skip_postgres,
+            skip_stripe_cli=skip_cli,
+        )
+
+    def _build_webhook_config(self) -> WebhookSecretConfig:
+        forward_url = self._string_value("stripe-forward-url", default=DEFAULT_WEBHOOK_FORWARD_URL)
+        print_only = self._radio_bool("stripe-webhook-print", default=False)
+        skip_cli = self._radio_bool("stripe-skip-cli", default=False)
+        return WebhookSecretConfig(
+            forward_url=forward_url,
+            print_only=print_only,
+            skip_stripe_cli=skip_cli,
+        )
+
+    def _string_value(self, input_id: str, *, default: str) -> str:
+        field = self.query_one(f"#{input_id}", Input)
+        value = field.value.strip()
+        return value or default
+
+    def _int_value(self, input_id: str, *, default: int) -> int:
+        raw = self._string_value(input_id, default=str(default))
+        try:
+            return int(raw)
+        except ValueError:
+            self.query_one("#stripe-status", Static).update(
+                f"Invalid numeric value for {input_id}; using default {default}."
+            )
+            return default
+
+    def _radio_bool(self, radio_id: str, *, default: bool) -> bool:
+        radio = self.query_one(f"#{radio_id}", RadioSet)
+        selected = radio.pressed_button
+        if selected is None or selected.id is None:
+            return default
+        return selected.id.endswith("yes")
+
+    def _plan_overrides(self) -> list[str]:
+        raw = self._string_value("stripe-plan-overrides", default="")
+        if not raw:
+            return []
+        return [
+            entry
+            for entry in (part.strip() for part in raw.replace(",", " ").split())
+            if entry
+        ]
+
+    def _configure_defaults(self) -> None:
+        self.query_one("#stripe-currency", Input).value = "usd"
+        self.query_one("#stripe-trial-days", Input).value = "7"
+        self.query_one("#stripe-forward-url", Input).value = DEFAULT_WEBHOOK_FORWARD_URL
+        self.query_one("#stripe-plan-overrides", Input).value = ""
+        self._set_radio_default("stripe-auto-webhook", yes_default=True)
+        self._set_radio_default("stripe-skip-postgres", yes_default=False)
+        self._set_radio_default("stripe-skip-cli", yes_default=False)
+        self._set_radio_default("stripe-webhook-print", yes_default=False)
+
+    def _set_radio_default(self, radio_id: str, *, yes_default: bool) -> None:
+        yes_id = f"#{radio_id}-yes"
+        no_id = f"#{radio_id}-no"
+        button_id = yes_id if yes_default else no_id
+        button = self.query_one(button_id, RadioButton)
+        button.value = True
 
     def _load(self) -> StripeStatus:
         return self.hub.load_stripe()
