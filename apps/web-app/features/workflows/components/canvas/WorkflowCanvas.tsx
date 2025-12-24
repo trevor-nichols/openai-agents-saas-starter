@@ -4,6 +4,7 @@ import type { LocationHint } from '@/lib/api/client/types.gen';
 import type { ContainerResponse, VectorStoreResponse } from '@/lib/api/client/types.gen';
 import type { WorkflowDescriptor } from '@/lib/workflows/types';
 import type { WorkflowNodeStreamStore } from '@/lib/workflows/streaming';
+import type { WorkflowActiveStreamStep } from '../../types';
 
 import { WorkflowRunPanel } from './WorkflowRunPanel';
 import { Separator } from '@/components/ui/separator';
@@ -12,12 +13,7 @@ import { WorkflowPreview } from '../preview/WorkflowPreview';
 interface WorkflowCanvasProps {
   descriptor: WorkflowDescriptor | null;
   nodeStreamStore?: WorkflowNodeStreamStore | null;
-  activeStep: {
-    stepName: string | null;
-    stageName: string | null;
-    parallelGroup: string | null;
-    branchIndex: number | null;
-  } | null;
+  activeStep: WorkflowActiveStreamStep;
   toolsByAgent: Record<string, string[]>;
   supportsContainersByAgent: Record<string, boolean>;
   supportsFileSearchByAgent: Record<string, boolean>;

@@ -1,9 +1,20 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
-import { useWorkflowSelection, useWorkflowRunStream, useWorkflowRunsInfinite } from '../index';
+import {
+  useActiveStreamStep,
+  useWorkflowCapabilities,
+  useWorkflowOverrides,
+  useWorkflowRunLauncher,
+  useWorkflowSelection,
+  useWorkflowRunStream,
+  useWorkflowRunsInfinite,
+} from '../index';
 import { createQueryWrapper } from '@/lib/chat/__tests__/testUtils';
+import type { ToolRegistry } from '@/types/tools';
+import type { WorkflowDescriptor } from '@/lib/workflows/types';
 import type { WorkflowRunListResponse, StreamingWorkflowEvent } from '@/lib/api/client/types.gen';
+import type { WorkflowStreamEventWithReceivedAt } from '../../types';
 
 const replaceMock = vi.fn();
 let searchParamsValue = '';
@@ -281,5 +292,172 @@ describe('useWorkflowRunsInfinite', () => {
     await waitFor(() => expect(result.current.isInitialLoading).toBe(false));
     expect(result.current.hasMore).toBe(false);
     expect(result.current.loadMore).toBeUndefined();
+  });
+});
+
+describe('useWorkflowOverrides', () => {
+  it('stores overrides per workflow and switches between selections', () => {
+    const { result, rerender } = renderHook(
+      ({ workflowKey }) => useWorkflowOverrides(workflowKey),
+      { initialProps: { workflowKey: 'wf-1' } },
+    );
+
+    act(() => result.current.setContainerOverride('agent-1', 'container-1'));
+    act(() => result.current.setVectorStoreOverride('agent-1', 'vs-1'));
+    expect(result.current.containerOverrides).toEqual({ 'agent-1': 'container-1' });
+    expect(result.current.vectorStoreOverrides).toEqual({ 'agent-1': 'vs-1' });
+
+    rerender({ workflowKey: 'wf-2' });
+    expect(result.current.containerOverrides).toEqual({});
+    expect(result.current.vectorStoreOverrides).toEqual({});
+
+    act(() => result.current.setContainerOverride('agent-2', 'container-2'));
+    rerender({ workflowKey: 'wf-1' });
+    expect(result.current.containerOverrides).toEqual({ 'agent-1': 'container-1' });
+    expect(result.current.vectorStoreOverrides).toEqual({ 'agent-1': 'vs-1' });
+  });
+});
+
+describe('useActiveStreamStep', () => {
+  it('returns the latest event with step metadata', () => {
+    const baseEvent: StreamingWorkflowEvent = {
+      schema: 'public_sse_v1',
+      event_id: 1,
+      stream_id: 'stream-1',
+      server_timestamp: '2025-12-15T00:00:00.000Z',
+      kind: 'lifecycle',
+      conversation_id: 'conv-1',
+      response_id: null,
+      agent: 'triage',
+      workflow: {
+        workflow_key: 'wf-1',
+        workflow_run_id: 'run-1',
+        stage_name: 'stage-1',
+        step_name: 'step-1',
+        step_agent: 'triage',
+        parallel_group: null,
+        branch_index: null,
+      },
+      status: 'in_progress',
+    };
+
+    const events: WorkflowStreamEventWithReceivedAt[] = [
+      { ...baseEvent, receivedAt: '2025-12-15T00:00:00.010Z' },
+      {
+        ...baseEvent,
+        event_id: 2,
+        workflow: { ...baseEvent.workflow, stage_name: 'stage-2', step_name: 'step-2' },
+        receivedAt: '2025-12-15T00:00:00.020Z',
+      },
+    ];
+
+    const { result } = renderHook(() => useActiveStreamStep(events));
+    expect(result.current).toEqual({
+      stepName: 'step-2',
+      stageName: 'stage-2',
+      parallelGroup: null,
+      branchIndex: null,
+    });
+  });
+
+  it('returns null when no event carries step metadata', () => {
+    const events: WorkflowStreamEventWithReceivedAt[] = [
+      {
+        schema: 'public_sse_v1',
+        event_id: 1,
+        stream_id: 'stream-2',
+        server_timestamp: '2025-12-15T00:00:00.000Z',
+        kind: 'lifecycle',
+        conversation_id: 'conv-2',
+        response_id: null,
+        agent: 'triage',
+        workflow: {
+          workflow_key: 'wf-2',
+          workflow_run_id: 'run-2',
+          stage_name: null,
+          step_name: null,
+          step_agent: 'triage',
+          parallel_group: null,
+          branch_index: null,
+        },
+        status: 'in_progress',
+        receivedAt: '2025-12-15T00:00:00.010Z',
+      },
+    ];
+
+    const { result } = renderHook(() => useActiveStreamStep(events));
+    expect(result.current).toBeNull();
+  });
+});
+
+describe('useWorkflowRunLauncher', () => {
+  it('filters overrides by supported agents and runs follow-up action', async () => {
+    const startRun = vi.fn().mockResolvedValue(undefined);
+    const onAfterRun = vi.fn();
+
+    const { result } = renderHook(() =>
+      useWorkflowRunLauncher({
+        startRun,
+        containerOverrides: { 'agent-a': 'container-a', 'agent-b': 'container-b', 'agent-c': null },
+        vectorStoreOverrides: { 'agent-a': 'vs-a', 'agent-b': 'vs-b' },
+        supportsContainersByAgent: { 'agent-a': true, 'agent-b': false },
+        supportsFileSearchByAgent: { 'agent-a': false, 'agent-b': true },
+        onAfterRun,
+      }),
+    );
+
+    await act(async () => {
+      await result.current({ workflowKey: 'wf-1', message: 'hello' });
+    });
+
+    expect(startRun).toHaveBeenCalledWith({
+      workflowKey: 'wf-1',
+      message: 'hello',
+      containerOverrides: { 'agent-a': 'container-a' },
+      vectorStoreOverrides: { 'agent-b': { vector_store_id: 'vs-b' } },
+    });
+    expect(onAfterRun).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('useWorkflowCapabilities', () => {
+  it('maps agent tools and capability flags from descriptor + registry', () => {
+    const descriptor: WorkflowDescriptor = {
+      key: 'wf-1',
+      display_name: 'Demo',
+      description: 'desc',
+      default: false,
+      allow_handoff_agents: false,
+      step_count: 2,
+      stages: [
+        {
+          name: 'stage-1',
+          mode: 'sequential',
+          steps: [
+            { name: 'step-1', agent_key: 'agent-a' },
+            { name: 'step-2', agent_key: 'agent-b' },
+          ],
+        },
+      ],
+      output_schema: null,
+    };
+
+    const tools: ToolRegistry = {
+      total_tools: 2,
+      tool_names: ['file_search', 'code_interpreter'],
+      per_agent: {
+        'agent-a': ['file_search'],
+        'agent-b': ['code_interpreter'],
+      },
+    };
+
+    const { result } = renderHook(() => useWorkflowCapabilities(descriptor, tools));
+
+    expect(result.current.toolsByAgent['agent-a']).toEqual(['file_search']);
+    expect(result.current.toolsByAgent['agent-b']).toEqual(['code_interpreter']);
+    expect(result.current.supportsFileSearchByAgent['agent-a']).toBe(true);
+    expect(result.current.supportsContainersByAgent['agent-a']).toBe(false);
+    expect(result.current.supportsFileSearchByAgent['agent-b']).toBe(false);
+    expect(result.current.supportsContainersByAgent['agent-b']).toBe(true);
   });
 });

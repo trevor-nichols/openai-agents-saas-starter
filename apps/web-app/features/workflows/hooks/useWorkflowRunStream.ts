@@ -2,24 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type {
-  WorkflowRunRequestBody,
-  LocationHint,
-} from '@/lib/api/client/types.gen';
+import type { WorkflowRunRequestBody } from '@/lib/api/client/types.gen';
 import { streamWorkflowRun } from '@/lib/api/workflows';
 import { mockWorkflowStream } from '@/lib/workflows/mock';
 import { USE_API_MOCK } from '@/lib/config';
 import type { StreamStatus } from '../constants';
-import type { WorkflowRunSummary, WorkflowStreamEventWithReceivedAt } from '../types';
-
-type StartRunInput = {
-  workflowKey: string;
-  message: string;
-  shareLocation?: boolean;
-  location?: LocationHint | null;
-  containerOverrides?: Record<string, string> | null;
-  vectorStoreOverrides?: Record<string, { vector_store_id: string }> | null;
-};
+import type { WorkflowRunStartInput, WorkflowRunSummary, WorkflowStreamEventWithReceivedAt } from '../types';
 
 type Options = {
   onRunCreated?: (runId: string, workflowKey?: string | null) => void;
@@ -55,7 +43,7 @@ export function useWorkflowRunStream(options?: Options) {
   }, []);
 
   const startRun = useCallback(
-    async (input: StartRunInput) => {
+    async (input: WorkflowRunStartInput) => {
       abortRef.current = false;
       autoSelectedRef.current = false;
       setError(null);
