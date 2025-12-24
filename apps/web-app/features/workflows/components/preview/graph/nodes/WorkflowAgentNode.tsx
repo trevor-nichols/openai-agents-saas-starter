@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 import type { ContainerResponse, VectorStoreResponse } from '@/lib/api/client/types.gen';
 import { WorkflowAgentNodeConfigPopover } from './WorkflowAgentNodeConfigPopover';
 import { WorkflowAgentNodePreviewList } from './WorkflowAgentNodePreviewList';
-import { WORKFLOW_AGENT_NODE_STATUS_META } from './workflowAgentNode.constants';
+import { WORKFLOW_AGENT_NODE_STATUS_META, WORKFLOW_AGENT_NODE_WIDTH } from './workflowAgentNode.constants';
 
 export type WorkflowAgentNodeData = {
   title: string;
@@ -51,9 +51,10 @@ export function WorkflowAgentNode({ id, data, selected }: NodeProps<WorkflowAgen
     <NodeStatusIndicator status={data.status} variant="border">
       <BaseNode
         className={cn(
-          'group w-[360px] overflow-hidden shadow-sm',
+          'group overflow-hidden shadow-sm',
           selected ? 'ring-1 ring-ring' : null,
         )}
+        style={{ width: WORKFLOW_AGENT_NODE_WIDTH }}
       >
         <Handle
           type="target"

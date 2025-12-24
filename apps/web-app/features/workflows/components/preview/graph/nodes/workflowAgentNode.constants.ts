@@ -33,6 +33,8 @@ export const WORKFLOW_AGENT_NODE_STATUS_META: Record<NodeStatus, WorkflowAgentNo
   },
 };
 
+export const WORKFLOW_AGENT_NODE_WIDTH = 360;
+
 const TOOL_STATUS_TONE: Record<WorkflowNodeToolPreviewStatus, BadgeTone> = {
   waiting: 'outline',
   running: 'outline',
