@@ -10,6 +10,7 @@ from datetime import date
 import pytest
 
 from app.core.settings import Settings
+from app.core import paths as core_paths
 from app.observability.logging import (
     DateRollingFileHandler,
     JSONLogFormatter,
@@ -130,8 +131,8 @@ def test_file_sink_uses_daily_root_and_writes_error(tmp_path: Path) -> None:
 
 
 def test_default_file_sink_uses_dated_layout_without_log_root(tmp_path: Path, monkeypatch) -> None:
-    # Ensure we don't write into the repo; run inside tmp_path
-    monkeypatch.chdir(tmp_path)
+    # Ensure we don't write into the repo; remap repo root to tmp_path
+    monkeypatch.setattr(core_paths, "REPO_ROOT", tmp_path)
     settings = Settings.model_validate(
         {
             "LOGGING_SINK": "file",

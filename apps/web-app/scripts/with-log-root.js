@@ -6,7 +6,7 @@
 
 const { spawn } = require("node:child_process");
 const { mkdirSync, createWriteStream, existsSync, unlinkSync, symlinkSync } = require("node:fs");
-const { join } = require("node:path");
+const { join, resolve, isAbsolute } = require("node:path");
 try {
   require("dotenv").config({ path: join(process.cwd(), ".env.local") });
   require("dotenv").config({ path: join(process.cwd(), ".env") });
@@ -20,12 +20,13 @@ if (args.length === 0) {
   process.exit(1);
 }
 
-const logRootEnv = process.env.LOG_ROOT;
-if (!logRootEnv) {
-  const passthrough = spawn(args[0], args.slice(1), { stdio: "inherit" });
-  passthrough.on("exit", (code) => process.exit(code ?? 0));
-  return;
+const repoRoot = resolve(__dirname, "..", "..", "..");
+const defaultLogRoot = join(repoRoot, "var", "log");
+let logRootEnv = process.env.LOG_ROOT || defaultLogRoot;
+if (!isAbsolute(logRootEnv)) {
+  logRootEnv = resolve(repoRoot, logRootEnv);
 }
+process.env.LOG_ROOT = logRootEnv;
 
 function formatLocalDate() {
   const d = new Date();

@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.core.paths import resolve_repo_path
 from app.domain.secrets import SecretsProviderLiteral
 
 from .base import SAFE_ENVIRONMENTS, BaseAppSettings
@@ -306,7 +308,7 @@ class SecuritySettingsMixin(BaseModel):
             warnings.append("AUTH_REFRESH_TOKEN_PEPPER is using the starter value")
         if (
             self.auth_key_storage_backend == "file"
-            and self.auth_key_storage_path == DEFAULT_KEY_STORAGE_PATH
+            and _is_default_key_path(self.auth_key_storage_path)
         ):
             warnings.append("AUTH_KEY_STORAGE_PATH still points to var/keys/keyset.json")
         if self.enable_resend_email_delivery:
@@ -363,6 +365,13 @@ class SecuritySettingsMixin(BaseModel):
             raise ValueError("Configuration value must be greater than zero.")
         return value
 
+    @field_validator("auth_key_storage_path")
+    @classmethod
+    def _normalize_key_storage_path(cls, value: str) -> str:
+        if not value:
+            return value
+        return str(resolve_repo_path(value))
+
     @field_validator("contact_email_recipients", mode="before")
     @classmethod
     def _parse_contact_recipients(cls, value: Any) -> list[str]:
@@ -405,3 +414,14 @@ def _parse_email_list(value: Any) -> list[str]:
         if candidate and candidate not in normalized:
             normalized.append(candidate)
     return normalized
+
+
+def _is_default_key_path(value: str) -> bool:
+    if not value:
+        return False
+    candidate = Path(value).expanduser()
+    default = resolve_repo_path(DEFAULT_KEY_STORAGE_PATH)
+    try:
+        return candidate.resolve() == default.resolve()
+    except OSError:
+        return candidate == default

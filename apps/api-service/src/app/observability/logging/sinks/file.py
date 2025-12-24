@@ -11,6 +11,7 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
+from app.core.paths import resolve_repo_path
 from app.core.settings import Settings
 from app.observability.logging.sinks.base import SinkConfig
 
@@ -66,7 +67,9 @@ def build_rotating_handler(
     use_custom_path: bool = False,
 ) -> dict[str, Any]:
     max_bytes = int(settings.logging_file_max_mb * 1024 * 1024)
-    log_root_value = None if use_custom_path else (settings.log_root or "var/log")
+    log_root_value = None if use_custom_path else str(
+        resolve_repo_path(settings.log_root or "var/log")
+    )
     return {
         "class": "app.observability.logging.sinks.file.DateRollingFileHandler",
         "level": level,
@@ -91,14 +94,14 @@ def ensure_log_paths(
     use_custom_path = bool(log_path_value) and str(log_path_value) != default_path
 
     if use_custom_path:
-        custom = Path(log_path_value).expanduser()
-        all_path = custom if custom.is_absolute() else (Path.cwd() / custom).resolve()
+        custom = resolve_repo_path(log_path_value)
+        all_path = custom
         component_root = all_path.parent
         component_root.mkdir(parents=True, exist_ok=True)
         base_root = component_root
         date_root = component_root
     else:
-        base_root = Path(settings.log_root or "var/log").expanduser()
+        base_root = resolve_repo_path(settings.log_root or "var/log")
         today = date.today().isoformat()
         date_root = base_root / today
         component_root = date_root / component
