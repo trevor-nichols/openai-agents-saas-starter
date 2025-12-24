@@ -83,6 +83,3 @@ Ship tenant-facing auditing and revocation workflows for service-account refresh
 <!-- SECTION: Timeline -->
 ## Target Timeline
 - Design sign-off: **Nov 18, 2025**
-- Backend/API complete: **Nov 25, 2025**
-- Frontend + CLI integration: **Dec 2, 2025**
-- Docs/observability polish + milestone close: **Dec 5, 2025**
