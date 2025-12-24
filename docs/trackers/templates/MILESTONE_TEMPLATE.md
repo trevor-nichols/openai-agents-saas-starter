@@ -88,10 +88,10 @@ Top-level workstreams, each with its own mini checklist.
 
 Use when the milestone is multi-stage or time-based.
 
-| Phase | Scope | Exit Criteria | Status | Target |
-| ----- | ----- | ------------- | ------ | ------ |
-| P0 – Alignment | … | … | ✅ | 2025-11-10 |
-| P1 – Impl | … | … | ⏳ | 2025-11-20 |
+| Phase | Scope | Exit Criteria | Status |
+| ----- | ----- | ------------- | ------ |
+| P0 – Alignment | … | … | ✅ |
+| P1 – Impl | … | … | ⏳ |
 
 ---
 
