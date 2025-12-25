@@ -6,6 +6,7 @@ from typing import Any
 from app.domain.ai.models import AgentStreamEvent
 
 from ....streaming import (
+    AgentTool,
     FunctionTool,
     PublicSseEventBase,
     StreamNotice,
@@ -18,7 +19,7 @@ from ...sanitize import sanitize_json, truncate_string
 from ...scopes import tool_scope
 from ...state import ProjectionState, ToolState
 from ...tooling import args_tool_type_from_raw_type, set_output_index_if_missing
-from ...utils import as_dict, coerce_str, safe_json_parse
+from ...utils import agent_tool_names_from_meta, as_dict, coerce_str, safe_json_parse
 
 
 def project_tool_arguments(
@@ -43,6 +44,13 @@ def project_tool_arguments(
         if isinstance(arguments_delta, str) and arguments_delta:
             tool_type = args_tool_type_from_raw_type(event.raw_type)
             tool_state = state.tool_state.setdefault(tool_call_id, ToolState(tool_type=tool_type))
+            tool_name = coerce_str(raw.get("name")) or tool_state.tool_name
+            if tool_type == "function":
+                agent_tool_names = agent_tool_names_from_meta(event.metadata)
+                if tool_name and tool_name in agent_tool_names:
+                    tool_type = "agent"
+            if tool_type != tool_state.tool_type:
+                tool_state.tool_type = tool_type
             tool_state.arguments_text += arguments_delta
         return []
 
@@ -62,6 +70,13 @@ def project_tool_arguments(
     else:
         arguments_text = raw.get("arguments")
         tool_name = coerce_str(raw.get("name")) or tool_state.tool_name or "unknown"
+
+    if tool_type == "function":
+        agent_tool_names = agent_tool_names_from_meta(event.metadata)
+        if tool_name in agent_tool_names:
+            tool_type = "agent"
+    if tool_state.tool_type == "function" and tool_type == "agent":
+        tool_state.tool_type = "agent"
 
     if not isinstance(arguments_text, str):
         return []
@@ -105,27 +120,41 @@ def project_tool_arguments(
     tool_state.last_status = tool_state.last_status or "in_progress"
 
     out: list[PublicSseEventBase] = []
-    if (
-        tool_type == "function"
-        and not previously_emitted_status
-        and tool_state.last_status == "in_progress"
-    ):
-        out.append(
-            ToolStatusEvent(
-                **builder.item(
-                    kind="tool.status",
-                    item_id=item_id,
-                    output_index=output_index,
-                    provider_seq=event.sequence_number,
-                ),
-                tool=FunctionTool(
-                    tool_type="function",
-                    tool_call_id=tool_call_id,
-                    status="in_progress",
-                    name=tool_name,
-                ),
+    if not previously_emitted_status and tool_state.last_status == "in_progress":
+        if tool_type == "function":
+            out.append(
+                ToolStatusEvent(
+                    **builder.item(
+                        kind="tool.status",
+                        item_id=item_id,
+                        output_index=output_index,
+                        provider_seq=event.sequence_number,
+                    ),
+                    tool=FunctionTool(
+                        tool_type="function",
+                        tool_call_id=tool_call_id,
+                        status="in_progress",
+                        name=tool_name,
+                    ),
+                )
             )
-        )
+        elif tool_type == "agent":
+            out.append(
+                ToolStatusEvent(
+                    **builder.item(
+                        kind="tool.status",
+                        item_id=item_id,
+                        output_index=output_index,
+                        provider_seq=event.sequence_number,
+                    ),
+                    tool=AgentTool(
+                        tool_type="agent",
+                        tool_call_id=tool_call_id,
+                        status="in_progress",
+                        name=tool_name,
+                    ),
+                )
+            )
 
     if sanitized_text:
         chunk_size = 2_000
@@ -165,4 +194,3 @@ def project_tool_arguments(
     )
 
     return out
-

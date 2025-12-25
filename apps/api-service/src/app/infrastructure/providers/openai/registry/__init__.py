@@ -22,7 +22,7 @@ from app.agents._shared.prompt_context import PromptRuntimeContext
 from app.agents._shared.registry_loader import load_agent_specs
 from app.agents._shared.specs import AgentSpec
 from app.core.settings import Settings
-from app.domain.ai import AgentDescriptor
+from app.domain.ai import AgentDescriptor, StreamEventBus
 from app.services.agents.context import get_current_actor
 from app.utils.tools import ToolRegistry, initialize_tools
 
@@ -91,6 +91,7 @@ class OpenAIAgentRegistry:
             self._specs = load_agent_specs()
         self._default_agent_key = default_agent_key(self._specs)
         self._code_interpreter_modes: dict[str, str] = {}
+        self._agent_tool_names: dict[str, list[str]] = {}
         self._static_ctx = self._prompt_renderer.build_static_context()
 
         self._register_builtin_tools()
@@ -111,6 +112,7 @@ class OpenAIAgentRegistry:
         *,
         runtime_ctx: PromptRuntimeContext | None = None,
         validate_prompts: bool = True,
+        tool_stream_bus: StreamEventBus | None = None,
     ) -> Agent | None:
         if runtime_ctx is None:
             if validate_prompts:
@@ -120,6 +122,7 @@ class OpenAIAgentRegistry:
                         validate_prompts=True,
                         register_static=False,
                         allow_unresolved_file_search=True,
+                        tool_stream_bus=None,
                     )
                 return self._validated_static_agents.get(agent_key)
             return self._agents.get(agent_key)
@@ -129,6 +132,7 @@ class OpenAIAgentRegistry:
             validate_prompts=validate_prompts,
             register_static=False,
             allow_unresolved_file_search=runtime_ctx.file_search is None,
+            tool_stream_bus=tool_stream_bus,
         )
         return contextual_agents.get(agent_key)
 
@@ -137,6 +141,9 @@ class OpenAIAgentRegistry:
 
     def get_code_interpreter_mode(self, agent_key: str) -> str | None:
         return self._code_interpreter_modes.get(agent_key)
+
+    def get_agent_tool_names(self, agent_key: str) -> list[str]:
+        return list(self._agent_tool_names.get(agent_key, []))
 
     def list_descriptors(self) -> Sequence[AgentDescriptor]:
         return self._descriptors.list()
@@ -172,6 +179,7 @@ class OpenAIAgentRegistry:
         validate_prompts: bool,
         register_static: bool,
         allow_unresolved_file_search: bool = False,
+        tool_stream_bus: StreamEventBus | None = None,
     ) -> dict[str, Agent]:
         spec_map = {spec.key: spec for spec in self._specs}
         order = topological_agent_order(self._specs)
@@ -187,9 +195,12 @@ class OpenAIAgentRegistry:
                 validate_prompts=validate_prompts,
                 allow_unresolved_file_search=allow_unresolved_file_search,
                 static_agents=self._agents,
+                tool_stream_bus=tool_stream_bus,
             )
             if build_result.code_interpreter_mode:
                 self._code_interpreter_modes[spec.key] = build_result.code_interpreter_mode
+            if build_result.agent_tool_names:
+                self._agent_tool_names[spec.key] = list(build_result.agent_tool_names)
             if register_static:
                 self._register_agent(spec, build_result.agent)
             agents[key] = build_result.agent

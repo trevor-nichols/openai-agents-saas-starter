@@ -5,6 +5,7 @@ from typing import Literal, cast
 from app.domain.ai.models import AgentStreamEvent
 
 from ..streaming import (
+    AgentTool,
     FunctionTool,
     McpTool,
     PublicSseEventBase,
@@ -18,7 +19,7 @@ from .sanitize import sanitize_json, truncate_string
 from .scopes import tool_scope
 from .state import ProjectionState, ToolState, ToolType
 from .tooling import tool_name_from_run_item
-from .utils import as_dict, coerce_str, extract_urls
+from .utils import agent_tool_names_from_meta, as_dict, coerce_str, extract_urls
 
 
 def _coerce_bool(value: object) -> bool | None:
@@ -87,9 +88,16 @@ def project_event(
         if builtin_tool:
             tool_type = cast(ToolType, builtin_tool)
 
+    if tool_type == "function":
+        agent_tool_names = agent_tool_names_from_meta(event.metadata)
+        if tool_name in agent_tool_names:
+            tool_type = "agent"
+
     tool_state = state.tool_state.setdefault(tool_call_id, ToolState(tool_type=tool_type))
     if tool_state.tool_type == "function" and tool_type != "function":
         tool_state.tool_type = tool_type
+    if tool_type == "agent":
+        tool_state.tool_type = "agent"
     tool_state.tool_name = tool_name
     scope = tool_scope(tool_call_id, state=state)
 
@@ -230,6 +238,28 @@ def project_event(
                     )
                 )
 
+    if event.run_item_name == "tool_called" and tool_type == "agent":
+        if tool_state.last_status != "in_progress":
+            tool_state.last_status = "in_progress"
+            if scope:
+                item_id, output_index = scope
+                out.append(
+                    ToolStatusEvent(
+                        **builder.item(
+                            kind="tool.status",
+                            item_id=item_id,
+                            output_index=output_index,
+                        ),
+                        tool=AgentTool(
+                            tool_type="agent",
+                            tool_call_id=tool_call_id,
+                            status="in_progress",
+                            name=tool_name,
+                            agent=tool_state.agent_name,
+                        ),
+                    )
+                )
+
     if event.run_item_name == "tool_called" and tool_type == "mcp":
         if tool_state.last_status != "in_progress":
             tool_state.last_status = "in_progress"
@@ -268,7 +298,7 @@ def project_event(
                 merged_sources = [*prior, *[u for u in urls if u not in prior]]
                 tool_state.sources = merged_sources
 
-        if tool_type in {"function", "mcp"} and output is not None and scope:
+        if tool_type in {"function", "mcp", "agent"} and output is not None and scope:
             safe_output = AgentStreamEvent._strip_unserializable(output)
             sanitized_output, notices = sanitize_json(
                 safe_output,
@@ -285,7 +315,7 @@ def project_event(
                         notices=notices or None,
                     ),
                     tool_call_id=tool_call_id,
-                    tool_type=cast(Literal["function", "mcp"], tool_type),
+                    tool_type=cast(Literal["function", "mcp", "agent"], tool_type),
                     output=sanitized_output,
                 )
             )
@@ -306,6 +336,26 @@ def project_event(
                             tool_call_id=tool_call_id,
                             status="completed",
                             name=tool_name,
+                        ),
+                    )
+                )
+        elif tool_type == "agent":
+            tool_state.last_status = "completed"
+            if scope:
+                item_id, output_index = scope
+                out.append(
+                    ToolStatusEvent(
+                        **builder.item(
+                            kind="tool.status",
+                            item_id=item_id,
+                            output_index=output_index,
+                        ),
+                        tool=AgentTool(
+                            tool_type="agent",
+                            tool_call_id=tool_call_id,
+                            status="completed",
+                            name=tool_name,
+                            agent=tool_state.agent_name,
                         ),
                     )
                 )

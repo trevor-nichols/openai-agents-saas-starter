@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import importlib
+import inspect
 import logging
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, cast
 
 from agents import Agent, RunConfig, handoff
@@ -22,8 +23,10 @@ from app.agents._shared.specs import (
     OutputSpec,
 )
 from app.core.settings import Settings
+from app.domain.ai import StreamEventBus
 
 from .prompt import PromptRenderer
+from .streaming_hooks import build_agent_tool_stream_handler
 from .tool_resolver import ToolResolver
 
 if TYPE_CHECKING:
@@ -36,6 +39,7 @@ logger = logging.getLogger(__name__)
 class BuildResult:
     agent: Agent
     code_interpreter_mode: str | None
+    agent_tool_names: list[str] = field(default_factory=list)
 
 
 class AgentBuilder:
@@ -66,6 +70,7 @@ class AgentBuilder:
         validate_prompts: bool,
         allow_unresolved_file_search: bool = False,
         static_agents: dict[str, Agent] | None = None,
+        tool_stream_bus: StreamEventBus | None = None,
     ) -> BuildResult:
         tool_selection = self._tool_resolver.select_tools(
             spec,
@@ -88,9 +93,15 @@ class AgentBuilder:
             agents=agents,
             tools=tool_selection.tools,
             static_agents=static_agents,
+            tool_stream_bus=tool_stream_bus,
         )
 
         tools_with_agents = tool_selection.tools + agent_tools
+        agent_tool_names = [
+            name
+            for name in (getattr(tool, "name", None) for tool in agent_tools)
+            if isinstance(name, str) and name
+        ]
 
         response_include: list[str] = []
         if "code_interpreter" in getattr(spec, "tool_keys", ()):  # maintain order guard
@@ -120,7 +131,11 @@ class AgentBuilder:
             agent_kwargs.setdefault("guardrails_runtime", self._runtime_options(runtime_opts))
 
         agent = Agent(**agent_kwargs)
-        return BuildResult(agent=agent, code_interpreter_mode=tool_selection.code_interpreter_mode)
+        return BuildResult(
+            agent=agent,
+            code_interpreter_mode=tool_selection.code_interpreter_mode,
+            agent_tool_names=agent_tool_names,
+        )
 
     def _build_agent_tools(
         self,
@@ -130,6 +145,7 @@ class AgentBuilder:
         agents: dict[str, Agent],
         tools: list[Any],
         static_agents: dict[str, Agent] | None = None,
+        tool_stream_bus: StreamEventBus | None = None,
     ) -> list[Any]:
         if not getattr(spec, "agent_tool_keys", None):
             return []
@@ -208,13 +224,17 @@ class AgentBuilder:
             existing_names.add(final_name)
 
             results.append(
-                target_agent.as_tool(
-                    tool_name=final_name,
-                    tool_description=desc_fallback,
-                    custom_output_extractor=custom_output_extractor,
-                    is_enabled=is_enabled if is_enabled is not None else True,
-                    run_config=run_config,
-                    max_turns=max_turns,
+                cast(Any, target_agent).as_tool(
+                    **_build_agent_tool_kwargs(
+                        target_agent=target_agent,
+                        tool_stream_bus=tool_stream_bus,
+                        tool_name=final_name,
+                        tool_description=desc_fallback,
+                        custom_output_extractor=custom_output_extractor,
+                        is_enabled=is_enabled if is_enabled is not None else True,
+                        run_config=run_config,
+                        max_turns=max_turns,
+                    )
                 )
             )
 
@@ -371,6 +391,42 @@ class AgentBuilder:
         if options.result_handler_path:
             runtime["result_handler_path"] = options.result_handler_path
         return runtime
+
+
+def _build_agent_tool_kwargs(
+    *,
+    target_agent: Agent,
+    tool_stream_bus: StreamEventBus | None,
+    tool_name: str,
+    tool_description: str,
+    custom_output_extractor: Any,
+    is_enabled: bool,
+    run_config: RunConfig | None,
+    max_turns: int | None,
+) -> dict[str, Any]:
+    kwargs: dict[str, Any] = {
+        "tool_name": tool_name,
+        "tool_description": tool_description,
+        "custom_output_extractor": custom_output_extractor,
+        "is_enabled": is_enabled,
+        "run_config": run_config,
+        "max_turns": max_turns,
+    }
+    stream_handler = build_agent_tool_stream_handler(
+        tool_stream_bus=tool_stream_bus,
+        tool_name=tool_name,
+        target_agent=target_agent,
+    )
+    if stream_handler and _supports_on_stream(target_agent):
+        kwargs["on_stream"] = stream_handler
+    return kwargs
+
+
+def _supports_on_stream(agent: Agent) -> bool:
+    try:
+        return "on_stream" in inspect.signature(agent.as_tool).parameters
+    except (TypeError, ValueError):  # pragma: no cover - defensive fallback
+        return False
 
 
 __all__ = ["AgentBuilder", "BuildResult"]

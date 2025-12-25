@@ -15,11 +15,21 @@ class DummyRegistry:
     def __init__(self) -> None:
         self._agent = Agent(name="Test", instructions=prompt_with_handoff_instructions("hi"))
 
-    def get_agent_handle(self, agent_key: str, *, runtime_ctx=None, validate_prompts: bool = True):
+    def get_agent_handle(
+        self,
+        agent_key: str,
+        *,
+        runtime_ctx=None,
+        validate_prompts: bool = True,
+        tool_stream_bus=None,
+    ):
         return self._agent
 
     def get_code_interpreter_mode(self, agent_key: str) -> str | None:
         return None
+
+    def get_agent_tool_names(self, agent_key: str) -> list[str]:
+        return []
 
     @property
     def default_agent_key(self) -> str:  # pragma: no cover - not used

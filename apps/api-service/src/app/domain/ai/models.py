@@ -71,6 +71,16 @@ class RunOptions:
 
 
 @dataclass(slots=True)
+class StreamScope:
+    """Optional scoping metadata for nested agent-tool streams."""
+
+    type: Literal["agent_tool"]
+    tool_call_id: str
+    tool_name: str | None = None
+    agent: str | None = None
+
+
+@dataclass(slots=True)
 class AgentStreamEvent:
     """Normalized streaming envelope the service can forward to clients.
 
@@ -164,6 +174,9 @@ class AgentStreamEvent:
     guardrail_details: Mapping[str, Any] | None = None
     guardrail_summary: bool = False
 
+    # Scoped stream metadata (e.g., nested agent tool streams)
+    scope: StreamScope | None = None
+
     @staticmethod
     def _strip_unserializable(obj: Any) -> Any:
         """Remove or coerce values that JSON encoders can't handle (e.g., callables)."""
@@ -233,4 +246,5 @@ __all__ = [
     "AgentRunUsage",
     "AgentStreamEvent",
     "RunOptions",
+    "StreamScope",
 ]

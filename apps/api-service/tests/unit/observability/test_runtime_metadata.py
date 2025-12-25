@@ -12,13 +12,19 @@ class _DummyRegistry:
         self.agent = agent
         self.seen_runtime_ctx = None
 
-    def get_agent_handle(self, agent_key, *, runtime_ctx=None, validate_prompts=True):
+    def get_agent_handle(
+        self, agent_key, *, runtime_ctx=None, validate_prompts=True, tool_stream_bus=None
+    ):
         self.seen_runtime_ctx = runtime_ctx
         return self.agent
 
     def get_code_interpreter_mode(self, agent_key):  # pragma: no cover - simple stub
         _ = agent_key
         return None
+
+    def get_agent_tool_names(self, agent_key):  # pragma: no cover - simple stub
+        _ = agent_key
+        return []
 
 
 class _DummyAgent:

@@ -134,11 +134,11 @@ async def stream_chat_with_agent(
             terminal_sent = False
             try:
                 async for event in agent_service.chat_stream(request, actor=actor):
-                    if event.conversation_id:
+                    if event.conversation_id and event.scope is None:
                         last_conversation_id = event.conversation_id
-                    if event.response_id:
+                    if event.response_id and event.scope is None:
                         last_response_id = event.response_id
-                    if event.agent:
+                    if event.agent and event.scope is None:
                         last_agent = event.agent
 
                     now_iso = datetime.now(tz=UTC).isoformat().replace("+00:00", "Z")

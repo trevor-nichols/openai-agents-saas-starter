@@ -13,7 +13,7 @@ class ObservabilitySettingsMixin(BaseModel):
     logging_sinks: str = Field(
         default="stdout",
         description=(
-            "Comma-separated logging sinks (stdout, file, datadog, otlp, none). "
+            "Comma-separated logging sinks (stdout, file, datadog, otlp, none)."
         ),
         alias="LOGGING_SINKS",
     )

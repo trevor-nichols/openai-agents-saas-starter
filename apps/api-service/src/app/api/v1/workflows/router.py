@@ -390,9 +390,9 @@ async def run_workflow_stream(
         try:
             async for event in stream:
                 metadata = event.metadata if isinstance(event.metadata, dict) else {}
-                if event.conversation_id:
+                if event.conversation_id and event.scope is None:
                     last_conversation_id = event.conversation_id
-                if event.response_id:
+                if event.response_id and event.scope is None:
                     last_response_id = event.response_id
 
                 now_iso = datetime.now(tz=UTC).isoformat().replace("+00:00", "Z")

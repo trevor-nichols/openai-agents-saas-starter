@@ -21,9 +21,10 @@ ToolType = Literal[
     "image_generation",
     "function",
     "mcp",
+    "agent",
 ]
 
-ArgsToolType = Literal["function", "mcp"]
+ArgsToolType = Literal["function", "mcp", "agent"]
 SearchStatus = Literal["in_progress", "searching", "completed"]
 CodeInterpreterStatus = Literal["in_progress", "interpreting", "completed"]
 ImageGenerationStatus = Literal["in_progress", "generating", "partial_image", "completed"]
@@ -35,6 +36,7 @@ class ToolState:
     tool_type: ToolType
     output_index: int | None = None
     tool_name: str | None = None
+    agent_name: str | None = None
     query: str | None = None
     sources: list[str] | None = None
     server_label: str | None = None

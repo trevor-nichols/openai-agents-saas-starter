@@ -8,6 +8,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 from app.api.v1.shared.streaming import (
     AgentUpdatedEvent,
+    AgentTool,
     ChunkDeltaEvent,
     ChunkDoneEvent,
     ContainerFileCitation,
@@ -27,6 +28,7 @@ from app.api.v1.shared.streaming import (
     ReasoningSummaryPartDoneEvent,
     RefusalDeltaEvent,
     RefusalDoneEvent,
+    StreamScope,
     ToolArgumentsDeltaEvent,
     ToolArgumentsDoneEvent,
     ToolApprovalEvent,
@@ -271,6 +273,31 @@ def assert_function_tool_expectations(events: Sequence[PublicSseEventBase]) -> N
     assert full_text, "No assistant text returned"
 
 
+def assert_agent_tool_stream_expectations(events: Sequence[PublicSseEventBase]) -> None:
+    assert_common_stream(events)
+
+    statuses = [
+        e
+        for e in events
+        if isinstance(e, ToolStatusEvent) and isinstance(e.tool, AgentTool)
+    ]
+    assert statuses, "Expected tool.status events for an agent tool call"
+    assert any(e.tool.status == "in_progress" for e in statuses), "Agent tool never started"
+    assert any(e.tool.status == "completed" for e in statuses), "Agent tool never completed"
+
+    scoped = [e for e in events if getattr(e, "scope", None) is not None]
+    assert scoped, "Expected at least one scoped event for agent tool streaming"
+    first_scope = scoped[0].scope
+    assert isinstance(first_scope, StreamScope), "Scoped event missing StreamScope payload"
+    assert first_scope.type == "agent_tool", "Scope type must be agent_tool"
+    assert first_scope.tool_call_id, "Scope missing tool_call_id"
+    for event in scoped:
+        scope = event.scope
+        assert isinstance(scope, StreamScope)
+        assert scope.type == "agent_tool"
+        assert scope.tool_call_id == first_scope.tool_call_id
+
+
 def assert_refusal_expectations(events: Sequence[PublicSseEventBase]) -> None:
     assert_common_stream(events)
 
@@ -416,4 +443,10 @@ def assert_workflow_expectations(
 def load_stream_fixture(path: Path) -> list[PublicSseEventBase]:
     with path.open("r", encoding="utf-8") as f:
         lines = [line.strip() for line in f if line.strip()]
-    return [PublicSseEvent.model_validate_json(line).root for line in lines]
+    events: list[PublicSseEventBase] = []
+    for line in lines:
+        payload = json.loads(line)
+        if "scope" in payload and payload["scope"] is None:
+            raise AssertionError("Stream fixtures must omit scope for root events.")
+        events.append(PublicSseEvent.model_validate(payload).root)
+    return events
