@@ -276,7 +276,7 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
 
     interactive_run = not args.non_interactive and not args.report_only
     if interactive_run:
-        from starter_console.ui.wizard_pane import WizardLaunchConfig
+        from starter_console.ui.panes.wizard import WizardLaunchConfig
 
         from .ui_loader import load_ui_module
 

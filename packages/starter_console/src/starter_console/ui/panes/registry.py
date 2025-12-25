@@ -9,7 +9,6 @@ from starter_console.workflows.home.hub import HubService
 from starter_console.workflows.setup_menu.detection import STALE_AFTER_DAYS
 
 from ..sections import NavGroupSpec, SectionSpec, iter_sections
-from ..wizard_pane import WizardLaunchConfig, WizardPane
 from .api_export import ApiExportPane
 from .auth_tokens import AuthTokensPane
 from .config_inventory import ConfigInventoryPane
@@ -29,6 +28,7 @@ from .status_ops import StatusOpsPane
 from .stripe import StripePane
 from .usage import UsagePane
 from .util_run_with_env import UtilRunWithEnvPane
+from .wizard import WizardLaunchConfig, WizardPane
 
 PaneFactory = Callable[[CLIContext, HubService, WizardLaunchConfig | None, SectionSpec], Vertical]
 

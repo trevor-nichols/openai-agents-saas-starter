@@ -15,9 +15,9 @@ from .context_panel import ContextPanel, EnvReloaded
 from .nav_tree import NavTree
 from .palette import CommandPaletteScreen, CommandSpec
 from .panes import build_panes
+from .panes.wizard import WizardLaunchConfig
 from .secrets_onboard import SecretsOnboardScreen
 from .sections import NAV_GROUPS, NavGroupSpec, SectionSpec, iter_sections
-from .wizard_pane import WizardLaunchConfig
 
 
 class StarterTUI(App[None]):
