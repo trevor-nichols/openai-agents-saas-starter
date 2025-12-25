@@ -18,6 +18,8 @@ import { parseTimestampMs } from '@/lib/utils/time';
 export type PublicSseToolState = {
   id: string;
   name?: string | null;
+  toolType?: string | null;
+  agent?: string | null;
   outputIndex?: number | null;
   status: 'input-streaming' | 'input-available' | 'output-available' | 'output-error';
   input?: unknown;
@@ -92,6 +94,8 @@ export function createPublicSseToolAccumulator(params: ToolStateTrackerParams = 
     return {
       ...to,
       name: to.name ?? from.name,
+      toolType: to.toolType ?? from.toolType,
+      agent: to.agent ?? from.agent,
       outputIndex: to.outputIndex ?? from.outputIndex,
       input: to.input ?? from.input,
       output: to.output ?? from.output,
@@ -179,6 +183,8 @@ export function createPublicSseToolAccumulator(params: ToolStateTrackerParams = 
       ...patch,
       id: toolId,
       name: patch.name ?? existing.name,
+      toolType: patch.toolType ?? existing.toolType,
+      agent: patch.agent ?? existing.agent,
       input: patch.input ?? existing.input,
       output: patch.output ?? existing.output,
       outputIndex: patch.outputIndex ?? existing.outputIndex,
@@ -212,6 +218,7 @@ export function createPublicSseToolAccumulator(params: ToolStateTrackerParams = 
     if (!existing) {
       upsertTool(toolId, {
         name: placeholder,
+        toolType: placeholder,
         status: 'input-streaming',
         outputIndex: params.outputIndex,
       });
@@ -271,6 +278,7 @@ export function createPublicSseToolAccumulator(params: ToolStateTrackerParams = 
     if (tool.tool_type === 'web_search') {
       upsertTool(toolId, {
         name: 'web_search',
+        toolType: 'web_search',
         status,
         outputIndex,
         input: tool.query ?? undefined,
@@ -282,6 +290,7 @@ export function createPublicSseToolAccumulator(params: ToolStateTrackerParams = 
     if (tool.tool_type === 'file_search') {
       upsertTool(toolId, {
         name: 'file_search',
+        toolType: 'file_search',
         status,
         outputIndex,
         input: tool.queries ?? undefined,
@@ -294,6 +303,7 @@ export function createPublicSseToolAccumulator(params: ToolStateTrackerParams = 
       const code = toolCodeById.get(toolId);
       upsertTool(toolId, {
         name: 'code_interpreter',
+        toolType: 'code_interpreter',
         status,
         outputIndex,
         input: code ?? undefined,
@@ -311,6 +321,7 @@ export function createPublicSseToolAccumulator(params: ToolStateTrackerParams = 
       });
       upsertTool(toolId, {
         name: 'image_generation',
+        toolType: 'image_generation',
         status,
         outputIndex,
         input: tool.revised_prompt ?? undefined,
@@ -329,6 +340,7 @@ export function createPublicSseToolAccumulator(params: ToolStateTrackerParams = 
 
       upsertTool(toolId, {
         name: tool.name,
+        toolType: 'function',
         status,
         outputIndex,
         input: includesArguments
@@ -345,6 +357,34 @@ export function createPublicSseToolAccumulator(params: ToolStateTrackerParams = 
       return;
     }
 
+    if (tool.tool_type === 'agent') {
+      const argsText = toolArgumentsTextById.get(toolId);
+      const argsJson = toolArgumentsJsonById.get(toolId);
+      const includesArguments =
+        argsText !== null && argsText !== undefined && String(argsText).length > 0
+          ? true
+          : argsJson !== null && argsJson !== undefined;
+
+      upsertTool(toolId, {
+        name: tool.name,
+        toolType: 'agent',
+        agent: tool.agent ?? undefined,
+        status,
+        outputIndex,
+        input: includesArguments
+          ? {
+              tool_type: 'agent',
+              tool_name: tool.name,
+              agent: tool.agent ?? null,
+              arguments_text: argsText ?? undefined,
+              arguments_json: argsJson ?? undefined,
+            }
+          : undefined,
+        errorText: tool.status === 'failed' ? 'Tool failed' : undefined,
+      });
+      return;
+    }
+
     // MCP
     const argsText = tool.arguments_text ?? toolArgumentsTextById.get(toolId);
     const argsJson = tool.arguments_json ?? toolArgumentsJsonById.get(toolId);
@@ -355,6 +395,7 @@ export function createPublicSseToolAccumulator(params: ToolStateTrackerParams = 
 
     upsertTool(toolId, {
       name: tool.tool_name,
+      toolType: 'mcp',
       status,
       outputIndex,
       input: includesArguments
@@ -383,6 +424,7 @@ export function createPublicSseToolAccumulator(params: ToolStateTrackerParams = 
     toolArgumentsTextById.set(toolId, next);
     upsertTool(toolId, {
       name: event.tool_name,
+      toolType: event.tool_type,
       status: 'input-streaming',
       outputIndex: event.output_index,
       input: { tool_type: event.tool_type, tool_name: event.tool_name, arguments_text: next },
@@ -402,6 +444,7 @@ export function createPublicSseToolAccumulator(params: ToolStateTrackerParams = 
     }
     upsertTool(toolId, {
       name: event.tool_name,
+      toolType: event.tool_type,
       status: 'input-available',
       outputIndex: event.output_index,
       input: {
@@ -425,6 +468,7 @@ export function createPublicSseToolAccumulator(params: ToolStateTrackerParams = 
     toolCodeById.set(toolId, next);
     upsertTool(toolId, {
       name: 'code_interpreter',
+      toolType: 'code_interpreter',
       status: 'input-streaming',
       outputIndex: event.output_index,
       input: next,
@@ -441,6 +485,7 @@ export function createPublicSseToolAccumulator(params: ToolStateTrackerParams = 
     toolCodeById.set(toolId, event.code);
     upsertTool(toolId, {
       name: 'code_interpreter',
+      toolType: 'code_interpreter',
       status: 'input-available',
       outputIndex: event.output_index,
       input: event.code,
@@ -455,6 +500,7 @@ export function createPublicSseToolAccumulator(params: ToolStateTrackerParams = 
     noteFirstSeen(firstSeenMs, toolId, event.server_timestamp);
 
     upsertTool(toolId, {
+      toolType: event.tool_type,
       status: 'output-available',
       outputIndex: event.output_index,
       output: event.output,
@@ -470,6 +516,7 @@ export function createPublicSseToolAccumulator(params: ToolStateTrackerParams = 
 
     upsertTool(toolId, {
       name: event.tool_name,
+      toolType: event.tool_type,
       status: 'output-available',
       outputIndex: event.output_index,
       output: {
@@ -493,6 +540,9 @@ export function createPublicSseToolAccumulator(params: ToolStateTrackerParams = 
   };
 
   const apply = (event: PublicSseEvent) => {
+    if (event.scope?.type === 'agent_tool') {
+      return;
+    }
     if (event.kind === 'output_item.added') {
       ensurePlaceholderForOutputItem({ itemId: event.item_id, itemType: event.item_type, outputIndex: event.output_index });
       return;

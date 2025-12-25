@@ -24546,6 +24546,52 @@
         "title": "AgentSummary",
         "description": "Lightweight representation of an available agent."
       },
+      "AgentTool": {
+        "properties": {
+          "tool_type": {
+            "type": "string",
+            "const": "agent",
+            "title": "Tool Type"
+          },
+          "tool_call_id": {
+            "type": "string",
+            "title": "Tool Call Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "in_progress",
+              "completed",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tool_type",
+          "tool_call_id",
+          "status",
+          "name"
+        ],
+        "title": "AgentTool"
+      },
       "AgentToolingFlags": {
         "properties": {
           "supports_code_interpreter": {
@@ -24626,6 +24672,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamScope"
               },
               {
                 "type": "null"
@@ -25720,6 +25776,16 @@
               }
             ]
           },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamScope"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "provider_sequence_number": {
             "anyOf": [
               {
@@ -25847,6 +25913,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamScope"
               },
               {
                 "type": "null"
@@ -27631,6 +27707,16 @@
               }
             ]
           },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamScope"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "provider_sequence_number": {
             "anyOf": [
               {
@@ -27958,6 +28044,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamScope"
               },
               {
                 "type": "null"
@@ -28919,6 +29015,16 @@
               }
             ]
           },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamScope"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "provider_sequence_number": {
             "anyOf": [
               {
@@ -29226,6 +29332,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamScope"
               },
               {
                 "type": "null"
@@ -29782,6 +29898,16 @@
               }
             ]
           },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamScope"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "provider_sequence_number": {
             "anyOf": [
               {
@@ -29906,6 +30032,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamScope"
               },
               {
                 "type": "null"
@@ -30226,6 +30362,16 @@
               }
             ]
           },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamScope"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "provider_sequence_number": {
             "anyOf": [
               {
@@ -30357,6 +30503,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamScope"
               },
               {
                 "type": "null"
@@ -30961,6 +31117,16 @@
               }
             ]
           },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamScope"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "provider_sequence_number": {
             "anyOf": [
               {
@@ -31081,6 +31247,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamScope"
               },
               {
                 "type": "null"
@@ -31213,6 +31389,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamScope"
               },
               {
                 "type": "null"
@@ -31373,6 +31559,16 @@
               }
             ]
           },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamScope"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "provider_sequence_number": {
             "anyOf": [
               {
@@ -31487,6 +31683,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamScope"
               },
               {
                 "type": "null"
@@ -33287,6 +33493,48 @@
         "title": "StreamNotice",
         "description": "Explicit markers for UX when content is altered for safety/stability."
       },
+      "StreamScope": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "agent_tool",
+            "title": "Type"
+          },
+          "tool_call_id": {
+            "type": "string",
+            "title": "Tool Call Id"
+          },
+          "tool_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Name"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "tool_call_id"
+        ],
+        "title": "StreamScope"
+      },
       "StreamingChatEvent": {
         "anyOf": [
           {
@@ -33746,6 +33994,16 @@
               }
             ]
           },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamScope"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "provider_sequence_number": {
             "anyOf": [
               {
@@ -33911,6 +34169,16 @@
               }
             ]
           },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamScope"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "provider_sequence_number": {
             "anyOf": [
               {
@@ -33959,7 +34227,8 @@
             "type": "string",
             "enum": [
               "function",
-              "mcp"
+              "mcp",
+              "agent"
             ],
             "title": "Tool Type"
           },
@@ -34045,6 +34314,16 @@
               }
             ]
           },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamScope"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "provider_sequence_number": {
             "anyOf": [
               {
@@ -34093,7 +34372,8 @@
             "type": "string",
             "enum": [
               "function",
-              "mcp"
+              "mcp",
+              "agent"
             ],
             "title": "Tool Type"
           },
@@ -34230,6 +34510,16 @@
               }
             ]
           },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamScope"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "provider_sequence_number": {
             "anyOf": [
               {
@@ -34344,6 +34634,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/WorkflowContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamScope"
               },
               {
                 "type": "null"
@@ -34470,6 +34770,16 @@
               }
             ]
           },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamScope"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "provider_sequence_number": {
             "anyOf": [
               {
@@ -34522,7 +34832,8 @@
               "code_interpreter",
               "image_generation",
               "function",
-              "mcp"
+              "mcp",
+              "agent"
             ],
             "title": "Tool Type"
           },
@@ -34602,6 +34913,16 @@
               }
             ]
           },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamScope"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "provider_sequence_number": {
             "anyOf": [
               {
@@ -34661,6 +34982,9 @@
               },
               {
                 "$ref": "#/components/schemas/McpTool"
+              },
+              {
+                "$ref": "#/components/schemas/AgentTool"
               }
             ],
             "title": "Tool"

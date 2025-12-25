@@ -19,6 +19,7 @@ import { computeToolEventAnchors } from './toolAnchoring';
 import { createTurnMessageCoordinator } from './turnMessageCoordinator';
 import type { PublicSseEvent } from '@/lib/api/client/types.gen';
 import type { ReasoningPart } from '@/lib/streams/publicSseV1/reasoningParts';
+import type { AgentToolStreamMap } from '@/lib/streams/publicSseV1/agentToolStreams';
 
 export interface RunChatTurnParams {
   messageText: string;
@@ -34,6 +35,7 @@ export interface RunChatTurnParams {
 
   setErrorMessage: (message: string | null) => void;
   setToolEvents: (tools: ToolState[]) => void;
+  setAgentToolStreams: (streams: AgentToolStreamMap) => void;
   setToolEventAnchors: (anchors: ToolEventAnchors) => void;
   setReasoningText: (updater: (prev: string) => string) => void;
   setReasoningParts: (parts: ReasoningPart[]) => void;
@@ -71,6 +73,7 @@ export async function runChatTurn(params: RunChatTurnParams): Promise<void> {
     flushQueuedMessages,
     setErrorMessage,
     setToolEvents,
+    setAgentToolStreams,
     setToolEventAnchors,
     setReasoningText,
     setReasoningParts,
@@ -155,6 +158,7 @@ export async function runChatTurn(params: RunChatTurnParams): Promise<void> {
         flushQueuedMessages();
         recomputeAnchors(tools);
       },
+      onAgentToolStreams: setAgentToolStreams,
       onLifecycle: setLifecycleStatus,
       onAgentChange: (agent) => {
         // Context-only: do not treat this as the authoritative handoff signal.

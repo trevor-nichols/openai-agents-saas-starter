@@ -22,6 +22,7 @@ function createController(overrides: Partial<UseChatControllerReturn> = {}): Use
     activeAgent: 'triage',
     agentNotices: [],
     toolEvents: [],
+    agentToolStreams: {},
     toolEventAnchors: {},
     reasoningText: '',
     reasoningParts: [],

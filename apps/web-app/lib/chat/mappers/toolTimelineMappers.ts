@@ -1,5 +1,6 @@
 import type { ConversationEvent } from '@/types/conversations';
 import { parseTimestampMs } from '@/lib/utils/time';
+import type { AgentToolStreamMap } from '@/lib/streams/publicSseV1/agentToolStreams';
 import type { ChatMessage, ToolEventAnchors, ToolState } from '../types';
 
 type ToolTimeline = {
@@ -212,6 +213,8 @@ export function mergeToolStates(base: ToolState[], overlay: ToolState[]): ToolSt
     ...incoming,
     // Avoid clobbering stable fields with `undefined` from partial updates.
     name: incoming.name ?? existing.name,
+    toolType: incoming.toolType ?? existing.toolType,
+    agent: incoming.agent ?? existing.agent,
     outputIndex: incoming.outputIndex ?? existing.outputIndex,
     input: incoming.input ?? existing.input,
     output: incoming.output ?? existing.output,
@@ -286,6 +289,22 @@ export function mergeToolEventAnchors(
     merged[anchorId] = nextIds;
   }
 
+  return merged;
+}
+
+export function mergeAgentToolStreams(
+  base: AgentToolStreamMap,
+  overlay: AgentToolStreamMap,
+): AgentToolStreamMap {
+  const baseEntries = Object.entries(base);
+  const overlayEntries = Object.entries(overlay);
+  if (baseEntries.length === 0) return overlay;
+  if (overlayEntries.length === 0) return base;
+
+  const merged: AgentToolStreamMap = { ...base };
+  for (const [toolCallId, stream] of overlayEntries) {
+    merged[toolCallId] = stream;
+  }
   return merged;
 }
 

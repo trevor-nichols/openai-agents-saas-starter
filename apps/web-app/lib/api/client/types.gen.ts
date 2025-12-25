@@ -356,6 +356,32 @@ export type AgentSummary = {
 };
 
 /**
+ * AgentTool
+ */
+export type AgentTool = {
+  /**
+   * Tool Type
+   */
+  tool_type: "agent";
+  /**
+   * Tool Call Id
+   */
+  tool_call_id: string;
+  /**
+   * Status
+   */
+  status: "in_progress" | "completed" | "failed";
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+};
+
+/**
  * AgentToolingFlags
  *
  * Stable capability flags for UI gating.
@@ -422,6 +448,7 @@ export type AgentUpdatedEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -1012,6 +1039,7 @@ export type ChunkDeltaEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -1084,6 +1112,7 @@ export type ChunkDoneEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -2158,6 +2187,7 @@ export type ErrorEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -2316,6 +2346,7 @@ export type FinalEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -2905,6 +2936,7 @@ export type LifecycleEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -3072,6 +3104,7 @@ export type MemoryCheckpointEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -3307,6 +3340,7 @@ export type MessageCitationEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -3374,6 +3408,7 @@ export type MessageDeltaEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -3555,6 +3590,7 @@ export type OutputItemAddedEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -3626,6 +3662,7 @@ export type OutputItemDoneEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -3990,6 +4027,7 @@ export type ReasoningSummaryDeltaEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -4057,6 +4095,7 @@ export type ReasoningSummaryPartAddedEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -4128,6 +4167,7 @@ export type ReasoningSummaryPartDoneEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -4219,6 +4259,7 @@ export type RefusalDeltaEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -4286,6 +4327,7 @@ export type RefusalDoneEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -5412,6 +5454,28 @@ export type StreamNotice = {
 };
 
 /**
+ * StreamScope
+ */
+export type StreamScope = {
+  /**
+   * Type
+   */
+  type: "agent_tool";
+  /**
+   * Tool Call Id
+   */
+  tool_call_id: string;
+  /**
+   * Tool Name
+   */
+  tool_name?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+};
+
+/**
  * StreamingChatEvent
  */
 export type StreamingChatEvent =
@@ -5649,6 +5713,7 @@ export type ToolApprovalEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -5736,6 +5801,7 @@ export type ToolArgumentsDeltaEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -5767,7 +5833,7 @@ export type ToolArgumentsDeltaEvent = {
   /**
    * Tool Type
    */
-  tool_type: "function" | "mcp";
+  tool_type: "function" | "mcp" | "agent";
   /**
    * Tool Name
    */
@@ -5811,6 +5877,7 @@ export type ToolArgumentsDoneEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -5842,7 +5909,7 @@ export type ToolArgumentsDoneEvent = {
   /**
    * Tool Type
    */
-  tool_type: "function" | "mcp";
+  tool_type: "function" | "mcp" | "agent";
   /**
    * Tool Name
    */
@@ -5918,6 +5985,7 @@ export type ToolCodeDeltaEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -5985,6 +6053,7 @@ export type ToolCodeDoneEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -6052,6 +6121,7 @@ export type ToolOutputEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -6089,7 +6159,8 @@ export type ToolOutputEvent = {
     | "code_interpreter"
     | "image_generation"
     | "function"
-    | "mcp";
+    | "mcp"
+    | "agent";
   /**
    * Output
    */
@@ -6129,6 +6200,7 @@ export type ToolStatusEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -6162,7 +6234,8 @@ export type ToolStatusEvent = {
     | CodeInterpreterTool
     | ImageGenerationTool
     | FunctionTool
-    | McpTool;
+    | McpTool
+    | AgentTool;
 };
 
 /**

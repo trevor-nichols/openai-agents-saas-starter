@@ -10,6 +10,7 @@ import type { SectionHeaderProps } from '@/components/ui/foundation';
 import { useToast } from '@/components/ui/use-toast';
 import {
   useChatAgentNotices,
+  useChatAgentToolStreams,
   useChatLifecycle,
   useChatMessages,
   useChatSelector,
@@ -24,6 +25,7 @@ import type {
   ToolEventAnchors,
   ToolState,
 } from '@/lib/chat/types';
+import type { AgentToolStreamMap } from '@/lib/streams/publicSseV1/agentToolStreams';
 import { useUpdateConversationMemory } from '@/lib/queries/conversations';
 import type { ConversationMemoryConfigInput } from '@/types/conversations';
 
@@ -37,6 +39,7 @@ interface ChatInterfaceProps {
   onClearConversation?: () => void | Promise<void>;
   messages?: ChatMessage[];
   tools?: ToolState[];
+  agentToolStreams?: AgentToolStreamMap;
   toolEventAnchors?: ToolEventAnchors;
   agentNotices?: { id: string; text: string }[];
   reasoningText?: string;
@@ -80,6 +83,7 @@ export function ChatInterface({
   onClearConversation,
   messages: messagesProp,
   tools: toolsProp,
+  agentToolStreams: agentToolStreamsProp,
   toolEventAnchors: toolEventAnchorsProp,
   agentNotices: agentNoticesProp,
   reasoningText: reasoningTextProp,
@@ -108,6 +112,7 @@ export function ChatInterface({
   const messagesFromStore = useChatMessages();
   const streamEventsFromStore = useChatStreamEvents();
   const toolEventsFromStore = useChatToolEvents();
+  const agentToolStreamsFromStore = useChatAgentToolStreams();
   const toolEventAnchorsFromStore = useChatToolEventAnchors();
   const agentNoticesFromStore = useChatAgentNotices();
   const lifecycleFromStore = useChatLifecycle();
@@ -125,6 +130,7 @@ export function ChatInterface({
   const messages = messagesProp ?? messagesFromStore;
   const streamEvents = streamEventsFromStore;
   const toolEvents = toolsProp ?? toolEventsFromStore;
+  const agentToolStreams = agentToolStreamsProp ?? agentToolStreamsFromStore;
   const toolEventAnchors = toolEventAnchorsProp ?? toolEventAnchorsFromStore;
   const agentNotices = agentNoticesProp ?? agentNoticesFromStore;
   const lifecycleStatus = lifecycleStatusProp ?? lifecycleFromStore;
@@ -263,6 +269,7 @@ export function ChatInterface({
       reasoningParts={reasoningParts}
       debugEvents={streamEvents}
       tools={toolEvents}
+      agentToolStreams={agentToolStreams}
       toolEventAnchors={toolEventAnchors}
       chatStatus={chatStatus}
       lifecycleStatus={lifecycleStatus}

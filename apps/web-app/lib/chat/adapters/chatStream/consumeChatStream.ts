@@ -6,6 +6,7 @@ import {
   getReasoningParts,
   getReasoningSummaryText,
 } from '@/lib/streams/publicSseV1/reasoningParts';
+import { createAgentToolStreamAccumulator } from '@/lib/streams/publicSseV1/agentToolStreams';
 import { createPublicSseToolAccumulator, asPublicSseEvent } from '@/lib/streams/publicSseV1/tools';
 
 import type { ConversationLifecycleStatus, StreamChunk, Annotation } from '../../types';
@@ -21,6 +22,9 @@ export async function consumeChatStream(
 	  let lastTextItemId: string | null = null;
 
 	  const toolTracker = createPublicSseToolAccumulator({ onToolStates: handlers.onToolStates });
+	  const agentToolStreamTracker = createAgentToolStreamAccumulator({
+	    onStreams: handlers.onAgentToolStreams,
+	  });
 	  const reasoningState = createReasoningPartsState();
 
   let terminalSeen = false;
@@ -49,7 +53,8 @@ export async function consumeChatStream(
     }
 
     const event = chunk.event;
-    handlers.onEvent?.(asPublicSseEvent(event));
+    const asPublic = asPublicSseEvent(event);
+    handlers.onEvent?.(asPublic);
     const kind = event.kind;
     if (!kind) {
       terminalSeen = true;
@@ -59,20 +64,27 @@ export async function consumeChatStream(
       break;
     }
 
-    if (event.conversation_id) {
+    const isScopedAgentTool = event.scope?.type === 'agent_tool';
+
+    if (!isScopedAgentTool && event.conversation_id) {
       if (finalConversationId !== event.conversation_id) {
         finalConversationId = event.conversation_id;
         handlers.onConversationId?.(event.conversation_id);
       }
     }
 
-    if (event.response_id) {
+    if (!isScopedAgentTool && event.response_id) {
       finalResponseId = event.response_id;
     }
 
-    if (event.agent && event.agent !== lastAgent) {
+    if (!isScopedAgentTool && event.agent && event.agent !== lastAgent) {
       lastAgent = event.agent;
       handlers.onAgentChange?.(event.agent);
+    }
+
+    if (isScopedAgentTool) {
+      agentToolStreamTracker.apply(asPublic);
+      continue;
     }
 
     if (kind === 'lifecycle') {

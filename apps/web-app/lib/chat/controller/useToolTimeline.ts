@@ -3,18 +3,24 @@ import { useMemo } from 'react';
 import type { PublicSseEvent } from '@/lib/api/client/types.gen';
 
 import type { ChatMessage, ToolEventAnchors, ToolState } from '../types';
-import { mapLedgerEventsToToolTimeline } from '../mappers/ledgerReplayMappers';
 import {
+  mapLedgerEventsToAgentToolStreams,
+  mapLedgerEventsToToolTimeline,
+} from '../mappers/ledgerReplayMappers';
+import {
+  mergeAgentToolStreams,
   mergeToolEventAnchors,
   mergeToolStates,
   reanchorToolEventAnchors,
 } from '../mappers/toolTimelineMappers';
+import type { AgentToolStreamMap } from '@/lib/streams/publicSseV1/agentToolStreams';
 
 export interface UseToolTimelineParams {
   ledgerEvents: PublicSseEvent[] | undefined;
   historyMessagesWithMarkers: ChatMessage[];
   liveToolEvents: ToolState[];
   liveToolEventAnchors: ToolEventAnchors;
+  liveAgentToolStreams: AgentToolStreamMap;
   liveMessages: ChatMessage[];
   mergedMessages: ChatMessage[];
 }
@@ -22,6 +28,7 @@ export interface UseToolTimelineParams {
 export interface UseToolTimelineResult {
   toolEvents: ToolState[];
   toolEventAnchors: ToolEventAnchors;
+  agentToolStreams: AgentToolStreamMap;
 }
 
 export function useToolTimeline(params: UseToolTimelineParams): UseToolTimelineResult {
@@ -30,6 +37,7 @@ export function useToolTimeline(params: UseToolTimelineParams): UseToolTimelineR
     historyMessagesWithMarkers,
     liveToolEvents,
     liveToolEventAnchors,
+    liveAgentToolStreams,
     liveMessages,
     mergedMessages,
   } = params;
@@ -59,6 +67,15 @@ export function useToolTimeline(params: UseToolTimelineParams): UseToolTimelineR
     [persistedToolTimeline.anchors, reanchoredToolEventAnchors],
   );
 
-  return { toolEvents, toolEventAnchors };
-}
+  const persistedAgentToolStreams = useMemo(
+    () => (ledgerEvents?.length ? mapLedgerEventsToAgentToolStreams(ledgerEvents) : {}),
+    [ledgerEvents],
+  );
 
+  const agentToolStreams = useMemo(
+    () => mergeAgentToolStreams(persistedAgentToolStreams, liveAgentToolStreams),
+    [persistedAgentToolStreams, liveAgentToolStreams],
+  );
+
+  return { toolEvents, toolEventAnchors, agentToolStreams };
+}

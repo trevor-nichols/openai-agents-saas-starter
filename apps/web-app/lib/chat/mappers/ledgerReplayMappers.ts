@@ -1,4 +1,5 @@
 import type { PublicSseEvent } from '@/lib/api/client/types.gen';
+import { createAgentToolStreamAccumulator, type AgentToolStreamMap } from '@/lib/streams/publicSseV1/agentToolStreams';
 import { createPublicSseToolAccumulator } from '@/lib/streams/publicSseV1/tools';
 import { parseTimestampMs } from '@/lib/utils/time';
 
@@ -97,4 +98,13 @@ export function mapLedgerEventsToToolTimeline(events: PublicSseEvent[], messages
   }
 
   return { tools: orderedTools, anchors };
+}
+
+export function mapLedgerEventsToAgentToolStreams(events: PublicSseEvent[]): AgentToolStreamMap {
+  if (events.length === 0) return {};
+  const accumulator = createAgentToolStreamAccumulator();
+  for (const event of events) {
+    accumulator.apply(event);
+  }
+  return accumulator.getStreamsByToolCallId();
 }

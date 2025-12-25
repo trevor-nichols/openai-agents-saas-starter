@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { InlineTag } from '@/components/ui/foundation';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Response } from '@/components/ui/ai/response';
+import { AgentToolStream } from '@/components/ui/ai/agent-tool-stream';
 import {
   Tool,
   ToolContent,
@@ -130,12 +131,19 @@ export function WorkflowLiveStream({
               {segment.items.map((item) => {
                 if (item.kind === 'tool') {
                   const tool = item.tool;
-                  const label = tool.name || 'call';
+                  const label =
+                    tool.toolType === 'agent' ? `agent:${tool.name || 'call'}` : tool.name || 'call';
                   return (
                     <Tool key={`tool:${item.itemId}`} defaultOpen={tool.status !== 'output-available'}>
                       <ToolHeader type={`tool-${label}` as const} state={tool.status} />
                       <ToolContent>
                         {tool.input !== undefined ? <ToolInput input={tool.input} /> : null}
+                        {item.agentStream?.text ? (
+                          <AgentToolStream
+                            stream={item.agentStream}
+                            isStreaming={tool.status === 'input-streaming' || tool.status === 'input-available'}
+                          />
+                        ) : null}
                         <ToolOutput output={renderToolOutput({ label, output: tool.output })} errorText={tool.errorText ?? undefined} />
                       </ToolContent>
                     </Tool>

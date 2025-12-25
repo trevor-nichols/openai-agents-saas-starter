@@ -3,6 +3,7 @@ import type { PublicSseEvent } from '@/lib/api/client/types.gen';
 import type { ReasoningPart } from '@/lib/streams/publicSseV1/reasoningParts';
 
 import type { ConversationLifecycleStatus, StreamChunk, ToolState, Annotation } from '../../types';
+import type { AgentToolStreamMap } from '@/lib/streams/publicSseV1/agentToolStreams';
 
 export type OutputItemUpdate = {
   itemId: string;
@@ -29,6 +30,7 @@ export interface StreamConsumeHandlers {
   onReasoningDelta?: (delta: string) => void;
   onReasoningParts?: (parts: ReasoningPart[]) => void;
   onToolStates?: (toolStates: ToolState[]) => void;
+  onAgentToolStreams?: (streams: AgentToolStreamMap) => void;
   onLifecycle?: (status: ConversationLifecycleStatus) => void;
   onAgentChange?: (agent: string) => void;
   onAgentUpdated?: (event: Extract<StreamingChatEvent, { kind?: 'agent.updated' }>) => void;

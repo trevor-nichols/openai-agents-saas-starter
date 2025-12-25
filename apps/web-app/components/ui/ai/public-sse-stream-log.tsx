@@ -115,6 +115,17 @@ function mapTool(tool: Extract<PublicSseEvent, { kind: 'tool.status' }>['tool'])
     };
   }
 
+  if (tool.tool_type === 'agent') {
+    return {
+      label: tool.name,
+      state: toolStateFromStatus(tool.status),
+      input: {
+        agent: tool.agent ?? null,
+      },
+      errorText: tool.status === 'failed' ? 'Tool failed' : undefined,
+    };
+  }
+
   return {
     label: tool.tool_name,
     state: toolStateFromStatus(tool.status),
@@ -431,4 +442,3 @@ export function PublicSseStreamLog({ events, className }: PublicSseStreamLogProp
     </div>
   );
 }
-
