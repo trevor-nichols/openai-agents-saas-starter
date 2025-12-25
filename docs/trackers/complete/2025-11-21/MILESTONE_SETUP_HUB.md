@@ -1,9 +1,9 @@
-# Starter CLI Setup Hub Milestone
+# Starter Console Setup Hub Milestone
 
 _Last updated: November 21, 2025_
 
 ## Objective
-Add a dedicated Setup Hub reachable from the Starter CLI that inventories operator setup flows, shows progress/state, and lets users launch or resume them. Entry points: `python -m starter_cli.app setup menu` (or `starter-cli setup menu`) and the Home TUI shortcut `S` that opens the hub in a fresh run.
+Add a dedicated Setup Hub reachable from the Starter Console that inventories operator setup flows, shows progress/state, and lets users launch or resume them. Entry points: `starter-console setup menu` (or `starter-console setup menu`) and the Home TUI shortcut `S` that opens the hub in a fresh run.
 
 ## Scope & Deliverables
 1) **Setup Hub command** — `setup menu` / alias `setup dashboard` with TUI (Rich) plus `--no-tui` table output for CI.
@@ -18,7 +18,7 @@ Add a dedicated Setup Hub reachable from the Starter CLI that inventories operat
 - Adding new backend probes or changing probe semantics outside the hub status detection.
 
 ## Success Criteria
-- `python -m starter_cli.app setup menu` renders TUI cards with status badges and lets users trigger actions; `--no-tui` prints a concise table.
+- `starter-console setup menu` renders TUI cards with status badges and lets users trigger actions; `--no-tui` prints a concise table.
 - Home TUI shows shortcut `S` and opens the hub; no regressions to Home/Doctor behavior.
 - Status detection uses artifacts/env without hitting backend APIs; stale artifacts show as “stale/unknown” rather than “done”.
 - Actions reuse existing commands and respect current env loading rules; no cross-imports into `api-service` or `web-app`.

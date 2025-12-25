@@ -66,7 +66,7 @@ This milestone is intentionally **contract-first**: we will treat the OpenAPI ar
 
 ### Definition of done
 
-- `starter_cli api export-openapi --enable-billing --enable-test-fixtures` produces an OpenAPI spec where:
+- `starter-console api export-openapi --enable-billing --enable-test-fixtures` produces an OpenAPI spec where:
   - streaming routes are `text/event-stream`
   - binary/RSS routes declare correct media types and headers
   - all “raw-body” endpoints declare request bodies + signature headers
@@ -98,7 +98,7 @@ Implementation notes (Phase 1):
 Local workflow (dev):
 
 1) Export OpenAPI (with optional routes enabled)
-   - `python -m starter_cli.app api export-openapi --output apps/api-service/.artifacts/openapi-fixtures.json --enable-billing --enable-test-fixtures`
+   - `starter-console api export-openapi --output apps/api-service/.artifacts/openapi-fixtures.json --enable-billing --enable-test-fixtures`
 2) Regenerate frontend SDK (offline)
    - `cd apps/web-app && OPENAPI_INPUT=../api-service/.artifacts/openapi-fixtures.json pnpm generate:fixtures`
 3) Validate

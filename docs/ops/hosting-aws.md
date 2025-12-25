@@ -67,7 +67,7 @@ If you use Infisical or Vault for signing or key storage, `SECRETS_PROVIDER` and
 ### Web (minimal)
 - `API_BASE_URL` (API URL)
 
-For the full list, see `docs/trackers/CLI_ENV_INVENTORY.md`.
+For the full list, see `docs/trackers/CONSOLE_ENV_INVENTORY.md`.
 
 ### Terraform → Env Mapping (core)
 
@@ -141,7 +141,7 @@ Run migrations as a pre-deploy job or one-off task:
 ```bash
 just migrate
 # or
-python -m starter_cli.app release db
+starter-console release db
 ```
 
 ## Rollback Notes

@@ -92,7 +92,7 @@ Expose a strongly-typed streaming surface (tools + citations + handoffs) end-to-
 
 | ID | Area | Description | Owner | Status |
 |----|------|-------------|-------|--------|
-| C1 | OpenAPI | `starter_cli.app api export-openapi --enable-billing --enable-test-fixtures` | @tan | ✅ (artifact updated) |
+| C1 | OpenAPI | `starter-console api export-openapi --enable-billing --enable-test-fixtures` | @tan | ✅ (artifact updated) |
 | C2 | SDK | `pnpm generate:fixtures` in web-app | @tan | ✅ (client regenerated) |
 
 ---

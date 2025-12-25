@@ -67,9 +67,9 @@ sequenceDiagram
 - **Exit**: Reviewed/approved doc, tracker updated with decisions.
 
 ### IDP-002 — Data Model & Migration (BE-004, DB-001)
-- **Status:** Completed (2025-11-07) — migration `0e52ba5ab089` applied via `just migrate`; ORM/Pydantic models and the user seeding helper (`python -m starter_cli.app users seed`) merged with docs/env guidance.
+- **Status:** Completed (2025-11-07) — migration `0e52ba5ab089` applied via `just migrate`; ORM/Pydantic models and the user seeding helper (`starter-console users seed`) merged with docs/env guidance.
 - Alembic revision adding `users`, `user_profiles`, `user_login_events`, indexes for email + tenant.
-- Seed utility (`starter_cli users seed`) emitting one-time admin credentials.
+- Seed utility (`starter-console users seed`) emitting one-time admin credentials.
 - SQLAlchemy models + Pydantic schemas for DTOs.
 - **Exit**: Migration passes `just migrate` + integration tests; seed script documented.
 

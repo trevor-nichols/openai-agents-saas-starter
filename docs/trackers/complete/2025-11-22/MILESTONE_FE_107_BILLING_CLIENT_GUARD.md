@@ -10,7 +10,7 @@ Prevent billing-off environments from breaking the Next.js build while keeping b
 ## Success Criteria
 1. The HeyAPI client always includes billing types/methods regardless of the operator’s local `ENABLE_BILLING` setting.
 2. With `billingEnabled=false`, the UI hides billing navigation, pages short-circuit to 404/redirect, Next API routes return 404, and TanStack queries are disabled (no network calls fired).
-3. Starter CLI writes both `ENABLE_BILLING` (backend) and `NEXT_PUBLIC_ENABLE_BILLING` (frontend) during setup; operators do not hand-edit env files.
+3. Starter Console writes both `ENABLE_BILLING` (backend) and `NEXT_PUBLIC_ENABLE_BILLING` (frontend) during setup; operators do not hand-edit env files.
 4. `pnpm lint` / `pnpm type-check` succeed in both billing-on and billing-off envs; no conditional imports are needed in app code.
 
 ## Workstreams & Tasks
@@ -34,9 +34,9 @@ Prevent billing-off environments from breaking the Next.js build while keeping b
 - [x] Ensure client fetch helpers handle the 404 from guarded API routes cleanly (no user-facing error toasts when feature is off).
 - [x] Keep server services importing the generated client directly; optional defensive import wrapper can emit a clear dev error if the SDK was regenerated incorrectly.
 
-### 5) Starter CLI & Env Parity
-- [x] Update CLI wizard section to write both `ENABLE_BILLING` (backend) and `NEXT_PUBLIC_ENABLE_BILLING` (frontend) together; default both to false unless the operator opts in.
-- [x] Note the coupling in `docs/trackers/complete/CLI_MILESTONE.md` or the relevant CLI tracker if more guidance is needed.
+### 5) Starter Console & Env Parity
+- [x] Update the console wizard section to write both `ENABLE_BILLING` (backend) and `NEXT_PUBLIC_ENABLE_BILLING` (frontend) together; default both to false unless the operator opts in.
+- [x] Note the coupling in `docs/trackers/CONSOLE_MILESTONE.md` or the relevant console tracker if more guidance is needed.
 
 ### 6) Tests & DX
 - [x] Add a minimal test asserting that with `NEXT_PUBLIC_ENABLE_BILLING=false`, the nav omits billing and hitting `/app/api/billing/plans` returns 404.

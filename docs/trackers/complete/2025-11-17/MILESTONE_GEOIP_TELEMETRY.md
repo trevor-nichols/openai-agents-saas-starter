@@ -4,13 +4,13 @@
 _Last updated: November 17, 2025_
 
 ## Objective
-Implement a production-grade GeoIP enrichment pipeline so authentication sessions carry accurate city/region/country metadata, telemetry is exportable through the structured logging stack, and operators can provision providers through the Starter CLI without touching backend code.
+Implement a production-grade GeoIP enrichment pipeline so authentication sessions carry accurate city/region/country metadata, telemetry is exportable through the structured logging stack, and operators can provision providers through the Starter Console without touching backend code.
 
 ## Scope
 ### In scope
 - Add configurable `GeoIPService` implementations for the agreed providers (IPinfo SaaS, MaxMind GeoIP2/GeoLite2, IP2Location SaaS + downloadable DB).
 - Wire provider selection into `Settings`, DI container bootstrap, and the auth/session services.
-- Extend Starter CLI wizard + validators so operators can pick a provider, validate credentials, and bootstrap self-hosted databases when desired.
+- Extend Starter Console wizard + validators so operators can pick a provider, validate credentials, and bootstrap self-hosted databases when desired.
 - Cover session repository/API flows with tests to prove enrichment works across auth login, session listing, and revocation paths.
 - Document operational guidance (provider setup, DB refresh cadence, telemetry alerts) and update trackers/docs accordingly.
 
@@ -24,8 +24,8 @@ Implement a production-grade GeoIP enrichment pipeline so authentication session
 - **Service implementations** — create async clients for IPinfo + IP2Location HTTP APIs (timeout/retry, rate limit safe) and local readers for MaxMind/IP2Location database files. Each must translate provider responses into `SessionLocation`.
 - **Container wiring** — update `ApplicationContainer` bootstrap to instantiate the right provider once, share it across auth/session services, and ensure graceful shutdown (closing httpx clients, file handles).
 - **Data quality + telemetry** — enhance `SessionStore` logging for lookup errors/success, add structured metrics counters if needed, and ensure repository models persist the GeoIP fields set.
-- **Starter CLI UX** — update `observability` wizard section with provider descriptions, optional automation for database download (re-using `--auto-infra`), and validation hooks that hit the provider or verify DB presence in both interactive and headless flows.
-- **Docs & changelog** — create/runbook under `docs/observability/geoip.md`, refresh `ISSUE_TRACKER.md`, `CLI_ENV_INVENTORY.md`, and `starter_cli/README.md` with the new flows, then file closure notes once OBS-007 is merged.
+- **Starter Console UX** — update `observability` wizard section with provider descriptions, optional automation for database download (re-using `--auto-infra`), and validation hooks that hit the provider or verify DB presence in both interactive and headless flows.
+- **Docs & changelog** — create/runbook under `docs/observability/geoip.md`, refresh `ISSUE_TRACKER.md`, `CONSOLE_ENV_INVENTORY.md`, and `starter_console/README.md` with the new flows, then file closure notes once OBS-007 is merged.
 
 ## Implementation Plan
 | # | Task | Description | Owner | Status | Target |
@@ -35,14 +35,14 @@ Implement a production-grade GeoIP enrichment pipeline so authentication session
 | 3 | MaxMind database adapter | Add local DB reader (GeoIP2/GeoLite2), automatic refresh hook (Make task/CLI automation), and configuration knobs for license + DB path. | Platform Foundations | ✅ Completed | Nov 17 |
 | 4 | IP2Location adapters | Ship both SaaS HTTP and local BIN readers, sharing parsing helpers with the MaxMind flow where possible. | Platform Foundations | ✅ Completed | Nov 17 |
 | 5 | Container + auth wiring | Inject provider into `ApplicationContainer`, `AuthService`, and `SessionStore`; add provider health logging during startup. | Platform Foundations | ✅ Completed | Nov 17 |
-| 6 | Starter CLI wizard updates | Expand `observability` section prompts, add provider-specific validation, support optional DB download automation, and update audit output. | Platform Foundations | ✅ Completed | Nov 17 |
+| 6 | Starter Console wizard updates | Expand `observability` section prompts, add provider-specific validation, support optional DB download automation, and update audit output. | Platform Foundations | ✅ Completed | Nov 17 |
 | 7 | Persistence/API verification | Add database migration checks (if schema tweaks surface), update repositories/tests so GeoIP fields materialize in list/get responses, and extend contract tests. | Platform Foundations | ✅ Completed | Nov 17 |
 | 8 | Documentation & tracker updates | Publish `docs/observability/geoip.md`, refresh README + trackers, and capture rollout guidance (monitoring, failover steps). | Platform Foundations | ✅ Completed | Nov 17 |
 | 9 | Rollout checklist | Define enablement steps (staging dry-run, provider credentials, CLI wizard instructions) and update `docs/trackers/ISSUE_TRACKER.md` once production-ready. | Platform Foundations | ✅ Completed | Nov 17 |
 
 ## Deliverables
 - Configurable GeoIP service implementations (IPinfo, MaxMind DB, IP2Location HTTP + DB).
-- Starter CLI wizard + automation covering provider selection/validation.
+- Starter Console wizard + automation covering provider selection/validation.
 - Comprehensive tests: unit (provider adapters), integration (session repository), contract (API responses).
 - Operator documentation + updated trackers verifying OBS-007 completion.
 

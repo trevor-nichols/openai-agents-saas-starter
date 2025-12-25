@@ -18,7 +18,7 @@ export function MfaPreviewCard() {
       />
       <p className="text-sm text-foreground/70">
         MFA will support passkeys (WebAuthn) and backup TOTP codes so operators can secure both the dashboard
-        and CLI flows. Admins will be able to enforce tenant-wide MFA once rollout completes.
+        and console flows. Admins will be able to enforce tenant-wide MFA once rollout completes.
       </p>
       <div className="flex flex-wrap gap-3">
         <TooltipProvider>

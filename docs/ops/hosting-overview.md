@@ -9,7 +9,7 @@ This repo ships production-ready container images and a cloud-agnostic architect
 - **Postgres**: Durable system of record.
 - **Redis**: Rate limiting, refresh tokens, billing streams.
 - **Object storage**: Tenant-scoped assets + attachments (S3, Azure Blob, GCS, MinIO).
-- **Secrets**: Vault/Infisical/AWS Secrets Manager/Azure Key Vault via the Starter CLI.
+- **Secrets**: Vault/Infisical/AWS Secrets Manager/Azure Key Vault via the Starter Console.
 
 ## Reference Blueprints
 
@@ -35,7 +35,7 @@ For custom domains and certificate validation, follow the per-cloud guides:
 
 ## Secrets & Config
 
-- Use the Starter CLI to generate `.env.local` for local/dev, and to seed secrets providers for hosted environments.
+- Use the Starter Console to generate `.env.local` for local/dev, and to seed secrets providers for hosted environments.
 - For production, inject secrets via the platform secret manager and pass the rest of the env variables at deploy time.
 - In hosted environments, set `AUTH_KEY_STORAGE_BACKEND=secret-manager`, `AUTH_KEY_STORAGE_PROVIDER`, and `AUTH_KEY_SECRET_NAME` so Ed25519 keysets live in the chosen secrets provider.
 - The reference blueprints require `DATABASE_URL` and `REDIS_URL` to be stored in Secrets Manager/Key Vault and wired via secret references (avoids plaintext in task definitions). If Terraform creates the database, the admin password still lives in Terraform state—use a remote backend with encryption + tight access or provision the DB outside Terraform if that’s a concern.

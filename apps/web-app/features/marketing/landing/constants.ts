@@ -24,7 +24,7 @@ export const HERO_COPY = {
 export const PROOF_POINTS: ProofPoint[] = [
   {
     label: 'Full-stack acceleration',
-    value: 'Shared auth, telemetry, and CLI scripts across FastAPI + Next.js 16.',
+    value: 'Shared auth, telemetry, and console scripts across FastAPI + Next.js 16.',
   },
   {
     label: 'Security-first defaults',
@@ -47,7 +47,7 @@ export const FEATURE_HIGHLIGHTS: FeatureHighlight[] = [
     icon: Shield,
     title: 'Enterprise guardrails',
     description: 'Ed25519 auth, refresh tokens, tenant RBAC, and service-account lifecycle automation.',
-    bullets: ['Verified scopes on every router', 'Redis-backed refresh tokens', 'CLI-managed service accounts'],
+    bullets: ['Verified scopes on every router', 'Redis-backed refresh tokens', 'console-managed service accounts'],
   },
   {
     icon: BarChart3,
@@ -58,8 +58,8 @@ export const FEATURE_HIGHLIGHTS: FeatureHighlight[] = [
   {
     icon: Cable,
     title: 'Operations toolkit',
-    description: 'Health checks, status page, and Starter CLI run side-by-side so ops is never an afterthought.',
-    bullets: ['Status snapshot + RSS feeds', 'Starter CLI env + key rotation', 'Observability middleware + Prom metrics'],
+    description: 'Health checks, status page, and Starter Console run side-by-side so ops is never an afterthought.',
+    bullets: ['Status snapshot + RSS feeds', 'Starter Console env + key rotation', 'Observability middleware + Prom metrics'],
   },
 ];
 
@@ -67,7 +67,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'How fast can I launch with this starter?',
     answer:
-      'Clone the repo, run the Starter CLI to hydrate env files, and deploy the FastAPI + Next.js stacks with Docker or your preferred CI. Most teams see a branded console live in under a week.',
+      'Clone the repo, run the Starter Console to hydrate env files, and deploy the FastAPI + Next.js stacks with Docker or your preferred CI. Most teams see a branded console live in under a week.',
   },
   {
     question: 'Can I swap GPT-5 or add my own tools?',
@@ -82,7 +82,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'Does ops tooling ship in the box?',
     answer:
-      'Health checks, status page, metrics, and the Starter CLI are part of the repo. You can enable alert subscriptions via the provided API and surface them on the marketing pages immediately.',
+      'Health checks, status page, metrics, and the Starter Console are part of the repo. You can enable alert subscriptions via the provided API and surface them on the marketing pages immediately.',
   },
 ];
 
@@ -126,7 +126,7 @@ export const TESTIMONIALS: Testimonial[] = [
     src: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none"><rect width="200" height="200" rx="32" fill="%23222"/><circle cx="100" cy="100" r="90" fill="%23333"/><circle cx="100" cy="100" r="52" fill="%23555"/></svg>',
   },
   {
-    quote: 'Status, billing, and the Starter CLI let us pass enterprise vendor checks without slowing the launch.',
+    quote: 'Status, billing, and the Starter Console let us pass enterprise vendor checks without slowing the launch.',
     name: 'Dana Schultz',
     designation: 'Head of Platform, fintech pilot',
     src: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none"><rect width="200" height="200" rx="32" fill="%23f5f5f5"/><path d="M30 140 L170 60" stroke="%23646cff" stroke-width="18" stroke-linecap="round"/><circle cx="60" cy="120" r="18" fill="%23646cff"/><circle cx="140" cy="80" r="18" fill="%23646cff"/></svg>',
@@ -152,8 +152,8 @@ export const SHOWCASE_TABS: ShowcaseTab[] = [
     id: 'ops',
     label: 'Ops',
     title: 'Observability and status by default',
-    description: 'Live uptime metrics, incident feeds, and CLI health checks keep stakeholders informed.',
-    bullets: ['Status page + RSS feeds', 'Prom metrics + middleware', 'CLI-based env hydration + rotation'],
+    description: 'Live uptime metrics, incident feeds, and console health checks keep stakeholders informed.',
+    bullets: ['Status page + RSS feeds', 'Prom metrics + middleware', 'console-based env hydration + rotation'],
   },
 ];
 
@@ -161,5 +161,5 @@ export const OPERATOR_BULLETS = [
   'Live incident email flows with verification built in',
   'RBAC + service accounts enforced at every router',
   'Observability middleware and Prom metrics ready for scraping',
-  'Starter CLI hydrates envs and rotates keys without custom scripts',
+  'Starter Console hydrates envs and rotates keys without custom scripts',
 ] as const;

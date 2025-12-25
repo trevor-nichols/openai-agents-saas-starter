@@ -58,4 +58,4 @@ FastAPI startup (`api-service/src/main.py`) now:
 ## Operational notes
 
 - Observability: tracing wraps `AgentService` execution via `agents.trace`; provider runtimes should emit provider-specific metadata in `AgentRunResult.metadata` for metrics/alerts.
-- CLI: No CLI changes were required; if future providers add env keys, update `starter_cli/README.md` and the provisioning flows before shipping.
+- CLI: No CLI changes were required; if future providers add env keys, update `starter_console/README.md` and the provisioning flows before shipping.

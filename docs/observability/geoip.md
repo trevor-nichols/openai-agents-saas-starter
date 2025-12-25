@@ -21,7 +21,7 @@ All providers honor the shared cache knobs: `GEOIP_CACHE_TTL_SECONDS`, `GEOIP_CA
 ## 3. Setup Workflow
 
 ### 3.1 SaaS APIs (IPinfo, IP2Location)
-1. Run `python -m starter_cli.app setup wizard --profile <env>` (interactive) or pass `--answers-file` for headless mode.
+1. Run `starter-console setup wizard --profile <env>` (interactive) or pass `--answers-file` for headless mode.
 2. In the `[M3] Tenant & Observability` step choose `ipinfo` or `ip2location`.
 3. Provide the API token when prompted. Secrets are written to `apps/api-service/.env.local` with masking in the console output.
 4. Adjust cache TTL/capacity/timeouts if the default 900 s/4 096 entries/2 seconds does not match your expected login burst.
@@ -32,7 +32,7 @@ All providers honor the shared cache knobs: `GEOIP_CACHE_TTL_SECONDS`, `GEOIP_CA
 2. In the wizard select `maxmind_db`, enter the license key, and confirm the destination path (default `var/geoip/GeoLite2-City.mmdb`).
 3. The wizard asks whether to download/refresh the database now. Confirming triggers the new helper that calls MaxMind’s download endpoint, extracts the `.mmdb` payload, and saves it to the resolved path (relative paths land under the repo root).
 4. On CI/headless runs, the download step auto-enables for non-`local` profiles; failures surface as CLI errors so pipelines can retry with a fresh key.
-5. Store the resulting `.mmdb` file somewhere persistent (Docker volume, baked artifact). Re-run the wizard or `python -m starter_cli.app setup wizard --report-only` whenever you rotate the file so the audit log captures the decision.
+5. Store the resulting `.mmdb` file somewhere persistent (Docker volume, baked artifact). Re-run the wizard or `starter-console setup wizard --report-only` whenever you rotate the file so the audit log captures the decision.
 
 ### 3.3 IP2Location BIN (Self-hosted)
 1. Supply a BIN path via the wizard prompt (default `var/geoip/IP2LOCATION-LITE-DB3.BIN`). The CLI warns if the file is missing after the run.

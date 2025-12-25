@@ -65,8 +65,8 @@ TEST_KEYSET = ROOT / "apps" / "api-service" / "tests" / "fixtures" / "keysets" /
 os.environ.setdefault("AUTH_KEY_STORAGE_BACKEND", "file")
 os.environ.setdefault("AUTH_KEY_STORAGE_PATH", str(TEST_KEYSET))
 # Avoid CLI probes inside app bootstrap
-os.environ.setdefault("STARTER_CLI_SKIP_ENV", "true")
-os.environ.setdefault("STARTER_CLI_SKIP_VAULT_PROBE", "true")
+os.environ.setdefault("STARTER_CONSOLE_SKIP_ENV", "true")
+os.environ.setdefault("STARTER_CONSOLE_SKIP_VAULT_PROBE", "true")
 
 
 # ---------------------------------------------------------------------------

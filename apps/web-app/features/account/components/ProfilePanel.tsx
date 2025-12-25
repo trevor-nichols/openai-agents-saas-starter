@@ -248,7 +248,7 @@ export function ProfilePanel() {
                 <Link href="/account?tab=automation">Open automation</Link>
               </Button>
               <Button asChild variant="outline" size="sm">
-                <Link href="/docs/frontend/features/account-service-accounts.md">CLI guide</Link>
+                <Link href="/docs/frontend/features/account-service-accounts.md">Console guide</Link>
               </Button>
             </div>
           </div>

@@ -13,7 +13,7 @@ This runbook covers production deployments and safe rollbacks. It is cloud-agnos
 ## Deploy Steps (Summary)
 
 1. **Migrations** (one-off job/task)
-   - Run `just migrate` or `python -m starter_cli.app release db` against the production database.
+   - Run `just migrate` or `starter-console release db` against the production database.
    - Keep `AUTO_RUN_MIGRATIONS=false` on the API service.
 2. **Deploy API container**
    - Update the API service to the new image tag.

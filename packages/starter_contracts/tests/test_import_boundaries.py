@@ -1,7 +1,7 @@
 """Boundary tests for the ``starter_contracts`` package.
 
 These ensure contracts stay import-safe and are only consumed from approved
-surfaces (backend, CLI, scripts).
+surfaces (backend, console, scripts).
 """
 
 from __future__ import annotations
@@ -11,16 +11,16 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-ALLOWED_TOP_LEVEL = {"api-service", "starter_cli", "starter_contracts", "scripts", "conftest.py"}
+ALLOWED_TOP_LEVEL = {"api-service", "starter_console", "starter_contracts", "scripts", "conftest.py"}
 
 
-def test_imports_do_not_pull_app_or_cli_modules(monkeypatch) -> None:
+def test_imports_do_not_pull_app_or_console_modules(monkeypatch) -> None:
     # Ensure local app package is not shadowed by any site-packages "app".
     monkeypatch.syspath_prepend(str(ROOT / "api-service"))
 
     before = set(sys.modules)
 
-    # Import all public modules; they should not eagerly import app/CLI modules.
+    # Import all public modules; they should not eagerly import app/console modules.
     importlib.reload(importlib.import_module("starter_contracts.config"))
     importlib.reload(importlib.import_module("starter_contracts.keys"))
     importlib.reload(importlib.import_module("starter_contracts.provider_validation"))
@@ -31,10 +31,10 @@ def test_imports_do_not_pull_app_or_cli_modules(monkeypatch) -> None:
     new_modules = after - before
 
     leaked_app = {name for name in new_modules if name.startswith("app.")}
-    leaked_cli = {name for name in new_modules if name.startswith("starter_cli")}
+    leaked_cli = {name for name in new_modules if name.startswith("starter_console")}
 
     assert not leaked_app, f"Contracts import pulled app modules: {sorted(leaked_app)}"
-    assert not leaked_cli, f"Contracts import pulled CLI modules: {sorted(leaked_cli)}"
+    assert not leaked_cli, f"Contracts import pulled console modules: {sorted(leaked_cli)}"
 
 
 def test_only_approved_packages_import_contracts() -> None:

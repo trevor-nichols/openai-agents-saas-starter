@@ -1,6 +1,6 @@
 set shell := ["bash", "-uc"]
 
-env_runner := "cd ../../packages/starter_cli && hatch run python -m starter_cli.app --skip-env util run-with-env"
+env_runner := "cd ../../packages/starter_console && hatch run python -m starter_console.app --skip-env util run-with-env"
 project_dir := justfile_directory()
 repo_root := `cd ../.. && pwd`
 env_compose := repo_root + "/.env.compose"

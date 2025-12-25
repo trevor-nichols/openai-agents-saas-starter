@@ -26,7 +26,7 @@
 ## Retention & cleanup
 - TTL defaults: `RUN_EVENTS_TTL_DAYS=180` (prod), `RUN_EVENTS_TTL_DAYS=30` (staging/dev recommended via env files).
 - Batch knobs: `RUN_EVENTS_CLEANUP_BATCH` (default 10k), `RUN_EVENTS_CLEANUP_SLEEP_MS` (throttle).
-- Cleanup command (env-loaded via Starter CLI):
+- Cleanup command (env-loaded via Starter Console):
   - Dry run: `just cleanup-run-events dry_run=true`
   - Override TTL: `just cleanup-run-events days=90`
 

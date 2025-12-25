@@ -3,13 +3,13 @@
 _Last updated: November 20, 2025_
 
 ## Objective
-Provide a single, professional-grade logging experience across backend, frontend, and operator tooling. Defaults stay lightweight (stdout/console), while operators can opt into structured sinks (file, OTLP, Datadog) and view everything through the Starter CLI without crossing import boundaries.
+Provide a single, professional-grade logging experience across backend, frontend, and operator tooling. Defaults stay lightweight (stdout/console), while operators can opt into structured sinks (file, OTLP, Datadog) and view everything through the Starter Console without crossing import boundaries.
 
 ## Scope & Deliverables
 1) **Backend sinks** — JSON logging remains the default; add file rotation option alongside existing stdout/datadog/otlp/none.
 2) **Frontend logger** — Shared logger abstraction with pluggable transports (console, beacon → backend), level gating, and client-side scrubbing of sensitive fields.
 3) **Frontend log ingest** — Authenticated, rate-limited backend endpoint (feature-gated) to accept browser logs and emit via structured logger.
-4) **Operator UX** — Starter CLI wizard captures logging choices; `infra logs` command tails logs per service; docs/runbook updated; optional local OTel collector helper acknowledged but remains opt-in.
+4) **Operator UX** — Starter Console wizard captures logging choices; `infra logs` command tails logs per service; docs/runbook updated; optional local OTel collector helper acknowledged but remains opt-in.
 
 ## Success Criteria
 - Backend can write structured logs to stdout or rotating file without code changes; OTLP/Datadog still work.
@@ -24,7 +24,7 @@ Provide a single, professional-grade logging experience across backend, frontend
 | Backend sink options | ✅ Complete | File sink added with rotating handler + JSON output; defaults remain stdout. |
 | Frontend logger abstraction | ✅ Complete | Shared `lib/logging` added; chat + analytics migrated; beacon transport stubbed. |
 | Frontend log ingest API | ✅ Complete | Feature-gated POST route with rate limit + size cap; Next.js proxy at /api/logs forwards to /api/v1/logs. |
-| CLI ergonomics | ✅ Complete | `starter-cli logs tail` added for api/frontend (ingest), postgres/redis, and OTEL collector. |
+| CLI ergonomics | ✅ Complete | `starter-console logs tail` added for api/frontend (ingest), postgres/redis, and OTEL collector. |
 | Docs/runbooks | ✅ Complete | Observability README and CLI docs updated with log tailing and ingest notes. |
 
 ## Work Plan
@@ -33,7 +33,7 @@ Provide a single, professional-grade logging experience across backend, frontend
 | 1 | Add file sink support (env configurable path/rotation) + unit tests in backend logging module. | Platform Foundations | ✅ Completed | Nov 2025 |
 | 2 | Introduce shared frontend logger (`lib/logging`) with level gating, scrubbing, console/beacon transports; migrate chat/analytics callers. | Platform Foundations | ✅ Completed | Nov 2025 |
 | 3 | Add feature-gated frontend log ingest endpoint with auth, rate limit, body size cap; tests for auth/limit/error paths. | Platform Foundations | ✅ Completed | Nov 2025 |
-| 4 | Update Starter CLI wizard (observability section) to surface new envs; add `logs tail` command for api/frontend/collector + compose infra. | Platform Foundations | ✅ Completed | Nov 2025 |
+| 4 | Update Starter Console wizard (observability section) to surface new envs; add `logs tail` command for api/frontend/collector + compose infra. | Platform Foundations | ✅ Completed | Nov 2025 |
 | 5 | Update docs (`docs/observability` + trackers) and add quickstart/just recipes for local tails and optional OTel helper. | Platform Foundations | ✅ Completed | Nov 2025 |
 
 ## Risks & Mitigations

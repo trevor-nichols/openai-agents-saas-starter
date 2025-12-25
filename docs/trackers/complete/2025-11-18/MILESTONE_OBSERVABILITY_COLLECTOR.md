@@ -16,7 +16,7 @@ Bundle a turnkey OpenTelemetry Collector into the starter stack so every tenant 
 | --- | --- | --- |
 | Collector image/version tracking | ✅ Complete | Pinned to `otel/opentelemetry-collector-contrib:0.139.0`; doc + tracker updated Nov 18. |
 | Docker Compose integration | ✅ Complete | `otel-collector` service, Just hooks, and config renderer now live. |
-| Starter CLI onboarding | ✅ Complete | Wizard prompts for OTLP sink, bundled collector toggle, and Sentry/Datadog exporters; headless keys documented. |
+| Starter Console onboarding | ✅ Complete | Wizard prompts for OTLP sink, bundled collector toggle, and Sentry/Datadog exporters; headless keys documented. |
 | Documentation & runbooks | ✅ Complete | `docs/observability/README.md` covers setup, env vars, exporters, verification steps, and automated smoke test instructions. |
 | QA / smoke validation | ✅ Complete | `api-service/tests/integration/test_observability_collector.py` spins up the collector via Docker and asserts logs hit the debug exporter. |
 
@@ -33,7 +33,7 @@ Bundle a turnkey OpenTelemetry Collector into the starter stack so every tenant 
 | 1 | Finalize collector version pin + changelog watcher (start with 0.139.0). | Platform Foundations | ✅ Completed | Nov 18 |
 | 2 | Add `otel-collector` service to `ops/compose/docker-compose.yml`, mount generated config, expose 4318/4317, and update Just recipes. | Platform Foundations | ✅ Completed | Nov 18 |
 | 3 | Author config renderer (`ops/observability/render_collector_config.py`) with env-driven Sentry/Datadog exporters. | Platform Foundations | ✅ Completed | Nov 18 |
-| 4 | Extend Starter CLI setup wizard to include "Observability" step (sink selection, OTLP endpoint/header prompts, toggle for bundled collector). | Platform Foundations | ✅ Completed | Nov 18 |
+| 4 | Extend Starter Console setup wizard to include "Observability" step (sink selection, OTLP endpoint/header prompts, toggle for bundled collector). | Platform Foundations | ✅ Completed | Nov 18 |
 | 5 | Update docs (`docs/trackers/ISSUE_TRACKER.md`, `docs/observability/README.md`) with quick-start + production guidance. | Platform Foundations | ✅ Completed | Nov 18 |
 | 6 | Add smoke tests (pytest fixture or integration script) verifying logs reach the collector stdout exporter when Compose stack runs. | Platform Foundations | ✅ Completed | Nov 18 |
 

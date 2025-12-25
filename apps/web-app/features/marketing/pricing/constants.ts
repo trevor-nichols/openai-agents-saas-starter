@@ -4,7 +4,7 @@ export const PRICING_HERO_COPY = {
   eyebrow: 'Pricing',
   title: 'Pick the runway that matches your launch.',
   description:
-    'Every tier includes GPT-5 agents, FastAPI auth, billing, Starter CLI, and the full marketing surface. Choose the plan that fits today and upgrade without migrations.',
+    'Every tier includes GPT-5 agents, FastAPI auth, billing, Starter Console, and the full marketing surface. Choose the plan that fits today and upgrade without migrations.',
   primaryCta: {
     label: 'Start building',
     href: '/register',

@@ -5,9 +5,9 @@ set shell := ["bash", "-uc"]
 # Env + helpers
 env_file := `if [ -f "apps/api-service/.env.local" ]; then echo "apps/api-service/.env.local"; elif [ -f "apps/api-service/.env" ]; then echo "apps/api-service/.env"; else echo ""; fi`
 repo_root := justfile_directory()
-env_runner := "cd " + repo_root + "/packages/starter_cli && hatch run python -m starter_cli.app --skip-env util run-with-env " + repo_root + "/.env.compose " + repo_root + "/" + env_file
+env_runner := "cd " + repo_root + "/packages/starter_console && hatch run python -m starter_console.app --skip-env util run-with-env " + repo_root + "/.env.compose " + repo_root + "/" + env_file
 api_just := "just -f apps/api-service/justfile"
-cli_just := "just -f packages/starter_cli/justfile"
+cli_just := "just -f packages/starter_console/justfile"
 contracts_just := "just -f packages/starter_contracts/justfile"
 providers_just := "just -f packages/starter_providers/justfile"
 web_just := "just -f apps/web-app/justfile"
@@ -67,7 +67,7 @@ help:
     echo "  just smoke-http             # Run api-service HTTP smoke suite (starts local server)" && \
     echo "Package helpers:" && \
     echo "  just backend-lint|typecheck|test    # Delegates to api-service" && \
-    echo "  just cli-lint|typecheck|test        # Delegates to packages/starter_cli" && \
+    echo "  just cli-lint|typecheck|test        # Delegates to packages/starter_console" && \
     echo "  just contracts-lint|typecheck|test  # Delegates to packages/starter_contracts" && \
     echo "  just providers-lint|typecheck|test  # Delegates to packages/starter_providers" && \
     echo "  just web-lint|typecheck|dev|test    # Delegates to apps/web-app"
@@ -152,7 +152,7 @@ python-bootstrap:
 dev-install:
     python -m pip install -e packages/starter_contracts
     python -m pip install -e packages/starter_providers
-    python -m pip install -e packages/starter_cli
+    python -m pip install -e packages/starter_console
 
 # -------------------------
 # Aggregate quality gates
@@ -277,49 +277,49 @@ vault-logs:
     {{env_runner}} -- bash -c 'docker compose -f {{vault_compose_file}} logs -f --tail=200'
 
 verify-vault: vault-up _check_env
-    @echo "Running service-account issuance via starter CLI (ensure FastAPI is reachable)."
+    @echo "Running service-account issuance via starter-console (ensure FastAPI is reachable)."
     VAULT_ADDR={{vault_dev_host_addr}} \
     VAULT_TOKEN={{vault_dev_root_token_id}} \
     VAULT_TRANSIT_KEY={{vault_transit_key}} \
     VAULT_VERIFY_ENABLED=true \
-    {{env_runner}} -- bash -lc 'python -m starter_cli.app auth tokens issue-service-account --account dev-automation --scopes conversations:read --output text'
+    {{env_runner}} -- bash -lc 'python -m starter_console.app auth tokens issue-service-account --account dev-automation --scopes conversations:read --output text'
 
 # -------------------------
 # CLI helpers
 # -------------------------
 
 stripe-replay args: _check_env
-    {{env_runner}} -- bash -lc 'python -m starter_cli.app stripe dispatches {{args}}'
+    {{env_runner}} -- bash -lc 'python -m starter_console.app stripe dispatches {{args}}'
 
 stripe-listen:
-    cd packages/starter_cli && hatch run python -m starter_cli.app stripe webhook-secret
+    cd packages/starter_console && hatch run python -m starter_console.app stripe webhook-secret
 
 lint-stripe-fixtures:
-    cd packages/starter_cli && hatch run python -m starter_cli.app stripe dispatches validate-fixtures
+    cd packages/starter_console && hatch run python -m starter_console.app stripe dispatches validate-fixtures
 
 test-stripe: _check_env
     {{env_runner}} -- bash -lc 'cd apps/api-service && hatch run pytest -m stripe_replay'
 
 cli cmd:
-    cd packages/starter_cli && hatch run python -m starter_cli.app {{cmd}}
+    cd packages/starter_console && hatch run python -m starter_console.app {{cmd}}
 
 doctor: _check_env
-    {{env_runner}} -- bash -lc 'python -m starter_cli.app doctor --strict --json var/reports/operator-dashboard.json --markdown var/reports/operator-dashboard.md'
+    {{env_runner}} -- bash -lc 'python -m starter_console.app doctor --strict --json var/reports/operator-dashboard.json --markdown var/reports/operator-dashboard.md'
 
 start-dev: _check_env
-    {{env_runner}} -- bash -lc 'python -m starter_cli.app start dev --timeout 180'
+    {{env_runner}} -- bash -lc 'python -m starter_console.app start dev --timeout 180'
 
 start-backend: _check_env
-    {{env_runner}} -- bash -lc 'python -m starter_cli.app start backend --timeout 120'
+    {{env_runner}} -- bash -lc 'python -m starter_console.app start backend --timeout 120'
 
 start-frontend: _check_env
-    {{env_runner}} -- bash -lc 'python -m starter_cli.app start frontend --timeout 120'
+    {{env_runner}} -- bash -lc 'python -m starter_console.app start frontend --timeout 120'
 
 # Wizards & seeding
 
 setup-demo-lite:
-    cd packages/starter_cli && hatch run python -m starter_cli.app infra deps
-    cd packages/starter_cli && hatch run python -m starter_cli.app setup wizard \
+    cd packages/starter_console && hatch run python -m starter_console.app infra deps
+    cd packages/starter_console && hatch run python -m starter_console.app setup wizard \
         --profile demo \
         --auto-infra \
         --auto-secrets \
@@ -327,12 +327,12 @@ setup-demo-lite:
         --auto-redis \
         --no-auto-geoip \
         --auto-dev-user
-    cd packages/starter_cli && hatch run python -m starter_cli.app users ensure-dev
+    cd packages/starter_console && hatch run python -m starter_console.app users ensure-dev
     @echo "" && echo "Next: run 'just api' in a new terminal; optionally 'just issue-demo-token' after API is up."
 
 setup-demo-full:
-    cd packages/starter_cli && hatch run python -m starter_cli.app infra deps
-    cd packages/starter_cli && hatch run python -m starter_cli.app setup wizard \
+    cd packages/starter_console && hatch run python -m starter_console.app infra deps
+    cd packages/starter_console && hatch run python -m starter_console.app setup wizard \
         --profile demo \
         --auto-infra \
         --auto-secrets \
@@ -343,8 +343,8 @@ setup-demo-full:
         --auto-dev-user
 
 setup-staging:
-    cd packages/starter_cli && hatch run python -m starter_cli.app infra deps
-    cd packages/starter_cli && hatch run python -m starter_cli.app setup wizard \
+    cd packages/starter_console && hatch run python -m starter_console.app infra deps
+    cd packages/starter_console && hatch run python -m starter_console.app setup wizard \
         --profile staging \
         --no-auto-infra \
         --no-auto-secrets \
@@ -358,8 +358,8 @@ setup-production:
         echo "Error: set setup_production_answers=/absolute/path/to/answers.json"; \
         exit 1; \
     fi
-    cd packages/starter_cli && hatch run python -m starter_cli.app infra deps
-    cd packages/starter_cli && hatch run python -m starter_cli.app setup wizard \
+    cd packages/starter_console && hatch run python -m starter_console.app infra deps
+    cd packages/starter_console && hatch run python -m starter_console.app setup wizard \
         --profile production \
         --strict \
         --answers-file {{setup_production_answers}} \
@@ -375,7 +375,7 @@ seed-dev-user: dev-up _check_env
         cd {{repo_root}}; \
         echo "Seeding user with email {{setup_user_email}}"; \
         if [ -n "{{setup_user_password}}" ]; then \
-            python -m starter_cli.app users ensure-dev \
+            python -m starter_console.app users ensure-dev \
                 --email "{{setup_user_email}}" \
                 --tenant-slug "{{setup_user_tenant}}" \
                 --tenant-name "{{setup_user_tenant_name}}" \
@@ -383,7 +383,7 @@ seed-dev-user: dev-up _check_env
                 --display-name "{{setup_user_name}}" \
                 --password "{{setup_user_password}}"; \
         else \
-            python -m starter_cli.app users ensure-dev \
+            python -m starter_console.app users ensure-dev \
                 --email "{{setup_user_email}}" \
                 --tenant-slug "{{setup_user_tenant}}" \
                 --tenant-name "{{setup_user_tenant_name}}" \
@@ -394,7 +394,7 @@ seed-dev-user: dev-up _check_env
 
 issue-demo-token:
     @echo "Ensure FastAPI is running (e.g., 'just api') before issuing a token."
-    cd packages/starter_cli && hatch run python -m starter_cli.app auth tokens issue-service-account \
+    cd packages/starter_console && hatch run python -m starter_console.app auth tokens issue-service-account \
         --account "{{setup_service_account}}" \
         --scopes "{{setup_service_scopes}}" \
         {{service_tenant_flag}} \

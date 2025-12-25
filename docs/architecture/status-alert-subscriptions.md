@@ -157,12 +157,12 @@ Soft delete (status → `revoked`). Requires email-token auth (link in unsubscri
 
 ---
 
-### 4.6 CLI Helpers
+### 4.6 Console Helpers
 
-- `starter-cli status subscriptions list` – wraps `GET /api/v1/status/subscriptions`.
-- `starter-cli status subscriptions revoke <id>` – wraps `DELETE /{id}`.
-- CLI always authenticates via service account and uses platform scopes.
-- `starter-cli status incidents resend <incident_id> [--severity major|maintenance|all] [--tenant <uuid>]` – replays an incident via the dispatcher.
+- `starter-console status subscriptions list` – wraps `GET /api/v1/status/subscriptions`.
+- `starter-console status subscriptions revoke <id>` – wraps `DELETE /{id}`.
+- The console always authenticates via service account and uses platform scopes.
+- `starter-console status incidents resend <incident_id> [--severity major|maintenance|all] [--tenant <uuid>]` – replays an incident via the dispatcher.
 
 ## 5. Delivery Pipeline
 
@@ -198,7 +198,7 @@ Soft delete (status → `revoked`). Requires email-token auth (link in unsubscri
 
 ## 8. Open Questions & Decisions
 1. **Webhook template customization** – Keep the payload standardized for GA. Custom templates introduce extra signing/validation paths and complicate incident triage. Revisit only if enterprise tenants request it at scale.
-2. **Manual resend controls** – Provide a minimal CLI command (`starter-cli status incidents resend --incident <id> [--tenant <id>]`) for platform operators. This re-enqueues the last published incident through the dispatcher, giving ops an audited escape hatch without UI work.
+2. **Manual resend controls** – Provide a minimal CLI command (`starter-console status incidents resend --incident <id> [--tenant <id>]`) for platform operators. This re-enqueues the last published incident through the dispatcher, giving ops an audited escape hatch without UI work.
 3. **reCAPTCHA / bot mitigation** – Launch without reCAPTCHA. IP rate limits + double opt-in already curb abuse. Keep a feature flag in the POST handler so we can bolt on Cloudflare Turnstile or reCAPTCHA v3 later if marketing sees spam.
 
 ## 9. Next Steps

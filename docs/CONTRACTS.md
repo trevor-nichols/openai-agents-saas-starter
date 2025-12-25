@@ -2,12 +2,12 @@
 
 Source of truth for shared config/secrets/key contracts consumed by:
 - Backend (`apps/api-service/...`)
-- Starter CLI (`packages/starter_cli/...`)
+- Starter Console (`packages/starter_console/...`)
 - Repo tools (`tools/cli/verify_env_inventory.py`), tests, and contract snapshots.
 
 ## Allowed import graph
 - Only the surfaces above should import `starter_contracts.*`.
-- `starter_contracts` must **not** import `app.*` (backend) or `starter_cli.*` at module import time.
+- `starter_contracts` must **not** import `app.*` (backend) or `starter_console.*` at module import time.
 - Import-time side effects are forbidden; `get_settings()` is lazy and should only fire when called.
  - Cloud SDK clients now live in `starter_providers`; contracts must remain dependency-light and not import provider SDKs.
 
@@ -20,8 +20,8 @@ Source of truth for shared config/secrets/key contracts consumed by:
 
 ## Related package: `starter_providers`
 - Houses concrete SDK clients for AWS Secrets Manager, Azure Key Vault, and Infisical.
-- May depend on provider SDKs, but must not import `app.*` or `starter_cli.*` at module import time.
-- Both backend and CLI should import SDK clients from `starter_providers.secrets.*`.
+- May depend on provider SDKs, but must not import `app.*` or `starter_console.*` at module import time.
+- Both backend and console should import SDK clients from `starter_providers.secrets.*`.
 
 ## Snapshots (drift blockers)
 - `docs/contracts/settings.schema.json`: JSON Schema snapshot of `app.core.settings.Settings`.
@@ -67,5 +67,5 @@ PY
 Commit the updated JSON along with the change that necessitated it.
 
 ## Tests enforcing boundaries
-- `starter_contracts/tests/test_import_boundaries.py`: ensures contracts don't pull backend/CLI modules on import and are only used from approved packages.
+- `starter_contracts/tests/test_import_boundaries.py`: ensures contracts don't pull backend/console modules on import and are only used from approved packages.
 - `apps/api-service/tests/unit/test_contract_schemas_snapshot.py`: freezes settings + enum schemas.

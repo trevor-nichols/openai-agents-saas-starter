@@ -15,7 +15,7 @@
    environment). Local development still emits warnings but keeps running for prototyping.
 3. **Tool registry parity** — core services respect enabled providers so agent capabilities reflect
    actual provider coverage.
-4. **Operator tooling** — `python -m starter_cli.app providers validate` (and
+4. **Operator tooling** — `starter-console providers validate` (and
    `just validate-providers`) fail fast when required env vars are missing. CI can pass `--strict`
    to block merges before Docker builds/deployments.
 5. **Documentation** — `docs/ops/provider-parity.md` captures the enforcement matrix, remediation

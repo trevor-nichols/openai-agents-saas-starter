@@ -7,7 +7,7 @@ This doc explains how the starter repo ships a turnkey OpenTelemetry Collector s
 
 ## TL;DR
 
-1. Run the Starter CLI setup wizard (interactive or headless) and select `otlp` as your logging sink.
+1. Run the Starter Console setup wizard (interactive or headless) and select `otlp` as your logging sink.
 2. When prompted, choose **“Start bundled OpenTelemetry Collector”** to let docker compose manage the collector container.
 3. (Optional) Enable Sentry and/or Datadog exporters directly from the wizard—provide the OTLP endpoint + bearer token for Sentry or the API key + site for Datadog.
 4. The wizard writes the env vars below to `apps/api-service/.env.local`, and `just dev-up` renders `var/observability/collector.generated.yaml` before launching `otel/opentelemetry-collector-contrib:0.139.0` with those settings.
@@ -46,8 +46,8 @@ The collector image is pinned to `otel/opentelemetry-collector-contrib:0.139.0`,
 ### Local file logging layout (new)
 
 - When `LOG_ROOT` is set (or when `LOGGING_SINKS=file`), FastAPI writes JSON logs to dated folders: `LOG_ROOT/YYYY-MM-DD/api/all.log` and `error.log`. A helper symlink `LOG_ROOT/current` points at the latest folder.
-- `starter-cli start dev --detached` and the new `starter-cli logs tail` respect this layout; `--errors` tails `error.log`.
-- Retention: set `LOGGING_MAX_DAYS` to prune old dated folders on startup; `starter-cli logs archive --days N` can zip+prune manually.
+- `starter-console start dev --detached` and the new `starter-console logs tail` respect this layout; `--errors` tails `error.log`.
+- Retention: set `LOGGING_MAX_DAYS` to prune old dated folders on startup; `starter-console logs archive --days N` can zip+prune manually.
 
 ### Frontend log ingest
 
@@ -60,7 +60,7 @@ The wizard stores secrets in `apps/api-service/.env.local` only. The generated c
 ## Code Flow
 
 - `ops/observability/render_collector_config.py` reads the env vars above and emits `var/observability/collector.generated.yaml` whenever `ENABLE_OTEL_COLLECTOR=true`.
-- `just dev-up` (and the CLI’s `starter_cli infra compose up`) call the renderer before running `docker compose up ... otel-collector` so the container always mounts a fresh config.
+- `just dev-up` (and the CLI’s `starter-console infra compose up`) call the renderer before running `docker compose up ... otel-collector` so the container always mounts a fresh config.
 - `ops/compose/docker-compose.yml` defines the `otel-collector` service with the generated config volume and exposes the OTLP/diagnostic ports for local use.
 
 ## Exporter Presets
@@ -91,7 +91,7 @@ Need another sink (Grafana Loki, Honeycomb, Splunk, etc.)? Copy `ops/observabili
 $ just dev-up
 
 # Tail service logs from one place
-$ python -m starter_cli.app logs tail --service api --service collector
+$ starter-console logs tail --service api --service collector
 
 # Tail collector logs
 $ docker compose logs -f otel-collector

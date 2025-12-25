@@ -78,7 +78,7 @@ Example answers file fragment:
 Run:
 
 ```
-python -m starter_cli.app setup wizard --non-interactive --answers-file ./answers.json
+starter-console setup wizard --non-interactive --answers-file ./answers.json
 ```
 
 ## Re-running the wizard

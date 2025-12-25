@@ -2,12 +2,12 @@
 
 Goal: reshape the repo into clear, per-surface packages using a `src/` layout, with the root acting only as an orchestrator. Target is an onboarding-friendly, auditable structure that matches production builds.
 
-Status: Phase 1 completed (backend `src/` layout + pyproject). Phase 2 completed: per-package pyprojects + `src/` layouts for `starter_contracts` and `starter_cli` are in place; lint/typecheck/test are green per package. CI wiring drafted; ready to finalize once root cleanup lands.
+Status: Phase 1 completed (backend `src/` layout + pyproject). Phase 2 completed: per-package pyprojects + `src/` layouts for `starter_contracts` and `starter_console` are in place; lint/typecheck/test are green per package. CI wiring drafted; ready to finalize once root cleanup lands.
 
 ## Target structure (high level)
 - `/` (orchestration only): root `justfile`, docker-compose files, repo-wide docs, pnpm workspace config for JS, minimal tooling config if needed.
 - `api-service/`: `pyproject.toml`, `justfile` (backend tasks), `src/app`, `src/run.py`, `alembic/`, `tests/`, `.env*`.
-- `starter_cli/`: `pyproject.toml`, `src/starter_cli`, `tests/`.
+- `starter_console/`: `pyproject.toml`, `src/starter_console`, `tests/`.
 - `starter_contracts/`: `pyproject.toml`, `src/starter_contracts`, `tests/`.
 - `web-app/`: unchanged; owns its `package.json`, lint/typecheck configs.
 - `scripts/` and `ops/`: shared utilities; avoid importing app code directly.
@@ -29,21 +29,21 @@ Tooling rules: each Python package self-owns `ruff`, `mypy/pyright`, coverage co
 - ✅ Completed.
 
 ### Phase 2 – CLI and contracts extraction
-- Add `starter_cli/pyproject.toml` and `src/starter_cli`; same for `starter_contracts`.
+- Add `starter_console/pyproject.toml` and `src/starter_console`; same for `starter_contracts`.
 - Remove CLI/contracts packages from backend build configuration; adjust `PYTHONPATH` expectations in tests.
-- Ensure CLI entry points (`starter-cli`, `aa-cli`) resolve from the new package.
+- Ensure the console entry point (`starter-console`) resolves from the new package.
 - Update CI to run lint/typecheck/test per-package (backend, CLI, contracts, frontend).
-- ✅ Completed: packages + `src/` layout in place; lint/typecheck/test green for api-service, starter_cli, starter_contracts; CLI dev extras updated to cover shared fixtures; import-boundary tests adjusted.
+- ✅ Completed: packages + `src/` layout in place; lint/typecheck/test green for api-service, starter_console, starter_contracts; CLI dev extras updated to cover shared fixtures; import-boundary tests adjusted.
 
 ### Phase 3 – Root cleanup
 - Remove backend-specific files from root (`run.py`, backend build config).
 - Slim root `pyproject.toml` to tooling-only or drop if unused.
 - Keep root `justfile` as an orchestrator delegating to subproject justfiles (or call `hatch`/`uv` with working directories).
 - Verify docker-compose scripts and env runners still function (update paths they mount/copy).
-- ✅ Completed: root `justfile` now delegates to per-surface Justfiles; compose assets moved to `ops/compose/`; per-package Justfiles added for `api-service`, `starter_cli`, `starter_contracts`, and `web-app`.
+- ✅ Completed: root `justfile` now delegates to per-surface Justfiles; compose assets moved to `ops/compose/`; per-package Justfiles added for `api-service`, `starter_console`, `starter_contracts`, and `web-app`.
 
 ### Phase 4 – CI and developer workflow
-- Update CI jobs to run per-package lint/typecheck/test (`api-service`, `starter_cli`, `starter_contracts`, `web-app`).
+- Update CI jobs to run per-package lint/typecheck/test (`api-service`, `starter_console`, `starter_contracts`, `web-app`).
 - Cache Python/Node deps per package; ensure artifact paths match the `src` layout.
  - Add a short onboarding doc section describing the new commands.
  - ✅ Added a “Quick Command Map” to README covering the new Just delegations.

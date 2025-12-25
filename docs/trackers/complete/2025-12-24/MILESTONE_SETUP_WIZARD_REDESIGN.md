@@ -5,7 +5,7 @@ _Last updated: 2025-12-24_
 **Status:** In Progress  
 **Owner:** @codex  
 **Domain:** CLI  
-**ID / Links:** [docs/trackers/templates/MILESTONE_TEMPLATE.md], [docs/trackers/current_milestones/SETUP_WIZARD_REDESIGN_SPEC.md], [docs/ops/setup-wizard-presets.md], [packages/starter_cli/README.md], [packages/starter_cli/src/starter_cli/workflows/setup/_wizard/sections]
+**ID / Links:** [docs/trackers/templates/MILESTONE_TEMPLATE.md], [docs/trackers/current_milestones/SETUP_WIZARD_REDESIGN_SPEC.md], [docs/ops/setup-wizard-presets.md], [packages/starter_console/README.md], [packages/starter_console/src/starter_console/workflows/setup/_wizard/sections]
 
 ---
 
@@ -23,7 +23,7 @@ Deliver a deterministic, audit‑friendly, and intuitive setup wizard with hosti
 - Hosting presets (Local Docker / Cloud Managed / Enterprise Custom) drive defaults and prompt gating.
 - Setup Menu shows completion, staleness, and diffs based on redacted snapshots.
 - New/updated CLI tests cover schema gating, presets, and resume flows.
-- Docs updated (`packages/starter_cli/README.md`, `docs/trackers/CLI_ENV_INVENTORY.md`).
+- Docs updated (`packages/starter_console/README.md`, `docs/trackers/CONSOLE_ENV_INVENTORY.md`).
 - `hatch run lint` + `hatch run typecheck` pass for CLI.
 
 ---
@@ -60,7 +60,7 @@ Deliver a deterministic, audit‑friendly, and intuitive setup wizard with hosti
 <!-- SECTION: Architecture / Design -->
 ## Architecture / Design Snapshot
 
-- Schema‑first: `packages/starter_cli/src/starter_cli/workflows/setup/schema.yaml` is the single source of truth.
+- Schema‑first: `packages/starter_console/src/starter_console/workflows/setup/schema.yaml` is the single source of truth.
 - Preset engine: new hosting presets map to defaults + skip rules (Local Docker / Cloud Managed / Enterprise Custom).
 - Resume + audit: keep `var/reports/wizard-state.json`, add redacted `setup-snapshot.json` + diff summary.
 - TUI: reorganize panes to reflect linear steps and show preset context + progress.
@@ -138,10 +138,10 @@ Deliver a deterministic, audit‑friendly, and intuitive setup wizard with hosti
 <!-- SECTION: Validation / QA Plan -->
 ## Validation / QA Plan
 
-- `cd packages/starter_cli && hatch run lint`
-- `cd packages/starter_cli && hatch run typecheck`
-- `cd packages/starter_cli && hatch run test tests/unit/workflows/setup tests/unit/ui`
-- Manual smoke: `python -m starter_cli.app setup wizard --profile demo` and `setup menu`.
+- `cd packages/starter_console && hatch run lint`
+- `cd packages/starter_console && hatch run typecheck`
+- `cd packages/starter_console && hatch run test tests/unit/workflows/setup tests/unit/ui`
+- Manual smoke: `starter-console setup wizard --profile demo` and `setup menu`.
 
 ---
 

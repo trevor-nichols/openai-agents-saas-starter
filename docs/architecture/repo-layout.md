@@ -11,7 +11,7 @@ apps/
   api-service/          # FastAPI service (Agents SDK)
   web-app/              # Next.js 16 frontend
 packages/
-  starter_cli/          # operator CLI
+  starter_console/          # operator console
   starter_contracts/    # shared contracts/lib
   starter_providers/    # shared cloud SDK clients
 tools/                  # shared scripts (typecheck, smoke, moduleviz, vault helpers)

@@ -30,8 +30,8 @@ This executes `openapi-ts` with the configuration in `openapi-ts.config.ts` and 
 - To include test-fixture endpoints (e.g., for Playwright/CI seeding), first export the fixture-enabled spec:
 
   ```bash
-  cd ../packages/starter_cli
-  python -m starter_cli.app api export-openapi \
+  cd ../packages/starter_console
+  starter-console api export-openapi \
     --output apps/api-service/.artifacts/openapi-fixtures.json \
     --enable-billing --enable-test-fixtures
   ```
@@ -49,7 +49,7 @@ If you intentionally switch the source spec (e.g., regenerating in a fork), ensu
 
 ## Feature Flags
 
-- `NEXT_PUBLIC_ENABLE_BILLING` (default: `false`): Drives billing navigation/pages/API routes/hooks. Set by the Starter CLI alongside backend `ENABLE_BILLING`.
+- `NEXT_PUBLIC_ENABLE_BILLING` (default: `false`): Drives billing navigation/pages/API routes/hooks. Set by the Starter Console alongside backend `ENABLE_BILLING`.
 
 ## Production Builds
 

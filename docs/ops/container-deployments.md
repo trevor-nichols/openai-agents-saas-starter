@@ -5,7 +5,7 @@ This guide documents the production-grade container workflow for the FastAPI API
 ## Prerequisites
 - Docker Engine with BuildKit enabled.
 - `.env.compose` at the repo root (see `.env.compose.example`).
-- `apps/api-service/.env.local` and `apps/web-app/.env.local` generated via the Starter CLI (`python -m starter_cli.app setup wizard`).
+- `apps/api-service/.env.local` and `apps/web-app/.env.local` generated via the Starter Console (`starter-console setup wizard`).
 
 ## Build Images
 
@@ -64,7 +64,7 @@ For production deployments, run migrations out-of-band (job/task) rather than on
 ```bash
 just migrate
 # or
-python -m starter_cli.app release db
+starter-console release db
 ```
 
 Set `AUTO_RUN_MIGRATIONS=false` for production API deployments.

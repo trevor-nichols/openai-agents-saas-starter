@@ -195,14 +195,14 @@ OPS-004 tracks “exactly one retry worker per fleet.” Use the table below to 
 | Inline | Single-instance or dev/staging stacks where only one FastAPI pod exists. | Keep `ENABLE_BILLING_RETRY_WORKER=true`, `ENABLE_BILLING_STREAM_REPLAY=true`, and `BILLING_RETRY_DEPLOYMENT_MODE=inline` (the setup wizard sets this automatically). |
 | Dedicated worker | Production clusters with multiple API replicas. | Customer-facing API pods: `ENABLE_BILLING_RETRY_WORKER=false`, `ENABLE_BILLING_STREAM_REPLAY=false`, `BILLING_RETRY_DEPLOYMENT_MODE=dedicated`. A separate “billing-worker” deployment (1 replica) keeps both flags true so it owns retries + stream replay. |
 
-The Starter CLI setup wizard now records these decisions automatically:
+The Starter Console setup wizard now records these decisions automatically:
 
 - `var/reports/billing-worker-topology.md` — summarizes the chosen mode, profile, and timestamp so runbooks can link to the authoritative decision (generated on every wizard run).
 - `var/reports/billing-worker.env` — created when you pick `dedicated`. Copy these overrides on top of your `.env` for the single worker deployment; API pods must retain the disabled toggles.
 
 Implementation checklist:
 
-1. During `cd packages/starter_cli && python -m starter_cli.app setup wizard` answer **No** to “Run the Stripe retry worker inside this deployment?” for customer-facing pods and **Yes** for the worker pod. This keeps env files honest (`starter_cli/workflows/setup/_wizard/sections/signup.py`).
+1. During `cd packages/starter_console && starter-console setup wizard` answer **No** to “Run the Stripe retry worker inside this deployment?” for customer-facing pods and **Yes** for the worker pod. This keeps env files honest (`starter_console/workflows/setup/_wizard/sections/signup.py`).
 2. In Kubernetes/Compose, create a dedicated deployment/statefulset for the worker with `replicas: 1`, `ENABLE_BILLING=true`, `ENABLE_BILLING_RETRY_WORKER=true`, and `ENABLE_BILLING_STREAM_REPLAY=true`. All other API deployments set the flags to `false`.
 3. Gate rollouts with metrics: alert on `stripe_dispatch_retry_total{result!="success"}` and watch for duplicate “stripe.dispatch.retry_success” log streams—two pods emitting those logs concurrently means the worker flag is misconfigured.
 4. Document the worker pod in your ops runbooks. During incidents, confirm logs show **one** pod starting the worker (“Stripe dispatch retry worker disabled” should appear on all others). If you ever need multiple replicas, add a Redis-backed lease before scaling out to avoid duplicate replays.

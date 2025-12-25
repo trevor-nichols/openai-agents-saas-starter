@@ -2,7 +2,7 @@
 
 **Status:** Completed – November 19, 2025  
 **DRI:** Platform Foundations (TBD)  
-**Stakeholders:** App Platform, Frontend Core, Starter CLI  
+**Stakeholders:** App Platform, Frontend Core, Starter Console  
 **Related Docs:** `api-service/SNAPSHOT.md`, `docs/openai-agents-sdk/*`
 
 ## Objective
@@ -57,11 +57,11 @@ Create a provider-agnostic AI orchestration layer so new OpenAI (Agents, Realtim
 ### 5. Documentation & Operational Updates
 - Regenerate `api-service/SNAPSHOT.md` sections affected by new folders.
 - Update `docs/openai-agents-sdk/*` with provider extension steps.
-- Capture migration notes (any env var rename, table changes) and communicate to Starter CLI for provisioning scripts.
+- Capture migration notes (any env var rename, table changes) and communicate to Starter Console for provisioning scripts.
 
 ## Dependencies
 
-- Settings changes must land alongside Starter CLI updates so `just bootstrap` emits the new env vars.
+- Settings changes must land alongside Starter Console updates so `just bootstrap` emits the new env vars.
 - Any SQLAlchemy session table migration requires Alembic revision; coordinate with Database team.
 - Observability changes (new metrics/traces) must align with `docs/observability.md` guidelines.
 
@@ -69,13 +69,13 @@ Create a provider-agnostic AI orchestration layer so new OpenAI (Agents, Realtim
 
 - **Scope Creep:** Adding non-OpenAI providers mid-milestone would delay delivery. Mitigation: Lock scope via this tracker and defer extra providers to a follow-up.
 - **Regression Surface:** Moving runtime logic can break chat streaming. Mitigation: expand contract tests + add provider-focused unit tests with mocks.
-- **Configuration Drift:** New settings may not propagate to CLI or infra. Mitigation: tie each config change to `starter_cli/README.md` update before merge.
+- **Configuration Drift:** New settings may not propagate to CLI or infra. Mitigation: tie each config change to `starter_console/README.md` update before merge.
 
 ## QA / Validation Plan
 
 - Unit tests for domain ports (fake implementations) executed via `hatch run test-domain-ai` (new or existing target).
 - Existing FastAPI contract tests (`tests/contract/chat/test_chat.py`) and streaming tests must pass without mocks.
-- Add smoke test to Starter CLI to ensure provider registry initializes without server imports.
+- Add smoke test to Starter Console to ensure provider registry initializes without server imports.
 
 ## Exit Criteria
 

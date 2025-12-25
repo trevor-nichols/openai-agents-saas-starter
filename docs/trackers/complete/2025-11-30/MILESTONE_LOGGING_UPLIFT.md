@@ -139,8 +139,8 @@ Deliver a cohesive, local-first logging experience: per-day log roots with clear
 ## Validation / QA Plan
 
 - Automated: `hatch run lint`, `hatch run typecheck`, targeted API logging unit tests, CLI tests, `pnpm lint`, `pnpm type-check`.
-- Manual smoke: `just start-dev -- --detached` then verify `var/log/current` tree, send frontend beacon, confirm `frontend.log` events in API all/error files, run `starter-cli logs tail --service api --errors`.
-- Archive/prune dry-run: run `starter-cli logs archive --days 3 --dry-run` once implemented.
+- Manual smoke: `just start-dev -- --detached` then verify `var/log/current` tree, send frontend beacon, confirm `frontend.log` events in API all/error files, run `starter-console logs tail --service api --errors`.
+- Archive/prune dry-run: run `starter-console logs archive --days 3 --dry-run` once implemented.
 
 ---
 

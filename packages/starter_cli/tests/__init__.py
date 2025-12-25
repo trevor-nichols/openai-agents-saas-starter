@@ -1,1 +1,0 @@
-"""Starter CLI test package."""

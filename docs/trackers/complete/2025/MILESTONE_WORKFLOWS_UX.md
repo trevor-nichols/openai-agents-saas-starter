@@ -21,7 +21,7 @@ Goal: Ship the workflow endpoints and contracts needed to unblock the new workfl
 - SSE tweaks: include `id:` and `event:` fields, server `timestamp`, and heartbeat comments (~15s) for proxy keep-alive; reflect in schema/docs.
 
 ### Phase 4 — SDK regeneration & wiring
-- Export updated OpenAPI (`python -m starter_cli.app api export-openapi …`) and regenerate HeyAPI client (`cd web-app && pnpm generate:fixtures`).
+- Export updated OpenAPI (`starter-console api export-openapi …`) and regenerate HeyAPI client (`cd web-app && pnpm generate:fixtures`).
 - Verify the four existing endpoints plus new ones are present in `sdk.gen.ts` and `types.gen.ts`.
 
 ## Definition of Done

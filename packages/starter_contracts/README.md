@@ -1,6 +1,6 @@
 # Starter Contracts
 
-Shared, import-safe contracts and helpers that both the FastAPI backend and the Starter CLI rely on. This package keeps configuration, secrets, storage, and key-management logic decoupled from app code so the CLI can run without importing the server stack. Concrete cloud SDK clients live in `starter_providers`.
+Shared, import-safe contracts and helpers that both the FastAPI backend and the Starter Console rely on. This package keeps configuration, secrets, storage, and key-management logic decoupled from app code so the console can run without importing the server stack. Concrete cloud SDK clients live in `starter_providers`.
 
 ## What this package does
 - Defines provider-neutral contracts for secrets and storage (`secrets/`, `storage/`) plus health and signing interfaces. (Concrete SDK clients live in `starter_providers`.)
@@ -12,7 +12,7 @@ Shared, import-safe contracts and helpers that both the FastAPI backend and the 
 
 ## Where it is used
 - Backend (FastAPI): Implements concrete providers and key storage using these protocols; the backend `Settings` class satisfies `StarterSettingsProtocol`.
-- Starter CLI: Reads backend settings via `get_settings()`, performs provider parity checks, manages auth keys (file or secret-manager), and emits doctor reports against the shared schema.
+- Starter Console: Reads backend settings via `get_settings()`, performs provider parity checks, manages auth keys (file or secret-manager), and emits doctor reports against the shared schema.
 - Frontend (Next.js): Does not import this package directly; benefits indirectly from consistent backend/CLI configuration.
 
 ## Key modules

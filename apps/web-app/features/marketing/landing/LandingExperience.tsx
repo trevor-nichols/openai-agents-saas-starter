@@ -73,7 +73,7 @@ export function LandingExperience() {
               Keep the agent console, billing surfaces, and ops rails intact while you focus on the workflows that make your product unique.
             </p>
             <ul className="space-y-2 text-foreground/80">
-              <li>• Clone, hydrate envs with Starter CLI, deploy.</li>
+              <li>• Clone, hydrate envs with Starter Console, deploy.</li>
               <li>• Auth, RBAC, billing, status, and observability already wired.</li>
               <li>• Feature directories keep UI and data flows organized.</li>
             </ul>

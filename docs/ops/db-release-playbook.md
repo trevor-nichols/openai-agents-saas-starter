@@ -10,7 +10,7 @@ This runbook codifies the order-of-operations for shipping schema changes and bi
 | SRE/on-call | Provides Postgres access, observes infra metrics, and enforces the checklist in CI/CD.
 
 ## Prerequisites
-1. **Environment parity** – `apps/api-service/.env.local` / deployment secrets contain the target `DATABASE_URL`, Redis URLs, and provider keys. Run `cd packages/starter_cli && python -m starter_cli.app config dump-schema` if you need to confirm coverage.
+1. **Environment parity** – `apps/api-service/.env.local` / deployment secrets contain the target `DATABASE_URL`, Redis URLs, and provider keys. Run `cd packages/starter_console && starter-console config dump-schema` if you need to confirm coverage.
 2. **Secrets** – `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and the desired `STRIPE_PRODUCT_PRICE_MAP` entries are available (from prior runs or the upcoming release).
 3. **Tooling** – Hatch environment created (`just bootstrap`), Docker/Compose available if you need local Postgres, and Stripe CLI installed+authenticated when using automation for Stripe provisioning.
 4. **Access** – Operator can reach the deployment Postgres instance (psql/SSL tunnels). Verify credentials by running `psql $DATABASE_URL -c 'select 1'` prior to the window.
@@ -21,7 +21,7 @@ Run this list **before** touching production:
 - [ ] Ensure no pending Alembic revisions on the source branch (`hatch run alembic -c api-service/alembic.ini heads`).
 - [ ] Verify Postgres reachability (`psql $DATABASE_URL -c 'select version();'`).
 - [ ] Run `just migrate` against a staging environment to smoke-test the revision.
-- [ ] Validate provider inputs with `cd packages/starter_cli && python -m starter_cli.app providers validate` so Stripe/Resend/OpenAI keys exist before billing is enabled.
+- [ ] Validate provider inputs with `cd packages/starter_console && starter-console providers validate` so Stripe/Resend/OpenAI keys exist before billing is enabled.
 - [ ] Confirm Stripe CLI authentication: `stripe whoami` should succeed (skip when using purely manual plan updates).
 
 ## Execution Order
@@ -30,7 +30,7 @@ Run this list **before** touching production:
 Run the release helper whenever you promote a backend build:
 
 ```bash
-python -m starter_cli.app release db \
+starter-console release db \
   --summary-path var/reports/db-release-$(date -u +%Y%m%dT%H%M%SZ).json
 ```
 
@@ -60,7 +60,7 @@ The command executes the following steps:
 
 2. **Stripe plan seeding**
    ```bash
-   python -m starter_cli.app stripe setup \
+   starter-console stripe setup \
      --non-interactive \
      --secret-key $STRIPE_SECRET_KEY \
      --webhook-secret $STRIPE_WEBHOOK_SECRET \
@@ -79,7 +79,7 @@ The command executes the following steps:
    ```
    Confirm both `starter` and `pro` rows exist, are active, and have Stripe price IDs referenced in `apps/api-service/.env.local`.
 
-4. **Provider sanity** – `cd packages/starter_cli && python -m starter_cli.app providers validate` and `cd packages/starter_cli && python -m starter_cli.app status summary` (if available) should both return success.
+4. **Provider sanity** – `cd packages/starter_console && starter-console providers validate` and `cd packages/starter_console && starter-console status summary` (if available) should both return success.
 
 ## Evidence Capture
 - Automation mode stores `var/reports/db-release-*.json`. Upload the file to your release record/PR and attach console logs.
@@ -102,7 +102,7 @@ No. `AUTO_RUN_MIGRATIONS` remains `false` outside local dev, so pods refuse to a
 Use the `--skip-stripe` flag (once the release command lands) and follow the manual plan seeding steps. Attach the manual evidence to the release summary.
 
 **Q: How do I know which database the CLI targets?**
-`just migrate` loads env files via `starter_cli util run-with-env`, respecting `.env.compose` + `apps/api-service/.env.local`. Confirm `DATABASE_URL` before running the commands, especially when using remote Postgres.
+`just migrate` loads env files via `starter-console util run-with-env`, respecting `.env.compose` + `apps/api-service/.env.local`. Confirm `DATABASE_URL` before running the commands, especially when using remote Postgres.
 
 **Q: When should this runbook be updated?**
 Whenever a new migration workflow, plan catalog change, or CLI flag lands. Log the update in `docs/trackers/MILESTONE_DB_RELEASE_AUTOMATION.md` and reference the change in release notes.

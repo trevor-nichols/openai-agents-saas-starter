@@ -20,7 +20,7 @@ violations halt the process immediately so health probes never turn green with a
 
 1. **Runtime:** importing `app.main` triggers the same validation, so `cd apps/api-service && hatch run serve`,
    `pytest`, and CI Gunicorn boots all share the guard.
-2. **Operator CLI:** run `cd packages/starter_cli && python -m starter_cli.app providers validate` (or
+2. **Operator console:** run `cd packages/starter_console && starter-console providers validate` (or
    `just validate-providers`). The command loads `.env.compose` and `apps/api-service/.env.local`,
    reuses the backend validator, and exits non-zero whenever billing is enabled but Stripe vars are
    missing—even in local/dev mode—to stay consistent with FastAPI startup. Pass `--strict` to treat
@@ -39,7 +39,7 @@ The validator surfaces structured log output similar to:
 
 1. Inspect `apps/api-service/.env.local` (or the secrets source for your deployed environment) and populate the
    missing variables listed in the error message.
-2. Rerun `cd packages/starter_cli && python -m starter_cli.app providers validate --strict` to confirm the issue is resolved.
+2. Rerun `cd packages/starter_console && starter-console providers validate --strict` to confirm the issue is resolved.
 3. Redeploy the backend only after the validator returns success.
 
 ### Provider-specific notes
@@ -55,4 +55,4 @@ The validator surfaces structured log output similar to:
 
 - Issue tracker row: `docs/trackers/ISSUE_TRACKER.md#L54`.
 - Detailed milestone log: `docs/trackers/OPS-003_THIRD_PARTY_ENV_PARITY.md`.
-- CLI reference: `starter_cli/README.md` (Providers command section).
+- Console reference: `starter_console/README.md` (Providers command section).

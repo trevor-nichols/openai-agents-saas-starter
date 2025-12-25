@@ -10,4 +10,4 @@
 - Activity log: merged divergent Alembic heads into `20251202_120000` to unblock deployment; tracker rollout notes updated.
 
 ## v0.1.0
-- Initial pre-release scaffold for FastAPI backend, Next.js frontend, and Starter CLI.
+- Initial pre-release scaffold for FastAPI backend, Next.js frontend, and Starter Console.

@@ -82,7 +82,7 @@ These guardrails prevent Homebrew/pyenv Pythons from shadowing the repo’s virt
 
 ### 3. Environment Configuration
 
-Copy `apps/api-service/.env.local.example` to `apps/api-service/.env.local` and configure every secret (do **not** reuse the sample values outside local dev). Sections are labeled to indicate what is **required** vs **optional** in production; the CLI setup wizard will surface the same groupings. Highlights:
+Copy `apps/api-service/.env.local.example` to `apps/api-service/.env.local` and configure every secret (do **not** reuse the sample values outside local dev). Sections are labeled to indicate what is **required** vs **optional** in production; the console setup wizard will surface the same groupings. Highlights:
 
 ```bash
 # Core application (required)
@@ -162,34 +162,34 @@ RESEND_BASE_URL=https://api.resend.com
 RESEND_EMAIL_VERIFICATION_TEMPLATE_ID=
 RESEND_PASSWORD_RESET_TEMPLATE_ID=
 
-# Vault Transit (Starter CLI sets true for staging/production)
+# Vault Transit (Starter Console sets true for staging/production)
 VAULT_VERIFY_ENABLED=false
 VAULT_ADDR=
 VAULT_TOKEN=
 VAULT_TRANSIT_KEY=auth-service
 ```
 
-Flip `RESEND_EMAIL_ENABLED=true` only after you have verified the sender domain inside Resend and populated both `RESEND_API_KEY` and `RESEND_DEFAULT_FROM`. Leave the template ID and Vault fields empty for local development—the backend uses safe defaults until you enable those features—but treat every pepper/secret as mandatory before staging or production. As of November 2025 the API refuses to boot with `ENVIRONMENT` other than `development/dev/demo/test` (or with `DEBUG=false`) unless `VAULT_VERIFY_ENABLED=true` **and** the Vault fields are populated. The Starter CLI wizard enforces this automatically for `--profile staging|production` runs, prompting for Vault Transit connectivity and writing the necessary env vars.
+Flip `RESEND_EMAIL_ENABLED=true` only after you have verified the sender domain inside Resend and populated both `RESEND_API_KEY` and `RESEND_DEFAULT_FROM`. Leave the template ID and Vault fields empty for local development—the backend uses safe defaults until you enable those features—but treat every pepper/secret as mandatory before staging or production. As of November 2025 the API refuses to boot with `ENVIRONMENT` other than `development/dev/demo/test` (or with `DEBUG=false`) unless `VAULT_VERIFY_ENABLED=true` **and** the Vault fields are populated. The Starter Console wizard enforces this automatically for `--profile staging|production` runs, prompting for Vault Transit connectivity and writing the necessary env vars.
 
-### Unified CLI (backend + frontend tooling)
+### Unified Console (backend + frontend tooling)
 
-Prefer not to edit env files manually? Run the consolidated operator CLI:
+Prefer not to edit env files manually? Run the consolidated operator console:
 
 ```bash
-python -m starter_cli.app setup wizard        # full interactive flow
+starter-console setup wizard        # full interactive flow
 just cli cmd="setup wizard --profile=production"  # helper wrapper
-python -m starter_cli.app infra deps          # check Docker/Hatch/Node/pnpm availability
-python -m starter_cli.app infra compose up    # start Postgres + Redis via docker compose
-python -m starter_cli.app infra vault up      # run the Vault dev signer helper
+starter-console infra deps          # check Docker/Hatch/Node/pnpm availability
+starter-console infra compose up    # start Postgres + Redis via docker compose
+starter-console infra vault up      # run the Vault dev signer helper
 ```
 
-The wizard now walks through profiles (demo/staging/production), captures required vs. optional secrets, verifies Vault Transit connectivity before enabling service-account issuance, validates Stripe/Redis/Resend inputs (with optional migration + seeding helpers), and records tenant/logging/GeoIP/signup policies so auditors can trace every decision. It writes `apps/api-service/.env.local` + `web-app/.env.local`, then emits a milestone-aligned report. Stripe provisioning and auth tooling now live exclusively under the consolidated CLI (`python -m starter_cli.app stripe …`, `python -m starter_cli.app auth …`).
+The wizard now walks through profiles (demo/staging/production), captures required vs. optional secrets, verifies Vault Transit connectivity before enabling service-account issuance, validates Stripe/Redis/Resend inputs (with optional migration + seeding helpers), and records tenant/logging/GeoIP/signup policies so auditors can trace every decision. It writes `apps/api-service/.env.local` + `web-app/.env.local`, then emits a milestone-aligned report. Stripe provisioning and auth tooling now live exclusively under the consolidated console (`starter-console stripe …`, `starter-console auth …`).
 
 After the wizard, use the new `infra` command group instead of raw Just recipes:
 
-- `python -m starter_cli.app infra compose up|down|logs|ps` – wraps `just dev-*` helpers for Docker Compose.
-- `python -m starter_cli.app infra vault up|down|logs|verify` – manages the Vault dev signer lifecycle.
-- `python -m starter_cli.app config dump-schema --format table` – lists every backend env var, its default, and whether the wizard collected it. The full inventory also lives in `docs/trackers/CLI_ENV_INVENTORY.md`.
+- `starter-console infra compose up|down|logs|ps` – wraps `just dev-*` helpers for Docker Compose.
+- `starter-console infra vault up|down|logs|verify` – manages the Vault dev signer lifecycle.
+- `starter-console config dump-schema --format table` – lists every backend env var, its default, and whether the wizard collected it. The full inventory also lives in `docs/trackers/CONSOLE_ENV_INVENTORY.md`.
 - `just cli-verify-env` – runs the inventory verification script to ensure the markdown table stays in sync with the runtime schema (useful in CI or before merging infra changes).
 - Every wizard run writes a JSON audit report (default `var/reports/setup-summary.json`; override via `--summary-path`) so you can archive the collected inputs alongside deployment artifacts.
 
@@ -204,7 +204,7 @@ The API will be available at `http://localhost:8000`
 > **Compose vs. application env files**
 > - `.env.compose` (gitignored; copy from `.env.compose.example`) holds non-sensitive defaults that Docker Compose and local helpers consume (ports, default credentials, feature toggles). It is safe to edit locally.
 > - `apps/api-service/.env.local` (gitignored) contains your secrets and any overrides. The Make targets below source **both** files, so you never have to `export` variables manually.
-> - For demo development, `starter_cli setup wizard --profile demo` keeps the Docker Postgres settings (`POSTGRES_*`) and `DATABASE_URL` consistent, and `just dev-up` respects `STARTER_LOCAL_DATABASE_MODE` (defaults to `compose`).
+> - For demo development, `starter-console setup wizard --profile demo` keeps the Docker Postgres settings (`POSTGRES_*`) and `DATABASE_URL` consistent, and `just dev-up` respects `STARTER_LOCAL_DATABASE_MODE` (defaults to `compose`).
 
 ### 5. Database & Migrations
 
@@ -235,10 +235,10 @@ The API will be available at `http://localhost:8000`
 
 ### 6. Seed a Local Admin User
 
-Once Postgres is running and the new auth tables are migrated, create a bootstrap user via the CLI (the Just recipes automatically load both `.env.compose` and `apps/api-service/.env.local`):
+Once Postgres is running and the new auth tables are migrated, create a bootstrap user via the console (the Just recipes automatically load both `.env.compose` and `apps/api-service/.env.local`):
 
 ```bash
-python -m starter_cli.app users seed --email admin@example.com --tenant-slug default --role admin
+starter-console users seed --email admin@example.com --tenant-slug default --role admin
 ```
 
 You will be prompted for the password unless you pass `--password`. The command ensures the tenant exists, hashes the password with the configured pepper, stores password history, and prints the resulting credentials for quick testing.
@@ -313,11 +313,11 @@ curl -X POST "http://localhost:8000/api/v1/billing/tenants/tenant-123/usage" \
 
 #### Stripe configuration
 
-Billing routes now require Stripe credentials whenever `ENABLE_BILLING=true`. The quickest path is to run the consolidated operator CLI via `python -m starter_cli.app stripe setup` (aliased by `pnpm stripe:setup`), which prompts for your Stripe secret/webhook secrets, asks how much to charge for the Starter + Pro plans, and then creates/reuses the corresponding Stripe products/prices (7-day trial included). The CLI writes `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PRODUCT_PRICE_MAP` into `apps/api-service/.env.local` and flips `ENABLE_BILLING=true` for you. Prefer manual edits? You can still populate those keys yourself—just keep the JSON map in sync with your real Stripe price IDs. See `docs/billing/stripe-setup.md` for the full checklist.
+Billing routes now require Stripe credentials whenever `ENABLE_BILLING=true`. The quickest path is to run the consolidated operator console via `starter-console stripe setup` (aliased by `pnpm stripe:setup`), which prompts for your Stripe secret/webhook secrets, asks how much to charge for the Starter + Pro plans, and then creates/reuses the corresponding Stripe products/prices (7-day trial included). The console writes `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PRODUCT_PRICE_MAP` into `apps/api-service/.env.local` and flips `ENABLE_BILLING=true` for you. Prefer manual edits? You can still populate those keys yourself—just keep the JSON map in sync with your real Stripe price IDs. See `docs/billing/stripe-setup.md` for the full checklist.
 
 ## 📈 Observability & Logging
 
-- FastAPI + worker entrypoints call `app.observability.logging.configure_logging(get_settings())`, which wires the JSON formatter and sinks declared via `LOGGING_SINKS` (comma-separated). Supported sinks: `stdout`, `file`, `datadog`, `otlp`, `none` (mutually exclusive). When the Starter CLI flips `ENABLE_OTEL_COLLECTOR=true`, `LOGGING_OTLP_ENDPOINT` defaults to `http://otel-collector:4318/v1/logs`, so the app streams logs into the bundled OpenTelemetry Collector automatically. Set `LOGGING_DATADOG_API_KEY`/`LOGGING_DATADOG_SITE` or `LOGGING_OTLP_ENDPOINT` (+ optional `LOGGING_OTLP_HEADERS` JSON) before switching sinks; startup fails fast when configuration is incomplete.
+- FastAPI + worker entrypoints call `app.observability.logging.configure_logging(get_settings())`, which wires the JSON formatter and sinks declared via `LOGGING_SINKS` (comma-separated). Supported sinks: `stdout`, `file`, `datadog`, `otlp`, `none` (mutually exclusive). When the Starter Console flips `ENABLE_OTEL_COLLECTOR=true`, `LOGGING_OTLP_ENDPOINT` defaults to `http://otel-collector:4318/v1/logs`, so the app streams logs into the bundled OpenTelemetry Collector automatically. Set `LOGGING_DATADOG_API_KEY`/`LOGGING_DATADOG_SITE` or `LOGGING_OTLP_ENDPOINT` (+ optional `LOGGING_OTLP_HEADERS` JSON) before switching sinks; startup fails fast when configuration is incomplete.
 - Request middleware seeds a scoped `log_context`, so every `log_event(...)` down-stack inherits `correlation_id`, `tenant_id`, and `user_id` automatically. Background workers bind their own `worker_id`, ensuring Stripe replay jobs, Resend adapters, etc., land in the same pipeline. See `docs/architecture/structured-logging.md` for the canonical schema.
 - The bundled collector + exporter workflow is documented in `docs/observability/README.md`, including the env vars that control the collector container (`ENABLE_OTEL_COLLECTOR`, `OTEL_EXPORTER_SENTRY_*`, `OTEL_EXPORTER_DATADOG_*`, etc.) and how to forward logs to Sentry/Datadog in a few clicks.
 - Sample stdout entry:

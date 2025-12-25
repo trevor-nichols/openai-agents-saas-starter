@@ -26,7 +26,7 @@ Ship an "optimal" architecture pass: shrink shared surface to a versioned contra
 
 ### Phase 2 — CI Guardrails
 - [x] CI job: `just lint`, `hatch run typecheck`, `pnpm lint`, `pnpm type-check`.
-- [x] CLI dry-run job: `starter-cli setup --non-interactive --dry-run` (hermetic: SQLite/fakeredis, no network).
+- [x] CLI dry-run job: `starter-console setup --non-interactive --dry-run` (hermetic: SQLite/fakeredis, no network).
 - [x] SDK drift check: regenerate HeyAPI client and fail on diff.
 - [x] Platform smoke: backend health + JWKS endpoint + one agents-SDK call with fake providers.
  - Sign-off: 11/20/2025 by Codex

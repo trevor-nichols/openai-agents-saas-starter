@@ -114,7 +114,7 @@ export function AgentCatalogGrid({
     return (
       <EmptyState
         title="No agents registered yet"
-        description="Provision your first agent via the CLI or API."
+        description="Provision your first agent via the console or API."
         action={<Button disabled>Create agent</Button>}
       />
     );

@@ -1,6 +1,6 @@
 # Environment Answer Files
 
-Use this directory to version **templates** for the Starter CLI answer files. Actual staging or production credentials must never be committed—copy the template you need, fill in the values off-repo (or in a secure secrets bucket), and point the Just recipes at that file.
+Use this directory to version **templates** for the Starter Console answer files. Actual staging or production credentials must never be committed—copy the template you need, fill in the values off-repo (or in a secure secrets bucket), and point the Just recipes at that file.
 
 ## Workflow
 

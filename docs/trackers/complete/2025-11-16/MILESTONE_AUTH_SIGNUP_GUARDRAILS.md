@@ -4,7 +4,7 @@ _Last updated: November 16, 2025_
 
 ## Objective
 
-Reduce the attack surface of `/api/v1/auth/register` by moving the platform toward an invite/approval posture by default, adding operator-grade throttling controls, and ensuring both the FastAPI backend and Starter CLI expose the same guardrails.
+Reduce the attack surface of `/api/v1/auth/register` by moving the platform toward an invite/approval posture by default, adding operator-grade throttling controls, and ensuring both the FastAPI backend and Starter Console expose the same guardrails.
 
 ## Current Posture (Gap Analysis)
 
@@ -64,7 +64,7 @@ Reduce the attack surface of `/api/v1/auth/register` by moving the platform towa
 
 ## Dependencies & Owners
 - **Backend/Auth** (Platform Foundations) — settings, services, APIs, migrations, observability.
-- **Starter CLI** (Platform Foundations) — wizard prompts, audit output, docs.
+- **Starter Console** (Platform Foundations) — wizard prompts, audit output, docs.
 - **Frontend** (Product Web) — register/request-access UX, CTA routing, TanStack queries for invites.
 - **Billing** (if plan selection is tied to invites) — confirm handshake for pre-provisioned plans.
 

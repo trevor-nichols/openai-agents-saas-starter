@@ -1,4 +1,4 @@
-"""Lightweight config bridge for the Agent Starter CLI.
+"""Lightweight config bridge for the Agent Starter Console.
 
 This module exposes a narrow, import-safe surface that lets CLI code obtain the
 backend's Pydantic settings without importing `api-service/src/app` directly at

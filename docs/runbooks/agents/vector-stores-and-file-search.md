@@ -100,7 +100,7 @@ Notes: Endpoints are tenant-gated; viewer can read/search, admin/owner can creat
   - `vector.total_bytes_per_tenant` (bytes)
   - `vector.files_per_store` (count)
   - `vector.stores_per_tenant` (count)
-- The starter CLI wizard can add these to `usage-entitlements.json`; otherwise defaults from settings are used.
+- The Starter Console wizard can add these to `usage-entitlements.json`; otherwise defaults from settings are used.
 
 ### Background sync worker (default ON)
 - Enabled by default (`ENABLE_VECTOR_STORE_SYNC_WORKER=true`) to refresh store/file status and apply expirations.

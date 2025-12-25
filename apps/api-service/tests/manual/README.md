@@ -22,7 +22,7 @@ hatch run pytest tests/manual/test_web_search_manual.py \
 ```
 Handy one-liner that loads `.env.local` (avoids skips for missing DEV_USER_PASSWORD/API keys):
 ```
-python -m starter_cli.app util run-with-env apps/api-service/.env.local -- \
+starter-console util run-with-env apps/api-service/.env.local -- \
   bash -lc "cd apps/api-service && hatch run pytest tests/manual/test_web_search_manual.py -m manual --run-manual --asyncio-mode=auto"
 ```
 

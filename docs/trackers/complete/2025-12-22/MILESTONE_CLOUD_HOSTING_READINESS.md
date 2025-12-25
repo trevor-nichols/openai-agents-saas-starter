@@ -5,7 +5,7 @@ _Last updated: 2025-12-22_
 **Status:** Completed  
 **Owner:** @codex  
 **Domain:** Cross-cutting  
-**ID / Links:** Docs: `README.md`, `docs/ops/`, `docs/security/`, `docs/trackers/CLI_ENV_INVENTORY.md`
+**ID / Links:** Docs: `README.md`, `docs/ops/`, `docs/security/`, `docs/trackers/CONSOLE_ENV_INVENTORY.md`
 
 ---
 
@@ -179,7 +179,7 @@ Make the starter production-ready for AWS and Azure hosting with a clean, cloud-
 
 - Backend: `cd apps/api-service && hatch run lint && hatch run typecheck`
 - Frontend: `cd apps/web-app && pnpm lint && pnpm type-check`
-- CLI: `cd packages/starter_cli && hatch run lint && hatch run typecheck`
+- CLI: `cd packages/starter_console && hatch run lint && hatch run typecheck`
 - Targeted tests for new storage providers + CLI onboarding.
 - Smoke run: build containers, run migrations, hit `/health` + `/health/ready` (API) and `/api/health/ready` (web).
 
@@ -201,7 +201,7 @@ Make the starter production-ready for AWS and Azure hosting with a clean, cloud-
 - Create signing secret + keyset secret in the chosen secret manager (or grant API `set` permission to create keyset).
 - Apply the AWS/Azure Terraform blueprint and capture outputs for URLs and endpoints.
 - Set `SECRETS_PROVIDER`, `AUTH_KEY_STORAGE_BACKEND=secret-manager`, `AUTH_KEY_STORAGE_PROVIDER`, and `AUTH_KEY_SECRET_NAME`.
-- Run migrations once per deploy (`just migrate` or `python -m starter_cli.app release db`).
+- Run migrations once per deploy (`just migrate` or `starter-console release db`).
 - Verify health endpoints and smoke test the UI.
 
 ---

@@ -71,7 +71,7 @@ This document codifies how the Next.js frontend talks to the FastAPI backend. Ev
   - Keep the domain service for server-side orchestration.
   - Add a lightweight API route + fetch helper for browser access.  
 - Example: billing subscription flows now share `lib/api/billingSubscriptions.ts`, and `lib/queries/billingSubscriptions.ts` exclusively calls those helpers. Server components that need the same data can still import `lib/server/services/billing.ts`.  
-- Billing visibility: `NEXT_PUBLIC_ENABLE_BILLING` (default `false`) controls nav/pages/API routes/query `enabled` flags. The Starter CLI writes it to `apps/web-app/.env.local` alongside backend `ENABLE_BILLING` in `apps/api-service/.env.local`.
+- Billing visibility: `NEXT_PUBLIC_ENABLE_BILLING` (default `false`) controls nav/pages/API routes/query `enabled` flags. The Starter Console writes it to `apps/web-app/.env.local` alongside backend `ENABLE_BILLING` in `apps/api-service/.env.local`.
 - If a hook only ever runs in a server component, prefer a server action instead of creating a redundant `/api` route.
 
 ## Streaming Guidance

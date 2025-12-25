@@ -194,7 +194,7 @@ Expose agent-as-tool streaming as first-class, scoped events in the public SSE c
 - `cd apps/api-service && hatch run lint`
 - `cd apps/api-service && hatch run typecheck`
 - `cd apps/api-service && hatch run test tests/contract/streams/test_stream_goldens.py`
-- `cd packages/starter_cli && python -m starter_cli.app api export-openapi --output apps/api-service/.artifacts/openapi-fixtures.json --enable-billing --enable-test-fixtures`
+- `cd packages/starter_console && starter-console api export-openapi --output apps/api-service/.artifacts/openapi-fixtures.json --enable-billing --enable-test-fixtures`
 - `cd apps/web-app && OPENAPI_INPUT=../api-service/.artifacts/openapi-fixtures.json pnpm generate:fixtures`
 - `cd apps/web-app && pnpm lint`
 - `cd apps/web-app && pnpm type-check`

@@ -28,7 +28,7 @@ Ship tenant-facing auditing and revocation workflows for service-account refresh
 - Pydantic models for the above (request, response, pagination envelope).
 - Repository queries & service methods to support listing and revocation metadata (leveraging `ServiceAccountToken` table).
 - Frontend hooks/UI updates in `/(app)/account/service-accounts` to surface list + revoke flows (TanStack Query + Shadcn dialogs).
-- Starter CLI additions (`starter_cli tokens list-service-accounts`, `... revoke-service-account`) using authenticated API calls.
+- Starter Console additions (`starter-console tokens list-service-accounts`, `... revoke-service-account`) using authenticated API calls.
 - Docs & SNAPSHOT refresh plus this tracker.
 
 ## Out of Scope
@@ -62,7 +62,7 @@ Ship tenant-facing auditing and revocation workflows for service-account refresh
 3. **Service Layer**: Wrap repository calls in `AuthService` with tenant scoping + actor metadata for logging.
 4. **API Routes**: New module `routes_service_account_admin.py` under `app/api/v1/auth/` containing list/revoke endpoints using `SuccessResponse` patterns.
 5. **Frontend**: Update HeyAPI generation; create `useServiceAccountTokens` and `useRevokeServiceAccountToken` hooks; integrate into service-accounts page with confirmation modals.
-6. **CLI**: Extend `starter_cli.commands.auth` to reuse HTTP client config, support pagination, and share revoke confirmation prompts for interactive + headless flows.
+6. **CLI**: Extend `starter_console.commands.auth` to reuse HTTP client config, support pagination, and share revoke confirmation prompts for interactive + headless flows.
 7. **Docs/Tracking**: Refresh `SNAPSHOT.md`, data-access doc, and this tracker with status updates; announce in release notes.
 
 <!-- SECTION: Risks -->

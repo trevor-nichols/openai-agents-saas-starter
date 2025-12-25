@@ -3,7 +3,7 @@
 _Last updated: November 20, 2025_
 
 ## Objective
-Fold the local dev-user seeding flow into the Starter CLI setup wizard so operators never leave the TUI, keeping credentials safe and the experience consistent with existing automation phases.
+Fold the local dev-user seeding flow into the Starter Console setup wizard so operators never leave the TUI, keeping credentials safe and the experience consistent with existing automation phases.
 
 ## Scope & Exit Criteria
 | Area | In Scope | Exit Criteria |
@@ -23,10 +23,10 @@ Fold the local dev-user seeding flow into the Starter CLI setup wizard so operat
 ## Task List
 - [x] Add automation phase `DEV_USER` with profile gating to `demo` and dependency on migrations.
 - [x] Add “Dev User” section prompts (email, display, tenant slug/name, role, password/auto-generate).
-- [x] Implement reusable `seed_dev_user(...)` helper inside `starter_cli` (no disk secret leaks).
+- [x] Implement reusable `seed_dev_user(...)` helper inside `starter_console` (no disk secret leaks).
 - [x] Wire automation to run post-wizard, update UI + summary artifacts.
 - [x] Remove post-wizard `just seed-dev-user` call from `setup-demo-lite/full`; keep standalone recipe.
-- [x] Update docs: `starter_cli/README.md` and milestone tracker references.
+- [x] Update docs: `starter_console/README.md` and milestone tracker references.
 - [x] Add unit test covering automation gating + invocation.
 - [x] Add demo-token automation to mint a demo service-account token without starting the API.
 - [x] Add catalog entry for `demo-bot` service account (chat:write, conversations:read).

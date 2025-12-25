@@ -100,11 +100,9 @@ def test_scoped_code_interpreter_status_includes_container_mode() -> None:
         server_timestamp="2025-12-15T00:00:02Z",
     )
 
-    status_events = [
-        event
-        for event in events
-        if isinstance(event, ToolStatusEvent)
-        and isinstance(event.tool, CodeInterpreterTool)
-    ]
-    assert status_events, "Expected code_interpreter tool.status event in scoped stream"
-    assert status_events[0].tool.container_mode == "explicit"
+    code_tools: list[CodeInterpreterTool] = []
+    for event in events:
+        if isinstance(event, ToolStatusEvent) and isinstance(event.tool, CodeInterpreterTool):
+            code_tools.append(event.tool)
+    assert code_tools, "Expected code_interpreter tool.status event in scoped stream"
+    assert code_tools[0].container_mode == "explicit"

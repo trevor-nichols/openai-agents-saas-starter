@@ -20,7 +20,7 @@ Close the remaining data-layer gaps uncovered during the 11 Nov 2025 review so t
 ### 1. Vault-Signed Service-Account Issuance
 - [x] Add `issueVaultServiceAccountToken()` helper under `lib/server/services/auth/serviceAccounts.ts` that wraps `issueServiceAccountTokenApiV1AuthServiceAccountsIssuePost` with Vault headers and error mapping.
 - [x] Create `/app/api/auth/service-accounts/issue/route.ts` to proxy authenticated requests (owner-only) to the new helper and enforce Vault header presence.
-- [x] Update UI/CLI (Automation tab or starter CLI) to surface the new path and toggle between browser bridge vs. Vault issuance.
+- [x] Update UI/CLI (Automation tab or Starter Console) to surface the new path and toggle between browser bridge vs. Vault issuance.
 - [x] Document the flow in `docs/frontend/features/account-service-accounts.md` and `docs/security/vault-transit-signing.md`.
 
 ### 2. Billing Subscription Fetchers & Hooks

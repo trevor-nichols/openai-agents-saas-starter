@@ -2,18 +2,18 @@
 
 - **Status:** Draft (pending approval)
 - **Last Updated:** 2025-11-15
-- **Owners:** Platform Foundations · Starter CLI Maintainers · Backend Auth Pod
+- **Owners:** Platform Foundations · Starter Console Maintainers · Backend Auth Pod
 - **Slack Channel:** #proj-secrets-provider
 
 ## 1. Why
 
-Our SaaS starter currently hardcodes Vault as the only secrets/signing backend. HashiCorp’s licensing changes plus the desire for cheaper, turnkey options mean operators need alternatives (Infisical, cloud-native stores, managed SaaS). Without first-class support in the Starter CLI and backend, teams either run insecure dev defaults in production or abandon the starter entirely. This milestone unlocks cost-flexible, production-ready secret management without compromising our architecture principles.
+Our SaaS starter currently hardcodes Vault as the only secrets/signing backend. HashiCorp’s licensing changes plus the desire for cheaper, turnkey options mean operators need alternatives (Infisical, cloud-native stores, managed SaaS). Without first-class support in the Starter Console and backend, teams either run insecure dev defaults in production or abandon the starter entirely. This milestone unlocks cost-flexible, production-ready secret management without compromising our architecture principles.
 
 ## 2. Success Criteria
 
 1. Backend and CLI share a `SecretProvider` abstraction selectable via config/CLI onboarding.
 2. Vault dev mode remains the default path and now uses the new abstraction (no regressions).
-3. Operators can run `starter_cli secrets onboard` to choose Vault Dev, HCP Vault, Infisical Cloud, or Infisical Self-Host and get working env scaffolding + validation.
+3. Operators can run `starter-console secrets onboard` to choose Vault Dev, HCP Vault, Infisical Cloud, or Infisical Self-Host and get working env scaffolding + validation.
 4. Documentation (`docs/security`) explains trade-offs, cost tiers, and runbooks for each provider.
 5. CI adds at least one smoke check to ensure the onboarding command does not regress (mocked providers acceptable).
 
@@ -27,11 +27,11 @@ Our SaaS starter currently hardcodes Vault as the only secrets/signing backend. 
 ### Phase 1 — Abstraction & Registry (ETA: 5 days)
 - Implement provider registry + DI hook in backend (`get_secret_provider` dependency).
 - Port existing Vault Transit client onto the new interface.
-- Mirror registry in Starter CLI; ensure current commands keep working.
+- Mirror registry in Starter Console; ensure current commands keep working.
 - Add configuration keys (`SECRETS_PROVIDER`, provider-specific blocks) to env templates.
 
 ### Phase 2 — CLI Onboarding UX (ETA: 4 days)
-- Add `starter_cli secrets onboard` with interactive + non-interactive flags.
+- Add `starter-console secrets onboard` with interactive + non-interactive flags.
 - Menu covers Vault Dev, HCP Vault, Infisical Cloud, Infisical Self-Host (others stubbed as “coming soon”).
 - Each path emits `apps/api-service/.env`/`apps/api-service/.env.local` snippets and runs a post-setup health check.
 - Integration tests mock external APIs (Vault sys/health, HCP, Infisical) to keep CI hermetic.
@@ -67,7 +67,7 @@ Our SaaS starter currently hardcodes Vault as the only secrets/signing backend. 
 
 ### 6.1 Current Vault Touchpoints
 - **Backend:** `app/infrastructure/security/vault.py` exposes `VaultTransitClient` used by `app/services/service_account_bridge.py` and auth routers for signature verification. Settings live under `app/core/settings/__init__.py` (`vault_addr`, `vault_token`, `vault_transit_key`, `vault_verify_enabled`). KV helpers for signing-key storage proxy through `starter_contracts.vault_kv`.
-- **CLI:** `starter_cli/services/auth/security/signing.py` builds Vault envelopes + signatures; `starter_cli/commands/auth.py` depends on Vault headers; setup wizard validators probe the Transit key; `starter_cli/commands/infra.py` shells into Make targets for dev Vault.
+- **CLI:** `starter_console/services/auth/security/signing.py` builds Vault envelopes + signatures; `starter_console/commands/auth.py` depends on Vault headers; setup wizard validators probe the Transit key; `starter_console/commands/infra.py` shells into Make targets for dev Vault.
 - **Shared:** `starter_contracts/config.py` exposes only the Vault-centric settings to the CLI; `starter_contracts/vault_kv.py` registers the KV client when `auth_key_storage_backend=secret-manager`.
 
 ### 6.2 SecretProvider Protocol (backend + CLI)
@@ -95,11 +95,11 @@ class SecretProviderProtocol(Protocol):
 
 ### 6.4 Provider Registry & DI
 - Backend registry module `app/infrastructure/secrets/registry.py` maps enum → provider factory, injects shared dependencies (httpx client, redis nonce store). `get_secret_provider()` FastAPI dependency caches the constructed provider per-process.
-- CLI registry `starter_cli/secrets/registry.py` mirrors enum mapping but creates lightweight helpers suitable for command execution (no FastAPI imports).
+- CLI registry `starter_console/secrets/registry.py` mirrors enum mapping but creates lightweight helpers suitable for command execution (no FastAPI imports).
 - Existing Vault client becomes `VaultSecretProvider` that implements the Protocol and wraps `VaultTransitClient` + nonce store.
 
 ### 6.5 CLI Onboarding Command
-- New command: `starter_cli secrets onboard [--provider ...] [--non-interactive --answers-file path]`.
+- New command: `starter-console secrets onboard [--provider ...] [--non-interactive --answers-file path]`.
 - Supported choices in Phase 1: `vault_dev` (runs `just vault-up`, captures printed envs), `hcp_vault` (prompts for HCP org/project + service principal, optionally hits HCP API), `infisical_cloud` (runs `infisical login/init`, captures workspace/env IDs), `infisical_self_host` (downloads Infisical compose bundle, runs docker compose up, collects admin token).
 - Output artifacts: `apps/api-service/.env.local` snippets for backend/frontend, optional CI secret checklist, post-setup validation summary.
 
@@ -119,7 +119,7 @@ class SecretProviderProtocol(Protocol):
 
 ## 8. Phase 2 Progress (2025-11-15)
 
-- Added `starter_cli secrets onboard` with shared command plumbing, answer-file support, non-interactive mode, and provider selection menu.
+- Added `starter-console secrets onboard` with shared command plumbing, answer-file support, non-interactive mode, and provider selection menu.
 - Vault Dev workflow now guides operators through `just vault-up`, gathers defaults (addr/token/transit key), and prints env snippets + warnings.
 - HCP Vault workflow prompts for addr/namespace/token/transit key, emits env entries, and documents follow-up tasks (Transit enablement, `just verify-vault`).
 - Infisical Cloud/Self-Host appear in the selector as “coming soon” so UX strings stay stable while backend support is under construction.
@@ -161,7 +161,7 @@ class SecretProviderProtocol(Protocol):
 
 - Added `aws_sm` config knobs + shared dataclasses (region, profile/keys, signing secret ARN, cache TTL) across backend + CLI settings.
 - Implemented `AWSSecretsManagerClient` and `AWSSecretsManagerProvider` (HMAC via Secrets Manager) plus unit coverage; registry now supports `aws_sm`.
-- `starter_cli secrets onboard` gained the AWS workflow (region/ARN/auth selection, AWS probe, env snippet output).
+- `starter-console secrets onboard` gained the AWS workflow (region/ARN/auth selection, AWS probe, env snippet output).
 - `docs/security/secrets-providers.md` updated with AWS row, env vars, runbook, and checklist updates.
 
 ## 13. Phase 6 Plan — Azure Key Vault Integration
@@ -192,7 +192,7 @@ class SecretProviderProtocol(Protocol):
 
 ## 15. Phase 7 Progress (2025-11-15)
 
-- Added opt-in telemetry controls: backend `ENABLE_SECRETS_PROVIDER_TELEMETRY` toggles logging of provider initialization, and the CLI honors `STARTER_CLI_TELEMETRY_OPT_IN` to emit anonymized onboarding events.
+- Added opt-in telemetry controls: backend `ENABLE_SECRETS_PROVIDER_TELEMETRY` toggles logging of provider initialization, and the CLI honors `STARTER_CONSOLE_TELEMETRY_OPT_IN` to emit anonymized onboarding events.
 - Updated `docs/security/secrets-providers.md` to explain telemetry toggles and privacy stance.
 - **Config additions**
 - `AZURE_KEY_VAULT_URL`, etc...

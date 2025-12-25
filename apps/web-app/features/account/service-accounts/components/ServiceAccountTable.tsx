@@ -81,7 +81,7 @@ export function ServiceAccountTable({ tokens, isLoading, onRevoke, disableRevoke
       columns={columns}
       data={tokens}
       isLoading={isLoading}
-      emptyState={<EmptyState title="No service-account tokens" description="Issue a token via the Starter CLI to see it here." />}
+      emptyState={<EmptyState title="No service-account tokens" description="Issue a token via the Starter Console to see it here." />}
     />
   );
 }

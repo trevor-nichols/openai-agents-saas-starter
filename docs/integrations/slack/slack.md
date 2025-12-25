@@ -31,7 +31,7 @@ rooms without custom code.
 
 ## Wizard Flow
 
-Run `python -m starter_cli.app setup wizard` (interactive or headless) and answer the new prompts in
+Run `starter-console setup wizard` (interactive or headless) and answer the new prompts in
 the **Integrations** milestone:
 
 1. “Enable Slack notifications for status incidents?” – toggles `ENABLE_SLACK_STATUS_NOTIFICATIONS`.
@@ -67,7 +67,7 @@ Headless runs can supply the same fields via answers files:
 ## Operational Tips
 
 - Keep the bot in every target channel (private channels require an explicit `/invite`).
-- Rotate the bot token like other secrets: re-run the wizard or `starter_cli config set` to update
+- Rotate the bot token like other secrets: re-run the wizard or `starter-console config set` to update
   the env file, then redeploy.
 - Slack announced on **29 May 2025** that APIs such as `conversations.history` now default to Tier 1
   rate limits (1 request/minute) for new non-Marketplace apps. Our notifier only posts messages, but
