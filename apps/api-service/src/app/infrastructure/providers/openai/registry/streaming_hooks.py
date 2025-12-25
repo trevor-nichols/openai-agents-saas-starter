@@ -21,6 +21,7 @@ def build_agent_tool_stream_handler(
     tool_stream_bus: StreamEventBus | None,
     tool_name: str,
     target_agent: Agent,
+    tool_stream_metadata: Mapping[str, Any] | None = None,
 ) -> AgentToolStreamHandler:
     if tool_stream_bus is None:
         return None
@@ -38,7 +39,7 @@ def build_agent_tool_stream_handler(
         mapped = map_stream_event(
             stream_event,
             response_id=response_id,
-            metadata=None,
+            metadata=tool_stream_metadata,
         )
         if mapped is None:
             return

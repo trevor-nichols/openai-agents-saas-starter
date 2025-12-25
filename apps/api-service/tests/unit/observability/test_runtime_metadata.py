@@ -26,6 +26,10 @@ class _DummyRegistry:
         _ = agent_key
         return []
 
+    def get_agent_tool_name_map(self, agent_key):  # pragma: no cover - simple stub
+        _ = agent_key
+        return {}
+
 
 class _DummyAgent:
     def __init__(self, model: str):

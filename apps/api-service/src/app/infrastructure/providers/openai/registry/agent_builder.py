@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib
 import inspect
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, cast
 
@@ -40,6 +40,7 @@ class BuildResult:
     agent: Agent
     code_interpreter_mode: str | None
     agent_tool_names: list[str] = field(default_factory=list)
+    agent_tool_map: dict[str, str] = field(default_factory=dict)
 
 
 class AgentBuilder:
@@ -71,6 +72,8 @@ class AgentBuilder:
         allow_unresolved_file_search: bool = False,
         static_agents: dict[str, Agent] | None = None,
         tool_stream_bus: StreamEventBus | None = None,
+        agent_tool_name_map_by_agent: Mapping[str, Mapping[str, str]] | None = None,
+        code_interpreter_modes: Mapping[str, str] | None = None,
     ) -> BuildResult:
         tool_selection = self._tool_resolver.select_tools(
             spec,
@@ -87,19 +90,21 @@ class AgentBuilder:
             instructions = prompt_with_handoff_instructions(instructions)
 
         handoff_targets = self._build_handoffs(spec, agents, static_agents=static_agents)
-        agent_tools = self._build_agent_tools(
+        agent_tools, agent_tool_map = self._build_agent_tools(
             spec=spec,
             spec_map=spec_map,
             agents=agents,
             tools=tool_selection.tools,
             static_agents=static_agents,
             tool_stream_bus=tool_stream_bus,
+            agent_tool_name_map_by_agent=agent_tool_name_map_by_agent,
+            code_interpreter_modes=code_interpreter_modes,
         )
 
         tools_with_agents = tool_selection.tools + agent_tools
         agent_tool_names = [
             name
-            for name in (getattr(tool, "name", None) for tool in agent_tools)
+            for name in agent_tool_map.keys()
             if isinstance(name, str) and name
         ]
 
@@ -135,6 +140,7 @@ class AgentBuilder:
             agent=agent,
             code_interpreter_mode=tool_selection.code_interpreter_mode,
             agent_tool_names=agent_tool_names,
+            agent_tool_map=agent_tool_map,
         )
 
     def _build_agent_tools(
@@ -146,12 +152,15 @@ class AgentBuilder:
         tools: list[Any],
         static_agents: dict[str, Agent] | None = None,
         tool_stream_bus: StreamEventBus | None = None,
-    ) -> list[Any]:
+        agent_tool_name_map_by_agent: Mapping[str, Mapping[str, str]] | None = None,
+        code_interpreter_modes: Mapping[str, str] | None = None,
+    ) -> tuple[list[Any], dict[str, str]]:
         if not getattr(spec, "agent_tool_keys", None):
-            return []
+            return [], {}
 
         existing_names = {getattr(t, "name", None) for t in tools if hasattr(t, "name")}
         results: list[Any] = []
+        tool_name_map: dict[str, str] = {}
 
         for agent_key in spec.agent_tool_keys:
             target_agent = agents.get(agent_key) or (static_agents or {}).get(agent_key)
@@ -223,11 +232,23 @@ class AgentBuilder:
                 )
             existing_names.add(final_name)
 
+            agent_name = getattr(target_agent, "name", None)
+            if not isinstance(agent_name, str) or not agent_name:
+                agent_name = agent_key
+            tool_name_map[final_name] = agent_name
+
+            tool_stream_metadata = _build_agent_tool_stream_metadata(
+                agent_key=agent_key,
+                agent_tool_name_map_by_agent=agent_tool_name_map_by_agent,
+                code_interpreter_modes=code_interpreter_modes,
+            )
+
             results.append(
                 cast(Any, target_agent).as_tool(
                     **_build_agent_tool_kwargs(
                         target_agent=target_agent,
                         tool_stream_bus=tool_stream_bus,
+                        tool_stream_metadata=tool_stream_metadata,
                         tool_name=final_name,
                         tool_description=desc_fallback,
                         custom_output_extractor=custom_output_extractor,
@@ -238,7 +259,7 @@ class AgentBuilder:
                 )
             )
 
-        return results
+        return results, tool_name_map
 
     def _build_handoffs(
         self,
@@ -397,6 +418,7 @@ def _build_agent_tool_kwargs(
     *,
     target_agent: Agent,
     tool_stream_bus: StreamEventBus | None,
+    tool_stream_metadata: Mapping[str, Any] | None,
     tool_name: str,
     tool_description: str,
     custom_output_extractor: Any,
@@ -416,6 +438,7 @@ def _build_agent_tool_kwargs(
         tool_stream_bus=tool_stream_bus,
         tool_name=tool_name,
         target_agent=target_agent,
+        tool_stream_metadata=tool_stream_metadata,
     )
     if stream_handler and _supports_on_stream(target_agent):
         kwargs["on_stream"] = stream_handler
@@ -427,6 +450,28 @@ def _supports_on_stream(agent: Agent) -> bool:
         return "on_stream" in inspect.signature(agent.as_tool).parameters
     except (TypeError, ValueError):  # pragma: no cover - defensive fallback
         return False
+
+
+def _build_agent_tool_stream_metadata(
+    *,
+    agent_key: str,
+    agent_tool_name_map_by_agent: Mapping[str, Mapping[str, str]] | None,
+    code_interpreter_modes: Mapping[str, str] | None,
+) -> Mapping[str, Any] | None:
+    metadata: dict[str, Any] = {}
+    tool_map = (
+        agent_tool_name_map_by_agent.get(agent_key)
+        if agent_tool_name_map_by_agent is not None
+        else None
+    )
+    if tool_map:
+        metadata["agent_tool_name_map"] = dict(tool_map)
+        metadata["agent_tool_names"] = list(tool_map.keys())
+    if code_interpreter_modes:
+        mode = code_interpreter_modes.get(agent_key)
+        if mode:
+            metadata["code_interpreter_mode"] = mode
+    return metadata or None
 
 
 __all__ = ["AgentBuilder", "BuildResult"]

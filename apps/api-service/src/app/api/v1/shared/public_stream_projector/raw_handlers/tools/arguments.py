@@ -19,7 +19,13 @@ from ...sanitize import sanitize_json, truncate_string
 from ...scopes import tool_scope
 from ...state import ProjectionState, ToolState
 from ...tooling import args_tool_type_from_raw_type, set_output_index_if_missing
-from ...utils import agent_tool_names_from_meta, as_dict, coerce_str, safe_json_parse
+from ...utils import (
+    agent_tool_name_map_from_meta,
+    agent_tool_names_from_meta,
+    as_dict,
+    coerce_str,
+    safe_json_parse,
+)
 
 
 def project_tool_arguments(
@@ -77,6 +83,10 @@ def project_tool_arguments(
             tool_type = "agent"
     if tool_state.tool_type == "function" and tool_type == "agent":
         tool_state.tool_type = "agent"
+
+    if tool_type == "agent" and tool_state.agent_name is None:
+        agent_tool_name_map = agent_tool_name_map_from_meta(event.metadata)
+        tool_state.agent_name = agent_tool_name_map.get(tool_name) or tool_state.agent_name
 
     if not isinstance(arguments_text, str):
         return []

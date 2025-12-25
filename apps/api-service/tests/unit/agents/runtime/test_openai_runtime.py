@@ -31,6 +31,9 @@ class DummyRegistry:
     def get_agent_tool_names(self, agent_key: str) -> list[str]:
         return []
 
+    def get_agent_tool_name_map(self, agent_key: str) -> dict[str, str]:
+        return {}
+
     @property
     def default_agent_key(self) -> str:  # pragma: no cover - not used
         return "test"

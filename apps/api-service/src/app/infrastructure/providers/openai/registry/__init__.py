@@ -91,7 +91,7 @@ class OpenAIAgentRegistry:
             self._specs = load_agent_specs()
         self._default_agent_key = default_agent_key(self._specs)
         self._code_interpreter_modes: dict[str, str] = {}
-        self._agent_tool_names: dict[str, list[str]] = {}
+        self._agent_tool_name_map: dict[str, dict[str, str]] = {}
         self._static_ctx = self._prompt_renderer.build_static_context()
 
         self._register_builtin_tools()
@@ -143,7 +143,11 @@ class OpenAIAgentRegistry:
         return self._code_interpreter_modes.get(agent_key)
 
     def get_agent_tool_names(self, agent_key: str) -> list[str]:
-        return list(self._agent_tool_names.get(agent_key, []))
+        tool_map = self._agent_tool_name_map.get(agent_key, {})
+        return list(tool_map.keys())
+
+    def get_agent_tool_name_map(self, agent_key: str) -> dict[str, str]:
+        return dict(self._agent_tool_name_map.get(agent_key, {}))
 
     def list_descriptors(self) -> Sequence[AgentDescriptor]:
         return self._descriptors.list()
@@ -196,11 +200,13 @@ class OpenAIAgentRegistry:
                 allow_unresolved_file_search=allow_unresolved_file_search,
                 static_agents=self._agents,
                 tool_stream_bus=tool_stream_bus,
+                agent_tool_name_map_by_agent=self._agent_tool_name_map,
+                code_interpreter_modes=self._code_interpreter_modes,
             )
             if build_result.code_interpreter_mode:
                 self._code_interpreter_modes[spec.key] = build_result.code_interpreter_mode
-            if build_result.agent_tool_names:
-                self._agent_tool_names[spec.key] = list(build_result.agent_tool_names)
+            if build_result.agent_tool_map:
+                self._agent_tool_name_map[spec.key] = dict(build_result.agent_tool_map)
             if register_static:
                 self._register_agent(spec, build_result.agent)
             agents[key] = build_result.agent
@@ -229,13 +235,14 @@ class OpenAIAgentRegistry:
         agents: dict[str, Agent],
         tools: list[Any],
     ) -> list[Any]:
-        return self._agent_builder._build_agent_tools(
+        agent_tools, _ = self._agent_builder._build_agent_tools(
             spec=spec,
             spec_map=spec_map,
             agents=agents,
             tools=tools,
             static_agents=self._agents,
         )
+        return agent_tools
 
     def _make_handoff_input_filter(self, policy: str):
         # Backwards-compatible helper used in tests.

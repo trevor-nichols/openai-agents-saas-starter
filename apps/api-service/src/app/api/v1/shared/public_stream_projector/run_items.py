@@ -19,7 +19,13 @@ from .sanitize import sanitize_json, truncate_string
 from .scopes import tool_scope
 from .state import ProjectionState, ToolState, ToolType
 from .tooling import tool_name_from_run_item
-from .utils import agent_tool_names_from_meta, as_dict, coerce_str, extract_urls
+from .utils import (
+    agent_tool_name_map_from_meta,
+    agent_tool_names_from_meta,
+    as_dict,
+    coerce_str,
+    extract_urls,
+)
 
 
 def _coerce_bool(value: object) -> bool | None:
@@ -99,6 +105,10 @@ def project_event(
     if tool_type == "agent":
         tool_state.tool_type = "agent"
     tool_state.tool_name = tool_name
+
+    if tool_type == "agent" and tool_state.agent_name is None:
+        agent_tool_name_map = agent_tool_name_map_from_meta(event.metadata)
+        tool_state.agent_name = agent_tool_name_map.get(tool_name) or tool_state.agent_name
     scope = tool_scope(tool_call_id, state=state)
 
     if tool_type == "mcp":

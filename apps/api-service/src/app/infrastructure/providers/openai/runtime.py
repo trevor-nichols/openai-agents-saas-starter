@@ -242,9 +242,10 @@ class OpenAIAgentRuntime(AgentRuntime):
         mode = self._registry.get_code_interpreter_mode(agent_key)
         if mode:
             base_metadata["code_interpreter_mode"] = mode
-        agent_tool_names = self._registry.get_agent_tool_names(agent_key)
-        if agent_tool_names:
-            base_metadata["agent_tool_names"] = agent_tool_names
+        agent_tool_name_map = self._registry.get_agent_tool_name_map(agent_key)
+        if agent_tool_name_map:
+            base_metadata["agent_tool_name_map"] = agent_tool_name_map
+            base_metadata["agent_tool_names"] = list(agent_tool_name_map.keys())
         if safe_metadata:
             return {**base_metadata, **safe_metadata}
         return base_metadata

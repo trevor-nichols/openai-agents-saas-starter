@@ -71,6 +71,55 @@ Expose agent-as-tool streaming as first-class, scoped events in the public SSE c
 
 ---
 
+<!-- SECTION: Professional Implementation Guidance -->
+## Professional Implementation Guidance (SDK → Domain → Public SSE → UI)
+
+**Goals:** maintain clean boundaries, avoid duplication, preserve SSE invariants, and keep the UI simple.
+
+### 1) Provider boundary (OpenAI Agents SDK)
+- The SDK is the *only* provider-specific layer. Everything above consumes provider-neutral `AgentStreamEvent`.
+- Use `Agent.as_tool(on_stream=...)` to capture **nested** agent stream events into a small async bus.
+- Map SDK events once via the shared mapper; **do not** fork scoped vs. root mapping logic.
+
+### 2) Domain layer (provider-neutral)
+- `AgentStreamEvent` owns the optional `scope` envelope; nested events never mutate root state.
+- Root events remain the only ones allowed to trigger terminal `final|error`.
+
+### 3) Public SSE projector
+- Maintain a **separate ProjectionState per scope** to prevent nested events from corrupting root invariants.
+- Project scoped events with the same envelope fields (`conversation_id`, `response_id`) as the root stream.
+- Attach `scope` only; never re-route or special-case downstream consumers.
+
+### 4) Web app
+- Keep root tool accumulator and scoped tool-stream accumulator separate.
+- Render scoped events under the parent tool card by `tool_call_id` with no backend bypasses or UI hacks.
+
+### Design invariants
+- **Single mapping path** for SDK → `AgentStreamEvent` (no scoped-only mapping).
+- **Single contract** for public SSE; `scope` is additive and optional.
+- **Scoped events never terminate** the root stream.
+
+---
+
+<!-- SECTION: Planned Professional Refinements -->
+## Planned Professional Refinements (No UI Workarounds)
+
+### R1 — Seed agent-tool status with agent name (no race on scoped events)
+**Problem:** `tool.status` for agent tools can emit before scoped events arrive, leaving `tool.agent` blank.  
+**Fix:** propagate a minimal, safe mapping of `{ tool_name → agent_name }` (or `{ tool_call_id → agent_name }` when available) from the provider metadata into the projector state so `tool.status` can be enriched immediately.
+
+### R2 — Preserve nested tool typing in scoped streams
+**Problem:** scoped mapping currently drops metadata, so nested tools inside agent-tools may be typed as generic functions and lose code-interpreter context.  
+**Fix:** pass a minimal metadata bundle into the scoped mapper (e.g., `agent_tool_names`, `code_interpreter_mode`) so nested tool typing remains correct without leaking provider details.
+
+### R3 — Keep invariants explicit in contract docs & tests
+**Problem:** scoped behavior depends on ordering and terminal invariants.  
+**Fix:** add/confirm contract assertions that scoped events:
+1) never emit terminal events, and  
+2) always include root `conversation_id`/`response_id`.
+
+---
+
 <!-- SECTION: Workstreams & Tasks -->
 ## Workstreams & Tasks
 

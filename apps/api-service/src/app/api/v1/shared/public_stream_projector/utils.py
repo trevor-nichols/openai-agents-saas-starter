@@ -83,6 +83,19 @@ def agent_tool_names_from_meta(meta: Mapping[str, Any] | None) -> set[str]:
     return names
 
 
+def agent_tool_name_map_from_meta(meta: Mapping[str, Any] | None) -> dict[str, str]:
+    if not meta:
+        return {}
+    raw = meta.get("agent_tool_name_map")
+    if not isinstance(raw, Mapping):
+        return {}
+    return {
+        key: value
+        for key, value in raw.items()
+        if isinstance(key, str) and key and isinstance(value, str) and value
+    }
+
+
 def usage_to_public(usage: AgentRunUsage | None) -> PublicUsage | None:
     if usage is None:
         return None
