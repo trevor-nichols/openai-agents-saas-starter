@@ -1,7 +1,7 @@
 You are a professional engineer and developer in charge of the OpenAI Agent SaaS Starter Codebase. The OpenAI Agent SaaS Starter Codebase contains a Next.js 16 frontend and a FastAPI backend. The FastAPI backend is based on the latest new OpenAI Agents SDK (v0.6.1) and uses the brand new OpenAI models (gpt-5.1, gpt-5.2, and gpt-5-mini), each with reasoning capabilities (none|minimal|low|medium|high). 
 
 # Overview
-- This is a SaaS starter repo developers can easily clone and quickly set up their own AI Agent SaaS website. It is a pre-release (no data this and has not been distributed) which you are responsible for getting production ready for release.
+- This is a SaaS starter repo developers can easily clone and quickly set up their own AI Agent SaaS website. It is a pre-release (no data and not yet distributed) which you are responsible for getting production ready for release.
 
 ## Backend
 - Request auth funnels through FastAPI dependencies into JWT-backed services
@@ -26,7 +26,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent SaaS
   - Never bypass `just migrate` or edit `alembic_version` directly; fix multi-heads with merge revisions, not deletes.
 
 ### Workflow orchestration (API service)
-- Declarative specs live in `api-service/src/app/workflows/**/spec.py`. You can define either a flat `steps` list (legacy) or explicit `stages`.
+- Declarative specs live in `api-service/src/app/workflows/**/spec.py`. You can define either a flat `steps` list or explicit `stages`.
 - `WorkflowStage` supports `mode="sequential"` or `mode="parallel"` plus an optional `reducer` (`outputs, prior_steps -> next_input`) for fan-out/fan-in.
 - `WorkflowStep` retains guard + input_mapper hooks and per-step `max_turns`. Registry validation ensures agent keys exist and, unless `allow_handoff_agents=True`, blocks handoff-enabled agents.
 - Runner wraps executions in `agents.trace`, tags step records and SSE events with `stage_name` / `parallel_group` / `branch_index`, and uses reducers to merge parallel outputs before downstream stages.
@@ -111,7 +111,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent SaaS
 - Rule of thumb: generic everywhere → `ui`; cross-page domain → `features`; single route-group shell → `app/(group)/_components`.
 
 ## CLI Charter – Starter CLI (SC)
-- **Purpose:** The SC is the single operator entrypoint for provisioning secrets, wiring third-party providers, generating env files for both the FastAPI backend and the Next.js frontend, and exporting audit artifacts. It replaces the legacy branding from earlier iterations.
+- **Purpose:** The SC is the single operator entrypoint for provisioning secrets, wiring third-party providers, generating env files for both the FastAPI backend and the Next.js frontend, and exporting audit artifacts. It uses the current Starter CLI branding.
 - **Boundaries:** SC never imports `api-service/src/app` modules directly. Shared logic (key generation, schema validation) must live in neutral `starter_contracts/*` modules to keep imports acyclic and to allow the CLI to run without initializing the server stack.
 - **Execution modes:** Every workflow supports interactive prompts for first-time operators and headless execution via flags (`--non-interactive`, `--answers-file`, `--var`) so CI/CD can drive the same flows deterministically.
 - **Testing contract:** Importing `python -m starter_cli.app` must be side-effect free (no DB/Vault connections). Unit tests stub network calls, and the repo-root `conftest.py` enforces SQLite/fakeredis overrides for all CLI modules.
@@ -123,10 +123,11 @@ You are a professional engineer and developer in charge of the OpenAI Agent SaaS
 
 # Development Guidelines
 - You must maintain a professional clean architecture, referring to the documentations of the OpenAI Agents SDK and the `docs/openai-agents-sdk` and `docs/integrations/openai-responses-api` directories during development in order to ensure you abide by the latest API framework. 
-- Avoid feature gates/flags and any backwards compability changes - since our app is still unreleased
+- Avoid feature gates/flags and any backward compatibility changes - since our app is still unreleased
 - **After Your Edits**
   - **Backend**: Run `hatch run lint` and `hatch run typecheck` (Pyright + Mypy) after all edits in backend; CI blocks merges on `hatch run typecheck`, so keep it green locally.
-  - **Fronted**: Run `pnpm lint` and `pnpm type-check` after all edits in frontend to ensure there are no errors
+  - **Frontend**: Run `pnpm lint` and `pnpm type-check` after all edits in frontend to ensure there are no errors
+  - **CLI**: Run `cd packages/starter_cli && hatch run lint` and `cd packages/starter_cli && hatch run typecheck` after all CLI edits to keep the package green.
 - Keep FastAPI routers roughly ≤300 lines by default—split files when workflows/dependencies diverge, but it’s acceptable for a single router to exceed that limit when it embeds tightly coupled security or validation helpers; extract those helpers into shared modules only once they are reused elsewhere.
 - Avoid Pragmatic coupling
 - Repo automation now lives in `justfile`; run `just help` to view tasks and prefer those recipes over ad-hoc commands. Use the Just recipes for infra + DB tasks (e.g., `just migrate`, `just start-backend`, `just test-unit`) instead of invoking alembic/uvicorn/pytest directly.
@@ -143,12 +144,12 @@ You are a professional engineer and developer in charge of the OpenAI Agent SaaS
 - Refer to `docs/trackers/` for the latest status of the codebase. Keep these trackers up to date with the latest changes and status of the codebase.
 - When applying database migrations or generating new ones, always use the Just recipes (`just migrate`, `just migration-revision message="..."`) so your `apps/api-service/.env.local` secrets and `.env.compose` values are loaded consistently. These wrappers take care of wiring Alembic to the right Postgres instance (local Docker or remote) without manual exports.
 - Need to test Vault Transit locally? Use `just vault-up` to start the dev signer, `just verify-vault` to run the CLI issuance smoke test, and `just vault-down` when you’re done. Details live in `docs/security/vault-transit-signing.md`.
-- Thishe repo hasn’t shipped a “stable” release yet, so we don’t carry any backward-compat baggage.
+- This repo hasn’t shipped a “stable” release yet, so we don’t carry any backward-compat baggage.
 - When you come across a situation where you need the latest documentation, use your web search tool
 
 ## Local Logs (one place)
 - All local logs live under `var/log/<YYYY-MM-DD>/` at the repo root (`var/log/current` points to today).
-- Backend (FastAPI): `var/log/current/api/all.log` and `error.log` (requires `LOGGING_SINK=file`, set in `apps/api-service/.env.local`).
+- Backend (FastAPI): `var/log/current/api/all.log` and `error.log` (requires `LOGGING_SINKS=file`, set in `apps/api-service/.env.local`).
 - Frontend (Next dev): `var/log/current/frontend/all.log` and `error.log` via the bundled log tee used by `pnpm dev`.
 - CLI (detached runs): `var/log/current/cli/*.log` per process when started with `just start-dev -- --detached`.
 - Quick tail: `python -m starter_cli.app logs tail --service api --service frontend --errors`.
