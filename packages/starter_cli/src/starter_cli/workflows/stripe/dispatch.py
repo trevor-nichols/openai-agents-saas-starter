@@ -9,7 +9,7 @@ from typing import Any
 
 from starter_cli.core import CLIContext, CLIError
 from starter_cli.ports.console import ConsolePort
-from starter_cli.services.backend_scripts import extract_json_payload, run_backend_script
+from starter_cli.services.infra.backend_scripts import extract_json_payload, run_backend_script
 
 
 @dataclass(slots=True)
@@ -170,6 +170,7 @@ def _run_backend_dispatch(
         script_name="stripe_dispatch.py",
         args=args,
         env_overrides={"DATABASE_ECHO": "false"},
+        ctx=ctx,
     )
     if completed.returncode != 0:
         stderr = (completed.stderr or "").strip()

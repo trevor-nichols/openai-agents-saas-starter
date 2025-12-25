@@ -307,7 +307,6 @@ def _wizard_action() -> SetupAction:
     return SetupAction(
         key="wizard",
         label="Run setup wizard",
-        command=["python", "-m", "starter_cli.app", "setup", "wizard"],
         route="wizard",
         warn_overwrite=True,
     )
@@ -317,7 +316,7 @@ def _secrets_action() -> SetupAction:
     return SetupAction(
         key="secrets_onboard",
         label="Run secrets onboard",
-        command=["python", "-m", "starter_cli.app", "secrets", "onboard"],
+        route="secrets",
     )
 
 
@@ -325,7 +324,7 @@ def _stripe_action() -> SetupAction:
     return SetupAction(
         key="stripe_setup",
         label="Run stripe setup",
-        command=["python", "-m", "starter_cli.app", "stripe", "setup"],
+        route="stripe",
         warn_overwrite=True,
     )
 
@@ -334,7 +333,7 @@ def _release_action() -> SetupAction:
     return SetupAction(
         key="release_db",
         label="Run db release",
-        command=["python", "-m", "starter_cli.app", "release", "db"],
+        route="release-db",
     )
 
 
@@ -342,7 +341,7 @@ def _usage_action() -> SetupAction:
     return SetupAction(
         key="usage_export",
         label="Export usage report",
-        command=["python", "-m", "starter_cli.app", "usage", "export-report"],
+        route="usage",
     )
 
 
@@ -350,7 +349,6 @@ def _dev_user_action() -> SetupAction:
     return SetupAction(
         key="dev_user",
         label="Ensure dev user",
-        command=["python", "-m", "starter_cli.app", "users", "ensure-dev"],
     )
 
 

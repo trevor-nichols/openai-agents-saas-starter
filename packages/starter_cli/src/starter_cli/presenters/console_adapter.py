@@ -10,7 +10,7 @@ from starter_cli.ports.presentation import Presenter
 
 @dataclass(slots=True)
 class PresenterConsoleAdapter(ConsolePort):
-    """Bridge a Presenter into the ConsolePort API used by legacy workflows."""
+    """Bridge a Presenter into the ConsolePort API used by workflow runners."""
 
     presenter: Presenter
     stream: TextIO = sys.stdout
@@ -80,8 +80,7 @@ class PresenterConsoleAdapter(ConsolePort):
         secret: bool = False,
         command_hook=None,
     ) -> str:
-        # command_hook is a legacy affordance; presenters are responsible for
-        # handling commands upstream if desired.
+        # command_hook is not used by presenter-driven flows; handle UI commands upstream.
         if secret:
             return self.presenter.prompt.prompt_secret(
                 key=key,

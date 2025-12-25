@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import IO
 
 from starter_cli.ports.console import ConsolePort
-from starter_cli.services import ops_models
+from starter_cli.services.infra import ops_models
 
 from .models import LaunchResult
 

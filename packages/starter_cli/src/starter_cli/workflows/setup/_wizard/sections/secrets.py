@@ -5,7 +5,7 @@ import json
 from starter_contracts.secrets.models import SecretsProviderLiteral
 
 from starter_cli.core import CLIError
-from starter_cli.services.security import rotate_signing_keys
+from starter_cli.services.auth.security import rotate_signing_keys
 from starter_cli.workflows.secrets import registry
 
 from ...automation import AutomationPhase, AutomationStatus

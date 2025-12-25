@@ -80,7 +80,7 @@ Feed-into next phases
 - Updated orchestration/tooling: root `justfile` delegates + CLI runners repointed; `tools/typecheck.py`, `pnpm-workspace.yaml` (apps/*, packages/*), `tsconfig.scripts.json` include path, compose vault volume, and package.json stripe script updated.
 - Refreshed path-sensitive utilities: CLI sys.path shims/workflows point to `apps/api-service`; smoke/check_secrets/moduleviz/assert-billing adjusted; CI workflows (backend + frontend) and compose mounts updated; vault compose now mounts `tools/vault`.
 - Docs/front-door touchups: README + AGENTS commands reflect new locations; `docs/CONTRACTS` and starter_cli README updated for tools/ + `apps/api-service` paths.
-- Follow-ups: sweep remaining doc references to legacy `scripts/` and root-level `python -m starter_cli.app` invocations (many trackers/runbooks) or add a compatibility shim; regenerate SNAPSHOTs after phase 3.
+- Follow-ups: sweep remaining doc references to prior `scripts/` and root-level `python -m starter_cli.app` invocations (many trackers/runbooks) or add a transition shim; regenerate SNAPSHOTs after phase 3.
 - Aggregate quality gates added at root (`just lint-all`, `just typecheck-all`). All lint/typecheck suites now passing after path fixes; API service justfile env_runner repointed to `packages/starter_cli`.
 
 ### Phase 3 — Tooling & config updates
@@ -88,7 +88,7 @@ Feed-into next phases
 - Root `justfile` delegates updated; added `lint-all` / `typecheck-all`; api-service env_runner now points to `packages/starter_cli`.
 - Type/lint runners adjusted (`tools/typecheck.py`), pyright/mypy paths fixed; api-service pyproject/pyrightconfig now resolve `../../packages/starter_contracts`.
 - CI workflows repointed (backend/frontend) and compose vault mount fixed; pnpm install run under `apps/web-app` after move.
-- Docs/trackers cleaned of legacy `scripts/` references in issue tracker and service architecture notes.
+- Docs/trackers cleaned of prior `scripts/` references in issue tracker and service architecture notes.
 - Lint/typecheck suites run and green across backend/CLI/contracts/web.
 
 ### Phase 4 — Code imports & runtime wiring - s/o: *codex* 11/28/2025
@@ -112,7 +112,7 @@ Feed-into next phases
 ## Out of scope (for this milestone)
 - Feature work inside services (no schema or API changes).
 - Language/runtime upgrades (Node, Python) beyond what relocation requires.
-- Introducing feature flags or backward-compat shims; repo is pre-GA.
+- Introducing feature flags or transition shims; repo is pre-GA.
 
 ## Definition of Done
 - Repository matches target layout; all path-sensitive tooling, just recipes, CI workflows, and docs are updated.

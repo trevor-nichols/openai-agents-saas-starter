@@ -63,11 +63,6 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         help="Disable the Textual wizard UI (requires --non-interactive or --report-only).",
     )
     wizard_parser.add_argument(
-        "--no-schema",
-        action="store_true",
-        help="Bypass the dependency graph (legacy prompt flow).",
-    )
-    wizard_parser.add_argument(
         "--report-only",
         action="store_true",
         help="Skip prompts entirely and render the milestone audit report.",
@@ -281,8 +276,9 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
 
     interactive_run = not args.non_interactive and not args.report_only
     if interactive_run:
-        from starter_cli.ui import StarterTUI
         from starter_cli.ui.wizard_pane import WizardLaunchConfig
+
+        from .ui_loader import load_ui_module
 
         wizard_config = WizardLaunchConfig(
             profile=args.profile,
@@ -296,10 +292,11 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
             if args.export_answers
             else None,
             automation_overrides=automation_overrides,
-            enable_schema=not args.no_schema,
             auto_start=True,
         )
-        StarterTUI(ctx, initial_screen="wizard", wizard_config=wizard_config).run()
+        load_ui_module().StarterTUI(
+            ctx, initial_screen="wizard", wizard_config=wizard_config
+        ).run()
         return 0
 
     wizard = SetupWizard(
@@ -313,7 +310,6 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
         else None,
         automation_overrides=automation_overrides,
         enable_tui=False,
-        enable_schema=not args.no_schema,
     )
     if args.summary_path:
         wizard.summary_path = Path(args.summary_path).expanduser()
@@ -337,9 +333,9 @@ def handle_setup_menu(args: argparse.Namespace, ctx: CLIContext) -> int:
     controller = SetupMenuController(ctx)
     use_tui = not args.no_tui and not args.json
     if use_tui:
-        from starter_cli.ui import StarterTUI
+        from .ui_loader import load_ui_module
 
-        StarterTUI(ctx, initial_screen="setup").run()
+        load_ui_module().StarterTUI(ctx, initial_screen="setup").run()
         return 0
     return controller.run(output_json=args.json)
 

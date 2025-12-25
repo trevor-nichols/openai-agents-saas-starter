@@ -34,7 +34,7 @@ This tracker captures the Starter CLI setup flow plus the recommended environmen
 | Security & Rate Limits | Lockouts, JWKS cache, rate limit redis prefix | Accept defaults to stay unblocked | Tune email/reset throttles per policy, JWKS salt stored in secret manager |
 | Providers & Infra | DB URL, AI providers, Redis pools, Stripe, Resend | OpenAI key only; leave `DATABASE_URL` empty; Redis=localhost; skip billing/email | Managed DB URL, TLS Redis per workload, Stripe secrets + plan map, Resend templates |
 | Usage & Entitlements | Plan guardrails + entitlements artifact | Skipped (billing off) | Required when billing on; produce `var/reports/usage-entitlements.json` |
-| Observability | Tenant slug, logging sink, GeoIP | `LOGGING_SINK=stdout`, `GEOIP_PROVIDER=none` | Datadog/OTLP endpoints, GeoIP provider tokens, optional collector exporters |
+| Observability | Tenant slug, logging sink, GeoIP | `LOGGING_SINKS=stdout`, `GEOIP_PROVIDER=none` | Datadog/OTLP endpoints, GeoIP provider tokens, optional collector exporters |
 | Integrations | Slack incident notifications | Disabled | Slack bot token, channel map, send test |
 | Signup & Worker | Signup policy, rate limits, billing worker topology | `invite_only`, inline worker, insecure cookies allowed | `approval` or `invite_only`, dedicated worker, auto-generated worker overlay |
 | Frontend | Next.js envs (API URL, Playwright, cookie posture) | `API_BASE_URL` canonical; frontend mirrors to `NEXT_PUBLIC_API_URL`; allow insecure cookies in demo | HTTPS URLs only, secure cookies, Playwright hitting deployed host |

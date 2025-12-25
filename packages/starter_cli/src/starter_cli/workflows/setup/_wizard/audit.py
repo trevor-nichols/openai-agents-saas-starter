@@ -319,7 +319,7 @@ def _tenant_observability_section(env_snapshot: dict[str, str]) -> SectionResult
     section.checks.extend(
         [
             _env_presence("TENANT_DEFAULT_SLUG", env_snapshot),
-            _env_presence("LOGGING_SINK", env_snapshot),
+            _env_presence("LOGGING_SINKS", env_snapshot),
             _env_presence("GEOIP_PROVIDER", env_snapshot),
         ]
     )

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
 from pathlib import Path
@@ -12,6 +13,13 @@ from starter_contracts import config as shared_config
 
 # Make sure repo-local packages and shared test helpers are importable before
 # importing anything that relies on them (e.g., api-service test utilities).
+os.environ.setdefault("OPENAI_AGENTS_DISABLE_TRACING", "true")
+_agents_logger = logging.getLogger("openai.agents")
+_agents_logger.setLevel(logging.CRITICAL)
+_agents_logger.propagate = False
+if not any(isinstance(handler, logging.NullHandler) for handler in _agents_logger.handlers):
+    _agents_logger.addHandler(logging.NullHandler())
+
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _API_DIR = _REPO_ROOT / "apps" / "api-service"
 _API_SRC = _API_DIR / "src"

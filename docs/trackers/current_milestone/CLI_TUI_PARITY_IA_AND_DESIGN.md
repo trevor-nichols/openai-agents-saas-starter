@@ -42,7 +42,7 @@ Goal: A clean, professional navigation model that mirrors operator intent and av
 - **Util: Run with Env** — merge env files and exec command (new)
 
 Notes:
-- “Secrets Onboarding” can remain a modal launched from Setup Hub, but should also appear as a first-class pane entry for parity and discoverability.
+- “Secrets Onboarding” remains a modal launched from Setup Hub and is now also a first-class pane entry for parity and discoverability.
 - “Doctor” is placed under Overview because it is diagnostic and summary-heavy; this keeps the operator mental model clean.
 - “Advanced” contains the least-frequent workflows per your guidance.
 
@@ -52,6 +52,7 @@ Notes:
 
 ### 2.1 Principles
 - **Presentation only**: TUI must not re-implement domain logic. It calls workflows/services used by CLI.
+- **Service boundary enforced**: panes do not import CLI command modules; commands are thin arg parsers → services.
 - **Consistency**: Every action pane uses a uniform “Form → Run → Output/Log → Status” structure.
 - **Extensibility**: New panes must be easy to add without touching core app logic.
 - **Minimal coupling**: TUI should not require deeper knowledge of workflow internals; it should pass inputs and render outputs.
@@ -65,10 +66,11 @@ Notes:
   - current profile detection (ENVIRONMENT)
 - **Content switcher**: active pane
 
-### 2.3 Core UI Components (proposed)
-- **`BasePane`** (new): common scaffolding for status text, output panel, and action bar.
-- **`ActionForm`** (new): composable input section for flags/parameters; form input validators.
-- **`WorkflowRunner`** (new): standard wrapper to run workflows with log streaming and prompt channel integration.
+### 2.3 Core UI Components (proposed/implemented)
+- **`BasePane`** (planned): common scaffolding for status text, output panel, and action bar.
+- **`ActionForm`** (planned): composable input section for flags/parameters; form input validators.
+- **`WorkflowRunner`** (implemented): standard wrapper to run workflows with log streaming + prompt channel integration.
+- **`ActionRunner`** (implemented): standardized runner for non-interactive workflows with output/status hooks.
 - **`StatusTable`** (existing DataTable usage): standardized table headings + empty state messaging.
 
 ### 2.4 Navigation Model
@@ -85,20 +87,26 @@ Notes:
 - Proposed behavior:
   - When env settings change, prompt to reload. On reload, update `HubService` snapshots and refresh active pane.
 - Avoid mutable global state; use a single source of truth for env configuration.
+- **Implemented behavior**:
+  - Env loads are applied as a tracked overlay. “Skip env load” clears the overlay and restores the pre-TUI environment, preventing stale `.env` values from leaking across actions.
+  - Context panel reflects the CLI’s initial `skip/quiet` flags and surfaces them in the summary for auditability.
 
-### 2.6 Workflow Execution Pattern
-- **Long-running workflows** (wizard, stripe, secrets) already use prompt channels.
-- Generalize into a shared runner:
-  - `InteractiveWorkflowSession` for workflows with prompts
-  - `NonInteractiveWorkflowSession` for direct run methods
+### 2.6 API Export Boundary
+- OpenAPI export runs via `apps/api-service/scripts/export_openapi.py` so the CLI never imports backend modules directly.
+
+### 2.7 Workflow Execution Pattern
+- **Long-running workflows** (wizard, stripe, secrets) use prompt channels.
+- Shared runners:
+  - `InteractiveWorkflowSession` + `WorkflowRunner` for workflows with prompts
+  - `ActionRunner` for direct (non-interactive) runs
 - Provide consistent log buffer handling (max lines + snapshot), with optional export.
 
-### 2.7 Prompt Handling
+### 2.8 Prompt Handling
 - Continue using `PromptController` for interactive workflows.
 - Standardize “Prompt UI block” pattern across panes.
 - Ensure prompt context includes `key`, `default`, `required`, `choices` display.
 
-### 2.8 Output Handling
+### 2.9 Output Handling
 - Capture:
   - workflow logs (stream)
   - resulting artifacts (paths)
@@ -108,12 +116,12 @@ Notes:
   - “Results” table for structured output
   - “Artifacts” section for file paths
 
-### 2.9 Error Handling & UX
+### 2.10 Error Handling & UX
 - All failures render a consistent error banner + log output
 - If workflow returns structured errors, render in a table for readability
 - Avoid silent failures
 
-### 2.10 Testing Strategy
+### 2.11 Testing Strategy
 - Extend existing UI tests for:
   - pane mount + action execution
   - env reload
@@ -150,15 +158,16 @@ Notes:
 
 ## 4) Design Decisions Pending
 
-- Whether Secrets Onboarding is a modal only or also a full pane (recommended: both).
-- Whether Start/Stop is one pane with tabs or split panes.
+- Secrets Onboarding surface resolved: modal + full pane.
 - Whether command palette should include advanced panes by default.
+- **Resolved:** Start/Stop delivered as a single pane (no tabs).
 
 ---
 
-## 5) Next Step (Phase 1)
+## 5) Next Step (Phase 3)
 
-- Implement grouped nav and global context panel.
-- Introduce shared workflow runner and action form components.
-- Update Wizard/Setup/Logs/Infra/Providers/Stripe panes to use the shared pattern.
-
+Phase 3 parity expansion delivered:
+- Status Ops and Run-with-Env panes added.
+- Secrets Onboarding pane now mirrors CLI flags.
+- Resolve Secrets Onboarding surface decision.
+- Polish shared UI patterns (BasePane/ActionForm) if needed.

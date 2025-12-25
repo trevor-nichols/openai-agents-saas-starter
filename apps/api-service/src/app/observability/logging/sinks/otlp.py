@@ -20,7 +20,9 @@ class OTLPHTTPLogHandler(logging.Handler):
     def __init__(self, endpoint: str, headers: Mapping[str, str] | None = None) -> None:
         super().__init__()
         if not endpoint:
-            raise ValueError("OTLP endpoint is required when logging_sink=otlp")
+            raise ValueError(
+                "OTLP endpoint is required when LOGGING_SINKS includes otlp"
+            )
         self._endpoint = endpoint
         self._client = httpx.Client(timeout=2.0)
         self._headers = {"Content-Type": "application/json"}
@@ -50,7 +52,9 @@ def build_otlp_sink(
 ) -> SinkConfig:
     _ = file_selected
     if not settings.logging_otlp_endpoint:
-        raise ValueError("LOGGING_OTLP_ENDPOINT is required when LOGGING_SINK=otlp")
+        raise ValueError(
+            "LOGGING_OTLP_ENDPOINT is required when LOGGING_SINKS includes otlp"
+        )
     headers = parse_headers(settings.logging_otlp_headers) or {}
     handlers = {
         "otlp": {

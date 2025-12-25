@@ -129,7 +129,7 @@ def test_cli_roundtrip_enforces_nonce_reuse(
 
                 return _Wrapper(response)
 
-        monkeypatch.setattr("starter_cli.commands.auth.httpx.Client", DummyHttpxClient)
+        monkeypatch.setattr("starter_cli.services.auth.tokens.httpx.Client", DummyHttpxClient)
 
         monkeypatch.setenv("VAULT_VERIFY_ENABLED", "true")
         monkeypatch.setenv("VAULT_ADDR", "https://vault.local")
@@ -169,11 +169,11 @@ def test_cli_roundtrip_enforces_nonce_reuse(
             return "signature"
 
         monkeypatch.setattr(
-            "starter_cli.services.security.signing._build_vault_envelope",
+            "starter_cli.services.auth.security.signing._build_vault_envelope",
             fake_envelope,
         )
         monkeypatch.setattr(
-            "starter_cli.services.security.signing._vault_sign_payload",
+            "starter_cli.services.auth.security.signing._vault_sign_payload",
             fake_sign,
         )
 
@@ -191,11 +191,11 @@ def test_cli_roundtrip_enforces_nonce_reuse(
             return f"Bearer vault:{signature}", {"X-Vault-Payload": payload_b64}
 
         monkeypatch.setattr(
-            "starter_cli.services.security.signing.build_vault_headers",
+            "starter_cli.services.auth.security.signing.build_vault_headers",
             fake_build_vault_headers,
         )
         monkeypatch.setattr(
-            "starter_cli.commands.auth.build_vault_headers",
+            "starter_cli.services.auth.tokens.build_vault_headers",
             fake_build_vault_headers,
         )
 

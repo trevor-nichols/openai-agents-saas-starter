@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -12,13 +13,19 @@ class CommandResult:
     error: str | None
 
 
-async def run_command(*, command: list[str], cwd: Path) -> CommandResult:
+async def run_command(
+    *,
+    command: list[str],
+    cwd: Path,
+    env: Mapping[str, str] | None = None,
+) -> CommandResult:
     try:
         proc = await asyncio.create_subprocess_exec(
             *command,
             cwd=cwd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
+            env=env,
         )
         stdout, _ = await proc.communicate()
         text = stdout.decode(errors="ignore").strip() if stdout else ""

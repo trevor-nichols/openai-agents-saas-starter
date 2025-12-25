@@ -1,19 +1,22 @@
 from __future__ import annotations
 
+import asyncio
 from typing import ClassVar
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
-from textual.widgets import ContentSwitcher, Footer, Header, ListView, Static
+from textual.widgets import ContentSwitcher, Footer, Header, Static, Tree
 
 from starter_cli.core import CLIContext
 from starter_cli.workflows.home.hub import HubService
 
+from .context_panel import ContextPanel, EnvReloaded
+from .nav_tree import NavTree
 from .palette import CommandPaletteScreen, CommandSpec
 from .panes import build_panes
 from .secrets_onboard import SecretsOnboardScreen
-from .sections import SECTIONS, NavItem, SectionSpec
+from .sections import NAV_GROUPS, NavGroupSpec, SectionSpec, iter_sections
 from .wizard_pane import WizardLaunchConfig
 
 
@@ -51,30 +54,8 @@ class StarterTUI(App[None]):
         color: $text-muted;
     }
 
-    #nav-list {
+    #nav-tree {
         padding: 0 1;
-    }
-
-    .nav-item {
-        padding: 0 1 1 1;
-    }
-
-    .nav-row {
-        height: auto;
-    }
-
-    .nav-key {
-        width: 3;
-        text-style: bold;
-        color: $accent;
-    }
-
-    .nav-label {
-        text-style: bold;
-    }
-
-    .nav-desc {
-        color: $text-muted;
     }
 
     #content {
@@ -121,6 +102,31 @@ class StarterTUI(App[None]):
         padding-bottom: 1;
     }
 
+    .context-panel {
+        border: tall $panel-darken-1;
+        padding: 1;
+        margin-bottom: 1;
+    }
+
+    .context-title {
+        text-style: bold;
+    }
+
+    .context-summary {
+        color: $text-muted;
+        padding-bottom: 1;
+    }
+
+    .context-actions {
+        height: auto;
+        padding-bottom: 1;
+    }
+
+    .context-label {
+        padding-right: 1;
+        color: $text-muted;
+    }
+
     .home-actions {
         height: auto;
         padding-bottom: 1;
@@ -132,6 +138,11 @@ class StarterTUI(App[None]):
     }
 
     #wizard-controls {
+        height: auto;
+        padding-bottom: 1;
+    }
+
+    .wizard-options {
         height: auto;
         padding-bottom: 1;
     }
@@ -174,6 +185,17 @@ class StarterTUI(App[None]):
         padding-top: 1;
     }
 
+    #secrets-prompt {
+        margin-top: 1;
+        padding-top: 1;
+        border-top: solid $panel-darken-1;
+    }
+
+    #secrets-prompt-actions {
+        height: auto;
+        padding-top: 1;
+    }
+
     #wizard-main DataTable {
         width: 1fr;
     }
@@ -196,14 +218,6 @@ class StarterTUI(App[None]):
     """
 
     BINDINGS: ClassVar = [
-        Binding("h", "go('home')", "Home", show=True),
-        Binding("s", "go('setup')", "Setup", show=True),
-        Binding("w", "go('wizard')", "Wizard", show=True),
-        Binding("l", "go('logs')", "Logs", show=True),
-        Binding("i", "go('infra')", "Infra", show=True),
-        Binding("p", "go('providers')", "Providers", show=True),
-        Binding("b", "go('stripe')", "Stripe", show=True),
-        Binding("u", "go('usage')", "Usage", show=True),
         Binding("ctrl+p", "open_palette", "Palette", show=True),
         Binding("q", "quit", "Quit", show=True),
     ]
@@ -217,17 +231,21 @@ class StarterTUI(App[None]):
     ) -> None:
         self.ctx = ctx
         self._hub = HubService(ctx)
-        self._sections = SECTIONS
-        self._section_index = {section.key: idx for idx, section in enumerate(SECTIONS)}
+        self._groups = NAV_GROUPS
+        self._sections = iter_sections(self._groups)
+        self._section_index = {
+            section.key: idx for idx, section in enumerate(self._sections)
+        }
         self._initial_key = self._resolve_initial(initial_screen)
-        self._nav_items = [NavItem(section) for section in SECTIONS]
+        self._background_tasks: set[asyncio.Task[object]] = set()
         self._panes = build_panes(
             ctx,
-            SECTIONS,
+            self._groups,
             hub=self._hub,
             wizard_config=wizard_config,
         )
         super().__init__()
+        self._bind_section_shortcuts()
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -235,13 +253,10 @@ class StarterTUI(App[None]):
             with Vertical(id="nav"):
                 yield Static("Starter CLI", id="nav-title")
                 yield Static("Operations Hub", id="nav-subtitle")
-                yield ListView(
-                    *self._nav_items,
-                    id="nav-list",
-                    initial_index=self._section_index.get(self._initial_key, 0),
-                )
+                yield NavTree(self._groups, id="nav-tree")
                 yield Static("Ctrl+P for commands", id="nav-hint")
             with Vertical(id="content"):
+                yield ContextPanel(self.ctx)
                 yield ContentSwitcher(
                     *self._panes,
                     id="content-switcher",
@@ -251,13 +266,17 @@ class StarterTUI(App[None]):
 
     def on_mount(self) -> None:
         self.title = "Starter CLI"
-        self._activate_section(self._initial_key, update_nav=False)
+        self._activate_section(self._initial_key, update_nav=True)
 
-    def on_list_view_selected(self, event: ListView.Selected) -> None:
-        item = event.item
-        if not isinstance(item, NavItem):
+    def on_tree_node_selected(self, event: Tree.NodeSelected[SectionSpec]) -> None:
+        section = event.node.data
+        if not isinstance(section, SectionSpec):
             return
-        self._activate_section(item.section.key, update_nav=False)
+        self._activate_section(section.key, update_nav=False)
+
+    def on_env_reloaded(self, message: EnvReloaded) -> None:
+        del message
+        self._refresh_active_pane()
 
     def action_go(self, section_key: str) -> None:
         self._activate_section(section_key, update_nav=True)
@@ -273,6 +292,8 @@ class StarterTUI(App[None]):
 
     def _palette_commands(self) -> list[CommandSpec]:
         commands: list[CommandSpec] = []
+        for group in self._groups:
+            commands.append(self._group_command(group))
         for section in self._sections:
             commands.append(self._nav_command(section))
         commands.append(
@@ -296,19 +317,57 @@ class StarterTUI(App[None]):
             action=_navigate,
         )
 
+    def _group_command(self, group: NavGroupSpec) -> CommandSpec:
+        def _navigate() -> None:
+            nav = self.query_one("#nav-tree", NavTree)
+            nav.expand_group(group.key)
+            if group.items:
+                self._activate_section(group.items[0].key, update_nav=True)
+            else:
+                nav.select_group(group.key)
+
+        return CommandSpec(
+            key=f"group:{group.key}",
+            label=f"{group.label} (group)",
+            description=group.description,
+            action=_navigate,
+        )
+
     def _activate_section(self, section_key: str, *, update_nav: bool) -> None:
         key = section_key.lower()
         if key not in self._section_index:
             return
         if update_nav:
-            nav = self.query_one("#nav-list", ListView)
-            index = self._section_index[key]
-            if nav.index != index:
-                nav.index = index
+            nav = self.query_one("#nav-tree", NavTree)
+            nav.select_section(key)
         switcher = self.query_one("#content-switcher", ContentSwitcher)
         switcher.current = key
         section = self._sections[self._section_index[key]]
         self.sub_title = section.label
+
+    def _bind_section_shortcuts(self) -> None:
+        reserved = {_binding_key(binding) for binding in self.BINDINGS}
+        seen: dict[str, str] = {}
+        for section in self._sections:
+            key = section.shortcut.strip().lower()
+            if not key:
+                raise RuntimeError(f"Missing shortcut for section '{section.key}'.")
+            if key in reserved:
+                raise RuntimeError(
+                    f"Shortcut '{key}' for section '{section.key}' conflicts with reserved keys."
+                )
+            if key in seen:
+                raise RuntimeError(
+                    f"Duplicate shortcut '{key}' used by sections "
+                    f"'{seen[key]}' and '{section.key}'."
+                )
+            seen[key] = section.key
+            self.bind(
+                key,
+                f"go('{section.key}')",
+                description=section.label,
+                show=False,
+            )
 
     def _resolve_initial(self, requested: str) -> str:
         key = requested.lower()
@@ -316,5 +375,50 @@ class StarterTUI(App[None]):
             return key
         return self._sections[0].key
 
+    def _refresh_active_pane(self) -> None:
+        switcher = self.query_one("#content-switcher", ContentSwitcher)
+        active = switcher.current
+        if not active:
+            return
+        pane = next((pane for pane in self._panes if pane.id == active), None)
+        if pane is None:
+            return
+        refresh = getattr(pane, "refresh_data", None)
+        if callable(refresh):
+            label = self._sections[self._section_index[active]].label
+            try:
+                result = refresh()
+            except Exception as exc:
+                self._handle_refresh_error(label, exc)
+                return
+            if asyncio.iscoroutine(result):
+                task = asyncio.create_task(self._run_safe_refresh(result, label))
+                self._background_tasks.add(task)
+                task.add_done_callback(self._background_tasks.discard)
+
+    async def _run_safe_refresh(self, coro, label: str) -> None:
+        try:
+            await coro
+        except Exception as exc:
+            self._handle_refresh_error(label, exc)
+
+    def _handle_refresh_error(self, label: str, exc: Exception) -> None:
+        message = f"{label} refresh failed: {exc}"
+        self.ctx.console.error(message, topic="tui")
+        notify = getattr(self, "notify", None)
+        if callable(notify):
+            try:
+                notify(message, severity="error")
+            except Exception:
+                return
+
 
 __all__ = ["StarterTUI"]
+
+
+def _binding_key(binding: Binding | tuple[str, ...]) -> str:
+    if isinstance(binding, Binding):
+        return binding.key
+    if binding:
+        return str(binding[0])
+    return ""

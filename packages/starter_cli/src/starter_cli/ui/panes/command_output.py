@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from starter_cli.services.ops_commands import CommandResult
+from starter_cli.services.infra.ops_commands import CommandResult
 
 
 def format_command_result(label: str, result: CommandResult) -> str:

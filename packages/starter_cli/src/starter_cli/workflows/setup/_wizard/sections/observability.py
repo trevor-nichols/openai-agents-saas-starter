@@ -30,11 +30,7 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     )
     context.set_backend("TENANT_DEFAULT_SLUG", slug)
 
-    sink_prompt_default = (
-        context.current("LOGGING_SINKS")
-        or context.current("LOGGING_SINK")
-        or "stdout"
-    )
+    sink_prompt_default = context.current("LOGGING_SINKS") or "stdout"
     sinks = normalize_logging_sinks(
         provider.prompt_string(
             key="LOGGING_SINKS",
@@ -44,9 +40,7 @@ def run(context: WizardContext, provider: InputProvider) -> None:
         )
     )
 
-    # Backward compatibility: still emit LOGGING_SINK for legacy consumers.
     context.set_backend("LOGGING_SINKS", ",".join(sinks))
-    context.set_backend("LOGGING_SINK", sinks[0])
 
     sink_set = set(sinks)
     context.set_backend_bool("LOGGING_SINK_HAS_FILE", "file" in sink_set)

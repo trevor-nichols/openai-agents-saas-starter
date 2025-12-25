@@ -17,7 +17,9 @@ class DatadogHTTPLogHandler(logging.Handler):
     def __init__(self, api_key: str, site: str = "datadoghq.com") -> None:
         super().__init__()
         if not api_key:
-            raise ValueError("Datadog API key is required when logging_sink=datadog")
+            raise ValueError(
+                "Datadog API key is required when LOGGING_SINKS includes datadog"
+            )
         self._endpoint = f"https://http-intake.logs.{site}/api/v2/logs"
         self._client = httpx.Client(timeout=2.0)
         self._headers = {
@@ -48,7 +50,9 @@ def build_datadog_sink(
 ) -> SinkConfig:
     _ = file_selected
     if not settings.logging_datadog_api_key:
-        raise ValueError("LOGGING_DATADOG_API_KEY is required when LOGGING_SINK=datadog")
+        raise ValueError(
+            "LOGGING_DATADOG_API_KEY is required when LOGGING_SINKS includes datadog"
+        )
     handlers = {
         "datadog": {
             "class": "app.observability.logging.sinks.datadog.DatadogHTTPLogHandler",

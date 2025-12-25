@@ -78,7 +78,7 @@ Alert suggestions:
 - Hard-limit blocks log at `ERROR` right before the 429 is raised; soft limits log at `WARNING` but still allow the request.
 
 Ingestion tips:
-- Route the JSON logs through OTLP (default via `LOGGING_SINK=otlp` + the bundled collector) so they land in your SIEM with preserved fields.
+- Route the JSON logs through OTLP (default via `LOGGING_SINKS=otlp` + the bundled collector) so they land in your SIEM with preserved fields.
 - Pair log volume with counter data by charting `count_over_time({code="usage_limit_exceeded"}[5m])` in Loki or equivalent.
 
 ## Troubleshooting Playbook

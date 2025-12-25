@@ -122,7 +122,6 @@ def test_otlp_sink_posts_logs_over_http():
                 "ENVIRONMENT": "test",
                 # Override local .env.local defaults (LOGGING_SINKS=stdout,file) for this test.
                 "LOGGING_SINKS": "otlp",
-                "LOGGING_SINK": "otlp",
                 "LOGGING_OTLP_ENDPOINT": endpoint,
             }
         )

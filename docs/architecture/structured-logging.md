@@ -52,7 +52,7 @@ Context + event-specific keys are flattened at the top level except for `fields`
 ## 4. Sink Configuration Strategy
 
 - `configure_logging(settings)` centralizes `logging.config.dictConfig` so both FastAPI (`api-service/src/main.py`) and worker entry points can initialize logging consistently.
-- Multiple sinks are allowed. Use `LOGGING_SINKS` as a comma-separated list (e.g., `stdout,file`, `file,datadog`, `stdout,file,otlp`). If unset, the legacy `LOGGING_SINK` single value is honored for backward compatibility.
+- Multiple sinks are allowed. Use `LOGGING_SINKS` as a comma-separated list (e.g., `stdout,file`, `file,datadog`, `stdout,file,otlp`); default is `stdout`.
 - Supported sinks for OBS-006:
   - `stdout` (default): single `StreamHandler` → JSON formatter.
   - `file`: rotating JSON logs under `var/log/<YYYY-MM-DD>/api/{all,error}.log` (or `LOGGING_FILE_PATH` / `LOG_ROOT`).

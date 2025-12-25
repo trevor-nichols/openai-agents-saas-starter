@@ -50,7 +50,7 @@ def configure_logging(settings: Settings) -> None:
 
 
 def _parse_sinks(settings: Settings) -> list[str]:
-    raw = settings.logging_sinks or settings.logging_sink or "stdout"
+    raw = settings.logging_sinks or "stdout"
     if isinstance(raw, str):
         parts = [part.strip().lower() for part in raw.split(",") if part.strip()]
     else:
@@ -62,7 +62,9 @@ def _parse_sinks(settings: Settings) -> list[str]:
     deduped: list[str] = []
     for sink in parts:
         if sink not in ALLOWED_SINKS:
-            raise ValueError(f"Unsupported LOGGING_SINK '{sink}'. Expected one of {ALLOWED_SINKS}.")
+            raise ValueError(
+                f"Unsupported LOGGING_SINKS entry '{sink}'. Expected one of {ALLOWED_SINKS}."
+            )
         if sink == "none" and len(parts) > 1:
             raise ValueError("LOGGING_SINKS cannot include 'none' with other sinks.")
         if sink not in deduped:
@@ -84,7 +86,7 @@ def _resolve_handler_configs(
     for sink in sinks:
         builder = SINK_BUILDERS.get(sink)
         if builder is None:
-            raise ValueError(f"Unsupported LOGGING_SINK '{sink}'.")
+            raise ValueError(f"Unsupported LOGGING_SINKS entry '{sink}'.")
         sink_cfg: SinkConfig = builder(
             settings=settings,
             log_level=log_level,

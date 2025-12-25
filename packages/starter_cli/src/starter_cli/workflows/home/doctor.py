@@ -32,20 +32,34 @@ class DoctorRunner:
     def run(self, *, json_path: Path | None = None, markdown_path: Path | None = None) -> int:
         probes, services, summary = self.collect()
         self._print_console(summary, probes, services)
+        self.write_reports(
+            probes=probes,
+            services=services,
+            summary=summary,
+            json_path=json_path,
+            markdown_path=markdown_path,
+        )
+        return 1 if self._has_failures(probes) else 0
+
+    def write_reports(
+        self,
+        *,
+        probes: list[ProbeResult],
+        services: list[ServiceStatus],
+        summary: dict[str, int],
+        json_path: Path | None = None,
+        markdown_path: Path | None = None,
+    ) -> tuple[Path, Path]:
         json_out = json_path or DEFAULT_JSON_REPORT
         md_out = markdown_path or DEFAULT_MD_REPORT
         self._write_json(json_out, probes, services, summary)
         self._write_markdown(md_out, probes, summary)
-        return 1 if self._has_failures(probes) else 0
+        return json_out, md_out
 
     def collect(
         self, *, log_suppressed: bool = False
     ) -> tuple[list[ProbeResult], list[ServiceStatus], dict[str, int]]:
-        try:
-            probes = self._run_probes(log_suppressed=log_suppressed)
-        except TypeError:
-            # compatibility for test stubs that don't accept kwargs
-            probes = self._run_probes()
+        probes = self._run_probes(log_suppressed=log_suppressed)
         services = self._build_services(probes)
         summary = self._summarize(probes)
         return probes, services, summary

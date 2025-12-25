@@ -3,23 +3,27 @@ from __future__ import annotations
 import argparse
 from types import SimpleNamespace
 
-from starter_cli.commands.stop import _handle_stop
 from starter_cli.core.context import build_context
-from starter_cli.workflows.home import stack_state
 
 
 def test_stop_command_no_state(tmp_path):
     ctx = build_context()
+    import starter_cli.commands.stop as stop_mod
+
     pidfile = tmp_path / "stack.json"
     args = argparse.Namespace(pidfile=pidfile)
 
     # Should be a no-op when no stack is tracked
-    assert _handle_stop(args, ctx) == 0
+    assert stop_mod._handle_stop(args, ctx) == 0
     assert not pidfile.exists()
 
 
 def test_stop_command_clears_state(tmp_path, monkeypatch):
     ctx = build_context()
+    import starter_cli.commands.stop as stop_mod
+    from starter_cli.services.infra import stack_ops
+    stack_state = stack_ops.stack_state
+
     pidfile = tmp_path / "stack.json"
     state = stack_state.StackState(
         processes=[stack_state.StackProcess(label="backend", pid=0, command=["cmd"])],
@@ -30,12 +34,16 @@ def test_stop_command_clears_state(tmp_path, monkeypatch):
     monkeypatch.setattr(stack_state, "stop_processes", lambda *_args, **_kwargs: None)
     monkeypatch.setenv("COMPOSE_PROJECT_NAME", "test-project")
     args = argparse.Namespace(pidfile=pidfile)
-    assert _handle_stop(args, ctx) == 0
+    assert stop_mod._handle_stop(args, ctx) == 0
     assert not pidfile.exists()
 
 
 def test_stop_runs_compose_down_with_env(tmp_path, monkeypatch):
     ctx = build_context()
+    import starter_cli.commands.stop as stop_mod
+    from starter_cli.services.infra import stack_ops
+    stack_state = stack_ops.stack_state
+
     pidfile = tmp_path / "stack.json"
     state = stack_state.StackState(
         processes=[stack_state.StackProcess(label="backend", pid=0, command=["cmd"])],
@@ -69,13 +77,11 @@ def test_stop_runs_compose_down_with_env(tmp_path, monkeypatch):
     )
     monkeypatch.setenv("COMPOSE_PROJECT_NAME", "env-proj")
 
-    import starter_cli.commands.stop as stop_mod
-
-    monkeypatch.setattr(stop_mod, "ctx_project_root", lambda: tmp_project)
-    monkeypatch.setattr(stop_mod.subprocess, "run", fake_run)
+    monkeypatch.setattr(stack_ops.subprocess, "run", fake_run)
+    monkeypatch.setattr(ctx, "project_root", tmp_project)
 
     args = argparse.Namespace(pidfile=pidfile)
-    _handle_stop(args, ctx)
+    stop_mod._handle_stop(args, ctx)
 
     assert calls["cmd"] == ["docker", "compose", "-f", str(compose_file), "down"]
     assert calls["env"]["COMPOSE_PROJECT_NAME"] == "env-proj"  # env overrides file

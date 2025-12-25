@@ -3,8 +3,6 @@ from __future__ import annotations
 import argparse
 import getpass
 import secrets
-from types import SimpleNamespace
-from typing import Any
 
 from starter_cli.core import CLIContext, CLIError
 from starter_cli.workflows.setup.dev_user import (
@@ -14,8 +12,7 @@ from starter_cli.workflows.setup.dev_user import (
     DEFAULT_TENANT,
     DEFAULT_TENANT_NAME,
     DevUserConfig,
-    _persist_and_announce,
-    seed_dev_user,
+    seed_dev_user_with_context,
 )
 
 
@@ -106,7 +103,7 @@ def handle_ensure_dev_user(args: argparse.Namespace, ctx: CLIContext) -> int:
         generated_password=args.password is None,
         rotate_existing=not args.no_rotate_existing,
     )
-    status = _seed_and_announce(ctx, config)
+    status = seed_dev_user_with_context(ctx, config)
     if status not in {"created", "rotated", "exists"}:
         raise CLIError(f"Unexpected dev user seed result: {status}")
     return 0
@@ -130,7 +127,7 @@ def handle_seed_user(args: argparse.Namespace, ctx: CLIContext) -> int:
         generated_password=args.password is None,
         rotate_existing=args.rotate_existing,
     )
-    status = _seed_and_announce(ctx, config)
+    status = seed_dev_user_with_context(ctx, config)
     if status == "exists" and not args.rotate_existing:
         raise CLIError(
             "User already exists; rerun with --rotate-existing to rotate the password."
@@ -138,13 +135,6 @@ def handle_seed_user(args: argparse.Namespace, ctx: CLIContext) -> int:
     if status not in {"created", "rotated", "exists"}:
         raise CLIError(f"Unexpected user seed result: {status}")
     return 0
-
-
-def _seed_and_announce(ctx: CLIContext, config: DevUserConfig) -> str:
-    context: Any = SimpleNamespace(cli_ctx=ctx, dev_user_config=None)
-    result = seed_dev_user(context, config)
-    _persist_and_announce(context, config, result)
-    return result
 
 
 __all__ = ["register"]

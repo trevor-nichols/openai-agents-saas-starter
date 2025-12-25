@@ -1,14 +1,9 @@
 from __future__ import annotations
 
 import argparse
-import importlib.util
-import json
-import os
-import sys
-from pathlib import Path
-from typing import Any
 
-from starter_cli.core import CLIContext, CLIError
+from starter_cli.core import CLIContext
+from starter_cli.services.api.export import OpenApiExportConfig, export_openapi
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -49,111 +44,15 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
 
 
 def handle_export_openapi(args: argparse.Namespace, ctx: CLIContext) -> int:
-    exporter = OpenAPIExporter(
-        ctx=ctx,
+    config = OpenApiExportConfig(
         output=args.output,
         enable_billing=args.enable_billing,
         enable_test_fixtures=args.enable_test_fixtures,
         title=args.title,
         version=args.version,
     )
-    exporter.run()
+    export_openapi(ctx, config)
     return 0
 
 
-class OpenAPIExporter:
-    def __init__(
-        self,
-        *,
-        ctx: CLIContext,
-        output: str,
-        enable_billing: bool,
-        enable_test_fixtures: bool,
-        title: str | None,
-        version: str | None,
-    ) -> None:
-        self.ctx = ctx
-        self.console = ctx.console
-        self.output = Path(output)
-        self.enable_billing = enable_billing
-        self.enable_test_fixtures = enable_test_fixtures
-        self.title = title
-        self.version = version
-
-    def run(self) -> None:
-        repo_root = self.ctx.project_root
-        api_service_dir = repo_root / "apps" / "api-service"
-        if not api_service_dir.exists():
-            raise CLIError("apps/api-service directory not found; run from the repository root.")
-
-        # Prefer the src/ layout used by the current repo; fall back to legacy app/.
-        app_dir = api_service_dir / "src" / "app"
-        main_path = api_service_dir / "src" / "main.py"
-        if not app_dir.exists():
-            app_dir = api_service_dir / "app"
-            main_path = api_service_dir / "main.py"
-
-        os.chdir(api_service_dir)
-        sys.path.insert(0, str(app_dir.parent))  # e.g., apps/api-service/src
-        sys.path.insert(1, str(api_service_dir))
-        sys.path.insert(2, str(repo_root))
-        self._purge_existing_app_modules()
-
-        if self.enable_billing:
-            os.environ["ENABLE_BILLING"] = "true"
-        if self.enable_test_fixtures:
-            os.environ["USE_TEST_FIXTURES"] = "true"
-
-        self._load_module("app", app_dir / "__init__.py")
-        main_module = self._load_module("app.main", main_path)
-
-        create_application = getattr(main_module, "create_application", None)
-        if create_application is None:
-            raise CLIError("create_application not found in apps/api-service/src/main.py")
-
-        app = create_application()
-        app.openapi_schema = None
-        schema: dict[str, Any] = app.openapi()
-
-        if self.title:
-            schema.setdefault("info", {})["title"] = self.title
-        if self.version:
-            schema.setdefault("info", {})["version"] = self.version
-
-        destination = self.output
-        if not destination.is_absolute():
-            destination = (repo_root / destination).resolve()
-        try:
-            destination.relative_to(repo_root)
-        except ValueError:
-            self.console.warn(
-                f"Output path {destination} is outside the repository root ({repo_root}). "
-                "Paths are repo-root relative; drop any leading '../' when running this command.",
-                topic="api",
-            )
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text(json.dumps(schema, indent=2), encoding="utf-8")
-        self.console.success(f"OpenAPI schema written to {destination}", topic="api")
-
-    @staticmethod
-    def _load_module(name: str, path: Path) -> Any:
-        spec = importlib.util.spec_from_file_location(
-            name,
-            path,
-            submodule_search_locations=[str(path.parent)],
-        )
-        if spec is None or spec.loader is None:
-            raise CLIError(f"Failed to build import spec for {name}")
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[name] = module
-        spec.loader.exec_module(module)
-        return module
-
-    @staticmethod
-    def _purge_existing_app_modules() -> None:
-        for key in list(sys.modules.keys()):
-            if key == "app" or key.startswith("app."):
-                sys.modules.pop(key, None)
-
-
-__all__ = ["register"]
+__all__ = ["register", "OpenApiExportConfig"]

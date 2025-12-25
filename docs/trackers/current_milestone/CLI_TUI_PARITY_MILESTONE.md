@@ -2,7 +2,7 @@
 # Milestone: CLI ↔ TUI Parity & IA Redesign
 
 _Last updated: 2025-12-24_  
-**Status:** Planned  
+**Status:** Complete  
 **Owner:** Platform Foundations  
 **Domain:** CLI  
 **ID / Links:** [Parity checklist](docs/trackers/checklist/CLI_TUI_PARITY.md), [CLI snapshot](packages/starter_cli/SNAPSHOT.md)
@@ -53,10 +53,10 @@ Deliver a professional, fully featured Textual TUI that reaches functional parit
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Architecture/design | ⚠️ | Direction agreed; detailed implementation plan pending final review |
-| Implementation | ⏳ | Not started |
-| Tests & QA | ⏳ | Not started |
-| Docs & runbooks | ⚠️ | Parity checklist exists; milestone draft in progress |
+| Architecture/design | ✅ | IA + design doc drafted; nav + context patterns in place |
+| Implementation | ✅ | P3 parity panes and enhancements complete |
+| Tests & QA | ✅ | Lint/typecheck/test passing locally |
+| Docs & runbooks | ✅ | Parity checklist + milestone docs updated |
 
 ---
 
@@ -67,8 +67,13 @@ Key decisions:
 - Navigation becomes category-based with collapsible groups to reduce cognitive load.
 - Global “Context” panel holds env controls (equivalent to `--env-file`, `--skip-env`, `--quiet-env`).
 - TUI must remain a thin presentation layer: all logic stays in existing workflows/services.
+- Enforced service boundary: panes call service/workflow modules, not CLI command handlers.
 - Standardize panes on a shared “Action Form → Run → Output/Logs → Status Table” pattern.
 - Prefer reusing `HubService` snapshots and existing workflow runners; avoid duplicating domain logic.
+- Context panel reload uses an env overlay so “Skip env load” clears prior .env values.
+- Env defaults are retained even when `--skip-env` is set so the Context panel can re-enable and reload them.
+- OpenAPI export runs via an api-service script to avoid CLI importing backend modules directly.
+- Logs “Follow” now uses streaming (`-f`) behavior to match CLI parity (no polling divergence).
 
 New/updated modules (planned):
 - `starter_cli/ui/layout` (collapsible nav + global context panel)
@@ -84,66 +89,66 @@ New/updated modules (planned):
 
 | ID | Area | Description | Owner | Status |
 |----|------|-------------|-------|--------|
-| A1 | UI | Define collapsible category model + update `sections.py` | PF | ⏳ |
-| A2 | UI | Update `StarterTUI` nav + command palette to support groups | PF | ⏳ |
-| A3 | UI | Add “Advanced” grouping for power-user features | PF | ⏳ |
+| A1 | UI | Define collapsible category model + update `sections.py` | PF | ✅ |
+| A2 | UI | Update `StarterTUI` nav + command palette to support groups | PF | ✅ |
+| A3 | UI | Add “Advanced” grouping for power-user features | PF | ✅ |
 
 ### Workstream B – Global Context & Execution Framework
 
 | ID | Area | Description | Owner | Status |
 |----|------|-------------|-------|--------|
-| B1 | UI | Add global Context panel (env files, skip/quiet flags, reload) | PF | ⏳ |
-| B2 | UI | Create shared action form + output/log panel pattern | PF | ⏳ |
-| B3 | UI | Standard workflow runner helper (reuse prompts + logs) | PF | ⏳ |
+| B1 | UI | Add global Context panel (env files, skip/quiet flags, reload) | PF | ✅ |
+| B2 | UI | Create shared action form + output/log panel pattern | PF | ✅ |
+| B3 | UI | Standard workflow runner helper (reuse prompts + logs) | PF | ✅ |
 
 ### Workstream C – Enhance Existing Panes
 
 | ID | Area | Description | Owner | Status |
 |----|------|-------------|-------|--------|
-| C1 | Wizard | Add missing CLI flags (schema, report-only, export paths, automation overrides) | PF | ⏳ |
-| C2 | Setup Hub | Execute actions (not just print commands) | PF | ⏳ |
-| C3 | Logs | Add service selection, errors toggle, follow/lines, archive | PF | ⏳ |
-| C4 | Infra | Add compose/vault logs/ps/verify + JSON deps export | PF | ⏳ |
-| C5 | Providers | Add strict toggle and clear status messaging | PF | ⏳ |
+| C1 | Wizard | Add missing CLI flags (report-only, export paths, automation overrides) | PF | ✅ |
+| C2 | Setup Hub | Execute actions (not just print commands) | PF | ✅ |
+| C3 | Logs | Add service selection, errors toggle, follow/lines, archive | PF | ✅ |
+| C4 | Infra | Add compose/vault logs/ps/verify + JSON deps export | PF | ✅ |
+| C5 | Providers | Add strict toggle and clear status messaging | PF | ✅ |
 
 ### Workstream D – New Operational Panes
 
 | ID | Area | Description | Owner | Status |
 |----|------|-------------|-------|--------|
-| D1 | Doctor | Run doctor + export JSON/Markdown | PF | ⏳ |
-| D2 | Start/Stop | Full start/stop controls with detached/log/pid options | PF | ⏳ |
-| D3 | Release | Release DB workflow + summary output | PF | ⏳ |
-| D4 | Config | Schema dump + inventory export | PF | ⏳ |
-| D5 | API | OpenAPI export flow | PF | ⏳ |
+| D1 | Doctor | Run doctor + export JSON/Markdown | PF | ✅ |
+| D2 | Start/Stop | Full start/stop controls with detached/log/pid options | PF | ✅ |
+| D3 | Release | Release DB workflow + summary output | PF | ✅ |
+| D4 | Config | Schema dump + inventory export | PF | ✅ |
+| D5 | API | OpenAPI export flow | PF | ✅ |
 
 ### Workstream E – Security & Auth
 
 | ID | Area | Description | Owner | Status |
 |----|------|-------------|-------|--------|
-| E1 | Auth | Issue service account tokens (form + output format) | PF | ⏳ |
-| E2 | Auth | Key rotation (optional kid) | PF | ⏳ |
-| E3 | Auth | JWKS print | PF | ⏳ |
+| E1 | Auth | Issue service account tokens (form + output format) | PF | ✅ |
+| E2 | Auth | Key rotation (optional kid) | PF | ✅ |
+| E3 | Auth | JWKS print | PF | ✅ |
 
 ### Workstream F – Billing & Usage
 
 | ID | Area | Description | Owner | Status |
 |----|------|-------------|-------|--------|
-| F1 | Stripe | Add dispatch list/replay/validate fixtures | PF | ⏳ |
-| F2 | Usage | Export report + sync entitlements (all flags) | PF | ⏳ |
+| F1 | Stripe | Add dispatch list/replay/validate fixtures | PF | ✅ |
+| F2 | Usage | Export report + sync entitlements (all flags) | PF | ✅ |
 
 ### Workstream G – Status & Advanced Utilities
 
 | ID | Area | Description | Owner | Status |
 |----|------|-------------|-------|--------|
-| G1 | Status | Subscriptions list/revoke, incident resend | PF | ⏳ |
-| G2 | Util | Run-with-env command builder | PF | ⏳ |
+| G1 | Status | Subscriptions list/revoke, incident resend | PF | ✅ |
+| G2 | Util | Run-with-env command builder | PF | ✅ |
 
 ### Workstream H – QA & Docs
 
 | ID | Area | Description | Owner | Status |
 |----|------|-------------|-------|--------|
-| H1 | Docs | Update parity checklist + milestone tracker | PF | ⏳ |
-| H2 | Tests | Add/expand CLI/TUI tests where needed | PF | ⏳ |
+| H1 | Docs | Update parity checklist + milestone tracker | PF | ✅ |
+| H2 | Tests | Add/expand CLI/TUI tests where needed | PF | ✅ |
 
 ---
 
@@ -153,17 +158,55 @@ New/updated modules (planned):
 | Phase | Scope | Exit Criteria | Status | Target |
 | ----- | ----- | ------------- | ------ | ------ |
 | P0 – Alignment | IA + parity mapping approved | Design locked, tracker accepted | ✅ | 2025-12-24 |
-| P1 – Framework | Navigation + Context panel + shared runner | New UI framework merged | ⏳ | 2025-12-31 |
-| P2 – Core Parity | Enhance existing panes + add core new panes | 70% parity checklist closed | ⏳ | 2026-01-10 |
-| P3 – Full Parity | Advanced/utility panes + polish | 100% parity checklist closed | ⏳ | 2026-01-20 |
+| P1 – Framework | Navigation + Context panel + shared runner | New UI framework merged | ✅ | 2025-12-31 |
+| P2 – Core Parity | Enhance existing panes + add core new panes | 70% parity checklist closed | ✅ | 2026-01-10 |
+| P3 – Full Parity | Advanced/utility panes + polish | 100% parity checklist closed | ✅ | 2026-01-20 |
 
 ---
+
+<!-- SECTION: Phase 2 Scope -->
+## Phase 2 Scope Summary
+
+Target: deliver core parity surfaces and align existing panes with shared patterns.
+
+Enhance existing panes (shared “Form → Run → Output → Status” pattern):
+- Wizard (add missing headless/strict/export knobs)
+- Setup Hub (execute actions; add JSON output)
+- Logs (service selection, follow/lines/errors/archive)
+- Infra (compose/vault logs/ps/verify; deps export)
+- Providers (strict toggle + clearer status)
+- Stripe (non-interactive inputs; dispatch tools)
+- Usage (export report + sync entitlements)
+
+Add core missing panes:
+- Doctor
+- Start/Stop
+- Release DB
+- Config Inventory
+- API Export
+- Auth Tokens
+- Key Rotation
+- JWKS
+
+Deliverables:
+- Shared UI components (ActionForm/BasePane/StatusTable helpers)
+- Tests for new panes and workflow runner integration
+- Updated parity checklist + milestone tracker
 
 <!-- SECTION: Dependencies -->
 ## Dependencies
 
 - Textual widgets supporting grouped/collapsible nav
 - Existing workflow/service APIs (no new domain logic added)
+
+---
+
+<!-- SECTION: Follow-ups -->
+## Follow-ups (Post‑Milestone Cleanup)
+
+- Remove remaining outdated compatibility references now that parity is complete:
+  - Presenter console adapter now lives at `starter_cli/presenters/console_adapter.py`
+  - Audit docs/commands for any other outdated compatibility references and delete them
 - Repo testing standards (CLI tests + lint/typecheck)
 
 ---
@@ -201,3 +244,6 @@ New/updated modules (planned):
 ## Changelog
 
 - 2025-12-24 — Initial milestone drafted from parity review and IA decisions.
+- 2025-12-24 — P1 framework delivered (grouped nav, context panel, workflow runner).
+- 2025-12-24 — P2 core parity delivered (expanded panes + new core panes).
+- 2025-12-24 — P3 parity delivered (status ops, util run-with-env, secrets onboarding pane).

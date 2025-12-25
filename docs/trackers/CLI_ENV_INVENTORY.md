@@ -145,17 +145,16 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | INFISICAL_SERVICE_TOKEN | str \| NoneType | — |  | ✅ | Infisical service token used for non-interactive secret access. |
 | INFISICAL_SIGNING_SECRET_NAME | str | auth-service-signing-secret |  | ✅ | Infisical secret name holding the shared signing key for service-account payloads. |
 | JWT_ALGORITHM | str | HS256 |  | ✅ | JWT algorithm |
-| LOGGING_DATADOG_API_KEY | str \| NoneType | — |  | ✅ | Datadog API key when logging_sink=datadog. |
+| LOGGING_DATADOG_API_KEY | str \| NoneType | — |  | ✅ | Datadog API key when LOGGING_SINKS includes datadog. |
 | LOGGING_DATADOG_SITE | str \| NoneType | datadoghq.com |  | ✅ | Datadog site (datadoghq.com, datadoghq.eu, etc.). |
-| LOGGING_DUPLEX_ERROR_FILE | bool | False |  |  | When logging_sink=stdout, also write errors to the dated error file. |
-| LOGGING_FILE_BACKUPS | int | 5 |  |  | Rotated backup files to retain when logging_sink=file. |
-| LOGGING_FILE_MAX_MB | int | 10 |  |  | Maximum megabytes per log file when logging_sink=file. |
-| LOGGING_FILE_PATH | str | var/log/api-service.log |  |  | Filesystem path for file sink when logging_sink=file. |
+| LOGGING_DUPLEX_ERROR_FILE | bool | False |  |  | When LOGGING_SINKS includes stdout, also write errors to the dated error file. |
+| LOGGING_FILE_BACKUPS | int | 5 |  |  | Rotated backup files to retain when LOGGING_SINKS includes file. |
+| LOGGING_FILE_MAX_MB | int | 10 |  |  | Maximum megabytes per log file when LOGGING_SINKS includes file. |
+| LOGGING_FILE_PATH | str | var/log/api-service.log |  |  | Filesystem path for file sink when LOGGING_SINKS includes file. |
 | LOGGING_MAX_DAYS | int | 0 |  |  | Prune dated log directories older than N days (0 disables pruning). |
-| LOGGING_OTLP_ENDPOINT | str \| NoneType | — |  | ✅ | OTLP/HTTP endpoint when logging_sink=otlp. |
-| LOGGING_OTLP_HEADERS | str \| NoneType | — |  | ✅ | Optional OTLP headers JSON when logging_sink=otlp. |
-| LOGGING_SINK | str | stdout |  | ✅ | Logging sink (stdout, file, datadog, otlp, or none). |
-| LOGGING_SINKS | str \| NoneType | — |  | ✅ | Comma-separated logging sinks (stdout, file, datadog, otlp, none). Overrides LOGGING_SINK when set. |
+| LOGGING_OTLP_ENDPOINT | str \| NoneType | — |  | ✅ | OTLP/HTTP endpoint when LOGGING_SINKS includes otlp. |
+| LOGGING_OTLP_HEADERS | str \| NoneType | — |  | ✅ | Optional OTLP headers JSON when LOGGING_SINKS includes otlp. |
+| LOGGING_SINKS | str | stdout |  | ✅ | Comma-separated logging sinks (stdout, file, datadog, otlp, none). |
 | LOG_LEVEL | str | INFO |  | ✅ | Logging level |
 | LOG_ROOT | str \| NoneType | — |  |  | Base directory for dated log roots (defaults to var/log). |
 | MCP_TOOLS | list[MCPToolSettings] | — |  |  | Hosted MCP tool definitions registered into the tool registry. |

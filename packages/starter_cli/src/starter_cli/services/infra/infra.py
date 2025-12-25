@@ -5,14 +5,16 @@ import subprocess
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
-_COMPOSE_BINARIES = ("docker", "docker-compose")
+from .compose import detect_compose_command
+
+_COMPOSE_BINARIES = ("docker",)
 
 _DEPENDENCY_CHECKS: tuple[tuple[str, tuple[str, ...], str], ...] = (
     ("Docker Engine", ("docker",), "Install Docker Desktop or the Docker Engine CLI."),
     (
-        "Docker Compose v2",
+        "Docker Compose",
         _COMPOSE_BINARIES,
-        "Install the Docker Compose plugin or legacy docker-compose binary.",
+        "Install the Docker Compose plugin (`docker compose`).",
     ),
     ("Hatch", ("hatch",), "Install via `pipx install hatch` or `pip install --user hatch`."),
     ("Node.js", ("node",), "Install Node.js 20+ from nodejs.org or fnm/nvm."),
@@ -34,7 +36,7 @@ def _register_default_version_probes() -> None:
 
     for name, *_ in _DEPENDENCY_CHECKS:
         _VERSION_PROBES[name] = default
-    _VERSION_PROBES["Docker Compose v2"] = compose
+    _VERSION_PROBES["Docker Compose"] = compose
 
 
 _register_default_version_probes()
@@ -67,8 +69,8 @@ class DependencyStatus:
 
 def collect_dependency_statuses() -> Iterable[DependencyStatus]:
     for name, binaries, hint in _DEPENDENCY_CHECKS:
-        if name == "Docker Compose v2":
-            command = _detect_compose_command()
+        if name == "Docker Compose":
+            command = detect_compose_command()
         else:
             command = _first_existing_binary(binaries)
         version = _detect_version(name, command)
@@ -87,25 +89,6 @@ def _first_existing_binary(candidates: Iterable[str]) -> tuple[str, ...] | None:
         if path:
             return (path,)
     return None
-
-
-def _detect_compose_command() -> tuple[str, ...] | None:
-    legacy = shutil.which("docker-compose")
-    if legacy:
-        return (legacy,)
-    docker = shutil.which("docker")
-    if not docker:
-        return None
-    try:
-        subprocess.run(
-            [docker, "compose", "version"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=True,
-        )
-    except (OSError, subprocess.CalledProcessError):
-        return None
-    return (docker, "compose")
 
 
 def _detect_version(name: str, command: tuple[str, ...] | None) -> str | None:

@@ -24,9 +24,9 @@ def _handle_home(args: argparse.Namespace, ctx: CLIContext) -> int:
         snapshot = HubService(ctx).load_home()
         _render_summary(ctx, snapshot)
         return 0
-    from starter_cli.ui import StarterTUI
+    from .ui_loader import load_ui_module
 
-    StarterTUI(ctx, initial_screen="home").run()
+    load_ui_module().StarterTUI(ctx, initial_screen="home").run()
     return 0
 
 

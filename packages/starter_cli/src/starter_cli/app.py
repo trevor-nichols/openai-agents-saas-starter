@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from pathlib import Path
 
 from .commands import register_all
 from .container import ApplicationContainer, build_container
 from .core import CLIContext, CLIError
-from .core.constants import DEFAULT_ENV_FILES
-from .core.context import should_skip_env_loading
+from .core.context import resolve_env_files, should_skip_env_loading
 
 Handler = Callable[[argparse.Namespace, CLIContext], int]
 
@@ -31,8 +30,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--skip-env",
         action="store_true",
         help=(
-            "Skip loading default env files (.env.compose, apps/api-service/.env.local, "
-            "apps/api-service/.env, .env)."
+            "Skip loading default env files (.env.compose, apps/api-service/.env, "
+            "apps/api-service/.env.local). Explicit --env-file values still load."
         ),
     )
     parser.add_argument(
@@ -47,27 +46,23 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _resolve_env_files(
     container: ApplicationContainer, args: argparse.Namespace
-) -> Sequence[Path] | None:
+) -> tuple[Path, ...]:
     custom_envs = container.iter_env_files(args.env_files or [])
-    skip_env = args.skip_env or should_skip_env_loading()
-
-    if skip_env:
-        return tuple(custom_envs) if custom_envs else None
-
-    default_paths = list(DEFAULT_ENV_FILES)
-    if custom_envs:
-        default_paths.extend(custom_envs)
-    return tuple(dict.fromkeys(default_paths))
+    return resolve_env_files(custom_envs, skip_defaults=False)
 
 
 def _load_environment(
     container: ApplicationContainer,
     args: argparse.Namespace,
 ) -> CLIContext:
+    skip_env = args.skip_env or should_skip_env_loading()
     env_files = _resolve_env_files(container, args)
-    ctx = container.create_context(env_files=env_files)
-    if env_files is not None:
-        container.load_environment(ctx, verbose=not args.quiet_env)
+    ctx = container.create_context(
+        env_files=env_files,
+        skip_env=skip_env,
+        quiet_env=args.quiet_env,
+    )
+    container.load_environment(ctx, verbose=not args.quiet_env)
     return ctx
 
 
@@ -80,7 +75,11 @@ def main(argv: list[str] | None = None, *, container: ApplicationContainer | Non
         and getattr(args, "util_command", None) == "run-with-env"
     ):
         # run-with-env manages its own env merging; avoid double-loading via CLI.
-        ctx = app_container.create_context(env_files=None)
+        ctx = app_container.create_context(
+            env_files=(),
+            skip_env=True,
+            quiet_env=args.quiet_env,
+        )
     else:
         ctx = _load_environment(app_container, args)
 

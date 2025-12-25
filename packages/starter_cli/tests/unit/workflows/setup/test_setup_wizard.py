@@ -91,7 +91,6 @@ def _local_headless_answers() -> dict[str, str]:
         "RESEND_BASE_URL": "https://api.resend.com",
         "RUN_MIGRATIONS_NOW": "false",
         "TENANT_DEFAULT_SLUG": "local",
-        "LOGGING_SINK": "stdout",
         "LOGGING_SINKS": "stdout",
         "GEOIP_PROVIDER": "none",
         "SIGNUP_ACCESS_POLICY": "public",
@@ -147,7 +146,7 @@ def test_wizard_headless_local_generates_env(temp_ctx: CLIContext) -> None:
     assert "OPENAI_API_KEY" in env_body
     assert "TENANT_DEFAULT_SLUG=local" in env_body
     assert "API_BASE_URL=http://127.0.0.1:8000" in env_body
-    assert "LOGGING_SINK=stdout" in env_body
+    assert "LOGGING_SINKS=stdout" in env_body
     assert "SIGNUP_ACCESS_POLICY=public" in env_body
     assert "ALLOW_PUBLIC_SIGNUP=true" in env_body
     assert "BILLING_RETRY_DEPLOYMENT_MODE=inline" in env_body
@@ -159,7 +158,6 @@ def test_wizard_prompts_all_selected_sinks(temp_ctx: CLIContext) -> None:
     snapshot = dict(os.environ)
     answers = _local_headless_answers() | {
         "LOGGING_SINKS": "stdout,datadog",
-        "LOGGING_SINK": "stdout",
         "LOGGING_DATADOG_API_KEY": "dd-api-key",
         "LOGGING_DATADOG_SITE": "datadoghq.eu",
     }
@@ -225,7 +223,6 @@ def test_wizard_exports_answers_when_requested(temp_ctx: CLIContext) -> None:
 def test_wizard_configures_bundled_collector(temp_ctx: CLIContext) -> None:
     snapshot = dict(os.environ)
     answers = _local_headless_answers() | {
-        "LOGGING_SINK": "otlp",
         "LOGGING_SINKS": "otlp",
         "ENABLE_OTEL_COLLECTOR": "true",
         "LOGGING_OTLP_ENDPOINT": "http://otel-collector:4318/v1/logs",
@@ -408,7 +405,6 @@ def test_wizard_writes_dedicated_worker_artifacts(temp_ctx: CLIContext) -> None:
         "RESEND_BASE_URL": "https://api.resend.com",
         "RUN_MIGRATIONS_NOW": "false",
         "TENANT_DEFAULT_SLUG": "prod",
-        "LOGGING_SINK": "stdout",
         "LOGGING_SINKS": "stdout",
         "GEOIP_PROVIDER": "none",
         "SIGNUP_ACCESS_POLICY": "invite_only",
@@ -486,7 +482,6 @@ def test_wizard_refreshes_cached_settings(temp_ctx: CLIContext) -> None:
         "RESEND_BASE_URL": "https://api.resend.com",
         "RUN_MIGRATIONS_NOW": "false",
         "TENANT_DEFAULT_SLUG": "local",
-        "LOGGING_SINK": "stdout",
         "LOGGING_SINKS": "stdout",
         "GEOIP_PROVIDER": "none",
         "SIGNUP_ACCESS_POLICY": "public",
@@ -559,7 +554,6 @@ def test_wizard_clears_optional_provider_keys(temp_ctx: CLIContext) -> None:
         "RESEND_BASE_URL": "https://api.resend.com",
         "RUN_MIGRATIONS_NOW": "false",
         "TENANT_DEFAULT_SLUG": "local",
-        "LOGGING_SINK": "stdout",
         "LOGGING_SINKS": "stdout",
         "GEOIP_PROVIDER": "none",
         "SIGNUP_ACCESS_POLICY": "public",
@@ -623,7 +617,6 @@ def test_wizard_does_not_leak_env_values(temp_ctx: CLIContext) -> None:
         "RESEND_BASE_URL": "https://api.resend.com",
         "RUN_MIGRATIONS_NOW": "false",
         "TENANT_DEFAULT_SLUG": "local",
-        "LOGGING_SINK": "stdout",
         "LOGGING_SINKS": "stdout",
         "GEOIP_PROVIDER": "none",
         "SIGNUP_ACCESS_POLICY": "public",
@@ -700,7 +693,6 @@ def test_wizard_rotates_new_peppers(monkeypatch, temp_ctx: CLIContext) -> None:
         "RESEND_BASE_URL": "https://api.resend.com",
         "RUN_MIGRATIONS_NOW": "false",
         "TENANT_DEFAULT_SLUG": "local",
-        "LOGGING_SINK": "stdout",
         "LOGGING_SINKS": "stdout",
         "GEOIP_PROVIDER": "none",
         "SIGNUP_ACCESS_POLICY": "public",
@@ -772,7 +764,6 @@ def test_wizard_staging_verifies_vault(
         "RESEND_BASE_URL": "https://api.resend.com",
         "RUN_MIGRATIONS_NOW": "false",
         "TENANT_DEFAULT_SLUG": "tenant-staging",
-        "LOGGING_SINK": "none",
         "LOGGING_SINKS": "none",
         "GEOIP_PROVIDER": "none",
         "SIGNUP_ACCESS_POLICY": "invite_only",
@@ -968,7 +959,6 @@ def test_interactive_wizard_runs_tui_alongside_shell(
         output_format="summary",
         input_provider=provider,
         enable_tui=True,
-        enable_schema=False,
     )
     wizard.execute()
 

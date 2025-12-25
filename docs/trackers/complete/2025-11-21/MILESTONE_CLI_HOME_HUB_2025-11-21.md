@@ -15,7 +15,7 @@ Deliver a first-class operator “home hub” inside the Starter CLI that surfac
 ## Non-Goals
 - Rewriting the CLI in Rust or changing dependency injection patterns.
 - Managing long-running processes that were not started by the CLI (avoid surprise teardown).
-- Adding feature flags or backward-compat shims for pre-v0.5.0 stacks.
+- Adding feature flags or transition shims for pre-v0.5.0 stacks.
 
 ## Success Criteria
 - `python -m starter_cli.app home` renders a navigable hub or a concise summary with `--no-tui`.

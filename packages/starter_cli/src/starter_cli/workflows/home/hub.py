@@ -9,9 +9,9 @@ from starter_contracts.provider_validation import ProviderViolation, validate_pr
 
 from starter_cli.core import CLIContext
 from starter_cli.core.status_models import ProbeResult, ServiceStatus
-from starter_cli.services import ops_models
-from starter_cli.services.infra import DependencyStatus, collect_dependency_statuses
-from starter_cli.services.stripe_status import StripeStatus, load_stripe_status
+from starter_cli.services.infra import DependencyStatus, collect_dependency_statuses, ops_models
+from starter_cli.services.stripe.stripe_status import StripeStatus, load_stripe_status
+from starter_cli.services.usage.reporting import UsageSummary, UsageWarning, load_usage_report
 from starter_cli.workflows.home.doctor import DoctorRunner, detect_profile
 from starter_cli.workflows.setup_menu.detection import STALE_AFTER_DAYS, collect_setup_items
 from starter_cli.workflows.setup_menu.models import SetupItem
@@ -53,8 +53,8 @@ class ProvidersSnapshot:
 
 @dataclass(frozen=True, slots=True)
 class UsageSnapshot:
-    summary: ops_models.UsageSummary | None
-    warnings: tuple[ops_models.UsageWarning, ...]
+    summary: UsageSummary | None
+    warnings: tuple[UsageWarning, ...]
 
 
 class HubService:
@@ -96,14 +96,17 @@ class HubService:
         dependencies = tuple(collect_dependency_statuses())
         return InfraSnapshot(dependencies=dependencies)
 
-    def load_providers(self) -> ProvidersSnapshot:
+    def load_providers(self, *, strict_override: bool | None = None) -> ProvidersSnapshot:
         settings = self.ctx.optional_settings()
         if settings is None:
             return ProvidersSnapshot(error=True, violations=())
         strict = False
-        enforce = getattr(settings, "should_enforce_secret_overrides", None)
-        if callable(enforce):
-            strict = bool(enforce())
+        if strict_override is not None:
+            strict = strict_override
+        else:
+            enforce = getattr(settings, "should_enforce_secret_overrides", None)
+            if callable(enforce):
+                strict = bool(enforce())
         violations = tuple(validate_providers(settings, strict=strict))
         return ProvidersSnapshot(error=False, violations=violations)
 
@@ -113,7 +116,7 @@ class HubService:
     def load_usage(self) -> UsageSnapshot:
         reports_dir = self.ctx.project_root / "var" / "reports"
         report_path = reports_dir / "usage-dashboard.json"
-        report = ops_models.load_usage_report(report_path)
+        report = load_usage_report(report_path)
         if report is None:
             return UsageSnapshot(summary=None, warnings=())
         return UsageSnapshot(summary=report.summary, warnings=report.warnings)

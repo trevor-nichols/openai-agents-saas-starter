@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from starter_cli.core import CLIError
-from starter_cli.services.backend_scripts import (
+from starter_cli.core import CLIContext, CLIError
+from starter_cli.services.infra.backend_scripts import (
     extract_json_payload,
     run_backend_script,
 )
@@ -39,6 +39,31 @@ class DevUserConfig:
     rotate_existing: bool = True
 
 
+def build_default_dev_user_config(
+    *,
+    password: str | None = None,
+    rotate_existing: bool = True,
+) -> DevUserConfig:
+    resolved_password = password or secrets.token_urlsafe(20)
+    return DevUserConfig(
+        email=DEFAULT_EMAIL,
+        password=resolved_password,
+        tenant_slug=DEFAULT_TENANT,
+        tenant_name=DEFAULT_TENANT_NAME,
+        role=DEFAULT_ROLE,
+        display_name=DEFAULT_NAME,
+        locked=False,
+        generated_password=password is None,
+        rotate_existing=rotate_existing,
+    )
+
+
+def seed_dev_user_with_context(ctx: CLIContext, config: DevUserConfig) -> str:
+    result = seed_dev_user(ctx, config)
+    _persist_and_announce(ctx, config, result)
+    return result
+
+
 def _resolve_config(context: WizardContext) -> DevUserConfig:
     # If the wizard already captured a config, reuse it. Otherwise synthesize sensible defaults
     # so reruns (or headless runs) still emit credentials.
@@ -65,7 +90,7 @@ def _resolve_config(context: WizardContext) -> DevUserConfig:
     )
 
 
-def _run_backend_seed_script(project_root: Path, config: DevUserConfig) -> str:
+def _run_backend_seed_script(project_root: Path, config: DevUserConfig, *, ctx: CLIContext) -> str:
     cmd_args = [
         "--email",
         config.email,
@@ -89,6 +114,7 @@ def _run_backend_seed_script(project_root: Path, config: DevUserConfig) -> str:
         project_root=project_root,
         script_name="seed_dev_user.py",
         args=cmd_args,
+        ctx=ctx,
     )
     if completed.returncode != 0:
         stderr = (completed.stderr or "").strip()
@@ -104,8 +130,8 @@ def _run_backend_seed_script(project_root: Path, config: DevUserConfig) -> str:
     return result
 
 
-def seed_dev_user(context: WizardContext, config: DevUserConfig) -> str:
-    project_root = context.cli_ctx.project_root
+def seed_dev_user(ctx: CLIContext, config: DevUserConfig) -> str:
+    project_root = ctx.project_root
     normalized_email = config.email.strip().lower()
     config = DevUserConfig(
         email=normalized_email,
@@ -120,7 +146,7 @@ def seed_dev_user(context: WizardContext, config: DevUserConfig) -> str:
     )
 
     try:
-        result = _run_backend_seed_script(project_root, config)
+        result = _run_backend_seed_script(project_root, config, ctx=ctx)
     except CLIError:
         raise
     except Exception as exc:  # pragma: no cover - runtime failures
@@ -129,23 +155,23 @@ def seed_dev_user(context: WizardContext, config: DevUserConfig) -> str:
     return result or "unknown"
 
 
-def _persist_and_announce(context: WizardContext, config: DevUserConfig, status: str) -> None:
+def _persist_and_announce(ctx: CLIContext, config: DevUserConfig, status: str) -> None:
     # Console output (Rich) and plain stdout for shells that suppress styling.
-    context.console.section("Dev User Ready", "Use these credentials to sign in for the demo.")
-    context.console.info(f"Email: {config.email}", topic="dev-user")
-    context.console.info(
+    ctx.console.section("Dev User Ready", "Use these credentials to sign in for the demo.")
+    ctx.console.info(f"Email: {config.email}", topic="dev-user")
+    ctx.console.info(
         f"Tenant: {config.tenant_slug} ({config.tenant_name})",
         topic="dev-user",
     )
-    context.console.info(f"Role: {config.role}", topic="dev-user")
+    ctx.console.info(f"Role: {config.role}", topic="dev-user")
 
     if status in {"created", "rotated"}:
-        context.console.warn(
+        ctx.console.warn(
             f"Password (copy now, not stored): {config.password}",
             topic="dev-user",
         )
     else:
-        context.console.info(
+        ctx.console.info(
             "Password unchanged from previous run (not recoverable).",
             topic="dev-user",
         )
@@ -159,7 +185,7 @@ def _persist_and_announce(context: WizardContext, config: DevUserConfig, status:
         print(f"[dev-user] password={config.password}")
 
     # Persist credentials to an artifact so reruns remain discoverable.
-    reports_dir = context.cli_ctx.project_root / "var" / "reports"
+    reports_dir = ctx.project_root / "var" / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
     path = reports_dir / "dev-user-credentials.json"
     payload: dict[str, object] = {
@@ -176,8 +202,8 @@ def _persist_and_announce(context: WizardContext, config: DevUserConfig, status:
         payload["password"] = config.password
 
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    context.console.info(
-        f"Dev user credentials saved to {path.relative_to(context.cli_ctx.project_root)}",
+    ctx.console.info(
+        f"Dev user credentials saved to {path.relative_to(ctx.project_root)}",
         topic="dev-user",
     )
 
@@ -220,7 +246,7 @@ def run_dev_user_automation(context: WizardContext) -> None:
     context.refresh_automation_ui(AutomationPhase.DEV_USER)
 
     try:
-        result = seed_dev_user(context, config)
+        result = seed_dev_user(context.cli_ctx, config)
     except CLIError as exc:
         context.automation.update(
             AutomationPhase.DEV_USER,
@@ -244,7 +270,13 @@ def run_dev_user_automation(context: WizardContext) -> None:
     )
     context.refresh_automation_ui(AutomationPhase.DEV_USER)
 
-    _persist_and_announce(context, config, result)
+    _persist_and_announce(context.cli_ctx, config, result)
 
 
-__all__ = ["DevUserConfig", "seed_dev_user", "run_dev_user_automation"]
+__all__ = [
+    "DevUserConfig",
+    "build_default_dev_user_config",
+    "seed_dev_user",
+    "seed_dev_user_with_context",
+    "run_dev_user_automation",
+]

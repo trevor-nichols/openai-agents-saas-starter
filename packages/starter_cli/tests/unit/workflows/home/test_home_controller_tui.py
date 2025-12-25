@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import argparse
+import sys
+
+import pytest
 
 from starter_cli.core.context import build_context
 from starter_cli.commands import home as home_command
 from starter_cli import ui as ui_module
 
 
-def test_home_command_invokes_textual(monkeypatch):
+def test_home_command_invokes_textual(monkeypatch: pytest.MonkeyPatch) -> None:
     ctx = build_context()
     calls: dict[str, object] = {}
 
@@ -20,6 +23,7 @@ def test_home_command_invokes_textual(monkeypatch):
             calls["run"] = True
 
     monkeypatch.setattr(ui_module, "StarterTUI", DummyApp)
+    monkeypatch.setitem(sys.modules, "starter_cli.ui", ui_module)
 
     args = argparse.Namespace(no_tui=False)
     result = home_command._handle_home(args, ctx)

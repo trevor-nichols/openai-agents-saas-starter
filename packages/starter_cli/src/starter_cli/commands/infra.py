@@ -4,24 +4,16 @@ import argparse
 import json
 import subprocess
 
-from starter_cli.core import CLIContext, CLIError
+from starter_cli.core import CLIContext
 from starter_cli.ports.console import ConsolePort
-from starter_cli.services.infra import collect_dependency_statuses
-
-_COMPOSE_ACTION_TARGETS = {
-    "up": "dev-up",
-    "down": "dev-down",
-    "logs": "dev-logs",
-    "ps": "dev-ps",
-}
-
-_VAULT_ACTION_TARGETS = {
-    "up": "vault-up",
-    "down": "vault-down",
-    "logs": "vault-logs",
-    "verify": "verify-vault",
-}
-
+from starter_cli.services.infra import (
+    COMPOSE_ACTION_TARGETS,
+    VAULT_ACTION_TARGETS,
+    collect_dependency_statuses,
+    just_command,
+    resolve_compose_target,
+    resolve_vault_target,
+)
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -30,11 +22,11 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
 
     compose_parser = infra_subparsers.add_parser(
         "compose",
-        help="Manage the docker-compose stack (Postgres + Redis).",
+        help="Manage the docker compose stack (Postgres + Redis).",
     )
     compose_parser.add_argument(
         "action",
-        choices=sorted(_COMPOSE_ACTION_TARGETS.keys()),
+        choices=sorted(COMPOSE_ACTION_TARGETS.keys()),
         help="Compose action to run via Just automation wrappers.",
     )
     compose_parser.set_defaults(handler=handle_compose)
@@ -45,7 +37,7 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     )
     vault_parser.add_argument(
         "action",
-        choices=sorted(_VAULT_ACTION_TARGETS.keys()),
+        choices=sorted(VAULT_ACTION_TARGETS.keys()),
         help="Vault helper action to run via Just recipes.",
     )
     vault_parser.set_defaults(handler=handle_vault)
@@ -64,17 +56,13 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
 
 
 def handle_compose(args: argparse.Namespace, ctx: CLIContext) -> int:
-    target = _COMPOSE_ACTION_TARGETS.get(args.action)
-    if not target:  # pragma: no cover - argparse guards choices
-        raise CLIError(f"Unknown compose action: {args.action}")
+    target = resolve_compose_target(args.action)
     _run_just(ctx, ctx.console, target)
     return 0
 
 
 def handle_vault(args: argparse.Namespace, ctx: CLIContext) -> int:
-    target = _VAULT_ACTION_TARGETS.get(args.action)
-    if not target:  # pragma: no cover - argparse guards choices
-        raise CLIError(f"Unknown vault action: {args.action}")
+    target = resolve_vault_target(args.action)
     _run_just(ctx, ctx.console, target)
     return 0
 
@@ -114,7 +102,7 @@ def handle_deps(args: argparse.Namespace, ctx: CLIContext) -> int:
 
 
 def _run_just(ctx: CLIContext, console: ConsolePort, target: str) -> None:
-    cmd = ["just", target]
+    cmd = just_command(target)
     console.info(f"$ {' '.join(cmd)}", topic="infra")
     subprocess.run(cmd, cwd=ctx.project_root, check=True)
 

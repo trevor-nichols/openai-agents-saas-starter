@@ -14,15 +14,10 @@ from textual.widgets import Button, Input, OptionList, RadioButton, RadioSet, St
 from starter_cli.core import CLIContext
 from starter_cli.ports.presentation import NotifyPort
 from starter_cli.presenters import PresenterConsoleAdapter, build_textual_presenter
+from starter_cli.services.secrets.onboard import execute_secrets_onboard
 from starter_cli.ui.context import derive_presenter_context
 from starter_cli.ui.prompting import PromptChannel, PromptRequest, TextualPromptPort
 from starter_cli.workflows.secrets import registry
-from starter_cli.workflows.secrets.flow import record_artifacts, run_onboard, select_provider
-from starter_cli.workflows.secrets.models import (
-    SecretsWorkflowOptions,
-    emit_cli_telemetry,
-    render_onboard_result,
-)
 from starter_cli.workflows.setup.inputs import ParsedAnswers
 
 
@@ -163,27 +158,14 @@ class SecretsOnboardSession:
             presenter = build_textual_presenter(prompt=prompt, notify=notify)
             console = PresenterConsoleAdapter(presenter)
             run_ctx = derive_presenter_context(self._ctx, console=console, presenter=presenter)
-            option = select_provider(
-                self._provider,
-                non_interactive=False,
-                prompt=prompt,
-                console=console,
-            )
-            if not option.available:
-                notify.warn(
-                    f"{option.label} is not yet available. "
-                    "Keep SECRETS_PROVIDER set to vault_dev until provider support lands.",
-                    topic="secrets",
-                )
-                self._state.mark_done(error="Provider unavailable.")
-                return
             self._state.set_status("Running secrets onboarding...")
-            options = SecretsWorkflowOptions(skip_automation=self._skip_automation)
-            result = run_onboard(run_ctx, provider=prompt, option=option, options=options)
-            render_onboard_result(console, result)
-            emit_cli_telemetry(console, result.provider.value, success=True)
-            log_path = run_ctx.project_root / "var/reports/verification-artifacts.json"
-            record_artifacts(console, log_path=log_path, result=result)
+            execute_secrets_onboard(
+                run_ctx,
+                provider=self._provider,
+                non_interactive=False,
+                input_provider=prompt,
+                skip_automation=self._skip_automation,
+            )
             self._state.set_status("Secrets onboarding complete.")
         except Exception as exc:  # pragma: no cover - defensive
             self._state.mark_done(error=str(exc))

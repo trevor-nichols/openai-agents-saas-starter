@@ -31,7 +31,7 @@ For custom domains and certificate validation, follow the per-cloud guides:
 ## Observability
 
 - Log to stdout and forward with platform-native collectors.
-- Optionally enable OTLP (`LOGGING_SINK=otlp`) and point to an OTel collector.
+- Optionally enable OTLP (`LOGGING_SINKS=otlp`) and point to an OTel collector.
 
 ## Secrets & Config
 

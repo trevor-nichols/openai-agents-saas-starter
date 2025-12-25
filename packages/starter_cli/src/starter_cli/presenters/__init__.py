@@ -1,4 +1,4 @@
-from .adapters import PresenterConsoleAdapter
+from .console_adapter import PresenterConsoleAdapter
 from .headless import build_headless_presenter
 from .textual import TextualPresenter, build_textual_presenter
 

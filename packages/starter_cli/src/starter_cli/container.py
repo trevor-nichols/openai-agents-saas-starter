@@ -17,8 +17,19 @@ class ApplicationContainer:
     def __init__(self) -> None:
         self.console = shared_console
 
-    def create_context(self, *, env_files: Sequence[Path] | None = None) -> CLIContext:
-        return build_context(env_files=env_files, console=cast(ConsolePort, self.console))
+    def create_context(
+        self,
+        *,
+        env_files: Sequence[Path] | None = None,
+        skip_env: bool = False,
+        quiet_env: bool = False,
+    ) -> CLIContext:
+        return build_context(
+            env_files=env_files,
+            console=cast(ConsolePort, self.console),
+            skip_env=skip_env,
+            quiet_env=quiet_env,
+        )
 
     def iter_env_files(self, paths: Iterable[str]) -> list[Path]:
         return iter_env_files(paths)

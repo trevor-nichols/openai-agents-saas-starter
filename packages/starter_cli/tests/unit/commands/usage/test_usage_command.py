@@ -7,6 +7,7 @@ from typing import cast
 
 import pytest
 from starter_cli.commands import usage as usage_cmd
+from starter_cli.services.usage import usage_ops
 from starter_cli.core import CLIContext, CLIError
 from starter_cli.workflows.usage import (
     PlanSyncResult,
@@ -53,7 +54,7 @@ def test_handle_sync_entitlements_invokes_workflow(monkeypatch, tmp_path):
             plan_results=[PlanSyncResult(plan_code="starter", inserted=1, updated=0, pruned=0)],
         )
 
-    monkeypatch.setattr(usage_cmd, "sync_usage_entitlements", _fake_sync)
+    monkeypatch.setattr(usage_ops, "sync_usage_entitlements", _fake_sync)
 
     args = _build_args(
         plan=["starter"],
@@ -109,14 +110,14 @@ def test_handle_export_report_generates_artifact(monkeypatch, tmp_path):
             captured_request["request"] = request
             return dummy_report
 
-    monkeypatch.setattr(usage_cmd, "UsageReportService", lambda: _FakeService())
+    monkeypatch.setattr(usage_ops, "UsageReportService", lambda: _FakeService())
 
     def _fake_writer(report, *, json_path, csv_path):
         captured_paths["json"] = json_path
         captured_paths["csv"] = csv_path
         return UsageReportArtifacts(json_path=json_path, csv_path=csv_path)
 
-    monkeypatch.setattr(usage_cmd, "write_usage_report_files", _fake_writer)
+    monkeypatch.setattr(usage_ops, "write_usage_report_files", _fake_writer)
 
     args = argparse.Namespace(
         period_start="2025-11-01T00:00:00Z",

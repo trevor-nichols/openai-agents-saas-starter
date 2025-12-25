@@ -98,7 +98,6 @@ WIZARD_PROMPTED_ENV_VARS: Final[frozenset[str]] = frozenset(
         "TENANT_DEFAULT_SLUG",
         "JWT_ALGORITHM",
         "LOGGING_SINKS",
-        "LOGGING_SINK",
         "LOG_LEVEL",
         "LOGGING_DATADOG_API_KEY",
         "LOGGING_DATADOG_SITE",

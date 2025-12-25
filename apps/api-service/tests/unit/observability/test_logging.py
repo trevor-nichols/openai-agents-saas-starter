@@ -73,7 +73,7 @@ def test_log_event_emits_context_and_fields() -> None:
 
 def test_configure_logging_requires_datadog_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("LOGGING_DATADOG_API_KEY", raising=False)
-    settings = Settings.model_validate({"LOGGING_SINKS": None, "LOGGING_SINK": "datadog"})
+    settings = Settings.model_validate({"LOGGING_SINKS": "datadog"})
     with pytest.raises(ValueError):
         configure_logging(settings)
 
@@ -82,7 +82,7 @@ def test_configure_logging_writes_json_to_file(tmp_path: Path) -> None:
     log_path = tmp_path / "test.log"
     settings = Settings.model_validate(
         {
-            "LOGGING_SINK": "file",
+            "LOGGING_SINKS": "file",
             "LOGGING_FILE_PATH": str(log_path),
             "LOGGING_FILE_MAX_MB": 1,
         }
@@ -103,7 +103,7 @@ def test_configure_logging_writes_json_to_file(tmp_path: Path) -> None:
 def test_file_sink_uses_daily_root_and_writes_error(tmp_path: Path) -> None:
     settings = Settings.model_validate(
         {
-            "LOGGING_SINK": "file",
+            "LOGGING_SINKS": "file",
             "LOG_ROOT": str(tmp_path),
             "LOGGING_FILE_MAX_MB": 1,
             "LOGGING_FILE_BACKUPS": 1,
@@ -135,7 +135,7 @@ def test_default_file_sink_uses_dated_layout_without_log_root(tmp_path: Path, mo
     monkeypatch.setattr(core_paths, "REPO_ROOT", tmp_path)
     settings = Settings.model_validate(
         {
-            "LOGGING_SINK": "file",
+            "LOGGING_SINKS": "file",
             # LOG_ROOT unset, LOGGING_FILE_PATH default
         }
     )
@@ -151,7 +151,7 @@ def test_custom_file_path_ignores_unwritable_log_root(monkeypatch, tmp_path: Pat
     custom = tmp_path / "custom.log"
     settings = Settings.model_validate(
         {
-            "LOGGING_SINK": "file",
+            "LOGGING_SINKS": "file",
             "LOGGING_FILE_PATH": str(custom),
             "LOGGING_MAX_DAYS": 7,
             "LOG_ROOT": "/root/forbidden",
@@ -174,7 +174,7 @@ def test_custom_file_path_ignores_unwritable_log_root(monkeypatch, tmp_path: Pat
 def test_stdout_duplex_error_file(tmp_path: Path) -> None:
     settings = Settings.model_validate(
         {
-            "LOGGING_SINK": "stdout",
+            "LOGGING_SINKS": "stdout",
             "LOG_ROOT": str(tmp_path),
             "LOGGING_DUPLEX_ERROR_FILE": True,
             "LOGGING_FILE_MAX_MB": 1,
@@ -199,7 +199,7 @@ def test_prunes_old_dated_directories(tmp_path: Path) -> None:
 
     settings = Settings.model_validate(
         {
-            "LOGGING_SINK": "file",
+            "LOGGING_SINKS": "file",
             "LOG_ROOT": str(base),
             "LOGGING_MAX_DAYS": 1,
         }
@@ -280,10 +280,9 @@ def test_logging_sinks_supports_multiple_and_writes_file(tmp_path: Path) -> None
     assert any(isinstance(h, DateRollingFileHandler) for h in logging.getLogger().handlers)
 
 
-def test_logging_sinks_precedence_over_logging_sink(tmp_path: Path) -> None:
+def test_logging_sinks_file_only_excludes_stdout(tmp_path: Path) -> None:
     settings = Settings.model_validate(
         {
-            "LOGGING_SINK": "stdout",
             "LOGGING_SINKS": "file",
             "LOG_ROOT": str(tmp_path),
             "LOGGING_FILE_MAX_MB": 1,
@@ -294,9 +293,11 @@ def test_logging_sinks_precedence_over_logging_sink(tmp_path: Path) -> None:
     log_event("unit.precedence", message="hi")
 
     date_dir = tmp_path / date.today().isoformat() / "api"
-    assert (date_dir / "all.log").exists(), "File sink should win when LOGGING_SINKS is set"
+    assert (date_dir / "all.log").exists(), "File sink should write logs when selected"
     handler_types = {type(handler).__name__ for handler in logging.getLogger().handlers}
-    assert "StreamHandler" not in handler_types, "stdout handler should not be configured when only file sink is selected"
+    assert (
+        "StreamHandler" not in handler_types
+    ), "stdout handler should not be configured when only file sink is selected"
 
 
 def test_logging_sinks_none_cannot_be_combined() -> None:

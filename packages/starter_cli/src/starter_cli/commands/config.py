@@ -2,17 +2,18 @@ from __future__ import annotations
 
 import argparse
 import json
-from dataclasses import dataclass
-from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, get_args, get_origin
 
-from pydantic_core import PydanticUndefined
 from starter_contracts.config import get_settings_class
 
 from starter_cli.core import CLIContext
-from starter_cli.core.inventory import WIZARD_PROMPTED_ENV_VARS
 from starter_cli.ports.console import ConsolePort
+from starter_cli.services.config.inventory import (
+    FieldSpec,
+    collect_field_specs,
+    format_default,
+    render_markdown,
+)
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -46,34 +47,11 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     inventory_parser.set_defaults(handler=handle_write_inventory)
 
 
-@dataclass(slots=True)
-class FieldSpec:
-    env_var: str
-    field_name: str
-    type_hint: str
-    default: Any
-    required: bool
-    description: str
-    wizard_prompted: bool
-
-    def to_dict(self) -> dict[str, Any]:
-        default_value = None if self.default is PydanticUndefined else self.default
-        return {
-            "env_var": self.env_var,
-            "field": self.field_name,
-            "type": self.type_hint,
-            "default": default_value,
-            "required": self.required,
-            "wizard_prompted": self.wizard_prompted,
-            "description": self.description,
-        }
-
-
 def handle_dump_schema(args: argparse.Namespace, ctx: CLIContext) -> int:
     console = ctx.console
     settings_cls = get_settings_class()
 
-    field_specs = _collect_field_specs(settings_cls)
+    field_specs = collect_field_specs(settings_cls)
     if args.format == "json":
         json_payload = [spec.to_dict() for spec in field_specs]
         json.dump(json_payload, console.stream, indent=2)
@@ -86,61 +64,13 @@ def handle_dump_schema(args: argparse.Namespace, ctx: CLIContext) -> int:
 
 def handle_write_inventory(args: argparse.Namespace, ctx: CLIContext) -> int:
     console = ctx.console
-    field_specs = _collect_field_specs(get_settings_class())
+    field_specs = collect_field_specs(get_settings_class())
     destination = Path(args.path).expanduser().resolve()
-    body = _render_markdown(field_specs)
+    body = render_markdown(field_specs)
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(body, encoding="utf-8")
     console.success(f"Environment inventory written to {destination}", topic="config")
     return 0
-
-
-def _collect_field_specs(settings_cls: type) -> list[FieldSpec]:
-    specs: list[FieldSpec] = []
-    for field_name, field in getattr(settings_cls, "model_fields", {}).items():
-        alias = (field.alias or field_name).upper()
-        specs.append(
-            FieldSpec(
-                env_var=alias,
-                field_name=field_name,
-                type_hint=_format_annotation(field.annotation),
-                default=field.default,
-                required=field.is_required(),
-                description=(field.description or "").strip().replace("\n", " "),
-                wizard_prompted=alias in WIZARD_PROMPTED_ENV_VARS,
-            )
-        )
-    return sorted(specs, key=lambda spec: spec.env_var)
-
-
-def _format_annotation(annotation: Any) -> str:
-    origin = get_origin(annotation)
-    if origin is None:
-        return getattr(annotation, "__name__", str(annotation))
-    args = get_args(annotation)
-    if origin is list or origin is tuple or origin is set:
-        inner = ", ".join(_format_annotation(arg) for arg in args) or "Any"
-        return f"{origin.__name__}[{inner}]"
-    if origin is dict:
-        key_type, value_type = (*args, "Any", "Any")[:2]
-        return f"dict[{_format_annotation(key_type)}, {_format_annotation(value_type)}]"
-    if origin is type(None):  # pragma: no cover - defensive
-        return "None"
-    # Handle Union/typing.Optional generically.
-    if origin is Any:
-        return "Any"
-    inner = " | ".join(_format_annotation(arg) for arg in args) or "Any"
-    return inner
-
-
-def _format_default(value: Any, required: bool) -> str:
-    if value is PydanticUndefined:
-        return "<required>" if required else ""
-    if value is None:
-        return ""
-    if isinstance(value, str):
-        return value or '""'
-    return str(value)
 
 
 def _render_table(console: ConsolePort, field_specs: list[FieldSpec]) -> None:
@@ -148,7 +78,7 @@ def _render_table(console: ConsolePort, field_specs: list[FieldSpec]) -> None:
         (
             spec.env_var,
             spec.type_hint,
-            _format_default(spec.default, spec.required),
+            format_default(spec.default, spec.required),
             "✅" if spec.wizard_prompted else "",
             "✅" if spec.required else "",
             spec.description,
@@ -170,41 +100,6 @@ def _render_table(console: ConsolePort, field_specs: list[FieldSpec]) -> None:
     console.info(format_row(tuple("-" * width for width in widths)), topic="config")
     for row in rows:
         console.info(format_row(row), topic="config")
-
-
-def _render_markdown(field_specs: list[FieldSpec]) -> str:
-    timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S %Z")
-    lines = [
-        "# Starter CLI Environment Inventory",
-        "",
-        "This file is generated via `python -m starter_cli.app config write-inventory`.",
-        f"Last updated: {timestamp}",
-        "",
-        "Legend: `✅` = wizard prompts for it, blank = requires manual population.",
-        "",
-        "| Env Var | Type | Default | Required | Wizard? | Description |",
-        "| --- | --- | --- | --- | --- | --- |",
-    ]
-    for spec in field_specs:
-        default_value = _markdown_escape(_format_default(spec.default, spec.required))
-        description = _markdown_escape(spec.description)
-        lines.append(
-            "| {env} | {type} | {default} | {required} | {wizard} | {description} |".format(
-                env=spec.env_var,
-                type=_markdown_escape(spec.type_hint),
-                default=default_value or "—",
-                required="✅" if spec.required else "",
-                wizard="✅" if spec.wizard_prompted else "",
-                description=description or "—",
-            )
-        )
-    return "\n".join(lines).strip() + "\n"
-
-
-def _markdown_escape(value: str | None) -> str:
-    if not value:
-        return ""
-    return value.replace("|", "\\|")
 
 
 __all__ = ["register"]

@@ -10,7 +10,8 @@ from typing import Any
 
 from dotenv import dotenv_values
 
-from starter_cli.core import CLIError
+from starter_cli.core import CLIContext, CLIError
+from starter_cli.core.constants import DEFAULT_ENV_FILES
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,27 +22,45 @@ class BackendScriptResult:
     returncode: int
 
 
-def resolve_backend_env_files(project_root: Path) -> list[Path]:
-    env_files: list[Path] = []
+def resolve_backend_env_files(
+    project_root: Path,
+    *,
+    ctx: CLIContext | None = None,
+) -> list[Path]:
+    if ctx is not None:
+        configured_files = list(ctx.loaded_env_files or ctx.env_files)
+        if ctx.skip_env:
+            configured_files = [
+                path for path in configured_files if path not in DEFAULT_ENV_FILES
+            ]
+        existing = [path for path in configured_files if path.exists()]
+        if not existing and not ctx.skip_env:
+            raise CLIError(
+                "No env files configured for backend scripts. "
+                "Add one via the Context panel or run the setup wizard first."
+            )
+        return existing
+
+    default_files: list[Path] = []
     compose = project_root / ".env.compose"
     if compose.is_file():
-        env_files.append(compose)
+        default_files.append(compose)
 
     backend_root = project_root / "apps" / "api-service"
     env_local = backend_root / ".env.local"
     env_default = backend_root / ".env"
 
     if env_local.is_file():
-        env_files.append(env_local)
+        default_files.append(env_local)
     elif env_default.is_file():
-        env_files.append(env_default)
+        default_files.append(env_default)
     else:
         raise CLIError(
             "No apps/api-service/.env.local or apps/api-service/.env found; "
             "run the setup wizard first."
         )
 
-    return env_files
+    return default_files
 
 
 def merge_env_files(paths: Iterable[Path]) -> dict[str, str]:
@@ -60,15 +79,16 @@ def run_backend_script(
     script_name: str,
     args: list[str] | None = None,
     env_overrides: dict[str, str] | None = None,
+    ctx: CLIContext | None = None,
 ) -> subprocess.CompletedProcess[str]:
     backend_root = project_root / "apps" / "api-service"
     script_path = backend_root / "scripts" / script_name
     if not script_path.is_file():
         raise CLIError(f"Backend script missing: {script_path}")
 
-    env_files = resolve_backend_env_files(project_root)
-    env = os.environ.copy()
-    env.update(merge_env_files(env_files))
+    env_files = resolve_backend_env_files(project_root, ctx=ctx)
+    env = merge_env_files(env_files)
+    env.update(os.environ)
     if env_overrides:
         env.update(env_overrides)
 
@@ -76,14 +96,22 @@ def run_backend_script(
     if args:
         cmd.extend(args)
 
-    return subprocess.run(
-        cmd,
-        cwd=backend_root,
-        env=env,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
+    try:
+        return subprocess.run(
+            cmd,
+            cwd=backend_root,
+            env=env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except FileNotFoundError as exc:
+        raise CLIError(
+            "Hatch is required to run backend scripts. "
+            "Install it (pipx install hatch) or run `just dev-install`."
+        ) from exc
+    except Exception as exc:  # pragma: no cover - defensive
+        raise CLIError(f"Failed to run backend script: {exc}") from exc
 
 
 def extract_json_payload(

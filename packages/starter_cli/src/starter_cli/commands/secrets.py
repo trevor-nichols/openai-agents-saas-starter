@@ -5,21 +5,7 @@ import argparse
 from starter_contracts.secrets.models import SecretsProviderLiteral
 
 from starter_cli.core import CLIContext
-from starter_cli.presenters.headless import build_headless_presenter
-from starter_cli.workflows.secrets.flow import record_artifacts, run_onboard, select_provider
-from starter_cli.workflows.secrets.models import (
-    SecretsWorkflowOptions,
-    emit_cli_telemetry,
-    render_onboard_result,
-)
-from starter_cli.workflows.setup.inputs import (
-    HeadlessInputProvider,
-    InputProvider,
-    InteractiveInputProvider,
-    ParsedAnswers,
-    load_answers_files,
-    merge_answer_overrides,
-)
+from starter_cli.services.secrets.onboard import SecretsOnboardConfig, run_secrets_onboard
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -68,43 +54,15 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
 
 
 def handle_onboard(args: argparse.Namespace, ctx: CLIContext) -> int:
-    console = ctx.console
-    answers = _load_answers(args)
-    input_provider: InputProvider
-    if args.non_interactive:
-        input_provider = HeadlessInputProvider(answers)
-    else:
-        presenter = ctx.presenter or build_headless_presenter(ctx.console)
-        input_provider = InteractiveInputProvider(answers, presenter=presenter)
-
-    option = select_provider(
-        args.provider,
+    config = SecretsOnboardConfig(
+        provider=args.provider,
         non_interactive=args.non_interactive,
-        prompt=input_provider,
-        console=console,
+        answers_files=args.answers_file or (),
+        overrides=args.var or (),
+        skip_automation=args.skip_automation,
     )
-    if not option.available:
-        console.warn(
-            f"{option.label} is not yet available. "
-            "Keep SECRETS_PROVIDER set to vault_dev until provider support lands.",
-            topic="secrets",
-        )
-        return 1
-
-    options = SecretsWorkflowOptions(skip_automation=args.skip_automation)
-    result = run_onboard(ctx, provider=input_provider, option=option, options=options)
-    render_onboard_result(console, result)
-    emit_cli_telemetry(console, result.provider.value, success=True)
-    log_path = ctx.project_root / "var/reports/verification-artifacts.json"
-    record_artifacts(console, log_path=log_path, result=result)
+    run_secrets_onboard(ctx, config)
     return 0
-
-
-def _load_answers(args: argparse.Namespace) -> ParsedAnswers:
-    answers = load_answers_files(args.answers_file or [])
-    if args.var:
-        answers = merge_answer_overrides(answers, args.var)
-    return answers
 
 
 __all__ = ["register"]

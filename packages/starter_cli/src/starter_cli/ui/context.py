@@ -18,6 +18,8 @@ def derive_presenter_context(
         settings=ctx.settings,
         console=console,
         presenter=presenter,
+        skip_env=ctx.skip_env,
+        quiet_env=ctx.quiet_env,
     )
 
 

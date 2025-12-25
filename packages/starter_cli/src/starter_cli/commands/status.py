@@ -1,12 +1,9 @@
 from __future__ import annotations
 
 import argparse
-import os
-from typing import Any
 
-import httpx
-
-from starter_cli.core import CLIContext, CLIError
+from starter_cli.core import CLIContext
+from starter_cli.services.auth.status_ops import StatusOpsClient
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -57,91 +54,48 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
 
 def handle_subscriptions_list(args: argparse.Namespace, ctx: CLIContext) -> int:
     console = ctx.console
-    params: dict[str, Any] = {"limit": args.limit}
-    if args.cursor is not None:
-        params["cursor"] = args.cursor
-    if args.tenant_id:
-        params["tenant_id"] = args.tenant_id
-    response = _request(
-        method="GET",
-        path="/api/v1/status/subscriptions",
-        params=params,
+    client = StatusOpsClient.from_env()
+    result = client.list_subscriptions(
+        limit=args.limit,
+        cursor=args.cursor,
+        tenant_id=args.tenant_id,
     )
-    data = response.json()
-    items: list[dict[str, Any]] = data.get("items", [])
+    items = result.items
     if not items:
         console.info("No subscriptions found.", topic="status")
         return 0
     for item in items:
         console.info(
-            "[{status}] {target} (channel={channel}, severity={severity}, id={sid})".format(
-                status=item.get("status"),
-                target=item.get("target_masked"),
-                channel=item.get("channel"),
-                severity=item.get("severity_filter"),
-                sid=item.get("id"),
-            ),
+            f"[{item.status}] {item.target_masked} (channel={item.channel}, "
+            f"severity={item.severity_filter}, id={item.id})",
             topic="status",
         )
-    if data.get("next_cursor"):
-        console.info(f"Next cursor: {data['next_cursor']}", topic="status")
+    if result.next_cursor:
+        console.info(f"Next cursor: {result.next_cursor}", topic="status")
     return 0
 
 
 def handle_subscriptions_revoke(args: argparse.Namespace, ctx: CLIContext) -> int:
     console = ctx.console
-    _request(
-        method="DELETE",
-        path=f"/api/v1/status/subscriptions/{args.subscription_id}",
-    )
+    client = StatusOpsClient.from_env()
+    client.revoke_subscription(args.subscription_id)
     console.success(f"Subscription {args.subscription_id} revoked.", topic="status")
     return 0
 
 
 def handle_incident_resend(args: argparse.Namespace, ctx: CLIContext) -> int:
     console = ctx.console
-    payload: dict[str, Any] = {"severity": args.severity}
-    if args.tenant_id:
-        payload["tenant_id"] = args.tenant_id
-    response = _request(
-        method="POST",
-        path=f"/api/v1/status/incidents/{args.incident_id}/resend",
-        json_body=payload,
+    client = StatusOpsClient.from_env()
+    result = client.resend_incident(
+        incident_id=args.incident_id,
+        severity=args.severity,
+        tenant_id=args.tenant_id,
     )
-    body = response.json()
-    dispatched = body.get("dispatched", 0)
     console.success(
-        f"Incident {args.incident_id} dispatched to {dispatched} subscription(s).",
+        f"Incident {args.incident_id} dispatched to {result.dispatched} subscription(s).",
         topic="status",
     )
     return 0
-
-
-def _request(
-    *,
-    method: str,
-    path: str,
-    params: dict[str, Any] | None = None,
-    json_body: dict[str, Any] | None = None,
-) -> httpx.Response:
-    token = os.getenv("STATUS_API_TOKEN")
-    if not token:
-        raise CLIError("STATUS_API_TOKEN is required to call status APIs.")
-    base_url = os.getenv(
-        "STATUS_API_BASE_URL",
-        os.getenv("AUTH_CLI_BASE_URL", "http://127.0.0.1:8000"),
-    )
-    url = f"{base_url.rstrip('/')}{path}"
-    headers = {"Authorization": f"Bearer {token}"}
-    with httpx.Client(timeout=10.0) as client:
-        response = client.request(method, url, params=params, json=json_body, headers=headers)
-    if response.status_code >= 400:
-        try:
-            detail = response.json().get("detail")
-        except Exception:
-            detail = response.text
-        raise CLIError(f"Status API call failed ({response.status_code}): {detail}")
-    return response
 
 
 __all__ = ["register"]

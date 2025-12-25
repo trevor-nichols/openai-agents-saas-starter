@@ -987,7 +987,7 @@
         }
       ],
       "default": null,
-      "description": "Datadog API key when logging_sink=datadog.",
+      "description": "Datadog API key when LOGGING_SINKS includes datadog.",
       "title": "Logging Datadog Api Key"
     },
     "LOGGING_DATADOG_SITE": {
@@ -1005,27 +1005,27 @@
     },
     "LOGGING_DUPLEX_ERROR_FILE": {
       "default": false,
-      "description": "When logging_sink=stdout, also write errors to the dated error file.",
+      "description": "When LOGGING_SINKS includes stdout, also write errors to the dated error file.",
       "title": "Logging Duplex Error File",
       "type": "boolean"
     },
     "LOGGING_FILE_BACKUPS": {
       "default": 5,
-      "description": "Rotated backup files to retain when logging_sink=file.",
+      "description": "Rotated backup files to retain when LOGGING_SINKS includes file.",
       "minimum": 0,
       "title": "Logging File Backups",
       "type": "integer"
     },
     "LOGGING_FILE_MAX_MB": {
       "default": 10,
-      "description": "Maximum megabytes per log file when logging_sink=file.",
+      "description": "Maximum megabytes per log file when LOGGING_SINKS includes file.",
       "minimum": 1,
       "title": "Logging File Max Mb",
       "type": "integer"
     },
     "LOGGING_FILE_PATH": {
       "default": "var/log/api-service.log",
-      "description": "Filesystem path for file sink when logging_sink=file.",
+      "description": "Filesystem path for file sink when LOGGING_SINKS includes file.",
       "title": "Logging File Path",
       "type": "string"
     },
@@ -1046,7 +1046,7 @@
         }
       ],
       "default": null,
-      "description": "OTLP/HTTP endpoint when logging_sink=otlp.",
+      "description": "OTLP/HTTP endpoint when LOGGING_SINKS includes otlp.",
       "title": "Logging Otlp Endpoint"
     },
     "LOGGING_OTLP_HEADERS": {
@@ -1059,27 +1059,14 @@
         }
       ],
       "default": null,
-      "description": "Optional OTLP headers JSON when logging_sink=otlp.",
+      "description": "Optional OTLP headers JSON when LOGGING_SINKS includes otlp.",
       "title": "Logging Otlp Headers"
     },
-    "LOGGING_SINK": {
-      "default": "stdout",
-      "description": "Logging sink (stdout, file, datadog, otlp, or none).",
-      "title": "Logging Sink",
-      "type": "string"
-    },
     "LOGGING_SINKS": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "description": "Comma-separated logging sinks (stdout, file, datadog, otlp, none). Overrides LOGGING_SINK when set.",
-      "title": "Logging Sinks"
+      "default": "stdout",
+      "description": "Comma-separated logging sinks (stdout, file, datadog, otlp, none).",
+      "title": "Logging Sinks",
+      "type": "string"
     },
     "LOG_ROOT": {
       "anyOf": [

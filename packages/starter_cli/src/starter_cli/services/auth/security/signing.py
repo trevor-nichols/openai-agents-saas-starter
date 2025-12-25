@@ -14,8 +14,8 @@ from starter_contracts.config import StarterSettingsProtocol
 from starter_contracts.secrets.models import SecretsProviderLiteral
 from starter_providers.secrets import AWSSecretsManagerClient, AzureKeyVaultClient
 
-from ...core.constants import SAFE_ENVIRONMENTS
-from ...core.exceptions import CLIError
+from ....core.constants import SAFE_ENVIRONMENTS
+from ....core.exceptions import CLIError
 
 _VAULT_PROVIDERS = {
     SecretsProviderLiteral.VAULT_DEV,

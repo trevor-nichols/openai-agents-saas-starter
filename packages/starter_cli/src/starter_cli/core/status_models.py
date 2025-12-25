@@ -2,8 +2,8 @@
 
 Contract note: doctor JSON/Markdown output is versioned via
 `starter_contracts/doctor_v1.json`. If you add/rename fields here, update the
-schema and keep compatibility in `DoctorRunner._serialize_*` (created_at is
-intentionally omitted from the contract).
+schema and keep the serializer aligned in `DoctorRunner._serialize_*`
+(created_at is intentionally omitted from the contract).
 
 These dataclasses intentionally avoid runtime dependencies so they remain safe to
 import from both interactive TUIs and headless/reporting code paths.

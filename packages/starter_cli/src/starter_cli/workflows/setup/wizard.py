@@ -85,8 +85,8 @@ _AUTOMATION_PROMPTS: dict[AutomationPhase, tuple[str, str, bool]] = {
 }
 
 _AUTOMATION_DEPENDENCIES: dict[AutomationPhase, set[str]] = {
-    AutomationPhase.INFRA: {"Docker Engine", "Docker Compose v2"},
-    AutomationPhase.SECRETS: {"Docker Engine", "Docker Compose v2"},
+    AutomationPhase.INFRA: {"Docker Engine", "Docker Compose"},
+    AutomationPhase.SECRETS: {"Docker Engine", "Docker Compose"},
     AutomationPhase.STRIPE: {"Stripe CLI"},
     AutomationPhase.MIGRATIONS: set(),
     AutomationPhase.REDIS: set(),
@@ -135,7 +135,6 @@ class SetupWizard:
         export_answers_path: Path | None = None,
         automation_overrides: dict[AutomationPhase, bool | None] | None = None,
         enable_tui: bool = True,
-        enable_schema: bool = True,
         wizard_ui: WizardUIView | None = None,
     ) -> None:
         backend_env, frontend_env, frontend_path = build_env_files(ctx)
@@ -145,7 +144,7 @@ class SetupWizard:
         self.automation_overrides = automation_overrides or {}
         self.enable_tui = enable_tui
         self.console = ctx.console
-        self.schema = load_schema() if enable_schema else None
+        self.schema = load_schema()
         self.state_store = WizardStateStore(ctx.project_root / "var/reports/wizard-state.json")
         self.export_answers_path = export_answers_path
         self._answer_recorder: AnswerRecorder | None = None

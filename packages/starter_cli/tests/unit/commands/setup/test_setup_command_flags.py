@@ -20,7 +20,6 @@ def _build_args(**overrides) -> argparse.Namespace:
         "report_only": False,
         "non_interactive": False,
         "no_tui": False,
-        "no_schema": False,
         "export_answers": None,
         "markdown_summary_path": None,
         "summary_path": None,

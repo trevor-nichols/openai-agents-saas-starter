@@ -67,7 +67,7 @@ Our SaaS starter currently hardcodes Vault as the only secrets/signing backend. 
 
 ### 6.1 Current Vault Touchpoints
 - **Backend:** `app/infrastructure/security/vault.py` exposes `VaultTransitClient` used by `app/services/service_account_bridge.py` and auth routers for signature verification. Settings live under `app/core/settings/__init__.py` (`vault_addr`, `vault_token`, `vault_transit_key`, `vault_verify_enabled`). KV helpers for signing-key storage proxy through `starter_contracts.vault_kv`.
-- **CLI:** `starter_cli/services/security/signing.py` builds Vault envelopes + signatures; `starter_cli/commands/auth.py` depends on Vault headers; setup wizard validators probe the Transit key; `starter_cli/commands/infra.py` shells into Make targets for dev Vault.
+- **CLI:** `starter_cli/services/auth/security/signing.py` builds Vault envelopes + signatures; `starter_cli/commands/auth.py` depends on Vault headers; setup wizard validators probe the Transit key; `starter_cli/commands/infra.py` shells into Make targets for dev Vault.
 - **Shared:** `starter_contracts/config.py` exposes only the Vault-centric settings to the CLI; `starter_contracts/vault_kv.py` registers the KV client when `auth_key_storage_backend=secret-manager`.
 
 ### 6.2 SecretProvider Protocol (backend + CLI)

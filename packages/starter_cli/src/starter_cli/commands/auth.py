@@ -2,19 +2,24 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
-from typing import TYPE_CHECKING, Any, TypeAlias
+from typing import TYPE_CHECKING, TypeAlias
 
-import httpx
 from starter_contracts.keys import KeyStorageError, load_keyset
 
 from starter_cli.core import CLIContext, CLIError, build_context
 from starter_cli.core.context import should_skip_env_loading
-from starter_cli.services.security import (
-    build_vault_headers,
+from starter_cli.services.auth.security import (
     configure_key_storage_secret_manager,
     rotate_signing_keys,
+)
+from starter_cli.services.auth.tokens import (
+    IssueServiceAccountRequest,
+    issue_service_account,
+    parse_scopes,
+    render_issue_output,
+    resolve_base_url,
+    resolve_output_format,
 )
 
 # `_SubParsersAction` is not parametrized at runtime on Python 3.11, so provide a
@@ -80,14 +85,14 @@ def _register_tokens_command(subparsers: ParserSubparsers) -> None:
         "--output",
         "-o",
         choices={"json", "text", "env"},
-        default=DEFAULT_OUTPUT_FORMAT,
+        default=None,
         help=(
             "Output format (json, text, env). Defaults to AUTH_CLI_OUTPUT or json when unset."
         ),
     )
     issue_parser.add_argument(
         "--base-url",
-        default=DEFAULT_BASE_URL,
+        default=None,
         help="AuthService base URL (defaults to AUTH_CLI_BASE_URL or http://127.0.0.1:8000).",
     )
     issue_parser.set_defaults(handler=handle_issue_service_account)
@@ -121,13 +126,26 @@ def handle_issue_service_account(
     ctx: CLIContext | None = None,
 ) -> int:
     ctx = _ensure_context(ctx)
-    payload = _build_issue_payload(args)
     try:
-        response = _post_issue_service_account(base_url=args.base_url, payload=payload, ctx=ctx)
+        request = IssueServiceAccountRequest(
+            account=args.account,
+            scopes=parse_scopes(args.scopes),
+            tenant_id=args.tenant,
+            lifetime_minutes=args.lifetime,
+            fingerprint=args.fingerprint,
+            force=args.force,
+        )
+        output_format = args.output or resolve_output_format()
+        base_url = args.base_url or resolve_base_url()
+        response = issue_service_account(
+            ctx=ctx,
+            base_url=base_url,
+            request=request,
+        )
     except CLIError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
-    output = _render_issue_output(response, args.output)
+    output = render_issue_output(response, output_format)
     print(output)
     return 0
 
@@ -156,78 +174,6 @@ def handle_jwks_print(_: argparse.Namespace, ctx: CLIContext) -> int:
     return 0
 
 
-def _build_issue_payload(args: argparse.Namespace) -> dict[str, Any]:
-    scopes = _parse_scopes(args.scopes)
-    payload: dict[str, Any] = {
-        "account": args.account,
-        "scopes": scopes,
-        "tenant_id": args.tenant,
-        "lifetime_minutes": args.lifetime,
-        "fingerprint": args.fingerprint,
-        "force": args.force,
-    }
-    return payload
-
-
-def _parse_scopes(raw_scopes: str) -> list[str]:
-    scopes = [scope.strip() for scope in raw_scopes.split(",") if scope.strip()]
-    if not scopes:
-        raise CLIError("At least one scope must be provided via --scopes.")
-    return scopes
-
-
-def _post_issue_service_account(
-    *,
-    base_url: str,
-    payload: dict[str, Any],
-    ctx: CLIContext,
-) -> dict[str, Any]:
-    url = f"{base_url.rstrip('/')}/api/v1/auth/service-accounts/issue"
-    settings = ctx.optional_settings()
-    auth_header, extra_headers = build_vault_headers(payload, settings)
-    headers = {"Authorization": auth_header, **extra_headers}
-
-    with httpx.Client(timeout=10.0) as client:
-        response = client.post(url, json=payload, headers=headers)
-
-    if response.status_code >= 400:
-        try:
-            body = response.json()
-            detail = body.get("detail") or body.get("message") or body.get("error")
-        except Exception:
-            detail = response.text
-        raise CLIError(f"Issuance failed ({response.status_code}): {detail}")
-
-    document = response.json()
-    ctx.console.success(
-        "Service-account token issued.",
-        topic="auth",
-        stream=ctx.console.err_stream,
-    )
-    return document
-
-
-def _render_issue_output(data: dict[str, Any], fmt: str) -> str:
-    if fmt == "json":
-        return json.dumps(data, indent=2)
-    if fmt == "env":
-        return "\n".join([f"AUTH_REFRESH_TOKEN={data['refresh_token']}"])
-
-    lines = [
-        f"Account: {data.get('account')}",
-        f"Scopes: {', '.join(data.get('scopes', []))}",
-        f"Issued At: {data.get('issued_at')}",
-        f"Expires At: {data.get('expires_at')}",
-        f"Tenant ID: {data.get('tenant_id') or 'global'}",
-        f"Token Use: {data.get('token_use')}",
-        f"Key ID: {data.get('kid')}",
-        "",
-        "Refresh Token:",
-        data.get("refresh_token", ""),
-    ]
-    return "\n".join(lines)
-
-
 def _ensure_context(ctx: CLIContext | None) -> CLIContext:
     if ctx is not None:
         return ctx
@@ -244,5 +190,3 @@ __all__ = [
     "handle_keys_rotate",
     "handle_jwks_print",
 ]
-DEFAULT_OUTPUT_FORMAT = os.getenv("AUTH_CLI_OUTPUT", "json").lower()
-DEFAULT_BASE_URL = os.getenv("AUTH_CLI_BASE_URL", "http://127.0.0.1:8000")

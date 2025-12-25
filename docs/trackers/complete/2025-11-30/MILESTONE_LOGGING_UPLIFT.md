@@ -147,7 +147,7 @@ Deliver a cohesive, local-first logging experience: per-day log roots with clear
 <!-- SECTION: Rollout / Ops Notes -->
 ## Rollout / Ops Notes
 
-- Default behavior remains stdout unless `LOGGING_SINK=file` or `LOG_ROOT` is set; new envs are opt-in.
+- Default behavior remains stdout unless `LOGGING_SINKS=file` or `LOG_ROOT` is set; new envs are opt-in.
 - Auth remains required for frontend ingest; anon mode requires explicit env + signature.
 - No migrations; dated folders created on first run.
 

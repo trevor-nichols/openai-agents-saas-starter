@@ -5,12 +5,20 @@ Operator tooling for the OpenAI Agents SaaS starter. It bootstraps local infra, 
 ## Prereqs & install
 - Recommended: run `just python-bootstrap` (installs Python 3.11 + Hatch via `uv`), then `cd packages/starter_cli && hatch env create`.
 - Alternative: from repo root run `just dev-install` (editable installs for `starter_cli` + `starter_contracts` + `starter_providers`).
+- Docker Desktop or Docker Engine with the Compose plugin (`docker compose`).
 - Run commands from the repo root (paths are repo-root relative even if you `cd packages/starter_cli`).
-- Env loading: defaults to `.env.compose`, `apps/api-service/.env.local`, `apps/api-service/.env`, `.env`. Override with `--env-file`, or skip with `--skip-env`. Quiet logging with `--quiet-env`.
+- Env loading: defaults to `.env.compose`, `apps/api-service/.env.local`, `apps/api-service/.env`, `.env`. Override with `--env-file`; `--skip-env` skips defaults but still loads explicit `--env-file` values. Quiet logging with `--quiet-env`.
 
 ## Running the CLI
 - Entry: `python -m starter_cli.app <command> [flags]`
 - Headless: most flows support `--non-interactive` plus `--answers-file`/`--var`; TUIs can be forced off with `--no-tui` where supported.
+
+## Architecture notes (CLI + TUI)
+- **Presentation-only TUI:** Textual panes call services/workflows, not CLI command handlers. Command modules stay thin and map args → service configs.
+- **Env overlay semantics:** `CLIContext.load_environment()` applies a tracked overlay from env files. The TUI Context panel can clear that overlay (Skip env load) and reapply it (Reload Env) without restarting the TUI. This prevents stale `.env` values from leaking into later runs.
+- **Nav groups:** The command palette includes category entries (Overview, Onboarding, Operations, etc.) plus individual panes.
+- **Service boundaries:** services are grouped under `starter_cli/services/{api,auth,config,infra,secrets,stripe,usage}` to keep infra/ops concerns separate from auth, config inventory, and API export.
+- **Backend-owned OpenAPI export:** the CLI invokes `apps/api-service/scripts/export_openapi.py` instead of importing backend modules directly, preserving the CLI ↔ backend boundary.
 
 ## Quick starts
 - Demo bootstrap: `just setup-demo-lite` (deps, wizard, dev user) then `just api`; mint a token with `just issue-demo-token`.
@@ -20,7 +28,7 @@ Operator tooling for the OpenAI Agents SaaS starter. It bootstraps local infra, 
 
 ## Command catalog (what each one does)
 - `setup menu|wizard`: Setup hub + milestone-aware wizard with hosting presets (`local_docker`, `cloud_managed`, `enterprise_custom`) and automation toggles for infra, secrets, Stripe, migrations, Redis, GeoIP, dev user; supports headless runs, schema-driven prompts, JSON/Markdown summaries, and answer export. For `--profile demo`, the wizard can manage Docker Postgres end-to-end (writes `POSTGRES_*` and derives `DATABASE_URL`) or accept an external `DATABASE_URL` and set `STARTER_LOCAL_DATABASE_MODE=external` so `infra compose up` starts Redis without launching Postgres.
-- `infra deps|compose|vault`: Check local prerequisites; run Just recipes for docker-compose dev stack and Vault dev signer (up/down/logs/verify).
+- `infra deps|compose|vault`: Check local prerequisites; run Just recipes for the docker compose dev stack and Vault dev signer (up/down/logs/verify).
 - `start` / `stop`: Start dev/backend/frontend with health checks; detached mode tracks PIDs/logs and can auto-run infra; stop clears state and optionally runs compose down.
 - `home`: TUI/summary showing stack status, detached processes, and shortcuts.
 - `doctor`: Consolidated readiness probes (api, db, redis, billing, ports, migrations, secrets, storage, frontend, vault, stack state); outputs summary/JSON/Markdown; strict mode treats warnings as errors.

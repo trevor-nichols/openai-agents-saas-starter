@@ -27,15 +27,15 @@ The collector image is pinned to `otel/opentelemetry-collector-contrib:0.139.0`,
 
 | Env Var | Purpose | Wizard support |
 | --- | --- | --- |
-| `LOGGING_SINK` | Choose `stdout`, `file`, `datadog`, `otlp`, or `none` for FastAPI logs. | ✅ |
+| `LOGGING_SINKS` | Comma-separated logging sinks (`stdout`, `file`, `datadog`, `otlp`, `none`). | ✅ |
 | `LOG_ROOT` | Base directory for dated log roots (`<LOG_ROOT>/<YYYY-MM-DD>/<component>`). Defaults to `var/log`. | Manual |
 | `LOGGING_MAX_DAYS` | Prune dated log folders older than N days (0 disables). | Manual |
-| `LOGGING_DUPLEX_ERROR_FILE` | When `LOGGING_SINK=stdout`, also write errors to `<date>/api/error.log`. | Manual |
+| `LOGGING_DUPLEX_ERROR_FILE` | When `LOGGING_SINKS` includes `stdout`, also write errors to `<date>/api/error.log`. | Manual |
 | `LOGGING_FILE_PATH` / `LOGGING_FILE_BACKUPS` / `LOGGING_FILE_MAX_MB` | File sink location and rotation settings. | ✅ |
 | `ENABLE_FRONTEND_LOG_INGEST` | Expose `/api/v1/logs` (auth required by default). | ✅ |
 | `ALLOW_ANON_FRONTEND_LOGS` | Allow anonymous ingest when signature is valid (see below). | Manual |
 | `FRONTEND_LOG_SHARED_SECRET` | HMAC secret for signed anonymous frontend logs. | Manual |
-| `LOGGING_SINK=otlp` settings | `LOGGING_OTLP_ENDPOINT`, `LOGGING_OTLP_HEADERS`. | ✅ |
+| `LOGGING_SINKS=otlp` settings | `LOGGING_OTLP_ENDPOINT`, `LOGGING_OTLP_HEADERS`. | ✅ |
 | `ENABLE_OTEL_COLLECTOR` | `true` launches bundled collector via `just dev-up`. | ✅ |
 | `OTEL_COLLECTOR_HTTP_PORT` / `OTEL_COLLECTOR_GRPC_PORT` / `OTEL_COLLECTOR_DIAG_PORT` | Host port mappings for collector. | Manual |
 | `OTEL_MEMORY_LIMIT_MIB` | Collector memory cap (default 512). | Manual |
@@ -45,7 +45,7 @@ The collector image is pinned to `otel/opentelemetry-collector-contrib:0.139.0`,
 
 ### Local file logging layout (new)
 
-- When `LOG_ROOT` is set (or when `LOGGING_SINK=file`), FastAPI writes JSON logs to dated folders: `LOG_ROOT/YYYY-MM-DD/api/all.log` and `error.log`. A helper symlink `LOG_ROOT/current` points at the latest folder.
+- When `LOG_ROOT` is set (or when `LOGGING_SINKS=file`), FastAPI writes JSON logs to dated folders: `LOG_ROOT/YYYY-MM-DD/api/all.log` and `error.log`. A helper symlink `LOG_ROOT/current` points at the latest folder.
 - `starter-cli start dev --detached` and the new `starter-cli logs tail` respect this layout; `--errors` tails `error.log`.
 - Retention: set `LOGGING_MAX_DAYS` to prune old dated folders on startup; `starter-cli logs archive --days N` can zip+prune manually.
 
@@ -104,7 +104,7 @@ You should see structured JSON logs coming from FastAPI and mirrored by the coll
 
 ### Log Tailing Notes
 
-- `logs tail` reads the backend rotating file sink when `LOGGING_SINK=file` (set via the wizard). For stdout-only deployments, run the API in a separate terminal instead.
+- `logs tail` reads the backend rotating file sink when `LOGGING_SINKS=file` (set via the wizard). For stdout-only deployments, run the API in a separate terminal instead.
 - When `ENABLE_FRONTEND_LOG_INGEST=true`, the Next.js beacon transport forwards browser events to `/api/v1/logs`; they appear as `frontend.log` entries in backend tails. Without ingest, view the Next.js dev server stdout.
 
 ### Automated Smoke Test

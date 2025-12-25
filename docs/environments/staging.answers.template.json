@@ -63,7 +63,7 @@
   "USAGE_GUARDRAIL_CACHE_BACKEND": "redis",
   "USAGE_GUARDRAIL_REDIS_URL": "rediss://staging-usage.redis.example.com:6380/0",
   "TENANT_DEFAULT_SLUG": "default",
-  "LOGGING_SINK": "otlp",
+  "LOGGING_SINKS": "otlp",
   "ENABLE_OTEL_COLLECTOR": "false",
   "LOGGING_OTLP_ENDPOINT": "https://otel-staging.agents.example.com/v1/logs",
   "LOGGING_OTLP_HEADERS": "{\"Authorization\":\"Bearer CHANGE_ME\"}",

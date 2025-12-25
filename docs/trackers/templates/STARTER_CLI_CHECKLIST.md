@@ -35,7 +35,7 @@ Validate third-party credentials & database.
 Baseline tenant + logging + geo telemetry.
 
 - [ ] `TENANT_DEFAULT_SLUG` — ❌ missing
-- [ ] `LOGGING_SINK` — ❌ missing
+- [ ] `LOGGING_SINKS` — ❌ missing
 - [ ] `GEOIP_PROVIDER` — ❌ missing
 
 ## M4 - Signup & Worker policy

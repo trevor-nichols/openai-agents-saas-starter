@@ -17,8 +17,8 @@ def _normalize_db_url(url: str) -> str:
     """
     asyncpg accepts `postgresql://` or `postgres://` schemes, but our app
     typically uses the SQLAlchemy async form `postgresql+asyncpg://`.
-    Normalize to keep doctor/health checks compatible without forcing a
-    separate sync DSN.
+    Normalize so doctor/health checks can reuse the existing DSN format
+    without introducing a separate sync DSN.
     """
 
     if url.startswith("postgresql+asyncpg://"):

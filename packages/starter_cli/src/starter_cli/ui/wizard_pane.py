@@ -10,6 +10,7 @@ from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.widgets import (
     Button,
+    Collapsible,
     DataTable,
     Input,
     OptionList,
@@ -17,17 +18,24 @@ from textual.widgets import (
     RadioButton,
     RadioSet,
     Static,
+    Switch,
 )
 
-from starter_cli.core import CLIContext
+from starter_cli.core import CLIContext, CLIError
 from starter_cli.ports.presentation import NotifyPort
 from starter_cli.presenters import PresenterConsoleAdapter, build_textual_presenter
+from starter_cli.ui.action_runner import ActionResult, ActionRunner
 from starter_cli.ui.context import derive_presenter_context
 from starter_cli.ui.prompt_controller import PromptController
 from starter_cli.ui.prompting import PromptChannel, TextualPromptPort
 from starter_cli.workflows.setup import SetupWizard
-from starter_cli.workflows.setup.automation import AutomationPhase
-from starter_cli.workflows.setup.inputs import ParsedAnswers
+from starter_cli.workflows.setup.automation import ALL_AUTOMATION_PHASES, AutomationPhase
+from starter_cli.workflows.setup.inputs import (
+    HeadlessInputProvider,
+    ParsedAnswers,
+    load_answers_files,
+    merge_answer_overrides,
+)
 from starter_cli.workflows.setup.schema import load_schema
 from starter_cli.workflows.setup.section_specs import SECTION_SPECS
 from starter_cli.workflows.setup.ui import WizardUIView
@@ -45,7 +53,6 @@ class WizardLaunchConfig:
     markdown_summary_path: Path | None = None
     export_answers_path: Path | None = None
     automation_overrides: dict[AutomationPhase, bool | None] = field(default_factory=dict)
-    enable_schema: bool = True
     auto_start: bool = False
 
 
@@ -141,7 +148,7 @@ class WizardSession:
         self._thread.start()
 
     def _build_state(self) -> WizardUIView:
-        schema = load_schema() if self._config.enable_schema else None
+        schema = load_schema()
         section_prompts = build_section_prompt_metadata(schema)
         return WizardUIView(
             sections=[(spec.key, spec.label) for spec in SECTION_SPECS],
@@ -178,7 +185,6 @@ class WizardSession:
                 export_answers_path=self._config.export_answers_path,
                 automation_overrides=self._config.automation_overrides,
                 enable_tui=True,
-                enable_schema=self._config.enable_schema,
                 wizard_ui=self.state,
             )
             wizard.execute()
@@ -197,6 +203,13 @@ class WizardPane(Vertical):
         self._config = config or WizardLaunchConfig()
         self._session: WizardSession | None = None
         self._prompt_controller = PromptController(self, prefix="wizard")
+        self._headless_runner = ActionRunner(
+            ctx=self._ctx,
+            on_status=self._set_headless_status,
+            on_output=self._set_headless_output,
+            on_complete=self._handle_headless_complete,
+            on_state_change=self._set_headless_state,
+        )
 
     def compose(self) -> ComposeResult:
         yield Static("Setup Wizard", classes="section-title")
@@ -231,12 +244,64 @@ class WizardPane(Vertical):
                 id="wizard-advanced",
             )
             yield Button("Start Wizard", id="wizard-start", variant="primary")
+        with Collapsible(
+            title="Wizard options",
+            id="wizard-options-collapsible",
+            collapsed=True,
+        ):
+            with Horizontal(classes="wizard-options"):
+                yield Static("Mode", classes="wizard-control-label")
+                yield RadioSet(
+                    RadioButton("Interactive", id="wizard-mode-interactive"),
+                    RadioButton("Headless", id="wizard-mode-headless"),
+                    RadioButton("Report-only", id="wizard-mode-report"),
+                    id="wizard-mode",
+                )
+                yield Static("Strict", classes="wizard-control-label")
+                yield Switch(value=False, id="wizard-strict")
+            with Horizontal(classes="wizard-options"):
+                yield Static("Output format", classes="wizard-control-label")
+                yield RadioSet(
+                    RadioButton("Summary", id="wizard-output-summary"),
+                    RadioButton("JSON", id="wizard-output-json"),
+                    RadioButton("Checklist", id="wizard-output-checklist"),
+                    id="wizard-output-format",
+                )
+            with Horizontal(classes="wizard-options"):
+                yield Static("Answers files", classes="wizard-control-label")
+                yield Input(id="wizard-answers-files")
+                yield Static("Var overrides", classes="wizard-control-label")
+                yield Input(id="wizard-var-overrides")
+            with Horizontal(classes="wizard-options"):
+                yield Static("Export answers path", classes="wizard-control-label")
+                yield Input(id="wizard-export-answers")
+                yield Static("Summary path", classes="wizard-control-label")
+                yield Input(id="wizard-summary-path")
+            with Horizontal(classes="wizard-options"):
+                yield Static("Markdown summary path", classes="wizard-control-label")
+                yield Input(id="wizard-markdown-summary-path")
+            with Collapsible(
+                title="Automation overrides",
+                id="wizard-automation-overrides",
+                collapsed=True,
+            ):
+                for phase in ALL_AUTOMATION_PHASES:
+                    with Horizontal(classes="wizard-options"):
+                        yield Static(phase.value, classes="wizard-control-label")
+                        yield RadioSet(
+                            RadioButton("Auto", id=f"wizard-auto-{phase.value}"),
+                            RadioButton("On", id=f"wizard-on-{phase.value}"),
+                            RadioButton("Off", id=f"wizard-off-{phase.value}"),
+                            id=f"wizard-automation-{phase.value}",
+                        )
         yield ProgressBar(id="wizard-progress", total=len(SECTION_SPECS))
         with Horizontal(id="wizard-main"):
             yield DataTable(id="wizard-sections", zebra_stripes=True)
             yield DataTable(id="wizard-automation", zebra_stripes=True)
         yield DataTable(id="wizard-conditional", zebra_stripes=True)
         yield Static("", id="wizard-activity", classes="section-footnote")
+        yield Static("", id="wizard-output", classes="ops-output")
+        yield Static("", id="wizard-status", classes="section-footnote")
         with Vertical(id="wizard-prompt"):
             yield Static("", id="wizard-prompt-label")
             yield Static("", id="wizard-prompt-detail")
@@ -251,9 +316,11 @@ class WizardPane(Vertical):
         self._configure_profile()
         self._configure_presets()
         self._configure_tables()
+        self._configure_options()
         self._prompt_controller.set_visibility(False)
         self.set_interval(0.5, self._refresh_view)
         self.set_interval(0.2, self._poll_prompt)
+        self.set_interval(0.4, self._headless_runner.refresh_output)
         if self._config.auto_start:
             self._start_wizard()
 
@@ -291,12 +358,31 @@ class WizardPane(Vertical):
     def _start_wizard(self) -> None:
         if self._session and self._session.running:
             return
-        config = replace(self._config, profile=self._selected_profile())
-        config.answers = self._merged_answers(config.answers)
-        self._session = WizardSession(self._ctx, config)
-        self._prompt_controller.set_channel(self._session.prompt_channel)
-        self._session.start()
-        self._prompt_controller.set_status("Wizard running. Awaiting prompts...")
+        if self._headless_runner.running:
+            self._set_headless_status("Headless run already in progress.")
+            return
+
+        mode = self._selected_mode()
+        strict = self._strict_enabled()
+        if strict and self._selected_profile() != "production":
+            self._set_headless_status("--strict requires production profile.")
+            return
+
+        if mode == "interactive" and not strict:
+            config = replace(self._config, profile=self._selected_profile())
+            config.output_format = self._selected_output_format()
+            config.summary_path = self._path_value("wizard-summary-path")
+            config.markdown_summary_path = self._path_value("wizard-markdown-summary-path")
+            config.export_answers_path = self._path_value("wizard-export-answers")
+            config.answers = self._merged_answers(config.answers)
+            config.automation_overrides = self._automation_overrides()
+            self._session = WizardSession(self._ctx, config)
+            self._prompt_controller.set_channel(self._session.prompt_channel)
+            self._session.start()
+            self._prompt_controller.set_status("Wizard running. Awaiting prompts...")
+            return
+
+        self._start_headless(strict=strict, mode=mode)
 
     def _selected_profile(self) -> str:
         profiles = {
@@ -344,6 +430,10 @@ class WizardPane(Vertical):
 
     def _merged_answers(self, base_answers: ParsedAnswers) -> ParsedAnswers:
         answers = dict(base_answers)
+        try:
+            answers.update(self._load_answers())
+        except CLIError as exc:
+            self._set_headless_status(str(exc))
         preset = self._selected_preset()
         answers.setdefault("SETUP_HOSTING_PRESET", preset)
         answers.setdefault("SETUP_CLOUD_PROVIDER", self._selected_cloud())
@@ -526,6 +616,158 @@ class WizardPane(Vertical):
             summary += f" ({self._selected_cloud()})"
         summary += f" | Advanced: {'on' if self._selected_advanced() else 'off'}"
         self.query_one("#wizard-summary", Static).update(summary)
+
+    def _configure_options(self) -> None:
+        self.query_one("#wizard-mode-interactive", RadioButton).value = True
+        output_format = self._config.output_format
+        output_id = {
+            "summary": "wizard-output-summary",
+            "json": "wizard-output-json",
+            "checklist": "wizard-output-checklist",
+        }.get(output_format, "wizard-output-summary")
+        self.query_one(f"#{output_id}", RadioButton).value = True
+        self.query_one("#wizard-strict", Switch).value = False
+        if self._config.summary_path:
+            self.query_one("#wizard-summary-path", Input).value = str(self._config.summary_path)
+        if self._config.markdown_summary_path:
+            self.query_one("#wizard-markdown-summary-path", Input).value = str(
+                self._config.markdown_summary_path
+            )
+        if self._config.export_answers_path:
+            self.query_one("#wizard-export-answers", Input).value = str(
+                self._config.export_answers_path
+            )
+        for phase in ALL_AUTOMATION_PHASES:
+            self.query_one(f"#wizard-auto-{phase.value}", RadioButton).value = True
+
+    def _selected_mode(self) -> str:
+        radio = self.query_one("#wizard-mode", RadioSet)
+        selected = radio.pressed_button
+        if selected is None or selected.id is None:
+            return "interactive"
+        if selected.id.endswith("headless"):
+            return "headless"
+        if selected.id.endswith("report"):
+            return "report-only"
+        return "interactive"
+
+    def _selected_output_format(self) -> str:
+        radio = self.query_one("#wizard-output-format", RadioSet)
+        selected = radio.pressed_button
+        if selected is None or selected.id is None:
+            return self._config.output_format
+        if selected.id.endswith("json"):
+            return "json"
+        if selected.id.endswith("checklist"):
+            return "checklist"
+        return "summary"
+
+    def _strict_enabled(self) -> bool:
+        return self.query_one("#wizard-strict", Switch).value
+
+    def _path_value(self, input_id: str) -> Path | None:
+        raw = self.query_one(f"#{input_id}", Input).value.strip()
+        if not raw:
+            return None
+        return Path(raw).expanduser().resolve()
+
+    def _automation_overrides(self) -> dict[AutomationPhase, bool | None]:
+        overrides: dict[AutomationPhase, bool | None] = {}
+        for phase in ALL_AUTOMATION_PHASES:
+            radio = self.query_one(f"#wizard-automation-{phase.value}", RadioSet)
+            selected = radio.pressed_button
+            if selected is None or selected.id is None:
+                continue
+            if selected.id.endswith("auto"):
+                overrides[phase] = None
+            elif selected.id.endswith("on"):
+                overrides[phase] = True
+            elif selected.id.endswith("off"):
+                overrides[phase] = False
+        return overrides
+
+    def _load_answers(self) -> ParsedAnswers:
+        files = self._split_tokens("wizard-answers-files")
+        overrides = self._split_tokens("wizard-var-overrides")
+        answers: ParsedAnswers = {}
+        if files:
+            answers = load_answers_files(files)
+        if overrides:
+            answers = merge_answer_overrides(answers, overrides)
+        return answers
+
+    def _split_tokens(self, input_id: str) -> list[str]:
+        raw = self.query_one(f"#{input_id}", Input).value.strip()
+        if not raw:
+            return []
+        return [part.strip() for part in raw.replace(";", ",").split(",") if part.strip()]
+
+    def _start_headless(self, *, strict: bool, mode: str) -> None:
+        try:
+            answers = self._load_answers()
+        except CLIError as exc:
+            self._set_headless_status(str(exc))
+            return
+        if strict and not answers:
+            self._set_headless_status("--strict requires answers via files or overrides.")
+            return
+
+        output_format = self._selected_output_format()
+        summary_path = self._path_value("wizard-summary-path")
+        markdown_path = self._path_value("wizard-markdown-summary-path")
+        export_answers = self._path_value("wizard-export-answers")
+        automation_overrides = self._automation_overrides()
+        profile = self._selected_profile()
+
+        report_only = mode == "report-only"
+        non_interactive = mode == "headless" or strict
+        if non_interactive and not report_only:
+            input_provider = HeadlessInputProvider(answers)
+        else:
+            input_provider = None
+
+        def _runner(ctx: CLIContext) -> str:
+            wizard = SetupWizard(
+                ctx=ctx,
+                profile=profile,
+                output_format=output_format,
+                input_provider=input_provider,
+                summary_path=summary_path,
+                markdown_summary_path=markdown_path,
+                export_answers_path=export_answers,
+                automation_overrides=automation_overrides,
+                enable_tui=False,
+            )
+            if not report_only:
+                if wizard.summary_path is None:
+                    default_summary = ctx.project_root / "var/reports/setup-summary.json"
+                    default_summary.parent.mkdir(parents=True, exist_ok=True)
+                    wizard.summary_path = default_summary
+                if wizard.markdown_summary_path is None:
+                    default_md = ctx.project_root / "var/reports/cli-one-stop-summary.md"
+                    default_md.parent.mkdir(parents=True, exist_ok=True)
+                    wizard.markdown_summary_path = default_md
+                wizard.execute()
+            else:
+                wizard.render_report()
+            summary_display = str(wizard.summary_path) if wizard.summary_path else "n/a"
+            return f"Wizard complete. Summary: {summary_display}"
+
+        if not self._headless_runner.start("Wizard (headless)", _runner):
+            self._set_headless_status("Headless run already active.")
+
+    def _set_headless_status(self, message: str) -> None:
+        self.query_one("#wizard-status", Static).update(message)
+
+    def _set_headless_output(self, message: str) -> None:
+        self.query_one("#wizard-output", Static).update(message)
+
+    def _set_headless_state(self, running: bool) -> None:
+        self.query_one("#wizard-start", Button).disabled = running
+
+    def _handle_headless_complete(self, result: ActionResult[str]) -> None:
+        if result.error is None and result.value:
+            self._set_headless_output(result.value)
 
 
 def _empty_state():

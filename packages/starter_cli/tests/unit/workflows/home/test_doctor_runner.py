@@ -9,7 +9,7 @@ from starter_cli.core.status_models import ProbeResult, ProbeState
 from starter_cli.workflows.home.doctor import DoctorRunner
 
 
-def _stub_probes_ok_warn():
+def _stub_probes_ok_warn(*_: object, **__: object):
     return [
         ProbeResult(name="env", state=ProbeState.OK, detail="ok"),
         ProbeResult(name="stripe", state=ProbeState.WARN, detail="missing"),

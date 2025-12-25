@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from starter_cli.core.status_models import ProbeResult, ProbeState
-from starter_cli.workflows.home.probes.billing import billing_probe
 from starter_cli.workflows.home.probes.registry import PROBE_SPECS, ProbeContext, ProbeSpec
-from starter_cli.workflows.home.probes.secrets import secrets_probe
 
 
 def _ctx(env: dict[str, str], *, warn_only: bool = True) -> ProbeContext:
@@ -35,8 +33,10 @@ def test_probe_registry_order_and_names():
 
 
 def test_secrets_probe_skips_when_unset():
-    result = secrets_probe(_ctx({}))
-    assert result.state is ProbeState.SKIPPED
+    from starter_cli.workflows.home.probes import secrets as secrets_mod
+
+    result = secrets_mod.secrets_probe(_ctx({}))
+    assert result.state == ProbeState.SKIPPED
     assert "provider" in result.metadata
 
 
@@ -52,69 +52,83 @@ def test_secrets_probe_vault_uses_vault_probe(monkeypatch):
         "VAULT_ADDR": "http://localhost:18200",
         "VAULT_TOKEN": "root",
     }
-    result = secrets_probe(_ctx(env))
-    assert result.state is ProbeState.OK
+    result = secrets_mod.secrets_probe(_ctx(env))
+    assert result.state == ProbeState.OK
     assert result.name == "secrets"
     assert result.metadata.get("provider") == "vault_dev"
 
 
 def test_secrets_probe_infisical_missing_env_warns():
+    from starter_cli.workflows.home.probes import secrets as secrets_mod
+
     env = {"SECRETS_PROVIDER": "infisical_cloud"}
-    result = secrets_probe(_ctx(env, warn_only=True))
-    assert result.state is ProbeState.WARN
+    result = secrets_mod.secrets_probe(_ctx(env, warn_only=True))
+    assert result.state == ProbeState.WARN
     assert "missing env" in (result.detail or "")
 
 
 def test_secrets_probe_infisical_ok():
+    from starter_cli.workflows.home.probes import secrets as secrets_mod
+
     env = {
         "SECRETS_PROVIDER": "infisical_cloud",
         "INFISICAL_PROJECT_ID": "proj",
         "INFISICAL_ENVIRONMENT": "dev",
         "INFISICAL_SERVICE_TOKEN": "token",
     }
-    result = secrets_probe(_ctx(env))
-    assert result.state is ProbeState.OK
+    result = secrets_mod.secrets_probe(_ctx(env))
+    assert result.state == ProbeState.OK
     assert "infisical" in (result.detail or "")
 
 
 def test_secrets_probe_aws_sm_ok_with_profile():
+    from starter_cli.workflows.home.probes import secrets as secrets_mod
+
     env = {
         "SECRETS_PROVIDER": "aws_sm",
         "AWS_PROFILE": "dev",
         "AWS_REGION": "us-east-1",
     }
-    result = secrets_probe(_ctx(env))
-    assert result.state is ProbeState.OK
+    result = secrets_mod.secrets_probe(_ctx(env))
+    assert result.state == ProbeState.OK
     assert "aws" in (result.detail or "")
 
 
 def test_secrets_probe_azure_missing_creds_warns():
+    from starter_cli.workflows.home.probes import secrets as secrets_mod
+
     env = {
         "SECRETS_PROVIDER": "azure_kv",
         "AZURE_KEY_VAULT_URL": "https://example.vault.azure.net",
     }
-    result = secrets_probe(_ctx(env, warn_only=True))
-    assert result.state is ProbeState.WARN
+    result = secrets_mod.secrets_probe(_ctx(env, warn_only=True))
+    assert result.state == ProbeState.WARN
     assert "missing env" in (result.detail or "")
 
 
 def test_billing_probe_skips_when_disabled():
-    result = billing_probe(_ctx({}))
-    assert result.state is ProbeState.SKIPPED
+    from starter_cli.workflows.home.probes import billing as billing_mod
+
+    result = billing_mod.billing_probe(_ctx({}))
+    assert result.state == ProbeState.SKIPPED
     assert "billing" == result.name
 
 
 def test_billing_probe_warns_without_key_when_enabled():
+    from starter_cli.workflows.home.probes import billing as billing_mod
+
     env = {"ENABLE_BILLING": "true"}
-    result = billing_probe(_ctx(env, warn_only=True))
-    assert result.state is ProbeState.WARN
+    result = billing_mod.billing_probe(_ctx(env, warn_only=True))
+    assert result.state == ProbeState.WARN
     assert "missing" in (result.detail or "")
 
 
 def test_billing_probe_errors_without_key_when_strict():
+    from starter_cli.workflows.home.probes import billing as billing_mod
+
     env = {"ENABLE_BILLING": "true"}
-    result = billing_probe(_ctx(env, warn_only=False))
-    assert result.state is ProbeState.ERROR
+    result = billing_mod.billing_probe(_ctx(env, warn_only=False))
+    assert result.state == ProbeState.ERROR
 
 
 def test_billing_probe_delegates_to_stripe(monkeypatch):
@@ -130,8 +144,8 @@ def test_billing_probe_delegates_to_stripe(monkeypatch):
 
     monkeypatch.setattr(billing_mod, "stripe_probe", fake_stripe_probe)
     env = {"ENABLE_BILLING": "true", "STRIPE_SECRET_KEY": "sk_test_x"}
-    result = billing_probe(_ctx(env))
-    assert result.state is ProbeState.OK
+    result = billing_mod.billing_probe(_ctx(env))
+    assert result.state == ProbeState.OK
     assert result.metadata.get("provider") == "stripe"
 
 

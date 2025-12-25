@@ -146,7 +146,7 @@ Deliver a Textual-first, interactive CLI hub that feels native and professional,
 ## Rollout / Ops Notes
 
 - No migration or data backfill required.
-- Textual hub becomes default with no backward-compat shims.
+- Textual hub becomes default with no transitional shims.
 
 ---
 
@@ -157,7 +157,7 @@ Deliver a Textual-first, interactive CLI hub that feels native and professional,
 - 2025-12-23 — P1 complete: UI ports + headless console; workflows refactored; lint/typecheck green.
 - 2025-12-23 — P2 complete: Textual hub shell + navigation + command palette; default entry launches hub; lint/typecheck green.
 - 2025-12-23 — P3 complete: Home + Setup Hub panes with Textual widgets and view-model helpers; lint/typecheck green.
-- 2025-12-23 — P4 complete: Textual wizard pane with schema-aware state + prompt channel; legacy Rich wizard UI removed; lint/typecheck green.
+- 2025-12-23 — P4 complete: Textual wizard pane with schema-aware state + prompt channel; prior Rich wizard UI removed; lint/typecheck green.
 - 2025-12-23 — P5 complete: Ops screens (Logs/Infra/Providers/Stripe/Usage) with Textual panes, ops view models, and tests; lint/typecheck green.
 - 2025-12-23 — P6 complete: removed Rich console/table dependencies, simplified setup hub table output, docs updated; lint/typecheck green.
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 from starter_cli.core import CLIError
-from starter_cli.services.security import build_vault_headers
+from starter_cli.services.auth.security import build_vault_headers
 
 
 def test_build_vault_headers_returns_dev_local_for_safe_env(

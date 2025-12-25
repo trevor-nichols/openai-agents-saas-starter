@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from pathlib import Path
+
+import pytest
+
 from starter_cli.workflows.home import stack_state
 
 
-def test_stack_state_roundtrip(tmp_path):
+def test_stack_state_roundtrip(tmp_path: Path) -> None:
     path = tmp_path / "stack.json"
     state = stack_state.StackState(
         processes=[stack_state.StackProcess(label="backend", pid=123, command=["hatch", "run"])],
@@ -20,7 +24,7 @@ def test_stack_state_roundtrip(tmp_path):
     assert loaded.processes[0].label == "backend"
 
 
-def test_status_degraded(monkeypatch):
+def test_status_degraded(monkeypatch: pytest.MonkeyPatch) -> None:
     state = stack_state.StackState(
         processes=[
             stack_state.StackProcess(label="backend", pid=1, command=["a"]),
@@ -37,7 +41,7 @@ def test_status_degraded(monkeypatch):
     assert len(summary.dead) == 1
 
 
-def test_stop_processes_fallback_without_sigkill(monkeypatch):
+def test_stop_processes_fallback_without_sigkill(monkeypatch: pytest.MonkeyPatch) -> None:
     # Simulate Windows where SIGKILL may be absent and killpg unavailable
     monkeypatch.delattr(stack_state.signal, "SIGKILL", raising=False)
     monkeypatch.delattr(stack_state.os, "killpg", raising=False)
@@ -59,7 +63,7 @@ def test_stop_processes_fallback_without_sigkill(monkeypatch):
     assert calls == [(1, stack_state.signal.SIGTERM), (1, stack_state.signal.SIGTERM)]
 
 
-def test_stop_processes_prefers_process_group(monkeypatch):
+def test_stop_processes_prefers_process_group(monkeypatch: pytest.MonkeyPatch) -> None:
     # Ensure we target the whole process group (pnpm/node, uvicorn reloaders)
     pg_calls: list[tuple[int, int]] = []
     kill_calls: list[tuple[int, int]] = []
