@@ -3,7 +3,7 @@
 Operational notes for the guardrails subsystem used by agent specs and tools.
 
 ## What lives here
-- `_shared/` — core plumbing: `builder` (builds SDK guardrails from configs), `registry` (stores specs/presets), `config_adapter` (bundle resolution), `loaders` (init on startup), `events` (emission helpers), `specs` (config dataclasses).
+- `_shared/` — core plumbing: `builder` (orchestration), `resolver` (config resolution + check loading), `runtime` (execution + output shaping + emission), `registry` (stores specs/presets), `config_adapter` (bundle resolution), `loaders` (init on startup), `events` (emission helpers), `specs` (config dataclasses).
 - `checks/` — individual guardrail checks and their specs (moderation, jailbreak, PII, hallucination, prompt injection, URL filter, etc).
 - `presets/` — preset bundles (e.g., `standard`, `strict`, `tool_standard`, `tool_strict`, `minimal`) that group checks for reuse.
 
