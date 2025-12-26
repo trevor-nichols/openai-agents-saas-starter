@@ -41,8 +41,10 @@ jobs:
 
       - name: Build wheel artifacts
         run: |
+          rm -rf dist
           mkdir -p dist
           for pkg in starter_contracts starter_console starter_providers; do
+            rm -rf "packages/${pkg}/dist"
             (cd "packages/${pkg}" && hatch build -t wheel)
             cp "packages/${pkg}/dist/"*.whl dist/
           done
@@ -55,7 +57,10 @@ jobs:
             python -m venv "${venv_dir}/venv"
             source "${venv_dir}/venv/bin/activate"
             python -m pip install --upgrade pip pip-audit
-            python -m pip install "packages/${pkg}/dist/"*.whl
+            if [ "${pkg}" = "starter_console" ]; then
+              python -m pip install dist/starter_contracts-*.whl dist/starter_providers-*.whl
+            fi
+            python -m pip install "dist/${pkg}-"*.whl
             pip-audit --progress-spinner off --format cyclonedx-json --output "${pkg}-sbom.json"
             deactivate
             rm -rf "${venv_dir}"
