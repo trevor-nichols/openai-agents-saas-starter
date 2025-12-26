@@ -7,6 +7,7 @@ on:
 
 jobs:
   cli-guardrails:
+    name: backend-cli-guardrails
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
@@ -39,6 +40,7 @@ jobs:
         run: cd packages/starter_console && hatch run typecheck
 
   quality:
+    name: backend-quality
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -100,6 +102,7 @@ jobs:
           cd apps/api-service && hatch run pytest tests/integration --maxfail=1 -m postgres
 
   sbom-audit:
+    name: backend-sbom-audit
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -174,6 +177,7 @@ jobs:
             frontend-sbom.json
 
   platform-smoke:
+    name: backend-platform-smoke
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -229,6 +233,7 @@ jobs:
         run: hatch run python ../../tools/smoke/platform_smoke.py
 
   http-smoke:
+    name: backend-http-smoke
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
