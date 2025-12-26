@@ -160,3 +160,4 @@ Harden CI beyond tests with security and supply-chain guardrails while keeping P
 - 2025-12-26 — Added CI guardrails (Dependency Review, CodeQL, secrets scan, image scans), dependabot config, and release attestations.
 - 2025-12-26 — Runbook updated with CI/security expectations and release artifact provenance notes.
 - 2025-12-26 — Branch protection now requires CI + security workflows on `main`.
+- 2025-12-26 — Required check names aligned with build matrix jobs; Providers CI now runs on all PRs.
