@@ -21,7 +21,6 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from starter_console.core.constants import PROJECT_ROOT
-from starter_console.workflows.home.process_utils import terminate_process_tree
 from starter_console.workflows.home.runtime import resolve_pidfile
 
 STACK_STATE_PATH = resolve_pidfile(PROJECT_ROOT)
