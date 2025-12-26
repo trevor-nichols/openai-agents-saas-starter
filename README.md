@@ -1,6 +1,6 @@
 # OpenAI Agent Starter
 
-Production-ready starter kit for building AI Agent SaaS products. The repo bundles a FastAPI backend (OpenAI Agents SDK v0.6.4) and a Next.js 16 frontend, plus an operator-focused Starter Console that wires secrets, infrastructure, and env files in one flow.
+Starter kit for building AI Agent SaaS products. The repo bundles a FastAPI backend (OpenAI Agents SDK v0.6.4) and a Next.js 16 frontend, plus an operator-focused Starter Console that wires secrets, infrastructure, and env files in one flow.
 
 <img src="docs/assets/media/web-app.png" alt="OpenAI Agent Starter screenshots" width="1200" />
 
@@ -193,5 +193,3 @@ Refer to `packages/starter_console/README.md` for detailed flags, answers-file f
 - `docs/ops/container-deployments.md` – container build/run guidance for API + web (local and cloud baseline).
 - `starter-console usage sync-entitlements` – console helper that syncs `var/reports/usage-entitlements.json` into `plan_features` so guardrails enforce the latest plan limits.
 - `justfile` – curated commands for API, migrations, infra, Stripe tooling, and CLI invocation.
-
-Use this README as the top-level map and follow the linked docs for deeper dives.
