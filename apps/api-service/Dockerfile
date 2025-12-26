@@ -19,9 +19,12 @@ RUN python -m venv /opt/venv
 ENV PATH=/opt/venv/bin:$PATH
 
 RUN pip install --upgrade pip \
- && pip install --no-cache-dir ./packages/starter_contracts \
- && pip install --no-cache-dir ./packages/starter_providers \
- && pip install --no-cache-dir ./apps/api-service
+ && pip install --no-cache-dir /repo/packages/starter_contracts \
+ && pip install --no-cache-dir /repo/packages/starter_providers
+
+WORKDIR /repo/apps/api-service
+
+RUN pip install --no-cache-dir .
 
 FROM python:3.11-slim AS runtime
 

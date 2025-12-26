@@ -87,7 +87,7 @@ def test_setup_command_launches_textual_wizard_by_default(
     assert exit_code == 0
     assert calls["initial"] == "wizard"
     assert calls.get("run") is True
-    from starter_console.ui.wizard_pane import WizardLaunchConfig
+    from starter_console.ui.panes.wizard import WizardLaunchConfig
 
     config = cast(WizardLaunchConfig, calls["config"])
     assert config.profile == "demo"

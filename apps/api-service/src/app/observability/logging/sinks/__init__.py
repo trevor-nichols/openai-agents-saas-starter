@@ -8,13 +8,14 @@ from starter_contracts.observability.logging.sinks import (
     SinkBuilder,
     SinkConfig,
 )
-
-from app.core.settings import Settings
 from starter_contracts.observability.logging.sinks import build_null_sink as _build_null_sink
 from starter_contracts.observability.logging.sinks.datadog import build_datadog_sink
 from starter_contracts.observability.logging.sinks.file import build_file_sink
 from starter_contracts.observability.logging.sinks.otlp import build_otlp_sink
 from starter_contracts.observability.logging.sinks.stdout import build_stdout_sink
+
+from app.core.settings import Settings
+
 
 def build_null_sink(
     settings: Settings,

@@ -5,6 +5,8 @@ from __future__ import annotations
 from starter_contracts.observability.logging import LoggingRuntimeConfig
 from starter_contracts.observability.logging.config import (
     ALLOWED_SINKS as SHARED_ALLOWED_SINKS,
+)
+from starter_contracts.observability.logging.config import (
     configure_logging as configure_shared_logging,
 )
 

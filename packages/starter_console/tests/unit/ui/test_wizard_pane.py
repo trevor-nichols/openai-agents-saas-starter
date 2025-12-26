@@ -5,7 +5,7 @@ from textual.app import App, ComposeResult
 from textual.widgets import RadioButton, RadioSet, Static
 
 from starter_console.core import CLIContext
-from starter_console.ui.wizard_pane import WizardLaunchConfig, WizardPane
+from starter_console.ui.panes.wizard import WizardLaunchConfig, WizardPane
 
 
 class WizardPaneApp(App[None]):

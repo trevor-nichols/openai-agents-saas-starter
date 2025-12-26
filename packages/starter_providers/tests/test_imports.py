@@ -11,9 +11,9 @@ from starter_providers.secrets import (
 
 
 def test_public_clients_importable() -> None:
-    assert AWSSecretsManagerClient
-    assert AWSSecretsManagerError
-    assert AzureKeyVaultClient
-    assert AzureKeyVaultError
-    assert InfisicalAPIClient
-    assert InfisicalAPIError
+    assert AWSSecretsManagerClient is not None
+    assert AWSSecretsManagerError is not None
+    assert AzureKeyVaultClient is not None
+    assert AzureKeyVaultError is not None
+    assert InfisicalAPIClient is not None
+    assert InfisicalAPIError is not None
