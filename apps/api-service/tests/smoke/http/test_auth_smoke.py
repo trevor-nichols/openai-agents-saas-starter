@@ -41,4 +41,5 @@ async def test_me_endpoint_returns_current_user(
     resp = await http_client.get("/api/v1/auth/me", headers=auth_headers(smoke_state))
     assert resp.status_code == 200
     body = resp.json()
-    assert body.get("user_id") == smoke_state.user_id
+    data = body.get("data") or {}
+    assert data.get("user_id") == smoke_state.user_id
