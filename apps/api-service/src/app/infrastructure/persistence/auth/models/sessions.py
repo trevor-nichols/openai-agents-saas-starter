@@ -87,6 +87,7 @@ class ServiceAccountToken(Base):
             "scope_key",
             unique=True,
             postgresql_where=text("revoked_at IS NULL AND account NOT LIKE 'user:%'"),
+            sqlite_where=text("revoked_at IS NULL AND account NOT LIKE 'user:%'"),
         ),
         Index("ix_service_account_tokens_session_id", "session_id"),
     )
