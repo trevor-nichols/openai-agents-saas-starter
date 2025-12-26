@@ -9,6 +9,20 @@ This runbook covers production deployments and safe rollbacks. It is cloud-agnos
 - Ensure `DATABASE_URL` and `REDIS_URL` are injected via secret references (required for the reference blueprints).
 - Verify database backups and Redis snapshot policies are enabled.
 - Confirm the billing worker topology (inline vs dedicated).
+- Confirm CI is green on `main` and security workflows have completed (see next section).
+
+## CI & Supply-Chain Gates
+
+Before tagging a release, confirm the latest `main` run includes:
+- Backend CI (lint/typecheck/tests + smoke suites).
+- Frontend CI (lint/typecheck + SDK drift).
+- Starter Console CI + Contracts CI + Providers CI.
+- Dependency Review (PR-time guardrail).
+- CodeQL (SAST) on `main` and scheduled runs.
+- Secrets Scan (gitleaks) on `main` and scheduled runs.
+- Image build with Trivy scan on pushed images (`build-images` workflow).
+
+If any of these are missing or failing, resolve before tagging a release.
 
 ## Deploy Steps (Summary)
 
@@ -96,3 +110,14 @@ Example:
 registry: myregistry.azurecr.io
 image_prefix: agent-saas
 ```
+
+## Release Artifacts & Provenance
+
+Tagging `v*` triggers the Release workflow which publishes:
+- Python wheels for `starter_contracts`, `starter_console`, `starter_providers`.
+- SBOMs: `starter_contracts-sbom.json`, `starter_console-sbom.json`, `starter_providers-sbom.json`, `frontend-sbom.json`.
+- Build provenance attestations for the published artifacts.
+
+Verification:
+- GitHub Release assets include all wheels + SBOMs.
+- Attestations are visible in the GitHub UI for the Release workflow run.

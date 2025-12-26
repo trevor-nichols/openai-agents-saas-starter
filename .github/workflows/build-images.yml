@@ -27,9 +27,11 @@ env:
 permissions:
   contents: read
   packages: write
+  security-events: write
 
 jobs:
   build:
+    name: build-${{ matrix.name }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -140,6 +142,32 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Resolve image ref
+        if: env.PUSH_IMAGES == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha_short="${GITHUB_SHA::7}"
+          echo "IMAGE_REF=${REGISTRY}/${IMAGE_PREFIX}/${{ matrix.name }}:sha-${sha_short}" >> "$GITHUB_ENV"
+
+      - name: Trivy scan (SARIF)
+        if: env.PUSH_IMAGES == 'true'
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ env.IMAGE_REF }}
+          format: sarif
+          output: trivy-${{ matrix.name }}.sarif
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: 1
+
+      - name: Upload Trivy SARIF
+        if: env.PUSH_IMAGES == 'true'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-${{ matrix.name }}.sarif
 
   infra_fmt:
     runs-on: ubuntu-latest

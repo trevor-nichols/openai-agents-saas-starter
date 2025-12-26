@@ -7,6 +7,7 @@ on:
 
 jobs:
   quality:
+    name: contracts-quality
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

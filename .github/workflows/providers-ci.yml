@@ -3,20 +3,11 @@ name: Providers CI
 on:
   push:
     branches: [main]
-    paths:
-      - ".github/workflows/providers-ci.yml"
-      - "packages/starter_providers/**"
-      - "packages/starter_providers/justfile"
-      - "justfile"
   pull_request:
-    paths:
-      - ".github/workflows/providers-ci.yml"
-      - "packages/starter_providers/**"
-      - "packages/starter_providers/justfile"
-      - "justfile"
 
 jobs:
   quality:
+    name: providers-quality
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
