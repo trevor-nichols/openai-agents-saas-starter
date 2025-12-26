@@ -18,6 +18,7 @@ from starter_console.workflows.home import stack_state
 from starter_console.workflows.home.probes.api import api_probe
 from starter_console.workflows.home.probes.frontend import frontend_probe
 from starter_console.workflows.home.probes.util import tcp_check
+from starter_console.workflows.home.runtime import resolve_stack_runtime
 
 from . import env as env_utils
 from .logs import LogSession
@@ -47,14 +48,19 @@ class StartRunner:
         self.skip_infra = skip_infra
         self.detach = detach
         self.force = force
-        self.pidfile = pidfile or stack_state.STACK_STATE_PATH
+        runtime = resolve_stack_runtime(
+            ctx,
+            pidfile_override=pidfile,
+            log_dir_override=log_dir,
+        )
+        self.pidfile = runtime.pidfile
         self._launches: list[LaunchResult] = []
         self._stop_event = threading.Event()
         self._infra_started = (self.target == "dev") and not self.skip_infra
         self._logs = LogSession(
-            project_root=PROJECT_ROOT,
+            project_root=ctx.project_root,
             env=os.environ,
-            override=log_dir,
+            override=runtime.log_root,
         )
         self._base_log_root = self._logs.base_log_root
         self.log_dir = self._logs.log_dir
@@ -132,6 +138,8 @@ class StartRunner:
                 self._cleanup_processes()
                 return 1
 
+            self._record_state()
+
             # Health waiters
             deadline = time.time() + (self.timeout or 120)
             api_ok = frontend_ok = False
@@ -182,7 +190,6 @@ class StartRunner:
                 return code
 
             if self.detach:
-                self._record_state()
                 self.console.success("Stack is running in background (managed by CLI).")
                 self._print_ready_urls()
                 self._logs.close()
@@ -216,9 +223,11 @@ class StartRunner:
         try:
             stdout_target: Any
             log_path: Path | None = None
+            log_file: Any | None = None
             if self.detach:
                 log_path, stdout_target = self._logs.open_log(label)
             else:
+                log_path, log_file = self._logs.open_log(label)
                 stdout_target = subprocess.PIPE
             start_opts = subprocess_start_opts(self.detach)
             proc = subprocess.Popen(
@@ -243,7 +252,12 @@ class StartRunner:
             self._launches.append(launch)
             self.console.info(f"Started {label} pid={proc.pid} cmd={' '.join(command)}")
             if not self.detach:
-                self._logs.start_log_thread(launch, self.console, self._stop_event)
+                self._logs.start_log_thread(
+                    launch,
+                    self.console,
+                    self._stop_event,
+                    log_file=log_file,
+                )
             return launch
         except FileNotFoundError as exc:
             return LaunchResult(label=label, command=command, process=None, error=str(exc))
@@ -349,8 +363,16 @@ class StartRunner:
             if proc and proc.poll() is None:
                 terminate_launch(launch, force=True)
         self._logs.close()
+        stack_state.clear(self.pidfile)
 
     def _install_signal_handlers(self) -> None:
+        if threading.current_thread() is not threading.main_thread():
+            self.console.warn(
+                "Skipping signal handlers (start is running in background thread).",
+                topic="start",
+            )
+            return
+
         def _handler(signum, frame):
             self.console.warn(f"Received signal {signum}; cleaning up started processes...")
             self._stop_event.set()
@@ -379,6 +401,8 @@ class StartRunner:
                 pid=int(launch.process.pid) if launch.process else -1,
                 command=list(launch.command),
                 log_path=str(launch.log_path) if launch.log_path else None,
+                isolated=launch.isolated,
+                pgid=launch.pgid,
             )
             for launch in self._launches
             if launch.process and launch.process.poll() is None

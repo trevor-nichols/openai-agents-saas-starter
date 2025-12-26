@@ -3,7 +3,7 @@ from __future__ import annotations
 import shlex
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Grid, Horizontal, Vertical
 from textual.widgets import Button, Input, OptionList, RadioButton, RadioSet, Static, Switch
 
 from starter_console.core import CLIContext
@@ -35,7 +35,7 @@ class SecretsOnboardPane(Vertical):
             "Configure secrets/signing providers and export env updates.",
             classes="section-description",
         )
-        with Horizontal(classes="ops-actions"):
+        with Grid(classes="form-grid"):
             yield Static("Provider", classes="wizard-control-label")
             yield RadioSet(
                 *[
@@ -44,25 +44,24 @@ class SecretsOnboardPane(Vertical):
                 ],
                 id="secrets-provider",
             )
-            yield Button("Run Onboarding", id="secrets-run", variant="primary")
         yield Static("", id="secrets-provider-detail", classes="section-summary")
-        with Horizontal(classes="ops-actions"):
+        with Grid(classes="form-grid"):
             yield Static("Non-interactive", classes="wizard-control-label")
             yield Switch(value=False, id="secrets-non-interactive")
             yield Static("Skip automation", classes="wizard-control-label")
             yield Switch(value=False, id="secrets-skip-automation")
-        with Horizontal(classes="ops-actions"):
             yield Static("Answers files", classes="wizard-control-label")
             yield Input(
                 id="secrets-answers-files",
                 placeholder="answers.json, /path/to/answers.json",
             )
-        with Horizontal(classes="ops-actions"):
             yield Static("Var overrides", classes="wizard-control-label")
             yield Input(
                 id="secrets-var-overrides",
                 placeholder="KEY=VALUE, NEXT_KEY=VALUE",
             )
+        with Horizontal(classes="ops-actions"):
+            yield Button("Run Onboarding", id="secrets-run", variant="primary")
         yield Static("", id="secrets-summary", classes="section-summary")
         yield Static("", id="secrets-output", classes="ops-output")
         with Vertical(id="secrets-prompt"):

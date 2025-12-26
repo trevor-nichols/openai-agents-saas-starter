@@ -4,7 +4,7 @@ import argparse
 import asyncio
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Grid, Horizontal, Vertical
 from textual.widgets import Button, Collapsible, DataTable, Input, Static, Switch
 
 from starter_console.core import CLIContext
@@ -41,29 +41,25 @@ class UsagePane(Vertical):
             yield Button("Export Report", id="usage-export")
             yield Button("Sync Entitlements", id="usage-sync")
         with Collapsible(title="Export report options", id="usage-export-options", collapsed=True):
-            with Horizontal(classes="ops-actions"):
+            with Grid(classes="form-grid"):
                 yield Static("Period start", classes="wizard-control-label")
                 yield Input(id="usage-period-start")
                 yield Static("Period end", classes="wizard-control-label")
                 yield Input(id="usage-period-end")
-            with Horizontal(classes="ops-actions"):
                 yield Static("Tenants", classes="wizard-control-label")
                 yield Input(id="usage-tenant")
                 yield Static("Plans", classes="wizard-control-label")
                 yield Input(id="usage-plan")
                 yield Static("Features", classes="wizard-control-label")
                 yield Input(id="usage-feature")
-            with Horizontal(classes="ops-actions"):
                 yield Static("Warn threshold", classes="wizard-control-label")
                 yield Input(id="usage-warn-threshold", value="0.8")
                 yield Static("Include inactive", classes="wizard-control-label")
                 yield Switch(value=False, id="usage-include-inactive")
-            with Horizontal(classes="ops-actions"):
                 yield Static("JSON output", classes="wizard-control-label")
                 yield Input(id="usage-output-json", placeholder="var/reports/usage-dashboard.json")
                 yield Static("CSV output", classes="wizard-control-label")
                 yield Input(id="usage-output-csv", placeholder="var/reports/usage-dashboard.csv")
-            with Horizontal(classes="ops-actions"):
                 yield Static("Skip JSON", classes="wizard-control-label")
                 yield Switch(value=False, id="usage-no-json")
                 yield Static("Skip CSV", classes="wizard-control-label")
@@ -73,7 +69,7 @@ class UsagePane(Vertical):
             id="usage-sync-options",
             collapsed=True,
         ):
-            with Horizontal(classes="ops-actions"):
+            with Grid(classes="form-grid"):
                 yield Static("Artifact path", classes="wizard-control-label")
                 yield Input(
                     id="usage-sync-path",
@@ -81,7 +77,6 @@ class UsagePane(Vertical):
                 )
                 yield Static("Plans", classes="wizard-control-label")
                 yield Input(id="usage-sync-plan")
-            with Horizontal(classes="ops-actions"):
                 yield Static("Prune missing", classes="wizard-control-label")
                 yield Switch(value=False, id="usage-prune-missing")
                 yield Static("Dry run", classes="wizard-control-label")

@@ -21,8 +21,10 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from starter_console.core.constants import PROJECT_ROOT
+from starter_console.workflows.home.process_utils import terminate_process_tree
+from starter_console.workflows.home.runtime import resolve_pidfile
 
-STACK_STATE_PATH = PROJECT_ROOT / "var" / "run" / "stack.json"
+STACK_STATE_PATH = resolve_pidfile(PROJECT_ROOT)
 
 
 @dataclass(slots=True)
@@ -31,6 +33,8 @@ class StackProcess:
     pid: int
     command: Sequence[str]
     log_path: str | None = None
+    isolated: bool = False
+    pgid: int | None = None
     started_at: float = field(default_factory=time.time)
 
 
@@ -126,10 +130,17 @@ def status(state: StackState | None) -> StackStatus:
 def stop_processes(state: StackState, *, grace_seconds: float = 5.0) -> None:
     """Attempt to terminate tracked processes politely, then force kill."""
 
-    pids: Iterable[int] = [p.pid for p in state.processes]
     sigkill = getattr(signal, "SIGKILL", None)
+    process_map = {proc.pid: proc for proc in state.processes}
+    pids: Iterable[int] = process_map.keys()
     for pid in pids:
-        _send_signal(pid, signal.SIGTERM, prefer_group=True)
+        proc = process_map.get(pid)
+        if proc is None:
+            continue
+        if proc.isolated:
+            _send_signal_group(proc, signal.SIGTERM)
+        else:
+            terminate_process_tree(pid, signal.SIGTERM)
 
     deadline = time.time() + grace_seconds
     remaining: set[int] = set(pids)
@@ -139,11 +150,20 @@ def stop_processes(state: StackState, *, grace_seconds: float = 5.0) -> None:
             time.sleep(0.2)
 
     for pid in list(remaining):
-        if sigkill is not None:
-            _send_signal(pid, sigkill, prefer_group=True)
+        proc = process_map.get(pid)
+        if proc is None:
+            continue
+        if proc.isolated:
+            if sigkill is not None:
+                _send_signal_group(proc, sigkill)
+            else:
+                # Windows lacks SIGKILL; fall back to a second SIGTERM
+                _send_signal_group(proc, signal.SIGTERM)
         else:
-            # Windows lacks SIGKILL; fall back to a second SIGTERM
-            _send_signal(pid, signal.SIGTERM, prefer_group=True)
+            if sigkill is None:
+                terminate_process_tree(pid, signal.SIGTERM)
+            else:
+                terminate_process_tree(pid, sigkill)
 
 
 def _send_signal(pid: int, sig: int, *, prefer_group: bool = False) -> None:
@@ -163,6 +183,22 @@ def _send_signal(pid: int, sig: int, *, prefer_group: bool = False) -> None:
         return
     except PermissionError:
         return
+
+
+def _send_signal_group(proc: StackProcess, sig: int) -> None:
+    """Send a signal to a stored process group when available."""
+
+    if proc.pgid and proc.pgid > 0 and hasattr(os, "killpg") and os.name != "nt":
+        try:
+            os.killpg(proc.pgid, sig)
+            return
+        except ProcessLookupError:
+            return
+        except PermissionError:
+            pass
+        except Exception:
+            pass
+    _send_signal(proc.pid, sig, prefer_group=False)
 
 
 __all__ = [

@@ -73,10 +73,18 @@ class StarterTUI(App[None]):
 
     #content {
         padding: 1 2;
+        height: 1fr;
+    }
+
+    #content-switcher {
+        height: 1fr;
     }
 
     .section-pane {
         padding: 1 2;
+        height: 1fr;
+        overflow-y: auto;
+        scrollbar-gutter: stable;
     }
 
     .section-title {
@@ -103,6 +111,7 @@ class StarterTUI(App[None]):
     .ops-actions {
         height: auto;
         padding-bottom: 1;
+        align: left middle;
     }
 
     .ops-output {
@@ -115,21 +124,56 @@ class StarterTUI(App[None]):
         padding-bottom: 1;
     }
 
+    .form-grid {
+        layout: grid;
+        grid-size: 2;
+        grid-columns: 22 1fr;
+        grid-gutter: 1 2;
+        height: auto;
+    }
+
+    .form-grid .wizard-control-label {
+        color: $text-muted;
+    }
+
+    .form-grid Input,
+    .form-grid RadioSet {
+        width: 1fr;
+    }
+
+    .form-grid Switch {
+        width: auto;
+    }
+
     .context-panel {
         border: tall $panel-darken-1;
         background: $panel;
         color: $text;
-        padding: 1;
+        padding: 0 1;
         margin-bottom: 1;
+        height: auto;
+        dock: top;
     }
 
     .context-title {
         text-style: bold;
+        padding-right: 1;
     }
 
     .context-summary {
         color: $text-muted;
+        height: auto;
         padding-bottom: 1;
+    }
+
+    .context-bar {
+        height: auto;
+        padding: 0;
+    }
+
+    .context-row {
+        height: auto;
+        align: left middle;
     }
 
     .context-actions {
@@ -150,6 +194,21 @@ class StarterTUI(App[None]):
     .home-actions {
         height: auto;
         padding-bottom: 1;
+        align: left middle;
+    }
+
+    .home-summary-card {
+        border: tall $panel-darken-1;
+        background: $panel;
+        color: $text;
+        padding: 1 2;
+        margin-bottom: 1;
+    }
+
+
+    #home-probes-card,
+    #home-services-card {
+        margin-bottom: 1;
     }
 
     .setup-actions {
@@ -183,9 +242,22 @@ class StarterTUI(App[None]):
         padding-bottom: 1;
     }
 
+    .stripe-actions {
+        height: auto;
+        padding-bottom: 0;
+    }
+
+    .stripe-actions Button {
+        width: auto;
+        min-width: 0;
+        padding: 0 2;
+        margin-right: 1;
+    }
+
     .stripe-reset {
         height: auto;
         padding: 0 1;
+        margin-right: 0;
     }
 
     #stripe-output {

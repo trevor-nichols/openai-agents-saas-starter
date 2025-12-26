@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Grid, Horizontal, Vertical
 from textual.widgets import (
     Button,
     Collapsible,
@@ -22,7 +22,7 @@ from starter_console.workflows.setup.section_specs import SECTION_SPECS
 def compose_wizard_layout() -> ComposeResult:
     yield Static("Setup Wizard", classes="section-title")
     yield Static("", id="wizard-summary", classes="section-summary")
-    with Horizontal(id="wizard-controls"):
+    with Grid(id="wizard-controls", classes="form-grid"):
         yield Static("Profile", id="wizard-profile-label", classes="wizard-control-label")
         yield RadioSet(
             RadioButton("Demo", id="profile-demo"),
@@ -51,13 +51,14 @@ def compose_wizard_layout() -> ComposeResult:
             RadioButton("Off", id="advanced-off"),
             id="wizard-advanced",
         )
+    with Horizontal(classes="ops-actions"):
         yield Button("Start Wizard", id="wizard-start", variant="primary")
     with Collapsible(
         title="Wizard options",
         id="wizard-options-collapsible",
         collapsed=True,
     ):
-        with Horizontal(classes="wizard-options"):
+        with Grid(classes="form-grid"):
             yield Static("Mode", classes="wizard-control-label")
             yield RadioSet(
                 RadioButton("Interactive", id="wizard-mode-interactive"),
@@ -67,7 +68,6 @@ def compose_wizard_layout() -> ComposeResult:
             )
             yield Static("Strict", classes="wizard-control-label")
             yield Switch(value=False, id="wizard-strict")
-        with Horizontal(classes="wizard-options"):
             yield Static("Output format", classes="wizard-control-label")
             yield RadioSet(
                 RadioButton("Summary", id="wizard-output-summary"),
@@ -75,17 +75,14 @@ def compose_wizard_layout() -> ComposeResult:
                 RadioButton("Checklist", id="wizard-output-checklist"),
                 id="wizard-output-format",
             )
-        with Horizontal(classes="wizard-options"):
             yield Static("Answers files", classes="wizard-control-label")
             yield Input(id="wizard-answers-files")
             yield Static("Var overrides", classes="wizard-control-label")
             yield Input(id="wizard-var-overrides")
-        with Horizontal(classes="wizard-options"):
             yield Static("Export answers path", classes="wizard-control-label")
             yield Input(id="wizard-export-answers")
             yield Static("Summary path", classes="wizard-control-label")
             yield Input(id="wizard-summary-path")
-        with Horizontal(classes="wizard-options"):
             yield Static("Markdown summary path", classes="wizard-control-label")
             yield Input(id="wizard-markdown-summary-path")
         with Collapsible(
@@ -93,8 +90,8 @@ def compose_wizard_layout() -> ComposeResult:
             id="wizard-automation-overrides",
             collapsed=True,
         ):
-            for phase in ALL_AUTOMATION_PHASES:
-                with Horizontal(classes="wizard-options"):
+            with Grid(classes="form-grid"):
+                for phase in ALL_AUTOMATION_PHASES:
                     yield Static(phase.value, classes="wizard-control-label")
                     yield RadioSet(
                         RadioButton("Auto", id=f"wizard-auto-{phase.value}"),

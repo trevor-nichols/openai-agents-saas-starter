@@ -93,6 +93,8 @@ class LogSession:
         launch: LaunchResult,
         console: ConsolePort,
         stop_event: threading.Event,
+        *,
+        log_file: IO[str] | None = None,
     ) -> None:
         if launch.process is None or launch.process.stdout is None:
             return
@@ -105,6 +107,11 @@ class LogSession:
                 line = line.rstrip()
                 if line:
                     launch.log_tail.append(f"{launch.label}: {line}")
+                    if log_file is not None:
+                        try:
+                            log_file.write(f"{line}\n")
+                        except Exception:
+                            pass
                     console.info(f"{launch.label}> {line}")
 
         threading.Thread(target=_consume, daemon=True).start()

@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Grid, Vertical
 from textual.widgets import Button, DataTable, RadioButton, RadioSet, Static
 
 from starter_console.core import CLIContext
@@ -19,9 +19,9 @@ class ProvidersPane(Vertical):
     def compose(self) -> ComposeResult:
         yield Static("Providers", classes="section-title")
         yield Static("Validate provider configuration status.", classes="section-description")
-        with Horizontal(classes="ops-actions"):
+        with Grid(classes="form-grid"):
+            yield Static("", classes="wizard-control-label")
             yield Button("Refresh", id="providers-refresh", variant="primary")
-        with Horizontal(classes="ops-actions"):
             yield Static("Strict mode", classes="wizard-control-label")
             yield RadioSet(
                 RadioButton("Auto", id="providers-strict-auto"),

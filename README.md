@@ -2,7 +2,7 @@
 
 Production-ready starter kit for building AI Agent SaaS products. The repo bundles a FastAPI backend (OpenAI Agents SDK v0.6.1) and a Next.js 16 frontend, plus an operator-focused Starter Console that wires secrets, infrastructure, and env files in one flow.
 
-<img src="docs/assets/media/screenshots.jpeg" alt="OpenAI Agent Starter screenshots" width="1200" />
+<img src="docs/assets/media/web-app.png" alt="OpenAI Agent Starter screenshots" width="1200" />
 
 ## Architecture At A Glance
 - **Backend** (`apps/api-service/`): FastAPI, async SQLAlchemy, Postgres + Redis (refresh tokens & billing), JWT auth, Alembic migrations, Ed25519 keys in `var/keys/`, OpenAI Agents SDK integrations, Stripe billing services.

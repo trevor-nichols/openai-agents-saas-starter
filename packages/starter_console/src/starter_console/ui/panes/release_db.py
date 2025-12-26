@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Grid, Horizontal, Vertical
 from textual.widgets import Button, DataTable, Input, Static, Switch
 
 from starter_console.core import CLIContext
@@ -37,19 +37,19 @@ class ReleaseDbPane(Vertical):
             "Run migrations, Stripe seeding, and billing plan checks.",
             classes="section-description",
         )
-        with Horizontal(classes="ops-actions"):
+        with Grid(classes="form-grid"):
             yield Static("Non-interactive", classes="wizard-control-label")
             yield Switch(value=False, id="release-non-interactive")
             yield Static("Skip Stripe", classes="wizard-control-label")
             yield Switch(value=False, id="release-skip-stripe")
             yield Static("Skip DB checks", classes="wizard-control-label")
             yield Switch(value=False, id="release-skip-db")
-            yield Button("Run Release", id="release-run", variant="primary")
-        with Horizontal(classes="ops-actions"):
             yield Static("Summary path", classes="wizard-control-label")
             yield Input(id="release-summary-path")
             yield Static("Plan overrides", classes="wizard-control-label")
             yield Input(id="release-plan-overrides", placeholder="starter=2500, pro=9900")
+        with Horizontal(classes="ops-actions"):
+            yield Button("Run Release", id="release-run", variant="primary")
         yield DataTable(id="release-steps", zebra_stripes=True)
         yield DataTable(id="release-plans", zebra_stripes=True)
         yield Static("", id="release-status", classes="section-footnote")

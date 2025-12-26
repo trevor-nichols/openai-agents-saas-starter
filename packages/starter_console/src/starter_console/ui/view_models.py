@@ -18,20 +18,17 @@ def format_summary(
     stack_state: str | None,
 ) -> str:
     strict_label = "yes" if strict else "no"
-    parts = [
-        f"Profile: {profile}",
-        f"Strict: {strict_label}",
+    stack_label = stack_state or "unknown"
+    ok = summary.get("ok", 0)
+    warn = summary.get("warn", 0)
+    error = summary.get("error", 0)
+    skipped = summary.get("skipped", 0)
+    lines = [
+        f"Environment: {profile} | Strict: {strict_label}",
+        f"Stack: {stack_label}",
+        f"Probe summary: ok={ok} warn={warn} error={error} skipped={skipped}",
     ]
-    if stack_state:
-        parts.append(f"Stack: {stack_state}")
-    parts.append(
-        "Probes: "
-        f"ok={summary.get('ok', 0)} "
-        f"warn={summary.get('warn', 0)} "
-        f"error={summary.get('error', 0)} "
-        f"skipped={summary.get('skipped', 0)}"
-    )
-    return " | ".join(parts)
+    return "\n".join(lines)
 
 
 def sort_probes(probes: list[ProbeResult]) -> list[ProbeResult]:

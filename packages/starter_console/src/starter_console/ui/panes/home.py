@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
-from textual.widgets import Button, DataTable, Static
+from textual.widgets import Button, Collapsible, DataTable, Static
 
 from starter_console.core import CLIContext
 from starter_console.core.status_models import ProbeResult, ServiceStatus
@@ -28,11 +28,13 @@ class HomePane(Vertical):
 
     def compose(self) -> ComposeResult:
         yield Static("Home", classes="section-title")
-        yield Static("", id="home-summary", classes="section-summary")
+        yield Static("Operational overview for this workspace.", classes="section-description")
+        yield Static("", id="home-summary", classes="section-summary home-summary-card")
         with Horizontal(classes="home-actions"):
             yield Button("Refresh", id="home-refresh", variant="primary")
-        with Horizontal(classes="home-tables"):
+        with Collapsible(title="Probe health", id="home-probes-card", collapsed=False):
             yield DataTable(id="home-probes", zebra_stripes=True)
+        with Collapsible(title="Service status", id="home-services-card", collapsed=False):
             yield DataTable(id="home-services", zebra_stripes=True)
         yield Static("", id="home-status", classes="section-footnote")
 
@@ -72,14 +74,22 @@ class HomePane(Vertical):
         probe_table = self.query_one("#home-probes", DataTable)
         probe_table.clear(columns=True)
         probe_table.add_columns("Probe", "Status", "Detail")
-        for row in probe_rows(self._probes):
-            probe_table.add_row(*row)
+        probe_items = probe_rows(self._probes)
+        if not probe_items:
+            probe_table.add_row("No probes detected", "-", "Run Doctor to populate.")
+        else:
+            for row in probe_items:
+                probe_table.add_row(*row)
 
         service_table = self.query_one("#home-services", DataTable)
         service_table.clear(columns=True)
         service_table.add_columns("Service", "Status", "Detail")
-        for row in service_rows(self._services):
-            service_table.add_row(*row)
+        service_items = service_rows(self._services)
+        if not service_items:
+            service_table.add_row("No services detected", "-", "Start the stack or run Doctor.")
+        else:
+            for row in service_items:
+                service_table.add_row(*row)
 
     def _set_status(self, message: str) -> None:
         self.query_one("#home-status", Static).update(message)

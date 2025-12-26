@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Grid, Horizontal, Vertical
 from textual.widgets import Button, Input, RadioButton, RadioSet, Static, Switch
 
 from starter_console.core import CLIContext, CLIError
@@ -31,13 +31,11 @@ class AuthTokensPane(Vertical):
     def compose(self) -> ComposeResult:
         yield Static("Auth Tokens", classes="section-title")
         yield Static("Issue service-account refresh tokens.", classes="section-description")
-        with Horizontal(classes="ops-actions"):
+        with Grid(classes="form-grid"):
             yield Static("Account", classes="wizard-control-label")
             yield Input(id="auth-account")
             yield Static("Scopes", classes="wizard-control-label")
             yield Input(id="auth-scopes", placeholder="comma-separated scopes")
-            yield Button("Issue Token", id="auth-issue", variant="primary")
-        with Horizontal(classes="ops-actions"):
             yield Static("Tenant", classes="wizard-control-label")
             yield Input(id="auth-tenant")
             yield Static("Lifetime (min)", classes="wizard-control-label")
@@ -46,7 +44,6 @@ class AuthTokensPane(Vertical):
             yield Input(id="auth-fingerprint")
             yield Static("Force", classes="wizard-control-label")
             yield Switch(value=False, id="auth-force")
-        with Horizontal(classes="ops-actions"):
             yield Static("Output", classes="wizard-control-label")
             yield RadioSet(
                 RadioButton("JSON", id="auth-output-json"),
@@ -56,6 +53,8 @@ class AuthTokensPane(Vertical):
             )
             yield Static("Base URL", classes="wizard-control-label")
             yield Input(id="auth-base-url")
+        with Horizontal(classes="ops-actions"):
+            yield Button("Issue Token", id="auth-issue", variant="primary")
         yield Static("", id="auth-status", classes="section-footnote")
         yield Static("", id="auth-output-log", classes="ops-output")
 

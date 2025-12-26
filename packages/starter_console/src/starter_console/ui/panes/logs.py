@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Grid, Horizontal, Vertical
 from textual.timer import Timer
 from textual.widgets import Button, Collapsible, DataTable, Input, Static, Switch
 
@@ -58,7 +58,7 @@ class LogsPane(Vertical):
             yield Button("Stop Follow", id="logs-stop-follow")
             yield Button("Archive", id="logs-archive")
         with Collapsible(title="Tail options", id="logs-tail-options", collapsed=True):
-            with Horizontal(classes="ops-actions"):
+            with Grid(classes="form-grid"):
                 yield Static("Services", classes="wizard-control-label")
                 yield Input(
                     id="logs-services",
@@ -66,7 +66,6 @@ class LogsPane(Vertical):
                 )
                 yield Static("Lines", classes="wizard-control-label")
                 yield Input(id="logs-lines", value="")
-            with Horizontal(classes="ops-actions"):
                 yield Static("Errors only", classes="wizard-control-label")
                 yield Switch(value=False, id="logs-errors")
                 yield Static("Follow", classes="wizard-control-label")
@@ -74,7 +73,7 @@ class LogsPane(Vertical):
                 yield Static("Log root", classes="wizard-control-label")
                 yield Input(id="logs-log-root", placeholder="var/log")
         with Collapsible(title="Archive options", id="logs-archive-options", collapsed=True):
-            with Horizontal(classes="ops-actions"):
+            with Grid(classes="form-grid"):
                 yield Static("Days", classes="wizard-control-label")
                 yield Input(id="logs-archive-days", value="7")
                 yield Static("Dry run", classes="wizard-control-label")

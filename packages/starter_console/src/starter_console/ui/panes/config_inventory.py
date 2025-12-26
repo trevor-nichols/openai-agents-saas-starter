@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Grid, Horizontal, Vertical
 from textual.widgets import Button, DataTable, Input, RadioButton, RadioSet, Static
 
 from starter_console.core import CLIContext
@@ -33,21 +33,21 @@ class ConfigInventoryPane(Vertical):
             "Inspect settings schema and export inventory docs.",
             classes="section-description",
         )
-        with Horizontal(classes="ops-actions"):
-            yield Button("Dump Schema", id="config-dump", variant="primary")
-            yield Button("Write Inventory", id="config-write")
+        with Grid(classes="form-grid"):
             yield Static("Format", classes="wizard-control-label")
             yield RadioSet(
                 RadioButton("Table", id="config-format-table"),
                 RadioButton("JSON", id="config-format-json"),
                 id="config-format",
             )
-        with Horizontal(classes="ops-actions"):
             yield Static("Inventory path", classes="wizard-control-label")
             yield Input(
                 id="config-inventory-path",
                 value="docs/trackers/CONSOLE_ENV_INVENTORY.md",
             )
+        with Horizontal(classes="ops-actions"):
+            yield Button("Dump Schema", id="config-dump", variant="primary")
+            yield Button("Write Inventory", id="config-write")
         yield DataTable(id="config-schema", zebra_stripes=True)
         yield Static("", id="config-status", classes="section-footnote")
         yield Static("", id="config-output", classes="ops-output")

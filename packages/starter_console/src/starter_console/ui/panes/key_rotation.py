@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Grid, Horizontal, Vertical
 from textual.widgets import Button, Input, Static
 
 from starter_console.core import CLIContext
@@ -26,9 +26,10 @@ class KeyRotationPane(Vertical):
     def compose(self) -> ComposeResult:
         yield Static("Key Rotation", classes="section-title")
         yield Static("Rotate Ed25519 signing keys.", classes="section-description")
-        with Horizontal(classes="ops-actions"):
+        with Grid(classes="form-grid"):
             yield Static("KID", classes="wizard-control-label")
             yield Input(id="key-rotation-kid")
+        with Horizontal(classes="ops-actions"):
             yield Button("Rotate", id="key-rotation-run", variant="primary")
         yield Static("", id="key-rotation-status", classes="section-footnote")
         yield Static("", id="key-rotation-output", classes="ops-output")

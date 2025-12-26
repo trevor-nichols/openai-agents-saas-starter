@@ -5,6 +5,7 @@ from pathlib import Path
 
 from starter_console.core import CLIContext
 from starter_console.services.infra.stack_ops import stop_stack
+from starter_console.workflows.home.runtime import DEFAULT_PIDFILE_RELATIVE
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -16,7 +17,7 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         "--pidfile",
         type=Path,
         default=None,
-        help="Path to stack state file (default var/run/stack.json).",
+        help=f"Path to stack state file (default {DEFAULT_PIDFILE_RELATIVE}).",
     )
     parser.set_defaults(handler=_handle_stop)
 

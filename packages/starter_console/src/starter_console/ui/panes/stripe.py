@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Grid, Horizontal, Vertical
 from textual.widgets import (
     Button,
     Collapsible,
@@ -57,38 +57,32 @@ class StripePane(Vertical):
     def compose(self) -> ComposeResult:
         yield Static("Stripe", classes="section-title")
         yield Static("Stripe billing configuration overview.", classes="section-description")
-        with Horizontal(classes="ops-actions"):
+        with Horizontal(classes="ops-actions stripe-actions"):
             yield Button("Refresh", id="stripe-refresh", variant="primary")
             yield Button("Run Stripe Setup", id="stripe-run-setup", variant="primary")
             yield Button("Capture Webhook Secret", id="stripe-run-webhook")
-        with Horizontal(classes="stripe-options-actions"):
-            yield Static("Setup options", classes="section-summary")
             yield Button("Reset defaults", id="stripe-reset-defaults", classes="stripe-reset")
         with Collapsible(
             title="Stripe setup options",
             id="stripe-options-collapsible",
             collapsed=True,
         ):
-            with Horizontal(classes="stripe-options"):
+            with Grid(classes="form-grid"):
                 yield Static("Currency", classes="wizard-control-label")
                 yield Input(id="stripe-currency")
                 yield Static("Trial days", classes="wizard-control-label")
                 yield Input(id="stripe-trial-days")
-            with Horizontal(classes="stripe-options"):
                 yield Static("Secret key", classes="wizard-control-label")
                 yield Input(id="stripe-secret-key")
                 yield Static("Webhook secret", classes="wizard-control-label")
                 yield Input(id="stripe-webhook-secret")
-            with Horizontal(classes="stripe-options"):
                 yield Static("Webhook forward URL", classes="wizard-control-label")
                 yield Input(id="stripe-forward-url")
-            with Horizontal(classes="stripe-options"):
                 yield Static(
                     "Plan overrides (code=cents, comma-separated)",
                     classes="wizard-control-label",
                 )
                 yield Input(id="stripe-plan-overrides")
-            with Horizontal(classes="stripe-options"):
                 yield Static("Non-interactive", classes="wizard-control-label")
                 yield Switch(value=False, id="stripe-non-interactive")
                 yield Static("Auto webhook", classes="wizard-control-label")
@@ -103,7 +97,6 @@ class StripePane(Vertical):
                     RadioButton("No", id="stripe-skip-postgres-no"),
                     id="stripe-skip-postgres",
                 )
-            with Horizontal(classes="stripe-options"):
                 yield Static("Skip Stripe CLI", classes="wizard-control-label")
                 yield RadioSet(
                     RadioButton("Yes", id="stripe-skip-cli-yes"),
@@ -121,7 +114,7 @@ class StripePane(Vertical):
             id="stripe-dispatch-collapsible",
             collapsed=True,
         ):
-            with Horizontal(classes="stripe-options"):
+            with Grid(classes="form-grid"):
                 yield Static("List status", classes="wizard-control-label")
                 yield Input(id="stripe-dispatch-status")
                 yield Static("Handler", classes="wizard-control-label")
@@ -130,12 +123,10 @@ class StripePane(Vertical):
                 yield Input(id="stripe-dispatch-limit")
                 yield Static("Page", classes="wizard-control-label")
                 yield Input(id="stripe-dispatch-page")
-            with Horizontal(classes="stripe-options"):
                 yield Static("Replay dispatch IDs", classes="wizard-control-label")
                 yield Input(id="stripe-replay-dispatch-ids")
                 yield Static("Replay event IDs", classes="wizard-control-label")
                 yield Input(id="stripe-replay-event-ids")
-            with Horizontal(classes="stripe-options"):
                 yield Static("Replay status", classes="wizard-control-label")
                 yield Input(id="stripe-replay-status")
                 yield Static("Replay handler", classes="wizard-control-label")
@@ -144,7 +135,6 @@ class StripePane(Vertical):
                 yield Input(id="stripe-replay-limit")
                 yield Static("Assume yes", classes="wizard-control-label")
                 yield Switch(value=False, id="stripe-replay-yes")
-            with Horizontal(classes="stripe-options"):
                 yield Static("Fixtures path", classes="wizard-control-label")
                 yield Input(id="stripe-fixtures-path")
             with Horizontal(classes="stripe-options"):

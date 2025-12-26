@@ -5,6 +5,7 @@ import signal
 import subprocess
 from typing import Any
 
+from ..process_utils import terminate_process_tree
 from .models import LaunchResult
 
 
@@ -135,61 +136,7 @@ def _terminate_process_tree(root_pid: int, sig: int) -> None:
             return
         return
 
-    pids = _collect_descendant_pids(root_pid)
-    for pid in pids:
-        try:
-            os.kill(pid, sig)
-        except ProcessLookupError:
-            continue
-        except PermissionError:
-            continue
-        except Exception:
-            continue
-
-
-def _collect_descendant_pids(root_pid: int) -> list[int]:
-    """
-    Return a post-order list of PIDs: children first, then root.
-
-    Uses `ps` to avoid adding runtime dependencies (psutil) to the CLI.
-    """
-
-    try:
-        result = subprocess.run(
-            ["ps", "-Ao", "pid=,ppid="],
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-        )
-    except Exception:
-        return [root_pid]
-
-    children_by_ppid: dict[int, list[int]] = {}
-    for line in result.stdout.splitlines():
-        parts = line.strip().split(None, 1)
-        if len(parts) != 2:
-            continue
-        try:
-            pid = int(parts[0])
-            ppid = int(parts[1])
-        except ValueError:
-            continue
-        children_by_ppid.setdefault(ppid, []).append(pid)
-
-    order: list[int] = []
-    stack: list[int] = [root_pid]
-    seen: set[int] = set()
-    while stack:
-        pid = stack.pop()
-        if pid in seen:
-            continue
-        seen.add(pid)
-        order.append(pid)
-        stack.extend(children_by_ppid.get(pid, ()))
-
-    # Reverse pre-order => children before parents.
-    return list(reversed(order))
+    terminate_process_tree(root_pid, sig)
 
 
 __all__ = ["resolve_pgid", "subprocess_start_opts", "terminate_launch"]

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Grid, Horizontal, Vertical
 from textual.widgets import Button, DataTable, Input, RadioButton, RadioSet, Static, Switch
 
 from starter_console.core import CLIContext
@@ -38,7 +38,7 @@ class DoctorPane(Vertical):
     def compose(self) -> ComposeResult:
         yield Static("Doctor", classes="section-title")
         yield Static("Run readiness checks and export reports.", classes="section-description")
-        with Horizontal(classes="ops-actions"):
+        with Grid(classes="form-grid"):
             yield Static("Profile", classes="wizard-control-label")
             yield RadioSet(
                 RadioButton("Auto", id="doctor-profile-auto"),
@@ -49,14 +49,14 @@ class DoctorPane(Vertical):
             )
             yield Static("Strict", classes="wizard-control-label")
             yield Switch(value=False, id="doctor-strict")
-            yield Button("Run Doctor", id="doctor-run", variant="primary")
-        with Horizontal(classes="ops-actions"):
             yield Static("Profile override", classes="wizard-control-label")
             yield Input(id="doctor-profile-override")
             yield Static("JSON path", classes="wizard-control-label")
             yield Input(id="doctor-json-path")
             yield Static("Markdown path", classes="wizard-control-label")
             yield Input(id="doctor-markdown-path")
+        with Horizontal(classes="ops-actions"):
+            yield Button("Run Doctor", id="doctor-run", variant="primary")
         yield Static("", id="doctor-summary", classes="section-summary")
         with Horizontal(classes="home-tables"):
             yield DataTable(id="doctor-probes", zebra_stripes=True)

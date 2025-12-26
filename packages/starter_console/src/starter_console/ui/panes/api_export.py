@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Grid, Horizontal, Vertical
 from textual.widgets import Button, Input, Static, Switch
 
 from starter_console.core import CLIContext
@@ -23,11 +23,9 @@ class ApiExportPane(Vertical):
     def compose(self) -> ComposeResult:
         yield Static("API Export", classes="section-title")
         yield Static("Export OpenAPI schema artifacts.", classes="section-description")
-        with Horizontal(classes="ops-actions"):
+        with Grid(classes="form-grid"):
             yield Static("Output path", classes="wizard-control-label")
             yield Input(id="api-output", value="apps/api-service/.artifacts/openapi.json")
-            yield Button("Export", id="api-export", variant="primary")
-        with Horizontal(classes="ops-actions"):
             yield Static("Enable billing", classes="wizard-control-label")
             yield Switch(value=False, id="api-enable-billing")
             yield Static("Enable fixtures", classes="wizard-control-label")
@@ -36,6 +34,8 @@ class ApiExportPane(Vertical):
             yield Input(id="api-title")
             yield Static("Version", classes="wizard-control-label")
             yield Input(id="api-version")
+        with Horizontal(classes="ops-actions"):
+            yield Button("Export", id="api-export", variant="primary")
         yield Static("", id="api-status", classes="section-footnote")
         yield Static("", id="api-output-log", classes="ops-output")
 

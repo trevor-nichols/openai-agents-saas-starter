@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 from textual.app import App, ComposeResult
-from textual.widgets import DataTable, Input, Static
+from textual.widgets import Static
 
 from starter_console.core import CLIContext
 from starter_console.core.constants import DEFAULT_ENV_FILES
@@ -34,10 +34,10 @@ async def test_context_panel_summary_shows_profile(tmp_path, monkeypatch) -> Non
         await pilot.pause()
         summary = app.query_one("#context-summary", Static)
         text = str(summary.renderable)
-        assert "Profile: staging (settings)" in text
+        assert "Env: staging (settings)" in text
         total = len(DEFAULT_ENV_FILES) + 2
-        assert f"env files: {total} (defaults {len(DEFAULT_ENV_FILES)}, custom 2)" in text
-        assert "loaded: 1" in text
+        assert f"files: {total} (loaded 1)" in text
+        assert "skip defaults: no" in text
 
 
 @pytest.mark.asyncio
@@ -48,13 +48,9 @@ async def test_context_panel_blocks_default_env_add(tmp_path) -> None:
 
     async with app.run_test() as pilot:
         panel = app.query_one(ContextPanel)
-        input_field = panel.query_one("#context-env-input", Input)
-        input_field.value = str(default_path)
-        panel._add_env_file()
+        ok, status = panel._state.add_custom(str(default_path))
         await pilot.pause()
 
-        status = app.query_one("#context-status", Static)
-        assert "Defaults are managed by Skip env load" in str(status.renderable)
-
-        custom_table = app.query_one("#context-custom-table", DataTable)
-        assert custom_table.row_count == 0
+        assert not ok
+        assert "Defaults are managed by Skip env load" in status
+        assert panel._state.custom_env_files == []

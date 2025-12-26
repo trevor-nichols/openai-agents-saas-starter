@@ -10,6 +10,7 @@ from dotenv import dotenv_values
 from starter_console.core import CLIContext
 from starter_console.ports.console import ConsolePort
 from starter_console.workflows.home import stack_state
+from starter_console.workflows.home.runtime import resolve_pidfile
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,7 +22,7 @@ class StopStackResult:
 
 def stop_stack(ctx: CLIContext, *, pidfile: Path | None) -> StopStackResult:
     console = ctx.console
-    pidfile = pidfile or stack_state.STACK_STATE_PATH
+    pidfile = resolve_pidfile(ctx.project_root, pidfile)
     state = stack_state.load(pidfile)
     if state is None or not state.processes:
         console.info("No CLI-managed stack found (nothing to stop).")

@@ -72,10 +72,16 @@ class PromptController:
         self._submit_value(self.state.choices[index])
 
     def set_visibility(self, visible: bool, *, show_input: bool = True) -> None:
+        prompt = self._prompt()
+        prompt.display = visible
         input_field = self._input()
         option_list = self._options()
         input_field.display = visible and show_input
         option_list.display = visible and not show_input
+        self._actions().display = visible
+        self._label().display = visible
+        self._detail().display = visible
+        self._status().display = visible
 
     def clear_input(self) -> None:
         self._input().value = ""
@@ -129,11 +135,17 @@ class PromptController:
     def _detail(self) -> Static:
         return cast(Static, self._root.query_one(f"#{self._prefix}-prompt-detail", Static))
 
+    def _prompt(self) -> Widget:
+        return cast(Widget, self._root.query_one(f"#{self._prefix}-prompt", Widget))
+
     def _input(self) -> Input:
         return cast(Input, self._root.query_one(f"#{self._prefix}-input", Input))
 
     def _options(self) -> OptionList:
         return cast(OptionList, self._root.query_one(f"#{self._prefix}-options", OptionList))
+
+    def _actions(self) -> Widget:
+        return cast(Widget, self._root.query_one(f"#{self._prefix}-prompt-actions", Widget))
 
     def _status(self) -> Static:
         return cast(Static, self._root.query_one(f"#{self._prefix}-prompt-status", Static))

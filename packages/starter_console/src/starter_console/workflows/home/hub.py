@@ -13,6 +13,7 @@ from starter_console.services.infra import DependencyStatus, collect_dependency_
 from starter_console.services.stripe.stripe_status import StripeStatus, load_stripe_status
 from starter_console.services.usage.reporting import UsageSummary, UsageWarning, load_usage_report
 from starter_console.workflows.home.doctor import DoctorRunner, detect_profile
+from starter_console.workflows.home.runtime import resolve_log_root
 from starter_console.workflows.setup_menu.detection import STALE_AFTER_DAYS, collect_setup_items
 from starter_console.workflows.setup_menu.models import SetupItem
 
@@ -87,7 +88,7 @@ class HubService:
         return SetupSnapshot(items=items, stale_window=window)
 
     def load_logs(self) -> LogsSnapshot:
-        log_root = ops_models.resolve_log_root(self.ctx.project_root, os.environ)
+        log_root = resolve_log_root(self.ctx.project_root, os.environ)
         log_dir = ops_models.resolve_active_log_dir(log_root)
         entries = tuple(ops_models.collect_log_entries(log_dir))
         return LogsSnapshot(log_root=log_root, log_dir=log_dir, entries=entries)
