@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     env:
       STARTER_CONSOLE_SKIP_ENV: "true"
       STARTER_CONSOLE_SKIP_VAULT_PROBE: "true"
@@ -70,6 +72,16 @@ jobs:
       - name: Node SBOM (CycloneDX)
         working-directory: apps/web-app
         run: pnpm dlx @cyclonedx/cdxgen -o ../../frontend-sbom.json -t javascript --no-analytics
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: |
+            dist/*.whl
+            starter_contracts-sbom.json
+            starter_console-sbom.json
+            starter_providers-sbom.json
+            frontend-sbom.json
 
       - name: Publish GitHub Release assets
         uses: softprops/action-gh-release@v1
