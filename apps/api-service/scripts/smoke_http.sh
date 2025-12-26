@@ -49,6 +49,8 @@ export SMOKE_ENABLE_CONTAINERS
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 project_dir="$(cd "${script_dir}/.." && pwd)"
+AUTH_KEY_STORAGE_PATH="${AUTH_KEY_STORAGE_PATH:-${project_dir}/tests/fixtures/keysets/test_keyset.json}"
+export AUTH_KEY_STORAGE_PATH
 cd "${project_dir}"
 
 python -m hatch run serve >/tmp/api-smoke.log 2>&1 &
