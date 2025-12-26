@@ -46,7 +46,7 @@ else:  # pragma: no cover - defensive
 # ---------------------------------------------------------------------------
 # Environment defaults for a minimal, self-contained boot
 # ---------------------------------------------------------------------------
-os.environ.setdefault("ENVIRONMENT", "test")
+os.environ["ENVIRONMENT"] = "test"
 os.environ.setdefault("DEBUG", "false")
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")

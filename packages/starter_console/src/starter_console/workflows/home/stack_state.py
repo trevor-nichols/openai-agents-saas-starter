@@ -140,7 +140,7 @@ def stop_processes(state: StackState, *, grace_seconds: float = 5.0) -> None:
         if proc.isolated:
             _send_signal_group(proc, signal.SIGTERM)
         else:
-            terminate_process_tree(pid, signal.SIGTERM)
+            _send_signal(pid, signal.SIGTERM, prefer_group=True)
 
     deadline = time.time() + grace_seconds
     remaining: set[int] = set(pids)
@@ -161,9 +161,9 @@ def stop_processes(state: StackState, *, grace_seconds: float = 5.0) -> None:
                 _send_signal_group(proc, signal.SIGTERM)
         else:
             if sigkill is None:
-                terminate_process_tree(pid, signal.SIGTERM)
+                _send_signal(pid, signal.SIGTERM, prefer_group=True)
             else:
-                terminate_process_tree(pid, sigkill)
+                _send_signal(pid, sigkill, prefer_group=True)
 
 
 def _send_signal(pid: int, sig: int, *, prefer_group: bool = False) -> None:
