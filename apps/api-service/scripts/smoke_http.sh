@@ -79,4 +79,8 @@ if [ "${health_ok}" != "true" ]; then
   exit 1
 fi
 
-python -m hatch run pytest -m smoke tests/smoke/http --maxfail=1 -q
+if ! python -m hatch run pytest -m smoke tests/smoke/http --maxfail=1 -q; then
+  echo "Smoke tests failed; tailing /tmp/api-smoke.log" >&2
+  tail -n 200 /tmp/api-smoke.log || true
+  exit 1
+fi
